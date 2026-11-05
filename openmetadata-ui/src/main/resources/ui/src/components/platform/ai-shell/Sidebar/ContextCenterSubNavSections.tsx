@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
-import { File06, Link03, Plus } from '@untitledui/icons';
+import { Button, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { File06, Link03, Plus } from '@openmetadata/ui-core-components/icons';
 import { groupBy, isEmpty, startCase } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +35,7 @@ import { getTags } from '../../../../rest/tagAPI';
 import { getUserById } from '../../../../rest/userAPI';
 import contextCenterClassBase from '../../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getSafeHttpUrl } from '../../../../utils/StringUtils';
 
 const MAX_ITEMS = 4;
 
@@ -55,7 +56,7 @@ type PageEntry = {
   displayName?: string;
   name?: string;
   pageType?: PageType;
-  page?: { url?: string };
+  page?: KnowledgePage['page'];
 };
 
 const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
@@ -161,8 +162,15 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
       const Icon = isQuickLink ? Link03 : File06;
 
       const handleClick = () => {
-        if (isQuickLink && page.page?.url) {
-          window.open(page.page.url, '_blank', 'noopener,noreferrer');
+        const url =
+          page.page && typeof page.page === 'object' && 'url' in page.page
+            ? page.page.url
+            : undefined;
+        const safeUrl = getSafeHttpUrl(
+          typeof url === 'string' ? url : undefined
+        );
+        if (isQuickLink && safeUrl) {
+          window.open(safeUrl, '_blank', 'noopener,noreferrer');
         } else {
           const path = page.fullyQualifiedName
             ? contextCenterClassBase.getArticlePath(page.fullyQualifiedName)
@@ -173,18 +181,19 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
 
       return (
         <li key={page.fullyQualifiedName ?? testId}>
-          <button
-            aria-label={label}
-            className="ask-sub-panel__item"
-            data-testid={`ask-sub-panel-link-${testId}`}
-            title={label}
-            type="button"
-            onClick={handleClick}>
-            <span className="ask-sub-panel__item-icon">
-              <Icon size={16} />
-            </span>
-            <span className="ask-sub-panel__item-label">{label}</span>
-          </button>
+          <Tooltip title={label} triggerClassName="tw:w-full">
+            <button
+              aria-label={label}
+              className="ask-sub-panel__item"
+              data-testid={`ask-sub-panel-link-${testId}`}
+              type="button"
+              onClick={handleClick}>
+              <span className="ask-sub-panel__item-icon">
+                <Icon size={16} />
+              </span>
+              <span className="ask-sub-panel__item-label">{label}</span>
+            </button>
+          </Tooltip>
         </li>
       );
     },
@@ -223,7 +232,10 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
   return (
     <>
       <section className="ask-sub-panel__section ask-sub-panel__section--with-header">
-        <Typography className="tw:text-gray-500" size="text-xs" weight="medium">
+        <Typography
+          className="tw:text-quaternary"
+          size="text-xs"
+          weight="medium">
           {t('label.quick-action-plural')}
         </Typography>
         <ul className="ask-sub-panel__list">
@@ -275,7 +287,7 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
       {!isEmpty(recentlyViewed) && (
         <section className="ask-sub-panel__section ask-sub-panel__section--with-header">
           <Typography
-            className="tw:text-gray-500 tw:pl-1"
+            className="tw:text-quaternary tw:pl-1"
             size="text-xs"
             weight="medium">
             {t('label.recently-viewed')}
@@ -289,7 +301,7 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
       {!isEmpty(bookmarks) && (
         <section className="ask-sub-panel__section ask-sub-panel__section--with-header">
           <Typography
-            className="tw:text-gray-500 tw:pl-1"
+            className="tw:text-quaternary tw:pl-1"
             size="text-xs"
             weight="medium">
             {t('label.bookmark-plural')}
@@ -305,7 +317,7 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
           className="ask-sub-panel__section ask-sub-panel__section--with-header"
           key={tagFqn}>
           <Typography
-            className="tw:text-gray-500 tw:pl-1"
+            className="tw:text-quaternary tw:pl-1"
             size="text-xs"
             weight="medium">
             {startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}

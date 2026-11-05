@@ -13,6 +13,8 @@
 
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import i18n from '../utils/i18next/LocalUtil';
+import { FQN_SEPARATOR_CHAR } from './char.constants';
+import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from './constants';
 
 export const TAG_CONSTANT = {
   labelType: LabelType.Manual,
@@ -39,12 +41,12 @@ export const queryFilterToRemoveSomeClassification = {
       must_not: [
         {
           prefix: {
-            fullyQualifiedName: 'Certification.',
+            fullyQualifiedName: `${CERTIFICATION_CATEGORY}${FQN_SEPARATOR_CHAR}`,
           },
         },
         {
           prefix: {
-            fullyQualifiedName: 'Tier.',
+            fullyQualifiedName: `${TIER_CATEGORY}${FQN_SEPARATOR_CHAR}`,
           },
         },
       ],

@@ -37,6 +37,11 @@ export interface EventSubscriptionDiagnosticInfo {
      */
     relevantUnprocessedEventsCount?: any;
     /**
+     * True when more events are unread than one request evaluates, so
+     * relevantUnprocessedEventsCount counts only the first unread events.
+     */
+    relevantUnprocessedEventsCountIsLowerBound?: boolean;
+    /**
      * A list of relevant unprocessed events based on the alert's filtering criteria.
      */
     relevantUnprocessedEventsList?: ChangeEvent[];
@@ -224,15 +229,6 @@ export enum EventType {
     OntologyRelationshipTypeUpdated = "ontologyRelationshipTypeUpdated",
     PostCreated = "postCreated",
     PostUpdated = "postUpdated",
-    SuggestionAccepted = "suggestionAccepted",
-    SuggestionCreated = "suggestionCreated",
-    SuggestionDeleted = "suggestionDeleted",
-    SuggestionRejected = "suggestionRejected",
-    SuggestionUpdated = "suggestionUpdated",
-    TaskClosed = "taskClosed",
-    TaskCreated = "taskCreated",
-    TaskResolved = "taskResolved",
-    TaskUpdated = "taskUpdated",
     ThreadCreated = "threadCreated",
     ThreadUpdated = "threadUpdated",
     UserLogin = "userLogin",

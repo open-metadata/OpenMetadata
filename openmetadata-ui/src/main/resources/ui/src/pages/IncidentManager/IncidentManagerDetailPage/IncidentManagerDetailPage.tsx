@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCcw01 } from '@untitledui/icons';
-import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -22,23 +21,28 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import { BetaBadge } from '../../../components/common/Badge/Badge.component';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { PageLoader } from '../../../components/common/Loader/Loader';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { StatItem } from '../../../components/DataAssets/DataAssetsHeader/StatItem.component';
 import TestCaseFormDrawer from '../../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import IncidentManagerPageHeader from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
 import TestCaseLastRunBanner from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/TestCaseLastRunBanner.component';
 import { useTestCaseIncidentHeader } from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
+import EntityDetailsPageSkeleton from '../../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import {
+  DetailsTabItem,
+  getRenderedActiveTab,
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -47,7 +51,6 @@ import {
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
-import './incident-manager-details.less';
 import { TEST_CASE_NEXT_RUN_QUERY_KEY } from './IncidentManagerDetailPage.constants';
 import {
   fetchNextTestCaseRunTimestamp,
@@ -65,6 +68,7 @@ const IncidentManagerDetailPage = ({
   isVersionPage?: boolean;
 }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const location = useCustomLocation();
   const originBreadcrumb = (
@@ -119,7 +123,7 @@ const IncidentManagerDetailPage = ({
     }),
   });
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: DetailsTabItem[] = useMemo(
     () =>
       tabs.map(({ LabelComponent, labelProps, key, Tab, isBeta }) => ({
         key,
@@ -138,13 +142,17 @@ const IncidentManagerDetailPage = ({
                   className="tw:px-4 tw:pt-4"
                   data-testid="test-case-last-run-banner-tab-container">
                   <TestCaseLastRunBanner
+                    hasEditStatusPermission={
+                      incidentHeaderData.hasEditStatusPermission
+                    }
                     incidentTask={incidentHeaderData.incidentTask}
                     nextRunTimestamp={nextRunTimestamp}
-                    parameterValues={testCase?.parameterValues}
                     taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                    testCase={testCase}
                     testCaseResult={testCase?.testCaseResult}
                     testCaseStatus={testCase?.testCaseStatus}
                     testCaseStatusData={incidentHeaderData.testCaseStatusData}
+                    onAcknowledge={incidentHeaderData.handleAcknowledgeIncident}
                   />
                 </div>
               )}
@@ -154,6 +162,8 @@ const IncidentManagerDetailPage = ({
       })),
     [
       dimensionKey,
+      incidentHeaderData.handleAcknowledgeIncident,
+      incidentHeaderData.hasEditStatusPermission,
       incidentHeaderData.incidentTask,
       incidentHeaderData.taskLinkInfo,
       incidentHeaderData.testCaseStatusData,
@@ -161,9 +171,7 @@ const IncidentManagerDetailPage = ({
       isVersionPage,
       nextRunTimestamp,
       tabs,
-      testCase?.parameterValues,
-      testCase?.testCaseResult,
-      testCase?.testCaseStatus,
+      testCase,
     ]
   );
 
@@ -267,23 +275,28 @@ const IncidentManagerDetailPage = ({
   }, [onCopyToClipBoard]);
 
   if (isLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.incident-manager'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.incident-manager'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isUndefined(testCase)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (
@@ -297,7 +310,7 @@ const IncidentManagerDetailPage = ({
         direction="col"
         gap={5}>
         <Box
-          className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:p-5 data-assets-header-container"
+          className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface tw:p-5 data-assets-header-container"
           data-testid="test-case-header-container"
           direction="col"
           gap={5}>
@@ -334,12 +347,13 @@ const IncidentManagerDetailPage = ({
                 className={classNames(
                   'tw:relative tw:size-9 tw:shrink-0',
                   'tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                  'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                 )}
                 justify="center">
-                <TestCaseIcon className="tw:size-5" />
+                <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
               </Box>
               <TestCaseHeaderTitle
+                deleted={testCase.deleted}
                 displayName={displayName}
                 hasCopied={hasCopied}
                 testCaseName={testCase.name}
@@ -379,20 +393,39 @@ const IncidentManagerDetailPage = ({
         </Box>
         <div className="incident-manager-details-tabs">
           <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="tabs-new"
+            className="tw:gap-3"
             data-testid="tabs"
-            items={tabItems}
-            tabBarExtraContent={
-              <TestCaseTabBarExtraContent
-                isExpandViewSupported={isExpandViewSupported}
-                isTabExpanded={isTabExpanded}
-                toggleTabExpanded={toggleTabExpanded}
-              />
-            }
-            onChange={handleTabChange}
-          />
+            selectedKey={getRenderedActiveTab(tabItems, activeTab)}
+            onSelectionChange={(key) => handleTabChange(String(key))}>
+            <Tabs.List
+              actions={
+                <TestCaseTabBarExtraContent
+                  isExpandViewSupported={isExpandViewSupported}
+                  isTabExpanded={isTabExpanded}
+                  toggleTabExpanded={toggleTabExpanded}
+                />
+              }
+              size="sm"
+              type="underline"
+              variant="card">
+              {tabItems.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {tabItems.map(({ key, children }) => (
+              <Tabs.Panel
+                className={classNames({
+                  // Classic mode puts tab content on a white panel; AI mode keeps its own surface.
+                  'tw:rounded-xl tw:bg-surface': !isAiMode,
+                })}
+                id={key}
+                key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
         </div>
       </Box>
       {isVersionPage && (
@@ -408,7 +441,6 @@ const IncidentManagerDetailPage = ({
         <TestCaseFormDrawer
           open={isDimensionEdit}
           testCase={testCase}
-          variant="drawer"
           onClose={handleCancelDimension}
           onUpdate={setTestCase}
         />

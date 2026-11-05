@@ -165,10 +165,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
+    Owner: jest.fn().mockReturnValue(<div data-testid="owner-label" />),
     Skeleton: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
       <div data-testid={testId} />
     ),
     Table: MockTable,
+    toOwnerRef: jest.fn().mockReturnValue({}),
+    toOwnerRefs: jest.fn().mockReturnValue([]),
+    Typography: jest.requireActual('@openmetadata/ui-core-components')
+      .Typography,
   };
 });
 
@@ -184,12 +189,6 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../common/NextPrevious/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div data-testid="next-previous" />)
 );
-
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="owner-label" />),
-}));
 
 jest.mock(
   '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget',
@@ -294,6 +293,12 @@ describe('TestSuitesTable component', () => {
     expect(screen.getByText('10')).toBeInTheDocument();
     expect(screen.getByTestId('profiler-progress-widget')).toBeInTheDocument();
     expect(screen.getByTestId('owner-label')).toBeInTheDocument();
+    expect(
+      jest.requireMock('@openmetadata/ui-core-components').Owner
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ labelVariant: 'cell' }),
+      expect.anything()
+    );
   });
 
   it('should render the logical suite link via observabilityRouterClassBase', () => {

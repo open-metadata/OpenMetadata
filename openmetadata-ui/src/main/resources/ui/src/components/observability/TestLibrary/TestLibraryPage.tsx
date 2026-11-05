@@ -10,16 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Button, PageLayout } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import TestDefinitionForm from '../../TestLibrary/TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionTable from '../../TestLibrary/TestDefinitionList/TestDefinitionTable.component';
@@ -39,6 +37,7 @@ const TestLibraryPage = () => {
   const {
     testDefinitions,
     isLoading,
+    isInitialLoading,
     createPermission,
     viewPermission,
     testDefinitionPermissions,
@@ -46,7 +45,11 @@ const TestLibraryPage = () => {
     pagingData,
     showPagination,
     urlFilters,
+    searchQuery,
+    sortDescriptor,
+    handleSortChange,
     setSingleFilter,
+    handleSearchChange,
     clearAllFilters,
     hasActiveFilters,
     isFormVisible,
@@ -66,12 +69,14 @@ const TestLibraryPage = () => {
 
   if (!viewPermission) {
     return (
-      <ErrorPlaceHolder
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-definition'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-definition'),
+          })}
+        />
+      </div>
     );
   }
 
@@ -79,7 +84,7 @@ const TestLibraryPage = () => {
     <>
       <ObservabilityPageShell
         header={
-          <HeaderShell
+          <PageLayout.PageHeader
             actions={
               createPermission ? (
                 <Button
@@ -114,34 +119,38 @@ const TestLibraryPage = () => {
                 showHome={false}
               />
             }
-            padding="comfortable"
             subtitle={t('message.page-sub-header-for-test-definitions')}
             title={t('label.test-library')}
             variant="gradient"
           />
         }
         pageTitle={t('label.test-library')}>
-        <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary">
+        <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface">
           <div className="tw:p-4">
             <TestDefinitionFilterBar
               filterValues={urlFilters}
               hasActiveFilters={hasActiveFilters}
+              searchQuery={searchQuery}
               onClearAll={clearAllFilters}
               onFilterChange={setSingleFilter}
+              onSearchChange={handleSearchChange}
             />
           </div>
           <TestDefinitionTable
             hasActiveFilters={hasActiveFilters}
+            isInitialLoading={isInitialLoading}
             isLoading={isLoading}
             pagingData={pagingData}
             permissionLoading={permissionLoading}
             showPagination={showPagination}
+            sortDescriptor={sortDescriptor}
             testDefinitionPermissions={testDefinitionPermissions}
             testDefinitions={testDefinitions}
             onClearFilters={clearAllFilters}
             onDelete={handleDeleteClick}
             onEdit={handleEdit}
             onEnableToggle={handleEnableToggle}
+            onSortChange={handleSortChange}
           />
         </div>
       </ObservabilityPageShell>
@@ -149,7 +158,6 @@ const TestLibraryPage = () => {
       <TestDefinitionForm
         initialValues={selectedDefinition}
         open={isFormVisible}
-        variant="modal"
         onCancel={handleFormCancel}
         onSuccess={handleFormSuccess}
       />

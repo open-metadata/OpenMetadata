@@ -10,21 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dataflow01, Plus } from '@untitledui/icons';
-import { Button, Skeleton, Typography } from 'antd';
+import {
+  ButtonUtility,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Dataflow01, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { Fragment, memo, useCallback, useMemo, useState } from 'react';
+import {
+  Fragment,
+  memo,
+  RefObject,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { DataType } from '../../../generated/entity/data/table';
 import { ColumnTestSummaryDefinition } from '../../../generated/tests/testCase';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { EntityChildrenItem } from '../../../interface/lineage.interface';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
+import { onColumnMouseEnter } from '../../../utils/Lineage/handlers/columnInteractions';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
-import { EntityChildrenItem } from './NodeChildren/NodeChildren.interface';
+import LineageColumnMenu from '../../Lineage/LineageColumnMenu/LineageColumnMenu';
+import { BASE_NODE_FILL_CLASS } from './CustomNode.constants';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 const DEPTH_INDENT_PX = 16;
@@ -47,6 +61,7 @@ export const getHandleByType = (
   );
 };
 
+// Public API: openmetadata-collate builds its column handles with this.
 export const getColumnHandle = (
   nodeType: string,
   isConnectable: HandleProps['isConnectable'],
@@ -55,20 +70,14 @@ export const getColumnHandle = (
 ) => {
   if (nodeType === EntityLineageNodeType.NOT_CONNECTED) {
     return null;
-  } else {
-    return (
-      <Fragment>
-        {getHandleByType(isConnectable, Position.Left, 'target', className, id)}
-        {getHandleByType(
-          isConnectable,
-          Position.Right,
-          'source',
-          className,
-          id
-        )}
-      </Fragment>
-    );
   }
+
+  return (
+    <Fragment>
+      {getHandleByType(isConnectable, Position.Left, 'target', className, id)}
+      {getHandleByType(isConnectable, Position.Right, 'source', className, id)}
+    </Fragment>
+  );
 };
 
 const ExpandHandle = ({
@@ -114,19 +123,21 @@ const ExpandHandle = ({
       onFocus={handleLineageNodeHandleMouseOver}
       onMouseOut={handleLineageNodeHandleMouseOut}
       onMouseOver={handleLineageNodeHandleMouseOver}>
-      <Plus
-        aria-hidden="false"
-        aria-label="expand"
-        className="lineage-expand-icon"
+      <ButtonUtility
         data-testid="plus-icon"
+        icon={Plus}
+        size="xs"
+        tooltip={t('label.expand')}
         onClick={handleLineageExpandIconClick}
       />
       {showExpandAll && (
         <>
           <div className="lineage-expand-icons-separator" />
-          <Dataflow01
-            className="lineage-expand-icon"
+          <ButtonUtility
             data-testid="lineage-expand-all-btn"
+            icon={Dataflow01}
+            size="xs"
+            tooltip={t('label.expand-all')}
             onClick={handleLineageExpandAllIconClick}
           />
         </>
@@ -147,9 +158,11 @@ export const getCollapseHandle = (
   onClickHandler: () => void
 ) => {
   return (
-    <Button
+    <ButtonUtility
+      // custom-node.less `.react-flow .lineage-node-handle` owns size, radius,
+      // border colour and surface bg (!important).
       className={classNames(
-        'absolute lineage-node-minus lineage-node-handle flex-center',
+        'tw:absolute! lineage-node-minus lineage-node-handle flex-center nodrag nopan tw:border',
         direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
@@ -159,12 +172,17 @@ export const getCollapseHandle = (
           ? 'downstream-collapse-handle'
           : 'upstream-collapse-handle'
       }
+      // Playwright targets the glyph by test id, so it stays an element.
       icon={
-        <MinusIcon className="lineage-expand-icon " data-testid="minus-icon" />
+        <MinusIcon
+          data-icon
+          className="tw:dark:[&_path]:fill-fg-quaternary"
+          data-testid="minus-icon"
+        />
       }
-      shape="circle"
-      size="small"
-      onClick={(e) => {
+      size="xs"
+      tooltip={t('label.collapse')}
+      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         onClickHandler();
       }}
@@ -177,7 +195,7 @@ const getColumnNameContent = (
   isLoading: boolean
 ) => {
   if (isLoading) {
-    return <Skeleton.Button active data-tesid="loader" size="small" />;
+    return <Skeleton height={32} variant="rounded" width={72} />;
   }
 
   return (
@@ -190,44 +208,45 @@ const getColumnNameContent = (
           })}
         </div>
       )}
-      <Typography.Text
+      <Typography
+        as="span"
         className="custom-node-column-label"
-        ellipsis={{
-          tooltip: true,
-        }}>
+        ellipsis={{ tooltip: true }}>
         {getEntityName(column)}
-      </Typography.Text>
+      </Typography>
     </>
   );
 };
 
 interface ColumnContentProps {
   column: EntityChildrenItem;
-  isConnectable: boolean;
   showDataObservabilitySummary: boolean;
   isLoading: boolean;
   summary?: ColumnTestSummaryDefinition;
   depth?: number;
   className?: string;
+  onColumnHover?: (columnFqn?: string) => void;
+  onColumnSelect?: (columnFqn?: string) => void;
+  onColumnLineageEdit?: (
+    columnFqn: string,
+    direction: LineageDirection,
+    triggerRef: RefObject<HTMLElement>
+  ) => void;
 }
 
 const ColumnContentInner = ({
   column,
-  isConnectable,
   showDataObservabilitySummary,
   isLoading,
   summary,
   depth = 0,
   className = '',
+  onColumnHover,
+  onColumnSelect,
+  onColumnLineageEdit,
 }: ColumnContentProps) => {
-  const { onColumnMouseEnter } = useLineageProvider();
-  const {
-    selectedColumn,
-    setSelectedColumn,
-    setTracedColumns,
-    isEditMode,
-    tracedColumns,
-  } = useLineageStore();
+  const { selectedColumn, setSelectedColumn, setTracedColumns, tracedColumns } =
+    useLineageStore();
 
   const { fullyQualifiedName } = column;
 
@@ -237,47 +256,38 @@ const ColumnContentInner = ({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setSelectedColumn(fullyQualifiedName ?? '');
+      onColumnSelect?.(fullyQualifiedName);
     },
-    [fullyQualifiedName, setSelectedColumn]
+    [fullyQualifiedName, onColumnSelect, setSelectedColumn]
   );
 
   const handleMouseEnter = useCallback(() => {
     if (selectedColumn) {
       return;
     }
+    onColumnHover?.(fullyQualifiedName);
     onColumnMouseEnter(fullyQualifiedName ?? '');
-  }, [selectedColumn, fullyQualifiedName, onColumnMouseEnter]);
+  }, [fullyQualifiedName, onColumnHover, selectedColumn]);
 
   const handleMouseLeave = useCallback(() => {
     if (selectedColumn) {
       return;
     }
+    onColumnHover?.(undefined);
     setTracedColumns(new Set());
-  }, [selectedColumn, setTracedColumns]);
+  }, [onColumnHover, selectedColumn, setTracedColumns]);
 
   const columnNameContentRender = useMemo(
     () => getColumnNameContent(column, isLoading),
     [column, isLoading]
   );
 
-  const handles = useMemo(
-    () =>
-      isEditMode
-        ? getColumnHandle(
-            EntityLineageNodeType.DEFAULT,
-            isConnectable,
-            'lineage-column-node-handle',
-            fullyQualifiedName ?? ''
-          )
-        : null,
-    [isEditMode, isConnectable, fullyQualifiedName]
-  );
-
   return (
     <div
-      className={classNames(`custom-node-column-container ${className}`, {
-        'custom-node-header-column-tracing': isColumnTraced,
-      })}
+      className={classNames(
+        `custom-node-column-container tw:text-primary ${className}`,
+        { 'custom-node-header-column-tracing': isColumnTraced }
+      )}
       data-testid={`column-${fullyQualifiedName}`}
       role="presentation"
       style={{
@@ -287,8 +297,7 @@ const ColumnContentInner = ({
       onMouseDown={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}>
-      {handles}
-      <div className="custom-node-column-row">
+      <div className="custom-node-column-row tw:group">
         <div className="custom-node-name-container">
           {columnNameContentRender}
         </div>
@@ -312,6 +321,15 @@ const ColumnContentInner = ({
             />
           </div>
         )}
+        {onColumnLineageEdit && fullyQualifiedName && (
+          <span className="lineage-column-menu tw:flex tw:items-center tw:opacity-0 tw:group-hover:opacity-100 tw:focus-within:opacity-100">
+            <LineageColumnMenu
+              onEdit={(direction, triggerRef) =>
+                onColumnLineageEdit(fullyQualifiedName, direction, triggerRef)
+              }
+            />
+          </span>
+        )}
       </div>
     </div>
   );
@@ -320,17 +338,41 @@ const ColumnContentInner = ({
 export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
   const coreColumnPropsEqual =
     prev.column === next.column &&
-    prev.isConnectable === next.isConnectable &&
     prev.isLoading === next.isLoading &&
     prev.showDataObservabilitySummary === next.showDataObservabilitySummary;
-
-  return (
-    coreColumnPropsEqual &&
+  const renderPropsEqual =
     prev.summary === next.summary &&
     prev.depth === next.depth &&
-    prev.className === next.className
-  );
+    prev.className === next.className;
+  const columnCallbacksEqual =
+    prev.onColumnHover === next.onColumnHover &&
+    prev.onColumnSelect === next.onColumnSelect &&
+    prev.onColumnLineageEdit === next.onColumnLineageEdit;
+
+  return coreColumnPropsEqual && renderPropsEqual && columnCallbacksEqual;
 });
+
+/**
+ * Dark swaps the static grey node/badge/handle borders (custom-node.less
+ * `@lineage-border`) for border-primary. A variable rather than a border class so
+ * the less hover/highlight/tracing states keep winning over it.
+ */
+export const LINEAGE_NODE_DARK_CLASS =
+  'tw:dark:[--lineage-node-border:var(--tw-color-border-primary)]';
+
+/**
+ * The base node's own fill is a gradient layer, which would sit above the
+ * background-color that the selected states set (brand, or error when quality
+ * failed), so it yields while selected. An unselected failed-quality node only
+ * changes its border, so it keeps the fill.
+ */
+export const hasBaseNodeFill = ({
+  isBaseNode,
+  isSelected,
+}: {
+  isBaseNode: boolean;
+  isSelected: boolean;
+}) => isBaseNode && !isSelected;
 
 export function getNodeClassNames({
   isSelected,
@@ -347,11 +389,13 @@ export function getNodeClassNames({
 }) {
   return classNames(
     'lineage-node p-0',
+    LINEAGE_NODE_DARK_CLASS,
     isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
     {
       'data-quality-failed-custom-node-header': showDqTracing,
       'custom-node-header-tracing': isTraced,
       'lineage-base-node': isBaseNode,
+      [BASE_NODE_FILL_CLASS]: hasBaseNodeFill({ isBaseNode, isSelected }),
       'columns-expanded': isChildrenListExpanded,
     }
   );

@@ -51,8 +51,13 @@ export interface CreatePipelineService {
      * Scheduler Interval for the pipeline in cron format.
      */
     scheduleInterval?: string;
-    serviceType:       PipelineServiceType;
-    style?:            Style;
+    /**
+     * Deployment attributes of this service: environment, region and deployment. Set once here
+     * rather than tagged onto every asset this service ingests.
+     */
+    serviceAttributes?: ServiceAttributes;
+    serviceType:        PipelineServiceType;
+    style?:             Style;
     /**
      * Tags for this Pipeline Service.
      */
@@ -63,7 +68,7 @@ export interface CreatePipelineService {
  * Pipeline Connection.
  */
 export interface PipelineConnection {
-    config?: any[] | boolean | number | null | Connection | string;
+    config?: any[] | boolean | number | null | AirflowConnectionObject | string;
 }
 
 /**
@@ -116,9 +121,13 @@ export interface PipelineConnection {
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
  *
+ * Salesforce Data 360 Pipeline Connection Config
+ *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
+ *
+ * Tableau Pipeline Connection Config
  */
-export interface Connection {
+export interface AirflowConnectionObject {
     /**
      * Choose between database connection or REST API connection to fetch metadata from
      * Airflow.
@@ -146,12 +155,16 @@ export interface Connection {
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
      *
      * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
+     *
+     * Tableau Server URL.
      */
     hostPort?: string;
     /**
      * Pipeline Service Number Of Status
      *
      * Number of past flow run statuses to ingest per flow.
+     *
+     * Number of recent runs to fetch per flow or extract refresh.
      */
     numberOfStatus?: number;
     /**
@@ -162,6 +175,8 @@ export interface Connection {
      * Regex to only include/exclude pipelines that matches the pattern.
      *
      * Regex to only include/exclude Process Chains that match the pattern.
+     *
+     * Regex exclude or include pipelines that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -185,7 +200,7 @@ export interface Connection {
     /**
      * Underlying storage connection
      */
-    packageConnection?: S3Connection | string;
+    packageConnection?: S3ConnectionClass | string;
     awsConfig?:         AWSCredentials;
     /**
      * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
@@ -197,6 +212,8 @@ export interface Connection {
     messagingServiceName?: string;
     /**
      * Airbyte API version.
+     *
+     * Tableau API version. If not provided, the version will be used from the tableau server.
      */
     apiVersion?: string;
     /**
@@ -218,6 +235,11 @@ export interface Connection {
      * Fivetran API Limit For Pagination.
      */
     limit?: number;
+    /**
+     * Destination schema holding the Fivetran Platform Connector log table, used to extract
+     * per-phase run status. Leave empty to read the schema name from the Fivetran API.
+     */
+    logSchema?: string;
     /**
      * SSL Configuration for Prefect API connection.
      */
@@ -288,6 +310,8 @@ export interface Connection {
      * Choose between different authentication types for Databricks.
      *
      * Choose between Prefect Cloud or a self-hosted Prefect Server.
+     *
+     * Types of methods used to authenticate to the tableau instance
      */
     authType?:            Authentication;
     connectionArguments?: { [key: string]: any };
@@ -420,6 +444,45 @@ export interface Connection {
      */
     workspaceId?: string;
     /**
+     * Consumer key provided when you setup your Salesforce connected app
+     */
+    consumerKey?: string;
+    /**
+     * Consumer secret provided when you setup your Salesforce connected app
+     */
+    consumerSecret?: string;
+    /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
+    /**
+     * Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object
+     * lineage for every dataspace. This walks all Data Model Objects in the configured Data 360
+     * database service, so it is off by default.
+     */
+    includeBulkLineage?: boolean;
+    /**
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
+     */
+    paginationLimit?: number;
+    /**
+     * API version of the Salesforce instance
+     */
+    salesforceApiVersion?: string;
+    /**
+     * Domain of Salesforce instance
+     */
+    salesforceDomain?: string;
+    /**
+     * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
+     * that holds it, used to resolve the upstream entity of a Data Stream. Example:
+     * {"S3_Connector": "my-s3-service"}
+     */
+    serviceMapping?:            string;
+    supportsLineageExtraction?: boolean;
+    supportsUsageExtraction?:   boolean;
+    /**
      * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
      */
@@ -432,6 +495,16 @@ export interface Connection {
      * HANA database username with access to BW metadata tables.
      */
     username?: string;
+    /**
+     * Ingest the extract refresh tasks of published data sources and workbooks as pipelines,
+     * with their refresh jobs as pipeline status. Reading refresh job history requires a site
+     * administrator.
+     */
+    includeExtractRefreshes?: boolean;
+    /**
+     * Tableau Site Name.
+     */
+    siteName?: string;
     [property: string]: any;
 }
 
@@ -495,6 +568,12 @@ export interface PurpleAuthentication {
  *
  * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
  * empty if the server has no auth enabled.
+ *
+ * Types of methods used to authenticate to the tableau instance
+ *
+ * Basic Auth Credentials
+ *
+ * Access Token Auth Credentials
  */
 export interface Authentication {
     /**
@@ -541,6 +620,22 @@ export interface Authentication {
      * 'user:password'. Leave empty if the server has no auth enabled.
      */
     authString?: string;
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Personal Access Token Name.
+     */
+    personalAccessTokenName?: string;
+    /**
+     * Personal Access Token Secret.
+     */
+    personalAccessTokenSecret?: string;
 }
 
 /**
@@ -779,6 +874,8 @@ export enum CloudProvider {
 /**
  * Azure Cloud Credentials
  *
+ * Azure Credentials
+ *
  * Available sources to fetch metadata.
  */
 export interface AzureCredentials {
@@ -841,7 +938,7 @@ export interface ConnectionClass {
     /**
      * Service Type
      */
-    type?: Type;
+    type?: ConnectionType;
     /**
      * Whether to verify SSL certificates when connecting to the Airflow API.
      */
@@ -887,8 +984,7 @@ export interface ConnectionClass {
      * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
      * must expose columns compatible with the selected log path.
      */
-    queryHistoryTable?:       string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryHistoryTable?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -958,9 +1054,10 @@ export interface ConnectionClass {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?: string;
-    sslMode?:              SSLMode;
-    supportsDatabase?:     boolean;
+    queryStatementSource?:           string;
+    sslMode?:                        SSLMode;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -1114,6 +1211,11 @@ export interface GCPCredentialsConfiguration {
      */
     type?: string;
     /**
+     * Google Cloud service domain, used to override the default `googleapis.com` domain for
+     * sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).
+     */
+    universeDomain?: string;
+    /**
      * Path of the file containing the GCP credentials info
      */
     path?: string;
@@ -1224,6 +1326,8 @@ export interface AuthConfigurationType {
  * Regex to only include/exclude pipelines that matches the pattern.
  *
  * Regex to only include/exclude Process Chains that match the pattern.
+ *
+ * Regex exclude or include pipelines that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1242,94 +1346,6 @@ export interface FilterPattern {
 export enum Region {
     Eu1 = "eu1",
     Us1 = "us1",
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: DataStorageConfig;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface DataStorageConfig {
-    /**
-     * Bucket Name
-     */
-    bucketName?: string;
-    /**
-     * Provide the pattern of the path where the generated sample data file needs to be stored.
-     */
-    filePathPattern?: string;
-    /**
-     * When this field enabled a single parquet file will be created to store sample data,
-     * otherwise we will create a new file per day
-     */
-    overwriteData?: boolean;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:        string;
-    storageConfig?: AwsCredentials;
-    [property: string]: any;
-}
-
-/**
- * AWS credentials for generating MWAA CLI token.
- *
- * AWS credentials configs.
- *
- * AWS credentials configuration.
- */
-export interface AwsCredentials {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
 }
 
 /**
@@ -1359,7 +1375,7 @@ export enum SSLMode {
  *
  * Service type.
  */
-export enum Type {
+export enum ConnectionType {
     Backend = "Backend",
     MatillionDPC = "MatillionDPC",
     MatillionETL = "MatillionETL",
@@ -1395,8 +1411,10 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
-     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
-     * between the client and server will be encrypted.
+     * Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc.
+     * mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and
+     * logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is
+     * decided by FreeTDS configuration.
      */
     encrypt?: boolean;
     /**
@@ -1404,14 +1422,18 @@ export interface DatabaseConnectionClass {
      */
     hostPort?: string;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
     /**
      * Password to connect to MSSQL.
      */
-    password?:                string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    password?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -1443,7 +1465,9 @@ export interface DatabaseConnectionClass {
     tableFilterPattern?: FilterPattern;
     /**
      * Trust the server certificate without validation. Set to false in production to validate
-     * server certificates against the certificate authority.
+     * server certificates against the certificate authority. On mssql+pytds the certificate
+     * chain is always validated against the supplied CA certificate and only the host name
+     * check is dropped.
      */
     trustServerCertificate?: boolean;
     /**
@@ -1521,9 +1545,11 @@ export interface NifiCredentialsConfiguration {
 
 /**
  * S3 Connection.
+ *
+ * ADLS Connection.
  */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
+export interface S3ConnectionClass {
+    awsConfig?: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -1543,15 +1569,26 @@ export interface S3Connection {
     /**
      * Service Type
      */
-    type?: S3Type;
+    type?: S3ConnectionType;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
+     * Azure Credentials
+     */
+    credentials?: AzureCredentials;
 }
 
 /**
  * Service Type
  *
  * S3 service type
+ *
+ * ADLS service type
  */
-export enum S3Type {
+export enum S3ConnectionType {
+    Adls = "ADLS",
     S3 = "S3",
 }
 
@@ -1572,6 +1609,7 @@ export enum PipelineServiceType {
     CustomPipeline = "CustomPipeline",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     DatabricksPipeline = "DatabricksPipeline",
     DomoPipeline = "DomoPipeline",
@@ -1592,6 +1630,7 @@ export enum PipelineServiceType {
     Spline = "Spline",
     Ssis = "SSIS",
     Stitch = "Stitch",
+    TableauPipeline = "TableauPipeline",
     Wherescape = "Wherescape",
 }
 
@@ -1706,6 +1745,42 @@ export interface AccessDetails {
      * Timestamp of data asset accessed for creation, update, read.
      */
     timestamp: number;
+}
+
+/**
+ * Deployment attributes of this service: environment, region and deployment. Set once here
+ * rather than tagged onto every asset this service ingests.
+ *
+ * Deployment attributes of a service, set once on the service rather than tagged onto each
+ * asset it ingests. Policy conditions can match on them to control who sees a service's
+ * assets.
+ */
+export interface ServiceAttributes {
+    /**
+     * Deployment or cluster identifier the source system belongs to, for example
+     * `prod-cluster-01`.
+     */
+    deployment?:  string;
+    environment?: Environment;
+    /**
+     * Geographic region the source system is hosted in, for example `us-east-1` or
+     * `europe-west2`.
+     */
+    region?: string;
+}
+
+/**
+ * Environment the source system runs in. A closed set so policies and filters can rely on
+ * it; use tags on the service for anything outside it.
+ */
+export enum Environment {
+    Development = "Development",
+    Other = "Other",
+    Production = "Production",
+    QA = "QA",
+    Sandbox = "Sandbox",
+    Staging = "Staging",
+    UAT = "UAT",
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { FC, ReactNode, Ref } from 'react';
+import { forwardRef } from 'react';
 import { isValidElement } from 'react';
 import { cx, sortCx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
@@ -28,8 +29,9 @@ const outlineBorders: Record<FeaturedIconColor, string> = {
 };
 
 const styles = sortCx({
+  // Dark: tinted tile (the home topic-card look), not a solid fill.
   light: {
-    base: 'tw:rounded-full tw:dark:text-fg-white',
+    base: 'tw:rounded-full',
     sizes: {
       sm: 'tw:size-8',
       md: 'tw:size-10',
@@ -38,14 +40,14 @@ const styles = sortCx({
     },
     colors: {
       brand:
-        'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand tw:dark:bg-brand-solid',
+        'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand tw:dark:bg-utility-brand-50 tw:dark:text-utility-brand-600',
       error:
-        'tw:bg-error-secondary tw:text-featured-icon-light-fg-error tw:dark:bg-error-solid',
-      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray tw:dark:bg-secondary-solid',
+        'tw:bg-error-secondary tw:text-featured-icon-light-fg-error tw:dark:bg-utility-error-50 tw:dark:text-utility-error-600',
+      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray tw:dark:bg-utility-gray-50 tw:dark:text-utility-gray-600',
       success:
-        'tw:bg-success-secondary tw:text-featured-icon-light-fg-success tw:dark:bg-success-solid',
+        'tw:bg-success-secondary tw:text-featured-icon-light-fg-success tw:dark:bg-utility-success-50 tw:dark:text-utility-success-600',
       warning:
-        'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning tw:dark:bg-warning-solid',
+        'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning tw:dark:bg-utility-warning-50 tw:dark:text-utility-warning-600',
     },
   },
 
@@ -164,9 +166,11 @@ interface FeaturedIconProps {
   bgColor?: 'colored' | 'white';
 }
 
-export const FeaturedIcon = (props: FeaturedIconProps) => {
+export const FeaturedIcon = forwardRef<
+  HTMLDivElement,
+  Omit<FeaturedIconProps, 'ref'>
+>(function FeaturedIcon(props, ref) {
   const {
-    ref,
     className,
     children,
     size = 'sm',
@@ -202,4 +206,6 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
       {children}
     </div>
   );
-};
+});
+
+FeaturedIcon.displayName = 'FeaturedIcon';

@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DorisConnection",
   "description": "Doris Database Connection Config",
   "type": "object",
@@ -74,7 +73,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",
@@ -89,9 +87,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -103,9 +99,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -117,9 +111,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             }
@@ -150,6 +142,14 @@
     "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "default": {
+        "includes": [],
+        "excludes": [
+          "^information_schema$",
+          "^performance_schema$",
+          "^__internal_schema$"
+        ]
+      },
       "type": "object",
       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
       "properties": {
@@ -230,6 +230,12 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsAutoPartitionDetection": {
+      "title": "Supports Auto Partition Detection",
+      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
       "type": "boolean",
       "default": true
     },

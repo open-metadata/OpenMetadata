@@ -11,21 +11,22 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
+import {
+  Box,
+  FieldTypes,
+  FormField,
+  getField,
+  HintText,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
-import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
@@ -44,10 +45,7 @@ import {
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
-import {
-  fetchEntityDetail,
-  getBreadCrumbList,
-} from '../../../utils/TaskEntityFetchUtils';
+import { fetchEntityDetail } from '../../../utils/TaskEntityFetchUtils';
 import {
   getColumnObjectByPath,
   getDescriptionTaskFieldPath,
@@ -63,14 +61,16 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
+import TaskFormLayout from '../shared/TaskFormLayout';
 import TaskPayloadSchemaFields from '../shared/TaskPayloadSchemaFields';
-import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateDescription = () => {
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const [form] = useForm();
+  const form = useForm<{ title: string; assignees: Option[] }>({
+    defaultValues: { title: '', assignees: [] },
+  });
 
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
@@ -109,8 +109,6 @@ const UpdateDescription = () => {
     [value, entityType, field, entityData]
   );
 
-  const back = () => navigate(-1);
-
   const columnObject = useMemo(() => {
     const fieldPathSegments = sanitizeValue
       .split(FQN_SEPARATOR_CHAR)
@@ -143,7 +141,10 @@ const UpdateDescription = () => {
     return getDescriptionTaskFieldPath(field, value);
   };
 
-  const onCreateTask: FormProps['onFinish'] = async (formValues) => {
+  const onCreateTask = async (formValues: {
+    title: string;
+    assignees: Option[];
+  }) => {
     setIsLoading(true);
 
     try {
@@ -199,12 +200,9 @@ const UpdateDescription = () => {
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
-    form.setFieldsValue({
-      title: taskMessage.trimEnd(),
-      assignees: defaultAssignee,
-      description: getDescription(),
-    });
-  }, [entityData]);
+    form.setValue('title', taskMessage.trimEnd());
+    form.setValue('assignees', defaultAssignee ?? []);
+  }, [entityData, form, taskMessage]);
 
   useEffect(() => {
     const description = getDescription();
@@ -226,116 +224,58 @@ const UpdateDescription = () => {
   }
 
   return (
-    <ResizablePanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        cardClassName: 'max-width-md m-x-auto',
-        allowScroll: true,
-        minWidth: 700,
-        flex: 0.6,
-        children: (
-          <div className="d-grid gap-4">
-            <TitleBreadcrumb
-              titleLinks={[
-                ...getBreadCrumbList(entityData, entityType),
-                {
-                  name: t('label.create-entity', {
-                    entity: t('label.task'),
-                  }),
-                  activeTitle: true,
-                  url: '',
-                },
-              ]}
+    <TaskFormLayout
+      entityData={entityData}
+      entityType={entityType}
+      form={form}
+      isLoading={isLoading}
+      submitLabel={t('label.save')}
+      submitTestId="submit-btn"
+      onSubmit={form.handleSubmit(onCreateTask)}>
+      {getField({
+        name: 'title',
+        type: FieldTypes.TEXT,
+        label: t('label.task-entity', {
+          entity: t('label.title'),
+        }),
+        props: { 'data-testid': 'title', isDisabled: true },
+      })}
+      <FormField
+        control={form.control}
+        name="assignees"
+        rules={{
+          required: t('message.field-text-is-required', {
+            fieldText: t('label.assignee-plural'),
+          }),
+        }}>
+        {({ field, fieldState }) => (
+          <Box data-testid="assignees" direction="col" gap={1}>
+            <Assignees
+              isRequired
+              isInvalid={fieldState.invalid}
+              label={t('label.assignee-plural')}
+              options={options}
+              value={field.value}
+              onBlur={field.onBlur}
+              onChange={(values) => {
+                field.onChange(values);
+                setAssignees(values);
+              }}
+              onSearch={onSearch}
             />
-
-            <div className="m-t-0 request-description" key="update-description">
-              <Typography.Paragraph
-                className="text-base"
-                data-testid="form-title">
-                {t('label.create-entity', {
-                  entity: t('label.task'),
-                })}
-              </Typography.Paragraph>
-              <Form
-                data-testid="form-container"
-                form={form}
-                layout="vertical"
-                validateMessages={VALIDATION_MESSAGES}
-                onFinish={onCreateTask}>
-                <Form.Item
-                  data-testid="title"
-                  label={`${t('label.title')}:`}
-                  name="title">
-                  <Input
-                    disabled
-                    placeholder={t('label.task-entity', {
-                      entity: t('label.title'),
-                    })}
-                  />
-                </Form.Item>
-                <Form.Item
-                  data-testid="assignees"
-                  label={`${t('label.assignee-plural')}:`}
-                  name="assignees"
-                  rules={[{ required: true }]}>
-                  <Assignees
-                    options={options}
-                    value={assignees}
-                    onChange={setAssignees}
-                    onSearch={onSearch}
-                  />
-                </Form.Item>
-
-                <TaskPayloadSchemaFields
-                  payload={payload}
-                  schema={taskFormSchema?.formSchema}
-                  uiSchema={taskFormSchema?.uiSchema}
-                  onChange={setPayload}
-                />
-
-                <Form.Item>
-                  <Space
-                    className="w-full justify-end"
-                    data-testid="cta-buttons"
-                    size={16}>
-                    <Button data-testid="cancel-btn" type="link" onClick={back}>
-                      {t('label.back')}
-                    </Button>
-                    <Button
-                      data-testid="submit-btn"
-                      htmlType="submit"
-                      loading={isLoading}
-                      type="primary">
-                      {t('label.save')}
-                    </Button>
-                  </Space>
-                </Form.Item>
-              </Form>
-            </div>
-          </div>
-        ),
-      }}
-      pageTitle={t('label.update-description')}
-      secondPanel={{
-        className: 'content-resizable-panel-container',
-        minWidth: 60,
-        flex: 0.4,
-        children: (
-          <ExploreSearchCard
-            hideBreadcrumbs
-            showTags
-            id={entityData.id ?? ''}
-            source={
-              {
-                ...entityData,
-                entityType,
-              } as SearchedDataProps['data'][number]['_source']
-            }
-          />
-        ),
-      }}
-    />
+            {fieldState.error?.message && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
+      <TaskPayloadSchemaFields
+        payload={payload}
+        schema={taskFormSchema?.formSchema}
+        uiSchema={taskFormSchema?.uiSchema}
+        onChange={setPayload}
+      />
+    </TaskFormLayout>
   );
 };
 

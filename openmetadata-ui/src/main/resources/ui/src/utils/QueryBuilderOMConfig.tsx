@@ -12,6 +12,8 @@
  */
 import type { BasicConfig } from '@react-awesome-query-builder/ui';
 import { BasicConfig as QbBasicConfig } from '@react-awesome-query-builder/ui';
+import { isGlossaryTermQueryField } from './queryBuilderWidgets/glossaryTermQueryField';
+import GlossaryTermQueryWidget from './queryBuilderWidgets/GlossaryTermQueryWidget';
 import OMBooleanWidget from './queryBuilderWidgets/OMBooleanWidget';
 import OMConjs from './queryBuilderWidgets/OMConjs';
 import OMDateWidget from './queryBuilderWidgets/OMDateWidget';
@@ -25,12 +27,16 @@ export const OMConfig: BasicConfig = {
   ...QbBasicConfig,
   settings: {
     ...QbBasicConfig.settings,
+    // `dataTestId` precedes the spread so a caller that renders this control somewhere other than a rule row — the
+    // canvas does, for a rule_group's own field — can give it a testid of its own.
     renderField: (props) => (
-      <OMFieldSelect {...props} dataTestId="advanced-search-field-select" />
+      <OMFieldSelect dataTestId="advanced-search-field-select" {...props} />
     ),
-    // RAQB passes the same FieldProps shape (including setField) to both
-    // field and operator renderers, so the same select component works for both.
-    renderOperator: (props) => <OMFieldSelect {...props} />,
+    // RAQB passes the same FieldProps shape (including setField) to both field and operator renderers, so the same
+    // select component works for both.
+    renderOperator: (props) => (
+      <OMFieldSelect dataTestId="advanced-search-operator-select" {...props} />
+    ),
     renderConjs: (props) => <OMConjs {...props} />,
   },
   widgets: {
@@ -49,11 +55,38 @@ export const OMConfig: BasicConfig = {
     },
     select: {
       ...QbBasicConfig.widgets.select,
-      factory: (props) => <OMSelectWidget {...props} />,
+      // A glossary field also sets asyncFetch, so decide here, not in the widget.
+      factory: (props) =>
+        isGlossaryTermQueryField(props.fieldDefinition) ? (
+          <GlossaryTermQueryWidget
+            multiple={false}
+            placeholder={props.placeholder}
+            readonly={props.readonly}
+            value={props.value as string | null | undefined}
+            onChange={(next) => props.setValue(next as string)}
+          />
+        ) : (
+          <OMSelectWidget {...props} />
+        ),
     },
     multiselect: {
       ...QbBasicConfig.widgets.multiselect,
-      factory: (props) => <OMMultiSelectWidget {...props} />,
+      factory: (props) =>
+        isGlossaryTermQueryField(props.fieldDefinition) ? (
+          <GlossaryTermQueryWidget
+            multiple
+            placeholder={props.placeholder}
+            readonly={props.readonly}
+            value={props.value as string[] | null | undefined}
+            onChange={(next) =>
+              props.setValue(
+                Array.isArray(next) && next.length > 0 ? next : null
+              )
+            }
+          />
+        ) : (
+          <OMMultiSelectWidget {...props} />
+        ),
     },
     boolean: {
       ...QbBasicConfig.widgets.boolean,

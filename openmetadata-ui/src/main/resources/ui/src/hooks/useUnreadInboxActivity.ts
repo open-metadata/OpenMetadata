@@ -12,7 +12,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY } from '../components/discovery/personal-space/inbox.constants';
+import { INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY } from '../constants/Inbox.constants';
 import { ConversationFilterType } from '../generated/type/conversationFilterType';
 import { listConversations } from '../rest/conversationsAPI';
 import { useApplicationStore } from './useApplicationStore';

@@ -9,91 +9,60 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""
-Tests for Databricks valueless-tag handling.
+"""Databricks key-only tags retain their public classification and tag names."""
 
-Covers the (tag_name, tag_value) -> (classification, tag) mapping introduced
-to support Databricks system-generated / user-defined tags that carry only a
-name and no value (issue #28245).
-"""
+from unittest.mock import MagicMock
 
-from unittest.mock import MagicMock, patch
+import pytest
 
-from metadata.ingestion.source.database.databricks.metadata import (
-    DATABRICKS_TAG,
-    DATABRICKS_TAG_CLASSIFICATION,
-    DATABRICKS_VALUELESS_CLASSIFICATION,
-    DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION,
-    DatabricksSource,
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
+from metadata.ingestion.models.topology import TopologyContextManager
+from metadata.ingestion.source.database.databricks.metadata import DatabricksSource
+
+
+def emit(rows):
+    instance = object.__new__(DatabricksSource)
+    instance.metadata = MagicMock()
+    instance.metadata.es_search_from_fqn.return_value = []
+    instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True)
+    instance.context = TopologyContextManager(instance.topology)
+    instance.context.get().upsert("database_service", "svc")
+    instance.context.get().upsert("database", "db")
+    instance.catalog_tags = {"db": rows}
+    records = list(instance._process_stage(instance.topology.database.stages[0], "db"))
+    assert not any(record.left for record in records)
+    return instance, [record.right for record in records]
+
+
+def test_valued_tag_uses_key_as_classification():
+    source, records = emit([("pii", "ssn")])
+    assert len(records) == 1
+    record = records[0]
+    assert record.classification_request.name.root == "pii"
+    assert record.classification_request.description.root == "DATABRICKS TAG CLASSIFICATION"
+    assert record.tag_request.name.root == "ssn"
+    assert record.tag_request.description.root == "DATABRICKS TAG"
+    assert [label.tagFQN.root for label in source.get_database_tag_labels("db")] == ["pii.ssn"]
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+@pytest.mark.parametrize(
+    "name, expected", [("class.us_ssn", 'DATABRICKS_TAGS."class.us_ssn"'), ("plain_tag", "DATABRICKS_TAGS.plain_tag")]
 )
+def test_key_only_tags_keep_names_and_descriptions(value, name, expected):
+    source, records = emit([(name, value)])
+    assert len(records) == 1
+    record = records[0]
+    assert record.classification_request.name.root == "DATABRICKS_TAGS"
+    assert record.tag_request.name.root == name
+    description = "Databricks tags ingested as key-only (no associated value)."
+    assert record.classification_request.description.root == description
+    assert record.tag_request.description.root == description
+    assert [label.tagFQN.root for label in source.get_database_tag_labels("db")] == [expected]
 
 
-class TestDatabricksOmetaTagCallArgs:
-    """_ometa_tag_call_args maps Databricks (tag_name, tag_value) onto the
-    classification/tag arguments passed to get_ometa_tag_and_classification.
-    """
-
-    def test_valued_tag_uses_tag_name_as_classification(self):
-        args = DatabricksSource._ometa_tag_call_args("pii", "ssn")
-
-        assert args == {
-            "tags": ["ssn"],
-            "classification_name": "pii",
-            "tag_description": DATABRICKS_TAG,
-            "classification_description": DATABRICKS_TAG_CLASSIFICATION,
-        }
-
-    def test_valueless_tag_falls_back_to_valueless_classification(self):
-        args = DatabricksSource._ometa_tag_call_args("class.us_ssn", None)
-
-        assert args == {
-            "tags": ["class.us_ssn"],
-            "classification_name": DATABRICKS_VALUELESS_CLASSIFICATION,
-            "tag_description": DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION,
-            "classification_description": DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION,
-        }
-
-    def test_empty_string_tag_value_is_treated_as_valueless(self):
-        args = DatabricksSource._ometa_tag_call_args("plain_tag", "")
-
-        assert args["classification_name"] == DATABRICKS_VALUELESS_CLASSIFICATION
-        assert args["tags"] == ["plain_tag"]
-
-    def test_whitespace_only_tag_value_is_treated_as_valueless(self):
-        args = DatabricksSource._ometa_tag_call_args("plain_tag", "   ")
-
-        assert args["classification_name"] == DATABRICKS_VALUELESS_CLASSIFICATION
-        assert args["tags"] == ["plain_tag"]
-
-    def test_valueless_tag_without_dot_uses_tag_name_verbatim(self):
-        args = DatabricksSource._ometa_tag_call_args("simple_label", None)
-
-        assert args["classification_name"] == DATABRICKS_VALUELESS_CLASSIFICATION
-        assert args["tags"] == ["simple_label"]
-
-    def test_valueless_classification_constant_value(self):
-        assert DATABRICKS_VALUELESS_CLASSIFICATION == "DATABRICKS_TAGS"
-
-
-class TestDatabricksYieldSkipsEmptyTagName:
-    """Rows with an empty/None tag_name are skipped so an empty classification
-    name is never sent to the API (parity with the Unity Catalog connector).
-    """
-
-    @patch(
-        "metadata.ingestion.source.database.databricks.metadata.get_ometa_tag_and_classification",
-        return_value=[],
-    )
-    @patch("metadata.ingestion.source.database.databricks.metadata.fqn")
-    def test_empty_or_none_tag_name_is_skipped(self, mock_fqn, mock_get_tag):
-        source = DatabricksSource.__new__(DatabricksSource)
-        source.metadata = MagicMock()
-        source.context = MagicMock()
-        source.catalog_tags = {"db": [("", "value"), (None, None), ("real_tag", None)]}
-
-        list(source.yield_database_tag("db"))
-
-        assert mock_get_tag.call_count == 1
-        _, kwargs = mock_get_tag.call_args
-        assert kwargs["classification_name"] == DATABRICKS_VALUELESS_CLASSIFICATION
-        assert kwargs["tags"] == ["real_tag"]
+def test_empty_tag_names_do_not_discard_later_valid_tags():
+    source, records = emit([("", "value"), (None, None), ("real_tag", None)])
+    assert len(records) == 1
+    assert records[0].tag_request.name.root == "real_tag"
+    assert [label.tagFQN.root for label in source.get_database_tag_labels("db")] == ["DATABRICKS_TAGS.real_tag"]

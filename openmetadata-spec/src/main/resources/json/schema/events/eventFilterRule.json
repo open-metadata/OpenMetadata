@@ -1,12 +1,13 @@
 {
   "$id": "https://open-metadata.org/schema/events/eventFilterRule.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EventFilterRule",
   "description": "Describes an Event Filter Rule",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.events.EventFilterRule",
   "definitions": {
     "effect" : {
+      "javaType": "org.openmetadata.schema.entity.events.Effect",
       "type" : "string",
       "enum" : [
         "include",
@@ -16,6 +17,7 @@
     },
     "prefixCondition": {
       "description": "Prefix Condition to be applied to the Condition.",
+      "javaType": "org.openmetadata.schema.entity.events.PrefixCondition",
       "type": "string",
       "enum": [
         "AND",

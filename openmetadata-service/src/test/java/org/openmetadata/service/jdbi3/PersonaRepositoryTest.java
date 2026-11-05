@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -119,6 +120,31 @@ class PersonaRepositoryTest {
   void validatesNumericBoundsForPatchedDefinitions() {
     PersonaContextDefinition definition =
         new PersonaContextDefinition().withCharacterBudget(0).withCacheTtlMinutes(30);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> PersonaRepository.validateContextDefinition(definition));
+  }
+
+  @Test
+  void trimsThePromptAndTreatsBlankAsUnset() {
+    PersonaContextDefinition written =
+        new PersonaContextDefinition().withPrompt("  You assist finance analysts.  \n");
+    PersonaContextDefinition blank = new PersonaContextDefinition().withPrompt(" \n\t ");
+
+    PersonaRepository.validateContextDefinition(written);
+    PersonaRepository.validateContextDefinition(blank);
+
+    assertEquals("You assist finance analysts.", written.getPrompt());
+    assertNull(blank.getPrompt());
+  }
+
+  @Test
+  void rejectsAPromptOverTheLimit() {
+    // PATCH bypasses the request-body bean validation, so the schema's maxLength alone is not
+    // enough to keep an oversized prompt out of every planner call.
+    PersonaContextDefinition definition =
+        new PersonaContextDefinition().withPrompt("x".repeat(8_001));
 
     assertThrows(
         IllegalArgumentException.class,

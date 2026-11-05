@@ -36,7 +36,7 @@
     // CodeMirror defaults to 300px and a `height: 100%` won't resolve against a
     // flex item, so it collapses to its content (~1 line) when empty. Absolutely
     // filling the relative container pins it to the real box height instead.
-    .CodeMirror {
+    .cm-editor {
       position: absolute;
       inset: 0;
       height: auto !important;
@@ -45,8 +45,8 @@
     // The sample manifest is shown only as a placeholder: keep its line breaks
     // so it fills the editor, and mute the colour with the global placeholder
     // token so it reads as a hint. !important overrides CodeMirror's white-space.
-    .CodeMirror-placeholder,
-    .CodeMirror-placeholder.CodeMirror-line-like {
+    // (CodeMirror 6 renders the placeholder as a span inside the first line.)
+    .cm-placeholder {
       color: var(--tw-color-text-placeholder);
       white-space: pre-wrap !important;
     }

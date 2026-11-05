@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
 export type AgentStatus = 'running' | 'success' | 'failed' | 'queued' | 'none';
@@ -109,6 +110,17 @@ export interface AgentRun {
   totals: RunTotals;
   steps: RunStep[];
 }
+
+/**
+ * Renders an extra action (e.g. a plugin's "diagnose" button) in the header of
+ * a run that failed or partly failed. Receives a callback that closes the
+ * run history drawer.
+ */
+export type RenderRunAction = (
+  agent: Agent,
+  run: AgentRun,
+  onClose: () => void
+) => ReactNode;
 
 export interface LogLine {
   time: string;

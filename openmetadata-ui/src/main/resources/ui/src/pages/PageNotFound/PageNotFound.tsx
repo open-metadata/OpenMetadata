@@ -11,49 +11,68 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import notFoundImage from '../../assets/img/404-image.png';
 import notFoundNumber from '../../assets/svg/404-number.svg';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import { ROUTES } from '../../constants/constants';
-import './page-not-found.less';
 
 const PageNotFound = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   return (
-    <Row className="page-not-found-container" data-testid="no-page-found">
+    <div
+      className="tw:relative tw:flex tw:min-h-screen tw:w-full tw:items-center tw:overflow-hidden tw:bg-primary tw:px-6"
+      data-testid="no-page-found">
       <DocumentTitle title={t('label.page-not-found')} />
-      <Col className="flex-center flex-column text-column" span={12}>
-        <Typography.Text className="text-3xl font-bold text-grey-muted m-b-xs">
-          {t('label.page-not-found')}
-        </Typography.Text>
-        <Typography.Paragraph className="text-lg text-grey-muted-muted">
-          {t('message.page-is-not-available')}
-        </Typography.Paragraph>
-        <Space data-testid="route-links" size="middle">
-          <Link to={ROUTES.HOME}>
-            <Button type="primary">{t('label.go-to-home-page')}</Button>
-          </Link>
-          <Link to={ROUTES.EXPLORE}>
-            <Button ghost type="primary">
+
+      <div className="tw:mx-auto tw:grid tw:w-full tw:max-w-[1200px] tw:grid-cols-1 tw:items-center tw:gap-8 tw:md:grid-cols-2">
+        <div className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:text-center tw:md:items-start tw:md:text-left">
+          <h1 className="tw:mb-2 tw:text-display-md tw:font-bold tw:text-tertiary">
+            {t('label.page-not-found')}
+          </h1>
+          <p className="tw:mb-6 tw:text-lg tw:text-tertiary">
+            {t('message.page-is-not-available')}
+          </p>
+          <div
+            className="tw:flex tw:flex-wrap tw:items-center tw:gap-3"
+            data-testid="route-links">
+            <Button
+              color="primary"
+              data-testid="go-home"
+              size="md"
+              onPress={() => navigate(ROUTES.HOME)}>
+              {t('label.go-to-home-page')}
+            </Button>
+            <Button
+              color="secondary"
+              data-testid="go-explore"
+              size="md"
+              onPress={() => navigate(ROUTES.EXPLORE)}>
               {t('label.explore')}
             </Button>
-          </Link>
-        </Space>
-      </Col>
-      <Col className="flex-center image-column" span={12}>
-        <img alt={t('label.not-found-lowercase')} src={notFoundImage} />
-      </Col>
+          </div>
+        </div>
+
+        <div className="tw:flex tw:items-center tw:justify-center">
+          <img
+            alt={t('label.not-found-lowercase')}
+            className="tw:max-h-[420px] tw:w-auto tw:object-contain"
+            src={notFoundImage}
+          />
+        </div>
+      </div>
 
       <img
+        aria-hidden
         alt={t('label.not-found-lowercase')}
-        className="not-found-text-image"
+        className="tw:pointer-events-none tw:absolute tw:right-0 tw:top-0 tw:hidden tw:h-40 tw:w-auto tw:opacity-40 tw:lg:block"
         src={notFoundNumber}
       />
-    </Row>
+    </div>
   );
 };
 

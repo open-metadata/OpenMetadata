@@ -29,9 +29,11 @@ const DQ_SECTION_CLASS_NAMES: Partial<Record<DqDashboardSectionKey, string>> = {
   'data-health':
     'data-quality-dashboard-card-section tw:[&_.data-quality-dashboard-pie-chart]:h-full',
   'data-dimensions':
-    'tw:[&_.status-card-widget-container]:border-0 tw:[&_.status-card-widget-container]:bg-gray-blue-25',
+    'tw:[&_.status-card-widget-container]:border-0 tw:[&_.status-card-widget-container]:bg-secondary_subtle',
+  'test-case-status':
+    'tw:[&_.test-case-area-chart-widget-container]:border-0 tw:[&_.test-case-area-chart-widget-container]:bg-secondary_subtle',
   'incident-metrics':
-    'tw:[&_.custom-chart-background]:border-0 tw:[&_.custom-chart-background]:bg-gray-blue-25',
+    'tw:[&_.custom-chart-background]:border-0 tw:[&_.custom-chart-background]:bg-secondary_subtle',
 };
 
 /**
@@ -56,7 +58,7 @@ const DataQualityDashboard = () => {
   } = useDataQualityDashboardFilters({});
 
   return (
-    <Box direction="col" gap={6}>
+    <Box className="data-quality-dashboard" direction="col" gap={6}>
       <DqFilterBar
         clearAll={clearAll}
         dateRange={dateRange}
@@ -72,7 +74,8 @@ const DataQualityDashboard = () => {
           className={DQ_SECTION_CLASS_NAMES[section.key]}
           key={section.key}
           subtitle={t(section.header.subHeader)}
-          title={t(section.header.header)}>
+          title={t(section.header.header)}
+          tourStep={`data-quality-${section.key}`}>
           <DqDashboardSectionContent
             defaultFilters={defaultFilters}
             navigate={navigate}

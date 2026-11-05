@@ -11,34 +11,13 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  DataContract,
+  EntityStatus,
+} from '../../../generated/entity/data/dataContract';
 import { EntityReference } from '../../../generated/entity/type';
 import { ContractDetailFormTab } from './ContractDetailFormTab';
-
-jest.mock('../../../utils/formUtils', () => ({
-  generateFormFields: jest.fn((fields) =>
-    fields.map(
-      (field: {
-        name: string;
-        label: string;
-        props?: Record<string, string>;
-      }) => (
-        <div data-testid={field.props?.['data-testid']} key={field.name}>
-          <label htmlFor={field.props?.['data-testid']}>
-            {field.label}
-            <input
-              aria-label={field.name}
-              data-testid={field.props?.['data-testid']}
-              id={field.props?.['data-testid']}
-              name={field.name}
-            />
-          </label>
-        </div>
-      )
-    )
-  ),
-}));
 
 jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
@@ -47,6 +26,10 @@ jest.mock('react-i18next', () => ({
       const translations: Record<string, string> = {
         'label.contract-title': 'Contract Title',
         'label.owner-plural': 'Owners',
+        'label.status': 'Status',
+        'label.draft': 'Draft label',
+        'label.in-review': 'In Review label',
+        'label.approved': 'Approved label',
         'label.description': 'Description',
         'label.contract-detail-plural': 'Contract Details',
         'message.contract-detail-plural-description': 'Enter contract details',
@@ -67,206 +50,155 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
+const mockOwnersPicker = {
+  options: [],
+  onFocus: jest.fn(),
+  onSearchChange: jest.fn(),
+};
+
+jest.mock('../../Glossary/hooks/useEntityReferenceOptions', () => ({
+  useUserTeamOptions: () => mockOwnersPicker,
+}));
+
+// A plain function, not jest.fn: clearMocks would strip a mocked implementation.
+jest.mock(
+  '../../common/RichTextEditor/RichTextEditor',
+  () =>
+    function MockRichTextEditor({
+      initialValue,
+      onTextChange,
+    }: {
+      initialValue?: string;
+      onTextChange?: (value: string) => void;
+    }) {
+      return (
+        <textarea
+          aria-label="Description editor"
+          data-testid="description-editor"
+          defaultValue={initialValue}
+          onChange={(e) => onTextChange?.(e.target.value)}
+        />
+      );
+    }
+);
+
 const mockOnNext = jest.fn();
 const mockOnChange = jest.fn();
 
 const mockInitialValues: Partial<DataContract> = {
   name: 'Test Contract',
   description: 'Test Description',
+  entityStatus: EntityStatus.InReview,
   owners: [
     { id: 'user-1', name: 'Test User', type: 'user' },
   ] as EntityReference[],
 };
 
-const commonProps = {
-  onChange: mockOnChange,
-  onNext: mockOnNext,
-  buttonProps: {
-    nextLabel: 'Custom Next',
-    prevLabel: 'Custom Previous',
-    isNextVisible: true,
-  },
-};
+const renderForm = (
+  props: Partial<Parameters<typeof ContractDetailFormTab>[0]> = {}
+) =>
+  render(
+    <ContractDetailFormTab
+      buttonProps={{ nextLabel: 'Custom Next', isNextVisible: true }}
+      onChange={mockOnChange}
+      onNext={mockOnNext}
+      {...props}
+    />
+  );
 
 describe('ContractDetailFormTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('Basic Rendering', () => {
-    it('should render the component with default props', () => {
-      render(<ContractDetailFormTab {...commonProps} />);
+  it('renders the step header and every field', () => {
+    renderForm();
 
-      expect(screen.getByText('Enter contract details')).toBeInTheDocument();
-      expect(screen.getByText('Contract Title')).toBeInTheDocument();
-      expect(screen.getByText('Owners')).toBeInTheDocument();
-      expect(screen.getByText('Description')).toBeInTheDocument();
+    expect(screen.getByText('Contract Details')).toBeInTheDocument();
+    expect(screen.getByText('Enter contract details')).toBeInTheDocument();
+    expect(screen.getByText('Contract Title')).toBeInTheDocument();
+    expect(screen.getByText('Status')).toBeInTheDocument();
+    expect(screen.getByText('Owners')).toBeInTheDocument();
+    expect(screen.getByText('Description')).toBeInTheDocument();
+  });
+
+  it('prefills the fields from the initial values', () => {
+    renderForm({ initialValues: mockInitialValues });
+
+    expect(screen.getByRole('textbox', { name: 'Contract Title' })).toHaveValue(
+      'Test Contract'
+    );
+    expect(screen.getAllByText('In Review label').length).toBeGreaterThan(0);
+    expect(screen.getByText('Test User')).toBeInTheDocument();
+    expect(screen.getByTestId('description-editor')).toHaveValue(
+      'Test Description'
+    );
+  });
+
+  it('defaults the status to draft', () => {
+    renderForm();
+
+    expect(screen.getAllByText('Draft label').length).toBeGreaterThan(0);
+  });
+
+  // Seeding the form must not report changes, or saving an untouched title would
+  // overwrite a divergent displayName (see AddDataContract/DisplayNameOverwriteBug).
+  it('does not report changes when it seeds the form', () => {
+    renderForm({ initialValues: mockInitialValues });
+
+    expect(mockOnChange).not.toHaveBeenCalled();
+  });
+
+  it('reports only the edited title', () => {
+    renderForm({ initialValues: mockInitialValues });
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Contract Title' }), {
+      target: { value: 'Renamed' },
     });
 
-    it('should render with custom nextLabel', () => {
-      render(<ContractDetailFormTab {...commonProps} />);
+    expect(mockOnChange).toHaveBeenLastCalledWith({ name: 'Renamed' });
+  });
 
-      expect(screen.getByText('Custom Next')).toBeInTheDocument();
-    });
+  // userEvent hangs on react-aria buttons in this suite, so drive it with fireEvent.
+  it('reports the selected status as an entity status', async () => {
+    renderForm({ initialValues: mockInitialValues });
 
-    it('should render with initial values', () => {
-      render(
-        <ContractDetailFormTab
-          initialValues={mockInitialValues}
-          {...commonProps}
-        />
-      );
+    fireEvent.click(screen.getByRole('button', { name: /Status/ }));
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'Approved label' })
+    );
 
-      expect(screen.getByText('Contract Title')).toBeInTheDocument();
-      expect(screen.getByText('Description')).toBeInTheDocument();
+    expect(mockOnChange).toHaveBeenLastCalledWith({
+      entityStatus: EntityStatus.Approved,
     });
   });
 
-  describe('Form Fields', () => {
-    it('should display all required form fields', () => {
-      render(<ContractDetailFormTab {...commonProps} />);
+  it('reports the edited description', () => {
+    renderForm({ initialValues: mockInitialValues });
 
-      expect(screen.getByText('Contract Title')).toBeInTheDocument();
-      expect(screen.getByText('Description')).toBeInTheDocument();
-      expect(screen.getByText('Owners')).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('description-editor'), {
+      target: { value: 'New description' },
     });
 
-    it('should set form values when initial values are provided', () => {
-      const { container } = render(
-        <ContractDetailFormTab
-          initialValues={mockInitialValues}
-          {...commonProps}
-        />
-      );
-
-      expect(container).toBeInTheDocument();
+    expect(mockOnChange).toHaveBeenLastCalledWith({
+      description: 'New description',
     });
   });
 
-  describe('Form Interactions', () => {
-    it('should handle form submission', async () => {
-      render(<ContractDetailFormTab {...commonProps} />);
+  it('shows the next button with its label and moves on', () => {
+    renderForm();
 
-      const nextButton = screen.getByRole('button', { name: /next/i });
+    const nextButton = screen.getByRole('button', { name: 'Custom Next' });
+    fireEvent.click(nextButton);
 
-      await act(async () => {
-        fireEvent.click(nextButton);
-      });
-
-      expect(mockOnNext).toHaveBeenCalled();
-    });
+    expect(mockOnNext).toHaveBeenCalledTimes(1);
   });
 
-  describe('Navigation', () => {
-    it('should display the correct navigation buttons', () => {
-      render(<ContractDetailFormTab {...commonProps} />);
+  it('hides the next button on the last step', () => {
+    renderForm({ buttonProps: { isNextVisible: false } });
 
-      expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument();
-    });
-
-    it('should call onNext when next button is clicked', async () => {
-      render(<ContractDetailFormTab {...commonProps} />);
-
-      const nextButton = screen.getByRole('button', { name: /next/i });
-
-      await act(async () => {
-        fireEvent.click(nextButton);
-      });
-
-      expect(mockOnNext).toHaveBeenCalled();
-    });
-
-    it('should display custom next label when provided', () => {
-      render(<ContractDetailFormTab {...commonProps} />);
-
-      expect(
-        screen.getByText(commonProps.buttonProps.nextLabel)
-      ).toBeInTheDocument();
-    });
-  });
-
-  describe('Form Layout', () => {
-    it('should have correct CSS classes', () => {
-      const { container } = render(<ContractDetailFormTab {...commonProps} />);
-
-      expect(container.querySelector('.new-form-style')).toBeInTheDocument();
-      expect(
-        container.querySelector('.contract-detail-form')
-      ).toBeInTheDocument();
-      expect(
-        container.querySelector('.contract-form-content-container')
-      ).toBeInTheDocument();
-    });
-
-    it('should have vertical form layout', () => {
-      const { container } = render(<ContractDetailFormTab {...commonProps} />);
-
-      const form = container.querySelector('.ant-form-vertical');
-
-      expect(form).toBeInTheDocument();
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should handle undefined initial values', () => {
-      expect(() => {
-        render(
-          <ContractDetailFormTab initialValues={undefined} {...commonProps} />
-        );
-      }).not.toThrow();
-    });
-
-    it('should handle empty initial values', () => {
-      expect(() => {
-        render(<ContractDetailFormTab initialValues={{}} {...commonProps} />);
-      }).not.toThrow();
-    });
-  });
-
-  describe('Accessibility', () => {
-    it('should have proper button roles', () => {
-      render(<ContractDetailFormTab {...commonProps} />);
-
-      const nextButton = screen.getByRole('button', { name: /next/i });
-
-      expect(nextButton).toBeInTheDocument();
-      expect(nextButton).toHaveAttribute('type', 'submit');
-    });
-
-    it('should have proper form structure', () => {
-      const { container } = render(<ContractDetailFormTab {...commonProps} />);
-
-      const form = container.querySelector('form');
-
-      expect(form).toBeInTheDocument();
-    });
-  });
-
-  describe('Component Integration', () => {
-    it('should integrate with form utilities correctly', () => {
-      const generateFormFields = jest.requireMock(
-        '../../../utils/formUtils'
-      ).generateFormFields;
-
-      render(<ContractDetailFormTab {...commonProps} />);
-
-      expect(generateFormFields).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({
-            name: 'name',
-            label: 'Contract Title',
-            required: true,
-          }),
-          expect.objectContaining({
-            name: 'owners',
-            label: 'Owners',
-          }),
-          expect.objectContaining({
-            name: 'description',
-            label: 'Description',
-          }),
-        ])
-      );
-    });
+    expect(
+      screen.queryByRole('button', { name: /Next/ })
+    ).not.toBeInTheDocument();
   });
 });

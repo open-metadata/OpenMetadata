@@ -28,7 +28,6 @@ import org.apache.jena.query.ResultSetFormatter;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.reasoner.ReasonerRegistry;
-import org.apache.jena.riot.RDFDataMgr;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
@@ -41,7 +40,7 @@ public final class OntologySparqlQueryService {
     this(exporter::materialize, new SparqlFederationGuard(null));
   }
 
-  OntologySparqlQueryService(
+  public OntologySparqlQueryService(
       final OntologyModelProvider modelProvider, final SparqlFederationGuard federationGuard) {
     this.modelProvider = Objects.requireNonNull(modelProvider);
     queryValidator = new OntologySparqlQueryValidator(Objects.requireNonNull(federationGuard));
@@ -170,7 +169,7 @@ public final class OntologySparqlQueryService {
   private static QueryResult serializeGraph(final Model model, final GraphFormat format) {
     final ByteArrayOutputStream output = new ByteArrayOutputStream();
     try {
-      RDFDataMgr.write(output, model, format.serialization().rdfFormat());
+      RdfGraphSerializer.write(output, model, format.serialization());
     } finally {
       model.close();
     }
@@ -222,7 +221,7 @@ public final class OntologySparqlQueryService {
   record ValidatedQuery(Query query, ResultFormat format, int timeoutMillis, Inference inference) {}
 
   @FunctionalInterface
-  interface OntologyModelProvider {
+  public interface OntologyModelProvider {
     Model materialize(UUID glossaryId, boolean includeRelations);
   }
 

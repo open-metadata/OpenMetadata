@@ -29,6 +29,7 @@ from metadata.generated.schema.api.data.createAPICollection import (
 from metadata.generated.schema.api.data.createAPIEndpoint import (
     CreateAPIEndpointRequest,
 )
+from metadata.generated.schema.entity.data.apiEndpoint import ApiRequestMethod
 from metadata.generated.schema.entity.services.apiService import (
     ApiConnection,
     ApiService,
@@ -553,6 +554,80 @@ class TestRest:
             "known",
             "default",
             "new",
+        }
+
+    def test_path_parameters_are_not_ingested_as_operations(self):
+        self.rest_source.json_response = {
+            "tags": [{"name": "products"}],
+            "paths": {
+                "/parameters-first": {
+                    "parameters": [{"in": "query", "name": "page"}],
+                    "get": {
+                        "tags": ["products"],
+                        "operationId": "getParametersFirst",
+                    },
+                },
+                "/parameters-last": {
+                    "post": {
+                        "tags": ["products"],
+                        "operationId": "createParametersLast",
+                    },
+                    "parameters": [{"in": "query", "name": "page"}],
+                },
+            },
+        }
+
+        collections = list(self.rest_source.get_api_collections())
+        records = [record for collection in collections for record in self.rest_source.yield_api_endpoint(collection)]
+        endpoints = [record.right for record in records if record.right]
+
+        assert {collection.name.root for collection in collections} == {
+            "products",
+            "default",
+        }
+        assert all(record.left is None for record in records)
+        assert {
+            (endpoint.name.root, endpoint.requestMethod, endpoint.apiCollection.root) for endpoint in endpoints
+        } == {
+            (
+                "/parameters-first/get",
+                ApiRequestMethod.GET,
+                "openapi_rest.products",
+            ),
+            (
+                "/parameters-last/post",
+                ApiRequestMethod.POST,
+                "openapi_rest.products",
+            ),
+        }
+
+    def test_operations_on_one_path_use_their_own_collections(self):
+        self.rest_source.json_response = {
+            "tags": [{"name": "read"}, {"name": "write"}],
+            "paths": {
+                "/items": {
+                    "get": {"tags": ["read"], "operationId": "getItems"},
+                    "post": {"tags": ["write"], "operationId": "createItem"},
+                    "delete": {"operationId": "deleteItem"},
+                    "parameters": [{"in": "path", "name": "itemId"}],
+                }
+            },
+        }
+
+        collections = list(self.rest_source.get_api_collections())
+        records = [record for collection in collections for record in self.rest_source.yield_api_endpoint(collection)]
+        endpoints = [record.right for record in records if record.right]
+
+        assert all(record.left is None for record in records)
+        assert {(endpoint.requestMethod, endpoint.apiCollection.root) for endpoint in endpoints} == {
+            (ApiRequestMethod.GET, "openapi_rest.read"),
+            (ApiRequestMethod.POST, "openapi_rest.write"),
+            (ApiRequestMethod.DELETE, "openapi_rest.default"),
+        }
+        assert {endpoint.name.root for endpoint in endpoints} == {
+            "/items/get",
+            "/items/post",
+            "/items/delete",
         }
 
     def test_get_api_collections_on_unparseable_schema(self):

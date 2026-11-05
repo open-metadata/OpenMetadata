@@ -14,4 +14,19 @@
 export interface ReindexFailuresProps {
   visible: boolean;
   onClose: () => void;
+  appName?: string;
+}
+
+/**
+ * Fields shared by search and RDF failure records — everything the failures
+ * drawer renders. Both API record types satisfy this structurally.
+ */
+export interface ReindexFailureRecord {
+  id: string;
+  entityType: string;
+  entityId?: string;
+  entityFqn?: string;
+  failureStage: string;
+  errorMessage?: string;
+  timestamp: number;
 }

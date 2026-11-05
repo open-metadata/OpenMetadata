@@ -39,6 +39,7 @@ from metadata.readers.dataframe.base import (
 from metadata.readers.dataframe.common import dataframe_to_chunks
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
+from metadata.readers.file.gcs import get_gcsfs_auth_options
 from metadata.readers.models import ConfigSource  # noqa: TC001
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import ingestion_logger
@@ -134,7 +135,7 @@ class ParquetDataFrameReader(DataFrameReader):
         from gcsfs import GCSFileSystem
         from pyarrow.parquet import ParquetFile
 
-        gcs = GCSFileSystem()
+        gcs = GCSFileSystem(**get_gcsfs_auth_options(self.client))
         file_path = f"gs://{bucket_name}/{key}"
 
         # Check file size to determine reading strategy
@@ -196,7 +197,7 @@ class ParquetDataFrameReader(DataFrameReader):
             if self.config_source.securityConfig.awsSecretAccessKey:
                 kwargs["secret"] = self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
             if self.config_source.securityConfig.awsSessionToken:
-                kwargs["token"] = self.config_source.securityConfig.awsSessionToken
+                kwargs["token"] = self.config_source.securityConfig.awsSessionToken.get_secret_value()
 
         client_kwargs = {}
         if self.config_source.securityConfig.endPointURL:

@@ -19,11 +19,14 @@ const OMBooleanWidget: FC<BooleanWidgetProps> = ({
   setValue,
   readonly,
 }) => (
-  <Toggle
-    isDisabled={readonly}
-    isSelected={value === true}
-    onChange={(checked: boolean) => setValue(checked)}
-  />
+  // `tw:contents` keeps this wrapper out of layout entirely, so it is a test handle and nothing else.
+  <div className="tw:contents" data-testid="advanced-search-value-boolean">
+    <Toggle
+      isDisabled={readonly}
+      isSelected={value === true}
+      onChange={(checked: boolean) => setValue(checked)}
+    />
+  </div>
 );
 
 export default OMBooleanWidget;

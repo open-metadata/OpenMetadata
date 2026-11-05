@@ -25,6 +25,8 @@ export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
 export const getInitOptions = (): InitOptions => {
   return {
     supportedLngs: Object.values(SupportedLocales),
+    ns: ['translation', 'core'],
+    defaultNS: 'translation',
     resources: {
       'en-US': { translation: enUS },
     },
@@ -46,6 +48,7 @@ export const getInitOptions = (): InitOptions => {
 
 // Returns the current locale to use in cronstrue
 export const getCurrentLocaleForConstrue = () => {
+  const resolvedLanguage = i18next.resolvedLanguage ?? SupportedLocales.English;
   // For cronstrue, we need to pass the locale in the format 'pt_BR' and not 'pt-BR'
   // for some selected languages
   if (
@@ -54,12 +57,12 @@ export const getCurrentLocaleForConstrue = () => {
       SupportedLocales['Português (Portugal)'],
       SupportedLocales.简体中文,
       SupportedLocales.繁體中文,
-    ].includes(i18next.resolvedLanguage as SupportedLocales)
+    ].some((locale) => locale === resolvedLanguage)
   ) {
-    return i18next.resolvedLanguage.replaceAll('-', '_');
+    return resolvedLanguage.replaceAll('-', '_');
   }
 
-  return i18next.resolvedLanguage.split('-')[0];
+  return resolvedLanguage.split('-')[0];
 };
 
 // Map common language codes to supported locales
@@ -68,6 +71,7 @@ export const languageMap: Record<string, SupportedLocales> = {
   en: SupportedLocales.English,
   ko: SupportedLocales.한국어,
   fr: SupportedLocales.Français,
+  it: SupportedLocales.Italiano,
   zh: SupportedLocales.简体中文,
   ja: SupportedLocales.日本語,
   pt: SupportedLocales['Português (Brasil)'], // Default to Brazilian Portuguese

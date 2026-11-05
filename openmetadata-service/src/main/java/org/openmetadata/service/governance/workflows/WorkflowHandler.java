@@ -1,6 +1,8 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.openmetadata.service.governance.workflows.Workflow.APPROVE_CONDITION;
+import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_APPROVE_CONDITION;
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_REJECT_CONDITION;
@@ -10,9 +12,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_IN
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
-import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import java.sql.Connection;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,7 +20,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -30,6 +29,7 @@ import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +42,7 @@ import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.api.FlowableWrongDbException;
 import org.flowable.common.engine.impl.el.DefaultExpressionManager;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
@@ -52,6 +53,10 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
+import org.flowable.engine.impl.cmd.SuspendProcessDefinitionCmd;
+import org.flowable.engine.impl.persistence.entity.DeploymentEntity;
+import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntity;
+import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.repository.ProcessDefinitionQuery;
 import org.flowable.engine.runtime.Execution;
@@ -66,17 +71,22 @@ import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskReviewVote;
+import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
+import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
 import org.openmetadata.service.governance.workflows.flowable.sql.SqlMapper;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutionSql;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DeadlockRetry;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -84,22 +94,21 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
+import org.openmetadata.service.tasks.TaskReviewVotes;
 import org.openmetadata.service.util.FreshReadScope;
 
 @Slf4j
 public class WorkflowHandler {
   private ProcessEngine processEngine;
   private HikariDataSource migrationPool;
+  private HikariDataSource runtimePool;
   private final Map<Object, Object> expressionMap = new HashMap<>();
   private static WorkflowHandler instance;
   @Getter private static volatile boolean initialized = false;
   private final boolean isMigrationContext;
-  // Sourced from the yaml-bound HikariCPDataSourceFactory so the migration pool honours
-  // DB_CONNECTION_TIMEOUT overrides just like the main runtime pool. Nullable — falls back
-  // to MIGRATION_POOL_CONNECTION_TIMEOUT_MS when yaml leaves it unset.
-  private final Long yamlConnectionTimeoutMs;
-
-  private static final String CONNECTION_VALIDATION_QUERY = "SELECT 1";
+  // Both engine pools are built from the yaml-bound factory so they inherit driver tuning,
+  // timeouts and AWS RDS IAM per-connection token minting from the request pool's configuration.
+  private final HikariCPDataSourceFactory dataSourceFactory;
 
   // Bounded pool for Flowable's migration ProcessEngine. Flowable opens a fresh connection per
   // command in migration context; without a pool that becomes one physical TCP+auth per command,
@@ -108,8 +117,16 @@ public class WorkflowHandler {
   // reuse them across commands. Kept small — migration runs single-threaded and the async executor
   // is disabled in this context (see setAsyncExecutorActivate(!isMigrationContext) below).
   private static final int MIGRATION_POOL_MAX_SIZE = 10;
-  private static final long MIGRATION_POOL_CONNECTION_TIMEOUT_MS = 30_000L;
   private static final String MIGRATION_POOL_NAME = "flowable-migration-pool";
+
+  private static final String RUNTIME_POOL_NAME = "flowable-runtime-pool";
+
+  // Headroom above the async executor's worker pool for Flowable's three standing background
+  // threads (async job acquisition, timer job acquisition, reset-expired-jobs) plus the history
+  // cleanup job. Under-sizing here is what MAX_CONCURRENT_TASK_RESOLUTIONS below had to defend
+  // against: Flowable's own default is 10 connections for a 20-worker executor, so a burst blocked
+  // in MyBatis popConnection past the client timeout and stranded tasks in review.
+  private static final int RUNTIME_POOL_HEADROOM = 4;
 
   // Page size for draining stale ACT_RE_PROCDEF versions during runtime redeploy. Each
   // save-workflow
@@ -131,11 +148,6 @@ public class WorkflowHandler {
    */
   public static final String POLICY_AGENT_RESULT_MESSAGE = "policyAgentResult";
 
-  // Validate any pooled connection idle longer than this before reuse. Kept below Flowable's
-  // 60s reset-expired-jobs interval so the periodic async-executor threads always re-validate,
-  // while connections in active sub-second use skip the check and pay no overhead.
-  private static final int CONNECTION_PING_NOT_USED_FOR_MILLIS = 30000;
-
   // Admission control for synchronous task resolutions. Flowable runs its own bounded connection
   // pool; an unbounded approval burst calling taskService.complete() concurrently stampedes that
   // pool — excess threads block in MyBatis popConnection past the client timeout and strand tasks
@@ -152,18 +164,11 @@ public class WorkflowHandler {
 
   private WorkflowHandler(OpenMetadataApplicationConfig config, boolean isMigrationContext) {
     this.isMigrationContext = isMigrationContext;
-    this.yamlConnectionTimeoutMs = resolveYamlConnectionTimeout(config.getDataSourceFactory());
+    this.dataSourceFactory = config.getDataSourceFactory();
+    // Carries only the database dialect: initializeNewProcessEngine builds every other setting
+    // itself, and takes the connection from a pool rather than from raw JDBC settings.
     StandaloneProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration();
-    processEngineConfiguration.setJdbcUrl(config.getDataSourceFactory().getUrl());
-    processEngineConfiguration.setJdbcUsername(config.getDataSourceFactory().getUser());
-    processEngineConfiguration.setJdbcPassword(config.getDataSourceFactory().getPassword());
-    processEngineConfiguration.setJdbcDriver(config.getDataSourceFactory().getDriverClass());
-    processEngineConfiguration.setDatabaseSchemaUpdate(
-        isMigrationContext
-            ? ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE
-            : ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
-
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_MYSQL);
     } else {
@@ -190,61 +195,127 @@ public class WorkflowHandler {
       result = config.getDataSource();
     } else {
       closeMigrationPool();
-      HikariConfig hikariConfig = new HikariConfig();
-      hikariConfig.setJdbcUrl(config.getJdbcUrl());
-      hikariConfig.setUsername(config.getJdbcUsername());
-      hikariConfig.setPassword(config.getJdbcPassword());
-      hikariConfig.setDriverClassName(config.getJdbcDriver());
-      hikariConfig.setMaximumPoolSize(MIGRATION_POOL_MAX_SIZE);
-      hikariConfig.setMinimumIdle(1);
-      long connectionTimeoutMs =
-          yamlConnectionTimeoutMs != null
-              ? yamlConnectionTimeoutMs
-              : MIGRATION_POOL_CONNECTION_TIMEOUT_MS;
-      hikariConfig.setConnectionTimeout(connectionTimeoutMs);
-      hikariConfig.setPoolName(MIGRATION_POOL_NAME);
-      LOG.info(
-          "Creating migration pool '{}' with maxSize={} connectionTimeoutMs={} (source: {})",
-          MIGRATION_POOL_NAME,
-          MIGRATION_POOL_MAX_SIZE,
-          connectionTimeoutMs,
-          yamlConnectionTimeoutMs != null
-              ? "yaml database.connectionTimeout"
-              : "hardcoded default");
-      // Defer real DB connect to first getConnection() rather than pool construction: Flowable
-      // engine init issues its own SELECTs immediately, so fast-fail on unreachable DB is
-      // preserved through the very next call — and this keeps unit tests (which never open a
-      // real socket) from paying for eager validation.
-      hikariConfig.setInitializationFailTimeout(-1);
-      migrationPool = new HikariDataSource(hikariConfig);
+      migrationPool =
+          dataSourceFactory.buildSubsystemPool(
+              MIGRATION_POOL_NAME, MIGRATION_POOL_MAX_SIZE, null, PoolWorkload.LONG_STATEMENTS);
       result = migrationPool;
     }
     return result;
   }
 
-  // Mirrors HikariCPDataSourceFactory#buildHikariConfig: yaml can set connectionTimeout either as
-  // a top-level `database.connectionTimeout` field or nested under `database.properties.
-  // connectionTimeout`. The main runtime pool honours both, so the migration pool must too or
-  // ops-side tuning silently doesn't apply.
-  private static Long resolveYamlConnectionTimeout(HikariCPDataSourceFactory factory) {
-    Long result = factory.getConnectionTimeout();
-    Map<String, String> properties = factory.getProperties();
-    if (result == null && properties != null && properties.containsKey("connectionTimeout")) {
-      result = Long.parseLong(properties.get("connectionTimeout"));
+  /**
+   * Bounded pool for the runtime engine, replacing the MyBatis {@code PooledDataSource} Flowable
+   * would otherwise build from raw JDBC settings. That default pool captured a static password
+   * (fatal once an AWS RDS IAM token expires), reported no metrics, was never closed on shutdown,
+   * and defaulted to 10 connections regardless of how many workers the executor was configured to
+   * run.
+   */
+  private DataSource runtimeDataSource(String databaseType, int asyncExecutorMaxPoolSize) {
+    int maxPoolSize = asyncExecutorMaxPoolSize + RUNTIME_POOL_HEADROOM;
+    if (runtimePool == null || runtimePool.isClosed()) {
+      runtimePool =
+          dataSourceFactory.buildSubsystemPool(
+              RUNTIME_POOL_NAME,
+              maxPoolSize,
+              mysqlIsolationLevel(databaseType),
+              PoolWorkload.LONG_CHECKOUTS);
+    } else if (runtimePool.getHikariConfigMXBean().getMaximumPoolSize() != maxPoolSize) {
+      // Resized rather than rebuilt. A settings save rebuilds the engine, and closing the pool
+      // underneath it would abort connections the outgoing engine is still using — and strand the
+      // new engine if the rebuild then failed. Size is the only thing a settings change can move;
+      // the isolation level follows the database type, which cannot change at runtime.
+      LOG.info(
+          "Resizing '{}' from {} to {}",
+          RUNTIME_POOL_NAME,
+          runtimePool.getHikariConfigMXBean().getMaximumPoolSize(),
+          maxPoolSize);
+      runtimePool.getHikariConfigMXBean().setMaximumPoolSize(maxPoolSize);
     }
-    return result;
+    return runtimePool;
+  }
+
+  /**
+   * MySQL defaults to REPEATABLE_READ, whose gap / next-key locks deadlock Flowable's concurrent
+   * ACT_RU_* runtime writes — insert-intention locks (timer/variable inserts on a workflow advance)
+   * against range locks from PROC_INST_ID_ cleanup deletes and timer-job sweeps. READ_COMMITTED
+   * drops those gap locks (record locks on non-matching rows are released after the WHERE),
+   * removing the cycle. It is Flowable's recommended level for MySQL and Postgres's default (which
+   * this stack already runs deadlock-free); Flowable's concurrency control is optimistic (REV_
+   * version columns), so it is correct at READ_COMMITTED.
+   *
+   * <p>Set on the pool rather than via {@code setJdbcDefaultTransactionIsolationLevel}, which
+   * Flowable only applies to a pool of its own making and ignores once handed a DataSource.
+   */
+  private static String mysqlIsolationLevel(String databaseType) {
+    return ProcessEngineConfiguration.DATABASE_TYPE_MYSQL.equals(databaseType)
+        ? "TRANSACTION_READ_COMMITTED"
+        : null;
+  }
+
+  /**
+   * Shut the engine down, stopping its async job and async history executors.
+   *
+   * <p>{@code ProcessEngines.destroy()} cannot do this. It is guarded by {@code
+   * ProcessEngines.isInitialized()}, which only becomes true via {@code ProcessEngines.init()};
+   * these engines are built straight from a {@link StandaloneProcessEngineConfiguration}, so the
+   * static registry never considers itself initialized and {@code destroy()} returns having
+   * touched nothing. Closing the engine explicitly is what stops the acquisition threads — leave
+   * them running and they keep polling a pool that has already been closed, logging a
+   * "HikariDataSource has been closed" stack trace on every cycle.
+   *
+   * <p>Engine close only force-closes a MyBatis {@code PooledDataSource}, so the pool handed to it
+   * here outlives this call and stays ours to close.
+   */
+  private void closeProcessEngine() {
+    if (processEngine != null) {
+      try {
+        processEngine.close();
+      } catch (Exception e) {
+        LOG.warn("Failed to close the Flowable process engine cleanly", e);
+      }
+      processEngine = null;
+    }
+  }
+
+  /**
+   * Close the engine being replaced, once its successor is live.
+   *
+   * <p>Re-registering afterwards is not optional: {@code ProcessEngineImpl.close()} calls {@code
+   * ProcessEngines.unregister(this)}, which removes by {@code getName()}. Both engines are named
+   * {@code default}, so closing the old one evicts the entry the new one just claimed, and {@link
+   * WorkflowFailureListener} — which resolves the engine via {@code
+   * ProcessEngines.getDefaultProcessEngine()} — would get null from then on.
+   */
+  private void retireEngine(ProcessEngine previousEngine, ProcessEngine newEngine) {
+    if (previousEngine == null || previousEngine == newEngine) {
+      return;
+    }
+    try {
+      previousEngine.close();
+    } catch (Exception e) {
+      LOG.warn("Failed to close the previous Flowable process engine cleanly", e);
+    }
+    ProcessEngines.registerProcessEngine(newEngine);
   }
 
   private void closeMigrationPool() {
-    if (migrationPool != null && !migrationPool.isClosed()) {
-      migrationPool.close();
-    }
-    migrationPool = null;
+    migrationPool = closePool(migrationPool);
   }
 
-  public void initializeNewProcessEngine(
+  private void closeRuntimePool() {
+    runtimePool = closePool(runtimePool);
+  }
+
+  private static HikariDataSource closePool(HikariDataSource pool) {
+    if (pool != null && !pool.isClosed()) {
+      pool.close();
+    }
+    return null;
+  }
+
+  public synchronized void initializeNewProcessEngine(
       ProcessEngineConfiguration currentProcessEngineConfiguration) {
-    ProcessEngines.destroy();
+    ProcessEngine previousEngine = processEngine;
     SystemRepository systemRepository = Entity.getSystemRepository();
     WorkflowSettings workflowSettings = systemRepository.getWorkflowSettingsOrDefault();
 
@@ -255,27 +326,10 @@ public class WorkflowHandler {
       processEngineConfiguration.setDataSource(
           new IdempotentDdlDataSource(migrationDataSource(currentProcessEngineConfiguration)));
     } else {
-      processEngineConfiguration.setJdbcUrl(currentProcessEngineConfiguration.getJdbcUrl());
-      processEngineConfiguration.setJdbcUsername(
-          currentProcessEngineConfiguration.getJdbcUsername());
-      processEngineConfiguration.setJdbcPassword(
-          currentProcessEngineConfiguration.getJdbcPassword());
-      processEngineConfiguration.setJdbcDriver(currentProcessEngineConfiguration.getJdbcDriver());
-      if (ProcessEngineConfiguration.DATABASE_TYPE_MYSQL.equals(
-          currentProcessEngineConfiguration.getDatabaseType())) {
-        // MySQL defaults to REPEATABLE_READ, whose gap / next-key locks deadlock Flowable's
-        // concurrent ACT_RU_* runtime writes — insert-intention locks (timer/variable inserts on a
-        // workflow advance) against range locks from PROC_INST_ID_ cleanup deletes and timer-job
-        // sweeps. READ_COMMITTED drops those gap locks (record locks on non-matching rows are
-        // released after the WHERE), removing the cycle. It is Flowable's recommended level for
-        // MySQL and Postgres's default (which this stack already runs deadlock-free); Flowable's
-        // concurrency control is optimistic (REV_ version columns), so it is correct at RC. Set on
-        // this jdbcUrl path only — the branch where Flowable builds its own pooled datasource and
-        // honours the knob; the migration branch supplies a DataSource and ignores it.
-        processEngineConfiguration.setJdbcDefaultTransactionIsolationLevel(
-            Connection.TRANSACTION_READ_COMMITTED);
-      }
-      configureConnectionPoolHealthChecks(processEngineConfiguration);
+      processEngineConfiguration.setDataSource(
+          runtimeDataSource(
+              currentProcessEngineConfiguration.getDatabaseType(),
+              workflowSettings.getExecutorConfiguration().getMaxPoolSize()));
     }
     processEngineConfiguration.setDatabaseType(currentProcessEngineConfiguration.getDatabaseType());
     processEngineConfiguration.setDatabaseSchemaUpdate(
@@ -314,8 +368,14 @@ public class WorkflowHandler {
 
     boolean engineBuilt = false;
     try {
-      this.processEngine = processEngineConfiguration.buildProcessEngine();
+      // Into a local, published only once it is actually usable. Assigning the field up front
+      // meant a failed rebuild (a brief database failover is enough) left processEngine null, and
+      // since getProcessEngineConfiguration() then returns null, every later save failed too —
+      // the pod stayed broken until restart where previously the old engine had kept serving.
+      ProcessEngine newEngine = processEngineConfiguration.buildProcessEngine();
+      this.processEngine = newEngine;
       engineBuilt = true;
+      retireEngine(previousEngine, newEngine);
     } catch (FlowableWrongDbException e) {
       String hint =
           isMigrationContext
@@ -335,6 +395,11 @@ public class WorkflowHandler {
       // propagates so a failed migrate CLI does not linger with open sessions.
       if (!engineBuilt) {
         closeMigrationPool();
+        // Only when nothing is left serving. On a rebuild the outgoing engine is still running
+        // and still borrowing from this pool.
+        if (previousEngine == null) {
+          closeRuntimePool();
+        }
       }
     }
 
@@ -345,25 +410,6 @@ public class WorkflowHandler {
         .getSqlSessionFactory()
         .getConfiguration()
         .addMapper(SqlMapper.class);
-  }
-
-  /**
-   * Enable connection-pool health checks on the runtime engine's MyBatis pool.
-   *
-   * <p>Unlike the application's HikariCP pool, the Flowable runtime engine builds its own MyBatis
-   * {@code PooledDataSource} from the raw JDBC settings and does not validate pooled connections.
-   * When the database drops a connection out from under the pool — an Aurora/RDS failover, a
-   * maintenance restart, or an idle-connection reaper, all of which surface as {@code
-   * PSQLException: terminating connection due to administrator command} — the async executor's
-   * polling threads (e.g. {@code ResetExpiredJobsRunnable}) keep borrowing the dead connection and
-   * failing until the pool happens to recycle it. Pool ping runs a lightweight validation query on
-   * any connection idle past the threshold and transparently replaces it before handing it out.
-   */
-  private static void configureConnectionPoolHealthChecks(
-      StandaloneProcessEngineConfiguration processEngineConfiguration) {
-    processEngineConfiguration.setJdbcPingEnabled(true);
-    processEngineConfiguration.setJdbcPingQuery(CONNECTION_VALIDATION_QUERY);
-    processEngineConfiguration.setJdbcPingConnectionNotUsedFor(CONNECTION_PING_NOT_USED_FOR_MILLIS);
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
@@ -378,8 +424,9 @@ public class WorkflowHandler {
     } else if (initialized && instance.isMigrationContext && !isMigrationContext) {
       // Transitioning from migration mode to runtime mode
       LOG.info("Transitioning WorkflowHandler from migration mode to runtime mode");
-      ProcessEngines.destroy();
+      instance.closeProcessEngine();
       instance.closeMigrationPool();
+      instance.closeRuntimePool();
       instance = new WorkflowHandler(config, false);
     } else {
       LOG.info("WorkflowHandler already initialized in correct mode.");
@@ -393,6 +440,27 @@ public class WorkflowHandler {
     throw new UnhandledServerException("WorkflowHandler is not initialized.");
   }
 
+  /**
+   * Stop the engine and release its connection pool. Without this the async executor's threads and
+   * every connection the engine holds outlive a graceful shutdown, which leaks a pool per restart
+   * in embedded and test contexts and holds database sessions open past the point the process
+   * claims to have stopped.
+   */
+  public static synchronized void shutDown() {
+    if (instance != null) {
+      instance.closeProcessEngine();
+      instance.closeMigrationPool();
+      instance.closeRuntimePool();
+      instance = null;
+      initialized = false;
+    }
+  }
+
+  /** Whether this process is running a database migration rather than serving the application. */
+  public static boolean isMigrationContext() {
+    return initialized && instance.isMigrationContext;
+  }
+
   public ProcessEngineConfiguration getProcessEngineConfiguration() {
     if (processEngine != null) {
       return processEngine.getProcessEngineConfiguration();
@@ -401,10 +469,34 @@ public class WorkflowHandler {
     }
   }
 
+  /** The main and trigger BPMN documents of a workflow, built before anything is undeployed. */
+  public record WorkflowBpmn(byte[] main, byte[] trigger) {}
+
+  public static WorkflowBpmn toBpmn(Workflow workflow) {
+    BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
+    return new WorkflowBpmn(
+        bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel()),
+        bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel()));
+  }
+
   public void deploy(Workflow workflow) {
+    deploy(workflow, toBpmn(workflow));
+  }
+
+  /**
+   * Removes every deployment and running instance of the workflow, then deploys it again. The BPMN is
+   * built first, so a definition that cannot be built leaves the current deployment in place.
+   */
+  public void redeploy(WorkflowDefinition workflowDefinition) {
+    Workflow workflow = new Workflow(workflowDefinition);
+    WorkflowBpmn bpmn = toBpmn(workflow);
+    deleteWorkflowDefinition(workflowDefinition);
+    deploy(workflow, bpmn);
+  }
+
+  private void deploy(Workflow workflow, WorkflowBpmn bpmn) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
     ManagementService managementService = processEngine.getManagementService();
-    BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
 
     // Before deploying, check if this is an update and handle timer jobs
     String triggerWorkflowKey = workflow.getTriggerWorkflow().getWorkflowName();
@@ -452,6 +544,43 @@ public class WorkflowHandler {
       }
     }
 
+    // The new versions are deployed before the old ones are drained. Deploying a version replaces
+    // the trigger's start-signal subscription with one on the new version; draining first deleted
+    // the version that held the subscription before its replacement existed, so an entity event
+    // handled in between started no workflow at all
+    // (ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains).
+    // Deploy Main Workflow
+    byte[] bpmnMainWorkflowBytes = bpmn.main();
+    Deployment mainDeployment =
+        repositoryService
+            .createDeployment()
+            .addBytes(
+                String.format(
+                    "%s-workflow.bpmn20.xml", workflow.getMainWorkflow().getWorkflowName()),
+                bpmnMainWorkflowBytes)
+            .name(workflow.getMainWorkflow().getWorkflowName())
+            .deploy();
+
+    // Deploy Trigger Workflow
+    byte[] bpmnTriggerWorkflowBytes = bpmn.trigger();
+    Deployment triggerDeployment =
+        managementService.executeCommand(
+            commandContext -> {
+              DeploymentEntity deployed =
+                  (DeploymentEntity)
+                      repositoryService
+                          .createDeployment()
+                          .addBytes(
+                              String.format(
+                                  "%s-workflow.bpmn20.xml",
+                                  workflow.getTriggerWorkflow().getWorkflowName()),
+                              bpmnTriggerWorkflowBytes)
+                          .name(workflow.getTriggerWorkflow().getWorkflowName())
+                          .deploy();
+              keepSuspended(workflow.getWorkflowDefinition(), deployed, commandContext);
+              return deployed;
+            });
+
     // Cleanup path is skipped in migration context. `redeployGovernanceWorkflows` in v1131 calls
     // deploy() for every workflow_definition in a tight loop; combined with a large ACT_RE_PROCDEF
     // backlog (customers with long-running approval instances accumulate tens of thousands of
@@ -459,37 +588,56 @@ public class WorkflowHandler {
     // user-CRUD deploys still trigger the drain below, so the backlog is not orphaned — it is
     // just deferred out of the migration critical path.
     if (!isMigrationContext) {
+      // Spared by version, not by deployment: a deploy of the same workflow that overlaps this one
+      // may already have deployed a newer version, which this drain must not delete
+      // (ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains).
+      Map<String, Integer> deployedVersions =
+          deployedVersionsByKey(
+              repositoryService, Set.of(mainDeployment.getId(), triggerDeployment.getId()));
       try {
-        drainOldDeploymentsForKey(repositoryService, managementService, triggerWorkflowKey, true);
-        drainOldDeploymentsForKey(repositoryService, managementService, workflowName, false);
+        drainOldDeploymentsForKey(
+            repositoryService, managementService, triggerWorkflowKey, true, deployedVersions);
+        drainOldDeploymentsForKey(
+            repositoryService, managementService, workflowName, false, deployedVersions);
       } catch (Exception e) {
         LOG.warn(
             "Error draining old deployments for workflow {}: {}", workflowName, e.getMessage());
       }
     }
+  }
 
-    // Deploy Main Workflow
-    byte[] bpmnMainWorkflowBytes =
-        bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel());
-    repositoryService
-        .createDeployment()
-        .addBytes(
-            String.format("%s-workflow.bpmn20.xml", workflow.getMainWorkflow().getWorkflowName()),
-            bpmnMainWorkflowBytes)
-        .name(workflow.getMainWorkflow().getWorkflowName())
-        .deploy();
+  private static Map<String, Integer> deployedVersionsByKey(
+      RepositoryService repositoryService, Set<String> deploymentIds) {
+    Map<String, Integer> versions = new HashMap<>();
+    for (String deploymentId : deploymentIds) {
+      for (ProcessDefinition pd :
+          repositoryService.createProcessDefinitionQuery().deploymentId(deploymentId).list()) {
+        versions.put(pd.getKey(), pd.getVersion());
+      }
+    }
+    return versions;
+  }
 
-    // Deploy Trigger Workflow
-    byte[] bpmnTriggerWorkflowBytes =
-        bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel());
-    repositoryService
-        .createDeployment()
-        .addBytes(
-            String.format(
-                "%s-workflow.bpmn20.xml", workflow.getTriggerWorkflow().getWorkflowName()),
-            bpmnTriggerWorkflowBytes)
-        .name(workflow.getTriggerWorkflow().getWorkflowName())
-        .deploy();
+  /**
+   * Flowable deploys every new process-definition version active. A workflow stored as suspended
+   * has its new trigger versions suspended in the transaction that deploys them, so no signal sees
+   * them active, and neither their timers nor a trigger start it. They are suspended by entity, as
+   * Flowable's own deploy-with-activation-date does: the new rows are not flushed yet, so a query
+   * in this transaction would not find them.
+   * ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains
+   */
+  private static void keepSuspended(
+      WorkflowDefinition workflowDefinition,
+      DeploymentEntity deployment,
+      CommandContext commandContext) {
+    if (!Boolean.TRUE.equals(workflowDefinition.getSuspended())) {
+      return;
+    }
+    for (ProcessDefinitionEntity definition :
+        deployment.getDeployedArtifacts(ProcessDefinitionEntity.class)) {
+      new SuspendProcessDefinitionCmd(definition, false, null, deployment.getTenantId())
+          .execute(commandContext);
+    }
   }
 
   public boolean isDeployed(WorkflowDefinition wf) {
@@ -607,7 +755,8 @@ public class WorkflowHandler {
       RepositoryService repositoryService,
       ManagementService managementService,
       String key,
-      boolean useKeyLike) {
+      boolean useKeyLike,
+      Map<String, Integer> deployedVersions) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     int offset = 0;
     while (true) {
@@ -620,7 +769,7 @@ public class WorkflowHandler {
         break;
       }
       DeploymentCleanupResult cleanupResult =
-          drainBatch(batch, repositoryService, runtimeService, managementService);
+          drainBatch(batch, repositoryService, runtimeService, managementService, deployedVersions);
       if (cleanupResult.deleted() == 0) {
         offset += batch.size();
       } else {
@@ -639,10 +788,16 @@ public class WorkflowHandler {
       List<ProcessDefinition> batch,
       RepositoryService repositoryService,
       RuntimeService runtimeService,
-      ManagementService managementService) {
+      ManagementService managementService,
+      Map<String, Integer> deployedVersions) {
     int deleted = 0;
     int preserved = 0;
     for (ProcessDefinition pd : batch) {
+      Integer deployedVersion = deployedVersions.get(pd.getKey());
+      if (deployedVersion != null && pd.getVersion() >= deployedVersion) {
+        preserved++;
+        continue;
+      }
       List<ProcessInstance> running =
           runtimeService.createProcessInstanceQuery().processDefinitionId(pd.getId()).list();
       if (running.isEmpty()) {
@@ -730,10 +885,45 @@ public class WorkflowHandler {
    * approval task at all, so they read fresh rather than trusting an in-process cache that a write on
    * another node may not have invalidated.
    */
+  /**
+   * Sends {@code signal} to the one workflow that listens for it. Flowable treats a signal nobody
+   * listens for as delivered, so a missing listener (workflow not yet deployed with this signal) is
+   * reported as a failure the caller can retry.
+   */
+  public void triggerWithRequiredSignal(String signal, Map<String, Object> variables) {
+    if (activeSignalListeners(signal) == 0) {
+      throw new IllegalStateException("No active workflow listens for signal %s".formatted(signal));
+    }
+    triggerWithSignal(signal, variables);
+  }
+
+  // A suspended workflow keeps its start subscription but starts nothing from it, so only
+  // subscriptions of active process definitions can take the signal.
+  private long activeSignalListeners(String signal) {
+    RepositoryService repositoryService = processEngine.getRepositoryService();
+    return processEngine
+        .getRuntimeService()
+        .createEventSubscriptionQuery()
+        .eventType("signal")
+        .eventName(signal)
+        .list()
+        .stream()
+        .filter(
+            subscription ->
+                repositoryService
+                        .createProcessDefinitionQuery()
+                        .processDefinitionId(subscription.getProcessDefinitionId())
+                        .active()
+                        .count()
+                    > 0)
+        .count();
+  }
+
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
-    RuntimeService runtimeService = processEngine.getRuntimeService();
     try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
-      runtimeService.signalEventReceived(signal, variables);
+      new WorkflowSignalDispatcher(
+              processEngine.getRuntimeService(), processEngine.getRepositoryService())
+          .dispatch(signal, variables);
     }
   }
 
@@ -938,18 +1128,58 @@ public class WorkflowHandler {
   }
 
   public boolean resolveTask(UUID customTaskId, Map<String, Object> variables) {
-    return resolveTaskInternal(customTaskId, variables);
+    return resolveTaskOutcome(customTaskId, variables, false)
+        != TaskResolutionOutcome.RESOLUTION_FAILED;
   }
 
-  private boolean resolveTaskInternal(UUID customTaskId, Map<String, Object> variables) {
+  public enum TaskResolutionOutcome {
+    COMPLETED,
+    STAGE_ADVANCED,
+    WAITING_FOR_VOTES,
+    RESOLUTION_FAILED,
+    PROCESS_FAILED
+  }
+
+  public record ApprovalTaskContext(
+      String processInstanceId, String nodeName, List<String> voters) {}
+
+  public ApprovalTaskContext approvalTaskContext(UUID customTaskId) {
+    final Task task = getTaskFromCustomTaskId(customTaskId);
+    if (task == null) {
+      throw new IllegalStateException("The approval workflow task is unavailable");
+    }
+    final List<String> voters = new ArrayList<>();
+    final TaskService taskService = processEngine.getTaskService();
+    for (final String variable : List.of("approversList", "rejectersList")) {
+      final Object value = taskService.getVariable(task.getId(), variable);
+      if (value instanceof List<?> recordedVoters) {
+        recordedVoters.forEach(voter -> voters.add((String) voter));
+      } else if (value != null) {
+        throw new IllegalStateException("Invalid workflow approval vote history");
+      }
+    }
+    return new ApprovalTaskContext(
+        task.getProcessInstanceId(),
+        getParentActivityId(task.getExecutionId()),
+        List.copyOf(voters));
+  }
+
+  public TaskResolutionOutcome resolveTaskOutcome(
+      UUID customTaskId, Map<String, Object> variables) {
+    return resolveTaskOutcome(customTaskId, variables, true);
+  }
+
+  private TaskResolutionOutcome resolveTaskOutcome(
+      UUID customTaskId, Map<String, Object> variables, boolean inspectProcess) {
     // Completing a user task continues the workflow inline, re-running the attribute gates that
     // decide the entity's next status — same freshness requirement as triggerWithSignal.
     try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
-      return resolveTaskWithFreshReads(customTaskId, variables);
+      return resolveTaskWithFreshReads(customTaskId, variables, inspectProcess);
     }
   }
 
-  private boolean resolveTaskWithFreshReads(UUID customTaskId, Map<String, Object> variables) {
+  private TaskResolutionOutcome resolveTaskWithFreshReads(
+      UUID customTaskId, Map<String, Object> variables, boolean inspectProcess) {
     TaskService taskService = processEngine.getTaskService();
     LOG.debug("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);
     // Admission control: bound how many resolutions touch Flowable at once so an approval burst
@@ -961,7 +1191,7 @@ public class WorkflowHandler {
       Thread.currentThread().interrupt();
       LOG.error(
           "[WorkflowTask] Interrupted while awaiting resolution permit for '{}'", customTaskId);
-      return false;
+      return TaskResolutionOutcome.RESOLUTION_FAILED;
     }
     try {
       Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
@@ -982,7 +1212,18 @@ public class WorkflowHandler {
             || (rejectionThreshold != null && rejectionThreshold > 1)) {
           // This is a multi-reviewer approval task
           boolean taskCompleted =
-              handleMultiApproval(task, variables, approvalThreshold, rejectionThreshold);
+              DeadlockRetry.execute(
+                  () ->
+                      processEngine
+                          .getManagementService()
+                          .executeCommand(
+                              context ->
+                                  handleMultiApproval(
+                                      customTaskId,
+                                      task,
+                                      new HashMap<>(variables),
+                                      approvalThreshold,
+                                      rejectionThreshold)));
           if (taskCompleted) {
             LOG.debug(
                 "[WorkflowTask] SUCCESS: Multi-approval task '{}' completed with threshold met",
@@ -992,6 +1233,7 @@ public class WorkflowHandler {
                 "[WorkflowTask] SUCCESS: Multi-approval task '{}' recorded vote, waiting for more votes",
                 customTaskId);
             removeTaskFromVoterFeedForTaskEntity(task, customTaskId, variables);
+            return TaskResolutionOutcome.WAITING_FOR_VOTES;
           }
         } else {
           // Single approval - original behavior
@@ -1002,33 +1244,118 @@ public class WorkflowHandler {
                         "[WorkflowTask] Completing with variables: taskId='{}' vars={}",
                         task.getId(),
                         variablesValue);
-                    taskService.complete(task.getId(), variablesValue);
+                    DeadlockRetry.run(() -> taskService.complete(task.getId(), variablesValue));
                   },
                   () -> {
                     LOG.debug(
                         "[WorkflowTask] Completing without variables: taskId='{}'", task.getId());
-                    taskService.complete(task.getId());
+                    DeadlockRetry.run(() -> taskService.complete(task.getId()));
                   });
           LOG.debug("[WorkflowTask] SUCCESS: Task '{}' resolved", customTaskId);
         }
-        return true;
+        return inspectProcess
+            ? taskResolutionOutcome(task.getProcessInstanceId())
+            : TaskResolutionOutcome.COMPLETED;
       } else {
         LOG.warn("[WorkflowTask] NOT_FOUND: No Flowable task for customTaskId='{}'", customTaskId);
-        return false;
+        return TaskResolutionOutcome.RESOLUTION_FAILED;
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.error(
           "[WorkflowTask] ERROR: Flowable task not found for customTaskId='{}': {}",
           customTaskId,
           ex.getMessage());
-      return false;
+      return TaskResolutionOutcome.RESOLUTION_FAILED;
     } catch (Exception e) {
       LOG.error(
           "[WorkflowTask] ERROR: Failed to resolve task '{}': {}", customTaskId, e.getMessage(), e);
-      return false;
+      return TaskResolutionOutcome.RESOLUTION_FAILED;
     } finally {
       taskResolutionPermits.release();
     }
+  }
+
+  public TaskResolutionOutcome taskResolutionOutcome(final String processInstanceId) {
+    if (processEngine
+            .getRuntimeService()
+            .createProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .count()
+        != 0) {
+      return TaskResolutionOutcome.STAGE_ADVANCED;
+    }
+    final HistoricProcessInstance completed =
+        processEngine
+            .getHistoryService()
+            .createHistoricProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .includeProcessVariables()
+            .singleResult();
+    return completed != null
+            && completed.getEndTime() != null
+            && completed.getDeleteReason() == null
+            && !MainWorkflow.ERROR_END_EVENT_ID.equals(completed.getEndActivityId())
+            && !hasWorkflowFailure(completed.getProcessVariables())
+        ? TaskResolutionOutcome.COMPLETED
+        : TaskResolutionOutcome.PROCESS_FAILED;
+  }
+
+  public List<TaskReviewVote> recordedReviewVotes(
+      final String processInstanceId, final UUID taskId) {
+    final var running =
+        processEngine
+            .getRuntimeService()
+            .createProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .includeProcessVariables()
+            .singleResult();
+    if (running != null) {
+      return TaskReviewVotes.read(
+          running.getProcessVariables().get(TaskReviewVotes.variable(taskId)));
+    }
+    final var completed =
+        processEngine
+            .getHistoryService()
+            .createHistoricProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .includeProcessVariables()
+            .singleResult();
+    return completed == null
+        ? List.of()
+        : TaskReviewVotes.read(
+            completed.getProcessVariables().get(TaskReviewVotes.variable(taskId)));
+  }
+
+  public Optional<OntologyWorkflowDecision> completedOntologyDecision(
+      final String processInstanceId) {
+    if (taskResolutionOutcome(processInstanceId) != TaskResolutionOutcome.COMPLETED) {
+      return Optional.empty();
+    }
+    final HistoricProcessInstance completed =
+        processEngine
+            .getHistoryService()
+            .createHistoricProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .includeProcessVariables()
+            .singleResult();
+    final Object receipt = completed.getProcessVariables().get(OntologyWorkflowDecision.VARIABLE);
+    if (!(receipt instanceof String json)) {
+      return Optional.empty();
+    }
+    final OntologyWorkflowDecision decision =
+        JsonUtils.readValue(json, OntologyWorkflowDecision.class);
+    return Optional.of(
+        decision.withReviewVotes(
+            TaskReviewVotes.read(
+                completed.getProcessVariables().get(TaskReviewVotes.variable(decision.taskId())))));
+  }
+
+  private static boolean hasWorkflowFailure(final Map<String, Object> variables) {
+    return Boolean.TRUE.equals(variables.get(FAILURE_VARIABLE))
+        || Boolean.TRUE.equals(
+            variables.get(getNamespacedVariableName(GLOBAL_NAMESPACE, FAILURE_VARIABLE)))
+        || variables.get(EXCEPTION_VARIABLE) != null
+        || variables.get(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE)) != null;
   }
 
   private String extractCurrentUser(Map<String, Object> variables) {
@@ -1166,6 +1493,7 @@ public class WorkflowHandler {
   }
 
   private boolean handleMultiApproval(
+      UUID customTaskId,
       Task task,
       Map<String, Object> variables,
       Integer approvalThreshold,
@@ -1222,8 +1550,36 @@ public class WorkflowHandler {
       rejectersList.add(currentUser);
     }
 
+    // Commit vote details with the count so a delayed task-row write cannot lose a comment.
+    final String voteVariable = TaskReviewVotes.variable(customTaskId);
+    if (variables.containsKey(voteVariable)) {
+      final String votes =
+          JsonUtils.pojoToJson(
+              TaskReviewVotes.merge(
+                  TaskReviewVotes.read(taskService.getVariable(task.getId(), voteVariable)),
+                  TaskReviewVotes.read(variables.get(voteVariable))));
+      taskService.setVariable(task.getId(), voteVariable, votes);
+      variables.put(voteVariable, votes);
+    }
     taskService.setVariable(task.getId(), "approversList", approversList);
     taskService.setVariable(task.getId(), "rejectersList", rejectersList);
+    if (variables.get(OntologyWorkflowDecision.VARIABLE) instanceof String json) {
+      OntologyWorkflowDecision decision = JsonUtils.readValue(json, OntologyWorkflowDecision.class);
+      List<String> voters = new ArrayList<>(decision.voters());
+      voters.addAll(approversList);
+      voters.addAll(rejectersList);
+      variables.put(
+          OntologyWorkflowDecision.VARIABLE,
+          JsonUtils.pojoToJson(
+              new OntologyWorkflowDecision(
+                  decision.taskId(),
+                  decision.target(),
+                  decision.resolution(),
+                  decision.user(),
+                  voters.stream().distinct().toList(),
+                  decision.transition(),
+                  decision.comment())));
+    }
 
     int approvalCount = approversList.size();
     int rejectionCount = rejectersList.size();
@@ -1280,19 +1636,8 @@ public class WorkflowHandler {
   }
 
   private Boolean parseApprovalDecision(Object value) {
-    if (value instanceof Boolean boolValue) {
-      return boolValue;
-    }
-
-    if (value instanceof String stringValue) {
-      return switch (stringValue.trim().toLowerCase(java.util.Locale.ROOT)) {
-        case "true", "approve", "approved" -> true;
-        case "false", "reject", "rejected" -> false;
-        default -> null;
-      };
-    }
-
-    return null;
+    final TaskReviewVoteDecision decision = TaskReviewVotes.decisionForResult(value);
+    return decision == null ? null : decision == TaskReviewVoteDecision.Approved;
   }
 
   public boolean isTaskStillOpen(UUID customTaskId) {
@@ -1477,6 +1822,8 @@ public class WorkflowHandler {
       }
       List<ProcessInstance> instances = query.endOr().list();
       for (ProcessInstance pi : instances) {
+        endWorkflowInstanceForBusinessKey(
+            pi.getBusinessKey(), WorkflowInstance.WorkflowStatus.CANCELLED, reason);
         try {
           runtimeService.deleteProcessInstance(pi.getId(), reason);
         } catch (FlowableException ignored) {
@@ -1710,42 +2057,47 @@ public class WorkflowHandler {
     return false;
   }
 
+  /**
+   * Starts the workflow's trigger processes, as its stored definition configures them. A failure
+   * to read the definition propagates before any process is started, so no trigger process an
+   * older deployment left for an entity type the trigger is now deployed without is started.
+   */
   public boolean triggerWorkflow(String workflowName) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
-    RepositoryService repositoryService = processEngine.getRepositoryService();
-
     String baseProcessKey = getTriggerWorkflowId(workflowName);
+    WorkflowDefinition workflowDefinition = getStoredWorkflowDefinition(workflowName);
 
     // Prefer the current workflow definition config to avoid triggering stale process keys left
     // behind by older deployments.
-    List<String> configuredTriggerKeys =
-        getConfiguredPeriodicTriggerProcessKeys(workflowName, baseProcessKey);
-    if (!configuredTriggerKeys.isEmpty()) {
-      return triggerProcessDefinitions(runtimeService, configuredTriggerKeys);
+    List<String> triggerKeys =
+        getConfiguredPeriodicTriggerProcessKeys(workflowDefinition, baseProcessKey);
+    if (triggerKeys.isEmpty()) {
+      triggerKeys = getDeployedTriggerProcessKeys(workflowDefinition, baseProcessKey);
     }
+    return triggerKeys.isEmpty()
+        ? startTriggerProcess(runtimeService, baseProcessKey)
+        : triggerProcessDefinitions(runtimeService, triggerKeys);
+  }
 
-    // Legacy fallback: trigger all latest process definitions matching the workflow prefix.
-    List<ProcessDefinition> processDefinitions =
-        repositoryService
-            .createProcessDefinitionQuery()
-            .processDefinitionKeyLike(baseProcessKey + "-%")
-            .latestVersion()
-            .list();
-    if (!processDefinitions.isEmpty()) {
-      return triggerProcessDefinitions(
-          runtimeService, processDefinitions.stream().map(ProcessDefinition::getKey).toList());
-    }
+  private static WorkflowDefinition getStoredWorkflowDefinition(String workflowName) {
+    WorkflowDefinitionRepository repository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    return repository.getByName(
+        null, workflowName, repository.getFields("trigger"), Include.NON_DELETED, true);
+  }
 
-    // Fallback to original behavior for non-periodic trigger types.
+  /** Fallback for non-periodic trigger types, which deploy one process under the base key. */
+  private static boolean startTriggerProcess(RuntimeService runtimeService, String baseProcessKey) {
+    boolean isStarted = true;
     try {
       // Trigger BPMN's CallActivity has inheritBusinessKey=true; passing a businessKey
       // here ensures the spawned MainWorkflow inherits a non-null WorkflowInstance UUID.
       runtimeService.startProcessInstanceByKey(baseProcessKey, UUID.randomUUID().toString());
-      return true;
     } catch (FlowableObjectNotFoundException ex) {
       LOG.error("No process definition found for key: {}", baseProcessKey);
-      return false;
+      isStarted = false;
     }
+    return isStarted;
   }
 
   private boolean triggerProcessDefinitions(
@@ -1763,46 +2115,63 @@ public class WorkflowHandler {
     return anyStarted;
   }
 
+  /**
+   * The deployed trigger process of each entity type a periodic trigger lists, except the types the
+   * trigger is deployed without: a process an older deployment left for one is not started.
+   */
   private List<String> getConfiguredPeriodicTriggerProcessKeys(
-      String workflowName, String baseProcessKey) {
-    try {
-      WorkflowDefinitionRepository repository =
-          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-      WorkflowDefinition workflowDefinition =
-          repository.getByName(
-              null, workflowName, repository.getFields("trigger"), Include.NON_DELETED, true);
-      WorkflowTriggerInterface trigger = workflowDefinition.getTrigger();
-      if (trigger == null || !"periodicBatchEntity".equals(trigger.getType())) {
-        return List.of();
-      }
-
-      List<String> configuredEntityTypes = getConfiguredEntityTypes(trigger);
-      if (configuredEntityTypes.isEmpty()) {
-        return List.of();
-      }
-
-      Set<String> processKeys = new LinkedHashSet<>();
-      for (String entityType : configuredEntityTypes) {
-        String processKey = String.format("%s-%s", baseProcessKey, entityType);
-        ProcessDefinition processDefinition =
-            processEngine
-                .getRepositoryService()
-                .createProcessDefinitionQuery()
-                .processDefinitionKey(processKey)
-                .latestVersion()
-                .singleResult();
-        if (processDefinition != null) {
-          processKeys.add(processKey);
-        }
-      }
-      return List.copyOf(processKeys);
-    } catch (Exception e) {
-      LOG.warn(
-          "Unable to resolve configured trigger process keys for workflow '{}': {}",
-          workflowName,
-          e.getMessage());
-      return List.of();
+      WorkflowDefinition workflowDefinition, String baseProcessKey) {
+    WorkflowTriggerInterface trigger = workflowDefinition.getTrigger();
+    List<String> processKeys = List.of();
+    if (trigger != null && "periodicBatchEntity".equals(trigger.getType())) {
+      Set<String> excludedEntityTypes =
+          SinkEntityTypeRule.excludedTriggerEntityTypes(workflowDefinition);
+      processKeys =
+          getConfiguredEntityTypes(trigger).stream()
+              .filter(entityType -> !excludedEntityTypes.contains(entityType))
+              .map(
+                  entityType ->
+                      PeriodicBatchEntityTrigger.getTriggerProcessKey(baseProcessKey, entityType))
+              .distinct()
+              .filter(this::hasProcessDefinition)
+              .toList();
     }
+    return processKeys;
+  }
+
+  private boolean hasProcessDefinition(String processKey) {
+    return processEngine
+            .getRepositoryService()
+            .createProcessDefinitionQuery()
+            .processDefinitionKey(processKey)
+            .latestVersion()
+            .singleResult()
+        != null;
+  }
+
+  /**
+   * Every trigger process deployed under the workflow's prefix, except one an older deployment
+   * left for an entity type the trigger is now deployed without, see {@link
+   * SinkEntityTypeRule#excludedTriggerEntityTypes}.
+   */
+  private List<String> getDeployedTriggerProcessKeys(
+      WorkflowDefinition workflowDefinition, String baseProcessKey) {
+    Set<String> excludedKeys =
+        SinkEntityTypeRule.excludedTriggerEntityTypes(workflowDefinition).stream()
+            .map(
+                entityType ->
+                    PeriodicBatchEntityTrigger.getTriggerProcessKey(baseProcessKey, entityType))
+            .collect(Collectors.toUnmodifiableSet());
+    return processEngine
+        .getRepositoryService()
+        .createProcessDefinitionQuery()
+        .processDefinitionKeyLike(baseProcessKey + "-%")
+        .latestVersion()
+        .list()
+        .stream()
+        .map(ProcessDefinition::getKey)
+        .filter(processKey -> !excludedKeys.contains(processKey))
+        .toList();
   }
 
   @SuppressWarnings("unchecked")
@@ -1981,6 +2350,43 @@ public class WorkflowHandler {
           "Failed to delete Flowable process for superseded workflow instance {}: {}",
           workflowInstanceId,
           e.getMessage());
+    }
+  }
+
+  /**
+   * Records how a still-running workflow instance was ended from outside its run (superseded or
+   * cancelled), with the reason, on the instance and its stage states. Best effort: a failure is
+   * logged and never reaches the caller.
+   */
+  public void endWorkflowInstance(
+      UUID workflowInstanceId, WorkflowInstance.WorkflowStatus status, String reason) {
+    try {
+      WorkflowInstanceRepository workflowInstanceRepository =
+          (WorkflowInstanceRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+      if (workflowInstanceRepository.endRunningInstance(workflowInstanceId, status, reason)) {
+        ((WorkflowInstanceStateRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE))
+            .markInstanceStatesAs(workflowInstanceId, status, reason);
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to mark workflow instance {} as {}: {}",
+          workflowInstanceId,
+          status,
+          e.getMessage());
+    }
+  }
+
+  // The OM workflow instance id is the business key of every process the trigger starts.
+  private void endWorkflowInstanceForBusinessKey(
+      String businessKey, WorkflowInstance.WorkflowStatus status, String reason) {
+    if (businessKey != null && !businessKey.isBlank()) {
+      try {
+        endWorkflowInstance(UUID.fromString(businessKey), status, reason);
+      } catch (IllegalArgumentException e) {
+        LOG.debug("Process business key {} is not a workflow instance id", businessKey);
+      }
     }
   }
 

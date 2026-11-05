@@ -11,26 +11,45 @@
  *  limitations under the License.
  */
 
-import { Avatar, Button, Col, Row } from 'antd';
+import {
+  AvatarStack,
+  Box,
+  ButtonUtility,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { min, noop } from 'lodash';
-import { useCallback, useMemo } from 'react';
-import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
-import { ReactionOperation } from '../../../../enums/reactions.enum';
+import { noop } from 'lodash';
+import { MouseEvent, useCallback, useMemo } from 'react';
+import {
+  ButtonProps as AriaButtonProps,
+  PressEvent,
+} from 'react-aria-components';
+import { useTranslation } from 'react-i18next';
+import { FEED_FOOTER_AVATAR_SIZE } from '../../../../constants/Feeds.constants';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
+import FeedCardReplyButton from '../FeedCardReplyButton/FeedCardReplyButton';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
+import { isReplyButtonShown } from './FeedCardFooterNew.utils';
+
+const MAX_VISIBLE_AVATARS = 3;
 
 function FeedCardFooterNew({
   conversation,
   conversationId,
   reply,
   isReply = false,
-  isForFeedTab = false,
+  componentsVisibility,
+  onReplyPress,
+  showReplyCount = false,
 }: Readonly<FeedCardFooterProps>) {
+  const { t } = useTranslation();
   const { showDrawer, updateReactions } = useActivityFeedProvider();
 
   const postLength = useMemo(
@@ -38,26 +57,20 @@ function FeedCardFooterNew({
     [conversation?.replyCount]
   );
 
-  const { repliedUniqueUsersList } = useMemo(() => {
-    const repliedUsers = [
+  const repliedUsers = useMemo(() => {
+    return [
       ...new Set(
         (conversation?.replies ?? [])
           .map((item) => item.author.name ?? item.author.fullyQualifiedName)
           .filter((name): name is string => Boolean(name))
       ),
     ];
-
-    const repliedUniqueUsersList = repliedUsers.slice(
-      0,
-      min([3, repliedUsers.length])
-    );
-
-    return { repliedUniqueUsersList };
   }, [conversation?.replies]);
 
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
       const target = reply ?? conversation;
+
       if (!target) {
         return;
       }
@@ -71,66 +84,91 @@ function FeedCardFooterNew({
     },
     [updateReactions, reply, conversation, conversationId, isReply]
   );
+
   const showReplies = useCallback(() => {
     if (conversation) {
       showDrawer(conversation);
     }
   }, [showDrawer, conversation]);
 
+  // A press handed to the caller keeps bubbling to the card behind this
+  // footer, as it did when these were native buttons. Opening the drawer
+  // selects the conversation itself, so that press stops here: the card's own
+  // click would fetch its replies a second time.
+  const handleRepliesPress = useCallback(
+    (event: PressEvent) => {
+      if (onReplyPress) {
+        event.continuePropagation();
+        onReplyPress();
+      } else {
+        showReplies();
+      }
+    },
+    [onReplyPress, showReplies]
+  );
+  // The +N chip is a native button, so its click would also reach the card
+  // and select the conversation, fetching its replies a second time.
+  const handleOverflowClick = useCallback(
+    (event?: MouseEvent<HTMLButtonElement>) => {
+      event?.stopPropagation();
+      showReplies();
+    },
+    [showReplies]
+  );
+  // ButtonUtility forwards its props to a react-aria Button but does not declare
+  // onPress, and onClick would not let the click bubble, so the press handler is
+  // passed as typed react-aria props.
+  const repliesPressProps: Pick<AriaButtonProps, 'onPress'> = {
+    onPress: handleRepliesPress,
+  };
+
   return (
-    <Row align="top" className={classNames({ 'm-y-md': isReply })}>
-      <Col
-        className="footer-container"
-        data-testid="feed-card-footer"
-        span={24}>
+    <Box align="start" className={classNames({ 'm-y-md': isReply })}>
+      <Box className="tw:w-full" data-testid="feed-card-footer" direction="col">
         <div>
-          <div className="flex items-center gap-2 w-full rounded-8">
-            {postLength > 0 && !isReply && (
-              <Avatar.Group
-                className="feed-avatar-group"
-                maxCount={3}
-                maxPopoverPlacement="top"
-                maxStyle={{
-                  color: '#f56a00',
-                  backgroundColor: '#fde3cf',
-                }}>
-                {repliedUniqueUsersList.map((user, index) => (
-                  <Button
-                    className="p-0"
+          <Box align="center" className="w-full rounded-8" gap={1}>
+            {postLength > 0 && !isReply && !showReplyCount && (
+              <AvatarStack
+                avatarSize={FEED_FOOTER_AVATAR_SIZE}
+                // The avatar fills its button while the icons sit inside padding, so the
+                // stack takes extra space to match the icons' visible gap.
+                className="tw:mr-0.75"
+                items={repliedUsers.map((user) => (
+                  <ButtonUtility
+                    aria-label={t('label.view-replies-by-user', { user })}
+                    className="tw:align-top"
+                    color="tertiary"
+                    icon={
+                      <UserPopOverCard userName={user}>
+                        <ProfilePicture name={user} size="xs" />
+                      </UserPopOverCard>
+                    }
                     key={user}
-                    style={{
-                      marginLeft: index === 0 ? '0px' : '-8px',
-                      zIndex: repliedUniqueUsersList.length - index,
-                    }}
-                    type="text"
-                    onClick={isForFeedTab ? showReplies : undefined}>
-                    <UserPopOverCard userName={user}>
-                      <div className="d-flex items-center">
-                        <ProfilePicture name={user} width="20" />
-                      </div>
-                    </UserPopOverCard>
-                  </Button>
+                    size="xs"
+                    {...repliesPressProps}
+                  />
                 ))}
-              </Avatar.Group>
+                maxCount={MAX_VISIBLE_AVATARS}
+                onOverflowClick={handleOverflowClick}
+              />
             )}
 
-            {!isReply && (
-              <Button
-                className="p-0 flex-center"
-                data-testid="reply-button"
-                type="text"
-                onClick={isForFeedTab ? showReplies : undefined}>
-                <ThreadIcon data-testid="reply-count" height={18} width={18} />
-              </Button>
+            {isReplyButtonShown(isReply, componentsVisibility) && (
+              <FeedCardReplyButton
+                count={postLength}
+                pressProps={repliesPressProps}
+                showCount={showReplyCount}
+              />
             )}
             <Reactions
               reactions={(reply ?? conversation)?.reactions ?? []}
+              variant={ReactionsVariant.Pill}
               onReactionSelect={onReactionUpdate ?? noop}
             />
-          </div>
+          </Box>
         </div>
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 }
 

@@ -20,12 +20,14 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
-import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 
 public abstract class EntityMasker {
 
+  // OpenMetadataJWTClientConfig is intentionally NOT exempt: its jwtToken (the token embedded in a
+  // server connection) is a @PasswordField and must be masked for non-bot readers. JWTAuthMechanism
+  // and BasicAuthMechanism remain exempt because bot auth mechanisms are only ever read by bots.
   protected static final Set<Class<?>> DO_NOT_MASK_CLASSES =
-      Set.of(OpenMetadataJWTClientConfig.class, JWTAuthMechanism.class, BasicAuthMechanism.class);
+      Set.of(JWTAuthMechanism.class, BasicAuthMechanism.class);
 
   public abstract Object maskServiceConnectionConfig(
       Object connectionConfig, String connectionType, ServiceType serviceType);

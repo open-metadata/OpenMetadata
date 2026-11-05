@@ -13,13 +13,14 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import axiosClient from '.';
+import { RestoreRequestType } from 'Models';
 import { CreateBot } from '../generated/api/createBot';
 import { Bot } from '../generated/entity/bot';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
+import axiosClient from './axiosClient';
 
 const BASE_URL = '/bots';
 
@@ -65,6 +66,15 @@ export const updateBotDetail = async (id: string, data: Operation[]) => {
     `${BASE_URL}/${id}`,
     data
   );
+
+  return response.data;
+};
+
+export const restoreBot = async (id: string) => {
+  const response = await axiosClient.put<
+    RestoreRequestType,
+    AxiosResponse<Bot>
+  >(`${BASE_URL}/restore`, { id });
 
   return response.data;
 };

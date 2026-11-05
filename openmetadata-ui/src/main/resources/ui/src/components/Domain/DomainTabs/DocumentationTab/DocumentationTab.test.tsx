@@ -32,7 +32,9 @@ const mockDescription = jest
   .mockImplementation(() => <div>Description</div>);
 jest.mock(
   '../../../common/EntityDescription/Description',
-  () => mockDescription
+  () =>
+    (...args: unknown[]) =>
+      mockDescription(...args)
 );
 
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
@@ -43,7 +45,7 @@ jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
   ...jest.requireActual(
     '../../../Customization/GenericProvider/GenericContext'
   ),
-  useGenericContext: jest.fn().mockReturnValue({
+  useGenericContext: jest.fn().mockImplementation(() => ({
     data: MOCK_DOMAIN,
     onUpdate: mockOnUpdate,
     permissions: {
@@ -51,7 +53,11 @@ jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
       EditAll: true,
       ViewCustomFields: true,
     },
-  }),
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
 }));
 
 jest.mock('../../../../utils/EntityNameUtils', () => ({
@@ -68,9 +74,59 @@ jest.mock('../../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockImplementation(() => <div>CustomPropertyTable</div>),
 }));
 
-jest.mock('../../../DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
-  OwnerLabelV2: jest.fn().mockImplementation(() => <div>OwnerLabelV2</div>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Owner: jest.fn().mockImplementation(() => <div>OwnerComponent</div>),
+  toOwnerRef: (ref: {
+    id: string;
+    type?: string;
+    name?: string;
+    displayName?: string;
+    href?: string;
+  }) => ({
+    id: ref.id,
+    name: ref.name,
+    displayName: ref.displayName,
+    type: ref.type ?? 'user',
+    href: ref.href,
+  }),
+  toOwnerRefs: (
+    refs?: Array<{
+      id: string;
+      type?: string;
+      name?: string;
+      displayName?: string;
+      href?: string;
+    }>
+  ) =>
+    (refs ?? []).map(
+      (ref: {
+        id: string;
+        type?: string;
+        name?: string;
+        displayName?: string;
+        href?: string;
+      }) => ({
+        id: ref.id,
+        name: ref.name,
+        displayName: ref.displayName,
+        type: ref.type ?? 'user',
+        href: ref.href,
+      })
+    ),
 }));
+
+jest.mock('../../../common/WidgetCard/WidgetCard', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ children, title }: { children?: React.ReactNode; title?: string }) => (
+        <div data-testid="widget-card">
+          {title && <div>{title}</div>}
+          {children}
+        </div>
+      )
+    )
+);
 
 jest.mock('../../../Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
@@ -113,7 +169,7 @@ describe('DocumentationTab', () => {
 
     expect(description).toBeInTheDocument();
 
-    expect(screen.getByText('OwnerLabelV2')).toBeInTheDocument();
+    expect(screen.getByText('OwnerComponent')).toBeInTheDocument();
 
     expect(screen.getByText('DomainExpertWidget')).toBeInTheDocument();
 
@@ -180,6 +236,10 @@ describe('DocumentationTab', () => {
           EditAll: true,
           ViewCustomFields: true,
         },
+        entityRules: {
+          canAddMultipleUserOwners: true,
+          canAddMultipleTeamOwner: true,
+        },
       });
 
       render(<DocumentationTab type={DocumentationEntity.DATA_PRODUCT} />, {
@@ -206,6 +266,10 @@ describe('DocumentationTab', () => {
           EditAll: true,
           ViewCustomFields: false,
         },
+        entityRules: {
+          canAddMultipleUserOwners: true,
+          canAddMultipleTeamOwner: true,
+        },
       });
 
       render(<DocumentationTab type={DocumentationEntity.DATA_PRODUCT} />, {
@@ -230,6 +294,10 @@ describe('DocumentationTab', () => {
         permissions: {
           ViewBasic: true,
           EditAll: true,
+        },
+        entityRules: {
+          canAddMultipleUserOwners: true,
+          canAddMultipleTeamOwner: true,
         },
       });
 
@@ -256,6 +324,10 @@ describe('DocumentationTab', () => {
           ViewAll: true,
           EditAll: true,
           ViewCustomFields: true,
+        },
+        entityRules: {
+          canAddMultipleUserOwners: true,
+          canAddMultipleTeamOwner: true,
         },
       });
 

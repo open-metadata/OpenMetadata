@@ -1,0 +1,66 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/changeRequest/approvalDecision.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ApprovalDecision",
+  "description": "An authenticated reviewer decision on one exact revision. Append-only.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.governance.changeRequest.ApprovalDecision",
+  "definitions": {
+    "decisionType": {
+      "javaType": "org.openmetadata.schema.governance.changeRequest.DecisionType",
+      "type": "string",
+      "enum": ["Approve", "Reject", "Override"]
+    },
+    "changeRef": {
+      "javaType": "org.openmetadata.schema.governance.changeRequest.ChangeRef",
+      "description": "One change of a revision, identified like its mutation op: the field and, for an added or removed element, its key.",
+      "type": "object",
+      "properties": {
+        "field": { "type": "string" },
+        "key": { "type": "string" }
+      },
+      "required": ["field"],
+      "additionalProperties": false
+    },
+    "changeDecision": {
+      "javaType": "org.openmetadata.schema.governance.changeRequest.ChangeDecision",
+      "description": "A reviewer's decision on one change of a revision.",
+      "type": "object",
+      "properties": {
+        "field": { "type": "string" },
+        "key": { "type": "string" },
+        "decision": {
+          "javaType": "org.openmetadata.schema.governance.changeRequest.ChangeDecisionType",
+          "type": "string",
+          "enum": ["Approve", "Reject"]
+        }
+      },
+      "required": ["field", "decision"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "changeRequestId": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "revisionId": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "revisionNumber": { "type": "integer" },
+    "digest": { "type": "string" },
+    "decision": { "$ref": "#/definitions/decisionType" },
+    "decidedBy": { "type": "string" },
+    "taskId": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "comment": { "type": "string" },
+    "approvedChanges": {
+      "description": "Changes this decision approves. When both change lists are absent or empty, the decision covers the whole revision.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/changeRef" }
+    },
+    "rejectedChanges": {
+      "description": "Changes this decision rejects, including omitted changes in a per-change review. When both change lists are absent or empty, the decision covers the whole revision.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/changeRef" }
+    },
+    "decidedAt": { "$ref": "../../type/basic.json#/definitions/timestamp" }
+  },
+  "required": ["id", "changeRequestId", "revisionId", "revisionNumber", "digest", "decision", "decidedBy", "decidedAt"],
+  "additionalProperties": false
+}

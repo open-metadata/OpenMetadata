@@ -14,6 +14,7 @@
 package org.openmetadata.service.llm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
@@ -50,6 +51,23 @@ class BedrockCompletionClientTest {
         BedrockCompletionClient.buildRequest("override-model", "sys", "user", 256, 0.0, 15);
     assertEquals("override-model", request.modelId());
     assertEquals(256, request.inferenceConfig().maxTokens());
+    assertEquals(0.0f, request.inferenceConfig().temperature(), 0.0001f);
+  }
+
+  @Test
+  void requestOmitsTemperatureForModelThatRejectsIt() {
+    ConverseRequest request =
+        BedrockCompletionClient.buildRequest(
+            "eu.anthropic.claude-haiku-5-5", "sys", "user", 256, 0.0, 15);
+    assertNull(request.inferenceConfig().temperature());
+    assertEquals(256, request.inferenceConfig().maxTokens());
+  }
+
+  @Test
+  void requestKeepsTemperatureForHaiku45() {
+    ConverseRequest request =
+        BedrockCompletionClient.buildRequest(
+            "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "sys", "user", 256, 0.0, 15);
     assertEquals(0.0f, request.inferenceConfig().temperature(), 0.0001f);
   }
 }

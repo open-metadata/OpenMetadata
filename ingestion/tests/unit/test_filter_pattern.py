@@ -19,6 +19,7 @@ from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.utils.filters import (
     InvalidPatternException,
     _filter,
+    _filter_server_compatible,
     filter_by_classifications,
     filter_by_dashboard,
     filter_by_fqn,
@@ -44,6 +45,74 @@ def test_filter():
     # If we have both includes and excludes, we will check both "include" and "exclude"
     # This was not filter if we only check includes, but is filtered if we check both
     assert _filter(filter_pattern_both, "potato_tomato")
+
+
+def test_filter_server_compatible_no_pattern_keeps_everything():
+    assert _filter_server_compatible(None, "anything") is False
+    assert _filter_server_compatible(FilterPattern(), "anything") is False
+
+
+def test_filter_server_compatible_pattern_without_name_drops():
+    assert _filter_server_compatible(FilterPattern(excludes=["x"]), None) is True
+    assert _filter_server_compatible(FilterPattern(excludes=["x"]), "") is True
+
+
+def test_filter_server_compatible_substring_exclude_matches_unanchored():
+    substring_excludes = FilterPattern(excludes=["summary"])
+    assert _filter_server_compatible(substring_excludes, "revenue_summary") is True
+    assert _filter_server_compatible(substring_excludes, "summary") is True
+    assert _filter_server_compatible(substring_excludes, "summary_data") is True
+    assert _filter_server_compatible(substring_excludes, "data_summary") is True
+    assert _filter_server_compatible(substring_excludes, "data_summary_v2") is True
+    assert _filter_server_compatible(substring_excludes, "orders") is False
+
+
+def test_filter_server_compatible_vs_filter_anchoring_divergence():
+    substring_excludes = FilterPattern(excludes=["summary"])
+
+    assert _filter(substring_excludes, "revenue_summary") is False
+
+    assert _filter_server_compatible(substring_excludes, "revenue_summary") is True
+
+
+def test_filter_server_compatible_case_insensitive():
+    pattern = FilterPattern(excludes=["Summary"])
+    assert _filter_server_compatible(pattern, "summary_table") is True
+    assert _filter_server_compatible(pattern, "revenue_SUMMARY") is True
+    assert _filter_server_compatible(pattern, "Summary_table") is True
+    assert _filter(pattern, "summary_table") is True
+
+
+def test_filter_server_compatible_unanchored_includes():
+    includes_only = FilterPattern(includes=["finance"])
+    assert _filter_server_compatible(includes_only, "finance") is False
+    assert _filter_server_compatible(includes_only, "retail_finance") is False
+    assert _filter_server_compatible(includes_only, "sales") is True
+
+
+def test_filter_server_compatible_include_takes_precedence_over_exclude():
+    both = FilterPattern(includes=["finance"], excludes=["temp"])
+    assert _filter_server_compatible(both, "finance_temp") is False
+    assert _filter_server_compatible(both, "finance_ledger") is False
+    assert _filter_server_compatible(both, "retail_ledger") is True
+
+
+def test_filter_server_compatible_multiple_excludes_or_semantics():
+    multi = FilterPattern(excludes=["summary", "^temp_"])
+    assert _filter_server_compatible(multi, "revenue_summary") is True
+    assert _filter_server_compatible(multi, "temp_orders") is True
+    assert _filter_server_compatible(multi, "orders") is False
+
+
+def test_filter_server_compatible_anchored_patterns_still_match():
+    anchored = FilterPattern(excludes=["^temp_.*$"])
+    assert _filter_server_compatible(anchored, "temp_orders") is True
+    assert _filter_server_compatible(anchored, "data_temp") is False
+
+
+def test_filter_server_compatible_invalid_regex_raises():
+    with pytest.raises(InvalidPatternException):
+        _filter_server_compatible(FilterPattern(excludes=["["]), "anything")
 
 
 def test_filter_pattern_enabled():

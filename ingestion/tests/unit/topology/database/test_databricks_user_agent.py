@@ -12,11 +12,15 @@
 """
 Databricks partner telemetry attribution is threaded through every connection
 mechanism: the SQLAlchemy engine, the Databricks SDK client and the REST client.
+The open source and Collate distributions report under different product names.
 https://databrickslabs.github.io/partner-architecture/isv-partners/telemetry-attribution
 """
 
 import re
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
     PersonalAccessToken,
@@ -27,29 +31,77 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
+from metadata.ingestion.source.database.databricks import user_agent as user_agent_module
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.user_agent import (
-    DATABRICKS_PARTNER_PRODUCT,
+    COLLATE_PARTNER_PRODUCT,
+    OSS_PARTNER_PRODUCT,
+    get_databricks_partner_product,
     get_databricks_product,
     get_databricks_user_agent,
 )
 
-USER_AGENT_PATTERN = re.compile(r"^Collate_Ingestion/.+")
+USER_AGENT_PATTERN = re.compile(r"^[A-Za-z0-9]+_[A-Za-z0-9]+/.+")
+
+
+@contextmanager
+def installed_distributions(**versions: str):
+    """Pretend only the given distributions are installed, bypassing the cache."""
+    user_agent_module._partner_product_and_version.cache_clear()
+    with patch.object(
+        user_agent_module,
+        "_distribution_version",
+        versions.get,
+    ):
+        yield
+    user_agent_module._partner_product_and_version.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _clear_partner_cache():
+    user_agent_module._partner_product_and_version.cache_clear()
+    yield
+    user_agent_module._partner_product_and_version.cache_clear()
 
 
 def test_user_agent_follows_isv_partner_format():
     user_agent = get_databricks_user_agent()
+    product = get_databricks_partner_product()
 
     assert USER_AGENT_PATTERN.match(user_agent)
-    assert "_" in DATABRICKS_PARTNER_PRODUCT
-    assert user_agent.startswith(f"{DATABRICKS_PARTNER_PRODUCT}/")
+    assert "_" in product
+    assert user_agent.startswith(f"{product}/")
+
+
+def test_isv_name_is_shared_by_both_products():
+    """Databricks requires the ISV half of the name to be the company name, kept
+    consistent across every partner product, so only the product half may differ."""
+    assert OSS_PARTNER_PRODUCT.split("_")[0] == COLLATE_PARTNER_PRODUCT.split("_")[0]
+    assert OSS_PARTNER_PRODUCT != COLLATE_PARTNER_PRODUCT
 
 
 def test_sdk_product_pair_matches_user_agent():
     product, product_version = get_databricks_product()
 
-    assert product == DATABRICKS_PARTNER_PRODUCT
+    assert product == get_databricks_partner_product()
     assert get_databricks_user_agent() == f"{product}/{product_version}"
+
+
+def test_open_source_install_reports_openmetadata_product():
+    with installed_distributions(**{"openmetadata-ingestion": "1.10.0"}):
+        assert get_databricks_user_agent() == f"{OSS_PARTNER_PRODUCT}/1.10.0"
+        assert get_databricks_product() == (OSS_PARTNER_PRODUCT, "1.10.0")
+
+
+def test_collate_install_reports_collate_product_and_version():
+    with installed_distributions(**{"openmetadata-ingestion": "1.10.0", "collate-ingestion": "1.10.1"}):
+        assert get_databricks_user_agent() == f"{COLLATE_PARTNER_PRODUCT}/1.10.1"
+        assert get_databricks_product() == (COLLATE_PARTNER_PRODUCT, "1.10.1")
+
+
+def test_missing_distribution_metadata_falls_back_to_open_source():
+    with installed_distributions():
+        assert get_databricks_user_agent() == f"{OSS_PARTNER_PRODUCT}/unknown"
 
 
 def test_databricks_engine_sets_user_agent_entry():

@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
-import { DrawerProps } from 'antd';
 import { ReactNode } from 'react';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { AddTestCaseListChangePayload } from '../AddTestCaseList/AddTestCaseList.interface';
 
 export interface BundleSuiteFormProps {
-  drawerProps?: DrawerProps;
   className?: string;
   onCancel?: () => void;
   onSuccess?: (testSuite: TestSuite) => void;
@@ -34,8 +32,6 @@ export interface BundleSuiteFormDrawerProps {
   onClose: () => void;
   onSuccess?: (testSuite: TestSuite) => void;
   initialValues?: BundleSuiteFormProps['initialValues'];
-  /** 'drawer' renders the slideout drawer; 'modal' renders the centered modal. */
-  variant?: 'drawer' | 'modal';
   title?: ReactNode;
   headerActions?: ReactNode;
   width?: number | string;

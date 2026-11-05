@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { ReactComponent as CloseOutlined } from '../../../assets/svg/close.svg';
+import { t } from '../../../utils/i18next/LocalUtil';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './user-tag.less';
 import { UserTags, UserTagSize } from './UserTag.interface';
@@ -30,6 +30,7 @@ export const UserTag = ({
   className,
   isTeam = false,
   avatarType = 'solid',
+  truncateName = false,
 }: UserTags) => {
   if (isUndefined(id) && isUndefined(name)) {
     return null;
@@ -52,6 +53,7 @@ export const UserTag = ({
       className={classNames(
         {
           bordered: bordered,
+          'tw:min-w-0': truncateName,
         },
         'user-tag',
         UserTagSize[size],
@@ -64,12 +66,18 @@ export const UserTag = ({
         name={id}
         width={toString(width[size])}
       />
-      <Typography.Text className={fontSizes[size]}>{name}</Typography.Text>
+      <span
+        className={classNames(fontSizes[size], {
+          'tw:truncate': truncateName,
+        })}>
+        {name}
+      </span>
       {closable && (
-        <Icon
-          component={CloseOutlined}
+        <ButtonUtility
           data-testid="close-icon"
-          size={width[size]}
+          icon={XClose}
+          size="xs"
+          tooltip={t('label.remove')}
           onClick={onRemove}
         />
       )}

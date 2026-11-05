@@ -18,15 +18,21 @@ import {
   ExploreQuickFilterField,
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
+import { SearchIndex } from '../../enums/search.enum';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
-import { usePaging } from '../../hooks/paging/usePaging';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useExploreCache } from '../../hooks/useExploreCache';
+import { searchEntityTypeCounts, searchQuery } from '../../rest/searchAPI';
 import { getExploreTabPath } from '../../utils/RouterUtils';
 import ExplorePageV1 from './ExplorePageV1.component';
 
 const mockHandlePageChange = jest.fn();
 const mockHandlePageSizeChange = jest.fn();
 const mockLocation = { pathname: 'pathname', search: '' };
+
+jest.mock('../../rest/searchAPI');
+jest.mock('../../utils/ToastUtils');
 
 jest.mock(
   '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
@@ -50,6 +56,19 @@ jest.mock('../../components/ExploreV1/ExploreV1.component', () => {
   return jest.fn().mockReturnValue(<p>ExploreV1</p>);
 });
 
+jest.mock(
+  '../../components/discovery/explore/ExploreHeader/ExploreSearchCard',
+  () => ({
+    ExploreSearchCard: () => (
+      <div data-testid="explore-search-card">Explore search</div>
+    ),
+  })
+);
+
+jest.mock('../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn(() => false),
+}));
+
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
@@ -68,13 +87,23 @@ jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
   })),
 }));
 
+// Opt one case onto the real hook, so what it writes to the shared URL can be asserted rather
+// than which callback it reached for.
+let mockUseRealPaging = false;
+
 jest.mock('../../hooks/paging/usePaging', () => ({
-  usePaging: jest.fn(() => ({
-    currentPage: 3,
-    handlePageChange: mockHandlePageChange,
-    handlePageSizeChange: mockHandlePageSizeChange,
-    pageSize: 25,
-  })),
+  usePaging: jest.fn((defaultPageSize?: number, pageSizeOptions?: number[]) =>
+    mockUseRealPaging
+      ? jest
+          .requireActual('../../hooks/paging/usePaging')
+          .usePaging(defaultPageSize, pageSizeOptions)
+      : {
+          currentPage: 3,
+          handlePageChange: mockHandlePageChange,
+          handlePageSizeChange: mockHandlePageSizeChange,
+          pageSize: 25,
+        }
+  ),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -93,6 +122,7 @@ const mockProps = {
 describe('ExplorePageV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useExploreCache.getState().clearCache();
     mockLocation.pathname = 'pathname';
     mockLocation.search = '';
     (useCustomLocation as jest.Mock).mockImplementation(() => mockLocation);
@@ -100,14 +130,46 @@ describe('ExplorePageV1', () => {
       preferences: {
         globalPageSize: 25,
       },
+      // The real hook persists the size it settles on; without this the case that drives it
+      // would fail on a missing setter rather than on what it wrote.
+      setPreference: jest.fn(),
     });
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+    mockUseRealPaging = false;
   });
 
   it('renders without crashing', async () => {
     render(<ExplorePageV1 {...mockProps} />);
 
     expect(await screen.findByText('ExploreV1')).toBeInTheDocument();
-    expect(usePaging).toHaveBeenCalledWith(25);
+  });
+
+  it('does not write a page size it cannot offer back to the shared URL', async () => {
+    const mockNavigate = jest.fn();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    // 24 is the connections grid's size, in the shared param because app mode keeps this page
+    // mounted behind that one. Correcting it from here overwrote the grid's selection.
+    mockLocation.search = '?pageSize=24';
+    mockUseRealPaging = true;
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    const wrotePageSize = mockNavigate.mock.calls.some(
+      ([to]) => typeof to === 'object' && to?.search?.includes('pageSize=')
+    );
+
+    expect(wrotePageSize).toBe(false);
+  });
+
+  it('stretches the AI search header wrapper across the Explore page', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+
+    render(<ExplorePageV1 {...mockProps} />);
+
+    expect(
+      (await screen.findByTestId('explore-search-card')).parentElement
+    ).toHaveClass('tw:w-full');
   });
 
   it('calls navigate exactly once with quickFilter when filter changes', async () => {
@@ -407,5 +469,175 @@ describe('ExplorePageV1', () => {
 
     expect(searchParams.get('sortOrder')).toBe('asc');
     expect(searchParams.get('currentPage')).toBe('1');
+  });
+
+  describe('search count revalidation', () => {
+    const resultsResponse = {
+      hits: { hits: [], total: { value: 42 } },
+      aggregations: {},
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const renderCustomerSearch = async () => {
+      (searchEntityTypeCounts as jest.Mock).mockResolvedValueOnce({
+        aggregations: {
+          entityType: {
+            buckets: [
+              { key: 'table', doc_count: 42 },
+              { key: 'dashboard', doc_count: 18 },
+            ],
+          },
+        },
+        hits: { hits: [], total: { value: 60 } },
+      });
+      (searchQuery as jest.Mock).mockResolvedValueOnce(resultsResponse);
+      (ExploreV1 as jest.Mock).mockImplementation(
+        ({ tabItems }: ExploreProps) => (
+          <>
+            {tabItems.map(({ key, count }) => (
+              <p key={key}>{`${key}: ${count}`}</p>
+            ))}
+          </>
+        )
+      );
+      mockLocation.search = '?search=customer';
+      const view = render(<ExplorePageV1 {...mockProps} />);
+      await act(async () => undefined);
+
+      expect(
+        screen.getByText(`${SearchIndex.DASHBOARD}: 18`)
+      ).toBeInTheDocument();
+
+      return view;
+    };
+
+    // The next count request stays pending until the returned callback fails it; the next
+    // results request reports 41 tables.
+    const holdNextCountRequest = () => {
+      let rejectCounts: (error: Error) => void = (_error) => undefined;
+      (searchEntityTypeCounts as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectCounts = reject;
+          })
+      );
+      (searchQuery as jest.Mock).mockResolvedValueOnce({
+        ...resultsResponse,
+        hits: { hits: [], total: { value: 41 } },
+      });
+
+      return () => rejectCounts(new Error('Count unavailable'));
+    };
+
+    const getCachedData = () =>
+      Array.from(
+        useExploreCache.getState().entries.values(),
+        ({ data }) => data
+      );
+
+    it.each([true, false])(
+      'preserves other tab badges and cached counts after a count failure (cache hit: %s)',
+      async (cacheHit) => {
+        const view = await renderCustomerSearch();
+        // The per-tab results remain fresh after the shared count cache expires.
+        jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 2001);
+        const failCounts = holdNextCountRequest();
+
+        await act(async () => {
+          if (cacheHit) {
+            view.unmount();
+            render(<ExplorePageV1 {...mockProps} />);
+          } else {
+            // A new sort order misses the page cache but changes no tab's count.
+            mockLocation.search = '?search=customer&sortOrder=asc';
+            view.rerender(<ExplorePageV1 {...mockProps} />);
+          }
+        });
+
+        expect(
+          screen.getByText(`${SearchIndex.TABLE}: 41`)
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText(`${SearchIndex.DASHBOARD}: 18`)
+        ).toBeInTheDocument();
+
+        await act(async () => {
+          failCounts();
+        });
+
+        expect(
+          screen.getByText(`${SearchIndex.DASHBOARD}: 18`)
+        ).toBeInTheDocument();
+        expect(getCachedData()).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              hitCounts: {
+                [SearchIndex.TABLE]: 41,
+                [SearchIndex.DASHBOARD]: 18,
+              },
+            }),
+          ])
+        );
+      }
+    );
+
+    it.each([
+      ['query text', '?search=orders'],
+      [
+        'quick filter',
+        `?search=customer&quickFilter=${encodeURIComponent(
+          JSON.stringify({
+            query: {
+              bool: {
+                must: [
+                  {
+                    bool: {
+                      should: [{ term: { 'owners.displayName.keyword': 'a' } }],
+                    },
+                  },
+                ],
+              },
+            },
+          })
+        )}`,
+      ],
+      ['deleted flag', '?search=customer&showDeleted=true'],
+    ])(
+      'does not carry other tab badges into a search with a new %s when counts fail',
+      async (_change, search) => {
+        const view = await renderCustomerSearch();
+        const failCounts = holdNextCountRequest();
+
+        await act(async () => {
+          mockLocation.search = search;
+          view.rerender(<ExplorePageV1 {...mockProps} />);
+        });
+
+        expect(
+          screen.getByText(`${SearchIndex.TABLE}: 41`)
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByText(`${SearchIndex.DASHBOARD}: 18`)
+        ).not.toBeInTheDocument();
+
+        await act(async () => {
+          failCounts();
+        });
+
+        expect(
+          screen.queryByText(`${SearchIndex.DASHBOARD}: 18`)
+        ).not.toBeInTheDocument();
+        expect(getCachedData()).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              hitCounts: { [SearchIndex.TABLE]: 41 },
+            }),
+          ])
+        );
+      }
+    );
   });
 });

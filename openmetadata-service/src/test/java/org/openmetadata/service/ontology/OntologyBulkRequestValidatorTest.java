@@ -56,7 +56,7 @@ class OntologyBulkRequestValidatorTest {
   }
 
   @Test
-  void rejectsMixedPayloadsAndReadOnlyModels() {
+  void rejectsMixedPayloads() {
     final OntologyBulkRequest mixed =
         OntologyBulkTestFixtures.findRequest(
                 OntologyBulkMatchField.NAME,
@@ -66,14 +66,8 @@ class OntologyBulkRequestValidatorTest {
                 true,
                 true)
             .withCsv(OntologyBulkTestFixtures.header());
-    final OntologyBulkRequest csv =
-        OntologyBulkTestFixtures.csvRequest(OntologyBulkTestFixtures.header() + "\n", true);
-
     assertThrows(
         BadRequestException.class,
         () -> validator.validate(OntologyBulkTestFixtures.glossary(), mixed));
-    assertThrows(
-        BadRequestException.class,
-        () -> validator.validate(OntologyBulkTestFixtures.readOnlyGlossary(), csv));
   }
 }

@@ -19,6 +19,14 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  fillContractAvailabilityTime,
+  fillContractName,
+  pickContractAutocompleteOption,
+  selectContractOwners,
+  selectContractStatus,
+} from '../../utils/dataContracts';
+import { selectDropdownOption } from '../../utils/destination';
 import { addAssetsToDataProduct, selectDataProduct } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
@@ -65,23 +73,23 @@ const DATA_PRODUCT_SLA = {
   retentionPeriod: '30',
   retentionUnit: 'Day',
   availability: '09:00',
-  timezone: 'GMT+00:00 (UTC)',
+  timezone: 'GMT+00:00 (Europe/London)',
 };
 
 const fillContractDetailsForm = async (
   page: Page,
   contractName: string,
-  description: string
+  description: string,
+  status?: 'Draft' | 'In Review' | 'Approved'
 ) => {
-  await page.getByTestId('contract-name').fill(contractName);
+  await fillContractName(page, contractName);
   await page.fill('.om-block-editor[contenteditable="true"]', description);
 
-  await page.getByTestId('select-owners').click();
-  const firstOwner = page.getByTestId('owner-option').first();
-  await expect(firstOwner).toBeVisible();
-  await firstOwner.click();
+  await selectContractOwners(page, ['admin']);
 
-  await expect(page.getByTestId('user-tag')).toBeVisible();
+  if (status) {
+    await selectContractStatus(page, status);
+  }
 };
 
 const fillTermsOfServiceForm = async (page: Page, termsContent: string) => {
@@ -98,16 +106,21 @@ const fillSemanticsForm = async (
   await page.fill('#semantics_0_name', semanticsData.name);
   await page.fill('#semantics_0_description', semanticsData.description);
 
-  const ruleLocator = page.locator('.group').nth(0);
+  // The form fills semantics row 0, so scope the builder to that row's card
+  // rather than indexing the builders on the page — the same way
+  // DataContracts.spec.ts already does it.
+  const ruleLocator = page
+    .getByTestId('contract-semantics-card-0')
+    .getByTestId('query-builder-group-card');
   await selectOption(
     page,
-    ruleLocator.locator('.group--field'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     semanticsData.rules[0].field,
     true
   );
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator'),
+    ruleLocator.getByTestId('advanced-search-operator-select'),
     semanticsData.rules[0].operator
   );
 
@@ -123,75 +136,49 @@ const fillSemanticsForm = async (
 const fillSLAForm = async (
   page: Page,
   slaData: typeof DATA_PRODUCT_SLA,
-  columnName: string
+  columnName?: string
 ) => {
   await page.getByRole('tab', { name: 'SLA' }).click();
 
   await page
     .getByTestId('refresh-frequency-interval-input')
+    .locator('input')
     .fill(slaData.refreshFrequencyInterval);
   await page
     .getByTestId('max-latency-value-input')
+    .locator('input')
     .fill(slaData.maxLatencyValue);
   await page
     .getByTestId('retention-period-input')
+    .locator('input')
     .fill(slaData.retentionPeriod);
 
-  await page.locator('.availability-time-picker').click();
-  await page.locator('.ant-picker-dropdown').waitFor({ state: 'attached' });
-  await page.getByTestId('availability').fill(slaData.availability);
-  await page.locator('.ant-picker-ok .ant-btn').click();
+  await fillContractAvailabilityTime(page, slaData.availability);
+  await pickContractAutocompleteOption(
+    page,
+    'timezone-select',
+    slaData.timezone
+  );
 
-  await page.locator('#timezone').fill(slaData.timezone);
-  await page.locator('#timezone').press('Enter');
+  await selectDropdownOption({
+    page,
+    testId: 'refresh-frequency-unit-select',
+    optionName: slaData.refreshFrequencyUnit,
+  });
+  await selectDropdownOption({
+    page,
+    testId: 'max-latency-unit-select',
+    optionName: slaData.maxLatencyUnit,
+  });
+  await selectDropdownOption({
+    page,
+    testId: 'retention-unit-select',
+    optionName: slaData.retentionUnit,
+  });
 
-  await page.getByTestId('refresh-frequency-unit-select').click();
-  await expect(
-    page.locator(
-      `.refresh-frequency-unit-select [title*='${slaData.refreshFrequencyUnit}']`
-    )
-  ).toBeVisible();
-  await page
-    .locator(
-      `.refresh-frequency-unit-select [title*='${slaData.refreshFrequencyUnit}']`
-    )
-    .click();
-  await expect(
-    page
-      .getByTestId('refresh-frequency-unit-select')
-      .locator('.ant-select-selection-item')
-  ).toContainText(slaData.refreshFrequencyUnit);
-
-  await page.getByTestId('max-latency-unit-select').click();
-  await expect(
-    page.locator(
-      `.max-latency-unit-select [title*='${slaData.maxLatencyUnit}']`
-    )
-  ).toBeVisible();
-  await page
-    .locator(`.max-latency-unit-select [title*='${slaData.maxLatencyUnit}']`)
-    .click();
-  await expect(
-    page
-      .getByTestId('max-latency-unit-select')
-      .locator('.ant-select-selection-item')
-  ).toContainText(slaData.maxLatencyUnit);
-
-  await page.getByTestId('retention-unit-select').click();
-  await expect(
-    page.locator(`.retention-unit-select [title*='${slaData.retentionUnit}']`)
-  ).toBeVisible();
-  await page
-    .locator(`.retention-unit-select [title*='${slaData.retentionUnit}']`)
-    .click();
-  await expect(
-    page
-      .getByTestId('retention-unit-select')
-      .locator('.ant-select-selection-item')
-  ).toContainText(slaData.retentionUnit);
-
-  await page.locator('#columnName-select').fill(columnName);
-  await page.locator('#columnName-select').press('Enter');
+  if (columnName) {
+    await pickContractAutocompleteOption(page, 'columnName-select', columnName);
+  }
 };
 
 const saveContract = async (page: Page) => {
@@ -440,7 +427,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DATA_PRODUCT_CONTRACT_DETAILS.name,
-        DATA_PRODUCT_CONTRACT_DETAILS.description
+        DATA_PRODUCT_CONTRACT_DETAILS.description,
+        'Approved'
       );
     });
 
@@ -456,13 +444,8 @@ test.describe('Data Contract Inheritance', () => {
     });
 
     await test.step('Fill SLA', async () => {
-      const { apiContext } = await getApiContext(page);
-      const tableResponse = await apiContext
-        .get(`/api/v1/tables/${tableWithoutContract.entityResponseData.id}`)
-        .then((res) => res.json());
-
-      const columnName = tableResponse.columns?.[0]?.name ?? 'id';
-      await fillSLAForm(page, DATA_PRODUCT_SLA, columnName);
+      // A data product has no columns, so its SLA has no column.
+      await fillSLAForm(page, DATA_PRODUCT_SLA);
     });
 
     await test.step('Save contract', async () => {
@@ -565,7 +548,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         `dp_partial_${uuid()}`,
-        'Data Product contract for partial inheritance'
+        'Data Product contract for partial inheritance',
+        'Approved'
       );
     });
 
@@ -581,13 +565,8 @@ test.describe('Data Contract Inheritance', () => {
     });
 
     await test.step('Fill Data Product SLA', async () => {
-      const { apiContext } = await getApiContext(page);
-      const tableResponse = await apiContext
-        .get(`/api/v1/tables/${tableWithContract.entityResponseData.id}`)
-        .then((res) => res.json());
-
-      const columnName = tableResponse.columns?.[0]?.name ?? 'id';
-      await fillSLAForm(page, DATA_PRODUCT_SLA, columnName);
+      // A data product has no columns, so its SLA has no column.
+      await fillSLAForm(page, DATA_PRODUCT_SLA);
     });
 
     await test.step('Save Data Product contract', async () => {
@@ -668,7 +647,7 @@ test.describe('Data Contract Inheritance', () => {
       retentionPeriod: '14',
       retentionUnit: 'Day',
       availability: '10:30',
-      timezone: 'GMT+00:00 (UTC)',
+      timezone: 'GMT+00:00 (Europe/London)',
     };
 
     await test.step('Navigate to Data Product and add contract with SLA', async () => {
@@ -683,18 +662,14 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         `dp_sla_edit_test_${uuid()}`,
-        'Data Product contract with SLA for edit test'
+        'Data Product contract with SLA for edit test',
+        'Approved'
       );
     });
 
     await test.step('Fill Data Product SLA', async () => {
-      const { apiContext } = await getApiContext(page);
-      const tableResponse = await apiContext
-        .get(`/api/v1/tables/${tableForSLAEditTest.entityResponseData.id}`)
-        .then((res) => res.json());
-
-      const columnName = tableResponse.columns?.[0]?.name ?? 'id';
-      await fillSLAForm(page, DATA_PRODUCT_SLA, columnName);
+      // A data product has no columns, so its SLA has no column.
+      await fillSLAForm(page, DATA_PRODUCT_SLA);
     });
 
     await test.step('Save Data Product contract', async () => {
@@ -813,7 +788,7 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Verify asset now has its own SLA (no inherited icon)', async () => {
       // Reload to get fresh data
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       // Verify SLA section exists using the correct test ID
@@ -860,7 +835,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await fillTermsOfServiceForm(page, DP_CONTRACT_DETAILS.termsOfService);
@@ -910,7 +886,9 @@ test.describe('Data Contract Inheritance', () => {
 
       // The contract name field should be EMPTY (not pre-filled with DP contract name)
       // because we're creating a NEW contract, not editing the inherited one
-      const contractNameInput = page.getByTestId('contract-name');
+      const contractNameInput = page
+        .getByTestId('contract-name')
+        .locator('input');
 
       // Contract name should be empty for a new contract
       await expect(contractNameInput).toHaveValue('');
@@ -1000,7 +978,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1069,7 +1048,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1150,7 +1130,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1201,8 +1182,9 @@ test.describe('Data Contract Inheritance', () => {
       const assetFqn =
         tableForRemoveAssetTest.entityResponseData.fullyQualifiedName;
       await page
-        .locator(`[data-testid="table-data-card_${assetFqn}"] input`)
-        .check();
+        .locator(`[data-testid="table-data-card_${assetFqn}"]`)
+        .getByTestId('asset-checkbox')
+        .click();
 
       // Click delete button
       const removeResponse = page.waitForResponse(
@@ -1250,7 +1232,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await fillTermsOfServiceForm(page, DP_CONTRACT_DETAILS.termsOfService);
@@ -1347,7 +1330,7 @@ test.describe('Data Contract Inheritance', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Refresh the page to ensure we get the latest contract state
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       // Verify the inherited contract from Data Product is now displayed

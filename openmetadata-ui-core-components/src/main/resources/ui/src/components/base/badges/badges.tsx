@@ -1,7 +1,16 @@
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { Dot } from '@/components/foundations/dot-icon';
 import { cx } from '@/utils/cx';
-import { X as CloseX } from '@untitledui/icons';
-import type { KeyboardEventHandler, MouseEventHandler, ReactNode } from 'react';
+import { X as CloseX } from '../../../icons';
+import type {
+  CSSProperties,
+  HTMLAttributes,
+  KeyboardEventHandler,
+  MouseEventHandler,
+  ReactNode,
+} from 'react';
+import type { Placement } from 'react-aria';
+import { Link as AriaLink } from 'react-aria-components';
 import type {
   BadgeColors,
   BadgeTypeToColorMap,
@@ -20,7 +29,7 @@ export const filledColors: Record<
     root: 'tw:bg-utility-gray-50 tw:text-utility-gray-700 tw:outline-utility-gray-200',
     addon: 'tw:text-utility-gray-500',
     addonButton:
-      'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
+      'tw:hover:bg-utility-gray-100 tw:text-utility-gray-500 tw:hover:text-utility-gray-600',
   },
   brand: {
     root: 'tw:bg-utility-brand-50 tw:text-utility-brand-700 tw:outline-utility-brand-200',
@@ -119,10 +128,10 @@ const withPillTypes = {
       'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:shadow-xs',
     styles: {
       gray: {
-        root: 'tw:bg-primary tw:text-secondary tw:outline-primary',
-        addon: 'tw:text-gray-500',
+        root: 'tw:bg-surface tw:text-secondary tw:outline-subtle',
+        addon: 'tw:text-utility-gray-500',
         addonButton:
-          'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
+          'tw:hover:bg-utility-gray-100 tw:text-utility-gray-500 tw:hover:text-utility-gray-600',
       },
     },
   },
@@ -141,7 +150,7 @@ const withBadgeTypes = {
   },
   [badgeTypes.badgeModern]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:bg-primary tw:text-secondary tw:outline-primary tw:shadow-xs',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:bg-surface tw:text-secondary tw:outline-subtle tw:shadow-xs',
     styles: addonOnlyColors,
   },
 };
@@ -150,14 +159,26 @@ export type BadgeColor<T extends BadgeTypes> = BadgeTypeToColorMap<
   typeof withPillTypes
 >[T];
 
-interface BadgeProps<T extends BadgeTypes> {
+interface BadgeProps<T extends BadgeTypes>
+  extends Omit<HTMLAttributes<HTMLSpanElement>, 'color' | 'style'> {
   type?: T;
   size?: Sizes;
   color?: BadgeColor<T>;
   children: ReactNode;
   className?: string;
   bordered?: boolean;
+  style?: CSSProperties;
   'data-testid'?: string;
+  /** Tooltip text shown on hover/focus */
+  tooltip?: string;
+  /** Placement of the tooltip relative to the badge */
+  tooltipPlacement?: Placement;
+  /**
+   * When provided, the badge renders as a link to this URL instead of a
+   * `<span>` — the entire visible badge (including padding) becomes the
+   * clickable/focusable target, not just its children.
+   */
+  href?: string;
 }
 
 export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
@@ -167,8 +188,16 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
     color = 'gray',
     bordered = true,
     children,
+    tooltip,
+    tooltipPlacement = 'top',
+    className,
+    style,
+    href,
+    'data-testid': dataTestId,
+    ...rest
   } = props;
   const colors = withPillTypes[type];
+  const Component = href ? AriaLink : 'span';
 
   const pillSizes = {
     xs: 'tw:py-0.5 tw:px-1.5 tw:text-[10px] tw:leading-4',
@@ -189,19 +218,52 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
     [badgeTypes.badgeModern]: badgeSizes,
   };
 
-  return (
-    <span
+  const badge = (
+    <Component
+      {...(rest as object)}
+      // `href` only exists on `AriaLink`'s props — `Component` is `'span' |
+      // typeof AriaLink`, so TS can't narrow which one applies here; safe
+      // since `href` is only ever set when `Component` is `AriaLink`.
       className={cx(
         colors.common,
+        // Never wider than its container: a long label truncates instead of spilling out of it.
+        'tw:max-w-full',
         sizes[type][size],
         colors.styles[color].root,
         bordered && 'tw:outline-1 tw:-outline-offset-1',
-        props.className
+        // A linked badge must look identical to a non-linked one: no underline,
+        // and the color root's text class sets its color. `tw:text-inherit` here
+        // would win the tailwind-merge conflict and drop that color.
+        href && 'tw:no-underline',
+        className
       )}
-      data-testid={props['data-testid']}>
-      {children}
-    </span>
+      data-testid={dataTestId}
+      href={href as never}
+      style={style}>
+      {typeof children === 'string' ? (
+        <span className="tw:min-w-0 tw:truncate">{children}</span>
+      ) : (
+        children
+      )}
+    </Component>
   );
+
+  if (tooltip) {
+    return (
+      // A badge is decorative: a span trigger keeps it out of the tab order and
+      // never nests a button inside a clickable parent. min-w-0/max-w-full let
+      // the trigger shrink with the row so a long label still truncates.
+      <Tooltip
+        excludeTriggerFromTabOrder
+        placement={tooltipPlacement}
+        title={tooltip}
+        triggerClassName="tw:inline-flex tw:min-w-0 tw:max-w-full">
+        {badge}
+      </Tooltip>
+    );
+  }
+
+  return badge;
 };
 
 interface BadgeWithDotProps<T extends BadgeTypes> {
@@ -490,13 +552,16 @@ export const BadgeWithImage = <T extends BadgeTypes>(
   );
 };
 
-interface BadgeWithButtonProps<T extends BadgeTypes> {
+interface BadgeWithButtonProps<T extends BadgeTypes>
+  extends Omit<HTMLAttributes<HTMLSpanElement>, 'color' | 'style' | 'onClick'> {
   type?: T;
   size?: Sizes;
   icon?: IconComponentType;
   color?: BadgeTypeToColorMap<typeof withPillTypes>[T];
   bordered?: boolean;
   children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
   /**
    * The label for the button.
    */
@@ -513,6 +578,15 @@ interface BadgeWithButtonProps<T extends BadgeTypes> {
    * Whether the button is disabled.
    */
   isDisabled?: boolean;
+  'data-testid'?: string;
+  /**
+   * The data-testid for the button.
+   */
+  buttonTestId?: string;
+  /** Tooltip text shown on hover/focus */
+  tooltip?: string;
+  /** Placement of the tooltip relative to the badge */
+  tooltipPlacement?: Placement;
 }
 
 export const BadgeWithButton = <T extends BadgeTypes>(
@@ -525,9 +599,17 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     bordered = true,
     icon: Icon = CloseX,
     buttonLabel,
+    buttonTestId,
     children,
     isDisabled,
+    onButtonClick,
     onButtonKeyDown,
+    tooltip,
+    tooltipPlacement = 'top',
+    className,
+    style,
+    'data-testid': dataTestId,
+    ...rest
   } = props;
 
   const colors = withPillTypes[type];
@@ -551,15 +633,30 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     [badgeTypes.badgeModern]: badgeSizes,
   };
 
+  // The tooltip wraps only `children` (label/icon content), never the whole span —
+  // the span also contains the delete <button>, and Tooltip must not wrap a
+  // container whose children include an interactive element (see tooltip.tsx).
+  const content = tooltip ? (
+    <Tooltip placement={tooltipPlacement} title={tooltip}>
+      <span className="tw:contents">{children}</span>
+    </Tooltip>
+  ) : (
+    children
+  );
+
   return (
     <span
+      {...rest}
       className={cx(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
-        bordered && 'tw:outline-1 tw:-outline-offset-1'
-      )}>
-      {children}
+        bordered && 'tw:outline-1 tw:-outline-offset-1',
+        className
+      )}
+      data-testid={dataTestId}
+      style={style}>
+      {content}
       <button
         aria-label={buttonLabel}
         className={cx(
@@ -570,11 +667,12 @@ export const BadgeWithButton = <T extends BadgeTypes>(
           colors.styles[color].addonButton,
           type === 'pill-color' ? 'tw:rounded-full' : 'tw:rounded-[3px]'
         )}
+        data-testid={buttonTestId}
         disabled={isDisabled}
         type="button"
-        onClick={props.onButtonClick}
+        onClick={onButtonClick}
         onKeyDown={onButtonKeyDown}>
-        <Icon className="tw:size-3 tw:stroke-[3px] tw:transition-inherit-all" />
+        <Icon className="tw:p-[0.5px] tw:transition-inherit-all" size={16} />
       </button>
     </span>
   );

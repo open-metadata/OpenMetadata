@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { EntityReference } from '../../../generated/entity/type';
+import { getDomainStyles } from '../../../rest/domainAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import DataProductsContainer from './DataProductsContainer.component';
 
-jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+jest.mock('../../../rest/domainAPI', () => ({
+  getDomainStyles: jest.fn(),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -37,36 +39,29 @@ jest.mock('../DataProductsSelectList/DataProductsSelectList', () => ({
     .fn()
     .mockImplementation(
       ({
+        children,
         fetchOptions,
+        isOpen,
+        onOpenChange,
       }: {
+        children?: React.ReactNode;
         fetchOptions?: (searchText: string, page?: number) => void;
+        isOpen?: boolean;
+        onOpenChange?: (open: boolean) => void;
       }) => (
-        <button
-          data-testid="dps-fetch"
-          onClick={() => fetchOptions?.('term', 2)}>
-          Fetch
-        </button>
+        <>
+          {/* Like FilterSelect, the trigger toggles the picker. */}
+          <span onClickCapture={() => onOpenChange?.(!isOpen)}>{children}</span>
+          {isOpen && (
+            <button
+              data-testid="dps-fetch"
+              onClick={() => fetchOptions?.('term', 2)}>
+              Fetch
+            </button>
+          )}
+        </>
       )
     ),
-}));
-
-jest.mock('../../common/WidgetActionButton/WidgetActionButton', () => ({
-  WidgetPlusButton: jest
-    .fn()
-    .mockImplementation(({ onClick, disabled, ...props }) => (
-      <button
-        data-testid="add-data-product"
-        disabled={disabled}
-        onClick={onClick}
-        {...props}>
-        Add
-      </button>
-    )),
-  WidgetEditButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button data-testid="edit-button" onClick={onClick} {...props}>
-      Edit
-    </button>
-  )),
 }));
 
 jest.mock('../../common/WidgetCard/WidgetCard', () => ({
@@ -77,11 +72,6 @@ jest.mock('../../common/WidgetCard/WidgetCard', () => ({
       {children}
     </div>
   )),
-}));
-
-jest.mock('../../Tag/TagsV1/TagsV1.component', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => <div>Tag</div>),
 }));
 
 const domains: EntityReference[] = [
@@ -99,6 +89,68 @@ const defaultProps = {
 describe('DataProductsContainer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getDomainStyles as jest.Mock).mockResolvedValue({ data: [] });
+  });
+
+  // Data product chips drew a plain grey badge whatever the data product's
+  // style; they now read its colour and icon by id, like domain chips.
+  it('draws each data product chip in its own colour and icon', async () => {
+    (getDomainStyles as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          id: 'dp-1',
+          type: 'dataProduct',
+          style: { color: '#F79009', iconURL: 'Tag01' },
+        },
+      ],
+    });
+
+    renderWithQueryClient(
+      <DataProductsContainer
+        {...defaultProps}
+        dataProducts={[
+          {
+            id: 'dp-1',
+            type: 'dataProduct',
+            name: 'orders',
+            fullyQualifiedName: 'orders',
+          },
+          {
+            id: 'dp-2',
+            type: 'dataProduct',
+            name: 'returns',
+            fullyQualifiedName: 'returns',
+          },
+        ]}
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('data-product-orders')).toHaveStyle({
+        '--tag-color': '#F79009',
+      })
+    );
+
+    expect(screen.getByTestId('data-product-returns')).not.toHaveStyle({
+      '--tag-color': '#F79009',
+    });
+    expect(screen.getByTestId('data-product-orders')).toHaveAttribute(
+      'href',
+      expect.stringContaining('orders')
+    );
+  });
+
+  it('closes the picker when its button is pressed again, saving nothing', () => {
+    renderWithQueryClient(<DataProductsContainer {...defaultProps} />);
+
+    fireEvent.click(screen.getByTestId('add-data-product'));
+
+    expect(screen.getByTestId('dps-fetch')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('add-data-product'));
+
+    expect(screen.queryByTestId('dps-fetch')).not.toBeInTheDocument();
+    expect(defaultProps.onSave).not.toHaveBeenCalled();
   });
 
   it('scopes the fetch to active domains by default (rule enabled)', async () => {
@@ -106,7 +158,7 @@ describe('DataProductsContainer', () => {
       '../../../rest/dataProductAPI'
     );
 
-    render(<DataProductsContainer {...defaultProps} />);
+    renderWithQueryClient(<DataProductsContainer {...defaultProps} />);
 
     fireEvent.click(screen.getByTestId('add-data-product'));
     fireEvent.click(screen.getByTestId('dps-fetch'));
@@ -115,7 +167,8 @@ describe('DataProductsContainer', () => {
       expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
         'term',
         ['domainA'],
-        2
+        2,
+        50
       );
     });
   });
@@ -125,7 +178,7 @@ describe('DataProductsContainer', () => {
       '../../../rest/dataProductAPI'
     );
 
-    render(
+    renderWithQueryClient(
       <DataProductsContainer
         {...defaultProps}
         requireDomainForDataProduct={false}
@@ -139,22 +192,27 @@ describe('DataProductsContainer', () => {
       expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
         'term',
         [],
-        2
+        2,
+        50
       );
     });
   });
 
   it('disables add button with no domain when rule is enabled', () => {
-    render(<DataProductsContainer {...defaultProps} activeDomains={[]} />);
+    renderWithQueryClient(
+      <DataProductsContainer {...defaultProps} activeDomains={[]} />
+    );
 
-    expect(screen.getByTestId('add-data-product')).toBeDisabled();
-    expect(
-      screen.getByText('message.select-domain-to-add-data-product')
-    ).toBeInTheDocument();
+    const addButton = screen.getByTestId('add-data-product');
+
+    expect(addButton).toBeDisabled();
+    expect(addButton).toHaveAccessibleName(
+      'message.select-domain-to-add-data-product'
+    );
   });
 
   it('enables add button with no domain when rule is disabled', () => {
-    render(
+    renderWithQueryClient(
       <DataProductsContainer
         {...defaultProps}
         activeDomains={[]}
@@ -162,9 +220,11 @@ describe('DataProductsContainer', () => {
       />
     );
 
-    expect(screen.getByTestId('add-data-product')).not.toBeDisabled();
-    expect(
-      screen.queryByText('message.select-domain-to-add-data-product')
-    ).not.toBeInTheDocument();
+    const addButton = screen.getByTestId('add-data-product');
+
+    expect(addButton).toBeEnabled();
+    expect(addButton).not.toHaveAccessibleName(
+      'message.select-domain-to-add-data-product'
+    );
   });
 });

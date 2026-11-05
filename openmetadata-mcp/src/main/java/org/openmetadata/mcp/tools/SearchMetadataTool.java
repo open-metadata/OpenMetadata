@@ -3,6 +3,7 @@ package org.openmetadata.mcp.tools;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -29,6 +30,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.mask.TestCaseSearchMasker;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
@@ -38,16 +40,27 @@ public class SearchMetadataTool implements McpTool {
   private static final int MAX_ALLOWED_AGGREGATION_BUCKETS = 50;
 
   private static final Set<String> REFERENCE_FIELDS =
-      Set.of("service", "database", "databaseSchema");
+      Set.of("service", "database", "databaseSchema", "parent", "metricGroup");
   private static final Set<String> REFERENCE_LIST_FIELDS = Set.of("owners", "domains");
   private static final Set<String> TAG_FIELDS = Set.of("tier", "tags");
   private static final String CERTIFICATION_FIELD = "certification";
   private static final Set<String> BULK_FIELDS =
       Set.of("columns", "columnNames", "charts", "tasks");
   private static final int MAX_BULK_ITEMS = 60;
+  private static final String METRIC_EXPRESSION_FIELD = "metricExpression";
   private static final String DESCRIPTION_TRUNCATED_KEY = "descriptionTruncated";
   private static final String TEST_CASE_ENTITY = "testCase";
   private static final String NEVER_RUN_KEY = "neverRun";
+  private final PersonaSearchScope.Provider personaSearchScopeProvider;
+
+  public SearchMetadataTool() {
+    this(PersonaSearchScope::resolve);
+  }
+
+  @VisibleForTesting
+  SearchMetadataTool(PersonaSearchScope.Provider personaSearchScopeProvider) {
+    this.personaSearchScopeProvider = personaSearchScopeProvider;
+  }
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =
       List.of(
@@ -71,10 +84,14 @@ public class SearchMetadataTool implements McpTool {
           "originEntityFQN",
           "testCaseStatus",
           "testCaseType",
-          "dataQualityDimension",
+          "dataQualityDimensionName",
           "testPlatforms",
           "basic",
-          "lastResultTimestamp");
+          "lastResultTimestamp",
+          // ADR:2026-10-29-search-metadata-hits-show-their-place-in-a-hierarchy
+          "parent",
+          "childrenCount",
+          "metricGroup");
 
   // Latest-result subset kept in test case search results; the full testCaseResult object
   // (testResultValue, sample row counts, ...) is available via the 'fields' parameter.
@@ -119,6 +136,14 @@ public class SearchMetadataTool implements McpTool {
                   "domains"),
               McpResponseTrim.VECTOR_NOISE_FIELDS.stream())
           .toList();
+
+  private static final String JSON_NULL_LITERAL = "null";
+
+  /** The OpenSearch DSL wrapper key, distinct from the "query" search-text parameter. */
+  private static final String QUERY_KEY = "query";
+
+  private static final String QUERY_FILTER_EXAMPLE =
+      "{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}}";
 
   /** Lucene match-anything query, mirroring the {@code @DefaultValue("*")} on the REST search API. */
   private static final String MATCH_ANY_QUERY = "*";
@@ -217,23 +242,15 @@ public class SearchMetadataTool implements McpTool {
     }
 
     String queryFilter = null;
-    Object queryFilterParam = params.get("queryFilter");
-    if (queryFilterParam != null) {
-      // LLM callers occasionally send the filter as a JSON object instead of a string; serialize
-      // non-string input back to JSON rather than failing on a cast.
-      String rawFilter =
-          queryFilterParam instanceof String stringValue
-              ? stringValue
-              : JsonUtils.pojoToJson(queryFilterParam);
-      JsonNode queryNode = JsonUtils.getObjectMapper().readTree(rawFilter);
-
-      if (!queryNode.has("query")) {
+    JsonNode queryNode = queryFilterClause(params.get("queryFilter"));
+    if (queryNode != null) {
+      if (!queryNode.has(QUERY_KEY)) {
         ObjectNode queryWrapper = JsonUtils.getObjectMapper().createObjectNode();
-        queryWrapper.set("query", excludeTypesFrom(queryNode, excludedTypes));
+        queryWrapper.set(QUERY_KEY, excludeTypesFrom(queryNode, excludedTypes));
         queryFilter = JsonUtils.pojoToJson(queryWrapper);
       } else {
         ObjectNode wrapped = (ObjectNode) queryNode;
-        wrapped.set("query", excludeTypesFrom(wrapped.get("query"), excludedTypes));
+        wrapped.set(QUERY_KEY, excludeTypesFrom(wrapped.get(QUERY_KEY), excludedTypes));
         queryFilter = JsonUtils.pojoToJson(wrapped);
       }
       LOG.debug("Applied query filter to query: {}", queryFilter);
@@ -258,11 +275,16 @@ public class SearchMetadataTool implements McpTool {
     // the text query (OpenSearchSearchManager#applyQueryFilter) and additionally applies the
     // deleted
     // filter, ranked scoring, and the search preference.
+    String effectiveQueryFilter = nullOrEmpty(queryFilter) ? exclusionFilter : queryFilter;
+    Optional<PersonaSearchScope> personaScope = personaSearchScope(securityContext, params);
+    if (personaScope.isPresent()) {
+      effectiveQueryFilter = personaScope.orElseThrow().applyTo(effectiveQueryFilter);
+    }
     SearchRequest searchRequest =
         new SearchRequest()
             .withQuery(nullOrEmpty(query) ? MATCH_ANY_QUERY : query)
             .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-            .withQueryFilter(nullOrEmpty(queryFilter) ? exclusionFilter : queryFilter)
+            .withQueryFilter(effectiveQueryFilter)
             .withSize(size)
             .withFrom(from)
             .withFetchSource(true)
@@ -270,6 +292,9 @@ public class SearchMetadataTool implements McpTool {
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
     Response response = Entity.getSearchRepository().search(searchRequest, subjectContext);
+    response =
+        TestCaseSearchMasker.maskSearch(
+            response, authorizer, securityContext, Entity.getSearchRepository(), searchRequest);
 
     Map<String, Object> searchResponse;
     if (response.getEntity() instanceof String responseStr) {
@@ -290,7 +315,16 @@ public class SearchMetadataTool implements McpTool {
             requestedFields,
             includeAggregations,
             maxAggregationBuckets);
-    return dropExcludedTypes(enhanced, excludedTypes);
+    Map<String, Object> result = dropExcludedTypes(enhanced, excludedTypes);
+    personaScope.ifPresent(scope -> scope.annotate(result));
+    return result;
+  }
+
+  private Optional<PersonaSearchScope> personaSearchScope(
+      CatalogSecurityContext securityContext, Map<String, Object> params) {
+    return McpParams.getBoolean(params, "ignorePersonaScope", false)
+        ? Optional.empty()
+        : personaSearchScopeProvider.resolve(securityContext);
   }
 
   /**
@@ -585,6 +619,75 @@ public class SearchMetadataTool implements McpTool {
   }
 
   /**
+   * The caller's {@code queryFilter} as a usable query clause, or null when they supplied none.
+   *
+   * <p>Tool-calling models fill every optional string the schema lists, sending {@code ""} or {@code
+   * "null"} for the ones they have no value for. Those carry no clause, so they have to read as an
+   * omitted filter: wrapped instead they become {@code {"query": null}}, which the engine rejects,
+   * failing the search the model actually asked for. A filter that is present but cannot be a clause
+   * at all is the caller's to correct, so it is named rather than sent on as an opaque backend
+   * rejection.
+   */
+  private static JsonNode queryFilterClause(Object queryFilterParam) {
+    String rawFilter = rawQueryFilter(queryFilterParam);
+    JsonNode clause = null;
+    if (!nullOrEmpty(rawFilter) && !JSON_NULL_LITERAL.equalsIgnoreCase(rawFilter)) {
+      clause = parsedQueryFilter(rawFilter);
+    }
+    return clause;
+  }
+
+  private static String rawQueryFilter(Object queryFilterParam) {
+    // LLM callers occasionally send the filter as a JSON object instead of a string; serialize
+    // non-string input back to JSON rather than failing on a cast.
+    String rawFilter = null;
+    if (queryFilterParam instanceof String stringValue) {
+      rawFilter = stringValue.trim();
+    } else if (queryFilterParam != null) {
+      rawFilter = JsonUtils.pojoToJson(queryFilterParam);
+    }
+    return rawFilter;
+  }
+
+  private static JsonNode parsedQueryFilter(String rawFilter) {
+    JsonNode parsed = readQueryFilter(rawFilter);
+    // A model that has seen one {"query": {...}} example sends the degenerate value pre-wrapped, so
+    // the clause is checked where it actually sits. Validating only the outer node lets
+    // {"query": null} straight through - the very payload the engine rejects.
+    JsonNode clause = parsed.has(QUERY_KEY) ? parsed.get(QUERY_KEY) : parsed;
+    boolean absent = carriesNoClause(clause);
+    if (!absent && !clause.isObject()) {
+      throw new IllegalArgumentException(
+          "queryFilter must be a JSON object holding an OpenSearch query clause, e.g. "
+              + QUERY_FILTER_EXAMPLE
+              + " - got: "
+              + rawFilter);
+    }
+    return absent ? null : parsed;
+  }
+
+  private static JsonNode readQueryFilter(String rawFilter) {
+    try {
+      return JsonUtils.getObjectMapper().readTree(rawFilter);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException(
+          "queryFilter is not valid JSON: " + e.getOriginalMessage(), e);
+    }
+  }
+
+  /**
+   * True when the node holds no query clause at all: a JSON null, a missing node, an empty object,
+   * or blank text. An array or a number is the wrong type rather than an absent value, so it is left
+   * for the caller to correct.
+   */
+  private static boolean carriesNoClause(JsonNode node) {
+    return node.isMissingNode()
+        || node.isNull()
+        || (node.isObject() && node.isEmpty())
+        || (node.isTextual() && node.asText().isBlank());
+  }
+
+  /**
    * A queryFilter whose only job is to exclude entity types, for the path where the caller supplied
    * no filter of their own. Null when there is nothing to exclude, so the request is unchanged.
    */
@@ -593,7 +696,7 @@ public class SearchMetadataTool implements McpTool {
     String filter = null;
     if (!excluded.isEmpty()) {
       ObjectNode wrapper = JsonUtils.getObjectMapper().createObjectNode();
-      wrapper.set("query", excludeTypesFrom(null, excluded));
+      wrapper.set(QUERY_KEY, excludeTypesFrom(null, excluded));
       filter = JsonUtils.pojoToJson(wrapper);
     }
     return filter;
@@ -649,7 +752,8 @@ public class SearchMetadataTool implements McpTool {
    *
    * <p>{@code fields=columns} hydrates every column with its full description, so one wide table can
    * dominate a page. A search hit exists to be chosen between; {@code get_entity_details} is where
-   * the full detail lives.
+   * the full detail lives. A requested metric expression is capped the same way every other metric
+   * summary caps it, so one long SQL body cannot push the other hits out of the response budget.
    */
   private static Object capBulkField(String field, Object value, Map<String, Object> result) {
     Object capped = value;
@@ -659,6 +763,9 @@ public class SearchMetadataTool implements McpTool {
       capped = new ArrayList<>(items.subList(0, MAX_BULK_ITEMS));
       result.put(field + "Total", items.size());
       result.put(field + "Truncated", Boolean.TRUE);
+    }
+    if (METRIC_EXPRESSION_FIELD.equals(field) && value instanceof Map<?, ?> expression) {
+      capped = McpResponseTrim.cappedMetricExpression(expression);
     }
     return capped;
   }

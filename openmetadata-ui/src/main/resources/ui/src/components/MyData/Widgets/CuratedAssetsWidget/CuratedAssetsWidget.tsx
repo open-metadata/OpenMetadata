@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
@@ -115,17 +115,28 @@ const CuratedAssetsWidgetContent = ({
   );
 
   const queryFilter = useMemo(
-    () => get(curatedAssetsConfig, 'queryFilter', '{}'),
+    () =>
+      typeof curatedAssetsConfig?.queryFilter === 'string'
+        ? curatedAssetsConfig.queryFilter
+        : '{}',
     [curatedAssetsConfig]
   );
 
   const selectedResource = useMemo(
-    () => get(curatedAssetsConfig, 'resources', []),
+    () =>
+      Array.isArray(curatedAssetsConfig?.resources)
+        ? curatedAssetsConfig.resources.filter(
+            (resource): resource is string => typeof resource === 'string'
+          )
+        : [],
     [curatedAssetsConfig]
   );
 
   const title = useMemo(
-    () => get(curatedAssetsConfig, 'title', ''),
+    () =>
+      typeof curatedAssetsConfig?.title === 'string'
+        ? curatedAssetsConfig.title
+        : '',
     [curatedAssetsConfig]
   );
 
@@ -255,9 +266,9 @@ const CuratedAssetsWidgetContent = ({
   };
 
   const handleSortByClick = useCallback(
-    (e: MenuInfo) => {
+    (key: string) => {
       if (!isEditView) {
-        setSelectedSortBy(e.key);
+        setSelectedSortBy(key);
 
         return;
       }
@@ -270,7 +281,7 @@ const CuratedAssetsWidgetContent = ({
         const updatedLayout = hasCurrentCuratedAssets
           ? currentLayout?.map((layout: WidgetConfig) =>
               layout.i === widgetKey
-                ? { ...layout, config: { ...layout.config, sortBy: e.key } }
+                ? { ...layout, config: { ...layout.config, sortBy: key } }
                 : layout
             )
           : [
@@ -280,7 +291,7 @@ const CuratedAssetsWidgetContent = ({
                 i: widgetKey,
                 config: {
                   ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES.config,
-                  sortBy: e.key,
+                  sortBy: key,
                 },
               },
             ];
@@ -349,7 +360,16 @@ const CuratedAssetsWidgetContent = ({
 
   const entityListLinkItem = useCallback(
     (item: SearchIndexSearchSourceMapping[SearchIndex]) => {
-      const title = getEntityName(item);
+      const title = getEntityName({
+        name:
+          'name' in item && typeof item.name === 'string'
+            ? item.name
+            : undefined,
+        displayName:
+          'displayName' in item && typeof item.displayName === 'string'
+            ? item.displayName
+            : undefined,
+      });
       const description = get(item, 'description');
       const certification = get(item, 'certification');
 
@@ -357,7 +377,7 @@ const CuratedAssetsWidgetContent = ({
         <Link
           className="curated-assets-list-item-link"
           to={getEntityLinkFromType(
-            item.fullyQualifiedName as string,
+            'fullyQualifiedName' in item ? item.fullyQualifiedName ?? '' : '',
             item.type as EntityType
           )}>
           <div
@@ -366,11 +386,14 @@ const CuratedAssetsWidgetContent = ({
             {getEntityIcon(item as SearchSourceAlias, EntityIconSize.Size24)}
             <div className="flex flex-col curated-assets-list-item-content">
               <div className="flex items-center gap-1">
-                <Typography.Text
+                <Typography
                   className="entity-list-item-title"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {title}
-                </Typography.Text>
+                </Typography>
                 {certification && (
                   <CertificationTag
                     certification={certification as AssetCertification}
@@ -378,11 +401,15 @@ const CuratedAssetsWidgetContent = ({
                 )}
               </div>
               {description && (
-                <Typography.Text
-                  className="max-two-lines entity-list-item-description text-grey-muted"
-                  ellipsis={{ tooltip: true }}>
+                <Typography
+                  className="max-two-lines entity-list-item-description"
+                  color="secondary"
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {getTextFromHtmlString(description)}
-                </Typography.Text>
+                </Typography>
               )}
             </div>
           </div>
@@ -394,13 +421,16 @@ const CuratedAssetsWidgetContent = ({
 
   const entityListData = useMemo(() => {
     return isFullSize ? (
-      <Row className="curated-assets-grid">
+      <Grid className="layout-row layout-grid curated-assets-grid">
         {data.map((item) => (
-          <Col key={item.id} span={12}>
+          <Grid.Item
+            className="layout-column"
+            key={'id' in item ? item.id : undefined}
+            span={12}>
             {entityListLinkItem(item)}
-          </Col>
+          </Grid.Item>
         ))}
-      </Row>
+      </Grid>
     ) : (
       data.map((item) => entityListLinkItem(item))
     );
@@ -437,17 +467,17 @@ const CuratedAssetsWidgetContent = ({
         selectedSortBy={selectedSortBy}
         sortOptions={CURATED_ASSETS_SORT_BY_OPTIONS}
         title={
-          <Typography.Text
+          <Typography
             className={
               isFullSize ? 'widget-title-full-size' : 'widget-title-half-size'
             }
             ellipsis={{ tooltip: true }}>
             {title || t('label.curated-asset-plural')}
-          </Typography.Text>
+          </Typography>
         }
         widgetKey={widgetKey}
         onEditClick={handleModalOpen}
-        onSortChange={(key: string) => handleSortByClick({ key } as MenuInfo)}
+        onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />
     ),

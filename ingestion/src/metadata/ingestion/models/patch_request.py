@@ -92,6 +92,10 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "reviewers": True,
     # Table Entity Fields
     "tableType": True,
+    # Source-managed: the connector recomputes it every run, so the patch has to be
+    # able to add, replace and remove it. Omitting it here silently drops synonyms
+    # on every table that already exists in OpenMetadata.
+    "aliases": True,
     "columns": {"__all__": ALLOWED_COLUMN_FIELDS},
     "tableConstraints": True,
     "tablePartition": True,
@@ -421,6 +425,7 @@ def build_patch(  # noqa: C901
         # content changed.  The merge in _sort_array_entity_fields already
         # applied the restrict_update_fields / override_metadata logic, so
         # the replacement value is ready to use as-is.
+        patch.patch = list(patch.patch)
         for field in active_array_fields:
             if hasattr(source, field) and hasattr(destination, field):
                 src_json = json.loads(
@@ -438,13 +443,14 @@ def build_patch(  # noqa: C901
                     )
                 )
                 if src_json.get(field) != dst_json.get(field):
-                    patch.patch.append(
+                    patch.patch = [
+                        *patch.patch,
                         {
                             "op": "replace",
                             "path": f"/{field}",
                             "value": dst_json.get(field, []),
-                        }
-                    )
+                        },
+                    ]
 
         if not patch.patch:
             return None

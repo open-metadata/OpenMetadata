@@ -12,7 +12,7 @@
  */
 import { AxiosResponse } from 'axios';
 import { CustomMetric, Table } from '../generated/entity/data/table';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/tables';
 

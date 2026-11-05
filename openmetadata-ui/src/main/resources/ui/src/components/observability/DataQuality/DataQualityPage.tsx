@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Tabs } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus, Upload01 } from '@untitledui/icons';
+import {
+  Button,
+  Dropdown,
+  PageLayout,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  Plus,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { ComponentType, lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -21,6 +30,7 @@ import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
+import { useTabSearchMemory } from '../../../hooks/observability/data-quality/useTabSearchMemory';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import DataQualityProvider, {
   useDataQualityProvider,
@@ -29,7 +39,6 @@ import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import Loader from '../../common/Loader/Loader';
 import TestCaseFormDrawer from '../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import BundleSuiteFormDrawer from '../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
@@ -92,7 +101,7 @@ const DataQualityTabContent = ({
 
 const DataQualityPage = () => {
   const { t } = useTranslation();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   // App mode keeps visited routes mounted, so this page outlives its own URL.
   // Its filters come from the query string — which is global — so once another
   // route owns the URL, anything derived from it here is that route's state,
@@ -126,17 +135,21 @@ const DataQualityPage = () => {
     [activeTab]
   );
 
+  const getTabSearch = useTabSearchMemory(activeTab, search, ownsTheUrl);
+
   const handleTabChange = useCallback(
     (tabKey: string) => {
       if (tabKey !== activeTab) {
-        navigate(
-          observabilityRouterClassBase.getDataQualityPagePath(
-            tabKey as DataQualityPageTabs
-          )
-        );
+        const targetTab = tabKey as DataQualityPageTabs;
+
+        void navigate({
+          pathname:
+            observabilityRouterClassBase.getDataQualityPagePath(targetTab),
+          search: getTabSearch(targetTab),
+        });
       }
     },
-    [navigate, activeTab]
+    [navigate, activeTab, getTabSearch]
   );
 
   const handleOpenTestCaseModal = useCallback(
@@ -276,7 +289,7 @@ const DataQualityPage = () => {
     <DataQualityProvider createActions={createActions} isActive={ownsTheUrl}>
       <ObservabilityPageShell
         header={
-          <HeaderShell
+          <PageLayout.PageHeader
             actions={trailing}
             badge={
               <LearningIcon
@@ -318,7 +331,6 @@ const DataQualityPage = () => {
                 </Tabs.List>
               </Tabs>
             }
-            padding="comfortable"
             subtitle={t('message.page-sub-header-for-data-quality')}
             title={t('label.data-quality')}
             variant="gradient"
@@ -330,13 +342,11 @@ const DataQualityPage = () => {
 
       <BundleSuiteFormDrawer
         open={isBundleSuiteModalOpen}
-        variant="modal"
         onClose={handleCloseBundleSuiteModal}
         onSuccess={handleBundleSuiteSuccess}
       />
       <TestCaseFormDrawer
         open={isTestCaseModalOpen}
-        variant="modal"
         onClose={handleCloseTestCaseModal}
         onFormSubmit={handleTestCaseSubmit}
       />

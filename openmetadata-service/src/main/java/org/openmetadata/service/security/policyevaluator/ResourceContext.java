@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +33,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  * <p>As multiple threads don't access this, the class is not thread-safe by design.
  */
 @Slf4j
-public class ResourceContext<T extends EntityInterface> implements ResourceContextInterface {
+public class ResourceContext<T extends EntityInterface<?>> implements ResourceContextInterface {
   @NonNull @Getter private final String resource;
   private final EntityRepository<T> entityRepository;
   private final UUID id;
@@ -46,6 +47,14 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   // When set (bulk authorization), on-demand fields are batch-loaded for the whole request instead
   // of once per entity. Null for single-entity requests, which keep the per-entity load.
   private BulkFieldHydrator bulkFieldHydrator;
+  private List<TagLabel> policyTags;
+  // Service attributes are read only when a condition asks for them, then memoized for this
+  // context. The loaded flags are needed separately because "no service" is a valid null result.
+  private EntityInterface<?> serviceEntity;
+  private boolean serviceEntityLoaded;
+  private List<TagLabel> serviceTags;
+  private boolean serviceTagsLoaded;
+  private Boolean serviceResource;
 
   public ResourceContext(@NonNull String resource) {
     this.resource = resource;
@@ -142,9 +151,9 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     // Check for parents owners'
     List<EntityReference> owners =
         nullOrEmpty(entity.getOwners()) ? null : new ArrayList<>(entity.getOwners());
-    List<EntityInterface> parentEntities = resolveParentEntities(entity);
+    List<EntityInterface<?>> parentEntities = resolveParentEntities(entity);
     if (!nullOrEmpty(parentEntities)) {
-      for (EntityInterface parentEntity : parentEntities) {
+      for (EntityInterface<?> parentEntity : parentEntities) {
         if (parentEntity.getOwners() != null) {
           if (owners == null) owners = new ArrayList<>();
           owners.addAll(parentEntity.getOwners());
@@ -155,7 +164,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     return owners;
   }
 
-  private List<EntityInterface> resolveParentEntities(T entity) {
+  private List<EntityInterface<?>> resolveParentEntities(T entity) {
     Fields fields = new Fields(new HashSet<>(Collections.singleton(FIELD_OWNERS)));
     try {
       List<EntityReference> parentReferences =
@@ -167,7 +176,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
           };
 
       if (nullOrEmpty(parentReferences)) return null;
-      List<EntityInterface> parentEntities = new ArrayList<>();
+      List<EntityInterface<?>> parentEntities = new ArrayList<>();
 
       for (EntityReference parentReference : parentReferences) {
         if (parentReference == null || parentReference.getId() == null) {
@@ -190,8 +199,30 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     if (entity == null) {
       return Collections.emptyList();
     }
+    if (entityRepository.hasNestedPolicyTags()) {
+      return nestedPolicyTags();
+    }
     ensureTagsLoaded();
     return Entity.getEntityTags(getResource(), entity);
+  }
+
+  /**
+   * Tags on inline children (columns, tasks, schema fields) are read from a copy loaded with the
+   * policy tag projection, so the entity being authorized, which a GET may return as is, keeps the
+   * projection it was loaded with (ADR:2026-11-03-tag-conditions-see-the-tags-of-inline-children).
+   */
+  private List<TagLabel> nestedPolicyTags() {
+    if (policyTags == null) {
+      List<TagLabel> fromBatch =
+          bulkFieldHydrator == null ? null : bulkFieldHydrator.policyTags(entity.getId());
+      policyTags =
+          fromBatch != null
+              ? fromBatch
+              : entityRepository
+                  .loadPolicyTags(List.of(entity))
+                  .getOrDefault(entity.getId(), List.of());
+    }
+    return policyTags;
   }
 
   /**
@@ -207,14 +238,158 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       if (bulkFieldHydrator != null) {
         bulkFieldHydrator.hydrate(Entity.FIELD_TAGS); // one batch query for the whole bulk request
       } else {
-        entityRepository.setFieldsInternal(entity, entityRepository.getFields(Entity.FIELD_TAGS));
+        Fields tagFields = entityRepository.getFields(Entity.FIELD_TAGS);
+        entityRepository.setFieldsInternal(entity, tagFields);
+        // A tag a deny rule matches may be inherited from a parent (a service, a database), so a
+        // matchAnyTag rule must see inherited tags too, not only the entity's own.
+        entityRepository.setInheritedFieldsInternal(entity, tagFields);
       }
       loadedFieldNames.add(Entity.FIELD_TAGS);
     }
   }
 
+  /**
+   * A service is its own service, so a condition over service attributes hides the service itself
+   * alongside its assets. Without this a Deny would strip every table from the catalog but leave
+   * the service listed, which reads as a bug rather than as a policy. Mirrors {@link #getOwners()}
+   * treating a user as its own owner and {@link #getDomains()} treating a domain as its own domain.
+   */
   @Override
-  public EntityInterface getResolvedEntity() {
+  public EntityReference getServiceReference() {
+    resolveEntity();
+    if (entity == null) {
+      return null;
+    }
+    if (isServiceResource()) {
+      return entity.getEntityReference();
+    }
+    EntityReference service = entity.getService();
+    if (service == null) {
+      warnServiceNotPopulated();
+    }
+    return service;
+  }
+
+  /**
+   * {@code EntityInterface.getService()} defaults to null, so an entity type whose repository does
+   * not populate it answers "no service" here. Every {@code matchAnyService*} condition then
+   * returns false, and for a Deny rule false means the rule does not apply -- the assets stay
+   * visible with no exception and nothing in the log. The premise that roughly thirty
+   * service-backed repositories all populate the field is a convention with nothing asserting it,
+   * so a type that does not, or one added later that forgets, silently opts itself out of a
+   * feature whose whole purpose is access control.
+   *
+   * <p>Logged once per entity type so a missing field is greppable without putting a line on every
+   * authorization check. Bounded by the number of registered entity types.
+   */
+  private void warnServiceNotPopulated() {
+    String type = entityRepository.getEntityType();
+    if (!SERVICE_FIELD_REPORTED.add(type)) {
+      return;
+    }
+    if (ServiceAttributeUtil.declaresService(entityRepository.getEntityClass())) {
+      LOG.warn(
+          "Entity type {} declares 'service' but did not populate it, so "
+              + "matchAnyServiceTag/Type/Name/Environment cannot match it and any Deny rule using "
+              + "them will not hide its assets",
+          type);
+    } else {
+      // A Deny scoped to All evaluates against every resource type, so these conditions are asked
+      // about glossary terms, users, teams and domains on every such check. Having no service is
+      // the documented, correct answer for them -- warning would fire on correct behaviour and
+      // bury the case above.
+      LOG.debug("Entity type {} has no service, so service conditions do not apply to it", type);
+    }
+  }
+
+  private static final Set<String> SERVICE_FIELD_REPORTED = ConcurrentHashMap.newKeySet();
+
+  /**
+   * Tags of the service that ingested this resource.
+   *
+   * <p>Loaded on demand and memoized for the life of this context: a rule set with several service
+   * conditions evaluates each of them against every requested operation, so the accessor is called
+   * many times per entity.
+   *
+   * <p>No {@link BulkFieldHydrator} entry is needed even in bulk requests. Unlike the entity's own
+   * tags, this read is keyed by the service rather than by the entity, and {@link
+   * org.openmetadata.service.util.RequestEntityCache} keys on (type, id, fields, include) — so a
+   * fixed {@code tags} projection collapses the whole batch to one read per distinct service, not
+   * one per entity.
+   */
+  @Override
+  public List<TagLabel> getServiceTags() {
+    if (!serviceTagsLoaded) {
+      serviceTags = loadServiceTags();
+      serviceTagsLoaded = true;
+    }
+    return serviceTags;
+  }
+
+  /** Read off the already-resolved service entity, so matching costs no extra read. */
+  @Override
+  public String getServiceType() {
+    return ServiceAttributeUtil.serviceTypeOf(getServiceEntity());
+  }
+
+  @Override
+  public String getServiceEnvironment() {
+    return ServiceAttributeUtil.environmentOf(getServiceEntity());
+  }
+
+  /**
+   * The resolved service entity, or null when the resource has no service or the service is gone.
+   * Carries the service's {@code tags}; every other service field is stored inline, so callers
+   * needing {@code serviceType} or {@code name} can read them off the same instance.
+   */
+  private EntityInterface<?> getServiceEntity() {
+    if (!serviceEntityLoaded) {
+      serviceEntity = loadServiceEntity();
+      serviceEntityLoaded = true;
+    }
+    return serviceEntity;
+  }
+
+  private List<TagLabel> loadServiceTags() {
+    if (isServiceResource()) {
+      // The resource is the service: its own tags are already reachable through the entity's
+      // on-demand tag load, so resolving a separate service entity would be a redundant read.
+      return getTags();
+    }
+    EntityInterface<?> service = getServiceEntity();
+    if (service == null) {
+      return Collections.emptyList();
+    }
+    return Entity.getEntityTags(service.getEntityReference().getType(), service);
+  }
+
+  /**
+   * Uses {@code getEntityOrNull} rather than {@code getEntity}: a hard-deleted service would
+   * otherwise raise {@link EntityNotFoundException} from inside the authorization decision and
+   * surface as a 500 on a read that should simply not match the condition.
+   */
+  private EntityInterface<?> loadServiceEntity() {
+    if (isServiceResource()) {
+      resolveEntity();
+      return entity;
+    }
+    EntityReference serviceReference = getServiceReference();
+    return Entity.getEntityOrNull(serviceReference, Entity.FIELD_TAGS, Include.ALL);
+  }
+
+  /**
+   * Memoized because {@code getServiceEntityTypes()} copies its backing map on every call, and the
+   * service accessors consult this on each condition evaluated against each requested operation.
+   */
+  private boolean isServiceResource() {
+    if (serviceResource == null) {
+      serviceResource = Entity.getServiceEntityTypes().contains(entityRepository.getEntityType());
+    }
+    return serviceResource;
+  }
+
+  @Override
+  public EntityInterface<?> getResolvedEntity() {
     return entity;
   }
 
@@ -224,7 +399,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   @Override
-  public EntityInterface getEntity() {
+  public EntityInterface<?> getEntity() {
     return resolveEntity();
   }
 
@@ -239,7 +414,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     return entity.getDomains();
   }
 
-  private EntityInterface resolveEntity() {
+  private EntityInterface<?> resolveEntity() {
     if (entity == null) {
       Fields fieldList;
       RelationIncludes relationIncludesToUse = relationIncludes;
@@ -282,14 +457,21 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
    * never sees less than it did before.
    */
   private Fields authorizationFields() {
+    return authorizationFields(entityRepository, requestedFields);
+  }
+
+  /**
+   * {@link #authorizationFields(EntityRepository)} together with {@code requested}, for a caller
+   * that loads the entity itself to answer a request and authorizes on the same copy.
+   */
+  public static Fields authorizationFields(EntityRepository<?> entityRepository, Fields requested) {
     Fields securityFields = authorizationFields(entityRepository);
-    Fields result = securityFields;
-    if (requestedFields != null) {
-      Set<String> merged = new HashSet<>(securityFields.getFieldList());
-      merged.addAll(requestedFields.getFieldList());
-      result = new Fields(merged);
+    if (requested == null) {
+      return securityFields;
     }
-    return result;
+    Set<String> merged = new HashSet<>(securityFields.getFieldList());
+    merged.addAll(requested.getFieldList());
+    return new Fields(merged);
   }
 
   /**
@@ -319,11 +501,13 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   private Include resolveInclude() {
-    if (operation == ResourceContextInterface.Operation.PATCH
-        || operation == ResourceContextInterface.Operation.PUT) {
+    if (operation == ResourceContextInterface.Operation.PATCH) {
       return Include.NON_DELETED;
     }
-    if (operation == ResourceContextInterface.Operation.DELETE) {
+    // A PUT finds the entity it writes with Include.ALL and restores it when soft-deleted, so the
+    // decision has to see that entity too; without it every condition is evaluated against none.
+    if (operation == ResourceContextInterface.Operation.PUT
+        || operation == ResourceContextInterface.Operation.DELETE) {
       return Include.ALL;
     }
     return include != null ? include : Include.ALL;

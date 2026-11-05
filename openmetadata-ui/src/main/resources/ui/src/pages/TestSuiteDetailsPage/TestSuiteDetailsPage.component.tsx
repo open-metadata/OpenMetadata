@@ -14,44 +14,50 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   DialogTrigger,
   Input,
   Modal,
   ModalOverlay,
-  Tooltip,
+  Owner,
+  Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@untitledui/icons';
-import { Tabs, TabsProps } from 'antd';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
 import { useListSearchInput } from '../../components/common/atoms/navigation/useListSearchInput';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import Description from '../../components/common/EntityDescription/Description';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
+import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/entity/type';
 import { useClipboard } from '../../hooks/useClipBoard';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { HeaderDotSeparator } from '../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { useTestSuiteDetailsPage } from './hooks/useTestSuiteDetailsPage';
 import './test-suite-details-page.less';
 
@@ -112,27 +118,19 @@ const TestSuiteHeaderTitle = ({
           {name}
         </Typography>
       </Box>
-      <Tooltip
-        placement="top"
-        title={
+      <ButtonUtility
+        data-testid="entity-header-copy-button"
+        icon={Copy01}
+        size="lg"
+        tooltip={
           hasCopied
             ? t('message.link-copy-to-clipboard')
             : t('label.copy-item', {
                 item: t('label.url-uppercase'),
               })
-        }>
-        <Button
-          aria-label={t('label.copy-item', {
-            item: t('label.url-uppercase'),
-          })}
-          color="tertiary"
-          data-testid="entity-header-copy-button"
-          iconLeading={Copy01}
-          size="xs"
-          type="button"
-          onClick={onCopyEntityUrl}
-        />
-      </Tooltip>
+        }
+        onClick={onCopyEntityUrl}
+      />
       <LearningIcon pageId={LEARNING_PAGE_IDS.TEST_SUITE} />
     </Box>
   );
@@ -177,18 +175,27 @@ const AddTestCaseDialogTrigger = ({
         <Modal>
           <Dialog
             showCloseButton
+            dividers="scroll"
             title={t('label.add-entity', {
               entity: testCasePluralLabel,
             })}
             onClose={() => setIsTestCaseModalOpen(false)}>
-            <Dialog.Content>
-              <AddTestCaseList
-                existingTest={existingTest}
-                getPopupContainer={getAddTestCasePopupContainer}
-                onCancel={() => setIsTestCaseModalOpen(false)}
-                onSubmit={onSubmit}
-              />
-            </Dialog.Content>
+            <AddTestCaseList
+              existingTest={existingTest}
+              getPopupContainer={getAddTestCasePopupContainer}
+              renderLayout={(content, actions) => (
+                <>
+                  <Dialog.Content>
+                    <Box direction="col" gap={2}>
+                      {content}
+                    </Box>
+                  </Dialog.Content>
+                  <Dialog.Footer>{actions}</Dialog.Footer>
+                </>
+              )}
+              onCancel={() => setIsTestCaseModalOpen(false)}
+              onSubmit={onSubmit}
+            />
           </Dialog>
         </Modal>
       </ModalOverlay>
@@ -221,10 +228,11 @@ const TestSuiteDetailsPage = () => {
     pagingData,
     showPagination,
     ingestionPipelineCount,
+    handlePipelinesChange,
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
-    fetchTestCases,
+    handleTestCasesRemoved,
     handleTestCaseSearch,
     handleSortTestCase,
     handleAddTestCaseSubmit,
@@ -234,6 +242,17 @@ const TestSuiteDetailsPage = () => {
     handleDisplayNameChange,
     handleTestSuiteUpdate,
   } = useTestSuiteDetailsPage();
+
+  // Consumer via the hook's raw `testSuitePermissions: OperationPermission` field (Task 8
+  // rule 2) — derive named flags locally instead of reading `.EditAll`/`.ViewAll`/`.ViewBasic`
+  // directly. No `deleted` argument: none of the reads below were ever ANDed with
+  // `testSuite?.deleted` in the old code. Also an explicit-deny-wins fix, same precedent as
+  // canViewBasic (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll
+  // grant.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(testSuitePermissions),
+    [testSuitePermissions]
+  );
 
   const { searchInputProps } = useListSearchInput({
     searchQuery: testCaseSearchQuery,
@@ -271,7 +290,7 @@ const TestSuiteDetailsPage = () => {
     await onCopyToClipBoard(globalThis.location.href);
   }, [onCopyToClipBoard]);
 
-  const tabItems: TabsProps['items'] = useMemo(() => {
+  const tabItems: TabProps[] = useMemo(() => {
     const renderDescription = () => (
       <div className="tw:w-full">
         <Description
@@ -290,8 +309,7 @@ const TestSuiteDetailsPage = () => {
     const removeFromTestSuite = testSuite
       ? {
           testSuite,
-          isAllowed:
-            testSuitePermissions.EditAll || testSuitePermissions.EditTests,
+          isAllowed: flags.can(Operation.EditTests),
         }
       : undefined;
 
@@ -310,7 +328,7 @@ const TestSuiteDetailsPage = () => {
             {renderDescription()}
             <div className="tw:w-full">
               <DataQualityTab
-                afterDeleteAction={fetchTestCases}
+                afterDeleteAction={handleTestCasesRemoved}
                 breadcrumbData={incidentUrlState}
                 fetchTestCases={handleSortTestCase}
                 hasActiveFilters={Boolean(testCaseSearchQuery.trim())}
@@ -349,7 +367,10 @@ const TestSuiteDetailsPage = () => {
         ),
         children: (
           <div className="tw:w-full tw:p-4">
-            <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+            <TestSuitePipelineTab
+              testSuite={testSuite}
+              onPipelinesChange={handlePipelinesChange}
+            />
           </div>
         ),
       },
@@ -360,8 +381,8 @@ const TestSuiteDetailsPage = () => {
     descriptionChangeSummaryEntry,
     permissions.hasEditDescriptionPermission,
     onDescriptionUpdate,
-    testSuitePermissions,
-    fetchTestCases,
+    flags,
+    handleTestCasesRemoved,
     incidentUrlState,
     handleSortTestCase,
     isLoading,
@@ -383,15 +404,24 @@ const TestSuiteDetailsPage = () => {
     return <Loader />;
   }
 
-  if (!testSuitePermissions.ViewAll && !testSuitePermissions.ViewBasic) {
+  if (!flags.hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-suite'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-suite'),
+          })}
+        />
+      </div>
+    );
+  }
+
+  if (isUndefined(testSuite)) {
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
     );
   }
 
@@ -430,7 +460,7 @@ const TestSuiteDetailsPage = () => {
                 className={classNames(
                   'tw:relative tw:size-9 tw:shrink-0',
                   'tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                  'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                 )}
                 justify="center">
                 <TestSuiteIcon className="tw:size-5" />
@@ -444,9 +474,7 @@ const TestSuiteDetailsPage = () => {
             </Box>
             <Box align="center" className="tw:shrink-0" gap={2}>
               <AddTestCaseDialogTrigger
-                canAddTestCase={Boolean(
-                  testSuitePermissions.EditAll || testSuitePermissions.EditTests
-                )}
+                canAddTestCase={flags.can(Operation.EditTests)}
                 existingTest={testSuite?.tests ?? []}
                 isTestCaseModalOpen={isTestCaseModalOpen}
                 setIsTestCaseModalOpen={setIsTestCaseModalOpen}
@@ -460,10 +488,7 @@ const TestSuiteDetailsPage = () => {
                 canDelete={permissions.hasDeletePermission}
                 deleted={testSuite?.deleted}
                 displayName={getEntityName(testSuite)}
-                editDisplayNamePermission={
-                  testSuitePermissions.EditAll ||
-                  testSuitePermissions.EditDisplayName
-                }
+                editDisplayNamePermission={flags.canEditDisplayName}
                 entityId={testSuite?.id}
                 entityName={testSuite?.fullyQualifiedName as string}
                 entityType={EntityType.TEST_SUITE}
@@ -480,37 +505,56 @@ const TestSuiteDetailsPage = () => {
               entityFqn={testSuite?.fullyQualifiedName ?? ''}
               entityId={testSuite?.id ?? ''}
               entityType={EntityType.TEST_SUITE}
-              hasPermission={Boolean(testSuitePermissions.EditAll)}
+              hasPermission={flags.canEditDomains}
+              labelClassName="tw:text-secondary!"
               multiple={canAddMultipleDomains}
-              textClassName="render-domain-lebel-style"
+              textClassName="render-domain-lebel-style tw:text-secondary!"
               onUpdate={handleDomainUpdate}
             />
             <HeaderDotSeparator />
-            <OwnerLabel
+            <Owner
               showDashPlaceholder
               avatarSize={24}
-              className="header-owner-heading"
               hasPermission={Boolean(permissions.hasEditOwnerPermission)}
               isCompactView={false}
               maxVisibleOwners={3}
-              multiple={{
-                user: canAddMultipleUserOwners,
-                team: canAddMultipleTeamOwner,
-              }}
               owners={testOwners}
-              onUpdate={onUpdateOwner}
+              selectorContent={
+                <UserTeamSelectableList
+                  hasPermission={Boolean(permissions.hasEditOwnerPermission)}
+                  multiple={{
+                    user: canAddMultipleUserOwners,
+                    team: canAddMultipleTeamOwner,
+                  }}
+                  owner={testOwners}
+                  onUpdate={onUpdateOwner}
+                />
+              }
             />
           </div>
         </Box>
         <div className="test-suite-details-tabs" data-testid="tabs-root">
           <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="tabs-new"
+            className="tw:gap-3"
             data-testid="tabs"
-            items={tabItems}
-            onChange={(key) => setActiveTab(key)}
-          />
+            selectedKey={getRenderedActiveTab(tabItems, activeTab)}
+            onSelectionChange={(key) => setActiveTab(String(key))}>
+            <Tabs.List size="sm" type="underline" variant="card">
+              {tabItems.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {tabItems.map(({ key, children }) => (
+              <Tabs.Panel
+                className="tw:rounded-lg tw:bg-primary"
+                id={key}
+                key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
         </div>
       </Box>
     </PageLayoutV1>

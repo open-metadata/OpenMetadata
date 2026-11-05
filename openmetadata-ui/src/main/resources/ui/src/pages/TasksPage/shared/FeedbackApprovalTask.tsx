@@ -23,7 +23,7 @@ import {
   Flag04,
   MessageTextSquare01,
   UsersRight,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

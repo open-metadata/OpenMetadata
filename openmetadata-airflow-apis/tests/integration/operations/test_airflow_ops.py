@@ -14,13 +14,18 @@ Test Airflow related operations
 
 import datetime
 import os
-import shutil
 import uuid
 from pathlib import Path
 from unittest import TestCase
 
-# We need to patch the environment before importing Airflow
-# At module load it already inits the configurations.
+from airflow import DAG
+from airflow.models import DagBag, DagModel
+from airflow.models.serialized_dag import SerializedDagModel
+from airflow.serialization.serialized_objects import LazyDeserializedDAG
+from airflow.utils import timezone
+from airflow.utils.state import DagRunState
+from airflow.utils.types import DagRunType
+
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -50,24 +55,6 @@ from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-
-if "AIRFLOW_HOME" not in os.environ:
-    os.environ["AIRFLOW_HOME"] = "/tmp/airflow"
-if "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS" not in os.environ:
-    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"] = "/tmp/airflow"
-if "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE" not in os.environ:
-    template_path = Path(__file__).parent.parent.parent.parent / "openmetadata_managed_apis/resources/dag_runner.j2"
-    if not template_path.exists():
-        template_path = Path(__file__).parent.parent.parent.parent / "src/plugins/dag_templates/dag_runner.j2"
-    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(template_path.absolute())
-
-from airflow import DAG
-from airflow.models import DagBag, DagModel
-from airflow.models.serialized_dag import SerializedDagModel
-from airflow.serialization.serialized_objects import LazyDeserializedDAG
-from airflow.utils import timezone
-from airflow.utils.state import DagRunState
-from airflow.utils.types import DagRunType
 
 try:
     from airflow.providers.standard.operators.bash import BashOperator
@@ -107,15 +94,6 @@ class TestAirflowOps(TestCase):
         """
         cls._app_ctx = Flask(__name__).app_context()
         cls._app_ctx.push()
-
-        # Initialize Airflow database if it doesn't exist
-        from airflow.utils.db import initdb
-
-        try:  # noqa: SIM105
-            initdb()
-        except Exception:
-            # Database might already be initialized
-            pass
 
         with DAG(
             "dag_status",
@@ -193,9 +171,6 @@ class TestAirflowOps(TestCase):
 
         if hasattr(cls, "_temp_dag_file") and cls._temp_dag_file.exists():
             cls._temp_dag_file.unlink()
-
-        if os.path.exists("/tmp/airflow"):  # noqa: PTH110
-            shutil.rmtree("/tmp/airflow")
 
     def test_dag_status(self):
         """

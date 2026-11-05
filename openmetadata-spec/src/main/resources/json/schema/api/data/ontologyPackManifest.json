@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/ontologyPackManifest.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyPackManifest",
   "description": "Typed, versioned catalogue manifest for an Ontology library pack.",
   "type": "object",
@@ -24,6 +24,22 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 256
+    },
+    "industry": {
+      "description": "Industry the pack models. The library catalogue filters packs by it.",
+      "type": "string",
+      "enum": [
+        "finance",
+        "healthcare",
+        "manufacturing",
+        "human-resources",
+        "retail",
+        "supply-chain"
+      ]
+    },
+    "layer": {
+      "description": "Governance layer of a new ontology created to hold this pack.",
+      "$ref": "../../type/ontologyConfiguration.json#/definitions/layer"
     },
     "version": {
       "type": "string",
@@ -64,6 +80,8 @@
     "name",
     "abbreviation",
     "standard",
+    "industry",
+    "layer",
     "version",
     "description",
     "license",

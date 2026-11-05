@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select, Skeleton, Table } from '@openmetadata/ui-core-components';
+
+import {
+  Badge,
+  Select,
+  Skeleton,
+  Table,
+} from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, split, toLower } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
@@ -23,7 +30,6 @@ import {
   DEFAULT_SELECTED_RANGE,
   TEST_CASE_STATUS_LABELS,
 } from '../../../../constants/profiler.constant';
-import { SIZE } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
@@ -36,7 +42,7 @@ import {
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
-import NoDataPlaceholderNew from '../../../common/ErrorWithPlaceholder/NoDataPlaceholderNew';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -47,6 +53,39 @@ const TransWithComponents = ReactI18nextTrans as unknown as ComponentType<{
   components: Record<number, ReactElement>;
   i18nKey: string;
 }>;
+
+const DimensionStatusCell = ({
+  result,
+}: {
+  result?: DimensionResultWithTimestamp;
+}) => {
+  const { t } = useTranslation();
+
+  if (!result?.testCaseStatus) {
+    return <span className="tw:text-sm">--</span>;
+  }
+
+  return (
+    <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+      <StatusBadge
+        dataTestId="status-badge"
+        label={TEST_CASE_STATUS_LABELS[result.testCaseStatus]}
+        status={toLower(result.testCaseStatus) as StatusType}
+      />
+      {/* Below minRowsPerDimension: its status does not fail the test case,
+          which would otherwise look like a missed failure. */}
+      {result.excludedFromRollUp && (
+        <Badge
+          color="gray"
+          data-testid="excluded-from-roll-up-badge"
+          size="sm"
+          type="pill-color">
+          {t('label.excluded-from-roll-up')}
+        </Badge>
+      )}
+    </div>
+  );
+};
 
 const DimensionalityTab = () => {
   const { t } = useTranslation();
@@ -202,15 +241,7 @@ const DimensionalityTab = () => {
     ) => {
       switch (col.id) {
         case 'status':
-          return row.result?.testCaseStatus ? (
-            <StatusBadge
-              dataTestId="status-badge"
-              label={TEST_CASE_STATUS_LABELS[row.result.testCaseStatus]}
-              status={toLower(row.result.testCaseStatus) as StatusType}
-            />
-          ) : (
-            <span className="tw:text-sm">--</span>
-          );
+          return <DimensionStatusCell result={row.result} />;
         case 'impactScore':
           return (
             <span className="tw:text-sm">
@@ -253,16 +284,22 @@ const DimensionalityTab = () => {
     }
 
     return (
-      <NoDataPlaceholderNew size={SIZE.LARGE}>
-        <TransWithComponents
-          components={{
-            0: <span className="tw:text-sm" />,
-            1: <span className="tw:text-sm" />,
-            2: <Link to={pipelineLink} />,
-          }}
-          i18nKey="message.no-dimension-description"
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={
+            <TransWithComponents
+              components={{
+                0: <span className="tw:text-sm" />,
+                1: <span className="tw:text-sm" />,
+                2: <Link to={pipelineLink} />,
+              }}
+              i18nKey="message.no-dimension-description"
+            />
+          }
+          icon={<Database01 />}
         />
-      </NoDataPlaceholderNew>
+      </div>
     );
   }, [isLoading, pipelineLink]);
 

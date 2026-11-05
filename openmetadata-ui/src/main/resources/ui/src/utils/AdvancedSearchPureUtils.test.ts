@@ -157,6 +157,28 @@ describe('getOptionsFromAggregationBucket', () => {
       expect(option.label).toBe('My Domain');
     });
 
+    it('applies the label formatter after sourceFields resolution', () => {
+      const bucket = {
+        key: 'tier.tier1',
+        doc_count: 2,
+        'top_hits#top': {
+          hits: {
+            hits: [{ _source: { tier: { tagFQN: 'Tier.Tier1' } } }],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        (label) => label.split('.').pop() ?? label,
+        'tier.tagFQN'
+      );
+
+      expect(option.key).toBe('tier.tier1');
+      // The formatter received the resolved 'Tier.Tier1', not the bucket key.
+      expect(option.label).toBe('Tier1');
+    });
+
     it('falls back to bucket key when no top_hits data is present', () => {
       const bucket = {
         key: 'my domain',
@@ -324,6 +346,24 @@ describe('hydrateQuickFilterLabels', () => {
     expect(field.value?.[0]).toEqual({
       key: 'enterprise business glossary.advanced shipment notification',
       label: 'Enterprise Business Glossary.Advanced Shipment Notification',
+    });
+  });
+
+  it('formats a restored tier label the same way the dropdown does', () => {
+    const [field] = hydrateQuickFilterLabels(
+      [
+        {
+          key: EntityFields.TIER,
+          label: 'label.tier',
+          value: [{ key: 'tier.tier1', label: 'tier.tier1' }],
+        },
+      ],
+      [{ tier: { tagFQN: 'Tier.Tier1' } }]
+    );
+
+    expect(field.value?.[0]).toEqual({
+      key: 'tier.tier1',
+      label: 'Tier1',
     });
   });
 

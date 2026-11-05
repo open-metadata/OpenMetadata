@@ -48,48 +48,50 @@ DATABRICKS_VIEW_DEFINITIONS = textwrap.dedent(
     """
 )
 
-DATABRICKS_GET_TABLE_COMMENTS = "DESCRIBE TABLE EXTENDED `{database_name}`.`{schema_name}`.`{table_name}`"
+DATABRICKS_GET_TABLE_COMMENTS = "DESCRIBE TABLE EXTENDED {database_name}.{schema_name}.{table_name}"
 
-DATABRICKS_GET_TABLE_DESCRIBE_JSON = "DESCRIBE TABLE EXTENDED `{database_name}`.`{schema_name}`.`{table_name}` AS JSON"
+DATABRICKS_GET_TABLE_DESCRIBE_JSON = "DESCRIBE TABLE EXTENDED {database_name}.{schema_name}.{table_name} AS JSON"
+
+DATABRICKS_GET_COLUMN_TYPE = "DESCRIBE TABLE {database_name}.{schema_name}.{table_name} {column_name}"
 
 DATABRICKS_GET_TABLE_TYPES = textwrap.dedent(
     """
-    SELECT table_name, table_type
-    FROM `{database_name}`.information_schema.tables
+    SELECT table_name, table_type, data_source_format
+    FROM {database_name}.information_schema.tables
     WHERE table_schema = :schema_name
     """
 )
 
-DATABRICKS_GET_SCHEMA_COMMENTS = "DESCRIBE SCHEMA EXTENDED `{database_name}`.`{schema_name}`"
+DATABRICKS_GET_SCHEMA_COMMENTS = "DESCRIBE SCHEMA EXTENDED {database_name}.{schema_name}"
 
 DATABRICKS_GET_CATALOGS = "SHOW CATALOGS"
 
-DATABRICKS_GET_CATALOGS_TAGS = textwrap.dedent("""SELECT * FROM `{database_name}`.information_schema.catalog_tags;""")
+DATABRICKS_GET_CATALOGS_TAGS = textwrap.dedent("""SELECT * FROM {database_name}.information_schema.catalog_tags;""")
 
 DATABRICKS_GET_SCHEMA_TAGS = textwrap.dedent(
     """
-    SELECT 
-        * 
-    FROM `{database_name}`.information_schema.schema_tags"""  # noqa: W291
+    SELECT
+        *
+    FROM {database_name}.information_schema.schema_tags"""
 )
 
 DATABRICKS_GET_TABLE_TAGS = textwrap.dedent(
     """
-    SELECT 
-        * 
-    FROM `{database_name}`.information_schema.table_tags 
-    """  # noqa: W291
+    SELECT
+        *
+    FROM {database_name}.information_schema.table_tags
+    """
 )
 
 DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
     """
-    SELECT 
-        * 
-    FROM `{database_name}`.information_schema.column_tags 
-    """  # noqa: W291
+    SELECT
+        *
+    FROM {database_name}.information_schema.column_tags
+    """
 )
 
-DATABRICKS_DDL = "SHOW CREATE TABLE `{table_name}`"
+DATABRICKS_DDL = "SHOW CREATE TABLE {table_name}"
 
 DATABRICKS_GET_TABLE_LINEAGE = """
 SELECT
@@ -99,8 +101,7 @@ SELECT
 FROM system.access.table_lineage
 WHERE entity_type IN ('JOB', 'PIPELINE')
     AND event_time >= current_date() - INTERVAL {lookback_days} DAYS
-    AND source_table_full_name IS NOT NULL
-    AND target_table_full_name IS NOT NULL
+    AND (source_table_full_name IS NOT NULL OR target_table_full_name IS NOT NULL)
 GROUP BY entity_id, source_table_full_name, target_table_full_name
 """
 

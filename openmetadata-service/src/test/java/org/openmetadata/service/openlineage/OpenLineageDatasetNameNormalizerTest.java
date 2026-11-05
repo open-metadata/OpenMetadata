@@ -14,6 +14,7 @@
 package org.openmetadata.service.openlineage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -86,6 +87,59 @@ class OpenLineageDatasetNameNormalizerTest {
         OpenLineageDatasetNameNormalizer.extractCandidates("ns", "irrelevant", facets);
 
     assertEquals("my_db.my_table", candidates.get(0).tableName());
+  }
+
+  @Test
+  void extractCandidates_glueFormWithEmptyDatabaseSegment_doesNotProduceEmptySchema() {
+    // A Glue symlink name "table//foo" (empty middle segment) used to be accepted and normalized
+    // to ".foo", yielding an empty schema that broke FQN building. It must no longer produce a
+    // candidate with an empty first segment — the empty segment is dropped instead.
+    DatasetFacets facets =
+        facetsWithSymlinks(
+            new SymlinkIdentifier()
+                .withNamespace("arn:aws:glue:us-west-2:123456789012")
+                .withName("table//foo")
+                .withType("TABLE"));
+
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates(
+            "s3://bucket", "deep/opaque/path", facets);
+
+    assertEquals(
+        List.of("table.foo"),
+        tableNames(candidates),
+        "An empty Glue segment must not yield a '.foo' candidate with an empty schema");
+  }
+
+  @Test
+  void extractCandidates_glueFormDatasetNameWithEmptySegment_doesNotProduceEmptySchema() {
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates("ns", "table//foo", null);
+
+    assertTrue(
+        !tableNames(candidates).contains(".foo"),
+        "An empty Glue segment must never normalize to a leading-dot (empty schema) name");
+  }
+
+  @Test
+  void extractCandidates_glueFormWithEmptyMiddleSegment_resolvesToNonEmptySchemaAndTable() {
+    DatasetFacets facets =
+        facetsWithSymlinks(
+            new SymlinkIdentifier()
+                .withNamespace("arn:aws:glue:us-west-2:123456789012")
+                .withName("table//foo")
+                .withType("TABLE"));
+
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates("ns", "irrelevant", facets);
+
+    assertEquals(1, candidates.size());
+    String[] parts = candidates.get(0).tableName().split("\\.");
+    assertTrue(parts.length >= 2);
+    for (String part : parts) {
+      assertTrue(
+          !part.isEmpty(), "No dot-separated part may be empty: " + candidates.get(0).tableName());
+    }
   }
 
   @Test
@@ -254,6 +308,49 @@ class OpenLineageDatasetNameNormalizerTest {
         OpenLineageDatasetNameNormalizer.extractCandidates("pg://h", "public.users", facets);
 
     assertEquals(List.of("public.users"), tableNames(candidates));
+  }
+
+  @Test
+  void extractGlueCatalogId_bareGlueArn_returnsAccountId() {
+    assertEquals(
+        "181882839756",
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId(
+            "arn:aws:glue:us-west-2:181882839756"));
+  }
+
+  @Test
+  void extractGlueCatalogId_glueArnWithResourceSuffix_returnsAccountId() {
+    assertEquals(
+        "048372910264",
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId(
+            "arn:aws:glue:eu-west-1:048372910264:table/data_dev_db_main/fact_adt_event_v2"));
+  }
+
+  @Test
+  void extractGlueCatalogId_nonCommercialPartitions_returnAccountId() {
+    assertEquals(
+        "048372910264",
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId(
+            "arn:aws-us-gov:glue:us-gov-west-1:048372910264"),
+        "GovCloud ARNs carry the account id in the same field as commercial ARNs");
+    assertEquals(
+        "048372910264",
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId(
+            "arn:aws-cn:glue:cn-north-1:048372910264:table/db/tbl"));
+  }
+
+  @Test
+  void extractGlueCatalogId_nonGlueNamespace_returnsNull() {
+    assertNull(OpenLineageDatasetNameNormalizer.extractGlueCatalogId("s3://experian-bucket"));
+    assertNull(
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId("arn:aws:athena:us-west-2:1234"));
+    assertNull(OpenLineageDatasetNameNormalizer.extractGlueCatalogId(null));
+  }
+
+  @Test
+  void extractGlueCatalogId_truncatedOrEmptyAccountSegment_returnsNull() {
+    assertNull(OpenLineageDatasetNameNormalizer.extractGlueCatalogId("arn:aws:glue:us-west-2"));
+    assertNull(OpenLineageDatasetNameNormalizer.extractGlueCatalogId("arn:aws:glue:us-west-2:"));
   }
 
   @Test

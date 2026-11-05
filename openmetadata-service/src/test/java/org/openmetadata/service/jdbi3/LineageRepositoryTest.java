@@ -27,8 +27,11 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.util.*;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,10 +39,18 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.RelationshipRef;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.slf4j.LoggerFactory;
@@ -205,6 +216,92 @@ class LineageRepositoryTest {
         .withId(UUID.randomUUID())
         .withType(type)
         .withFullyQualifiedName(fqn);
+  }
+
+  @Test
+  void testValidateLineageDetails_TableColumnToMetric_KeepsColumnLineage() {
+    final LineageRepository repository = new LineageRepository();
+    final EntityReference table = entityReference(Entity.TABLE, "db.schema.sales");
+    final EntityReference metric = entityReference(Entity.METRIC, "metricService.total_sales");
+    mockSalesTable(table);
+
+    final LineageDetails details =
+        columnLineageDetails("db.schema.sales.amount", metric.getFullyQualifiedName());
+
+    final LineageDetails saved =
+        JsonUtils.readValue(
+            repository.validateLineageDetails(table, metric, details), LineageDetails.class);
+
+    assertEquals(1, saved.getColumnsLineage().size());
+    assertEquals("metricService.total_sales", saved.getColumnsLineage().get(0).getToColumn());
+    assertEquals(
+        List.of("db.schema.sales.amount"), saved.getColumnsLineage().get(0).getFromColumns());
+  }
+
+  @Test
+  void testValidateLineageDetails_MetricToTableColumn_KeepsColumnLineage() {
+    final LineageRepository repository = new LineageRepository();
+    final EntityReference metric = entityReference(Entity.METRIC, "metricService.total_sales");
+    final EntityReference table = entityReference(Entity.TABLE, "db.schema.sales");
+    mockSalesTable(table);
+
+    final LineageDetails details =
+        columnLineageDetails(metric.getFullyQualifiedName(), "db.schema.sales.amount");
+
+    final LineageDetails saved =
+        JsonUtils.readValue(
+            repository.validateLineageDetails(metric, table, details), LineageDetails.class);
+
+    assertEquals(1, saved.getColumnsLineage().size());
+    assertEquals("db.schema.sales.amount", saved.getColumnsLineage().get(0).getToColumn());
+    assertEquals(
+        List.of("metricService.total_sales"), saved.getColumnsLineage().get(0).getFromColumns());
+  }
+
+  @Test
+  void testValidateLineageDetails_UnknownMetricChild_IsFilteredOut() {
+    final LineageRepository repository = new LineageRepository();
+    final EntityReference table = entityReference(Entity.TABLE, "db.schema.sales");
+    final EntityReference metric = entityReference(Entity.METRIC, "metricService.total_sales");
+    mockSalesTable(table);
+
+    final LineageDetails details =
+        columnLineageDetails(
+            "db.schema.sales.amount", metric.getFullyQualifiedName() + ".not_a_column");
+
+    final LineageDetails saved =
+        JsonUtils.readValue(
+            repository.validateLineageDetails(table, metric, details), LineageDetails.class);
+
+    assertTrue(saved.getColumnsLineage().isEmpty());
+  }
+
+  private static void mockSalesTable(final EntityReference table) {
+    final Table salesTable =
+        new Table()
+            .withId(table.getId())
+            .withName("sales")
+            .withFullyQualifiedName(table.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withFullyQualifiedName(table.getFullyQualifiedName() + ".amount")));
+    mockedEntity
+        .when(() -> Entity.getEntity(Entity.TABLE, table.getId(), "columns", Include.NON_DELETED))
+        .thenReturn(salesTable);
+  }
+
+  private static LineageDetails columnLineageDetails(
+      final String fromColumn, final String toColumn) {
+    return new LineageDetails()
+        .withSource(LineageDetails.Source.MANUAL)
+        .withColumnsLineage(
+            List.of(
+                new ColumnLineage()
+                    .withFromColumns(new ArrayList<>(List.of(fromColumn)))
+                    .withToColumn(toColumn)));
   }
 
   private static ListAppender<ILoggingEvent> attachListAppender(final Logger logger) {
@@ -580,11 +677,11 @@ class LineageRepositoryTest {
     LineageDetails entityDetails =
         new LineageDetails().withPipeline(pipelineRef).withCreatedBy("testUser");
 
-    EntityInterface fromEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> fromEntityMock = mock(EntityInterface.class);
     when(fromEntityMock.getService()).thenReturn(fromServiceRef);
     when(fromEntityMock.getEntityReference()).thenReturn(fromRef);
 
-    EntityInterface toEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> toEntityMock = mock(EntityInterface.class);
     when(toEntityMock.getService()).thenReturn(toServiceRef);
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
@@ -613,9 +710,10 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO)
         .insert(eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
@@ -659,11 +757,11 @@ class LineageRepositoryTest {
         mock(CollectionDAO.EntityRelationshipObject.class);
     when(existingRecord.getJson()).thenReturn(JsonUtils.pojoToJson(existingServiceDetails));
 
-    EntityInterface fromEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> fromEntityMock = mock(EntityInterface.class);
     when(fromEntityMock.getService()).thenReturn(fromServiceRef);
     when(fromEntityMock.getEntityReference()).thenReturn(fromRef);
 
-    EntityInterface toEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> toEntityMock = mock(EntityInterface.class);
     when(toEntityMock.getService()).thenReturn(toServiceRef);
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
@@ -693,9 +791,10 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO)
         .insert(eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
@@ -711,8 +810,14 @@ class LineageRepositoryTest {
    * toService, three service-level edges must be created: fromService→toService,
    * fromService→pipelineService, and pipelineService→toService.
    */
+  /**
+   * A pipeline-annotated edge is projected as fromService → pipelineService → toService only. The
+   * direct fromService → toService edge must not also be created, or the service graph draws two
+   * parallel paths for the same flow of data.
+   */
   @Test
-  void testPipelineServiceEdges_WithDistinctPipelineService_CreatesBothEdges() throws Exception {
+  void testPipelineServiceEdges_WithDistinctPipelineService_RoutesThroughPipelineOnly()
+      throws Exception {
     UUID fromEntityId = UUID.randomUUID();
     UUID toEntityId = UUID.randomUUID();
     UUID fromServiceId = UUID.randomUUID();
@@ -734,15 +839,15 @@ class LineageRepositoryTest {
     LineageDetails entityDetails =
         new LineageDetails().withPipeline(pipelineRef).withCreatedBy("testUser");
 
-    EntityInterface fromEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> fromEntityMock = mock(EntityInterface.class);
     when(fromEntityMock.getService()).thenReturn(fromServiceRef);
     when(fromEntityMock.getEntityReference()).thenReturn(fromRef);
 
-    EntityInterface toEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> toEntityMock = mock(EntityInterface.class);
     when(toEntityMock.getService()).thenReturn(toServiceRef);
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
-    EntityInterface pipelineEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> pipelineEntityMock = mock(EntityInterface.class);
     when(pipelineEntityMock.getService()).thenReturn(pipelineServiceRef);
 
     CollectionDAO freshDao = mock(CollectionDAO.class);
@@ -774,25 +879,26 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
-    verify(relDAO, times(3))
+    verify(relDAO, times(2))
         .insert(fromCaptor.capture(), toCaptor.capture(), any(), any(), anyInt(), any());
 
     List<UUID> insertedFromIds = fromCaptor.getAllValues();
     List<UUID> insertedToIds = toCaptor.getAllValues();
 
     assertTrue(
-        edgePairExists(insertedFromIds, insertedToIds, fromServiceId, toServiceId),
-        "fromService→toService edge must be created");
-    assertTrue(
         edgePairExists(insertedFromIds, insertedToIds, fromServiceId, pipelineServiceId),
         "fromService→pipelineService edge must be created");
     assertTrue(
         edgePairExists(insertedFromIds, insertedToIds, pipelineServiceId, toServiceId),
         "pipelineService→toService edge must be created");
+    assertFalse(
+        edgePairExists(insertedFromIds, insertedToIds, fromServiceId, toServiceId),
+        "direct fromService→toService edge must NOT be created alongside the pipeline hops");
   }
 
   /**
@@ -817,11 +923,11 @@ class LineageRepositoryTest {
     LineageDetails entityDetails =
         new LineageDetails().withPipeline(null).withCreatedBy("testUser");
 
-    EntityInterface fromEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> fromEntityMock = mock(EntityInterface.class);
     when(fromEntityMock.getService()).thenReturn(fromServiceRef);
     when(fromEntityMock.getEntityReference()).thenReturn(fromRef);
 
-    EntityInterface toEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> toEntityMock = mock(EntityInterface.class);
     when(toEntityMock.getService()).thenReturn(toServiceRef);
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
@@ -847,11 +953,170 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO, times(1)).insert(any(), any(), any(), any(), anyInt(), any());
+  }
+
+  /**
+   * A service edge written straight through PUT /v1/lineage carries no assetEdges refcount. The
+   * first child edge rolled up into it has to be counted as its first contributor instead of
+   * failing the request.
+   */
+  @Test
+  void testServiceEdge_ExistingEdgeWithoutAssetEdges_CountsChildEdgeAsFirstContributor()
+      throws Exception {
+    EntityReference fromService = serviceRef("databaseService");
+    EntityReference toService = serviceRef("messagingService");
+
+    CollectionDAO.EntityRelationshipDAO relDAO =
+        rollUpChildEdge(fromService, toService, new LineageDetails(), new LineageDetails(), null);
+
+    assertEquals(1, storedAssetEdges(relDAO, fromService, toService));
+  }
+
+  /**
+   * Attaching a pipeline to an existing child edge releases the direct service edge it fed. A
+   * direct edge with no assetEdges refcount has no other contributor on record, so releasing it
+   * deletes it instead of failing the request.
+   */
+  @Test
+  void testServiceEdge_ReleasingDirectEdgeWithoutAssetEdges_DeletesIt() throws Exception {
+    EntityReference fromService = serviceRef("databaseService");
+    EntityReference toService = serviceRef("messagingService");
+
+    CollectionDAO.EntityRelationshipDAO relDAO =
+        rollUpChildEdge(
+            fromService, toService, new LineageDetails(), withPipeline(), new LineageDetails());
+
+    verify(relDAO)
+        .delete(
+            fromService.getId(),
+            fromService.getType(),
+            toService.getId(),
+            toService.getType(),
+            Relationship.UPSTREAM.ordinal());
+  }
+
+  @Test
+  void testServiceEdge_ReleasingDirectEdgeOtherChildrenStillFeed_DecrementsIt() throws Exception {
+    EntityReference fromService = serviceRef("databaseService");
+    EntityReference toService = serviceRef("messagingService");
+
+    CollectionDAO.EntityRelationshipDAO relDAO =
+        rollUpChildEdge(
+            fromService,
+            toService,
+            new LineageDetails().withAssetEdges(2),
+            withPipeline(),
+            new LineageDetails());
+
+    assertEquals(1, storedAssetEdges(relDAO, fromService, toService));
+  }
+
+  /**
+   * Rolls one table-to-table child edge up into service lineage while the direct edge between the
+   * two services is already stored as {@code storedServiceEdge}. A non-null {@code priorChildEdge}
+   * makes it an update of an existing child edge. Returns the DAO the rollup wrote through.
+   */
+  private CollectionDAO.EntityRelationshipDAO rollUpChildEdge(
+      EntityReference fromService,
+      EntityReference toService,
+      LineageDetails storedServiceEdge,
+      LineageDetails childEdge,
+      LineageDetails priorChildEdge)
+      throws Exception {
+    String entityType = "table";
+    EntityReference fromRef = new EntityReference().withId(UUID.randomUUID()).withType(entityType);
+    EntityReference toRef = new EntityReference().withId(UUID.randomUUID()).withType(entityType);
+
+    EntityInterface<?> fromEntityMock = mock(EntityInterface.class);
+    when(fromEntityMock.getService()).thenReturn(fromService);
+    when(fromEntityMock.getEntityReference()).thenReturn(fromRef);
+    EntityInterface<?> toEntityMock = mock(EntityInterface.class);
+    when(toEntityMock.getService()).thenReturn(toService);
+    when(toEntityMock.getEntityReference()).thenReturn(toRef);
+
+    CollectionDAO freshDao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(freshDao.relationshipDAO()).thenReturn(relDAO);
+    when(relDAO.getRecord(eq(fromService.getId()), eq(toService.getId()), anyInt()))
+        .thenReturn(
+            CollectionDAO.EntityRelationshipObject.builder()
+                .json(JsonUtils.pojoToJson(storedServiceEdge))
+                .build());
+
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(freshDao);
+    mockedEntity.when(() -> Entity.entityHasField(entityType, "service")).thenReturn(true);
+    mockedEntity.when(() -> Entity.entityHasField(entityType, "domains")).thenReturn(false);
+    mockedEntity.when(() -> Entity.entityHasField(entityType, "dataProducts")).thenReturn(false);
+    mockedEntity
+        .when(() -> Entity.getEntity(eq(entityType), eq(fromRef.getId()), any(), any()))
+        .thenReturn(fromEntityMock);
+    mockedEntity
+        .when(() -> Entity.getEntity(eq(entityType), eq(toRef.getId()), any(), any()))
+        .thenReturn(toEntityMock);
+    if (childEdge.getPipeline() != null) {
+      EntityInterface<?> pipelineEntityMock = mock(EntityInterface.class);
+      when(pipelineEntityMock.getService()).thenReturn(serviceRef("pipelineService"));
+      mockedEntity.when(() -> Entity.entityHasField("pipeline", "service")).thenReturn(true);
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq("pipeline"), eq(childEdge.getPipeline().getId()), any(), any()))
+          .thenReturn(pipelineEntityMock);
+    }
+
+    Method buildExtendedLineage =
+        LineageRepository.class.getDeclaredMethod(
+            "buildExtendedLineage",
+            EntityReference.class,
+            EntityReference.class,
+            LineageDetails.class,
+            LineageDetails.class,
+            boolean.class);
+    buildExtendedLineage.setAccessible(true);
+    buildExtendedLineage.invoke(
+        new LineageRepository(), fromRef, toRef, childEdge, priorChildEdge, priorChildEdge != null);
+    return relDAO;
+  }
+
+  private static Integer storedAssetEdges(
+      CollectionDAO.EntityRelationshipDAO relDAO,
+      EntityReference fromService,
+      EntityReference toService) {
+    ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+    verify(relDAO)
+        .insert(
+            eq(fromService.getId()),
+            eq(toService.getId()),
+            any(),
+            any(),
+            anyInt(),
+            jsonCaptor.capture());
+    return JsonUtils.readValue(jsonCaptor.getValue(), LineageDetails.class).getAssetEdges();
+  }
+
+  private static EntityReference serviceRef(String serviceType) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(serviceType);
+  }
+
+  private static LineageDetails withPipeline() {
+    return new LineageDetails()
+        .withPipeline(new EntityReference().withId(UUID.randomUUID()).withType("pipeline"));
+  }
+
+  @Test
+  void testPreserveAssetEdges_DirectWriteKeepsStoredRefcount() {
+    LineageDetails incoming = new LineageDetails().withAssetEdges(7);
+
+    LineageRepository.preserveAssetEdges(incoming, new LineageDetails().withAssetEdges(3));
+
+    assertEquals(3, incoming.getAssetEdges());
   }
 
   private boolean edgePairExists(
@@ -893,5 +1158,239 @@ class LineageRepositoryTest {
     org.mockito.Mockito.verify(relationshipDAO)
         .deleteLineageBySourcePipeline(
             entityId, LineageDetails.Source.OPEN_LINEAGE.value(), Relationship.UPSTREAM.ordinal());
+  }
+
+  @Test
+  void testGetLineageEdgeEnds_ReturnsTypedEndsOfTheUpstreamRecord() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    CollectionDAO.EntityRelationshipObject record =
+        CollectionDAO.EntityRelationshipObject.builder()
+            .fromId(fromId.toString())
+            .toId(toId.toString())
+            .fromEntity("table")
+            .toEntity("dashboard")
+            .relation(Relationship.UPSTREAM.ordinal())
+            .json("{}")
+            .build();
+    when(relationshipDAO.getRecord(fromId, toId, Relationship.UPSTREAM.ordinal()))
+        .thenReturn(record);
+
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+
+    List<EntityReference> ends = new LineageRepository().getLineageEdgeEnds(fromId, toId);
+
+    assertEquals(2, ends.size());
+    assertEquals(fromId, ends.getFirst().getId());
+    assertEquals("table", ends.getFirst().getType());
+    assertEquals(toId, ends.getLast().getId());
+    assertEquals("dashboard", ends.getLast().getType());
+  }
+
+  @Test
+  void testGetLineageEdgeEnds_ThrowsNotFoundWhenNoRowExists() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    when(relationshipDAO.getRecord(fromId, toId, Relationship.UPSTREAM.ordinal())).thenReturn(null);
+
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+
+    LineageRepository lineageRepository = new LineageRepository();
+    assertThrows(
+        EntityNotFoundException.class, () -> lineageRepository.getLineageEdgeEnds(fromId, toId));
+  }
+
+  /**
+   * The edge's pipeline is copied, as stored, into the downstream entity's search document, which
+   * every user can read. Naming a service there would copy its connection, so the write is refused
+   * before anything is stored or loaded.
+   */
+  @Test
+  void testAddLineage_ServiceAsNewPipeline_IsRejectedBeforeStoring() {
+    EntityReference serviceRef =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
+    when(relationshipDAO.getRecord(fromEntityId, toEntityId, Relationship.UPSTREAM.ordinal()))
+        .thenReturn(null);
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(fromEntityId), any()))
+        .thenReturn(fromEntity);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(toEntityId), any()))
+        .thenReturn(toEntity);
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(fromEntity)
+                    .withToEntity(toEntity)
+                    .withLineageDetails(new LineageDetails().withPipeline(serviceRef)));
+
+    LineageRepository repository = new LineageRepository();
+    IllegalArgumentException rejected =
+        assertThrows(
+            IllegalArgumentException.class, () -> repository.addLineage(addLineage, "user"));
+
+    assertTrue(rejected.getMessage().contains(Entity.DATABASE_SERVICE), rejected.getMessage());
+    verify(relationshipDAO, times(0)).insert(any(), any(), any(), any(), anyInt(), any());
+    mockedEntity.verify(() -> Entity.getEntity(eq(serviceRef), any(), any()), times(0));
+  }
+
+  /** An edge stored with a service before the restriction is indexed without it, never a copy. */
+  @Test
+  void testBuildEntityLineageData_ServicePipeline_IsNotCopied() {
+    EntityReference serviceRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DATABASE_SERVICE)
+            .withFullyQualifiedName("warehouse");
+    LineageDetails details =
+        new LineageDetails().withPipeline(serviceRef).withSource(LineageDetails.Source.MANUAL);
+
+    var esData = LineageRepository.buildEntityLineageData(fromEntity, toEntity, details);
+
+    assertNull(esData.getPipeline(), "a service must not be copied into the lineage document");
+    assertNull(esData.getPipelineEntityType());
+    mockedEntity.verify(() -> Entity.getEntity(eq(serviceRef), any(), any()), times(0));
+  }
+
+  /**
+   * Ingestion re-sends an edge's stored pipeline on every write. A service stored there before the
+   * restriction is dropped rather than refused, so those writes keep working and heal the edge.
+   */
+  @Test
+  void testResolveEdgePipeline_ServiceAlreadyOnEdge_IsDropped() throws Exception {
+    EntityReference serviceRef =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    Method resolveEdgePipeline =
+        LineageRepository.class.getDeclaredMethod(
+            "resolveEdgePipeline", EntityReference.class, EntityReference.class);
+    resolveEdgePipeline.setAccessible(true);
+
+    assertNull(resolveEdgePipeline.invoke(null, serviceRef, serviceRef));
+  }
+
+  @Test
+  void testNewlyLinkedEdgePipeline_NullOrNonPipeline_NeedsNoViewCheck() {
+    EntityReference service =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    assertNull(LineageRepository.newlyLinkedEdgePipeline(null, null));
+    assertNull(LineageRepository.newlyLinkedEdgePipeline(service, null));
+  }
+
+  @Test
+  void testNewlyLinkedEdgePipeline_PipelineNotOnEdge_IsReturnedForTheViewCheck() {
+    EntityReference pipeline =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE);
+
+    assertSame(pipeline, LineageRepository.newlyLinkedEdgePipeline(pipeline, null));
+  }
+
+  @Test
+  void testNewlyLinkedEdgePipeline_SamePipelineAlreadyOnEdge_IsNotRechecked() {
+    EntityReference pipeline =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE);
+    LineageDetails stored = new LineageDetails().withPipeline(pipeline);
+
+    assertNull(LineageRepository.newlyLinkedEdgePipeline(pipeline, stored));
+  }
+
+  @Test
+  void testNewlyLinkedEdgePipeline_DifferentPipelineThanStored_IsReturned() {
+    EntityReference requested =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.STORED_PROCEDURE);
+    LineageDetails stored =
+        new LineageDetails()
+            .withPipeline(
+                new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE));
+
+    assertSame(requested, LineageRepository.newlyLinkedEdgePipeline(requested, stored));
+  }
+
+  @Test
+  void testExportCsvAsync_NeutralizesFormulaCells() throws Exception {
+    when(searchRepository.searchLineage(any(), any())).thenReturn(pipelineEdgeWithFormulas());
+
+    String csv =
+        new LineageRepository().exportCsvAsync("db.schema.from", 1, 1, null, "table", false);
+
+    assertFormulaCellsNeutralized(csv);
+  }
+
+  @Test
+  void testExportByEntityCountCsvAsync_NeutralizesFormulaCells() throws Exception {
+    when(searchRepository.searchLineageByEntityCount(any(), any()))
+        .thenReturn(pipelineEdgeWithFormulas());
+
+    String csv =
+        new LineageRepository()
+            .exportByEntityCountCsvAsync(
+                "db.schema.from",
+                LineageDirection.DOWNSTREAM,
+                0,
+                10,
+                1,
+                1,
+                null,
+                false,
+                "table",
+                "*");
+
+    assertFormulaCellsNeutralized(csv);
+  }
+
+  private static SearchLineageResult pipelineEdgeWithFormulas() {
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    Map<String, Object> pipeline =
+        Map.of(
+            "name", "etl",
+            "displayName", "+SUM(1,1)",
+            "description", "=HYPERLINK(\"http://example.com\")");
+    EsLineageData edge =
+        new EsLineageData()
+            .withFromEntity(new RelationshipRef().withId(fromId))
+            .withToEntity(new RelationshipRef().withId(toId))
+            .withPipeline(pipeline);
+    return new SearchLineageResult()
+        .withNodes(
+            Map.of(
+                "from", lineageNode(fromId, "db.schema.from"),
+                "to", lineageNode(toId, "db.schema.to")))
+        .withUpstreamEdges(Map.of("edge", edge))
+        .withDownstreamEdges(Map.of());
+  }
+
+  private static NodeInformation lineageNode(UUID id, String fqn) {
+    return new NodeInformation().withEntity(Map.of("id", id.toString(), "fullyQualifiedName", fqn));
+  }
+
+  private static void assertFormulaCellsNeutralized(String csv) throws Exception {
+    List<CSVRecord> records =
+        CSVFormat.DEFAULT
+            .builder()
+            .setHeader()
+            .setSkipHeaderRecord(true)
+            .build()
+            .parse(new StringReader(csv))
+            .getRecords();
+    assertEquals(1, records.size());
+    CSVRecord row = records.getFirst();
+    assertEquals("db.schema.from", row.get("fromEntityFQN"));
+    assertEquals("etl", row.get("pipelineName"));
+    assertEquals("'+SUM(1,1)", row.get("pipelineDisplayName"));
+    assertEquals("'=HYPERLINK(\"http://example.com\")", row.get("pipelineDescription"));
   }
 }

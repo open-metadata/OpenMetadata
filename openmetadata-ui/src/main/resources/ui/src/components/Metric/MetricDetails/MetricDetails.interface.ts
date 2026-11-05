@@ -12,8 +12,8 @@
  */
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Metric } from '../../../generated/entity/data/metric';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface MetricDetailsProps {
   metricDetails: Metric;

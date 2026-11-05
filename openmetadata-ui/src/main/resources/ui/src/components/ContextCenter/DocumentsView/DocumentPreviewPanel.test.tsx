@@ -12,7 +12,10 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ContextFile } from '../../../generated/entity/data/contextFile';
+import {
+  ContextFile,
+  ProcessingStatus,
+} from '../../../generated/entity/data/contextFile';
 import DocumentPreviewPanel from './DocumentPreviewPanel.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -72,6 +75,18 @@ jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
     <button data-testid="copy-link-btn" data-url={url}>
       copy
     </button>
+  ))
+);
+
+jest.mock('../DocumentStatusBadge/DocumentStatusBadge.component', () =>
+  jest.fn(({ status, error }: { status?: string; error?: string }) => (
+    <span data-error={error} data-status={status} data-testid="status-badge" />
+  ))
+);
+
+jest.mock('../ExtractedMemoriesCard/ExtractedMemoriesCard.component', () =>
+  jest.fn(({ sourceId }: { sourceId: string }) => (
+    <div data-source-id={sourceId} data-testid="extracted-memories-card" />
   ))
 );
 
@@ -189,6 +204,66 @@ describe('DocumentPreviewPanel', () => {
     fireEvent.click(screen.getByTestId('close-preview-btn'));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the processing status badge for the file', () => {
+    render(
+      <DocumentPreviewPanel
+        file={{ ...baseFile, processingStatus: ProcessingStatus.Analyzing }}
+        url="http://x"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('status-badge')).toHaveAttribute(
+      'data-status',
+      'Analyzing'
+    );
+  });
+
+  it('lists the memories extracted from the file', () => {
+    render(
+      <DocumentPreviewPanel
+        file={baseFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('extracted-memories-card')).toHaveAttribute(
+      'data-source-id',
+      'file-1'
+    );
+  });
+
+  it('shows the processing error for a failed file', () => {
+    render(
+      <DocumentPreviewPanel
+        file={{
+          ...baseFile,
+          processingStatus: ProcessingStatus.Failed,
+          processingError: 'Object storage is not configured',
+        }}
+        url="http://x"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('processing-error')).toHaveTextContent(
+      'Object storage is not configured'
+    );
+  });
+
+  it('does not render an error row when the file processed cleanly', () => {
+    render(
+      <DocumentPreviewPanel
+        file={{ ...baseFile, processingStatus: ProcessingStatus.Processed }}
+        url="http://x"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('processing-error')).not.toBeInTheDocument();
   });
 
   it('renders the copy link button with the given url', () => {

@@ -13,6 +13,7 @@
 
 import * as fs from 'fs';
 import { expect, test } from '../../support/fixtures/base';
+import { chooseSelectOption } from '../../utils/common';
 import { performZoomOut } from '../../utils/lineage';
 
 /**
@@ -42,7 +43,7 @@ test.describe(
       const lineageResponsePromise = page.waitForResponse(
         '/api/v1/lineage/getLineage*'
       );
-      await page.goto(LINEAGE_URL);
+      await page.goto(LINEAGE_URL, { waitUntil: 'domcontentloaded' });
       await lineageResponsePromise;
 
       // Wait for nodes to render, then wait until the canvas has been drawn.
@@ -62,11 +63,6 @@ test.describe(
 
       // perform fit view to ensure all the nodes are in view
       await page.getByTestId('fit-screen').click();
-      await expect(
-        page.getByRole('menu', { name: 'Lineage View Options' })
-      ).toBeVisible();
-
-      await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
       // perform zoom out to add breathing space around
       await performZoomOut(page, 2);
@@ -82,8 +78,10 @@ test.describe(
         .waitFor({ state: 'visible' });
 
       // Select PNG (the modal defaults to CSV for entity lineage)
-      await page.getByTestId('export-type-select').click();
-      await page.getByRole('option', { name: 'PNG' }).click();
+      await chooseSelectOption(
+        page.getByTestId('export-type-select'),
+        page.getByRole('option', { name: 'PNG' })
+      );
       await expect(page.getByTestId('export-type-select')).toContainText('PNG');
 
       // Trigger download

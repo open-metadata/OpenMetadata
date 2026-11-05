@@ -13,7 +13,7 @@
 
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Table } from './table';
+import { Table, TableCard } from './table';
 
 const ROWS = [
   { id: 'r1', name: 'alpha' },
@@ -59,6 +59,35 @@ describe('Table header accessibility', () => {
   });
 });
 
+describe('Table header alignment', () => {
+  it('starts header content by default and centres it on request', () => {
+    render(
+      <Table aria-label="aligned-table">
+        <Table.Header>
+          <Table.Head isRowHeader id="name">
+            Name
+          </Table.Head>
+          <Table.Head align="center" id="allowed">
+            Allowed
+          </Table.Head>
+        </Table.Header>
+        <Table.Body>
+          <Table.Row id="r1">
+            <Table.Cell>alpha</Table.Cell>
+            <Table.Cell>yes</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>
+    );
+
+    const content = (name: string) =>
+      screen.getByRole('columnheader', { name }).firstElementChild;
+
+    expect(content('Name')).not.toHaveClass('tw:justify-center');
+    expect(content('Allowed')).toHaveClass('tw:justify-center');
+  });
+});
+
 describe('Table sizes', () => {
   it('applies the compact scale', () => {
     renderTable({ size: 'compact' });
@@ -82,6 +111,43 @@ describe('Table sizes', () => {
     renderTable();
 
     expect(screen.getAllByRole('row')[1]).toHaveClass('tw:h-18');
+  });
+});
+
+describe('Table variant', () => {
+  const container = () => screen.getByRole('grid').parentElement;
+
+  it('leaves the container unframed by default', () => {
+    renderTable();
+
+    expect(container()).not.toHaveClass('tw:bg-primary_alt');
+  });
+
+  it('frames the container on the muted step with a single-layer hover', () => {
+    renderTable({ variant: 'muted' });
+
+    expect(container()).toHaveClass(
+      'tw:bg-primary_alt',
+      'tw:dark:border-primary',
+      'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover'
+    );
+  });
+
+  it('marks only an empty body with the data-empty hook the hover rules skip', () => {
+    const { container: populated } = renderTable();
+    const { container: empty } = render(
+      <Table aria-label="empty-table">
+        <Table.Header>
+          <Table.Head isRowHeader id="name">
+            Name
+          </Table.Head>
+        </Table.Header>
+        <Table.Body renderEmptyState={() => 'nothing here'}>{[]}</Table.Body>
+      </Table>
+    );
+
+    expect(populated.querySelector('tbody')).not.toHaveAttribute('data-empty');
+    expect(empty.querySelector('tbody')).toHaveAttribute('data-empty');
   });
 });
 
@@ -166,5 +232,98 @@ describe('Table', () => {
       'colspan',
       '3'
     );
+  });
+
+  it('can omit the selection cell for a full-width synthetic row in single-selection mode', () => {
+    // The same gate (`selectionBehavior === 'toggle'`) drives the selection
+    // cell for both selection modes, so a `hideSelectionCell` synthetic row
+    // must not crash under single selection either.
+    render(
+      <Table
+        aria-label="Metrics"
+        selectionBehavior="toggle"
+        selectionMode="single">
+        <Table.Header>
+          <Table.Head id="metric" label="Metric" />
+          <Table.Head id="description" label="Description" />
+        </Table.Header>
+        <Table.Body>
+          <Table.Row id="metric-row">
+            <Table.Cell>Gross margin</Table.Cell>
+            <Table.Cell>Margin after costs</Table.Cell>
+          </Table.Row>
+          <Table.Row hideSelectionCell id="group-row">
+            <Table.Cell colSpan={3}>Profitability</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>
+    );
+
+    const metricRow = screen.getByText('Gross margin').closest('tr');
+    const groupRow = screen.getByText('Profitability').closest('tr');
+
+    expect(metricRow).not.toBeNull();
+    expect(groupRow).not.toBeNull();
+    // A normal row still gets its single-selection control: the gate must
+    // hide the cell only for the `hideSelectionCell` row, not every row.
+    expect(
+      within(metricRow as HTMLElement).getByRole('checkbox')
+    ).toBeVisible();
+    // The synthetic row must not emit a selection cell — react-aria otherwise
+    // throws "Cell count must match column count" at render.
+    expect(
+      within(groupRow as HTMLElement).queryByRole('checkbox')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Profitability').closest('td')).toHaveAttribute(
+      'colspan',
+      '3'
+    );
+  });
+});
+
+describe('TableCard theme roles', () => {
+  it('uses shared surface and subtle-border roles', () => {
+    const { container } = render(
+      <TableCard.Root data-testid="table-card">
+        <TableCard.Header title="Assets" />
+      </TableCard.Root>
+    );
+    const header = container.firstElementChild?.firstElementChild;
+
+    expect(screen.getByTestId('table-card')).toHaveClass(
+      'tw:bg-surface',
+      'tw:after:outline-subtle'
+    );
+    // Drawn inside the card: an outer outline is clipped by any scrolling
+    // parent the card sits flush against (e.g. the top of a modal body).
+    expect(screen.getByTestId('table-card')).toHaveClass(
+      'tw:after:-outline-offset-1'
+    );
+    // On an overlay above the content, inside the card's own stacking
+    // context: an outline on the card itself is painted over by a sticky
+    // (z-10, opaque) table header.
+    expect(screen.getByTestId('table-card')).toHaveClass(
+      'tw:isolate',
+      'tw:after:absolute',
+      'tw:after:z-20'
+    );
+    expect(header).toHaveClass('tw:bg-surface', 'tw:border-subtle');
+  });
+
+  it('muted variant sits on primary_alt with a visible edge and row hover', () => {
+    render(<TableCard.Root data-testid="table-card" variant="muted" />);
+    const card = screen.getByTestId('table-card');
+
+    expect(card).toHaveClass(
+      'tw:bg-primary_alt',
+      'tw:after:outline-secondary',
+      'tw:dark:after:outline-primary',
+      'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
+      'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover',
+      // Clamped markdown must fade into the muted row, not the surface.
+      'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!'
+    );
+    expect(card).not.toHaveClass('tw:bg-surface');
+    expect(card).not.toHaveClass('tw:after:outline-subtle');
   });
 });

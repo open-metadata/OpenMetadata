@@ -48,16 +48,6 @@ const mockProps = {
   shouldValidateForm: false,
 };
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Tooltip: jest.fn().mockImplementation(({ children, title }) => (
-    <div>
-      <span data-testid="tooltip">{title}</span>
-      {children}
-    </div>
-  )),
-}));
-
 jest.mock('../../../utils/ServicePureUtils', () => ({
   ...jest.requireActual('../../../utils/ServicePureUtils'),
   getTestConnectionName: jest.fn().mockReturnValue('test-connection-Mysql-01'),
@@ -201,11 +191,12 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    // Re-query after the click: Tooltip wraps a disabled child in a span, so
+    // the button is remounted and the element captured before the click is
+    // detached.
+    fireEvent.click(screen.getByTestId('test-connection-btn'));
 
-    fireEvent.click(testConnectionButton);
-
-    expect(testConnectionButton).toBeDisabled();
+    expect(screen.getByTestId('test-connection-btn')).toBeDisabled();
   });
 
   it('Should fetch the connection definition on test connection click', async () => {

@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom/extend-expect';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { fetchCountOfIncidentStatusTypeByDays } from '../../../../rest/dataQualityDashboardAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { IncidentTypeAreaChartWidgetProps } from '../../DataQuality.interface';
 import IncidentTypeAreaChartWidget from './IncidentTypeAreaChartWidget.component';
 
@@ -41,7 +42,7 @@ const defaultProps: IncidentTypeAreaChartWidgetProps = {
 
 describe('IncidentTypeAreaChartWidget', () => {
   it('should render the component', async () => {
-    render(<IncidentTypeAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<IncidentTypeAreaChartWidget {...defaultProps} />);
 
     expect(await screen.findByText(defaultProps.title)).toBeInTheDocument();
     expect(
@@ -53,7 +54,7 @@ describe('IncidentTypeAreaChartWidget', () => {
   });
 
   it('should call fetchCountOfIncidentStatusTypeByDays function', async () => {
-    render(<IncidentTypeAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<IncidentTypeAreaChartWidget {...defaultProps} />);
 
     expect(fetchCountOfIncidentStatusTypeByDays).toHaveBeenCalledWith(
       defaultProps.incidentStatusType,
@@ -70,7 +71,7 @@ describe('IncidentTypeAreaChartWidget', () => {
       tier: ['tier1'],
     };
     const status = TestCaseResolutionStatusTypes.Assigned;
-    render(
+    renderWithQueryClient(
       <IncidentTypeAreaChartWidget
         {...defaultProps}
         chartFilter={filters}
@@ -88,7 +89,7 @@ describe('IncidentTypeAreaChartWidget', () => {
     (fetchCountOfIncidentStatusTypeByDays as jest.Mock).mockRejectedValue(
       new Error('API Error')
     );
-    render(<IncidentTypeAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<IncidentTypeAreaChartWidget {...defaultProps} />);
     await waitFor(() =>
       expect(fetchCountOfIncidentStatusTypeByDays).toHaveBeenCalled()
     );
@@ -98,5 +99,55 @@ describe('IncidentTypeAreaChartWidget', () => {
       await screen.findByText('CustomAreaChart.component')
     ).toBeInTheDocument();
     expect((await screen.findByTestId('total-value')).textContent).toEqual('0');
+  });
+
+  it('should keep the latest chartFilter data when a stale request resolves last', async () => {
+    const release: Record<number, () => void> = {};
+    const gates: Record<number, Promise<void>> = {
+      1: new Promise((resolve) => {
+        release[1] = resolve;
+      }),
+      100: new Promise((resolve) => {
+        release[100] = resolve;
+      }),
+    };
+    (fetchCountOfIncidentStatusTypeByDays as jest.Mock).mockImplementation(
+      async (
+        _status: TestCaseResolutionStatusTypes,
+        filters: { startTs: number }
+      ) => {
+        await gates[filters.startTs];
+
+        return {
+          data: [
+            { stateId: String(filters.startTs), timestamp: '1729468800000' },
+          ],
+        };
+      }
+    );
+
+    const { rerender } = renderWithQueryClient(
+      <IncidentTypeAreaChartWidget
+        {...defaultProps}
+        chartFilter={{ startTs: 1, endTs: 10 }}
+      />
+    );
+    rerender(
+      <IncidentTypeAreaChartWidget
+        {...defaultProps}
+        chartFilter={{ startTs: 100, endTs: 200 }}
+      />
+    );
+
+    await act(async () => release[100]());
+
+    expect(await screen.findByTestId('total-value')).toHaveTextContent('100');
+
+    await act(async () => release[1]());
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(screen.getByTestId('total-value')).toHaveTextContent('100');
   });
 });

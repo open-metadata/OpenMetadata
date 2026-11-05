@@ -207,7 +207,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
             WHERE n.nspname !~ '^pg_'
               AND att.attnum > 0
               AND NOT att.attisdropped
-              {schema_clause}
+              AND n.nspname = :schema
             UNION
             SELECT
               view_schema as "schema",
@@ -231,7 +231,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
               col_name name,
               col_type varchar,
               col_num int)
-            WHERE 1 {schema_clause}
+            WHERE view_schema = :schema
             UNION
             SELECT schemaname AS "schema",
                tablename AS "table_name",
@@ -265,6 +265,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
                null AS "schema_oid",
                null AS "table_oid"
             FROM svv_external_columns
+            WHERE schemaname = :schema
             ORDER BY "schema", "table_name", "attnum";
             """
 )
@@ -272,7 +273,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
 REDSHIFT_EXTERNAL_TABLE_LOCATION = """
   SELECT schemaname, tablename, location
     FROM svv_external_tables
-    where redshift_database_name='{database_name}'
+    where redshift_database_name = :database_name
 """
 
 
@@ -293,8 +294,72 @@ REDSHIFT_GET_DATABASE_NAMES = """
 SELECT datname FROM pg_database
 """
 
+# Used as a prefix by the query below, so it must stay clause-free: a WHERE or an
+# ORDER BY added here has to be added to both.
 REDSHIFT_GET_ALL_SCHEMAS = """
 SELECT database_name, schema_name FROM SVV_ALL_SCHEMAS
+"""
+
+# The same view narrowed to one database, derived from the query above so the two
+# cannot drift apart.
+REDSHIFT_GET_SCHEMAS_FOR_DATABASE = REDSHIFT_GET_ALL_SCHEMAS + "WHERE database_name = :database\n"
+
+# Databases the cluster does not hold locally show up in `pg_database`, but the
+# server refuses a connection to them, so their metadata has to be read through
+# the cross-database SVV_ALL_* catalog views below.
+#
+# SHOW DATABASES is the only one of the two that reports a catalog database
+# mounted from Glue (`auto mounted catalog`, or one created from a Data Catalog
+# ARN) - SVV_REDSHIFT_DATABASES covers only datashares from remote clusters and
+# omits those entirely, so it is the fallback for clusters that predate SHOW.
+REDSHIFT_SHOW_DATABASES = "SHOW DATABASES"
+
+REDSHIFT_GET_DATABASE_TYPES = """
+SELECT database_name, database_type FROM SVV_REDSHIFT_DATABASES
+"""
+
+REDSHIFT_GET_DATASHARE_TABLES = """
+SELECT table_name, table_type, remarks
+FROM SVV_ALL_TABLES
+WHERE database_name = :database AND schema_name = :schema
+"""
+
+# The cross-database counterpart of REDSHIFT_GET_SCHEMA_COLUMN_INFO: same row shape,
+# one query per schema, so both feed the dialect's column construction unchanged.
+#
+# SVV_ALL_COLUMNS splits the type across data_type/length/precision, while the
+# connected path gets it pre-rendered from format_type(). Rebuilding it here rather
+# than in Python is what lets the two share everything downstream. The CASE was
+# checked against a live cluster: 529,885 local columns, zero disagreements with
+# format_type(). Its two guards are both load-bearing --
+#   * only real character/binary types take a length. Hive `string` reports
+#     character_maximum_length 16383 and would otherwise render `string(16383)`.
+#   * character varying reports -1 for some columns, hence the > 0.
+# Every numeric type reports a precision (integer comes back 32,0), so only the
+# scaled ones may render it.
+REDSHIFT_GET_DATASHARE_SCHEMA_COLUMN_INFO = """
+SELECT
+    schema_name AS "schema",
+    table_name,
+    column_name AS name,
+    CASE
+      WHEN lower(data_type) IN ('character varying', 'character', 'binary varying')
+           AND character_maximum_length IS NOT NULL AND character_maximum_length > 0
+        THEN data_type || '(' || character_maximum_length || ')'
+      WHEN lower(data_type) IN ('numeric', 'decimal') AND numeric_precision IS NOT NULL
+        THEN data_type || '(' || numeric_precision || ',' || COALESCE(numeric_scale, 0) || ')'
+      ELSE data_type
+    END AS format_type,
+    column_default AS "default",
+    CASE WHEN upper(is_nullable) = 'NO' THEN TRUE ELSE FALSE END AS notnull,
+    NULL AS encode,
+    remarks AS comment,
+    NULL AS distkey,
+    0 AS sortkey,
+    ordinal_position AS attnum
+FROM SVV_ALL_COLUMNS
+WHERE database_name = :database AND schema_name = :schema
+ORDER BY table_name, ordinal_position
 """
 
 REDSHIFT_TEST_GET_QUERIES = """
@@ -546,8 +611,8 @@ WHERE status = 'success'
     (query_type = 'UTILITY' AND query_text ilike '%%COMMENT ON%%') OR
     (query_type = 'CTAS' AND query_text ilike '%%CREATE TABLE%%')
   )
-  and database_name = '{database}'
-  and end_time >= '{start_date}'
+  and database_name = :database
+  and end_time >= :start_date
 ORDER BY end_time DESC
 """
 

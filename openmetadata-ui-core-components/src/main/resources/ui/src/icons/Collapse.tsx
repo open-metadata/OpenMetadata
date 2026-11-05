@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Collapse: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -32,7 +32,19 @@ export const Collapse: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M18 10H2" stroke="currentColor" strokeWidth={1.8} />
+    <rect
+      height={16}
+      rx={5}
+      stroke="currentColor"
+      strokeWidth={1.3}
+      transform="matrix(-1 0 0 1 18 2)"
+      width={16}
+    />
+    <path
+      d="M6.443 12.665 9.109 10 6.443 7.332m5.334-4.442v14.223"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 Collapse.displayName = 'Collapse';

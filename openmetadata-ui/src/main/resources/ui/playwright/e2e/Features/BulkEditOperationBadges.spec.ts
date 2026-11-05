@@ -80,8 +80,10 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
     await expect(
-      page.locator('.bulk-edit-operation-badge-no_change').first()
-    ).toBeVisible();
+      page
+        .locator('.bulk-edit-operation-badge-no_change')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(page.getByTestId('bulk-edit-operation-summary')).toBeVisible();
     await expect(
       page.locator('.bulk-edit-operation-summary-count-no_change')
@@ -100,8 +102,10 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
     await expect(
-      page.locator('.bulk-edit-operation-badge-no_change').first()
-    ).toBeVisible();
+      page
+        .locator('.bulk-edit-operation-badge-no_change')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(
       page.locator('.bulk-edit-operation-summary-count-update')
     ).toContainText('0');
@@ -112,8 +116,10 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
     await fillTextInputDetails(page, 'PW Updated Glossary Term Display');
 
     await expect(
-      page.locator('.bulk-edit-operation-badge-update').first()
-    ).toBeVisible();
+      page
+        .locator('.bulk-edit-operation-badge-update')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(
       page.locator('.bulk-edit-operation-summary-count-update')
     ).toContainText('1');
@@ -137,8 +143,10 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
     await fillTextInputDetails(page, 'PW Revert Test Display');
 
     await expect(
-      page.locator('.bulk-edit-operation-badge-update').first()
-    ).toBeVisible();
+      page
+        .locator('.bulk-edit-operation-badge-update')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(
       page.locator('.bulk-edit-operation-summary-count-update')
     ).toContainText('1');
@@ -150,8 +158,10 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
       0
     );
     await expect(
-      page.locator('.bulk-edit-operation-badge-no_change').first()
-    ).toBeVisible();
+      page
+        .locator('.bulk-edit-operation-badge-no_change')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(
       page.locator('.bulk-edit-operation-summary-count-update')
     ).toContainText('0');
@@ -164,7 +174,9 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
     await page.click('[data-testid="bulk-edit-table"]');
     await waitForAllLoadersToDisappear(page);
     await expect(page.locator('.rdg-header-row')).toBeVisible();
-    await expect(page.locator('.rdg-row').first()).toBeVisible();
+    await expect(
+      page.locator('.rdg-row').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const termName = opGlossaryTerm.data.name;
 
@@ -190,8 +202,10 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
 
     await expect(page.getByTestId('bulk-edit-operation-summary')).toBeVisible();
     await expect(
-      page.locator('.bulk-edit-operation-badge-no_change').first()
-    ).toBeVisible();
+      page
+        .locator('.bulk-edit-operation-badge-no_change')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(
       page.locator('.bulk-edit-operation-summary-count-update')
     ).toContainText('0');
@@ -208,7 +222,9 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
     await page.click('[data-testid="bulk-edit-table"]');
     await waitForAllLoadersToDisappear(page);
     await expect(page.locator('.rdg-header-row')).toBeVisible();
-    await expect(page.locator('.rdg-row').first()).toBeVisible();
+    await expect(
+      page.locator('.rdg-row').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const databaseName = opTable.database.name;
 

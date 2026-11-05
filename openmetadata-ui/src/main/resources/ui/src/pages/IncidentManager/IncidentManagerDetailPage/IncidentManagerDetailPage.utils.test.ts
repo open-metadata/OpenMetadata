@@ -158,9 +158,9 @@ describe('IncidentManagerDetailPage utilities', () => {
       paging: { total: 3 },
     });
 
-    await expect(fetchNextTestCaseRunTimestamp(['suite.one'])).resolves.toBe(
-      undefined
-    );
+    await expect(
+      fetchNextTestCaseRunTimestamp(['suite.one'])
+    ).resolves.toBeNull();
     expect(mockGetNextCronRunTimestamp).not.toHaveBeenCalled();
   });
 

@@ -16,7 +16,12 @@ import {
   Button,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { AlertTriangle, CheckCircle, XCircle, Zap } from '@untitledui/icons';
+import {
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Zap,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import cx from 'classnames';
 import { isEmpty, isEqual, toNumber } from 'lodash';
@@ -36,7 +41,7 @@ import {
 } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
-import { Connection as ConfigObject } from '../../../generated/entity/automations/testServiceConnection';
+import { AirflowConnectionObject as ConfigObject } from '../../../generated/entity/automations/testServiceConnection';
 import {
   StatusType,
   TestConnectionStepResult,
@@ -161,6 +166,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   isFormValidationPending = false,
   hostIp,
   extraInfo,
+  renderFailureAction,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -845,6 +851,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
         progress={progress}
+        renderFailureAction={renderFailureAction}
         serviceType={serviceType}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}

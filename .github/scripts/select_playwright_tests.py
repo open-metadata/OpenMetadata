@@ -13,7 +13,10 @@ from typing import Any
 
 UI_ROOT = "openmetadata-ui/src/main/resources/ui/"
 RUNNABLE_SPEC_PREFIX = f"{UI_ROOT}playwright/e2e/"
-LINEAGE_MATRIX_SPEC = "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts"
+# Gating events run one representative entity per entity-matrix spec (see
+# playwright/utils/entityMatrix.ts); the nightly schedule and manual dispatches
+# keep every entity.
+REPRESENTATIVE_ENTITY_EVENTS = {"pull_request", "pull_request_target", "merge_group"}
 
 # Path prefixes that always mean "product/test code" — a change here that is
 # also unmapped by the impact-map is treated as "we don't know what to run,
@@ -52,6 +55,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--event-name", required=True)
     parser.add_argument("--changed-files", type=Path)
     parser.add_argument("--impact-map", type=Path, required=True)
+    parser.add_argument(
+        "--generated-impact-map",
+        type=Path,
+        help=(
+            "Optional path to the auto-generated source→spec map produced by "
+            ".github/scripts/generate_playwright_impact_map.py. Its mappings are "
+            "appended to the hand-authored map — hand-authored routing always "
+            "wins because the planner iterates in order and only adds specs."
+        ),
+    )
     parser.add_argument("--full-suite", choices=("true", "false"), default="false")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--github-output", type=Path)
@@ -100,9 +113,6 @@ def remove_delegated_specs(
 
 def write_github_output(path: Path, plan: dict[str, Any]) -> None:
     direct_changed_specs = plan.get("directChangedSpecs", [])
-    lineage_representative_only = (
-        plan["mode"] == "targeted" and LINEAGE_MATRIX_SPEC not in direct_changed_specs
-    )
     with path.open("a", encoding="utf-8") as output:
         output.write(f"mode={plan['mode']}\n")
         output.write(f"selection={json.dumps(plan, separators=(',', ':'))}\n")
@@ -111,15 +121,34 @@ def write_github_output(path: Path, plan: dict[str, Any]) -> None:
             "direct_changed_specs="
             f"{json.dumps(direct_changed_specs, separators=(',', ':'))}\n"
         )
-        output.write(
-            f"lineage_representative_only={str(lineage_representative_only).lower()}\n"
-        )
+        output.write(f"entity_matrix={plan.get('entityMatrix', 'full')}\n")
 
 
 def main() -> None:
     args = parse_args()
     repo_root = Path.cwd()
     impact_map = json.loads(args.impact_map.read_text(encoding="utf-8"))
+
+    # Optional auto-generated map — merged by appending its mappings to the
+    # hand-authored ones. Both `add_selection` calls (below) union projects on
+    # collision, so a spec named by both maps still ends up in the union of
+    # both project sets. Generated mappings never carry `projects`; they
+    # default to ["auto"] and let the shard planner route each spec to
+    # whichever project it belongs to.
+    #
+    # Auto-detects a sibling `impact-map.generated.json` when the caller does
+    # not pass `--generated-impact-map`, so the workflow does not need to be
+    # taught about the new file — just committing the generated map is enough.
+    generated_path = args.generated_impact_map
+    if generated_path is None:
+        default_generated = args.impact_map.with_name("impact-map.generated.json")
+        if default_generated.exists():
+            generated_path = default_generated
+    if generated_path is not None and generated_path.exists():
+        generated = json.loads(generated_path.read_text(encoding="utf-8"))
+        impact_map["mappings"] = impact_map.get("mappings", []) + generated.get(
+            "mappings", []
+        )
     # `push` is the main-scoped cache warmer (populate-playwright-caches.yml).
     # It carries no PR diff to narrow against, and the fixture it warms has to be
     # the one a full merge-queue run restores — a targeted plan would leave
@@ -241,6 +270,10 @@ def main() -> None:
                     if not matches(spec, impact_map.get("delegatedSpecs", []))
                 ],
             }
+
+    plan["entityMatrix"] = (
+        "representative" if args.event_name in REPRESENTATIVE_ENTITY_EVENTS else "full"
+    )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")

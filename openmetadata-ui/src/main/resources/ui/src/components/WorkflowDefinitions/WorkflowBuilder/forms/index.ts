@@ -14,10 +14,9 @@
 export { ModeAwareFormField } from '../ModeAwareFormField';
 export { CheckChangeDescriptionForm } from './CheckChangeDescriptionForm';
 export { CheckConditionForm } from './CheckConditionForm';
-export {
-  ConditionBuilder,
-  parseConditionBuilderPayload,
-} from './ConditionBuilder';
+export { CollectMetadataForm } from './CollectMetadataForm';
+export { ConditionBuilder } from './ConditionBuilder/ConditionBuilder';
+export { parseConditionBuilderPayload } from './ConditionBuilder/conditionBuilderTransformer';
 export { CronExpressionBuilder } from './CronExpressionBuilder';
 export { DataAssetFiltersSection } from './DataAssetFiltersSection';
 export { DataAssetFormSection } from './DataAssetFormSection';

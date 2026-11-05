@@ -15,23 +15,27 @@ import {
   Badge,
   Box,
   Button,
-  EmptyPlaceholder,
+  NavList,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Grid01, Plus, Star01, Tag01 } from '@untitledui/icons';
+import {
+  Grid01,
+  Plus,
+  Star01,
+  Tag01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
@@ -39,11 +43,8 @@ import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { CreateTag } from '../../generated/api/classification/createTag';
 import { ProviderType } from '../../generated/entity/bot';
@@ -51,6 +52,7 @@ import { Classification } from '../../generated/entity/classification/classifica
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createClassification,
@@ -61,12 +63,8 @@ import {
   patchClassification,
   patchTag,
 } from '../../rest/tagAPI';
-import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
-} from '../../utils/PermissionsUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringUtils';
 import tagClassBase from '../../utils/TagClassBase';
@@ -80,7 +78,7 @@ import {
 } from './TagsPage.interface';
 
 const TagsPage = () => {
-  const { getEntityPermission, permissions } = usePermissionProvider();
+  const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn: tagCategoryName } = useFqn();
@@ -112,8 +110,28 @@ const TagsPage = () => {
     data: undefined,
     state: false,
   });
-  const [classificationPermissions, setClassificationPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  // By-id fetch (Task 8 mixed-gating note): currentClassification only ever resolves after
+  // the classification list/by-name fetch above, so this is the by-id identifier form. The
+  // resource-level checkPermission(Operation.X, ResourceEntity.TAG, permissions) calls below
+  // stay untouched — they read a different (resource-level) permission object entirely.
+  const {
+    permissions: classificationPermissions,
+    canEditAll: classificationCanEditAll,
+    canEditDescription: classificationCanEditDescription,
+    canEditDisplayName: classificationCanEditDisplayName,
+    error: classificationPermissionsError,
+  } = useEntityPermissions(
+    ResourceEntity.CLASSIFICATION,
+    { id: currentClassification?.id ?? '' },
+    { enabled: Boolean(currentClassification?.id) }
+  );
+
+  useEffect(() => {
+    if (classificationPermissionsError) {
+      showErrorToast(classificationPermissionsError as AxiosError);
+    }
+  }, [classificationPermissionsError]);
 
   const createClassificationPermission = useMemo(
     () =>
@@ -134,21 +152,6 @@ const TagsPage = () => {
     () => currentClassification?.name === 'Tier',
     [currentClassification]
   );
-
-  const fetchCurrentClassificationPermission = async () => {
-    if (!currentClassification?.id) {
-      return;
-    }
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.CLASSIFICATION,
-        currentClassification?.id
-      );
-      setClassificationPermissions(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
 
   const fetchClassifications = async (setCurrent?: boolean) => {
     setIsLoading(true);
@@ -490,12 +493,6 @@ const TagsPage = () => {
   }, []);
 
   useEffect(() => {
-    if (currentClassification) {
-      fetchCurrentClassificationPermission();
-    }
-  }, [currentClassification]);
-
-  useEffect(() => {
     /**
      * If ClassificationName is present then fetch that category
      */
@@ -513,10 +510,6 @@ const TagsPage = () => {
     fetchClassifications(!tagCategoryName);
   }, []);
 
-  const onClickClassifications = (category: Classification) => {
-    navigate(getTagPath(category.fullyQualifiedName));
-  };
-
   const handleAddTagSubmit = useCallback(
     async (data: CreateTag | Tag) => {
       if (editTag) {
@@ -532,11 +525,18 @@ const TagsPage = () => {
     setDeleteTags({ data: undefined, state: false });
   }, []);
 
+  // Each of these ORs the resource-level TAG permission (untouched — a separate,
+  // checkPermission-driven object per the batch's decision-tree rule 3) with the
+  // classification's own canEditAll: a classification-level EditAll grants full tag
+  // management within it regardless of the more granular TAG resource permission. Every
+  // site below is a bare classificationPermissions.EditAll read (not OR'd against another
+  // field of the same object), so classificationCanEditAll is a pure rename, not an
+  // explicit-deny-wins fix.
   const createTagsPermission = useMemo(
     () =>
       checkPermission(Operation.Create, ResourceEntity.TAG, permissions) ||
-      classificationPermissions.EditAll,
-    [permissions, classificationPermissions]
+      classificationCanEditAll,
+    [permissions, classificationCanEditAll]
   );
 
   const editTagsDescriptionPermission = useMemo(
@@ -545,8 +545,8 @@ const TagsPage = () => {
         Operation.EditDescription,
         ResourceEntity.TAG,
         permissions
-      ) || classificationPermissions.EditAll,
-    [permissions, classificationPermissions]
+      ) || classificationCanEditAll,
+    [permissions, classificationCanEditAll]
   );
 
   const editTagsDisplayNamePermission = useMemo(
@@ -555,15 +555,15 @@ const TagsPage = () => {
         Operation.EditDisplayName,
         ResourceEntity.TAG,
         permissions
-      ) || classificationPermissions.EditAll,
-    [permissions, classificationPermissions]
+      ) || classificationCanEditAll,
+    [permissions, classificationCanEditAll]
   );
 
   const editTagsPermission = useMemo(
     () =>
       checkPermission(Operation.EditAll, ResourceEntity.TAG, permissions) ||
-      classificationPermissions.EditAll,
-    [permissions, classificationPermissions]
+      classificationCanEditAll,
+    [permissions, classificationCanEditAll]
   );
 
   const tagsFormPermissions = useMemo(
@@ -581,18 +581,23 @@ const TagsPage = () => {
     ]
   );
 
+  // editDescription/editDisplayName are explicit-deny-wins fixes (Task 6 Finding 1): the old
+  // raw `EditAll || EditField` OR let a classification-level EditAll override an explicit
+  // per-field deny; canEditDescription/canEditDisplayName prioritize the field-specific key
+  // and only fall back to EditAll when the field key is absent.
   const classificationFormPermissions = useMemo(
     () => ({
       createTags: createClassificationPermission,
-      editAll: classificationPermissions.EditAll,
-      editDescription:
-        classificationPermissions.EditAll ||
-        classificationPermissions.EditDescription,
-      editDisplayName:
-        classificationPermissions.EditAll ||
-        classificationPermissions.EditDisplayName,
+      editAll: classificationCanEditAll,
+      editDescription: classificationCanEditDescription,
+      editDisplayName: classificationCanEditDisplayName,
     }),
-    [createClassificationPermission, classificationPermissions]
+    [
+      createClassificationPermission,
+      classificationCanEditAll,
+      classificationCanEditDescription,
+      classificationCanEditDisplayName,
+    ]
   );
 
   const disableEditButton = useMemo(
@@ -701,6 +706,32 @@ const TagsPage = () => {
     handleTagDrawerOpen();
   }, [handleTagDrawerOpen, tagForm]);
 
+  const classificationNavItems = useMemo(
+    () =>
+      classifications.map((category: Classification) => ({
+        label: getEntityName(category),
+        href: getTagPath(category.fullyQualifiedName),
+        dataTestId: 'side-panel-classification',
+        badge: (
+          <Box align="center" className="tw:ml-2 tw:shrink-0" gap={1}>
+            {category.disabled && (
+              <Badge
+                color="gray"
+                data-testid="disabled"
+                size="sm"
+                type="pill-color">
+                {t('label.disabled')}
+              </Badge>
+            )}
+            <Badge color="gray" size="sm" type="pill-color">
+              <span data-testid="filter-count">{category.termCount ?? 0}</span>
+            </Badge>
+          </Box>
+        ),
+      })),
+    [classifications, t]
+  );
+
   const leftPanelLayout = useMemo(
     () => (
       <div className="h-full" data-testid="tags-left-panel">
@@ -711,72 +742,45 @@ const TagsPage = () => {
             <div className="p-x-sm m-b-sm">
               {createClassificationPermission && (
                 <Button
-                  className="tw:w-full"
+                  className="tw:w-full tw:*:data-icon:text-utility-brand-600"
                   color="secondary"
                   data-testid="add-classification"
-                  iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
+                  iconLeading={Plus}
                   size="sm"
                   onClick={() => {
                     classificationForm.reset();
                     handleClassificationDrawerOpen();
                   }}>
-                  <span className="tw:text-brand-600 tw:font-normal">
+                  <Typography
+                    className="tw:text-brand-tertiary"
+                    weight="regular">
                     {t('label.add-entity', {
                       entity: t('label.classification'),
                     })}
-                  </span>
+                  </Typography>
                 </Button>
               )}
             </div>
 
-            {classifications.map((category: Classification) => (
-              <button
-                className={classNames(
-                  'align-center cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
-                  {
-                    activeCategory:
-                      currentClassification?.name === category.name,
-                  }
+            <nav
+              aria-label={t('label.classification-plural')}
+              data-testid="classification-nav">
+              <NavList
+                activeUrl={getTagPath(
+                  currentClassification?.fullyQualifiedName
                 )}
-                data-testid="side-panel-classification"
-                key={category.name}
-                onClick={() => onClickClassifications(category)}>
-                <Typography
-                  ellipsis
-                  as="p"
-                  className={classNames('tw:truncate', {
-                    'tw:font-bold tw:text-brand-600':
-                      currentClassification?.name === category.name,
-                  })}
-                  data-testid="tag-name"
-                  title={getEntityName(category)}>
-                  {getEntityName(category)}
-                  {category.disabled && (
-                    <Badge
-                      color="gray"
-                      data-testid="disabled"
-                      size="sm"
-                      type="pill-color">
-                      {t('label.disabled')}
-                    </Badge>
-                  )}
-                </Typography>
-
-                {getCountBadge(
-                  category.termCount,
-                  'self-center m-l-auto',
-                  currentClassification?.fullyQualifiedName ===
-                    category.fullyQualifiedName
-                )}
-              </button>
-            ))}
+                className="tw:mt-0 tw:px-2 tw:lg:px-2"
+                items={classificationNavItems}
+                size="sm"
+              />
+            </nav>
           </div>
         </TagsLeftPanelSkeleton>
       </div>
     ),
     [
       isLoading,
-      classifications,
+      classificationNavItems,
       currentClassification,
       createClassificationPermission,
       handleClassificationDrawerOpen,
@@ -787,7 +791,7 @@ const TagsPage = () => {
 
   const classificationEmptyState = (
     <Box className="content-height-with-resizable-panel tw:relative tw:rounded-[10px]">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           createClassificationPermission
             ? [
@@ -823,7 +827,6 @@ const TagsPage = () => {
           },
         ]}
         title={t('message.classification-empty-state-title')}
-        variant="features"
       />
     </Box>
   );
@@ -833,11 +836,9 @@ const TagsPage = () => {
   }
   if (error) {
     return (
-      <ErrorPlaceHolder>
-        <Typography as="p" className="tw:text-center tw:m-auto">
-          {error}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" title={error} />
+      </div>
     );
   }
 
@@ -851,6 +852,7 @@ const TagsPage = () => {
           className="content-height-with-resizable-panel"
           firstPanel={{
             className: 'content-resizable-panel-container',
+            cardClassName: 'tw:dark:bg-surface',
             minWidth: 280,
             flex: 0.13,
             children: leftPanelLayout,

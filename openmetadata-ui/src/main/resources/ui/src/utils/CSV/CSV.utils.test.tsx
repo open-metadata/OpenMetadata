@@ -56,6 +56,7 @@ import {
 } from './CSVPureUtils';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
   Tooltip: jest.fn().mockImplementation(({ children, title }) => (
     <div data-testid="tooltip" title={title}>
       {children}
@@ -276,6 +277,41 @@ describe('CSVUtils', () => {
         glossaryTerms: { 'KPI.NetSales': '#1570ef' },
         tags: { 'Business.Critical': '#5925dc' },
         tiers: { 'Tier.Tier1': '#7a5af8' },
+      });
+    });
+
+    it('keeps parent, experts and metric group so a bulk edit does not clear them', () => {
+      const [row] = getMetricCsvRowsFromMetrics(
+        [
+          {
+            ...metric,
+            parent: {
+              id: 'parent-id',
+              type: 'metric',
+              fullyQualifiedName: 'total_sales',
+            },
+            experts: [
+              { id: 'expert-id', type: 'user', fullyQualifiedName: 'jane.doe' },
+            ],
+            metricGroup: {
+              id: 'group-id',
+              type: 'metricGroup',
+              fullyQualifiedName: 'revenue',
+            },
+          },
+        ],
+        [
+          ...metricHeaders,
+          { name: 'parent' },
+          { name: 'experts' },
+          { name: 'metricGroup' },
+        ]
+      );
+
+      expect(row).toMatchObject({
+        parent: 'total_sales',
+        experts: 'jane.doe',
+        metricGroup: 'revenue',
       });
     });
 

@@ -14,423 +14,314 @@ package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
-import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
-import org.awaitility.Awaitility;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.rdf.RdfReasoningFreshness;
+import org.openmetadata.schema.api.rdf.RdfReasoningInput;
+import org.openmetadata.schema.api.rdf.RdfSourceRevision;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
+import org.openmetadata.service.rdf.reasoning.ReasoningFreshness;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
-/**
- * Unit tests for {@link RdfUpdater}, specifically the glossary-term ⇔
- * glossary-term {@code RELATED_TO} short-circuit. The generic relationship
- * hooks unconditionally wrote {@code om:relatedTo} on top of the typed
- * predicate ({@code skos:exactMatch}, {@code skos:broader}, …) emitted by
- * {@link RdfRepository#addGlossaryTermRelation}, leaving a residual edge
- * after a user changed the relation type from "relatedTo" to "broader".
- * Verifies the short-circuit fires for the targeted shape and only for that
- * shape, so other relationships (CONTAINS, OWNS, cross-entity RELATED_TO,
- * etc.) still flow through the underlying repository.
- */
 class RdfUpdaterTest {
-
-  private RdfRepository originalRepository;
-  private RdfRepository mockRepository;
+  private final List<RdfLiveWrite> submitted = new ArrayList<>();
+  private Object originalQueue;
+  private Field queueField;
 
   @BeforeEach
-  void setUp() throws Exception {
-    RdfProjectionHealth.markReady();
-    mockRepository = Mockito.mock(RdfRepository.class);
-    when(mockRepository.isEnabled()).thenReturn(true);
-    originalRepository = swapRdfRepository(mockRepository);
-  }
-
-  @Test
-  @DisplayName("RDF writes touching the same entity id run in submission order")
-  void writesForSameEntityIdAreSequenced() throws Exception {
-    UUID termId = UUID.randomUUID();
-    UUID relatedTermId = UUID.randomUUID();
-    EntityInterface entity = Mockito.mock(EntityInterface.class);
-    when(entity.getId()).thenReturn(termId);
-
-    CountDownLatch updateStarted = new CountDownLatch(1);
-    CountDownLatch releaseUpdate = new CountDownLatch(1);
-    CountDownLatch relationStarted = new CountDownLatch(1);
-    AtomicBoolean relationRan = new AtomicBoolean(false);
-    List<String> events = Collections.synchronizedList(new ArrayList<>());
-
-    doAnswer(
-            ignored -> {
-              events.add("update-start");
-              updateStarted.countDown();
-              assertFalse(relationRan.get());
-              assertTrue(releaseUpdate.await(5, TimeUnit.SECONDS));
-              events.add("update-end");
-              return null;
-            })
-        .when(mockRepository)
-        .createOrUpdate(entity);
-    doAnswer(
-            ignored -> {
-              relationRan.set(true);
-              events.add("relation");
-              relationStarted.countDown();
-              return null;
-            })
-        .when(mockRepository)
-        .addGlossaryTermRelation(termId, relatedTermId, "relatedTo");
-
-    try {
-      RdfUpdater.updateEntity(entity);
-      assertTrue(updateStarted.await(5, TimeUnit.SECONDS));
-
-      RdfUpdater.addGlossaryTermRelation(termId, relatedTermId, "relatedTo");
-      assertFalse(relationStarted.await(250, TimeUnit.MILLISECONDS));
-
-      releaseUpdate.countDown();
-      assertTrue(relationStarted.await(5, TimeUnit.SECONDS));
-      Awaitility.await()
-          .atMost(Duration.ofSeconds(5))
-          .untilAsserted(
-              () -> assertEquals(List.of("update-start", "update-end", "relation"), events));
-    } finally {
-      releaseUpdate.countDown();
-    }
-  }
-
-  @Test
-  @DisplayName("RDF storage writes never exceed the configured concurrency bound")
-  void concurrentWritesAreBounded() throws InterruptedException {
-    final int capacity = RdfUpdater.maxConcurrentWrites();
-    final BlockingWriteProbe probe = new BlockingWriteProbe(capacity, capacity + 4);
-    configureBlockingWrites(probe);
-    assertBoundedExecution(probe);
-    verify(mockRepository, times(probe.totalWrites())).createOrUpdate(any(EntityInterface.class));
-    assertEquals(capacity, probe.maximumConcurrentWrites());
-  }
-
-  private void configureBlockingWrites(final BlockingWriteProbe probe) {
-    doAnswer(
-            ignored -> {
-              probe.block();
-              return null;
-            })
-        .when(mockRepository)
-        .createOrUpdate(any(EntityInterface.class));
-  }
-
-  private static void assertBoundedExecution(final BlockingWriteProbe probe)
-      throws InterruptedException {
-    try {
-      mockEntities(probe.totalWrites()).forEach(RdfUpdater::updateEntity);
-      assertTrue(probe.awaitCapacity(Duration.ofSeconds(5)));
-      assertFalse(probe.awaitAllWrites(Duration.ofMillis(250)));
-    } finally {
-      probe.releaseWrites();
-    }
-    assertTrue(probe.awaitAllWrites(Duration.ofSeconds(5)));
-    Awaitility.await().atMost(Duration.ofSeconds(5)).until(() -> probe.activeWrites() == 0);
+  void setUp() throws ReflectiveOperationException {
+    queueField = RdfUpdater.class.getDeclaredField("writeQueue");
+    queueField.setAccessible(true);
+    originalQueue = queueField.get(null);
+    queueField.set(null, (Consumer<List<RdfLiveWrite>>) submitted::addAll);
   }
 
   @AfterEach
-  void tearDown() throws Exception {
+  void tearDown() throws ReflectiveOperationException {
     PostCommitActionQueue.clear();
-    RdfProjectionHealth.markReady();
-    swapRdfRepository(originalRepository);
+    queueField.set(null, originalQueue);
   }
 
   @Test
-  @DisplayName("A failed incremental write degrades RDF projection health")
-  void failedIncrementalWriteDegradesProjectionHealth() {
-    final EntityInterface entity = Mockito.mock(EntityInterface.class);
-    when(entity.getId()).thenReturn(UUID.randomUUID());
-    doAnswer(
-            ignored -> {
-              throw new IllegalStateException("storage unavailable");
-            })
-        .when(mockRepository)
-        .createOrUpdate(entity);
-
-    RdfUpdater.updateEntity(entity);
-
-    Awaitility.await()
-        .atMost(Duration.ofSeconds(5))
-        .untilAsserted(() -> assertTrue(RdfProjectionHealth.isDegraded()));
-  }
-
-  @Test
-  @DisplayName("RDF submissions wait for the surrounding database transaction to commit")
-  void rdfSubmissionIsDeferredUntilCommit() {
-    UUID termId = UUID.randomUUID();
-    UUID relatedTermId = UUID.randomUUID();
+  void capturesOnlyEntityIdentityForDurableReplay() {
+    final Table table = new Table().withId(UUID.randomUUID()).withName("original");
     PostCommitActionQueue.begin();
+    RdfUpdater.updateEntity(table);
+    table.setName("changed");
+    assertTrue(submitted.isEmpty());
 
-    RdfUpdater.addGlossaryTermRelation(termId, relatedTermId, "relatedTo");
-
-    verify(mockRepository, never()).addGlossaryTermRelation(any(), any(), any());
     PostCommitActionQueue.run(PostCommitActionQueue.drain());
-    Awaitility.await()
-        .atMost(Duration.ofSeconds(5))
-        .untilAsserted(
-            () ->
-                verify(mockRepository).addGlossaryTermRelation(termId, relatedTermId, "relatedTo"));
+
+    final RdfLiveWrite.EntityUpdate update =
+        assertInstanceOf(RdfLiveWrite.EntityUpdate.class, submitted.getFirst());
+    assertEquals(table.getId(), update.entityId());
+    final String payload = JsonUtils.pojoToJson(update);
+    assertFalse(payload.contains("original"));
+    assertFalse(payload.contains("changed"));
   }
 
-  @Nested
-  @DisplayName("addRelationship short-circuits glossaryTerm⇔glossaryTerm RELATED_TO")
-  class AddRelationship {
+  @Test
+  void discardedTransactionDoesNotEnqueueLiveWrites() {
+    PostCommitActionQueue.begin();
+    RdfUpdater.addGlossaryTermRelation(UUID.randomUUID(), UUID.randomUUID(), "relatedTo");
+    PostCommitActionQueue.clear();
+    assertTrue(submitted.isEmpty());
+  }
 
-    @Test
-    @DisplayName("glossaryTerm RELATED_TO glossaryTerm should NOT reach the repository")
-    void glossaryTermRelatedToIsShortCircuited() {
-      EntityRelationship rel =
-          new EntityRelationship()
-              .withFromId(UUID.randomUUID())
-              .withToId(UUID.randomUUID())
-              .withFromEntity(Entity.GLOSSARY_TERM)
-              .withToEntity(Entity.GLOSSARY_TERM)
-              .withRelationshipType(Relationship.RELATED_TO);
+  @Test
+  void postCommitWritesRetainEntityAndRelationshipOrder() {
+    final UUID id = UUID.randomUUID();
+    PostCommitActionQueue.begin();
+    RdfUpdater.updateEntity(new Table().withId(id).withName("table"));
+    RdfUpdater.addGlossaryTermRelation(id, UUID.randomUUID(), "relatedTo");
+    RdfUpdater.deleteEntity(new EntityReference().withType(Entity.TABLE).withId(id));
 
-      RdfUpdater.addRelationship(rel);
+    PostCommitActionQueue.run(PostCommitActionQueue.drain());
 
-      verify(mockRepository, never()).addRelationship(any());
-    }
+    assertEquals(
+        List.of(
+            RdfLiveWrite.EntityUpdate.class,
+            RdfLiveWrite.GlossaryRelationChange.class,
+            RdfLiveWrite.EntityDelete.class),
+        submitted.stream().map(Object::getClass).toList());
+  }
 
-    @Test
-    @DisplayName("Cross-entity RELATED_TO (e.g. table → glossaryTerm) still flows through")
-    void crossEntityRelatedToIsNotShortCircuited() {
-      EntityRelationship rel =
-          new EntityRelationship()
-              .withFromId(UUID.randomUUID())
-              .withToId(UUID.randomUUID())
-              .withFromEntity(Entity.TABLE)
-              .withToEntity(Entity.GLOSSARY_TERM)
-              .withRelationshipType(Relationship.RELATED_TO);
-
-      RdfUpdater.addRelationship(rel);
-
-      Awaitility.await()
-          .atMost(Duration.ofSeconds(5))
-          .untilAsserted(() -> verify(mockRepository, times(1)).addRelationship(rel));
-    }
-
-    @Test
-    @DisplayName("Non-RELATED_TO between two glossary terms still flows through")
-    void otherRelationshipBetweenGlossaryTermsIsNotShortCircuited() {
-      EntityRelationship rel =
-          new EntityRelationship()
-              .withFromId(UUID.randomUUID())
-              .withToId(UUID.randomUUID())
-              .withFromEntity(Entity.GLOSSARY_TERM)
-              .withToEntity(Entity.GLOSSARY_TERM)
-              .withRelationshipType(Relationship.CONTAINS);
-
-      RdfUpdater.addRelationship(rel);
-
-      Awaitility.await()
-          .atMost(Duration.ofSeconds(5))
-          .untilAsserted(() -> verify(mockRepository, times(1)).addRelationship(rel));
+  @ParameterizedTest
+  @CsvSource({
+    "glossaryTerm,glossaryTerm,RELATED_TO,false",
+    "glossaryTerm,glossaryTerm,CONTAINS,true",
+    "table,glossaryTerm,RELATED_TO,true",
+    "dashboard,aiChart,CONTAINS,false",
+    "aiChart,dashboard,CONTAINS,false"
+  })
+  void genericRelationshipHooksPreserveTypedOwnershipAndExcludedEntities(
+      final String from, final String to, final Relationship type, final boolean expected) {
+    final EntityRelationship relationship =
+        new EntityRelationship()
+            .withFromId(UUID.randomUUID())
+            .withToId(UUID.randomUUID())
+            .withFromEntity(from)
+            .withToEntity(to)
+            .withRelationshipType(type);
+    RdfUpdater.addRelationship(relationship);
+    RdfUpdater.removeRelationship(relationship);
+    assertEquals(expected ? 2 : 0, submitted.size());
+    if (expected) {
+      assertFalse(((RdfLiveWrite.RelationshipChange) submitted.getFirst()).remove());
+      assertTrue(((RdfLiveWrite.RelationshipChange) submitted.getLast()).remove());
     }
   }
 
-  @Nested
-  @DisplayName("removeRelationship short-circuits glossaryTerm⇔glossaryTerm RELATED_TO")
-  class RemoveRelationship {
+  @Test
+  void cascadeProjectsEveryProjectableEntityInOneDeferredEnqueue() {
+    final Table first = new Table().withId(UUID.randomUUID()).withName("first");
+    final Table second = new Table().withId(UUID.randomUUID()).withName("second");
+    PostCommitActionQueue.begin();
+    RdfUpdater.updateEntities(List.of(first, second));
 
-    @Test
-    @DisplayName("glossaryTerm RELATED_TO glossaryTerm should NOT reach the repository")
-    void glossaryTermRelatedToIsShortCircuited() {
-      EntityRelationship rel =
-          new EntityRelationship()
-              .withFromId(UUID.randomUUID())
-              .withToId(UUID.randomUUID())
-              .withFromEntity(Entity.GLOSSARY_TERM)
-              .withToEntity(Entity.GLOSSARY_TERM)
-              .withRelationshipType(Relationship.RELATED_TO);
+    final List<Runnable> deferred = PostCommitActionQueue.drain();
+    assertEquals(1, deferred.size());
+    assertTrue(submitted.isEmpty());
+    PostCommitActionQueue.run(deferred);
 
-      RdfUpdater.removeRelationship(rel);
+    assertEquals(
+        List.of(first.getId(), second.getId()),
+        submitted.stream().map(write -> ((RdfLiveWrite.EntityUpdate) write).entityId()).toList());
+  }
 
-      verify(mockRepository, never()).removeRelationship(any());
-    }
+  @Test
+  void aSoftDeletedEntityLeavesTheGraph() {
+    final Table table = new Table().withId(UUID.randomUUID()).withName("t").withDeleted(true);
+    RdfUpdater.updateEntity(table);
+    RdfUpdater.updateEntities(List.of(table));
+    assertEquals(
+        List.of(
+            new RdfLiveWrite.EntityDelete(Entity.getEntityTypeFromObject(table), table.getId()),
+            new RdfLiveWrite.EntityDelete(Entity.getEntityTypeFromObject(table), table.getId())),
+        submitted);
+  }
 
-    @Test
-    @DisplayName("Cross-entity RELATED_TO still flows through to repository")
-    void crossEntityRelatedToIsNotShortCircuited() {
-      EntityRelationship rel =
-          new EntityRelationship()
-              .withFromId(UUID.randomUUID())
-              .withToId(UUID.randomUUID())
-              .withFromEntity(Entity.TABLE)
-              .withToEntity(Entity.GLOSSARY_TERM)
-              .withRelationshipType(Relationship.RELATED_TO);
+  @Test
+  void aCascadeRestoreIsPlannedOnceAfterItCommits() throws ReflectiveOperationException {
+    final List<List<UUID>> planned = new ArrayList<>();
+    final Field plannerField = RdfUpdater.class.getDeclaredField("restorePlanner");
+    plannerField.setAccessible(true);
+    final Object originalPlanner = plannerField.get(null);
+    plannerField.set(null, recordingPlanner(planned));
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", Entity.TABLE);
+    final Table schemaChild = new Table().withId(UUID.randomUUID()).withName("child");
+    final Table root = new Table().withId(UUID.randomUUID()).withName("root");
+    try {
+      PostCommitActionQueue.begin();
+      RdfUpdater.restoring(
+          () -> {
+            RdfUpdater.recordRestored(List.of(schemaChild));
+            RdfUpdater.restoring(
+                () -> {
+                  RdfUpdater.recordRestored(List.of(root));
+                  return null;
+                });
+            return null;
+          });
+      assertTrue(planned.isEmpty());
 
-      RdfUpdater.removeRelationship(rel);
+      PostCommitActionQueue.run(PostCommitActionQueue.drain());
 
-      Awaitility.await()
-          .atMost(Duration.ofSeconds(5))
-          .untilAsserted(() -> verify(mockRepository, times(1)).removeRelationship(rel));
+      assertEquals(List.of(List.of(schemaChild.getId(), root.getId())), planned);
+    } finally {
+      plannerField.set(null, originalPlanner);
     }
   }
 
-  @Nested
-  @DisplayName("entity types excluded from RDF (aiChart) are never written")
-  class ExcludedEntityTypes {
+  @Test
+  void aRestoreWhosePlanFailsStillReturnsAndMarksTheProjectionDegraded()
+      throws ReflectiveOperationException {
+    final Field plannerField = RdfUpdater.class.getDeclaredField("restorePlanner");
+    plannerField.setAccessible(true);
+    final Object originalPlanner = plannerField.get(null);
+    plannerField.set(
+        null,
+        new RdfRestorePlanner(
+            recordingSources(new ArrayList<>()),
+            (type, ids) -> {
+              throw new IllegalStateException("liveness unavailable");
+            }));
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", Entity.TABLE);
+    final Table table = new Table().withId(UUID.randomUUID()).withName("restored");
+    RdfProjectionHealth.markReady();
+    try {
+      final String response =
+          RdfUpdater.restoring(
+              () -> {
+                RdfUpdater.recordRestored(List.of(table));
+                return "restored";
+              });
 
-    @Test
-    @DisplayName("deleteEntity for an excluded type never reaches the repository")
-    void deleteExcludedEntityIsSkipped() {
-      EntityReference ref = new EntityReference().withId(UUID.randomUUID()).withType("aiChart");
-
-      RdfUpdater.deleteEntity(ref);
-
-      verify(mockRepository, never()).delete(any());
-    }
-
-    @Test
-    @DisplayName("deleteEntity for a normal type still flows through")
-    void deleteNormalEntityFlowsThrough() {
-      EntityReference ref = new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
-
-      RdfUpdater.deleteEntity(ref);
-
-      Awaitility.await()
-          .atMost(Duration.ofSeconds(5))
-          .untilAsserted(() -> verify(mockRepository, times(1)).delete(ref));
-    }
-
-    @Test
-    @DisplayName("addRelationship with an excluded endpoint never reaches the repository")
-    void addRelationshipWithExcludedEndpointIsSkipped() {
-      EntityRelationship rel =
-          new EntityRelationship()
-              .withFromId(UUID.randomUUID())
-              .withToId(UUID.randomUUID())
-              .withFromEntity(Entity.DASHBOARD)
-              .withToEntity("aiChart")
-              .withRelationshipType(Relationship.CONTAINS);
-
-      RdfUpdater.addRelationship(rel);
-
-      verify(mockRepository, never()).addRelationship(any());
-    }
-
-    @Test
-    @DisplayName("removeRelationship with an excluded endpoint never reaches the repository")
-    void removeRelationshipWithExcludedEndpointIsSkipped() {
-      EntityRelationship rel =
-          new EntityRelationship()
-              .withFromId(UUID.randomUUID())
-              .withToId(UUID.randomUUID())
-              .withFromEntity("aiChart")
-              .withToEntity(Entity.DASHBOARD)
-              .withRelationshipType(Relationship.CONTAINS);
-
-      RdfUpdater.removeRelationship(rel);
-
-      verify(mockRepository, never()).removeRelationship(any());
+      assertEquals("restored", response);
+      assertTrue(RdfProjectionHealth.isDegraded());
+    } finally {
+      plannerField.set(null, originalPlanner);
+      RdfProjectionHealth.markReady();
     }
   }
 
-  /**
-   * Replace the private static {@code rdfRepository} field via reflection
-   * and return the previous value so tests can restore it. Required because
-   * RdfUpdater intentionally exposes no setter — the singleton is wired
-   * via {@link RdfUpdater#initialize(org.openmetadata.schema.api.configuration.rdf.RdfConfiguration)}
-   * which would actually connect to Fuseki.
-   */
-  private static RdfRepository swapRdfRepository(RdfRepository replacement) throws Exception {
-    Field field = RdfUpdater.class.getDeclaredField("rdfRepository");
-    field.setAccessible(true);
-    RdfRepository previous = (RdfRepository) field.get(null);
-    field.set(null, replacement);
-    return previous;
+  private static RdfRestorePlanner recordingPlanner(final List<List<UUID>> planned) {
+    return new RdfRestorePlanner(recordingSources(planned), (type, ids) -> Set.copyOf(ids));
   }
 
-  private static List<EntityInterface> mockEntities(final int count) {
-    return IntStream.range(0, count)
-        .mapToObj(
-            ignored -> {
-              final EntityInterface entity = Mockito.mock(EntityInterface.class);
-              when(entity.getId()).thenReturn(UUID.randomUUID());
-              return entity;
-            })
-        .toList();
-  }
-
-  private static final class BlockingWriteProbe {
-    private final int totalWrites;
-    private final CountDownLatch capacityReached;
-    private final CountDownLatch allWritesStarted;
-    private final CountDownLatch releaseWrites = new CountDownLatch(1);
-    private final AtomicInteger activeWrites = new AtomicInteger();
-    private final AtomicInteger maximumConcurrentWrites = new AtomicInteger();
-
-    private BlockingWriteProbe(final int capacity, final int totalWrites) {
-      this.totalWrites = totalWrites;
-      capacityReached = new CountDownLatch(capacity);
-      allWritesStarted = new CountDownLatch(totalWrites);
-    }
-
-    private void block() throws InterruptedException {
-      final int concurrentWrites = activeWrites.incrementAndGet();
-      maximumConcurrentWrites.accumulateAndGet(concurrentWrites, Math::max);
-      capacityReached.countDown();
-      allWritesStarted.countDown();
-      try {
-        assertTrue(releaseWrites.await(5, TimeUnit.SECONDS));
-      } finally {
-        activeWrites.decrementAndGet();
+  private static RdfRestorePlanner.Sources recordingSources(final List<List<UUID>> planned) {
+    return new RdfRestorePlanner.Sources() {
+      @Override
+      public List<EntityRelationshipObject> relationshipsOf(
+          final String entityType, final List<UUID> entityIds) {
+        planned.add(entityIds);
+        return List.of();
       }
-    }
 
-    private boolean awaitCapacity(final Duration timeout) throws InterruptedException {
-      return capacityReached.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
-    }
+      @Override
+      public Set<RdfEntityLiveness.Endpoint> labelledEntities(
+          final String labelType, final List<UUID> labelIds) {
+        return Set.of();
+      }
 
-    private boolean awaitAllWrites(final Duration timeout) throws InterruptedException {
-      return allWritesStarted.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
-    }
+      @Override
+      public List<RdfRestorePlanner.GlossaryRelation> glossaryRelations(
+          final Collection<UUID> termIds) {
+        return List.of();
+      }
+    };
+  }
 
-    private void releaseWrites() {
-      releaseWrites.countDown();
-    }
+  @Test
+  void excludedDeletesAreNotEnqueued() {
+    RdfUpdater.deleteEntity(new EntityReference().withType("aiChart").withId(UUID.randomUUID()));
+    assertTrue(submitted.isEmpty());
+  }
 
-    private int activeWrites() {
-      return activeWrites.get();
-    }
+  @Test
+  void typedGlossaryRemovalIsCaptured() {
+    final UUID fromId = UUID.randomUUID();
+    final UUID toId = UUID.randomUUID();
+    RdfUpdater.removeGlossaryTermRelation(fromId, toId, "broader");
+    assertEquals(
+        List.of(new RdfLiveWrite.GlossaryRelationChange(fromId, toId, "broader", true)), submitted);
+  }
 
-    private int maximumConcurrentWrites() {
-      return maximumConcurrentWrites.get();
-    }
+  @Test
+  void anUntrackedWriteThatCannotBeRecordedLeavesReasoningFreshnessUnknown()
+      throws ReflectiveOperationException {
+    final AtomicLong failures = new AtomicLong();
+    final RdfLiveWriteStore store = mock(RdfLiveWriteStore.class);
+    when(store.recordUntrackedWrite()).thenThrow(new IllegalStateException("SQL unavailable"));
+    doAnswer(
+            invocation -> {
+              failures.incrementAndGet();
+              return null;
+            })
+        .when(store)
+        .markDegraded(anyString());
+    when(store.isDegraded()).thenAnswer(invocation -> failures.get() > 0);
+    final Field storeField = RdfUpdater.class.getDeclaredField("liveWriteStore");
+    storeField.setAccessible(true);
+    final Object originalStore = storeField.get(null);
+    storeField.set(null, store);
+    RdfProjectionHealth.initialize(store);
+    try {
+      final UUID generation = UUID.randomUUID();
+      final RdfReasoningInput input =
+          new RdfReasoningInput()
+              .withSourceRevision(
+                  new RdfSourceRevision()
+                      .withDatasetGeneration(generation)
+                      .withLiveWriteWatermark(0L));
 
-    private int totalWrites() {
-      return totalWrites;
+      RdfUpdater.recordUntrackedWrite();
+
+      assertTrue(RdfProjectionHealth.isDegraded());
+      assertEquals(
+          RdfReasoningFreshness.UNKNOWN,
+          ReasoningFreshness.of(
+              input,
+              new ReasoningFreshness.Serving(
+                  generation, 0, RdfProjectionHealth.isDegraded(), null, null)));
+    } finally {
+      storeField.set(null, originalStore);
+      RdfProjectionHealth.initialize(null);
+      RdfProjectionHealth.markReady();
     }
+  }
+
+  @Test
+  void disabledUpdaterDoesNotCaptureWrites() throws ReflectiveOperationException {
+    queueField.set(null, null);
+    RdfUpdater.updateEntity(new Table().withId(UUID.randomUUID()).withName("table"));
+    RdfUpdater.addGlossaryTermRelation(UUID.randomUUID(), UUID.randomUUID(), "relatedTo");
+    assertFalse(RdfUpdater.isEnabled());
+    assertTrue(submitted.isEmpty());
   }
 }

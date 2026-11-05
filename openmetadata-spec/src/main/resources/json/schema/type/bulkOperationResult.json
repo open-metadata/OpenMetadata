@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/csvImportResult.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "BulkOperationResult",
   "description": "Represents result of bulk Operation performed on entities.",
   "type": "object",
@@ -63,6 +63,10 @@
       "$ref": "#/definitions/rowCount"
     },
     "numberOfRowsFailed" : {
+      "$ref": "#/definitions/rowCount"
+    },
+    "numberOfRowsPendingApproval" : {
+      "description": "Rows accepted as change requests awaiting approval; counted in numberOfRowsPassed but not yet published.",
       "$ref": "#/definitions/rowCount"
     },
     "successRequest": {

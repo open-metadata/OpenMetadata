@@ -15,10 +15,11 @@
 import traceback
 import types
 from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
-from sqlalchemy.engine import Inspector
+from sqlalchemy.engine import Inspector, Row
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -48,10 +49,7 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.oracle.models import (
-    FetchObjectList,
-    OracleStoredObject,
-)
+from metadata.ingestion.source.database.oracle.models import OracleStoredObject
 from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_STORED_PACKAGES,
     ORACLE_GET_STORED_PROCEDURES,
@@ -59,7 +57,6 @@ from metadata.ingestion.source.database.oracle.queries import (
 from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
     denormalize_name,
-    get_all_view_definitions,
     get_columns,
     get_foreign_keys,
     get_indexes_preserve_case,
@@ -70,9 +67,9 @@ from metadata.ingestion.source.database.oracle.utils import (
     get_table_comment_preserve_case,
     get_table_names,
     get_table_prefix_from_connection,
+    get_temporary_table_names,
     get_unique_constraints,
     get_view_definition,
-    get_view_definition_preserve_case,
     get_view_names,
     get_view_names_dialect,
     normalize_name,
@@ -100,7 +97,6 @@ OracleDialect.get_table_comment = get_table_comment
 OracleDialect.get_columns = get_columns
 OracleDialect._get_col_type = _get_col_type
 OracleDialect.get_view_definition = get_view_definition
-OracleDialect.get_all_view_definitions = get_all_view_definitions
 OracleDialect.get_all_table_comments = get_all_table_comments
 OracleDialect.get_table_names = get_table_names
 Inspector.get_mview_names = get_mview_names
@@ -132,7 +128,6 @@ class OracleSource(CommonDbSourceService):
             dialect.normalize_name = types.MethodType(normalize_name, dialect)
             dialect.denormalize_name = types.MethodType(denormalize_name, dialect)
             dialect.get_table_comment = types.MethodType(get_table_comment_preserve_case, dialect)
-            dialect.get_view_definition = types.MethodType(get_view_definition_preserve_case, dialect)
             dialect.get_indexes = types.MethodType(get_indexes_preserve_case, dialect)
 
     @classmethod
@@ -160,10 +155,17 @@ class OracleSource(CommonDbSourceService):
             TableNameAndType(name=table_name, type_=TableType.MaterializedView)
             for table_name in self.inspector.get_mview_names(schema_name) or []
         ]
+        temporary_tables = []
+        if getattr(self.service_connection, "includeTemporaryTables", False):
+            with self.engine.connect() as conn:
+                temporary_tables = [
+                    TableNameAndType(name=table_name, type_=TableType.Local)
+                    for table_name in get_temporary_table_names(self.engine.dialect, conn, schema_name) or []
+                ]
 
-        return regular_tables + material_tables
+        return regular_tables + material_tables + temporary_tables
 
-    def process_result(self, data: FetchObjectList):
+    def process_result(self, data: Iterable[Row[Any]]):
         """Process data as per our stored procedure format"""
         result_dict = {}
 
@@ -185,7 +187,7 @@ class OracleSource(CommonDbSourceService):
             schema = schema.upper()
         prefix = getattr(self.engine.dialect, "table_prefix", "DBA")
         with self.engine.connect() as conn:
-            results: FetchObjectList = conn.execute(text(query.format(schema=schema, prefix=prefix))).all()
+            results = conn.execute(text(query.format(prefix=prefix)), {"schema": schema}).all()
         results = self.process_result(data=results)
         for row in results.items():
             stored_procedure = OracleStoredObject(

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { startCase } from 'lodash';
 import { COLLATE_SAAS_RUNNER } from '../constant/serviceForm';
 import { FillSupersetFormProps } from '../support/interfaces/ServiceForm.interface';
 
@@ -24,6 +23,22 @@ const getOneOfOptionLabels = (optionName: string) => {
   return [...new Set([optionName, spacedLabel])];
 };
 
+// Callers name a oneOf branch by its schema title, but CoreOneOfField renders every
+// option through `getFormDisplayLabel`, which spaces camelCase and re-cases known
+// acronyms — the title "DBT S3 Config" renders as "dbt S3 Config".
+//
+// Playwright may not import that function (app code outside src/generated and src/enums
+// is restricted), and copying its acronym table here would reintroduce the same drift
+// from the other side. Casing is the only thing the table changes, so matching the title
+// and its spaced form case-insensitively covers the transform without restating it.
+// The pattern stays anchored, so it is as strict as `exact: true` about substrings.
+// `getFormDisplayLabel`'s own behaviour is pinned in formBuilderV1LabelUtils.test.ts.
+const getOneOfOptionNamePattern = (optionName: string) =>
+  new RegExp(
+    `^(${getOneOfOptionLabels(optionName).map(escapeRegExp).join('|')})$`,
+    'i'
+  );
+
 export const selectOneOfOption = async (
   page: Page,
   fieldId: string,
@@ -31,45 +46,30 @@ export const selectOneOfOption = async (
   optionName: string
 ) => {
   const field = page.locator(`[data-field-id="${fieldId}"]`);
+  const optionNamePattern = getOneOfOptionNamePattern(optionName);
 
-  for (const optionLabel of getOneOfOptionLabels(optionName)) {
-    const tab = field.getByRole('tab', {
-      name: new RegExp(`^${escapeRegExp(optionLabel)}$`, 'i'),
-    });
+  const tab = field.getByRole('tab', { name: optionNamePattern });
 
-    if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await tab.click();
+  if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
 
-      return;
-    }
+    return;
   }
 
   const selectWidget = page.getByTestId(selectTestId);
 
   if (await selectWidget.isVisible({ timeout: 1000 }).catch(() => false)) {
-    // The testid sits on the react-aria Select wrapper. Click the wrapper (not
-    // the visually hidden native `combobox` it renders for form submission —
-    // clicking that never opens the listbox) so the popover opens.
-    await selectWidget.click();
+    const trigger = selectWidget.getByRole('button');
+    const option = page
+      .locator('.core-one-of-field-select-popover')
+      .getByRole('option', { name: optionNamePattern });
 
-    const popoverOption = page
-      .locator('.core-one-of-field-select-popover:visible')
-      .getByRole('option', { name: optionName })
-      .first();
-    const anyOption = page.getByRole('option', { name: optionName }).first();
-
-    for (const option of [popoverOption, anyOption]) {
-      if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await option.click();
-
-        return;
-      }
-    }
-
-    await page
-      .getByLabel(startCase(optionName), { exact: true })
-      .getByText(startCase(optionName))
-      .click();
+    await trigger.focus();
+    await trigger.click();
+    await expect(option).toBeVisible();
+    await option.click();
+    await expect(trigger).toContainText(optionNamePattern);
 
     return;
   }
@@ -89,13 +89,16 @@ export const selectIngestionRunnerFromDropdown = async (
   const runnerSelector = page.getByTestId('select-widget-root/ingestionRunner');
 
   if (await runnerSelector.isVisible()) {
-    await runnerSelector.click();
+    const trigger = runnerSelector.getByRole('button');
+    const option = page
+      .locator('.core-select-widget-popover')
+      .getByRole('option', { name: runnerDisplayName, exact: true });
 
-    const runnerOption = page.getByRole('option').getByText(runnerDisplayName);
-    await runnerOption.waitFor({ state: 'visible' });
-    await runnerOption.click();
-
-    await expect(runnerSelector).toContainText(runnerDisplayName);
+    await trigger.focus();
+    await trigger.click();
+    await expect(option).toBeVisible();
+    await option.click();
+    await expect(trigger).toContainText(runnerDisplayName);
   }
 };
 

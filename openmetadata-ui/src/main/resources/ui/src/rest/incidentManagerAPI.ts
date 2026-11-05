@@ -16,9 +16,17 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { CreateTestCaseResolutionStatus } from '../generated/api/tests/createTestCaseResolutionStatus';
 import { EntityReference } from '../generated/entity/data/table';
-import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
+import {
+  IncidentGroupBy,
+  TestCaseIncidentGroup,
+} from '../generated/tests/testCaseIncidentGroup';
+import {
+  TestCaseResolutionStatus,
+  TestCaseResolutionStatusTypes,
+} from '../generated/tests/testCaseResolutionStatus';
+import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import type { ListTasksParams, ResolveTask, Task } from './tasksAPI';
 import { getTaskById, listTasks, resolveTask, TaskCategory } from './tasksAPI';
 
@@ -47,6 +55,53 @@ export interface IncidentTaskListParams
   domain?: string;
 }
 
+/**
+ * Maximum number of entries the bulk endpoint accepts in a single call
+ * (`TestCaseResolutionStatusResource.MAX_BULK_CREATE_SIZE`).
+ */
+export const MAX_BULK_INCIDENT_UPDATE_SIZE = 100;
+
+/**
+ * Transition ids the incident task accepts on `POST /tasks/{id}/resolve`. They
+ * are the workflow's own edge names, not the resolution status the transition
+ * produces, so they are spelled out once here rather than derived from
+ * {@link TestCaseResolutionStatusTypes}.
+ */
+export const INCIDENT_TRANSITION_ID = {
+  New: 'new',
+  Ack: 'ack',
+  Assign: 'assign',
+  Reassign: 'reassign',
+  Resolve: 'resolve',
+} as const;
+
+export type IncidentTransitionId =
+  (typeof INCIDENT_TRANSITION_ID)[keyof typeof INCIDENT_TRANSITION_ID];
+
+/**
+ * Cursor returned by the server in `paging.before`/`paging.after`. It is opaque:
+ * callers pass the value back verbatim as `offset` and never parse or compute
+ * with it.
+ */
+export type IncidentCursor = string;
+
+/**
+ * Incident statuses a group can currently be in. `Resolved` is rejected by the
+ * groups endpoint — groups only ever count open incidents.
+ */
+export type OpenIncidentStatus = Exclude<
+  TestCaseResolutionStatusTypes,
+  TestCaseResolutionStatusTypes.Resolved
+>;
+
+/** Incident timestamp the groups endpoint's `startTs`/`endTs` range applies to. */
+export type IncidentDateField = 'createdAt' | 'updatedAt';
+
+export type IncidentSortType = 'asc' | 'desc';
+
+/** What the groups are ordered by; `severity` descending is the worst first. */
+export type IncidentGroupSortField = 'incidentCount' | 'severity' | 'lastSeen';
+
 export type TestCaseIncidentStatusParams = ListParams & {
   startTs?: number;
   endTs?: number;
@@ -54,13 +109,59 @@ export type TestCaseIncidentStatusParams = ListParams & {
   testCaseResolutionStatusType?: string;
   assignee?: string;
   testCaseFQN?: string;
-  offset?: number;
+  /**
+   * The cursor-paginated listing takes an opaque {@link IncidentCursor}; the
+   * `/search/list` variant takes a numeric row offset.
+   */
+  offset?: number | IncidentCursor;
+  /** 1-based page, an alternative to `offset` that can jump to any page. */
+  page?: number;
   originEntityFQN?: string;
   domain?: string;
+  /** Test definition of the incident's test case, by name or FQN. */
+  testDefinition?: string;
+  /** Direct owner (user or team name) of the incident's test case. */
+  owner?: string;
+  /** Only incidents of test cases with no direct owner. */
+  unowned?: boolean;
+  /** Comma-separated current severities; `none` is no severity. */
+  severity?: string;
   sortField?: string;
-  sortType?: 'asc' | 'desc';
-  dateField?: 'timestamp' | 'updatedAt';
+  sortType?: IncidentSortType;
+  /**
+   * `/search/list` takes `timestamp`/`updatedAt`; the cursor-paginated listing
+   * takes the incident's own `createdAt`/`updatedAt`, as the groups do.
+   */
+  dateField?: 'timestamp' | IncidentDateField;
 };
+
+export type ListIncidentGroupsParams = {
+  /** Dimension to group the open incidents by. Required by the endpoint. */
+  groupBy: IncidentGroupBy;
+  /** Repeatable filter on the current open status of the incidents. */
+  status?: OpenIncidentStatus[];
+  /** Repeatable filter on the current severity; `none` is no severity. */
+  severity?: string[];
+  assignee?: string;
+  testCaseFQN?: string;
+  domain?: string;
+  dateField?: IncidentDateField;
+  startTs?: number;
+  endTs?: number;
+  limit?: number;
+  /** 1-based page. */
+  page?: number;
+  sortType?: IncidentSortType;
+  sortField?: IncidentGroupSortField;
+  /** Only the group with this key; see `getIncidentGroupFilterKey`. */
+  group?: string;
+};
+
+/**
+ * Serialize repeatable query params as `status=New&status=Ack` rather than the
+ * client-wide comma format, matching the endpoint's repeatable `status` param.
+ */
+const repeatableParamsSerializer = { indexes: null } as const;
 
 export const getListTestCaseIncidentStatus = async ({
   limit = 10,
@@ -71,6 +172,27 @@ export const getListTestCaseIncidentStatus = async ({
   >(testCaseIncidentUrl, {
     params: { ...params, limit },
   });
+
+  return response.data;
+};
+
+/**
+ * List the open incidents grouped by `table`, `testDefinition` or `owner`. The
+ * matching individual incidents are listed by passing the group's dimension
+ * value back to {@link getListTestCaseIncidentStatus} as `testDefinition`,
+ * `owner` or `assignee`.
+ */
+export const listIncidentGroups = async ({
+  limit = 10,
+  ...params
+}: ListIncidentGroupsParams) => {
+  const response = await APIClient.get<PagingResponse<TestCaseIncidentGroup[]>>(
+    `${testCaseIncidentUrl}/incidentGroups`,
+    {
+      params: { ...params, limit },
+      paramsSerializer: repeatableParamsSerializer,
+    }
+  );
 
   return response.data;
 };
@@ -105,6 +227,22 @@ export const postTestCaseIncidentStatus = async (
     CreateTestCaseResolutionStatus,
     AxiosResponse<TestCaseResolutionStatus>
   >(testCaseIncidentUrl, data);
+
+  return response.data;
+};
+
+/**
+ * Apply a status/severity change to several incidents in one call. The server
+ * validates and authorizes every entry on its own and reports the per-entry
+ * outcome in the {@link BulkOperationResult}.
+ */
+export const bulkCreateResolutionStatus = async (
+  entries: CreateTestCaseResolutionStatus[]
+) => {
+  const response = await APIClient.put<
+    CreateTestCaseResolutionStatus[],
+    AxiosResponse<BulkOperationResult>
+  >(`${testCaseIncidentUrl}/bulk`, entries);
 
   return response.data;
 };

@@ -11,24 +11,98 @@
  *  limitations under the License.
  */
 
-import { waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { EntityTabs } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTagByFqn } from '../../rest/tagAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import tagClassBase from '../../utils/TagClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import TagPage from './TagPage';
 
 const render = renderWithQueryClient;
 
+// TagPage now fetches the tag's own permission via useEntityPermissions rather than the raw
+// PermissionProvider.getEntityPermission REST boundary — mock the hook directly
+// (TagsPage.test.tsx / TableDetailsPageV1.test.tsx pattern).
+const mockUseEntityPermissions = jest.fn();
+
+const setMockTagPermissions = (
+  overrides: Partial<Record<string, boolean>> = {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  }
+) => {
+  const permissions = overrides as never;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
+
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: jest.requireActual('@openmetadata/ui-core-components').Badge,
+  Box: jest.requireActual('@openmetadata/ui-core-components').Box,
+  Tabs: jest.requireActual('@openmetadata/ui-core-components').Tabs,
+  Divider: jest.requireActual('@openmetadata/ui-core-components').Divider,
+  Breadcrumbs: jest
+    .fn()
+    .mockImplementation(
+      ({
+        items,
+        'data-testid': testId,
+      }: {
+        items: { id: string; label: string }[];
+        'data-testid'?: string;
+      }) => (
+        <nav data-testid={testId}>
+          {items.map((item) => (
+            <span key={item.id}>{item.label}</span>
+          ))}
+        </nav>
+      )
+    ),
+  Dropdown: {
+    Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Popover: jest.fn().mockImplementation(() => null),
+    Menu: jest.fn().mockImplementation(() => null),
+    Item: jest.fn().mockImplementation(() => null),
+  },
+  PageHeader: jest
+    .fn()
+    .mockImplementation(
+      ({ actions, breadcrumb, title, 'data-testid': testId }) => (
+        <div data-testid={testId}>
+          {breadcrumb}
+          {title}
+          {actions}
+        </div>
+      )
+    ),
   Button: jest
     .fn()
-    .mockImplementation(({ children, onClick }) => (
-      <button onClick={onClick}>{children}</button>
-    )),
+    .mockImplementation(
+      ({ children, onClick, onPress, 'data-testid': testId }) => (
+        <button data-testid={testId} onClick={onClick ?? onPress}>
+          {children}
+        </button>
+      )
+    ),
   ButtonUtility: jest
     .fn()
     .mockImplementation(
@@ -61,6 +135,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, isOpen }) =>
       isOpen ? <div>{children}</div> : null
     ),
+  Skeleton: jest.fn().mockImplementation(() => <span />),
+  Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  useTabItemState: jest.fn().mockReturnValue(null),
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
@@ -145,15 +222,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermission: jest.fn().mockResolvedValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    }),
+    permissions: {},
   }),
 }));
 
@@ -166,7 +235,7 @@ jest.mock(
       updateFeed: jest.fn(),
     }),
     __esModule: true,
-    default: 'ActivityFeedProvider',
+    default: ({ children }: React.PropsWithChildren) => <>{children}</>,
   })
 );
 
@@ -201,10 +270,8 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () => {
 });
 
 jest.mock(
-  '../../components/Entity/EntityHeader/EntityHeader.component',
-  () => ({
-    EntityHeader: jest.fn().mockImplementation(() => <div>EntityHeader</div>),
-  })
+  '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  () => jest.fn().mockImplementation(() => <div>EntityHeader</div>)
 );
 
 jest.mock(
@@ -232,11 +299,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Modals/StyleModal/StyleModal.component', () => {
-  return jest.fn().mockImplementation(() => <div>StyleModal</div>);
-});
-
-jest.mock('../../components/Modals/IconColorModal', () => {
+jest.mock('../../components/Modals/IconColorModal/IconColorModal', () => {
   return jest.fn().mockImplementation(() => <div>IconColorModal</div>);
 });
 
@@ -249,6 +312,26 @@ jest.mock(
   })
 );
 
+const mockGenericProvider = jest.fn();
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => {
+    const actual = jest.requireActual(
+      '../../components/Customization/GenericProvider/GenericProvider'
+    );
+
+    return {
+      ...actual,
+      GenericProvider: (props: { permissions: unknown }) => {
+        mockGenericProvider(props.permissions);
+
+        return actual.GenericProvider(props);
+      },
+    };
+  }
+);
+
 describe('TagPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -256,6 +339,7 @@ describe('TagPage', () => {
       []
     );
     (useRequiredParams as jest.Mock).mockReturnValue({});
+    setMockTagPermissions();
   });
 
   it('should call getAdditionalTagDetailPageTabs with the fetched tag', async () => {
@@ -269,6 +353,19 @@ describe('TagPage', () => {
         expect.any(String)
       );
     });
+  });
+
+  it('should render the header breadcrumb ending with the current tag', async () => {
+    (useFqn as jest.Mock).mockReturnValue({ fqn: 'PII.NonSensitive' });
+
+    render(<TagPage />);
+
+    const header = await screen.findByTestId('data-classification');
+    const breadcrumb = await screen.findByTestId('breadcrumb');
+
+    expect(header).toContainElement(breadcrumb);
+    expect(breadcrumb).toHaveTextContent('label.classification-plural');
+    expect(breadcrumb).toHaveTextContent('NonSensitive');
   });
 
   it('should call getTagData and fetchClassificationTagAssets when tagFqn changes', async () => {
@@ -363,6 +460,80 @@ describe('TagPage', () => {
           expect.objectContaining({
             initialFilters: { tags: ['PII.NonSensitive'] },
           })
+        );
+      });
+    });
+  });
+
+  describe('entity permission wiring (useEntityPermissions)', () => {
+    beforeEach(() => {
+      (useFqn as jest.Mock).mockReturnValue({ fqn: 'PII.NonSensitive' });
+      (useRequiredParams as jest.Mock).mockReturnValue({});
+    });
+
+    it('shows the add-assets button when the tag permission grants EditAll', async () => {
+      setMockTagPermissions({ EditAll: true });
+
+      const { findByTestId } = render(<TagPage />);
+
+      expect(
+        await findByTestId('data-classification-add-button')
+      ).toBeInTheDocument();
+    });
+
+    it('hides the add-assets button when the tag permission denies EditAll', async () => {
+      setMockTagPermissions({ EditAll: false });
+
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(getTagByFqn).toHaveBeenCalled();
+      });
+
+      expect(
+        screen.queryByTestId('data-classification-add-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('denies owner and domain edits on a disabled tag even with EditDomains', async () => {
+      setMockTagPermissions({
+        EditAll: true,
+        EditOwners: true,
+        EditDomains: true,
+      });
+      (getTagByFqn as jest.Mock).mockResolvedValueOnce({
+        id: 'tag-id',
+        name: 'NonSensitive',
+        fullyQualifiedName: 'PII.NonSensitive',
+        disabled: true,
+      });
+
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(mockGenericProvider).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            EditAll: false,
+            EditOwners: false,
+            EditDomains: false,
+          })
+        );
+      });
+    });
+
+    it('keeps an explicit EditDomains deny on an enabled tag with EditAll', async () => {
+      setMockTagPermissions({ EditAll: true, EditDomains: false });
+      (getTagByFqn as jest.Mock).mockResolvedValueOnce({
+        id: 'tag-id',
+        name: 'NonSensitive',
+        fullyQualifiedName: 'PII.NonSensitive',
+      });
+
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(mockGenericProvider).toHaveBeenLastCalledWith(
+          expect.objectContaining({ EditAll: true, EditDomains: false })
         );
       });
     });

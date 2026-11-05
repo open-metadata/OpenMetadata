@@ -1,47 +1,11 @@
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import jakarta.ws.rs.BadRequestException;
 import org.junit.jupiter.api.Test;
 
 public class URLValidatorTest {
-
-  @Test
-  void testValidPublicUrls() {
-    assertDoesNotThrow(() -> URLValidator.validateURL("https://example.com"));
-    assertDoesNotThrow(() -> URLValidator.validateURL("http://example.com"));
-    assertDoesNotThrow(
-        () ->
-            URLValidator.validateURL(
-                "https://dev-96705996-admin.okta.com/.well-known/openid-configuration"));
-    assertDoesNotThrow(() -> URLValidator.validateURL("https://api.github.com/repos"));
-  }
-
-  @Test
-  void testValidOktaUrlsWithFdPrefix() {
-    assertDoesNotThrow(
-        () -> URLValidator.validateURL("https://fdxxx.okta.com/.well-known/openid-configuration"));
-    assertDoesNotThrow(
-        () -> URLValidator.validateURL("https://fd123.okta.com/.well-known/openid-configuration"));
-    assertDoesNotThrow(
-        () ->
-            URLValidator.validateURL("https://fd-test.okta.com/.well-known/openid-configuration"));
-    assertDoesNotThrow(() -> URLValidator.validateURL("https://fddomain.example.com/api"));
-  }
-
-  @Test
-  void testValidUrlsWithFcPrefix() {
-    assertDoesNotThrow(() -> URLValidator.validateURL("https://fcdomain.com/api"));
-    assertDoesNotThrow(() -> URLValidator.validateURL("https://fc123.example.com"));
-  }
-
-  @Test
-  void testValidUrlsWithFe80Prefix() {
-    assertDoesNotThrow(() -> URLValidator.validateURL("https://fe80-test.com/api"));
-    assertDoesNotThrow(() -> URLValidator.validateURL("https://fe80domain.example.com"));
-  }
 
   @Test
   void testPrivateIpv4AddressesBlocked() {

@@ -14,13 +14,12 @@
 import {
   Breadcrumbs,
   Button,
-  EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState, ServicesUpdateRequest } from 'Models';
 import React, {
   lazy,
@@ -33,6 +32,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import FormPanelBody, {
   getFormFirstPanelProps,
 } from '../../components/common/FormPanelBody/FormPanelBody.component';
@@ -59,7 +59,10 @@ import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { getServiceType } from '../../utils/ServicePureUtils';
+import {
+  getServiceCategoryLabel,
+  getServiceType,
+} from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -95,6 +98,9 @@ function EditConnectionFormPage() {
     useState<LoadingState>('initial');
   const [isConnectionVerified, setIsConnectionVerified] = useState(false);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
+  // Leaving with nothing to save never enters the 'waiting' state that
+  // otherwise disarms the blocker, so it disarms it explicitly.
+  const [isLeaving, setIsLeaving] = useState(false);
   const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
   const filtersFormRef = useRef<FiltersConfigFormHandle>(null);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
@@ -137,8 +143,12 @@ function EditConnectionFormPage() {
       ...serviceConfig,
       connection: {
         config: {
-          ...serviceDetails?.connection?.config,
-          ...serviceConfig?.connection?.config,
+          ...(typeof serviceDetails.connection?.config === 'object'
+            ? serviceDetails.connection.config
+            : {}),
+          ...(typeof serviceConfig?.connection?.config === 'object'
+            ? serviceConfig.connection.config
+            : {}),
           ...updatedData,
         },
       },
@@ -146,7 +156,10 @@ function EditConnectionFormPage() {
 
     const jsonPatch = compare(serviceDetails, configData);
 
+    // Nothing to persist, but the form still has to close.
     if (isEmpty(jsonPatch)) {
+      setIsLeaving(true);
+
       return;
     }
 
@@ -184,7 +197,7 @@ function EditConnectionFormPage() {
       setServiceDetails(response);
       setSlashedBreadcrumb([
         {
-          label: startCase(serviceCategory),
+          label: getServiceCategoryLabel(serviceCategory),
           id: 'service-category',
         },
         {
@@ -207,6 +220,19 @@ function EditConnectionFormPage() {
       setIsLoading(false);
     }
   };
+
+  // From an effect, not inline: NavigationBlocker is a child, so its effects
+  // have detached the history patches by the time this runs.
+  useEffect(() => {
+    if (isLeaving) {
+      navigate(
+        connectionsRouterClassBase.getPathByServiceFQN(
+          serviceCategory,
+          serviceFQN
+        )
+      );
+    }
+  }, [isLeaving, navigate, serviceCategory, serviceFQN]);
 
   const onCancel = () => {
     navigate(-1);
@@ -252,9 +278,9 @@ function EditConnectionFormPage() {
   if (isError && !isLoading) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
-        <EmptyPlaceholder
+        <SomethingWentWrongPlaceholder
           description={getEntityMissingError(serviceCategory, serviceFQN)}
-          icon={<OpenIncidents className="tw:text-secondary" />}
+          icon={<AlertTriangle />}
           title={t('message.something-went-wrong')}
         />
       </div>
@@ -377,7 +403,13 @@ function EditConnectionFormPage() {
 
   return (
     <NavigationBlocker
-      enabled={!isSavingService}
+      enabled={!isSavingService && !isLeaving}
+      // Otherwise a confirmed back falls through to history.go(-2), which
+      // assumes one guard entry; two are pushed, so it lands back on this page.
+      leaveTo={connectionsRouterClassBase.getPathByServiceFQN(
+        serviceCategory,
+        serviceFQN
+      )}
       renderModal={({ isOpen, onLeave, onStay }) => (
         <NavigationGuardModal
           isOpen={isOpen}

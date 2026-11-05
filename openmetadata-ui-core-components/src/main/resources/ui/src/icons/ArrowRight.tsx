@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const ArrowRight: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -33,9 +33,9 @@ export const ArrowRight: FC<Props> = ({
     width={size}
     {...props}>
     <path
-      d="m10.761 2 6.809 6.942a1.517 1.517 0 0 1 0 2.116L10.761 18m6.444-8H2"
+      d="M4.167 10h11.667m0 0-5.833-5.833M15.834 10l-5.833 5.833"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={1.3}
     />
   </svg>
 );

@@ -20,20 +20,28 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.api.events.TypedEvent;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.events.FailedEvent;
@@ -49,12 +57,12 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.events.ChangeEventMasking;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
-import org.openmetadata.service.resources.events.subscription.TypedEvent;
+import org.openmetadata.service.util.ChangeEventJsonUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindJson;
@@ -595,9 +603,24 @@ public interface AccessControlDAOs {
       return User.class;
     }
 
+    /**
+     * Optional subtree filter set by {@code UserResource.list}: when the requested team is a
+     * non-Group team, {@code teamIds} carries the ids of its whole subtree so its Users tab/export
+     * include the members inherited from its sub-group descendants. Bypasses the single-team
+     * {@code te.nameHash = :team} equality. The ids are server-computed UUIDs, safe to inline.
+     */
+    private static String subtreeTeamsCondition(String teamIdsCsv) {
+      String inList =
+          Arrays.stream(teamIdsCsv.split(","))
+              .map(id -> "'" + id + "'")
+              .collect(Collectors.joining(","));
+      return " AND te.id IN (" + inList + ") ";
+    }
+
     @Override
     default int listCount(ListFilter filter) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamIdsCsv = filter.getQueryParam("teamIds");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -650,7 +673,13 @@ public interface AccessControlDAOs {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamIdsCsv != null) {
+        String subtreeCondition = subtreeTeamsCondition(teamIdsCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
+      }
       if (team == null
+          && teamIdsCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -658,13 +687,19 @@ public interface AccessControlDAOs {
         return EntityDAO.super.listCount(filter);
       }
       return listCount(
-          getTableName(), mySqlCondition, postgresCondition, team, Relationship.HAS.ordinal());
+          getTableName(),
+          filter.getQueryParams(),
+          mySqlCondition,
+          postgresCondition,
+          teamIdsCsv != null ? null : team,
+          Relationship.HAS.ordinal());
     }
 
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamIdsCsv = filter.getQueryParam("teamIds");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -717,7 +752,13 @@ public interface AccessControlDAOs {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamIdsCsv != null) {
+        String subtreeCondition = subtreeTeamsCondition(teamIdsCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
+      }
       if (team == null
+          && teamIdsCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -726,9 +767,10 @@ public interface AccessControlDAOs {
       }
       return listBefore(
           getTableName(),
+          filter.getQueryParams(),
           mySqlCondition,
           postgresCondition,
-          team,
+          teamIdsCsv != null ? null : team,
           limit,
           beforeName,
           beforeId,
@@ -738,6 +780,7 @@ public interface AccessControlDAOs {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamIdsCsv = filter.getQueryParam("teamIds");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -790,7 +833,13 @@ public interface AccessControlDAOs {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamIdsCsv != null) {
+        String subtreeCondition = subtreeTeamsCondition(teamIdsCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
+      }
       if (team == null
+          && teamIdsCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -799,9 +848,10 @@ public interface AccessControlDAOs {
       }
       return listAfter(
           getTableName(),
+          filter.getQueryParams(),
           mySqlCondition,
           postgresCondition,
-          team,
+          teamIdsCsv != null ? null : team,
           limit,
           afterName,
           afterId,
@@ -832,6 +882,7 @@ public interface AccessControlDAOs {
         connectionType = POSTGRES)
     int listCount(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("postgresCond") String postgresCond,
         @BindFQN("team") String team,
@@ -869,6 +920,7 @@ public interface AccessControlDAOs {
         connectionType = POSTGRES)
     List<String> listBefore(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("postgresCond") String postgresCond,
         @BindFQN("team") String team,
@@ -905,6 +957,7 @@ public interface AccessControlDAOs {
         connectionType = POSTGRES)
     List<String> listAfter(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("postgresCond") String postgresCond,
         @BindFQN("team") String team,
@@ -913,18 +966,69 @@ public interface AccessControlDAOs {
         @Bind("afterId") String afterId,
         @Bind("relation") int relation);
 
-    @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)")
+    // Bare equality on MySQL: its collation is already case-insensitive and indexed. Postgres is
+    // case-sensitive, so LOWER(), backed by idx_user_entity_{email,name}_lower.
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE email = :email",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)",
+        connectionType = POSTGRES)
     int checkEmailExists(@Bind("email") String email);
 
-    @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(name) = LOWER(:name)")
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE name = :name",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE LOWER(name) = LOWER(:name)",
+        connectionType = POSTGRES)
     int checkUserNameExists(@Bind("name") String name);
 
-    @SqlQuery(
-        "SELECT json FROM user_entity WHERE LOWER(name) = LOWER(:name) AND LOWER(email) = LOWER(:email)")
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM user_entity WHERE name = :name AND email = :email",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM user_entity WHERE LOWER(name) = LOWER(:name) AND LOWER(email) = LOWER(:email)",
+        connectionType = POSTGRES)
     String findUserByNameAndEmail(@Bind("name") String name, @Bind("email") String email);
 
-    @SqlQuery("SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)")
+    // At most one row: emails are stored lowercased (normalized on write since 1.5.0, which also
+    // de-duplicated existing rows by LOWER(email)) and user_entity has a UNIQUE constraint on it.
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM user_entity WHERE email = :email",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)",
+        connectionType = POSTGRES)
     String findUserByEmail(@Bind("email") String email);
+
+    record NameEmail(String name, String email) {}
+
+    class NameEmailMapper implements RowMapper<NameEmail> {
+      @Override
+      public NameEmail map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new NameEmail(rs.getString("name"), rs.getString("email"));
+      }
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, email FROM user_entity WHERE email LIKE :domainSuffix AND deleted = FALSE "
+                + "AND (isBot IS NULL OR isBot = FALSE) "
+                + "AND name > :afterName ORDER BY name LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, email FROM user_entity WHERE LOWER(email) LIKE LOWER(:domainSuffix) AND deleted = FALSE "
+                + "AND (isBot IS NULL OR isBot = FALSE) "
+                + "AND name > :afterName ORDER BY name LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(NameEmailMapper.class)
+    List<NameEmail> listUsersWithEmailDomain(
+        @Bind("domainSuffix") String domainSuffix,
+        @Bind("afterName") String afterName,
+        @Bind("limit") int limit);
 
     @Override
     default User findEntityByName(String fqn, Include include) {
@@ -977,15 +1081,54 @@ public interface AccessControlDAOs {
   }
 
   interface ChangeEventDAO {
-    @SqlQuery(
-        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime DESC LIMIT :limit OFFSET :paginationOffset")
-    List<String> listUnprocessedEvents(
+    /**
+     * One page of the change events after {@code offset}, newest first: at most {@code limit}
+     * events and {@link #MAX_BYTES_PER_READ} bytes of them, and always the first, so a page can
+     * hold fewer events than asked and the next one starts after those it holds.
+     */
+    default List<String> listUnprocessedEvents(long offset, int limit, int paginationOffset) {
+      List<Long> offsets =
+          offsetsWithinBudget(
+              listUnprocessedSizes(offset, limit, paginationOffset), MAX_BYTES_PER_READ);
+      return offsets.isEmpty() ? List.of() : inPageOrder(offsets, listByOffsets(offsets));
+    }
+
+    // An event deleted between the two reads is left out of the page.
+    private static List<String> inPageOrder(List<Long> offsets, List<ChangeEventRecord> rows) {
+      Map<Long, String> jsonByOffset = new HashMap<>();
+      rows.forEach(row -> jsonByOffset.put(row.offset(), row.json()));
+      return offsets.stream().map(jsonByOffset::get).filter(Objects::nonNull).toList();
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, LENGTH(json) AS bytes FROM change_event WHERE `offset` > :offset "
+                + "ORDER BY eventTime DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", octet_length(json::text) AS bytes FROM change_event "
+                + "WHERE \"offset\" > :offset "
+                + "ORDER BY eventTime DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventSizeMapper.class)
+    List<ChangeEventSize> listUnprocessedSizes(
         @Bind("offset") long offset,
         @Bind("limit") int limit,
         @Bind("paginationOffset") int paginationOffset);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    // The listings below answer each event without the entity it carries: the alert pages read
+    // only the event's own fields, and the entity is as large as the asset that changed.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listFailedEventsById(
         @Bind("id") String id,
@@ -995,8 +1138,18 @@ public interface AccessControlDAOs {
     @SqlQuery("SELECT COUNT(*) FROM consumers_dlq WHERE id = :id")
     long countFailedEvents(@Bind("id") String id);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE id = :id AND source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "WHERE id = :id AND source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "WHERE id = :id AND source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listFailedEventsByIdAndSource(
         @Bind("id") String id,
@@ -1004,14 +1157,32 @@ public interface AccessControlDAOs {
         @Bind("limit") int limit,
         @Bind("paginationOffset") int paginationOffset);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listAllFailedEvents(
         @Bind("limit") int limit, @Bind("paginationOffset") int paginationOffset);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "WHERE source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "WHERE source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listAllFailedEventsBySource(
         @Bind("source") String source,
@@ -1022,10 +1193,11 @@ public interface AccessControlDAOs {
         value =
             "SELECT json, status, timestamp "
                 + "FROM ( "
-                + "    SELECT json, 'FAILED' AS status, timestamp "
+                + "    SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, "
+                + "      'FAILED' AS status, timestamp "
                 + "    FROM consumers_dlq WHERE id = :id "
                 + "    UNION ALL "
-                + "    SELECT json, 'SUCCESSFUL' AS status, timestamp "
+                + "    SELECT JSON_REMOVE(json, '$.entity') AS json, 'SUCCESSFUL' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
                 + ") AS combined_events "
                 + "ORDER BY timestamp DESC "
@@ -1035,10 +1207,10 @@ public interface AccessControlDAOs {
         value =
             "SELECT json, status, timestamp "
                 + "FROM ( "
-                + "    SELECT json, 'failed' AS status, timestamp "
+                + "    SELECT json #- '{changeEvent,entity}' AS json, 'failed' AS status, timestamp "
                 + "    FROM consumers_dlq WHERE id = :id "
                 + "    UNION ALL "
-                + "    SELECT json, 'successful' AS status, timestamp "
+                + "    SELECT json - 'entity' AS json, 'successful' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
                 + ") AS combined_events "
                 + "ORDER BY timestamp DESC "
@@ -1057,14 +1229,31 @@ public interface AccessControlDAOs {
         "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
     int recordExists(@Bind("id") String id);
 
+    /**
+     * Every change event is written through here, so none is stored with a masked field
+     * (ADR:2026-10-26-masked-fields-stay-out-of-change-events-and-version-history).
+     */
+    default void insert(String json) {
+      insertMaskedRow(ChangeEventMasking.masked(json));
+    }
+
+    default void insertBatch(List<String> jsons) {
+      if (nullOrEmpty(jsons)) {
+        return;
+      }
+      insertMaskedRows(jsons.stream().map(ChangeEventMasking::masked).toList());
+    }
+
+    /** Only for {@link #insert}: the event must already be masked. */
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@BindJson("json") String json);
+    void insertMaskedRow(@BindJson("json") String json);
 
+    /** Only for {@link #insertBatch}: the events must already be masked. */
     @Transaction
     @ConnectionAwareSqlBatch(
         value = "INSERT INTO change_event (json) VALUES (:json)",
@@ -1072,14 +1261,7 @@ public interface AccessControlDAOs {
     @ConnectionAwareSqlBatch(
         value = "INSERT INTO change_event (json) VALUES (CAST(:json AS jsonb))",
         connectionType = POSTGRES)
-    void insertBatchRows(@BindJson("json") List<String> jsons);
-
-    default void insertBatch(List<String> jsons) {
-      if (nullOrEmpty(jsons)) {
-        return;
-      }
-      insertBatchRows(jsons);
-    }
+    void insertMaskedRows(@BindJson("json") List<String> jsons);
 
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);
@@ -1171,18 +1353,81 @@ public interface AccessControlDAOs {
     /** Record holding change event offset and JSON for cursor-based pagination. */
     record ChangeEventRecord(long offset, String json) {}
 
-    /** Returns change events with their offset values for accurate cursor tracking. */
+    /** How many bytes a change event's stored JSON takes, read without loading the JSON. */
+    record ChangeEventSize(long offset, long bytes) {}
+
+    /** The most change events one read returns, whatever the caller asks for. */
+    int MAX_ROWS_PER_READ = 1000;
+
+    /** The most bytes of change event JSON one read loads, except that it always loads one. */
+    long MAX_BYTES_PER_READ = 8L * 1024 * 1024;
+
+    /**
+     * Returns the change events after {@code afterOffset} in offset order, with their offsets for
+     * cursor tracking. A read stops at {@link #MAX_ROWS_PER_READ} events and at {@link
+     * #MAX_BYTES_PER_READ} bytes, because each event embeds a whole entity: the events it leaves
+     * out are the first ones the next read returns, so a short read does not mean the caller has
+     * caught up (ADR:2026-10-26-alerting-bounds-the-work-of-each-request-and-tick).
+     */
+    default List<ChangeEventRecord> listWithOffset(long limit, long afterOffset) {
+      int rows = Math.clamp(limit, 1, MAX_ROWS_PER_READ);
+      List<Long> offsets =
+          offsetsWithinBudget(listSizesAfter(rows, afterOffset), MAX_BYTES_PER_READ);
+      return offsets.isEmpty() ? List.of() : listByOffsets(offsets);
+    }
+
+    /**
+     * The offsets of the leading events whose sizes add up to at most {@code maxBytes}, and always
+     * the first one: a prefix, so the events left out are the next ones in order.
+     */
+    static List<Long> offsetsWithinBudget(List<ChangeEventSize> sizes, long maxBytes) {
+      List<Long> offsets = new ArrayList<>();
+      long bytes = 0;
+      for (ChangeEventSize size : sizes) {
+        bytes += size.bytes();
+        if (!offsets.isEmpty() && bytes > maxBytes) {
+          break;
+        }
+        offsets.add(size.offset());
+      }
+      return List.copyOf(offsets);
+    }
+
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT `offset`, json FROM change_event WHERE `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
+            "SELECT `offset`, LENGTH(json) AS bytes FROM change_event "
+                + "WHERE `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT \"offset\", json FROM change_event WHERE \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
+            "SELECT \"offset\", octet_length(json::text) AS bytes FROM change_event "
+                + "WHERE \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventSizeMapper.class)
+    List<ChangeEventSize> listSizesAfter(
+        @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+
+    // An event deleted between the two reads is missing here, which the reader treats as a gap.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, json FROM change_event WHERE `offset` IN (<offsets>) "
+                + "ORDER BY `offset` ASC",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", json FROM change_event WHERE \"offset\" IN (<offsets>) "
+                + "ORDER BY \"offset\" ASC",
         connectionType = POSTGRES)
     @RegisterRowMapper(ChangeEventRecordMapper.class)
-    List<ChangeEventRecord> listWithOffset(
-        @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+    List<ChangeEventRecord> listByOffsets(@BindList("offsets") List<Long> offsets);
+  }
+
+  class ChangeEventSizeMapper implements RowMapper<ChangeEventDAO.ChangeEventSize> {
+    @Override
+    public ChangeEventDAO.ChangeEventSize map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new ChangeEventDAO.ChangeEventSize(rs.getLong("offset"), rs.getLong("bytes"));
+    }
   }
 
   class ChangeEventRecordMapper implements RowMapper<ChangeEventDAO.ChangeEventRecord> {
@@ -1197,12 +1442,15 @@ public interface AccessControlDAOs {
     @Override
     public FailedEventResponse map(ResultSet rs, StatementContext ctx) throws SQLException {
       FailedEventResponse response = new FailedEventResponse();
-      FailedEvent failedEvent = JsonUtils.readValue(rs.getString("json"), FailedEvent.class);
-      response.setFailingSubscriptionId(failedEvent.getFailingSubscriptionId());
-      response.setChangeEvent(failedEvent.getChangeEvent());
-      response.setReason(failedEvent.getReason());
       response.setSource(rs.getString("source"));
-      response.setTimestamp(failedEvent.getTimestamp());
+      FailedEvent failedEvent =
+          ChangeEventJsonUtils.readOrNull(rs.getString("json"), FailedEvent.class);
+      if (failedEvent != null) {
+        response.setFailingSubscriptionId(failedEvent.getFailingSubscriptionId());
+        response.setChangeEvent(failedEvent.getChangeEvent());
+        response.setReason(failedEvent.getReason());
+        response.setTimestamp(failedEvent.getTimestamp());
+      }
       return response;
     }
   }
@@ -1212,16 +1460,16 @@ public interface AccessControlDAOs {
     public TypedEvent map(ResultSet rs, StatementContext ctx) throws SQLException {
       TypedEvent response = new TypedEvent();
       String status = rs.getString("status").toLowerCase();
+      boolean isFailed = TypedEvent.Status.FAILED.value().equalsIgnoreCase(status);
 
-      if (TypedEvent.Status.FAILED.value().equalsIgnoreCase(status)) {
-        FailedEvent failedEvent = JsonUtils.readValue(rs.getString("json"), FailedEvent.class);
-        response.setData(List.of(failedEvent));
-        response.setStatus(TypedEvent.Status.FAILED);
-      } else {
-        ChangeEvent changeEvent = JsonUtils.readValue(rs.getString("json"), ChangeEvent.class);
-        response.setData(List.of(changeEvent));
-        response.setStatus(TypedEvent.Status.fromValue(status));
-      }
+      // An unreadable payload still yields a row: the status and timestamp columns say an event
+      // happened, and one stale payload must not fail the whole page.
+      Object event =
+          isFailed
+              ? ChangeEventJsonUtils.readOrNull(rs.getString("json"), FailedEvent.class)
+              : ChangeEventJsonUtils.readOrNull(rs.getString("json"), ChangeEvent.class);
+      response.setData(event == null ? List.of() : List.of(event));
+      response.setStatus(isFailed ? TypedEvent.Status.FAILED : TypedEvent.Status.fromValue(status));
 
       long timestampMillis = rs.getLong("timestamp");
       response.setTimestamp((double) timestampMillis);

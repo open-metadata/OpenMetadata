@@ -12,7 +12,7 @@
  */
 
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 
 export interface SortingField {
@@ -38,7 +38,10 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
     'data-testid': 'dropdown-menu-item',
   }));
 
-  const label = fieldList.find((field) => field.value === sortField)?.name;
+  // Fall back to the first option so a stale/unsupported sortField (not present in
+  // fieldList) never renders a blank trigger label.
+  const selectedField =
+    fieldList.find((field) => field.value === sortField) ?? fieldList[0];
 
   return (
     <Dropdown.Root data-testid="dropdown">
@@ -47,15 +50,17 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
         hideFocusOutline
         color="tertiary"
         data-testid="sorting-dropdown-label"
-        iconTrailing={<ChevronDown size={14} />}
+        iconTrailing={ChevronDown}
         size="sm">
-        {label}
+        {selectedField?.name}
       </Button>
 
       <Dropdown.Popover>
-        <Dropdown.Menu aria-label="Sorting Options">
+        <Dropdown.Menu
+          aria-label="Sorting Options"
+          selectedKeys={selectedField ? [selectedField.value] : []}>
           {items.map((item) => (
-            <Dropdown.Item key={item.key} onClick={item.onClick}>
+            <Dropdown.Item id={item.key} key={item.key} onClick={item.onClick}>
               {item.label}
             </Dropdown.Item>
           ))}

@@ -151,6 +151,11 @@ export interface SemanticsValidation {
      */
     passed?: number;
     /**
+     * Number of semantics rules not evaluated because they are disabled or do not apply to the
+     * entity's type.
+     */
+    skipped?: number;
+    /**
      * Total number of semantics rules.
      */
     total?: number;
@@ -176,11 +181,37 @@ export interface SlaValidation {
      */
     availabilityMet?: boolean;
     /**
+     * When the data was last refreshed, as far as OpenMetadata can tell. Absent when no source
+     * records it.
+     */
+    lastRefreshedAt?: number;
+    /**
      * Whether latency requirement was met.
      */
     latencyMet?: boolean;
     /**
+     * Which SLA requirements were missed, and which could not be evaluated and why.
+     */
+    message?: string;
+    /**
+     * Where the last refresh time comes from: the latest profile of the SLA column (its newest
+     * value), the table's system metrics (its latest write), or its life cycle (its last
+     * update).
+     */
+    refreshedAtSource?: RefreshedAtSource;
+    /**
      * Whether refresh frequency requirement was met.
      */
     refreshFrequencyMet?: boolean;
+}
+
+/**
+ * Where the last refresh time comes from: the latest profile of the SLA column (its newest
+ * value), the table's system metrics (its latest write), or its life cycle (its last
+ * update).
+ */
+export enum RefreshedAtSource {
+    LifeCycle = "lifeCycle",
+    SlaColumnProfile = "slaColumnProfile",
+    SystemProfile = "systemProfile",
 }

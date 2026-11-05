@@ -14,13 +14,16 @@ import { contextCenterModule } from '../components/discovery/context-center/cont
 import { entityModule } from '../components/discovery/entity/entity.module';
 import { exploreModule } from '../components/discovery/explore/explore.module';
 import { homeModule } from '../components/discovery/home/home.module';
+import { lineageModule } from '../components/discovery/lineage/lineage.module';
 import { personalSpaceModule } from '../components/discovery/personal-space/personalSpace.module';
 import { governModule } from '../components/governance/govern/govern.module';
 import { marketplaceModule } from '../components/governance/marketplace/marketplace.module';
+import { connectionsModule } from '../components/integration/connections.module';
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { observabilityModule } from '../components/observability/ObservabilityModule/observability.module';
 import { AppModule } from '../components/platform/ai-shell/AppModule.types';
 import {
+  SIDEBAR_ENTITY_PATH_ALIASES,
   SIDEBAR_LIST,
   SIDEBAR_NESTED_KEYS,
 } from '../constants/LeftSidebar.constants';
@@ -33,7 +36,9 @@ import {
 const APP_MODE_MODULES: Array<AppModule> = [
   homeModule,
   exploreModule,
+  lineageModule,
   entityModule,
+  connectionsModule,
   observabilityModule,
   governModule,
   contextCenterModule,
@@ -63,6 +68,17 @@ class LeftSidebarClassBase {
 
   public getSidebarNestedKeys(): Record<string, string> {
     return SIDEBAR_NESTED_KEYS;
+  }
+
+  /**
+   * Route prefixes that mark another Classic sidebar item as active. Matched
+   * on the route's first two path segments, then on its first segment. A
+   * downstream build (Collate) spreads `super` and adds routes it owns outside
+   * the item's own path.
+   * ADR:2026-10-21-classic-sidebar-path-aliases-are-a-class-base-hook
+   */
+  public getSidebarPathAliases(): Record<string, string> {
+    return SIDEBAR_ENTITY_PATH_ALIASES;
   }
 
   /**

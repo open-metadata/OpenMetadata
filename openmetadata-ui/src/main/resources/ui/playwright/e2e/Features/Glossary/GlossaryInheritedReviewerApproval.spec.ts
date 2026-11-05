@@ -17,6 +17,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { uuid } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 /**
  * Reproduction for the Glossary Approval bug where a term whose reviewers are INHERITED from its
@@ -271,25 +272,29 @@ test.describe(
         // reviewers list and must inherit the one added to the glossary server-side.
         term = new GlossaryTerm(glossary);
         await term.create(apiContext);
+        const termId = term.responseData.id;
 
         await test.step('Term exposes the inherited reviewer and reaches In Review', async () => {
-          expect(
-            await waitForSettledStatus(apiContext, term.responseData.id)
-          ).toBe('In Review');
+          expect(await waitForSettledStatus(apiContext, termId)).toBe(
+            'In Review'
+          );
           await waitForInheritedReviewer(
             apiContext,
-            term.responseData.id,
+            termId,
             reviewer.responseData.id
           );
         });
 
+        const termRes = page.waitForResponse('/api/v1/glossaryTerms/name/*');
         await page.goto(
           `/glossary/${encodeURIComponent(
             term.responseData.fullyQualifiedName
-          )}`
+          )}`,
+          { waitUntil: 'domcontentloaded' }
         );
 
-        await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
+        await termRes;
+        await waitForAllLoadersToDisappear(page);
 
         await test.step('Inherited reviewer is displayed', async () => {
           await expect(

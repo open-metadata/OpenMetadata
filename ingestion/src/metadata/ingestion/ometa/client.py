@@ -128,7 +128,8 @@ class APIError(Exception):
     """
 
     def __init__(self, error, http_error=None):
-        super().__init__(error["message"])
+        # Not every API uses `message`: Alation, for one, answers with `title` and `detail`
+        super().__init__(error.get("message") or error.get("detail") or error.get("title") or str(error))
         self._error = error
         self._http_error = http_error
 
@@ -186,7 +187,7 @@ class ClientConfig(ConfigModel):
     retry: int | None = 3
     retry_wait: int | None = 30
     limit_codes: list[int] = [429]  # noqa: RUF012
-    retry_codes: list[int] = [504]  # noqa: RUF012
+    retry_codes: list[int] = [503, 504]  # noqa: RUF012
     auth_token: Callable | None = None
     access_token: str | None = None
     expires_in: int | None = None

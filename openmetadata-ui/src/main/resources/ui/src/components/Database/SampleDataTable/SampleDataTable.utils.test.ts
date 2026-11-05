@@ -64,6 +64,23 @@ describe('buildSampleDataCSVContent', () => {
     expect(lines[0]).toBe('id,name,age');
   });
 
+  it('prefixes cells a spreadsheet would evaluate, as entity exports do', () => {
+    const csv = buildSampleDataCSVContent(
+      toColumns(['note']),
+      [
+        { note: '=HYPERLINK("http://x","y")' },
+        { note: '- bullet' },
+        { note: 'plain' },
+      ],
+      10
+    );
+    const lines = csv.split('\n');
+
+    expect(lines[1]).toBe(`"'=HYPERLINK(""http://x"",""y"")"`);
+    expect(lines[2]).toBe(`"'- bullet"`);
+    expect(lines[3]).toBe('plain');
+  });
+
   it('produces correct data rows', () => {
     const csv = buildSampleDataCSVContent(columns, rows, 10);
     const lines = csv.split('\n');

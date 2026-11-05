@@ -11,18 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  HookForm,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Lightbulb05 } from '@untitledui/icons';
+import { HookForm } from '@openmetadata/ui-core-components';
 import { FormEvent, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { FormHintDoc } from '../../common/atoms/drawer/formHint/FormHintDoc';
+import { FormHintEmptyState } from '../../common/atoms/drawer/formHint/FormHintEmptyState';
+import { FormHintHeader } from '../../common/atoms/drawer/formHint/FormHintHeader';
 import AlertAiFormFields from './AlertAiFormFields.component';
 import {
   AlertAiFormProps,
@@ -33,22 +29,44 @@ import { validateAlertAiForm } from './AlertAiFormFieldsValidationUtils';
 /** Wraps AI alert fields in a Core UI form and gates submit handling in view mode. */
 function AlertAiForm(props: Readonly<AlertAiFormProps>) {
   const { t } = useTranslation();
-  const { formId, mode, onSubmit, showHint, ...fieldProps } = props;
+  const {
+    fieldDocDisplay = 'panel',
+    fieldDocVariant,
+    formId,
+    mode,
+    onSubmit,
+    showHint,
+    ...fieldProps
+  } = props;
   const fieldDocForm = useForm();
   const isViewMode = mode === 'view';
   const [validationErrors, setValidationErrors] =
     useState<AlertAiFormValidationErrors>({});
 
-  const handleChange = (nextValue: ModifiedCreateEventSubscription) => {
+  const handleChange = (
+    valueOrUpdater:
+      | ModifiedCreateEventSubscription
+      | ((
+          prev: ModifiedCreateEventSubscription
+        ) => ModifiedCreateEventSubscription)
+  ) => {
     if (mode === 'view') {
       return;
     }
 
+    // Collate's template section sends a plain value; the rest send a functional updater. Normalise
+    // to an updater so a value caller can't crash the `updater(prev)` call below, and the write
+    // always composes against the latest state.
+    const updater =
+      typeof valueOrUpdater === 'function'
+        ? valueOrUpdater
+        : () => valueOrUpdater;
+
     if (Object.keys(validationErrors).length > 0) {
-      setValidationErrors(validateAlertAiForm(nextValue, t));
+      setValidationErrors(validateAlertAiForm(updater(props.value), t));
     }
 
-    props.onChange(nextValue);
+    props.onChange(updater);
   };
 
   /** Prevents browser form submission and delegates valid add/edit submits to the OSS hook. */
@@ -70,44 +88,23 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
 
   return (
     <HookForm
-      emptyFieldDoc={
-        // width="100%" is required: EmptyPlaceholder's 300px default is wider
-        // than the hint column's 260px minimum and would overflow when it
-        // shrinks.
-        <EmptyPlaceholder
-          description={t('message.form-hint-empty-state')}
-          icon={Lightbulb05}
-          title={t('label.no-entity-selected', { entity: t('label.field') })}
-          width="100%"
-        />
-      }
-      fieldDocDisplay="panel"
-      fieldDocHeader={
-        <Box align="center" className="tw:gap-2" direction="row">
-          <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-          <Typography
-            className="tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {t('label.form-hint')}
-          </Typography>
-        </Box>
-      }
+      emptyFieldDoc={<FormHintEmptyState />}
+      fieldDocDisplay={fieldDocDisplay}
+      fieldDocHeader={<FormHintHeader />}
+      fieldDocVariant={fieldDocVariant}
       form={fieldDocForm}
-      formClassName="tw:px-7 tw:pt-6 tw:pb-7"
+      // `relative` makes the scrolling form the containing block of the
+      // visually hidden inputs react-aria renders for toggles and checkboxes.
+      // Without it they overflow into the drawer, which then scrolls as well.
+      // In view mode the form sits under the description card on the details
+      // page, so it aligns with that card instead of carrying modal padding.
+      formClassName={
+        isViewMode
+          ? 'tw:relative tw:pb-6'
+          : 'tw:relative tw:px-7 tw:pt-6 tw:pb-7'
+      }
       id={formId}
-      renderFieldDoc={(markdown) => (
-        // form-hint-doc carries the hint panel's typography (12.5px / 1.55 /
-        // grey-600). Without it the docs inherit TipTap's defaults and render
-        // larger and darker than the Data Quality panels, which is not what
-        // the design asks for.
-        <div className="form-hint-doc">
-          <RichTextEditorPreviewerV1
-            enableSeeMoreVariant={false}
-            markdown={markdown}
-          />
-        </div>
-      )}
+      renderFieldDoc={(markdown) => <FormHintDoc markdown={markdown} />}
       showFieldDocs={showHint}
       onSubmit={handleSubmit}>
       <AlertAiFormFields

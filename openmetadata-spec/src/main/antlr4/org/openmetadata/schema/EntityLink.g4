@@ -40,6 +40,10 @@ ENTITY_TYPE
     | 'glossary'
     | 'glossaryTerm'
     | 'relationshipType'
+    | 'ontology'
+    | 'ontologyConcept'
+    | 'ontologyProperty'
+    | 'ontologyRelease'
     | 'ontologyAxiom'
     | 'ontologyChangeSet'
     | 'databaseService'
@@ -98,6 +102,7 @@ ENTITY_TYPE
     | 'webAnalyticEvent'
     | 'llmService'
     | 'metric'
+    | 'metricGroup'
     | 'report'
     | 'query'
     | 'directory'
@@ -122,6 +127,8 @@ ENTITY_TYPE
     | 'mcpServer'
     | 'mcpExecution'
     | 'intakeForm'
+    | 'announcement'
+    | 'governanceAutomation'
     ;
 
 ENTITY_FIELD
@@ -133,6 +140,7 @@ ENTITY_FIELD
     | 'mlFeatures'
     | 'schemaText'
     | 'owner'
+    | 'owners'
     | 'reviewers'
     | 'synonyms'
     | 'relatedTerms'

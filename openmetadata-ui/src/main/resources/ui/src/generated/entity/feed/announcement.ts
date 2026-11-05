@@ -19,6 +19,7 @@ export interface Announcement {
      * Change that lead to this version of the announcement.
      */
     changeDescription?: ChangeDescription;
+    color?:             AnnouncementColor;
     /**
      * Timestamp when the announcement was created.
      */
@@ -27,6 +28,10 @@ export interface Announcement {
      * User who created the announcement.
      */
     createdBy?: string;
+    /**
+     * Label shown in place of the type name when the type is `Custom`.
+     */
+    customTypeName?: string;
     /**
      * When true indicates the entity has been soft deleted.
      */
@@ -74,6 +79,10 @@ export interface Announcement {
      */
     startTime: number;
     status?:   AnnouncementStatus;
+    /**
+     * Severity/category of the announcement, used to style it in the UI.
+     */
+    type?: AnnouncementType;
     /**
      * Last update timestamp.
      */
@@ -151,6 +160,26 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+/**
+ * Palette family the announcement is rendered with. Only meaningful when the type is
+ * `Custom`; every other type derives its colour from the type itself.
+ */
+export enum AnnouncementColor {
+    Blue = "blue",
+    BlueDark = "blue-dark",
+    BlueLight = "blue-light",
+    Brand = "brand",
+    Error = "error",
+    Gray = "gray",
+    GrayBlue = "gray-blue",
+    Indigo = "indigo",
+    Orange = "orange",
+    Pink = "pink",
+    Purple = "purple",
+    Success = "success",
+    Warning = "warning",
 }
 
 /**
@@ -245,4 +274,15 @@ export enum AnnouncementStatus {
     Active = "Active",
     Expired = "Expired",
     Scheduled = "Scheduled",
+}
+
+/**
+ * Severity/category of the announcement, used to style it in the UI.
+ */
+export enum AnnouncementType {
+    Critical = "Critical",
+    Custom = "Custom",
+    Deprecation = "Deprecation",
+    Notice = "Notice",
+    Warning = "Warning",
 }

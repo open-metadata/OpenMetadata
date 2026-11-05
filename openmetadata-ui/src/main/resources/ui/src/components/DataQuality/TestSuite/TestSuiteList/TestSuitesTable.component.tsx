@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   Box,
-  EmptyPlaceholder,
   EmptyPlaceholderAction,
+  Owner,
   Skeleton,
   Table,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -34,9 +35,10 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 
@@ -152,14 +154,15 @@ export const TestSuitesTable = ({
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>{renderNameCell(record)}</Table.Cell>
       <Table.Cell>
-        <Typography.Text>
+        <Typography className="tw:text-primary">
           {(record.summary as TestSummary)?.total ?? 0}
-        </Typography.Text>
+        </Typography>
       </Table.Cell>
       <Table.Cell>{renderSuccessCell(record.summary)}</Table.Cell>
       <Table.Cell>
-        <OwnerLabel
+        <Owner
           isCompactView={false}
+          labelVariant="cell"
           maxVisibleOwners={4}
           owners={record.owners}
           showLabel={false}
@@ -169,6 +172,9 @@ export const TestSuitesTable = ({
   );
 
   const noDataPlaceholder = useMemo(() => {
+    const EmptyStatePlaceholder = hasActiveFilters
+      ? NoFilteredResultsPlaceholder
+      : NoDataPlaceholder;
     let title = t('message.no-table-suites-yet');
     let description = t('message.no-table-suites-yet-description');
 
@@ -182,7 +188,7 @@ export const TestSuitesTable = ({
 
     return (
       <Box className="tw:relative tw:min-h-80 tw:w-full">
-        <EmptyPlaceholder
+        <EmptyStatePlaceholder
           actions={
             !hasActiveFilters &&
             subTab === DataQualitySubTabs.BUNDLE_SUITES &&
@@ -193,7 +199,6 @@ export const TestSuitesTable = ({
           description={description}
           icon={<EmptyTableSuiteIcon className="tw:text-fg-brand-primary" />}
           title={title}
-          variant="blank"
         />
       </Box>
     );

@@ -62,9 +62,11 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import {
   getCountLabel,
+  getEntityTypeFromServiceCategory,
   shouldTestConnection,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -92,6 +94,22 @@ const mockServiceDetails = {
     },
   },
 };
+
+const mockShowModal = jest.fn();
+
+// A real context read stands in for the provider, so a call that moves back
+// inside a memo (or a menu helper it runs) trips React's hook-order checks.
+jest.mock(
+  '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => {
+    const { createContext, useContext } = jest.requireActual('react');
+    const context = createContext({
+      showModal: (data: unknown) => mockShowModal(data),
+    });
+
+    return { useEntityExportModalProvider: () => useContext(context) };
+  }
+);
 
 // Mock all the API calls
 jest.mock('../../rest/serviceAPI', () => ({
@@ -362,8 +380,24 @@ jest.mock(
       onStyleUpdate,
       disableRunAgentsButton,
       disableRunAgentsButtonMessage,
+      extraDropdownContent,
     }: DataAssetsHeaderProps) => (
       <div data-testid="data-assets-header">
+        {extraDropdownContent?.map((item) => {
+          const { key, onClick } = item as {
+            key: string;
+            onClick: () => void;
+          };
+
+          return (
+            <button
+              data-testid={`extra-option-${key}`}
+              key={key}
+              onClick={onClick}>
+              {key}
+            </button>
+          );
+        })}
         <button data-testid="follow-button" onClick={onFollowClick}>
           Follow
         </button>
@@ -485,14 +519,6 @@ jest.mock('../../components/common/TestConnection/TestConnection', () =>
         </div>
       )
     )
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="error-placeholder">ErrorPlaceholder</div>
-    ))
 );
 
 jest.mock('../../components/common/Loader/Loader', () => ({
@@ -619,6 +645,7 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../utils/PermissionsUtils'),
   DEFAULT_ENTITY_PERMISSION: { ViewAll: false, EditAll: false },
   getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
@@ -745,6 +772,50 @@ describe('ServiceDetailsPage', () => {
       expect(screen.getByTestId('tabs')).toBeInTheDocument();
     });
 
+    it('should build the manage menu without hooks and export through showModal', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error');
+      (
+        entityUtilClassBase.getManageExtraOptions as jest.Mock
+      ).mockImplementation((...args) =>
+        jest
+          .requireActual('../../utils/EntityUtilClassBase')
+          .default.getManageExtraOptions(...args)
+      );
+
+      const { rerender } = render(<ServiceDetailsPage />);
+      await screen.findByTestId('extra-option-export-button');
+
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.CONNECTION,
+      });
+      rerender(<ServiceDetailsPage />);
+
+      expect(
+        (entityUtilClassBase.getManageExtraOptions as jest.Mock).mock.calls
+          .at(-1)
+          ?.at(-1)
+      ).toBe(EntityTabs.CONNECTION);
+
+      fireEvent.click(screen.getByTestId('extra-option-export-button'));
+
+      expect(mockShowModal).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'test-service' })
+      );
+      expect(
+        consoleErrorSpy.mock.calls.filter(([message]) =>
+          /Do not call Hooks|change in the order of Hooks|Rendered (more|fewer) hooks/.test(
+            String(message)
+          )
+        )
+      ).toEqual([]);
+
+      consoleErrorSpy.mockRestore();
+      (entityUtilClassBase.getManageExtraOptions as jest.Mock).mockReturnValue(
+        []
+      );
+    });
+
     it('should render error placeholder when service is not found', async () => {
       (getServiceByFQN as jest.Mock).mockImplementationOnce(() =>
         Promise.reject(new Error('Not found'))
@@ -753,7 +824,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
 
@@ -1253,10 +1324,10 @@ describe('ServiceDetailsPage', () => {
       });
     };
 
-    const switchToAgentsTab = async (view: RenderResult) => {
+    const switchToTab = async (view: RenderResult, tab: string) => {
       (useRequiredParams as jest.Mock).mockReturnValue({
         serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
-        tab: EntityTabs.AGENTS,
+        tab,
       });
 
       await act(async () => {
@@ -1266,6 +1337,13 @@ describe('ServiceDetailsPage', () => {
           </MemoryRouter>
         );
       });
+    };
+
+    // Only the selected tab panel is mounted, so come back to the entity tab
+    // to observe the loading state it was left with.
+    const moveOffAndBackToEntityTab = async (view: RenderResult) => {
+      await switchToTab(view, EntityTabs.AGENTS);
+      await switchToTab(view, 'databases');
     };
 
     it('should clear the loading state after moving off the entity tab', async () => {
@@ -1282,7 +1360,7 @@ describe('ServiceDetailsPage', () => {
 
       await expectEntityTabNotLoading();
 
-      await switchToAgentsTab(view);
+      await moveOffAndBackToEntityTab(view);
 
       await expectEntityTabNotLoading();
     });
@@ -1301,7 +1379,7 @@ describe('ServiceDetailsPage', () => {
         );
       });
 
-      await switchToAgentsTab(view);
+      await moveOffAndBackToEntityTab(view);
 
       await expectEntityTabNotLoading();
     });
@@ -1346,6 +1424,8 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('data-model-table')).toBeInTheDocument();
       });
+
+      expect(screen.getByText('label.data-model-plural')).toBeInTheDocument();
     });
 
     it('should render agents tab for metadata services', async () => {
@@ -1399,7 +1479,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
 
@@ -1642,7 +1722,7 @@ describe('ServiceDetailsPage', () => {
 
       // The component should show error placeholder when service fetch fails
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
   });
@@ -1668,7 +1748,9 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
       });
 
       // Should not fetch permissions for OpenMetadata service
@@ -1705,7 +1787,10 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
     });
 
@@ -1720,7 +1805,10 @@ describe('ServiceDetailsPage', () => {
       // AutoPilot creates at most one automation per template, so the list is
       // requested in a single unpaginated call scoped to the service.
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
 
       expect(getAiAutomationsByService).toHaveBeenCalledTimes(1);
@@ -1741,16 +1829,27 @@ describe('ServiceDetailsPage', () => {
       });
     });
 
-    it('should not fetch agents for non-database services', async () => {
-      // Set up messaging service context (CollateAI widgets not supported)
+    it('should fetch agents for non-database services too', async () => {
+      // AutoPilot creates AI Automations for services of every type, not only databases.
       (useRequiredParams as jest.Mock).mockReturnValue({
         serviceCategory: ServiceCategory.MESSAGING_SERVICES,
         tab: EntityTabs.INSIGHTS,
       });
+      (getEntityTypeFromServiceCategory as jest.Mock).mockImplementation(
+        (category: ServiceCategory) =>
+          category === ServiceCategory.MESSAGING_SERVICES
+            ? 'messagingService'
+            : 'database'
+      );
 
       await renderComponent();
 
-      expect(getAiAutomationsByService).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'messagingService'
+        );
+      });
     });
 
     it('should properly handle CollateAI widget support check', async () => {
@@ -1778,8 +1877,73 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
+    });
+  });
+
+  describe('Permission-gated affordances', () => {
+    it('hides the Connection tab (and its edit button) when EditAll is false', async () => {
+      (useRequiredParams as jest.Mock).mockImplementation(() => ({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.CONNECTION,
+      }));
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest
+          .fn()
+          .mockImplementation(() =>
+            Promise.resolve({ ViewAll: true, EditAll: false, Create: true })
+          ),
+        permissions: {
+          database: { ViewAll: true, EditAll: true },
+          dashboard: { ViewAll: true, EditAll: true },
+          pipeline: { ViewAll: true, EditAll: true },
+        },
+      }));
+
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+      });
+
+      // The Connection tab is filtered out of `items` entirely when EditAll is
+      // false, so neither its content nor the edit-connection button renders —
+      // contrasts with the existing "Test connection tab" describe block, which
+      // exercises the same tab with the default EditAll:true fixture.
+      expect(
+        screen.queryByTestId('edit-connection-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders the permission error placeholder when neither ViewAll nor ViewBasic is granted', async () => {
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() =>
+          Promise.resolve({
+            ViewAll: false,
+            ViewBasic: false,
+            EditAll: false,
+          })
+        ),
+        permissions: {
+          database: { ViewAll: true, EditAll: true },
+          dashboard: { ViewAll: true, EditAll: true },
+          pipeline: { ViewAll: true, EditAll: true },
+        },
+      }));
+
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('service-page')).not.toBeInTheDocument();
     });
   });
 });

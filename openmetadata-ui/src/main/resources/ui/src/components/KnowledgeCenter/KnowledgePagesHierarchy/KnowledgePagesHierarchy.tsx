@@ -17,16 +17,18 @@ import {
   ButtonUtility,
   Card,
   Dialog,
-  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Articles } from '@openmetadata/ui-core-components/icons';
+import {
+  File06 as Articles,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniq } from 'lodash';
 import {
@@ -36,6 +38,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useReducer,
   useRef,
   useState,
@@ -50,6 +53,7 @@ import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
+import { PANEL_ICON_BOX_CLASS } from '../../../constants/ContextCenter.constants';
 import {
   KNOWLEDGE_CENTER_PAGINATION_LIMIT,
   KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT,
@@ -95,8 +99,10 @@ import {
   updateTreeData,
 } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 interface KnowledgePagesHierarchyProps {
   permissions: OperationPermission;
@@ -181,6 +187,19 @@ const KnowledgePagesHierarchy = forwardRef<
     const nodesLoadingChildrenRef = useRef<Set<string>>(new Set());
     const nodesWithNoMoreChildrenRef = useRef<Set<string>>(new Set());
     const nodeChildrenOffsetRef = useRef<Map<string, number>>(new Map());
+
+    // Named-flag derivation (Task 8 sweep): `permissions` is the raw OperationPermission this
+    // component receives as a prop. Every old raw read here is a single-key EditAll/Delete
+    // read (no OR-of-two-fields, no explicit-deny-wins case) and none referenced a
+    // `deleted` field (there's no single "deleted" entity at this hierarchy level) — so these
+    // are pure identical mappings onto the named flags, no `deleted` argument. `canCreate` was
+    // dropped from this destructure — its only use site (the `CreateErrorPlaceHolder`
+    // `permission` prop) was removed upstream, which replaced that component with a
+    // non-permission-gated `EmptyPlaceholder` (see `isHierarchyEmpty` render below).
+    const { canEditAll, canDelete } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
+      [permissions]
+    );
 
     const handleExpandAll = useCallback(async () => {
       setIsExpandingAll(true);
@@ -634,7 +653,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
     const handleItemMove = useCallback(
       ({ sourceKey, targetKey, dropPosition }: TreeItemMoveEvent) => {
-        if (!permissions.EditAll) {
+        if (!canEditAll) {
           return;
         }
 
@@ -671,7 +690,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
         setMovedPage({ sourceNode, sourceNodeParent, targetNode });
       },
-      [knowledgePageHierarchy, permissions.EditAll]
+      [knowledgePageHierarchy, canEditAll]
     );
 
     const handleScroll: UIEventHandler<HTMLElement> = useCallback(
@@ -734,13 +753,12 @@ const KnowledgePagesHierarchy = forwardRef<
           </Box>
         );
 
-        const deleteButton = permissions.Delete ? (
+        const deleteButton = canDelete ? (
           <ButtonUtility
-            className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
-            color="tertiary"
+            className="tw:opacity-0 group-hover-opacity-100"
             data-testid={`${displayName}-delete-page-btn`}
             icon={Trash01}
-            size="xs"
+            size="lg"
             tooltip={t('label.delete')}
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
@@ -786,7 +804,7 @@ const KnowledgePagesHierarchy = forwardRef<
           </Tree.Item>
         );
       },
-      [activeKey, onQuickLinkClick, permissions.Delete, handleDeletePage, t]
+      [activeKey, onQuickLinkClick, canDelete, handleDeletePage, t]
     );
 
     useImperativeHandle(ref, () => ({
@@ -854,9 +872,8 @@ const KnowledgePagesHierarchy = forwardRef<
     const renderExpandCollapseButton = () =>
       isUserExpandedAll ? (
         <ButtonUtility
-          color="tertiary"
-          icon={<CollapseAllIcon className="tw:size-6" />}
-          size="sm"
+          icon={CollapseAllIcon}
+          size="lg"
           tooltip={t('label.collapse-all')}
           onClick={() => {
             setExpandedKeys([]);
@@ -865,10 +882,9 @@ const KnowledgePagesHierarchy = forwardRef<
         />
       ) : (
         <ButtonUtility
-          color="tertiary"
-          icon={<ExpandAllIcon className="tw:size-6" />}
+          icon={ExpandAllIcon}
           isDisabled={isExpandingAll}
-          size="sm"
+          size="lg"
           tooltip={t('label.expand-all')}
           onClick={handleExpandAll}
         />
@@ -890,9 +906,9 @@ const KnowledgePagesHierarchy = forwardRef<
 
         {isHierarchyEmpty && (
           <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               description={t('message.no-articles-listed')}
-              icon={<Articles className="tw:text-secondary" />}
+              icon={<Articles />}
               title={t('label.no-entity', {
                 entity: t('label.article-plural'),
               })}
@@ -916,7 +932,7 @@ const KnowledgePagesHierarchy = forwardRef<
             }}
             onItemMove={handleItemMove}
             onItemRootDrop={(sourceKey) => {
-              if (!permissions.EditAll) {
+              if (!canEditAll) {
                 return;
               }
               const { page: sourceNode, parent: sourceNodeParent } =
@@ -969,7 +985,7 @@ const KnowledgePagesHierarchy = forwardRef<
         role="region"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
-          if (!permissions.EditAll) {
+          if (!canEditAll) {
             return;
           }
           const sourceKey = e.dataTransfer.getData('text/plain');
@@ -992,9 +1008,9 @@ const KnowledgePagesHierarchy = forwardRef<
             className="tw:pb-5 tw:shrink-0 tw:px-5"
             justify="between">
             <Box align="center" gap={3}>
-              <div className="tw:p-3 tw:rounded-lg tw:bg-utility-gray-blue-50 tw:leading-0">
+              <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
                 <FileIcon
-                  className="tw:text-quaternary"
+                  className="tw:text-fg-quaternary"
                   height={20}
                   width={20}
                 />
@@ -1040,7 +1056,7 @@ const KnowledgePagesHierarchy = forwardRef<
                 if (deletePage.pageType === PageType.QUICK_LINK) {
                   await deleteKnowledgePage(deletePage.id, false, true);
                 } else {
-                  await deleteKnowledgePage(deletePage.id);
+                  await deleteKnowledgePage(deletePage.id, true, true);
                 }
                 queryClient.invalidateQueries({
                   queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,

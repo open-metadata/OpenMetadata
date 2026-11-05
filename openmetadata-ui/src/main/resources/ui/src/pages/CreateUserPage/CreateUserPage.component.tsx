@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { toString } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -189,15 +189,17 @@ const CreateUserPage = () => {
       center
       pageTitle={t('label.create-entity', { entity: t('label.user') })}>
       <Card className="m-x-auto w-800">
-        <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
-        <div className="m-t-md">
-          <CreateUserComponent
-            forceBot={Boolean(bot)}
-            isLoading={isLoading}
-            onCancel={handleCancel}
-            onSave={handleAddUserSave}
-          />
-        </div>
+        <Card.Content>
+          <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
+          <div className="m-t-md">
+            <CreateUserComponent
+              forceBot={Boolean(bot)}
+              isLoading={isLoading}
+              onCancel={handleCancel}
+              onSave={handleAddUserSave}
+            />
+          </div>
+        </Card.Content>
       </Card>
     </PageLayoutV1>
   );

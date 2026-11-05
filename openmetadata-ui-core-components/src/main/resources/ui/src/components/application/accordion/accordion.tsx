@@ -12,7 +12,7 @@
  */
 import type { ReactNode } from 'react';
 import { useContext } from 'react';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown } from '../../../icons';
 import type {
   ButtonProps as AriaButtonProps,
   DisclosureGroupProps as AriaDisclosureGroupProps,
@@ -36,7 +36,15 @@ export interface AccordionProps extends AriaDisclosureGroupProps {
   className?: string;
 }
 
-export type AccordionItemProps = AriaDisclosureProps;
+export type AccordionItemVariant = 'default' | 'muted';
+
+export type AccordionItemProps = AriaDisclosureProps & {
+  /**
+   * `muted` sits the item on the muted step, like a muted Card.
+   * ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step
+   */
+  variant?: AccordionItemVariant;
+};
 
 export interface AccordionHeaderProps extends AriaButtonProps {
   /**
@@ -109,6 +117,7 @@ export const Accordion = ({
 export const AccordionItem = ({
   children,
   className,
+  variant = 'default',
   ...props
 }: AccordionItemProps) => {
   return (
@@ -116,7 +125,8 @@ export const AccordionItem = ({
       {...props}
       className={(state) =>
         cx(
-          'tw:group/item tw:w-full tw:bg-primary',
+          'tw:group/item tw:w-full',
+          variant === 'muted' ? 'tw:bg-primary_alt' : 'tw:bg-surface',
           state.isDisabled && 'tw:cursor-not-allowed tw:opacity-50',
           typeof className === 'function' ? className(state) : className
         )
@@ -147,7 +157,7 @@ export const AccordionHeader = ({
             // replaced a ring, which WebKit does not pixel-snap).
             'tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:gap-3 tw:px-6 tw:py-4 tw:text-left tw:transition tw:duration-200 tw:ease-in-out',
             'tw:text-sm tw:font-semibold tw:text-primary',
-            'hover:tw:bg-primary_hover',
+            'tw:hover:bg-primary_hover',
             state.isFocusVisible &&
               'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-300',
             state.isDisabled && 'tw:cursor-not-allowed tw:text-disabled',

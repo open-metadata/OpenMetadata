@@ -14,11 +14,12 @@
 import {
   Autocomplete,
   Button,
+  ButtonUtility,
   Input,
   SelectItemType,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useListData } from 'react-stately';
@@ -28,7 +29,9 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { NodeSubType } from '../../../../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../../../../generated/governance/workflows/elements/nodeType';
 import { useEntityFields } from '../../../../hooks/useEntityFields';
-import { FormActionButtons, MetadataFormSection } from './';
+import { getFieldDisplayLabel } from '../../../../utils/WorkflowConfigUtils';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface ScoringLevel {
   threshold: number | string;
@@ -138,7 +141,9 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
     setSelectedFields(fields);
     // Sync useListData with loaded fields
     if (!initDoneRef.current) {
-      fields.forEach((f) => selectedFieldItems.append({ id: f, label: f }));
+      fields.forEach((f) =>
+        selectedFieldItems.append({ id: f, label: getFieldDisplayLabel(f) })
+      );
       initDoneRef.current = true;
     }
     setCheckForNull(nodeData.checkForNull || false);
@@ -220,7 +225,10 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
             isRequired
             data-testid="fields-to-check-select"
             isDisabled={isFormDisabled}
-            items={fieldOptions.map((f) => ({ id: f, label: f }))}
+            items={fieldOptions.map((f) => ({
+              id: f,
+              label: getFieldDisplayLabel(f),
+            }))}
             label={t('label.fields')}
             placeholder={t('message.select-fields-to-check')}
             selectedItems={selectedFieldItems}
@@ -231,7 +239,10 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
               );
             }}
             onItemInserted={(key) => {
-              const item = { id: String(key), label: String(key) };
+              const item = {
+                id: String(key),
+                label: getFieldDisplayLabel(String(key)),
+              };
               selectedFieldItems.append(item);
               setSelectedFields((prev) => [...prev, String(key)]);
             }}>
@@ -317,12 +328,13 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
 
               <div className="tw:w-1/10 tw:flex tw:justify-center">
                 {scoringLevels.length > 1 && (
-                  <Button
+                  <ButtonUtility
                     color="tertiary-destructive"
-                    iconLeading={Trash01}
+                    icon={Trash01}
                     isDisabled={isFormDisabled}
-                    size="sm"
-                    onPress={() => removeScoringLevel(index)}
+                    size="lg"
+                    tooltip={t('label.remove')}
+                    onClick={() => removeScoringLevel(index)}
                   />
                 )}
               </div>

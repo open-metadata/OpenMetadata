@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "FivetranConnection",
   "description": "Fivetran Metadata Database Connection Config",
   "type": "object",
@@ -27,7 +26,8 @@
     "apiKey": {
       "title": "Fivetran API Key",
       "description": "Fivetran API Key.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "hostPort": {
       "expose": true,
@@ -48,6 +48,11 @@
       "description": "Fivetran API Limit For Pagination.",
       "type": "integer",
       "default": 1000
+    },
+    "logSchema": {
+      "title": "Fivetran Platform Connector Schema",
+      "description": "Destination schema holding the Fivetran Platform Connector log table, used to extract per-phase run status. Leave empty to read the schema name from the Fivetran API.",
+      "type": "string"
     },
     "pipelineFilterPattern": {
       "description": "Regex exclude pipelines.",
@@ -91,7 +96,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",
@@ -106,9 +110,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -120,9 +122,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -134,9 +134,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             }

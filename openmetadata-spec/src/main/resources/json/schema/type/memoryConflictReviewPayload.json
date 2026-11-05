@@ -1,0 +1,38 @@
+{
+  "$id": "https://open-metadata.org/schema/type/memoryConflictReviewPayload.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MemoryConflictReviewPayload",
+  "description": "Payload for Memory Conflict Review tasks: the memories the reviewed memory contradicts, by reference only. Every user may read tasks while a memory may be Private or Shared, so the payload never carries what a memory says.",
+  "javaType": "org.openmetadata.schema.type.MemoryConflictReviewPayload",
+  "type": "object",
+  "definitions": {
+    "disputedMemory": {
+      "javaType": "org.openmetadata.schema.type.DisputedMemory",
+      "description": "An Approved memory the reviewed memory contradicts.",
+      "type": "object",
+      "properties": {
+        "memory": {
+          "description": "The contradicted context memory, by reference.",
+          "$ref": "entityReference.json"
+        },
+        "detectedAt": {
+          "description": "When the contradiction was detected.",
+          "$ref": "basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["memory"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "disputes": {
+      "description": "Every memory the reviewed memory contradicts. A decision retried after the reviewed memory left Draft, which releases its disputes, reads them from here.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/disputedMemory"
+      }
+    }
+  },
+  "required": ["disputes"],
+  "additionalProperties": false
+}

@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Tabs } from 'antd';
+
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import type { TFunction } from 'i18next';
@@ -28,44 +30,35 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/uiCustomization';
-import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   addFollowers,
-  getDatabaseDetailsByFQN,
   getDatabaseSchemas,
   patchDatabaseDetails,
   removeFollowers,
@@ -77,9 +70,11 @@ import {
   databaseQueryKey,
   DATABASE_DEFAULT_FIELDS,
 } from '../../rest/queries/databaseQuery';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
@@ -92,11 +87,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import {
   getEntityDetailsPath,
   getExplorePath,
@@ -127,26 +118,30 @@ const renderDatabasePageGuard = ({
   t: TFunction;
 }): JSX.Element | null => {
   if (permissionsLoading || databaseLoading || loading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
+        />
+      </div>
     );
   }
 
   if (!hasViewBasicPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.database'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.database'),
+          })}
+        />
+      </div>
     );
   }
 
@@ -169,9 +164,11 @@ const TabExpandToggle = ({
   }
 
   return (
-    <AlignRightIconButton
-      className={isTabExpanded ? 'rotate-180' : ''}
-      title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+    <ButtonUtility
+      data-testid="tab-expand-button"
+      icon={isTabExpanded ? Collapse : Expand}
+      size="lg"
+      tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
       onClick={onToggle}
     />
   );
@@ -203,7 +200,6 @@ const ProfilerSettingsModal = ({
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { withinPageSearch } = useLocationSearch<{
     withinPageSearch: string;
   }>();
@@ -212,7 +208,6 @@ const DatabaseDetails: FunctionComponent = () => {
     type: EntityType.DATABASE,
   });
   const queryClient = useQueryClient();
-  const [permissionsLoading, setPermissionsLoading] = useState(true);
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.Database
   );
@@ -224,23 +219,33 @@ const DatabaseDetails: FunctionComponent = () => {
     useState<boolean>(false);
 
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const isMounting = useRef(true);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
 
-  const [databasePermission, setDatabasePermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  // View-tier call: gates the database entity query's `enabled`, before the entity (and its
+  // `deleted`) is known. Ungated — canViewBasic, NOT hasViewAccess, since old code used
+  // getPrioritizedViewPermission(perms, ViewBasic) specifically, not the bare OR
+  // (DatabaseSchemaPage.component.tsx precedent).
+  const {
+    permissions: databasePermission,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic: hasViewBasicPermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(ResourceEntity.DATABASE, decodedDatabaseFQN, {
+    enabled: Boolean(decodedDatabaseFQN),
+  });
 
-  const hasViewBasicPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        databasePermission,
-        PermissionOperation.ViewBasic
-      ) === true,
-    [databasePermission]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   const databaseCacheKey = useMemo(
     () => databaseQueryKey(decodedDatabaseFQN, DATABASE_DEFAULT_FIELDS),
@@ -255,9 +260,19 @@ const DatabaseDetails: FunctionComponent = () => {
     queryKey: databaseCacheKey,
     queryFn: databaseQueryFn(decodedDatabaseFQN, DATABASE_DEFAULT_FIELDS),
     enabled: Boolean(
-      decodedDatabaseFQN && hasViewBasicPermission && !permissionsLoading
+      decodedDatabaseFQN && hasViewBasicPermission && !isPermissionsLoading
     ),
   });
+
+  // Edit-tier call: same resource/identifier as the view-tier call above (shares one React
+  // Query cache entry — an extra derivation, not an extra fetch), placed after `deleted` is
+  // known so canEditCustomFields is gated correctly (DatabaseSchemaPage.component.tsx
+  // precedent).
+  const { canEditCustomFields: editCustomAttributePermission } =
+    useEntityPermissions(ResourceEntity.DATABASE, decodedDatabaseFQN, {
+      enabled: Boolean(decodedDatabaseFQN),
+      deleted: database?.deleted,
+    });
 
   const isError = useMemo(() => Boolean(databaseError), [databaseError]);
 
@@ -308,25 +323,11 @@ const DatabaseDetails: FunctionComponent = () => {
         decodedDatabaseFQN,
         databasePermission,
         database ?? ({} as Database),
-        navigate
+        navigate,
+        showModal
       ),
-    [decodedDatabaseFQN, databasePermission, database]
+    [decodedDatabaseFQN, databasePermission, database, showModal]
   );
-
-  const fetchDatabasePermission = useCallback(async () => {
-    setPermissionsLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.DATABASE,
-        decodedDatabaseFQN
-      );
-      setDatabasePermission(response);
-    } catch {
-      // Error
-    } finally {
-      setPermissionsLoading(false);
-    }
-  }, [decodedDatabaseFQN, getEntityPermissionByFqn]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -463,10 +464,6 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   }, [hasViewBasicPermission, decodedDatabaseFQN, fetchDatabaseSchemaCount]);
 
-  useEffect(() => {
-    fetchDatabasePermission();
-  }, [decodedDatabaseFQN]);
-
   // always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
@@ -562,29 +559,16 @@ const DatabaseDetails: FunctionComponent = () => {
       );
   }, [currentVersion, decodedDatabaseFQN]);
 
-  const {
-    editCustomAttributePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          databasePermission,
-          PermissionOperation.EditCustomFields
-        ) && !database?.deleted,
-      viewAllPermission: databasePermission.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        databasePermission,
-        PermissionOperation.ViewCustomFields
-      ),
-    }),
-    [databasePermission, database]
-  );
-
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DATABASE_SERVICES,
+          getPartialNameFromTableFQN(decodedDatabaseFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedDatabaseFQN]
   );
 
   const afterDomainUpdateAction = useCallback(
@@ -638,15 +622,12 @@ const DatabaseDetails: FunctionComponent = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDatabaseVotes(id, data);
-      const details = await getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.VOTES,
-        ],
-        include: Include.All,
-      });
-      setDatabase(details);
+      // Server-side {@code updateVote} mutates a relationship only — the rest of the entity is
+      // unchanged. Invalidate the cache slot so the next read picks up the new vote totals
+      // (a focused refetch instead of the prior narrow GET + {@code setDatabase} that would
+      // null out domains/followers/extension/dataProducts). Background revalidation keeps
+      // the current data on screen until the new body arrives.
+      await refetchDatabase();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -746,7 +727,7 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 
   const guardElement = renderDatabasePageGuard({
-    permissionsLoading,
+    permissionsLoading: isPermissionsLoading,
     databaseLoading,
     loading,
     isError,
@@ -760,18 +741,24 @@ const DatabaseDetails: FunctionComponent = () => {
   }
 
   if (!database) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(database)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(database)}>
       {isEmpty(database) ? (
-        <ErrorPlaceHolder className="m-0">
-          {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            title={getEntityMissingError(
+              EntityType.DATABASE,
+              decodedDatabaseFQN
+            )}
+          />
+        </div>
       ) : (
-        <Row gutter={[0, 12]}>
-          <Col span={24}>
+        <Box direction="col" gap={3}>
+          <div>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -791,7 +778,7 @@ const DatabaseDetails: FunctionComponent = () => {
               onUpdateVote={updateVote}
               onVersionClick={versionHandler}
             />
-          </Col>
+          </div>
           <GenericProvider<Database>
             customizedPage={customizedPage}
             data={database}
@@ -799,22 +786,40 @@ const DatabaseDetails: FunctionComponent = () => {
             permissions={databasePermission}
             type={EntityType.DATABASE}
             onUpdate={settingsUpdateHandler}>
-            <Col className="entity-details-page-tabs" span={24}>
+            <div className="entity-details-page-tabs">
               <Tabs
-                activeKey={activeTab}
-                className="tabs-new"
+                className="tw:gap-3"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={
-                  <TabExpandToggle
-                    isExpandViewSupported={isExpandViewSupported}
-                    isTabExpanded={isTabExpanded}
-                    onToggle={toggleTabExpanded}
-                  />
-                }
-                onChange={activeTabHandler}
-              />
-            </Col>
+                selectedKey={getRenderedActiveTab(
+                  tabs,
+                  activeTab,
+                  EntityTabs.SCHEMAS
+                )}
+                onSelectionChange={(key) => activeTabHandler(String(key))}>
+                <Tabs.List
+                  actions={
+                    <TabExpandToggle
+                      isExpandViewSupported={isExpandViewSupported}
+                      isTabExpanded={isTabExpanded}
+                      onToggle={toggleTabExpanded}
+                    />
+                  }
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
+            </div>
           </GenericProvider>
 
           <ProfilerSettingsModal
@@ -822,7 +827,7 @@ const DatabaseDetails: FunctionComponent = () => {
             updateProfilerSetting={updateProfilerSetting}
             onVisibilityChange={setUpdateProfilerSetting}
           />
-        </Row>
+        </Box>
       )}
     </PageLayoutV1>
   );

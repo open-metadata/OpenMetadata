@@ -10,18 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Table } from 'antd';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   fieldValueBoostAdditionalColumns,
   fieldValueBoostBaseColumns,
 } from '../../../constants/SearchSettings.constant';
 import { FieldValueBoost } from '../../../generated/configuration/searchSettings';
-import './field-value-boost-list.less';
+import Table from '../../common/Table/TableV2';
 
 interface FieldValueBoostListProps {
   entitySearchSettingsPage?: boolean;
@@ -58,32 +56,32 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               title: t('label.greater-than'),
               key: 'gt',
               width: 120,
-              render: (record: FieldValueBoost) => (
-                <span>{record.condition?.range?.gt ?? '-'}</span>
+              render: (_: unknown, record: FieldValueBoost) => (
+                <Typography>{record.condition?.range?.gt ?? '-'}</Typography>
               ),
             },
             {
               title: t('label.greater-than-or-equal-to'),
               key: 'gte',
               width: 120,
-              render: (record: FieldValueBoost) => (
-                <span>{record.condition?.range?.gte ?? '-'}</span>
+              render: (_: unknown, record: FieldValueBoost) => (
+                <Typography>{record.condition?.range?.gte ?? '-'}</Typography>
               ),
             },
             {
               title: t('label.less-than'),
               key: 'lt',
               width: 120,
-              render: (record: FieldValueBoost) => (
-                <span>{record.condition?.range?.lt ?? '-'}</span>
+              render: (_: unknown, record: FieldValueBoost) => (
+                <Typography>{record.condition?.range?.lt ?? '-'}</Typography>
               ),
             },
             {
               title: t('label.less-than-or-equal-to'),
               key: 'lte',
               width: 120,
-              render: (record: FieldValueBoost) => (
-                <span>{record.condition?.range?.lte ?? '-'}</span>
+              render: (_: unknown, record: FieldValueBoost) => (
+                <Typography>{record.condition?.range?.lte ?? '-'}</Typography>
               ),
             },
           ]
@@ -92,20 +90,24 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
         title: t('label.action-plural'),
         key: 'actions',
         width: 100,
-        render: (record: FieldValueBoost) => (
+        render: (_: unknown, record: FieldValueBoost) => (
           <div className="d-flex items-center gap-2">
-            <Button
-              className="edit-field-value-boost-btn"
+            <ButtonUtility
               data-testid="edit-field-value-boost-btn"
-              icon={<Icon className="text-md" component={EditIcon} />}
-              type="text"
+              icon={Edit01}
+              size="lg"
+              tooltip={t('label.edit-entity', {
+                entity: t('label.field-value-boost'),
+              })}
               onClick={() => handleEditFieldValueBoost(record)}
             />
-            <Button
-              className="delete-field-value-boost-btn"
+            <ButtonUtility
               data-testid="delete-field-value-boost-btn"
-              icon={<Icon className="text-md" component={Delete} />}
-              type="text"
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.delete-entity', {
+                entity: t('label.field-value-boost'),
+              })}
               onClick={() => handleDeleteFieldValueBoost(record.field)}
             />
           </div>
@@ -130,6 +132,9 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
       loading={isLoading}
       pagination={false}
       rowClassName={() => 'field-value-row'}
+      // AntD defaulted the row key to record.key; TableV2 falls back to the row
+      // index instead, so name the key column explicitly to keep data-row-key.
+      rowKey="field"
       scroll={{ x: 'max-content' }}
       size="small"
     />

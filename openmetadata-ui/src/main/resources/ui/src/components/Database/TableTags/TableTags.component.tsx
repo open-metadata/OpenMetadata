@@ -20,7 +20,9 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { TableTagsComponentProps, TableUnion } from './TableTags.interface';
 
-const TableTags = <T extends TableUnion>({
+const TableTags = <
+  T extends Pick<Partial<TableUnion>, 'name' | 'fullyQualifiedName' | 'tags'>
+>({
   tags,
   record,
   index,
@@ -31,7 +33,6 @@ const TableTags = <T extends TableUnion>({
   showInlineEditTagButton,
   handleTagSelection,
   entityType,
-  newLook = false,
   multiSelect,
 }: TableTagsComponentProps<T>) => {
   const { onThreadLinkSelect, updateActiveTagDropdownKey } =
@@ -58,7 +59,6 @@ const TableTags = <T extends TableUnion>({
           selectedTags={tags}
           showInlineEditButton={showInlineEditTagButton}
           sizeCap={TAG_LIST_SIZE}
-          tagNewLook={newLook}
           tagType={type}
           onSelectionChange={async (selectedTags) => {
             await handleTagSelection(selectedTags, record);

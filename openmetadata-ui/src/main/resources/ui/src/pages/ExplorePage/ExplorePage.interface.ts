@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 
-import { AntdIconProps } from '@ant-design/icons/lib/components/AntdIcon';
-import { ForwardRefExoticComponent, RefAttributes } from 'react';
-import { SortingField } from '../../components/Explore/SortingDropDown';
-import { SORT_ORDER } from '../../enums/common.enum';
+import type { SortingField } from '../../components/Explore/SortingDropDown';
+import type { SORT_ORDER } from '../../enums/common.enum';
 
 export type TabsInfoData = {
   label: string;
@@ -22,55 +20,20 @@ export type TabsInfoData = {
   sortField: string;
   sortOrder?: SORT_ORDER;
   path: string;
-  icon:
-    | React.ReactNode
-    | React.ElementType
-    | SvgComponent
-    | ForwardRefExoticComponent<
-        Omit<AntdIconProps, 'ref'> & RefAttributes<HTMLSpanElement>
-      >;
+  icon: React.ReactNode | React.ElementType | SvgComponent;
   iconClassName?: string;
 };
 
-export type FieldValue = string | boolean | null | number | undefined;
-
-export interface EsTermQuery {
-  value: FieldValue;
-  case_insensitive?: boolean;
-}
-
-export type EsTermsQuery = {
-  [property: string]: string | string[];
-};
-
-export interface EsExistsQuery {
-  field: string;
-}
-
-export interface EsWildCard {
-  wildcard: {
-    [key: string]: { value: string };
-  };
-}
-
-export interface EsBoolQuery {
-  filter?: QueryFieldInterface | QueryFieldInterface[];
-  must?: QueryFieldInterface | QueryFieldInterface[];
-  must_not?: QueryFieldInterface | QueryFieldInterface[];
-  should?: QueryFieldInterface | QueryFieldInterface[] | EsWildCard[];
-  minimum_should_match?: number;
-}
-
-export interface QueryFieldInterface {
-  bool?: EsBoolQuery;
-  term?: Partial<Record<string, EsTermQuery | FieldValue>>;
-  terms?: EsTermsQuery;
-  exists?: EsExistsQuery;
-}
-
-export interface QueryFilterInterface {
-  query: QueryFieldInterface;
-}
+export type {
+  EsBoolQuery,
+  EsExistsQuery,
+  EsTermQuery,
+  EsTermsQuery,
+  EsWildCard,
+  FieldValue,
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from '../../interface/queryFilter.interface';
 
 export interface EsTerm {
   term: {

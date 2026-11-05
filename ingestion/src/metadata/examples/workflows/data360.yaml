@@ -1,0 +1,29 @@
+source:
+  type: data360
+  serviceName: local_data360
+  serviceConnection:
+    config:
+      type: Data360
+      consumerKey: <your-connected-app-consumer-key>
+      consumerSecret: <your-connected-app-consumer-secret>
+      # salesforceDomain: login        # Default: login. Use "test" for sandboxes.
+      # salesforceApiVersion: "63.0"   # Default: 63.0
+      # paginationLimit: 10            # Default: 10. Valid range: 1-100.
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      # databaseFilterPattern:
+      #   includes:
+      #     - default                  # Filter to specific dataspaces
+      # tableFilterPattern:
+      #   excludes:
+      #     - ".*__dlm$"              # Exclude DMO tables
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "<ingestion-bot-jwt>"

@@ -16,8 +16,12 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Base64;
 import java.util.List;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -26,11 +30,26 @@ import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface OAuthDAOs {
+  /**
+   * The SHA-256 key the OAuth token tables store a token under. One definition, shared by the MCP
+   * repository that writes rows and JwtFilter that looks access tokens up.
+   */
+  static String hashToken(String token) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+      return Base64.getEncoder().encodeToString(hash);
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 algorithm not available", e);
+    }
+  }
+
   @CreateSqlObject
   OAuthClientDAO oauthClientDAO();
 
@@ -45,6 +64,9 @@ public interface OAuthDAOs {
 
   @CreateSqlObject
   McpPendingAuthRequestDAO mcpPendingAuthRequestDAO();
+
+  @CreateSqlObject
+  SsoTestLoginSessionDAO ssoTestLoginSessionDAO();
 
   interface OAuthClientDAO {
     @SqlQuery(
@@ -175,6 +197,73 @@ public interface OAuthDAOs {
     @SqlUpdate(
         "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE client_id = :clientId AND user_name = :userName AND revoked = FALSE")
     void revokeAllForUser(@Bind("clientId") String clientId, @Bind("userName") String userName);
+
+    @SqlUpdate(
+        "DELETE FROM oauth_access_tokens WHERE client_id = :clientId AND user_name = :userName")
+    void deleteAccessTokensForUser(
+        @Bind("clientId") String clientId, @Bind("userName") String userName);
+
+    /**
+     * Revokes a refresh token and deletes the access tokens of its grant in one transaction. Apart, a
+     * failure after the first write would leave the access tokens valid, and a retry would find the
+     * refresh token already revoked and nothing left to do. The revoke goes first so a refresh racing
+     * it fails its rotation.
+     */
+    @Transaction
+    default void revokeWithAccessTokens(String tokenHash, String clientId, String userName) {
+      revoke(tokenHash);
+      deleteAccessTokensForUser(clientId, userName);
+    }
+
+    @SqlUpdate(
+        "DELETE FROM mcp_pending_auth_requests WHERE LOWER(consent_user_name) = LOWER(:userName)")
+    void deletePendingConsentsOfUser(@Bind("userName") String userName);
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_authorization_codes WHERE user_name = :userName",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_authorization_codes WHERE LOWER(user_name) = LOWER(:userName)",
+        connectionType = POSTGRES)
+    void deleteAuthorizationCodesOfUser(@Bind("userName") String userName);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE user_name = :userName AND revoked = FALSE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE LOWER(user_name) = LOWER(:userName) AND revoked = FALSE",
+        connectionType = POSTGRES)
+    void revokeRefreshTokensOfUser(@Bind("userName") String userName);
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_access_tokens WHERE user_name = :userName",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_access_tokens WHERE LOWER(user_name) = LOWER(:userName)",
+        connectionType = POSTGRES)
+    void deleteAccessTokensOfUser(@Bind("userName") String userName);
+
+    /**
+     * Ends every grant held under a user name, on all clients, and any sign-in waiting for its
+     * consent. Grants are keyed by name only, so a later account with the same name would otherwise
+     * take them over. Names compare ignoring case: rows written before grants were stored under the
+     * account's own name may hold the provider's spelling of it. Waiting consents and codes go first,
+     * so neither can start a new grant.
+     *
+     * <p>On MySQL the grant tables' utf8mb4_unicode_ci collation already ignores case, so the MySQL
+     * queries on them compare names plainly and use the user-name indexes added in 2.0.9. Wrapped in
+     * LOWER() they scanned and locked every user's rows, and a token refresh by any other user
+     * deadlocked against the delete.
+     */
+    @Transaction
+    default void revokeAllGrantsOfUser(String userName) {
+      deletePendingConsentsOfUser(userName);
+      deleteAuthorizationCodesOfUser(userName);
+      revokeRefreshTokensOfUser(userName);
+      deleteAccessTokensOfUser(userName);
+    }
   }
 
   interface McpPendingAuthRequestDAO {
@@ -218,11 +307,115 @@ public interface OAuthDAOs {
         @Bind("pac4jNonce") String pac4jNonce,
         @Bind("pac4jCodeVerifier") String pac4jCodeVerifier);
 
+    @SqlUpdate(
+        "UPDATE mcp_pending_auth_requests SET consent_token_hash = :consentTokenHash, consent_user_name = :userName, expires_at = :expiresAt WHERE auth_request_id = :authRequestId AND consent_user_name IS NULL AND expires_at > :currentTime")
+    int storeConsent(
+        @Bind("authRequestId") String authRequestId,
+        @Bind("consentTokenHash") String consentTokenHash,
+        @Bind("userName") String userName,
+        @Bind("expiresAt") long expiresAt,
+        @Bind("currentTime") long currentTime);
+
+    @SqlUpdate(
+        "UPDATE mcp_pending_auth_requests SET consent_token_hash = NULL WHERE auth_request_id = :authRequestId AND consent_token_hash = :consentTokenHash AND expires_at > :currentTime")
+    int claimConsent(
+        @Bind("authRequestId") String authRequestId,
+        @Bind("consentTokenHash") String consentTokenHash,
+        @Bind("currentTime") long currentTime);
+
+    @SqlQuery(
+        "SELECT consent_user_name FROM mcp_pending_auth_requests WHERE auth_request_id = :authRequestId")
+    String findConsentUserName(@Bind("authRequestId") String authRequestId);
+
     @SqlUpdate("DELETE FROM mcp_pending_auth_requests WHERE auth_request_id = :authRequestId")
     void delete(@Bind("authRequestId") String authRequestId);
 
     @SqlUpdate("DELETE FROM mcp_pending_auth_requests WHERE expires_at < :currentTime")
     void deleteExpired(@Bind("currentTime") long currentTime);
+  }
+
+  /**
+   * SSO Test Login state (#28784). Each change of state is a single conditional UPDATE, so the
+   * requests of one test can reach any server, and of two racing requests only the first acts.
+   */
+  interface SsoTestLoginSessionDAO {
+    String COLUMNS =
+        "test_session_id, admin_principal, protocol, status, pending_state, result, expires_at";
+
+    @SqlUpdate(
+        "INSERT INTO sso_test_login_session ("
+            + COLUMNS
+            + ") VALUES (:testSessionId, "
+            + ":adminPrincipal, :protocol, :status, :pendingState, :result, :expiresAt)")
+    void insert(
+        @Bind("testSessionId") String testSessionId,
+        @Bind("adminPrincipal") String adminPrincipal,
+        @Bind("protocol") String protocol,
+        @Bind("status") String status,
+        @Bind("pendingState") String pendingState,
+        @Bind("result") String result,
+        @Bind("expiresAt") long expiresAt);
+
+    @SqlQuery(
+        "SELECT "
+            + COLUMNS
+            + " FROM sso_test_login_session "
+            + "WHERE test_session_id = :testSessionId AND expires_at > :now")
+    @RegisterRowMapper(SsoTestLoginSessionRowMapper.class)
+    OAuthRecords.SsoTestLoginSession findLive(
+        @Bind("testSessionId") String testSessionId, @Bind("now") long now);
+
+    @SqlUpdate(
+        "UPDATE sso_test_login_session SET status = 'claimed', credentials_submitted_at = :now "
+            + "WHERE test_session_id = :testSessionId AND status = 'pending' AND expires_at > :now")
+    int claimForCredentials(@Bind("testSessionId") String testSessionId, @Bind("now") long now);
+
+    @SqlUpdate(
+        "UPDATE sso_test_login_session SET status = 'completed', result = :result, "
+            + "pending_state = NULL, expires_at = :expiresAt WHERE test_session_id = :testSessionId "
+            + "AND status IN ('pending', 'claimed') AND expires_at > :now")
+    int complete(
+        @Bind("testSessionId") String testSessionId,
+        @Bind("result") String result,
+        @Bind("expiresAt") long expiresAt,
+        @Bind("now") long now);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM sso_test_login_session "
+            + "WHERE admin_principal = :adminPrincipal AND credentials_submitted_at > :since")
+    int countCredentialTestsSince(
+        @Bind("adminPrincipal") String adminPrincipal, @Bind("since") long since);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM sso_test_login_session "
+            + "WHERE admin_principal = :adminPrincipal AND expires_at > :now")
+    int countLive(@Bind("adminPrincipal") String adminPrincipal, @Bind("now") long now);
+
+    @SqlUpdate(
+        "UPDATE sso_test_login_session SET pending_state = NULL "
+            + "WHERE expires_at < :now AND pending_state IS NOT NULL")
+    void clearExpiredSecrets(@Bind("now") long now);
+
+    /** Keeps expired rows that still count towards the credential-test limit window. */
+    @SqlUpdate(
+        "DELETE FROM sso_test_login_session WHERE expires_at < :now "
+            + "AND (credentials_submitted_at IS NULL OR credentials_submitted_at < :windowStart)")
+    void deleteExpired(@Bind("now") long now, @Bind("windowStart") long windowStart);
+  }
+
+  class SsoTestLoginSessionRowMapper implements RowMapper<OAuthRecords.SsoTestLoginSession> {
+    @Override
+    public OAuthRecords.SsoTestLoginSession map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new OAuthRecords.SsoTestLoginSession(
+          rs.getString("test_session_id"),
+          rs.getString("admin_principal"),
+          rs.getString("protocol"),
+          rs.getString("status"),
+          rs.getString("pending_state"),
+          rs.getString("result"),
+          rs.getLong("expires_at"));
+    }
   }
 
   class McpPendingAuthRequestRowMapper implements RowMapper<OAuthRecords.McpPendingAuthRequest> {

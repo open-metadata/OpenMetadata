@@ -21,3 +21,5 @@ export const TEST_CASE_LAST_RUN_BANNER_TEST_IDS = {
 
 export type TestCaseLastRunBannerStatus =
   keyof typeof TEST_CASE_LAST_RUN_BANNER_TEST_IDS;
+
+export const RUN_TEST_CASE_BUTTON_TEST_ID = 'run-test-case-button';

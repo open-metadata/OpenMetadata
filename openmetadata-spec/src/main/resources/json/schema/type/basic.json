@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/basic.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Basic",
   "description": "This schema defines basic common types that are used by other schemas.",
   "definitions": {
@@ -29,7 +29,7 @@
       "description": "Email address of a user or other entities.",
       "type": "string",
       "format": "email",
-      "pattern": "^[\\S.!#$%&’*+/=?^_`{|}~-]+@\\S+\\.\\S+$",
+      "pattern": "^\\S[^\\s@]*@\\S[^\\s.]*\\.\\S+$",
       "minLength": 6,
       "maxLength": 127
     },

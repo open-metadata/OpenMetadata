@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { capitalize, isEmpty, startCase } from 'lodash';
 import qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -30,15 +30,14 @@ import {
 } from '../../constants/GlobalSettings.constants';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { useAuth } from '../../hooks/authHooks';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import './service-page.less';
 
 const isValidServiceTab = (
   tab: string,
@@ -173,33 +172,43 @@ const ServicesPage = () => {
   return viewAllPermission ? (
     <PageLayoutV1 pageTitle={startCase(serviceName)}>
       {isEmbedded && <div className="tw:h-4" />}
-      <Row gutter={isEmbedded ? [0, 8] : [0, 16]}>
-        <Col span={24}>
-          <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col className="h-full" span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={search as string}
-            className="tabs-new services-tabs"
-            items={tabItems}
-            onChange={(activeKey) => navigate({ search: `tab=${activeKey}` })}
-          />
-        </Col>
-      </Row>
+      <Box direction="col" gap={isEmbedded ? 2 : 4}>
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
+        <Tabs
+          className="tw:gap-3"
+          selectedKey={getRenderedActiveTab(tabItems, search as string)}
+          onSelectionChange={(activeKey) =>
+            navigate({ search: `tab=${String(activeKey)}` })
+          }>
+          <Tabs.List size="sm" type="underline" variant="card">
+            {tabItems.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {tabItems.map(({ key, children }) => (
+            <Tabs.Panel
+              className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-5"
+              id={key}
+              key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
+      </Box>
     </PageLayoutV1>
   ) : (
-    <Row>
-      <Col span={24}>
-        <ErrorPlaceHolder
-          className="border-none h-min-80"
+    <div>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
           permissionValue={t('label.view-entity', {
             entity: startCase(serviceName),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
-      </Col>
-    </Row>
+      </div>
+    </div>
   );
 };
 

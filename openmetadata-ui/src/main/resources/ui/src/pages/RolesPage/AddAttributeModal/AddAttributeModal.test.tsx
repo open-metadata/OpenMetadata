@@ -44,6 +44,9 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../utils/StringUtils', () => ({
   ...jest.requireActual('../../../utils/StringUtils'),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
@@ -51,13 +54,6 @@ jest.mock('../../../utils/EntitySearchUtils', () => ({
   ...jest.requireActual('../../../utils/EntitySearchUtils'),
   highlightSearchText: jest.fn((text) => text),
 }));
-
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
-  }
-);
 
 const onSave = jest.fn();
 const onCancel = jest.fn();
@@ -77,10 +73,10 @@ describe('Test Add attribute modal', () => {
     render(<AddAttributeModal {...mockProps} />);
 
     const container = await screen.findByTestId('modal-container');
-    const title = await screen.findByTestId('modal-title');
+    const title = await screen.findByTestId('dialog-title');
 
-    const sumbitButton = await screen.findByText('Submit');
-    const cancelButton = await screen.findByText('Cancel');
+    const sumbitButton = await screen.findByText('label.save');
+    const cancelButton = await screen.findByText('label.cancel');
 
     expect(container).toBeInTheDocument();
 
@@ -102,7 +98,7 @@ describe('Test Add attribute modal', () => {
   it('Submit button should work', async () => {
     render(<AddAttributeModal {...mockProps} />);
 
-    const sumbitButton = await screen.findByText('Submit');
+    const sumbitButton = await screen.findByText('label.save');
 
     expect(sumbitButton).toBeInTheDocument();
 
@@ -116,7 +112,7 @@ describe('Test Add attribute modal', () => {
   it('Cancel button should work', async () => {
     render(<AddAttributeModal {...mockProps} />);
 
-    const cancelButton = await screen.findByText('Cancel');
+    const cancelButton = await screen.findByText('label.cancel');
 
     expect(cancelButton).toBeInTheDocument();
 

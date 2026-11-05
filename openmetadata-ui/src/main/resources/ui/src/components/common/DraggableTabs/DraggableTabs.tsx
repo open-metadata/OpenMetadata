@@ -10,20 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  EditOutlined,
-  MoreOutlined,
-} from '@ant-design/icons';
-import { Button, Dropdown, MenuProps, Space } from 'antd';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import React from 'react';
+  CheckCircle,
+  DotsVertical,
+  Edit01,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
+import React, { Key, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { useTranslation } from 'react-i18next';
 import { Tab } from '../../../generated/system/ui/tab';
 import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
-import './draggable-tabs.less';
 
 type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 
@@ -36,6 +34,8 @@ interface TabItemProps {
   onRemove?: (targetKey: TargetKey) => void;
   onItemClick?: (key: string) => void;
   shouldHide?: boolean;
+  /** Offers "Edit widgets"; defaults to the tab's own editable flag. */
+  isEditable?: boolean;
 }
 
 export const TabItem = ({
@@ -47,8 +47,10 @@ export const TabItem = ({
   onRemove,
   onItemClick,
   shouldHide,
+  isEditable = item.editable,
 }: TabItemProps) => {
   const { t } = useTranslation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [{ isDragging }, drag] = useDrag({
     type: 'TAB',
     item: { index },
@@ -57,30 +59,30 @@ export const TabItem = ({
     }),
   });
 
-  const tabMenuItems: MenuProps['items'] = [
-    ...(item.editable
+  const tabMenuItems = [
+    ...(isEditable
       ? [
           {
             label: t('label.edit-widget-plural'),
             key: 'edit',
-            icon: <CheckCircleOutlined />,
+            icon: CheckCircle,
           },
         ]
       : []),
     {
       label: t('label.rename'),
       key: 'rename',
-      icon: <EditOutlined />,
+      icon: Edit01,
     },
     {
       label: shouldHide ? t('label.hide') : t('label.delete'),
       key: 'delete',
-      icon: <CloseCircleOutlined />,
+      icon: XCircle,
     },
   ];
 
-  const handleMenuClick = (menuInfo: MenuInfo, itemId: string) => {
-    switch (menuInfo.key) {
+  const handleMenuClick = (key: Key, itemId: string) => {
+    switch (key) {
       case 'edit':
         onEdit?.(itemId);
 
@@ -110,22 +112,38 @@ export const TabItem = ({
     <div
       ref={(node) => drag(drop(node))}
       style={{ opacity: isDragging ? 0.5 : 1 }}>
-      <Dropdown
-        menu={{
-          items: tabMenuItems,
-          onClick: (menuInfo) => handleMenuClick(menuInfo, item.id),
-        }}
-        trigger={['click']}>
+      {/* MenuTrigger opens on mouse press-start, whose underlay would swallow
+          the drop of a drag; open on press instead, which a drag never fires. */}
+      <Dropdown.Root
+        isOpen={isMenuOpen}
+        onOpenChange={(open) => !open && setIsMenuOpen(false)}>
         <Button
-          className="draggable-tab-item"
+          className="draggable-tab-item tw:cursor-move tw:hover:cursor-grab tw:active:cursor-grabbing"
+          color="secondary"
           data-testid={`tab-${item.name}`}
-          onClick={() => onItemClick?.(item.id)}>
-          <Space>
-            {getTabDisplayName(item)}
-            <MoreOutlined />
-          </Space>
+          iconTrailing={DotsVertical}
+          onPress={() => {
+            onItemClick?.(item.id);
+            setIsMenuOpen(true);
+          }}>
+          {getTabDisplayName(item)}
         </Button>
-      </Dropdown>
+        <Dropdown.Popover className="tw:w-auto" placement="bottom start">
+          <Dropdown.Menu
+            aria-label={getTabDisplayName(item)}
+            selectionMode="none"
+            onAction={(key) => handleMenuClick(key, item.id)}>
+            {tabMenuItems.map((menuItem) => (
+              <Dropdown.Item
+                icon={menuItem.icon}
+                id={menuItem.key}
+                key={menuItem.key}
+                label={menuItem.label}
+              />
+            ))}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
     </div>
   );
 };

@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Table: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -33,7 +33,7 @@ export const Table: FC<Props> = ({
     width={size}
     {...props}>
     <path
-      d="M15.778 2.5H4.222C2.995 2.5 2 3.433 2 4.583v10.834c0 1.15.995 2.083 2.222 2.083h11.556c1.227 0 2.222-.933 2.222-2.083V4.583c0-1.15-.995-2.083-2.222-2.083M2 7.5h16m-10.668 0v10"
+      d="M2 10.555c0-3.772 0-5.657 1.172-6.829S6.229 2.555 10 2.555s5.657 0 6.828 1.171S18 6.783 18 10.555c0 3.77 0 5.657-1.172 6.828S13.771 18.555 10 18.555s-5.657 0-6.828-1.172S2 14.326 2 10.555M2 7.5h16m-10.668 0v10"
       stroke="currentColor"
       strokeWidth={1.3}
     />

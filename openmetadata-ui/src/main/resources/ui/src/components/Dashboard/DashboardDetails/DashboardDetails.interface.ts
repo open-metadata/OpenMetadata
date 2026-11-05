@@ -15,8 +15,8 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { Chart } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface ChartType extends Chart {
   displayName: string;

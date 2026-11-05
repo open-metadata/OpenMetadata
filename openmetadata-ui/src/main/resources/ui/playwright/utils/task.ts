@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { clickOutside, fillDescriptionBox, toastNotification } from './common';
 
@@ -26,6 +26,23 @@ export type TaskDetails = {
 const tag = 'PII.None';
 
 export const TASK_OPEN_FETCH_LINK = '/api/v1/tasks**';
+
+export const getTaskDisplayId = (taskId: string) => {
+  expect(taskId).toMatch(/^TASK-\d+$/);
+
+  return `#${Number(taskId.replace('TASK-', ''))}`;
+};
+
+export const getTaskCard = (
+  page: Page,
+  taskId: string,
+  scope: Page | Locator = page
+) =>
+  scope.getByTestId('task-feed-card').filter({
+    has: page
+      .locator('.task-details-id')
+      .filter({ hasText: new RegExp(`^${getTaskDisplayId(taskId)}\\s*$`) }),
+  });
 
 const isTaskCreateRequest = (url: string) =>
   /\/api\/v1\/tasks(?:\?|$)/.test(url) &&
@@ -86,7 +103,7 @@ export const createDescriptionTask = async (
   addDescription = true,
   assigneeDisabled?: boolean
 ) => {
-  await expect(page.locator('#title')).toHaveValue(
+  await expect(page.getByTestId('title').locator('input')).toHaveValue(
     `${addDescription ? 'Update' : 'Request'} description for table ${
       value.columnName
         ? `${value.term} columns/${value.columnName}`
@@ -95,19 +112,17 @@ export const createDescriptionTask = async (
   );
 
   if (isUndefined(value.assignee) || assigneeDisabled) {
-    await expect(
-      page.locator('[data-testid="select-assignee"] > .ant-select-selector')
-    ).toHaveText(value.assignee);
+    await expect(page.getByTestId('select-assignee')).toContainText(
+      value.assignee ?? ''
+    );
 
     await expect(
-      page.locator(
-        '[data-testid="select-assignee"] > .ant-select-selector input'
-      )
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
-    const assigneeField = page.locator(
-      '[data-testid="select-assignee"] > .ant-select-selector #assignees'
-    );
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
     await assigneeField.fill(value.assignee);
 
@@ -135,25 +150,23 @@ export const createTagTask = async (
   addTag = true,
   assigneeDisabled?: boolean
 ) => {
-  await expect(page.locator('#title')).toHaveValue(
+  await expect(page.getByTestId('title').locator('input')).toHaveValue(
     `Request tags for table ${value.term}`
   );
 
   if (isUndefined(value.assignee) || assigneeDisabled) {
-    await expect(
-      page.locator('[data-testid="select-assignee"] > .ant-select-selector')
-    ).toHaveText(value.assignee);
+    await expect(page.getByTestId('select-assignee')).toContainText(
+      value.assignee ?? ''
+    );
 
     await expect(
-      page.locator(
-        '[data-testid="select-assignee"] > .ant-select-selector input'
-      )
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
     // select assignee
-    const assigneeField = page.locator(
-      '[data-testid="select-assignee"] > .ant-select-selector #assignees'
-    );
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
     await assigneeField.fill(value.assignee);
 
@@ -167,9 +180,7 @@ export const createTagTask = async (
 
   if (addTag) {
     // select tags
-    const suggestTags = page.locator(
-      '[data-testid="tag-selector"] > .ant-select-selector .ant-select-selection-search-input'
-    );
+    const suggestTags = page.locator('[data-testid="tag-selector"] input');
     await suggestTags.click();
 
     const querySearchResponse = page.waitForResponse(
@@ -191,26 +202,4 @@ export const createTagTask = async (
   await taskResponse;
 
   await toastNotification(page, /Task created successfully./);
-};
-
-export const checkTaskCountInActivityFeed = async (
-  page: Page,
-  openTask = 0,
-  closedTask = 0
-) => {
-  await page.locator('.ant-skeleton-element').first().waitFor({
-    state: 'detached',
-  });
-  await page.getByTestId('user-profile-page-task-filter-icon').click();
-  const openTaskItem = page
-    .locator('.task-tab-custom-dropdown .task-count-text')
-    .first();
-
-  await expect(openTaskItem).toHaveText(String(openTask));
-
-  const closedTaskItem = page
-    .locator('.task-tab-custom-dropdown .task-count-text')
-    .last();
-
-  await expect(closedTaskItem).toHaveText(String(closedTask));
 };

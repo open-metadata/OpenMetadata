@@ -9,7 +9,7 @@ import org.openmetadata.service.exception.BadRequestException;
 
 /**
  * Builds SPARQL queries from SQL AST nodes using the visitor pattern. Supports nested/structured
- * fields (votes.upVotes, changeDescription.fieldsUpdated), property paths for transitive queries,
+ * fields (lifeCycle.created, columnsLineage.toColumn), property paths for transitive queries,
  * and PROV-O vocabulary for lineage.
  */
 @Slf4j
@@ -21,7 +21,7 @@ public class SparqlBuilder implements SqlVisitor<Void> {
   private final StringBuilder optionalClause = new StringBuilder();
   private final Map<String, String> tableAliases = new HashMap<>();
   private final Set<String> projectedVars = new LinkedHashSet<>();
-  private final Set<String> usedVars = new HashSet<>();
+  private final Map<String, String> tableVars = new HashMap<>();
   private final Map<String, String> nestedVarMap = new HashMap<>();
 
   private String currentTable;
@@ -418,11 +418,6 @@ public class SparqlBuilder implements SqlVisitor<Void> {
   }
 
   private String getOrCreateVar(String tableAlias) {
-    String var = "var" + tableAlias;
-    if (!usedVars.contains(var)) {
-      var = "var" + (++varCounter);
-      usedVars.add(var);
-    }
-    return var;
+    return tableVars.computeIfAbsent(tableAlias, alias -> "var" + (++varCounter));
   }
 }

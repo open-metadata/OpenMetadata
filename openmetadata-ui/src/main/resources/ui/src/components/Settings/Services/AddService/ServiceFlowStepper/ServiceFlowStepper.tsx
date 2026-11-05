@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Check } from '@untitledui/icons';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { Fragment, ReactElement } from 'react';
 

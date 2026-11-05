@@ -22,8 +22,9 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import {
   ForwardedRef,
   forwardRef,
@@ -34,11 +35,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import { FOLDER_FILES_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
+import {
+  FOLDER_FILES_PAGE_SIZE,
+  PANEL_ICON_BOX_CLASS,
+} from '../../../constants/ContextCenter.constants';
 import type { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { queryClient } from '../../../queryClient';
@@ -104,13 +107,7 @@ const FolderRowContent = ({
           ellipsis
           className="tw:flex-1 tw:min-w-0 tw:text-left tw:p-0 tw:text-primary tw:justify-start tw:font-normal!"
           color="tertiary"
-          iconLeading={
-            <FolderIcon
-              className="tw:text-quaternary tw:shrink-0"
-              height={14}
-              width={14}
-            />
-          }
+          iconLeading={FolderIcon}
           size="sm"
           onClick={(e: MouseEvent) => {
             e.stopPropagation();
@@ -134,11 +131,10 @@ const FolderRowContent = ({
 
           {canDelete && (
             <ButtonUtility
-              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100 tw:p-0.5"
-              color="tertiary"
+              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100"
               data-testid={`delete-folder-btn-${folder.id}`}
-              icon={<TrashIcon height={18} width={18} />}
-              size="xs"
+              icon={Trash01}
+              size="lg"
               tooltip={t('label.delete')}
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
@@ -197,8 +193,13 @@ const FolderEmptyRow = ({
         className="tw:ml-7! tw:cursor-default tw:hover:bg-transparent"
         showExpandIcon={false}>
         <div className="tw:flex tw:flex-1 tw:items-center tw:gap-3 tw:py-2">
-          <div className="tw:p-2 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0 tw:shrink-0">
-            <UploadIcon className="tw:text-quaternary" height={14} width={14} />
+          <div
+            className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-2 tw:shrink-0')}>
+            <UploadIcon
+              className="tw:text-fg-quaternary"
+              height={14}
+              width={14}
+            />
           </div>
           <div className="tw:min-w-0 tw:flex-1">
             <Typography ellipsis size="text-sm" weight="medium">
@@ -318,7 +319,7 @@ const FolderTreeItem = ({
 
   return (
     <Tree.Item
-      className={isSelected ? 'tw:bg-utility-blue-50 tw:rounded-lg' : ''}
+      className={isSelected ? 'tw:bg-brand-primary tw:rounded-lg' : ''}
       id={folder.id}
       textValue={folder.displayName ?? folder.name}>
       <FolderRowContent
@@ -607,9 +608,9 @@ const DocumentFolderView = (
       <Card className="tw:p-4 tw:h-full tw:flex tw:flex-col tw:min-w-70">
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-5 tw:shrink-0">
           <div className="tw:flex tw:items-center tw:gap-3">
-            <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
+            <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
               <FolderIcon
-                className="tw:text-quaternary"
+                className="tw:text-fg-quaternary"
                 height={20}
                 width={20}
               />

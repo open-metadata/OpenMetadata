@@ -22,14 +22,11 @@ const handleSuccessfulLogout = jest.fn();
 const logoutUser = jest.fn().mockResolvedValue(undefined);
 const renewToken = jest.fn();
 const setOidcToken = jest.fn();
-const updateRenewToken = jest.fn();
+const registerRenewer = jest.fn();
 
-jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
-  __esModule: true,
-  default: {
-    getInstance: () => ({
-      updateRenewToken: (renewer: unknown) => updateRenewToken(renewer),
-    }),
+jest.mock('../../../utils/Auth/AuthCoordinator/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
   },
 }));
 
@@ -50,8 +47,18 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: (token: string) => setOidcToken(token),
 }));
 
+import { ReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import { GenericAuthenticator } from './GenericAuthenticator';
+
+// Builds a structurally-valid (unsigned) JWT so extractDetailsFromToken's
+// jwt-decode call can read a real `exp` claim out of the payload segment.
+const buildFakeJwt = (expSeconds: number) => {
+  const encode = (payload: Record<string, unknown>) =>
+    Buffer.from(JSON.stringify(payload)).toString('base64');
+
+  return `${encode({ alg: 'none' })}.${encode({ exp: expSeconds })}.signature`;
+};
 
 describe('GenericAuthenticator', () => {
   beforeEach(() => {
@@ -133,11 +140,11 @@ describe('GenericAuthenticator', () => {
     expect(result).toEqual(mockResp);
   });
 
-  // Regression: renewer registration now lives here instead of in the
-  // parent AuthProvider's ref-deps useEffect. See BasicAuthAuthenticator
-  // test for the full rationale.
-  it('registers a renewer with TokenService on mount and unregisters on unmount', () => {
-    const { unmount } = render(
+  it('registers a renewer with AuthCoordinator that resolves {idToken, expiresAt} from renewToken', async () => {
+    const expSeconds = Math.floor(Date.now() / 1000) + 3600;
+    const accessToken = buildFakeJwt(expSeconds);
+    renewToken.mockResolvedValueOnce({ accessToken });
+    render(
       <MemoryRouter>
         <GenericAuthenticator ref={null}>
           <div>Child</div>
@@ -145,14 +152,144 @@ describe('GenericAuthenticator', () => {
       </MemoryRouter>
     );
 
-    expect(updateRenewToken).toHaveBeenCalled();
+    expect(registerRenewer).toHaveBeenCalled();
 
-    const registered = updateRenewToken.mock.calls[0][0];
+    const registered = registerRenewer.mock.calls[0][0];
 
     expect(typeof registered).toBe('function');
 
+    let result: { idToken: string; expiresAt: number } | undefined;
+    await act(async () => {
+      result = await registered();
+    });
+
+    expect(renewToken).toHaveBeenCalled();
+    expect(result).toEqual({
+      idToken: accessToken,
+      expiresAt: expSeconds * 1000,
+    });
+    expect(result?.expiresAt).toBeGreaterThan(Date.now());
+  });
+
+  it('registered renewer throws when renewToken returns no accessToken', async () => {
+    renewToken.mockResolvedValueOnce({});
+    render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={null}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    const registered = registerRenewer.mock.calls[0][0];
+
+    await expect(registered()).rejects.toThrow(
+      'Renew endpoint returned no accessToken'
+    );
+  });
+
+  it('unregisters the renewer on unmount', () => {
+    const { unmount } = render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={null}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
     unmount();
 
-    expect(updateRenewToken).toHaveBeenLastCalledWith(null);
+    expect(registerRenewer).toHaveBeenCalledWith(null);
+  });
+
+  it('registered renewer asks for re-authentication when /auth/refresh answers 401', async () => {
+    // A 401 means the OpenMetadata session is gone; the identity provider
+    // session may still be alive, so this must not read as "sign out".
+    renewToken.mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { status: 401, data: { error: 'No active session' } },
+    });
+    render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={null}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    const registered = registerRenewer.mock.calls[0][0];
+
+    await expect(registered()).rejects.toBeInstanceOf(ReauthRequiredError);
+  });
+
+  it('registered renewer signs out a session OpenMetadata revoked instead of re-authenticating', async () => {
+    // Evicted by the per-user session cap: signing straight back in would
+    // evict another of the user's sessions.
+    const revoked = {
+      isAxiosError: true,
+      response: { status: 401, data: { error: 'Session revoked' } },
+    };
+    renewToken.mockRejectedValueOnce(revoked);
+    render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={null}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    const registered = registerRenewer.mock.calls[0][0];
+
+    await expect(registered()).rejects.toBe(revoked);
+  });
+
+  it('registered renewer rethrows refresh failures a redirect cannot fix', async () => {
+    const serverError = { response: { status: 503 } };
+    renewToken.mockRejectedValueOnce(serverError);
+    render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={null}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    const registered = registerRenewer.mock.calls[0][0];
+
+    await expect(registered()).rejects.toBe(serverError);
+  });
+
+  it('invokeSilentReauth sends the browser to the absolute login URL with prompt=none', async () => {
+    const ref = createRef<AuthenticatorRef>();
+    const locationAssign = jest.fn();
+    // @ts-ignore
+    delete window.location;
+    // @ts-ignore
+    window.location = {
+      assign: locationAssign,
+      origin: 'https://om.example.com',
+    } as unknown as Location;
+    render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={ref}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      await ref.current?.invokeSilentReauth?.();
+    });
+
+    const [url] = locationAssign.mock.calls[0];
+    const params = new URLSearchParams(url.split('?')[1]);
+
+    // Absolute path: a silent re-auth starts from deep links such as
+    // /table/<fqn>, where a relative "api/..." would resolve under /table/.
+    expect(url.startsWith('/api/v1/auth/login?')).toBe(true);
+    expect(params.get('prompt')).toBe('none');
+    expect(params.get('redirectUri')).toBe(
+      'https://om.example.com/auth/callback'
+    );
+    expect(setIsAuthenticated).not.toHaveBeenCalled();
   });
 });

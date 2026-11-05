@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy } from 'react';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
@@ -41,14 +41,6 @@ const DomainLabel = withSuspenseFallback(
   )
 );
 
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/OwnerLabel/OwnerLabel.component').then(
-      (module) => ({ default: module.OwnerLabel })
-    )
-  )
-);
-
 const RichTextEditorPreviewerNew = withSuspenseFallback(
   lazy(
     () => import('../components/common/RichTextEditor/RichTextEditorPreviewNew')
@@ -69,11 +61,10 @@ const TagsViewer = withSuspenseFallback(
 );
 
 export const columnFilterIcon = (filtered: boolean) => (
-  <Icon
-    className={classNames('filter-icon', {
+  <FilterIcon
+    className={classNames('filter-icon tw:size-3.5 tw:shrink-0', {
       'filter-icon-active': filtered,
     })}
-    component={FilterIcon}
     data-testid="filter-icon"
   />
 );
@@ -88,10 +79,11 @@ export const ownerTableObject = <
     width: 280,
     filterIcon: columnFilterIcon,
     render: (owners: EntityReference[]) => (
-      <OwnerLabel
+      <Owner
         isCompactView={false}
+        labelVariant="cell"
         maxVisibleOwners={4}
-        owners={owners}
+        owners={owners ?? []}
         showLabel={false}
       />
     ),

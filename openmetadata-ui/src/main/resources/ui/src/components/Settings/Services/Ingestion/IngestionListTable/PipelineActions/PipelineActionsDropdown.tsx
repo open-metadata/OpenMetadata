@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, DropdownProps } from 'antd';
-import { isEmpty, isNil, isUndefined } from 'lodash';
-import { ReactNode, useCallback, useMemo, useState } from 'react';
+import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { isEmpty, isNil } from 'lodash';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as KillIcon } from '../../../../../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as DeployIcon } from '../../../../../../assets/svg/deploy.svg';
-import { ReactComponent as EditIcon } from '../../../../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as MoreIcon } from '../../../../../../assets/svg/menu.svg';
 import { ReactComponent as ReloadIcon } from '../../../../../../assets/svg/reload.svg';
 import { ReactComponent as RunIcon } from '../../../../../../assets/svg/run.svg';
@@ -36,7 +35,6 @@ import {
 } from '../../../../../../utils/RouterUtils';
 import { getTestSuiteFQN } from '../../../../../../utils/TestSuiteUtils';
 import KillIngestionModal from '../../../../../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
-import './pipeline-actions-dropdown.less';
 import { PipelineActionsDropdownProps } from './PipelineActionsDropdown.interface';
 
 function PipelineActionsDropdown({
@@ -116,6 +114,14 @@ function PipelineActionsDropdown({
         ? `${serviceName}.${ingestion.name}`
         : ingestion.fullyQualifiedName;
 
+      // A host that edits in place (e.g. the test suite pipeline drawer)
+      // takes precedence over navigating to an edit page.
+      if (handleEditClick) {
+        handleEditClick(fullyQualifiedName);
+
+        return;
+      }
+
       if (ingestion.pipelineType === PipelineType.TestSuite) {
         navigate(
           getTestSuiteIngestionPath(
@@ -127,18 +133,14 @@ function PipelineActionsDropdown({
         return;
       }
 
-      if (isUndefined(handleEditClick)) {
-        navigate(
-          getEditIngestionPath(
-            serviceCategory ?? '',
-            serviceName ?? '',
-            fullyQualifiedName,
-            ingestion.pipelineType
-          )
-        );
-      } else {
-        handleEditClick(fullyQualifiedName);
-      }
+      navigate(
+        getEditIngestionPath(
+          serviceCategory ?? '',
+          serviceName ?? '',
+          fullyQualifiedName,
+          ingestion.pipelineType
+        )
+      );
     },
     [ingestion, serviceCategory, serviceName, handleEditClick]
   );
@@ -154,13 +156,6 @@ function PipelineActionsDropdown({
       handleIsConfirmationModalOpen(true);
     },
     [handleDeleteSelection, handleIsConfirmationModalOpen]
-  );
-
-  const handleRenderDropdown: DropdownProps['dropdownRender'] = useCallback(
-    (originNode: ReactNode) => {
-      return <div data-testid="actions-dropdown">{originNode}</div>;
-    },
-    []
   );
 
   const deployItems = useMemo(
@@ -225,7 +220,7 @@ function PipelineActionsDropdown({
       {
         label: t('label.edit'),
         hidden: !editPermission,
-        icon: <EditIcon height={12} width={12} />,
+        icon: <Edit01 size={12} />,
         onClick: () => {
           handleUpdate(ingestion);
           setIsOpen(false);
@@ -248,7 +243,7 @@ function PipelineActionsDropdown({
       {
         label: t('label.delete'),
         hidden: !deletePermission,
-        icon: <DeleteIcon height={12} width={12} />,
+        icon: <Trash01 size={12} />,
         onClick: () => {
           handleConfirmDelete(id, name, displayName);
           setIsOpen(false);
@@ -273,24 +268,37 @@ function PipelineActionsDropdown({
 
   return (
     <>
-      <Dropdown
-        destroyPopupOnHide
-        dropdownRender={handleRenderDropdown}
-        menu={{ items: menuItems }}
-        open={isOpen || !isEmpty(currTrigger.id) || !isEmpty(currDeploy.id)}
-        overlayClassName="pipeline-actions-dropdown"
-        overlayStyle={{ width: '120px' }}
-        trigger={['click']}
-        onOpenChange={(value) => setIsOpen(value)}>
-        <Button
-          className="pipeline-actions-dropdown-button"
+      <Dropdown.Root
+        isOpen={isOpen || !isEmpty(currTrigger.id) || !isEmpty(currDeploy.id)}
+        onOpenChange={setIsOpen}>
+        <ButtonUtility
+          aria-label={t('label.more-action-plural')}
           data-testid="more-actions"
-          icon={<MoreIcon />}
-          type="link"
-          onClick={() => setIsOpen((value) => !value)}
-          {...moreActionButtonProps}
+          icon={MoreIcon}
+          isDisabled={moreActionButtonProps?.disabled}
+          size="lg"
         />
-      </Dropdown>
+        <Dropdown.Popover className="tw:w-30">
+          <Dropdown.Menu
+            aria-label={t('label.action-plural')}
+            data-testid="actions-dropdown"
+            selectionMode="none">
+            {menuItems.map((item) => (
+              <Dropdown.Item
+                data-testid={item['data-testid']}
+                id={item.key}
+                key={item.key}
+                textValue={item.label}
+                onAction={item.onClick}>
+                <span className="tw:flex tw:items-center tw:gap-2 tw:font-medium">
+                  {item.icon}
+                  {item.label}
+                </span>
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
       {isKillModalOpen && selectedPipeline && id === selectedPipeline?.id && (
         <KillIngestionModal
           isModalOpen={isKillModalOpen}

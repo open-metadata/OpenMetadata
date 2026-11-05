@@ -10,18 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { ReactNode } from 'react';
 import { ReactComponent as AllTestsIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../assets/svg/ic-data-assets-coverage.svg';
 import { ReactComponent as HealthCheckIcon } from '../../../assets/svg/ic-green-heart-border.svg';
-import {
-  DQ_CHART_BLUE_COLOR,
-  DQ_CHART_FAILED_COLOR,
-  DQ_CHART_SUCCESS_COLOR,
-  DQ_CHART_WARNING_COLOR,
-  GREY_200,
-} from '../../../constants/Color.constants';
 import {
   SummaryPanelProps,
   TestSummaryCardKey,
@@ -30,14 +26,14 @@ import {
 import SummaryPieChartCard from './SummaryPieChartCard/SummaryPieChartCard.component';
 import { useTestSummaryCards } from './useTestSummaryCards';
 
-const SEGMENT_COLORS: Record<TestSummarySegmentId, string> = {
-  [TestSummarySegmentId.Success]: DQ_CHART_SUCCESS_COLOR,
-  [TestSummarySegmentId.Aborted]: DQ_CHART_WARNING_COLOR,
-  [TestSummarySegmentId.Failed]: DQ_CHART_FAILED_COLOR,
-  [TestSummarySegmentId.Healthy]: DQ_CHART_SUCCESS_COLOR,
-  [TestSummarySegmentId.Unhealthy]: GREY_200,
-  [TestSummarySegmentId.Covered]: DQ_CHART_BLUE_COLOR,
-  [TestSummarySegmentId.Uncovered]: GREY_200,
+const SEGMENT_STATUS: Record<TestSummarySegmentId, ChartStatus> = {
+  [TestSummarySegmentId.Success]: 'success',
+  [TestSummarySegmentId.Aborted]: 'warning',
+  [TestSummarySegmentId.Failed]: 'failed',
+  [TestSummarySegmentId.Healthy]: 'success',
+  [TestSummarySegmentId.Unhealthy]: 'neutral',
+  [TestSummarySegmentId.Covered]: 'info',
+  [TestSummarySegmentId.Uncovered]: 'neutral',
 };
 
 const CARD_ICONS: Record<
@@ -67,17 +63,21 @@ const PieChartSummaryPanel = ({
   const visibleCards = showAdditionalSummary ? cards : cards.slice(0, 1);
 
   return (
-    <Row gutter={[16, 16]}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(16, 16) }}>
       {visibleCards.map((card) => {
         const isTotalTests = card.key === TestSummaryCardKey.TotalTests;
 
         return (
-          <Col key={card.key} md={8} sm={24} xs={24}>
+          <Grid.Item
+            className="layout-column tw:col-span-24 tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-8"
+            key={card.key}>
             <SummaryPieChartCard
               chartData={card.segments.map((segment) => ({
                 name: segment.name,
                 value: segment.value,
-                color: SEGMENT_COLORS[segment.id],
+                status: SEGMENT_STATUS[segment.id],
               }))}
               iconData={CARD_ICONS[card.key]}
               isLoading={isLoading}
@@ -87,10 +87,10 @@ const PieChartSummaryPanel = ({
               title={card.title}
               value={card.value}
             />
-          </Col>
+          </Grid.Item>
         );
       })}
-    </Row>
+    </Grid>
   );
 };
 

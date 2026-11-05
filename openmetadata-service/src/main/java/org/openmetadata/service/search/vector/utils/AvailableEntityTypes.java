@@ -27,6 +27,7 @@ public final class AvailableEntityTypes {
           "database",
           "databaseSchema",
           "dataProduct",
+          "domain",
           "pipeline",
           "mlmodel",
           "metric",

@@ -39,7 +39,7 @@ import {
 } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
 import './Extensions/File/file-node.less';
-import { slashMenuPluginKey } from './Extensions/slash-command';
+import { slashMenuPluginKey } from './Extensions/slash-command/slashCommand';
 import { useCustomEditor } from './hooks/useCustomEditor';
 
 const PROSEMIRROR_EDITABLE_SELECTOR = '.ProseMirror[contenteditable="true"]';
@@ -78,6 +78,10 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
+      // Born read-only when it is a viewer: an editable editor whose content
+      // lands with the cursor after "@name" opens the mention popup, and the
+      // later setEditable(false) never closes it, leaving it pinned top-left.
+      editable,
       extensions,
       onUpdate({ editor }) {
         handleErrorMessage?.(undefined);
@@ -307,7 +311,12 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           placeholder={placeholder}
           onMouseDown={editorSlots.current?.onMouseDown}
         />
-        <EditorSlots editor={editor} menuType={menuType} ref={editorSlots} />
+        <EditorSlots
+          editable={editable}
+          editor={editor}
+          menuType={menuType}
+          ref={editorSlots}
+        />
       </div>
     );
   }

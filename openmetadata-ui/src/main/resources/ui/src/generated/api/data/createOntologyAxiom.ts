@@ -17,16 +17,14 @@ export interface CreateOntologyAxiom {
     axiomType:    AxiomType;
     description:  string;
     displayName:  string;
-    entityStatus: EntityStatus;
     expressions?: OntologyExpression[];
-    glossary:     string;
     literal?:     Literal;
     name:         string;
+    ontology:     string;
     owners?:      EntityReference[];
     propertyIri?: string;
     provenance:   Provenance;
     provider?:    ProviderType;
-    reviewers?:   EntityReference[];
     subjectIri:   string;
     targetIri?:   string;
 }
@@ -38,20 +36,6 @@ export enum AxiomType {
     EquivalentClass = "EQUIVALENT_CLASS",
     ObjectPropertyAssertion = "OBJECT_PROPERTY_ASSERTION",
     SubclassOf = "SUBCLASS_OF",
-}
-
-/**
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
 }
 
 /**

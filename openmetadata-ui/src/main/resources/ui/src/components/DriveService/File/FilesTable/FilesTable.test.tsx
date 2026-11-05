@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { CursorType } from '../../../../enums/pagination.enum';
@@ -28,15 +34,12 @@ import { FilesTableProps } from './FilesTable.interface';
 jest.mock('../../../../utils/RouterUtils');
 jest.mock('../../../../utils/EntityNameUtils');
 jest.mock('../../../../utils/TableColumn.util');
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn(() => <div data-testid="error-placeholder">No data available</div>)
-);
 jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
   jest.fn(({ markdown }) => (
     <div data-testid="rich-text-preview">{markdown}</div>
   ))
 );
-jest.mock('../../../common/Table/Table', () =>
+jest.mock('../../../common/Table/TableV2', () =>
   jest.fn(
     ({
       columns,
@@ -158,6 +161,9 @@ const mockPaging: UsePagingInterface = {
 };
 
 const defaultProps: FilesTableProps = {
+  setFiles: jest.fn(),
+  setIsLoading: jest.fn(),
+  serviceFqn: 'drive-service',
   showDeleted: false,
   handleShowDeleted: jest.fn(),
   paging: mockPaging,
@@ -214,7 +220,7 @@ describe('FilesTable', () => {
     const deleteToggle = screen.getByTestId('show-deleted');
 
     expect(deleteToggle).toBeInTheDocument();
-    expect(deleteToggle).not.toBeChecked();
+    expect(within(deleteToggle).getByRole('switch')).not.toBeChecked();
   });
 
   it('should handle show deleted toggle correctly', async () => {
@@ -245,7 +251,7 @@ describe('FilesTable', () => {
 
     const deleteToggle = screen.getByTestId('show-deleted');
 
-    expect(deleteToggle).toBeChecked();
+    expect(within(deleteToggle).getByRole('switch')).toBeChecked();
   });
 
   it('should display pagination information correctly', () => {

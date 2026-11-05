@@ -10,15 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
 import { Tag } from '../../generated/entity/classification/tag';
+import { SelectablePopoverProps } from '../common/AnchoredPopover/AnchoredPopover';
 
 export interface CertificationProps {
   permission: boolean;
-  onCertificationUpdate?: (certification?: Tag) => Promise<void>;
+  onCertificationUpdate?: (certification?: Tag) => void | Promise<void>;
   onClose?: () => void;
   currentCertificate?: string;
-  popoverProps?: PopoverProps;
+  popoverProps?: SelectablePopoverProps;
+  /** Trigger; without one the picker renders as a form field. */
   children?: ReactNode;
+  isDisabled?: boolean;
+  /** Test id of the form-field trigger. */
+  'data-testid'?: string;
+  /** Labels the form-field trigger, e.g. by the form's visible label. */
+  'aria-labelledby'?: string;
+  /** Classes for the trigger, e.g. to fill a grid cell. */
+  className?: string;
 }

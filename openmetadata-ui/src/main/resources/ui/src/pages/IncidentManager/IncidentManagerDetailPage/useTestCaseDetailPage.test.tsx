@@ -14,6 +14,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React, { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Include } from '../../../generated/type/include';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE_DATA } from '../../../mocks/TestCase.mock';
@@ -28,7 +30,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
@@ -38,6 +40,8 @@ const mockTestCaseFqn =
   'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals';
 
 const mockUseTestCase: UseTestCaseStoreInterface = {
+  selectedRunTimestamp: undefined,
+  setSelectedRunTimestamp: jest.fn(),
   testCase: MOCK_TEST_CASE_DATA,
   setTestCase: jest.fn(),
   isLoading: false,
@@ -57,6 +61,35 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
 
 jest.mock('./useTestCase.store', () => ({
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
+}));
+
+// Permissions now come from useEntityPermissions (Task 8 Batch 9) rather than an
+// imperative usePermissionProvider().getEntityPermissionByFqn call — mock the hook
+// directly, mirroring MetricDetailsPage.test.tsx's approach: deriving flags isn't this
+// hook's own concern to re-verify, only that it wires the right (resource, fqn) pair
+// and threads the named flags through.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 jest.mock('../../../rest/testAPI', () => ({
@@ -101,16 +134,6 @@ const mockNavigationState = {
     },
   ],
 };
-const mockGetEntityPermissionByFqn = jest
-  .fn()
-  .mockImplementation(() => Promise.resolve(MOCK_PERMISSIONS));
-
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
-  })),
-}));
-
 jest.mock('../../../utils/FeedUtilsPure', () => ({
   fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),
@@ -164,7 +187,7 @@ describe('useTestCaseDetailPage', () => {
       tab: TestCasePageTabs.TEST_CASE_RESULTS,
     };
     mockUseTestCase.testCase = MOCK_TEST_CASE_DATA;
-    mockUseTestCase.testCasePermission = MOCK_PERMISSIONS;
+    setMockPermissions(MOCK_PERMISSIONS);
   });
 
   it('should return test case data with derived permissions', async () => {
@@ -206,13 +229,14 @@ describe('useTestCaseDetailPage', () => {
     expect(result.current.extraDropdownContent).toEqual([]);
   });
 
-  it('should fetch test case permission and task counts on mount', async () => {
+  it('should call useEntityPermissions with the TEST_CASE resource and fetch task counts on mount', async () => {
     renderDetailPageHook();
 
     await waitFor(() =>
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
-        'testCase',
-        mockTestCaseFqn
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.TEST_CASE,
+        mockTestCaseFqn,
+        expect.objectContaining({ enabled: true })
       )
     );
 
@@ -222,12 +246,35 @@ describe('useTestCaseDetailPage', () => {
     );
   });
 
-  it('should derive no view permission from the store permission', async () => {
-    mockUseTestCase.testCasePermission = DEFAULT_ENTITY_PERMISSION;
+  it('should derive no view permission when the hook reports no view access', async () => {
+    setMockPermissions({});
 
     const { result } = renderDetailPageHook();
 
     await waitFor(() => expect(result.current.hasViewPermission).toBeFalsy());
+  });
+
+  it('should map each named flag to its own distinct field (not collapse onto EditAll)', async () => {
+    // EditAll true but EditDisplayName explicitly false, Delete false — distinguishes
+    // hasEditPermission/editDisplayNamePermission/hasDeletePermission from each other so a
+    // mis-mapping (e.g. aliasing editDisplayNamePermission to canEditAll instead of
+    // canEditDisplayName) would fail this test even though it passes MOCK_PERMISSIONS
+    // (all-true) fixtures elsewhere in this suite.
+    setMockPermissions({
+      ViewBasic: true,
+      EditAll: true,
+      EditDisplayName: false,
+      Delete: false,
+    });
+
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.hasViewPermission).toBe(true);
+    expect(result.current.hasEditPermission).toBe(true);
+    expect(result.current.editDisplayNamePermission).toBe(false);
+    expect(result.current.hasDeletePermission).toBe(false);
   });
 
   it('should build tabs from testCaseClassBase', async () => {
@@ -250,6 +297,53 @@ describe('useTestCaseDetailPage', () => {
     const tabKeys = result.current.tabs.map((tab) => tab.key);
 
     expect(tabKeys).not.toContain(TestCasePageTabs.ISSUES);
+  });
+
+  it('should resolve a URL tab the version page does not render to the rendered results tab', async () => {
+    mockParams = {
+      fqn: mockTestCaseFqn,
+      tab: TestCasePageTabs.ISSUES,
+      version: '0.2',
+    };
+
+    const { result } = renderDetailPageHook(true);
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.isExpandViewSupported).toBe(true);
+    expect(result.current.activeTab).toBe(TestCasePageTabs.TEST_CASE_RESULTS);
+
+    act(() => {
+      result.current.handleTabChange(TestCasePageTabs.TEST_CASE_RESULTS);
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.versionHandler('0.3');
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining(`/${TestCasePageTabs.ISSUES}`),
+      { state: mockNavigationState }
+    );
+  });
+
+  it('should resolve a URL tab hidden on the details page to the rendered results tab', async () => {
+    mockParams = {
+      fqn: mockTestCaseFqn,
+      tab: TestCasePageTabs.DIMENSIONALITY,
+    };
+
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.tabs.map((tab) => tab.key)).not.toContain(
+      TestCasePageTabs.DIMENSIONALITY
+    );
+    expect(result.current.isExpandViewSupported).toBe(true);
+    expect(result.current.activeTab).toBe(TestCasePageTabs.TEST_CASE_RESULTS);
   });
 
   it('handleTabChange should not navigate for the active tab', async () => {
@@ -425,6 +519,34 @@ describe('useTestCaseDetailPage', () => {
 
     expect(restoreTestCase).toHaveBeenCalledWith(MOCK_TEST_CASE_DATA.id);
     expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it('should keep the last run result when the restore response omits it', async () => {
+    const { testCaseResult, ...restoreResponse } = MOCK_TEST_CASE_DATA;
+    const restoredAt = 1_800_000_000_000;
+    (restoreTestCase as jest.Mock).mockResolvedValueOnce({
+      ...restoreResponse,
+      deleted: false,
+      updatedAt: restoredAt,
+    });
+    mockUseTestCase.testCase = { ...MOCK_TEST_CASE_DATA, deleted: true };
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleRestore();
+    });
+
+    await waitFor(() =>
+      expect(mockUseTestCase.setTestCase).toHaveBeenCalledWith(
+        expect.objectContaining({ updatedAt: restoredAt })
+      )
+    );
+
+    expect(mockUseTestCase.setTestCase).toHaveBeenLastCalledWith(
+      expect.objectContaining({ testCaseResult, updatedAt: restoredAt })
+    );
   });
 
   it('should report restore failures without showing a success toast', async () => {

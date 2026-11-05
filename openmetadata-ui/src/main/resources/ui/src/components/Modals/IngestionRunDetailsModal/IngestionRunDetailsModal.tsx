@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isArray, startCase } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,38 +30,36 @@ import {
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import Table from '../../common/Table/Table';
 import {
   ColumnType,
   ExpandableConfig,
 } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import ConnectionStepCard from '../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRunDetailsModalProps } from './IngestionRunDetailsModal.interface';
 
 const renderFailuresRow = (record: StepSummary) =>
   record.failures ? (
-    <Row gutter={[16, 16]}>
+    <Box direction="col" gap={4}>
       {record.failures.map((failure) => (
-        <Col key={failure.name} span={24}>
-          <ConnectionStepCard
-            isTestingConnection={false}
-            key={failure.name}
-            testConnectionStep={{
-              name: failure.name,
-              mandatory: false,
-              description: failure.error,
-            }}
-            testConnectionStepResult={{
-              name: failure.name,
-              passed: false,
-              mandatory: false,
-              message: failure.error,
-              errorLog: failure.stackTrace,
-            }}
-          />
-        </Col>
+        <ConnectionStepCard
+          isTestingConnection={false}
+          key={failure.name}
+          testConnectionStep={{
+            name: failure.name,
+            mandatory: false,
+            description: failure.error,
+          }}
+          testConnectionStepResult={{
+            name: failure.name,
+            passed: false,
+            mandatory: false,
+            message: failure.error,
+            errorLog: failure.stackTrace,
+          }}
+        />
       ))}
-    </Row>
+    </Box>
   ) : undefined;
 
 function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
@@ -70,9 +75,11 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
         title: t('label.step'),
         dataIndex: 'name',
         render: (_, record: StepSummary) => (
-          <Typography.Text data-testid={`step-summary-name-${record.name}`}>
+          <Typography
+            className="tw:text-primary"
+            data-testid={`step-summary-name-${record.name}`}>
             {getEntityName(record)}
-          </Typography.Text>
+          </Typography>
         ),
       },
       {
@@ -102,10 +109,9 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
         render: (failures: StepSummary['failures'], record: StepSummary) =>
           (failures?.length ?? 0) > 0 ? (
             <Button
+              color="link-color"
               data-testid={`log-${record.name}`}
-              size="small"
-              type="link"
-              onClick={() => setExpandedKeys([record.name])}>
+              onPress={() => setExpandedKeys([record.name])}>
               {t('label.log-plural')}
             </Button>
           ) : (
@@ -128,34 +134,41 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
   );
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      open
-      closable={false}
-      maskClosable={false}
-      okButtonProps={{ style: { display: 'none' } }}
-      title={t('message.run-status-at-timestamp', {
-        status: startCase(
-          (pipelineStatus as PipelineStatus)?.pipelineState ??
-            (pipelineStatus as AppRunRecord)?.status
-        ),
-        timestamp: formatDateTime(pipelineStatus?.timestamp),
-      })}
-      width="80%"
-      onCancel={handleCancel}>
-      <Table
-        columns={columns}
-        dataSource={
-          isArray(pipelineStatus?.status) ? pipelineStatus?.status : []
-        }
-        expandable={expandable}
-        indentSize={0}
-        pagination={false}
-        rowKey="name"
-        size="small"
-      />
-    </Modal>
+    <ModalOverlay
+      isOpen
+      isDismissable={false}
+      onOpenChange={(isOpen) => !isOpen && handleCancel()}>
+      <Modal>
+        <Dialog
+          panelClassName="tw:max-w-[80vw]!"
+          title={t('message.run-status-at-timestamp', {
+            status: startCase(
+              (pipelineStatus as PipelineStatus)?.pipelineState ??
+                (pipelineStatus as AppRunRecord)?.status
+            ),
+            timestamp: formatDateTime(pipelineStatus?.timestamp),
+          })}>
+          <Dialog.Content>
+            <Table
+              columns={columns}
+              dataSource={
+                isArray(pipelineStatus?.status) ? pipelineStatus?.status : []
+              }
+              expandable={expandable}
+              indentSize={0}
+              pagination={false}
+              rowKey="name"
+              size="small"
+            />
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" onPress={handleCancel}>
+              {t('label.cancel')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 }
 

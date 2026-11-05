@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
+  ButtonGroup,
+  ButtonGroupItem,
   Divider,
   Dropdown,
-  Menu,
-  Segmented,
-  Space,
-  Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { FilterLines } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -36,7 +36,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
@@ -51,7 +50,7 @@ import {
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
@@ -76,7 +75,9 @@ import { getFeedTotalCount } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
@@ -93,6 +94,8 @@ import {
   ActivityFeedTabs,
   TaskFilterBarProps,
 } from './ActivityFeedTab.interface';
+import { isListLoadFailed } from './ActivityFeedTab.utils';
+
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
     import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
@@ -157,7 +160,11 @@ const startFeedCountRequests = ({
           userId,
           limit: 1,
         }
-      : { entityLink: getEntityFeedLink(entityType, fqn), limit: 1 }
+      : {
+          entityLink: getEntityFeedLink(entityType, fqn),
+          includeFields: true,
+          limit: 1,
+        }
   ),
   mentions: isUserEntity
     ? listConversations({
@@ -190,65 +197,81 @@ const ActivityFeedTabLeftPanel = ({
     return null;
   }
 
-  return (
-    <Menu
-      className="custom-menu p-t-sm"
-      data-testid="global-setting-left-panel"
-      items={[
-        {
-          label: (
-            <div className="d-flex justify-between">
-              <Space align="center" size="small">
-                <AllActivityIcon
-                  style={COMMON_ICON_STYLES}
-                  {...ICON_DIMENSION}
-                />
-                <span>{t('label.all')}</span>
-              </Space>
+  const items = [
+    {
+      key: ActivityFeedTabs.ALL,
+      icon: AllActivityIcon,
+      label: t('label.all'),
+      countTestId: 'left-panel-all-count',
+      count: isUserEntity
+        ? null
+        : getCountBadge(
+            (countData?.conversationCount ?? 0) +
+              (countData?.activityCount ?? 0),
+            '',
+            activeTab === ActivityFeedTabs.ALL,
+            true
+          ),
+    },
+    {
+      key: ActivityFeedTabs.TASKS,
+      icon: TaskListIcon,
+      label: t('label.task-plural'),
+      countTestId: 'left-panel-task-count',
+      count: getCountBadge(
+        taskFilter === TaskStatusGroup.Open
+          ? countData?.openTaskCount
+          : countData?.closedTaskCount,
+        '',
+        isTaskActiveTab,
+        true
+      ),
+    },
+  ];
+  const selectedKey =
+    activeTab === ActivityFeedTabs.ALL
+      ? ActivityFeedTabs.ALL
+      : ActivityFeedTabs.TASKS;
 
-              <span data-testid="left-panel-all-count">
-                {!isUserEntity &&
-                  getCountBadge(
-                    (countData?.conversationCount ?? 0) +
-                      (countData?.activityCount ?? 0),
-                    '',
-                    activeTab === ActivityFeedTabs.ALL
-                  )}
-              </span>
-            </div>
-          ),
-          key: ActivityFeedTabs.ALL,
-        },
-        {
-          label: (
-            <div className="d-flex justify-between">
-              <Space align="center" size="small">
-                <TaskListIcon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
-                <span>{t('label.task-plural')}</span>
-              </Space>
-              <span data-testid="left-panel-task-count">
-                {getCountBadge(
-                  taskFilter === TaskStatusGroup.Open
-                    ? countData?.openTaskCount
-                    : countData?.closedTaskCount,
-                  '',
-                  isTaskActiveTab
+  return (
+    <nav
+      aria-label={t('label.activity-feed-plural')}
+      className="left-container tw:bg-surface"
+      data-testid="global-setting-left-panel">
+      <ul className="tw:m-0 tw:list-none tw:p-0 tw:pt-2">
+        {items.map(({ key, icon: Icon, label, countTestId, count }) => {
+          const isSelected = key === selectedKey;
+
+          return (
+            <li className="tw:mt-0.5" key={key}>
+              <button
+                aria-current={isSelected ? 'page' : undefined}
+                className={classNames(
+                  'tw:relative tw:flex tw:h-10 tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:overflow-hidden',
+                  'tw:border-0 tw:px-4 tw:text-left tw:text-sm tw:transition-colors tw:hover:text-fg-brand-primary',
+                  'tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+                  isSelected
+                    ? [
+                        // antd inline Menu's selected look: brand tint + 3px left bar.
+                        'tw:bg-utility-brand-100 tw:font-semibold tw:text-fg-brand-primary tw:dark:bg-brand-primary',
+                        'tw:after:absolute tw:after:inset-y-0 tw:after:left-0 tw:after:w-0.75 tw:after:bg-fg-brand-primary',
+                      ]
+                    : 'tw:bg-transparent tw:text-primary'
                 )}
-              </span>
-            </div>
-          ),
-          key: ActivityFeedTabs.TASKS,
-        },
-      ]}
-      mode="inline"
-      rootClassName="left-container"
-      selectedKeys={[
-        activeTab === ActivityFeedTabs.ALL
-          ? ActivityFeedTabs.ALL
-          : ActivityFeedTabs.TASKS,
-      ]}
-      onClick={(info) => onTabChange(info.key)}
-    />
+                data-testid={`activity-feed-left-panel-${key}`}
+                type="button"
+                onClick={() => onTabChange(key)}>
+                <span className="tw:flex tw:items-center tw:gap-2">
+                  <Icon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
+                  <span>{label}</span>
+                </span>
+                <span data-testid={countTestId}>{count}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 };
 
@@ -272,29 +295,37 @@ const TaskFilterBar = ({
       : `${t('label.closed')} (${countData?.closedTaskCount ?? 0})`;
 
   return (
-    <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
-      <Dropdown
-        disabled={isMentionTabSelected}
-        menu={{
-          items: taskFilterOptions,
-          selectedKeys: [taskFilter],
-        }}
-        overlayClassName="task-tab-custom-dropdown"
-        trigger={['click']}>
+    <div className="d-flex gap-4 task-filter-container justify-between items-center tw:flex-wrap">
+      <Dropdown.Root>
         <Button
-          className={classNames('feed-filter-icon', {
-            'cursor-pointer': !isMentionTabSelected,
-            disabled: isMentionTabSelected,
-          })}
-          data-testid="user-profile-page-task-filter-icon">
-          <Space align="center" size={4}>
-            <FilterIcon height={16} style={{ verticalAlign: 'middle' }} />
-            <span className="text-xs font-medium" style={{ lineHeight: 1 }}>
-              {filterLabel}
-            </span>
-          </Space>
+          color="secondary"
+          data-testid="user-profile-page-task-filter-icon"
+          iconLeading={FilterLines}
+          isDisabled={isMentionTabSelected}
+          size="sm">
+          {filterLabel}
         </Button>
-      </Dropdown>
+        <Dropdown.Popover
+          className="task-tab-custom-dropdown"
+          placement="bottom start">
+          <Dropdown.Menu
+            selectedKeys={[taskFilter]}
+            onAction={(key) =>
+              taskFilterOptions.find((option) => option.key === key)?.onClick()
+            }>
+            {taskFilterOptions.map(({ key, label, textValue }) => (
+              <Dropdown.Item
+                unstyled
+                className="task-tab-filter-menu-item tw:cursor-pointer tw:outline-focus-ring tw:data-focus-visible:outline-2 tw:data-focus-visible:-outline-offset-2 tw:data-hovered:bg-primary_hover"
+                id={key}
+                key={key}
+                textValue={textValue}>
+                {label}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
       {taskToggle}
     </div>
   );
@@ -308,6 +339,7 @@ const TaskFilterBar = ({
 const ActivityFeedTabList = ({
   activityEvents,
   emptyPlaceholderText,
+  emptyPlaceholderDescription,
   entityThread,
   isActivityLoading,
   isAllTab,
@@ -333,6 +365,7 @@ const ActivityFeedTabList = ({
     return (
       <TaskListV1
         activeFeedId={selectedTask?.id}
+        emptyPlaceholderDescription={emptyPlaceholderDescription}
         emptyPlaceholderText={emptyPlaceholderText}
         handlePanelResize={onPanelResize}
         isFullWidth={isFullWidth}
@@ -351,6 +384,7 @@ const ActivityFeedTabList = ({
       activeFeedId={selectedActivity?.id ?? selectedThread?.id}
       activityList={isAllTab ? activityEvents : undefined}
       componentsVisibility={componentsVisibility}
+      emptyPlaceholderDescription={emptyPlaceholderDescription}
       emptyPlaceholderText={emptyPlaceholderText}
       feedList={entityThread}
       handlePanelResize={onPanelResize}
@@ -367,6 +401,40 @@ const ActivityFeedTabList = ({
   );
 };
 
+/**
+ * The list's empty placeholder, or why it is empty when its fetch failed: a
+ * failure must not read as "no tasks".
+ */
+// Rendered in place of the list, not as its empty text: the list wraps that
+// text in a legacy illustration the core placeholder would sit on top of.
+const ActivityFeedListError = ({
+  error,
+  isTaskList,
+  onRetry,
+}: {
+  error: AxiosError;
+  isTaskList: boolean;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+  const entity = isTaskList ? t('label.task-plural') : t('label.activity-feed');
+
+  return (
+    <Box className="tw:relative tw:min-h-[calc(100vh_-_24rem)] tw:w-full">
+      {error.response?.status === ClientErrors.FORBIDDEN ? (
+        <PermissionPlaceholder
+          permissionValue={t('label.view-entity', { entity })}
+        />
+      ) : (
+        <SomethingWentWrongPlaceholder
+          description={t('server.entity-fetch-error', { entity })}
+          onReload={onRetry}
+        />
+      )}
+    </Box>
+  );
+};
+
 const ActivityFeedTabRightPanel = ({
   content,
   hasSelection,
@@ -375,14 +443,13 @@ const ActivityFeedTabRightPanel = ({
   loader,
   loading,
   placeholder,
+  placeholderDescription,
 }: ActivityFeedTabRightPanelProps) => {
   const isThreePanel = layoutType === ActivityFeedLayoutType.THREE_PANEL;
 
   return (
     <>
-      {isThreePanel && (
-        <Divider className="feed-divider h-100 m-0" type="vertical" />
-      )}
+      {isThreePanel && <Divider color="primary" orientation="vertical" />}
 
       <div
         className={classNames('right-container', {
@@ -394,13 +461,14 @@ const ActivityFeedTabRightPanel = ({
           ? content
           : !loading && (
               <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
-                <ErrorPlaceHolderNew
-                  icon={<NoConversationsIcon />}
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography.Paragraph className="placeholder-text">
-                    {placeholder}
-                  </Typography.Paragraph>
-                </ErrorPlaceHolderNew>
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <NoDataPlaceholder
+                    data-testid="no-data-placeholder"
+                    description={placeholderDescription}
+                    icon={<NoConversationsIcon />}
+                    title={placeholder}
+                  />
+                </div>
               </div>
             )}
       </div>
@@ -459,6 +527,7 @@ export const ActivityFeedTab = ({
     getFeedData,
     getTaskData,
     loading,
+    listError,
     entityPaging,
     tasks,
     selectedTask,
@@ -523,45 +592,23 @@ export const ActivityFeedTab = ({
 
   const placeholderText = useMemo(() => {
     if (isAllTab) {
-      return (
-        <div className="d-flex flex-col gap-4">
-          <Typography.Text className="placeholder-title">
-            {t('message.no-activity-feed-title')}
-          </Typography.Text>
-          <Typography.Text className="placeholder-text">
-            {t('message.no-activity-feed-description')}
-          </Typography.Text>
-        </div>
-      );
+      return {
+        title: t('message.no-activity-feed-title'),
+        description: t('message.no-activity-feed-description'),
+      };
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return (
-        <Typography.Text className="placeholder-text">
-          {t('message.no-mentions')}
-        </Typography.Text>
-      );
+      return { description: t('message.no-mentions') };
     } else if (taskFilter === TaskStatusGroup.Closed) {
-      return (
-        <div className="d-flex flex-col gap-4">
-          <Typography.Text className="placeholder-title">
-            {t('message.no-closed-tasks-title')}
-          </Typography.Text>
-          <Typography.Text className="placeholder-text">
-            {t('message.no-closed-tasks-description')}
-          </Typography.Text>
-        </div>
-      );
-    } else {
-      return (
-        <div className="d-flex flex-col gap-4">
-          <Typography.Text className="placeholder-title">
-            {t('message.no-open-tasks-title')}
-          </Typography.Text>
-          <Typography.Text className="placeholder-text">
-            {t('message.no-open-tasks-description')}
-          </Typography.Text>
-        </div>
-      );
+      return {
+        title: t('message.no-closed-tasks-title'),
+        description: t('message.no-closed-tasks-description'),
+      };
     }
+
+    return {
+      title: t('message.no-open-tasks-title'),
+      description: t('message.no-open-tasks-description'),
+    };
   }, [activeTab, isAllTab, taskFilter, t]);
 
   const handleFeedCount = useCallback(
@@ -828,6 +875,7 @@ export const ActivityFeedTab = ({
     () => [
       {
         key: TaskStatusGroup.Open,
+        textValue: t('label.open'),
         label: (
           <div
             className={classNames(
@@ -868,6 +916,7 @@ export const ActivityFeedTab = ({
       },
       {
         key: TaskStatusGroup.Closed,
+        textValue: t('label.closed'),
         label: (
           <div
             className={classNames(
@@ -915,31 +964,31 @@ export const ActivityFeedTab = ({
 
   const TaskToggle = useCallback(() => {
     return (
-      <Segmented
-        className="task-toggle"
-        options={[
-          {
-            label: (
-              <span className="toggle-item" data-testid="my-tasks-toggle">
-                <MyTaskIcon {...ICON_DIMENSION_USER_PAGE} />
-                {t('label.my-task-plural')}
-              </span>
-            ),
-            value: ActivityFeedTabs.TASKS,
-          },
-          {
-            label: (
-              <span className="toggle-item" data-testid="mentions-toggle">
-                <MentionIcon {...ICON_DIMENSION_USER_PAGE} />
-                {t('label.mention-plural')}
-              </span>
-            ),
-            value: ActivityFeedTabs.MENTIONS,
-          },
-        ]}
-        value={activeTab}
-        onChange={(value) => handleTabChange(value as ActivityFeedTabs)}
-      />
+      <ButtonGroup
+        disallowEmptySelection
+        selectedKeys={activeTab ? [activeTab] : []}
+        size="sm"
+        onSelectionChange={(keys) => {
+          const [key] = keys;
+          if (key) {
+            handleTabChange(key as ActivityFeedTabs);
+          }
+        }}>
+        <ButtonGroupItem
+          data-testid="my-tasks-toggle"
+          iconLeading={<MyTaskIcon aria-hidden {...ICON_DIMENSION_USER_PAGE} />}
+          id={ActivityFeedTabs.TASKS}>
+          {t('label.my-task-plural')}
+        </ButtonGroupItem>
+        <ButtonGroupItem
+          data-testid="mentions-toggle"
+          iconLeading={
+            <MentionIcon aria-hidden {...ICON_DIMENSION_USER_PAGE} />
+          }
+          id={ActivityFeedTabs.MENTIONS}>
+          {t('label.mention-plural')}
+        </ButtonGroupItem>
+      </ButtonGroup>
     );
   }, [t, activeTab, handleTabChange]);
 
@@ -959,6 +1008,8 @@ export const ActivityFeedTab = ({
       ? !isEmpty(activityEvents) || !isEmpty(entityThread)
       : !isEmpty(entityThread);
   }, [isTaskActiveTab, isAllTab, tasks, activityEvents, entityThread]);
+
+  const showListError = isListLoadFailed(listError, loading, hasListRows);
 
   const getRightPanelContent = () => {
     if (isTaskActiveTab && selectedTask) {
@@ -1031,23 +1082,13 @@ export const ActivityFeedTab = ({
 
   const getRightPanelPlaceholder = useMemo(() => {
     if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return (
-        <Typography.Text className="placeholder-text m-t-0">
-          {t('message.no-mentions')}
-        </Typography.Text>
-      );
+      return { description: t('message.no-mentions') };
     }
 
-    return (
-      <div className="d-flex flex-col gap-4">
-        <Typography.Text className="placeholder-title m-t-md">
-          {t('message.no-conversations')}
-        </Typography.Text>
-        <Typography.Text className="placeholder-text">
-          {t('message.no-conversations-description')}
-        </Typography.Text>
-      </div>
-    );
+    return {
+      title: t('message.no-conversations'),
+      description: t('message.no-conversations-description'),
+    };
   }, [activeTab, t]);
 
   return (
@@ -1067,7 +1108,7 @@ export const ActivityFeedTab = ({
       />
       <div
         className={classNames('center-container', {
-          'full-width': isFullWidth,
+          'full-width': isFullWidth || showListError,
           'three-panel-layout':
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}
@@ -1080,26 +1121,35 @@ export const ActivityFeedTab = ({
           taskFilterOptions={taskFilterOptions}
           taskToggle={TaskToggle()}
         />
-        <ActivityFeedTabList
-          activityEvents={activityEvents}
-          emptyPlaceholderText={placeholderText}
-          entityThread={entityThread}
-          isActivityLoading={isActivityLoading}
-          isAllTab={isAllTab}
-          isFirstLoad={isFirstLoad}
-          isFullWidth={isFullWidth}
-          isTaskListTab={isTaskActiveTab}
-          loading={loading}
-          selectedActivity={selectedActivity}
-          selectedTask={selectedTask}
-          selectedThread={selectedThread}
-          tasks={tasks}
-          onActivityClick={handleActivityClick}
-          onAfterClose={handleAfterTaskClose}
-          onFeedClick={handleFeedClick}
-          onPanelResize={handlePanelResize}
-          onTaskClick={handleTaskClick}
-        />
+        {showListError ? (
+          <ActivityFeedListError
+            error={listError as AxiosError}
+            isTaskList={isTaskActiveTab}
+            onRetry={() => handleFeedFetchFromFeedList()}
+          />
+        ) : (
+          <ActivityFeedTabList
+            activityEvents={activityEvents}
+            emptyPlaceholderDescription={placeholderText.description}
+            emptyPlaceholderText={placeholderText.title}
+            entityThread={entityThread}
+            isActivityLoading={isActivityLoading}
+            isAllTab={isAllTab}
+            isFirstLoad={isFirstLoad}
+            isFullWidth={isFullWidth}
+            isTaskListTab={isTaskActiveTab}
+            loading={loading}
+            selectedActivity={selectedActivity}
+            selectedTask={selectedTask}
+            selectedThread={selectedThread}
+            tasks={tasks}
+            onActivityClick={handleActivityClick}
+            onAfterClose={handleAfterTaskClose}
+            onFeedClick={handleFeedClick}
+            onPanelResize={handlePanelResize}
+            onTaskClick={handleTaskClick}
+          />
+        )}
         {!isFirstLoad && loader}
         {hasListRows && !loading && (
           <div
@@ -1112,15 +1162,18 @@ export const ActivityFeedTab = ({
         )}
       </div>
 
-      <ActivityFeedTabRightPanel
-        content={getRightPanelContent()}
-        hasSelection={hasRightPanelSelection}
-        isFullWidth={isFullWidth}
-        layoutType={layoutType}
-        loader={loader}
-        loading={loading}
-        placeholder={getRightPanelPlaceholder}
-      />
+      {!showListError && (
+        <ActivityFeedTabRightPanel
+          content={getRightPanelContent()}
+          hasSelection={hasRightPanelSelection}
+          isFullWidth={isFullWidth}
+          layoutType={layoutType}
+          loader={loader}
+          loading={loading}
+          placeholder={getRightPanelPlaceholder.title}
+          placeholderDescription={getRightPanelPlaceholder.description}
+        />
+      )}
     </div>
   );
 };

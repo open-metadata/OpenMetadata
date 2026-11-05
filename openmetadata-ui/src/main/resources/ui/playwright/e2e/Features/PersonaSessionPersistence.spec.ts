@@ -26,7 +26,7 @@ const user = new UserClass();
 const test = base.extend<{ userPage: Page }>({
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },
@@ -103,7 +103,7 @@ const reloadAndAwaitUser = async (page: Page) => {
   const loggedInUserResponse = page.waitForResponse(
     '/api/v1/users/loggedInUser*'
   );
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await loggedInUserResponse;
   await waitForAllLoadersToDisappear(page);
 };

@@ -105,7 +105,7 @@ public final class MigrationUtil {
       return;
     }
     try {
-      EntityInterface term =
+      EntityInterface<?> term =
           Entity.getEntity(GLOSSARY_TERM_TYPE, UUID.fromString(entityId), "", Include.NON_DELETED);
       String newLink =
           new EntityLink(GLOSSARY_TERM_TYPE, term.getFullyQualifiedName()).getLinkString();

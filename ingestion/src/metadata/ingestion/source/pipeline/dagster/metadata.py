@@ -14,7 +14,10 @@ Dagster source to extract metadata from OM UI
 
 import traceback
 from collections.abc import Iterable
+from datetime import datetime, timedelta, timezone
+from typing import cast
 
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -62,7 +65,6 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -137,12 +139,7 @@ class DagsterSource(PipelineServiceSource):
                 description=(Markdown(pipeline_details.description) if pipeline_details.description else None),
                 tasks=self._get_task_list(pipeline_name=pipeline_details.name),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
-                tags=get_tag_labels(
-                    metadata=self.metadata,
-                    tags=[self.context.get().repository_name],
-                    classification_name=DAGSTER_TAG_CATEGORY,
-                    include_tags=self.source_config.includeTags,
-                ),
+                tags=self.get_tag_by_fqn(self.get_pipeline_fqn(pipeline_details)),
                 sourceUrl=self.get_source_url(pipeline_name=pipeline_details.name, task_name=None),
             )
             yield Either(right=pipeline_request)
@@ -157,12 +154,14 @@ class DagsterSource(PipelineServiceSource):
             )
 
     def yield_tag(self, pipeline_details: DagsterPipeline) -> Iterable[Either[OMetaTagAndClassification]]:
-        yield from get_ometa_tag_and_classification(
-            tags=[self.context.get().repository_name],
-            classification_name=DAGSTER_TAG_CATEGORY,
-            tag_description="Dagster Tag",
-            classification_description="Tags associated with dagster entities",
-            include_tags=self.source_config.includeTags,
+        yield from self.register_tag(
+            entity_fqn=self.get_pipeline_fqn(pipeline_details),
+            definition=TagDefinition(
+                classification_name=DAGSTER_TAG_CATEGORY,
+                tag_name=self.context.get().repository_name,  # pyright: ignore[reportAttributeAccessIssue]
+                tag_description="Dagster Tag",
+                classification_description="Tags associated with dagster entities",
+            ),
         )
 
     def _get_task_status(self, run: RunStepStats, task_name: str) -> Iterable[Either[OMetaPipelineStatus]]:
@@ -202,6 +201,11 @@ class DagsterSource(PipelineServiceSource):
 
     def yield_pipeline_status(self, pipeline_details: DagsterPipeline) -> Iterable[Either[OMetaPipelineStatus]]:
         """Yield the pipeline and task status"""
+        lookback_days = self.source_config.statusLookbackDays
+        # .timestamp() returns seconds to match RunStepStats.startTime (also seconds)
+        cutoff_seconds = (
+            (datetime.now(timezone.utc) - timedelta(days=lookback_days)).timestamp() if lookback_days else None
+        )
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
@@ -218,6 +222,8 @@ class DagsterSource(PipelineServiceSource):
                     repository_location=self.context.get().repository_location,
                 )
                 for run in runs.solidHandle.stepStats.nodes or []:
+                    if cutoff_seconds is not None and run.startTime and run.startTime < cutoff_seconds:
+                        continue
                     yield from self._get_task_status(run=run, task_name=task.name)
             except Exception as exc:
                 yield Either(
@@ -344,6 +350,17 @@ class DagsterSource(PipelineServiceSource):
 
     def get_pipeline_name(self, pipeline_details: DagsterPipeline) -> str:
         return pipeline_details.name
+
+    def get_pipeline_fqn(self, pipeline_details: DagsterPipeline) -> str:
+        return cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,  # pyright: ignore[reportAttributeAccessIssue]
+                pipeline_name=pipeline_details.id.replace(":", ""),
+            ),
+        )
 
     def get_source_url(self, pipeline_name: str, task_name: str | None) -> SourceUrl | None:
         """

@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -72,6 +73,9 @@ class OpenSearchBulkSinkBehaviorTest {
     indexMapping = mock(IndexMapping.class);
 
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    lenient()
+        .when(searchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     when(searchRepository.getIndexMapping(ENTITY_TYPE)).thenReturn(indexMapping);
     when(searchRepository.getClusterAlias()).thenReturn("cluster");
     when(indexMapping.getIndexName("cluster")).thenReturn("table_index");
@@ -118,7 +122,7 @@ class OpenSearchBulkSinkBehaviorTest {
 
   @Test
   void addEntityRecordsSuccessAndProcessStats() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
@@ -169,7 +173,7 @@ class OpenSearchBulkSinkBehaviorTest {
   @Test
   void relationshipPartialUpdateUsesVectorEnrichedFullUpsertWithoutRewritingOtherFields()
       throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     when(entity.getEntityReference())
@@ -351,7 +355,7 @@ class OpenSearchBulkSinkBehaviorTest {
 
   @Test
   void fullTestCaseDocumentUsesRelationshipPreservingUpdate() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     SearchRepository.ScriptedPartialUpdate documentUpdate =
@@ -414,7 +418,7 @@ class OpenSearchBulkSinkBehaviorTest {
 
   @Test
   void addEntityRecordsEntityNotFoundWarningsWithoutCallback() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
     UUID entityId = UUID.randomUUID();
@@ -597,7 +601,7 @@ class OpenSearchBulkSinkBehaviorTest {
 
   @Test
   void addEntityLooksUpEntityContextFromMap() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     List<EsLineageData> edges = List.of(new EsLineageData());
@@ -646,7 +650,7 @@ class OpenSearchBulkSinkBehaviorTest {
   void enrichWithEmbeddingReusesCachedFieldsWhenServiceReportsMatch() throws Exception {
     // The service-layer two-step fetch already pre-filters to fingerprint matches; if an entry is
     // present in the map, the splice path is taken without any further fingerprint check.
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     // A real entity always resolves a reference; the bulk sink consults it via
@@ -704,7 +708,7 @@ class OpenSearchBulkSinkBehaviorTest {
 
   @Test
   void addEntityFallsBackToEmptyContextWhenEntityNotInMap() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
@@ -753,7 +757,7 @@ class OpenSearchBulkSinkBehaviorTest {
   private static List<Map<String, Object>> stubRecompute(
       MockedStatic<VectorDocBuilder> docBuilderMock,
       MockedStatic<OpenSearchVectorService> vectorServiceMock,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       String fingerprint,
       List<Double> embedding,
       String textToEmbed) {
@@ -785,7 +789,7 @@ class OpenSearchBulkSinkBehaviorTest {
   void enrichWithEmbeddingRecomputesWhenNoCachedEntryAvailable() throws Exception {
     // When the service-layer fetch returns nothing for this entity (cache miss or fingerprint
     // mismatch filtered upstream), the call site must regenerate embeddings.
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     // A real entity always resolves a reference; the bulk sink consults it via
@@ -843,7 +847,7 @@ class OpenSearchBulkSinkBehaviorTest {
   void enrichWithEmbeddingRecomputesWhenCachedEntryHasNoEmbedding() throws Exception {
     // Defensive: even if the service layer ever admits an entry without an embedding (e.g. a doc
     // indexed before embeddings were enabled), the splice site must not blindly trust it.
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     // A real entity always resolves a reference; the bulk sink consults it via
@@ -896,7 +900,7 @@ class OpenSearchBulkSinkBehaviorTest {
   void enrichWithEmbeddingRecomputesWhenCachedNodeIsNotAnObject() throws Exception {
     // Defensive: a malformed _source (array or scalar instead of object) must not crash the splice
     // path; we fall through to regeneration.
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     // A real entity always resolves a reference; the bulk sink consults it via
@@ -952,7 +956,7 @@ class OpenSearchBulkSinkBehaviorTest {
     // active client's dimension must be regenerated — otherwise an old-dimension vector would be
     // spliced into a staged index built for the new dimension and silently rejected by the knn
     // field. This is the recreate-after-model-change dimension mismatch.
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     // A real entity always resolves a reference; the bulk sink consults it via
@@ -1019,7 +1023,7 @@ class OpenSearchBulkSinkBehaviorTest {
     // Circuit open (provider unavailable): index the entity without embeddings and count it a
     // success, never calling the provider or writing chunks — a transient outage must not fail
     // every entity in the reindex. The embedding self-heals on the next run.
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     // A real entity always resolves a reference; the bulk sink consults it via
