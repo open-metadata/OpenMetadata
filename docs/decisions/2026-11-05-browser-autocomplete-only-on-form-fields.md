@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-05 (initial)
 - **Deciders:** Chirag Madlani
-- **Guard:** reviewer; `ExploreSearchInput.test.tsx` asserts the Explore search input renders `autocomplete="off"`
+- **Guard:** reviewer; `autocomplete="off"` assertions in `ExploreSearchInput.test.tsx`, `Searchbar.test.tsx`,
+  `useListSearchInput.test.tsx`, core `filter-select.test.tsx` and core `page-header.test.tsx`
 - **Related:** —
 
 ## Context
