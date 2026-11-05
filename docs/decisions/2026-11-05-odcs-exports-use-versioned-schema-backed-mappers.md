@@ -1,7 +1,7 @@
 # ODCS exports use versioned schema-backed mappers
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial)
+- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-05 (centralized schema provenance and attribution)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** ODCSNativeExportTest, ODCSNativeCustomPropertiesTest, ODCSExportServiceTest, scripts/tests/test_generate_odcs_export_models.py
 - **Related:** [PR #36877](https://github.com/open-metadata/OpenMetadata/pull/36877), ADR:2026-11-04-odcs-native-exports-follow-published-schema, ADR:2026-11-04-odcs-preserves-unmapped-fields-as-generic-json
@@ -50,3 +50,12 @@ rather than automatic network downloads.
 Final validation can reject legacy preserved documents that previous exports emitted without checking.
 This favors a valid advertised export format over silently discarding source metadata. It does not
 change the permissive import reader or expose opaque preserved fields as editable native OM fields.
+
+## Amendment — schema provenance and attribution (v2)
+
+The pinned v3.1.0 schema is copied unchanged from
+[Bitol's versioned source](https://github.com/bitol-io/open-data-contract-standard/blob/v3.1.0/schema/odcs-json-schema-v3.1.0.json).
+Its SHA-256 is `2cb7dd6fe43344d2233e0406438622681dc3ebadcf8f0d606a15b40c8f6752c0`.
+The version directory contains only `schema.json`. Source provenance lives here; attribution lives
+in the repository `NOTICE`. The specification artifact packages the shared root `LICENSE` and
+`NOTICE` under `META-INF`, avoiding per-version copies of the same Apache-2.0 license.

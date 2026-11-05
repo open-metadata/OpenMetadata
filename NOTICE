@@ -12,3 +12,13 @@ integration-test suite and not shipped in any runtime artifact:
   Copyright the analysis-ik contributors
   https://github.com/infinilabs/analysis-ik
   Licensed under the Apache License, Version 2.0
+
+------------------------------------------------------------------------------
+This distribution bundles the following third-party schema for runtime ODCS
+export validation and export model generation:
+
+  openmetadata-spec/src/main/resources/odcs/v3.1.0/schema.json
+
+  Open Data Contract Standard (ODCS) v3.1.0 JSON Schema
+  https://github.com/bitol-io/open-data-contract-standard/blob/v3.1.0/schema/odcs-json-schema-v3.1.0.json
+  Licensed under the Apache License, Version 2.0 (see LICENSE).
