@@ -83,6 +83,7 @@ import {
   ShareVisibility,
   TagLabel,
 } from '../../../generated/entity/context/contextMemory';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { queryClient } from '../../../queryClient';
 import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -751,6 +752,20 @@ const MemoryLifecycleRows: FC<{
   </>
 );
 
+/** Whoever changed the memory last, by display name as on its card, with their profile on hover. */
+const MemoryUpdatedBy: FC<{ userName: string }> = ({ userName }) => {
+  const [, , profile] = useUserProfile({ permission: true, name: userName });
+
+  return (
+    <UserPopOverCard
+      showUserName
+      displayName={profile?.displayName || userName}
+      profileWidth={16}
+      userName={userName}
+    />
+  );
+};
+
 const MemoryMetadataExtraRows: FC<{
   memoryToEdit?: ContextMemory;
   isViewOnly: boolean;
@@ -773,11 +788,7 @@ const MemoryMetadataExtraRows: FC<{
         </div>
         <Box align="center" className="tw:min-w-0" gap={2} wrap="wrap">
           {memoryToEdit?.updatedBy && (
-            <UserPopOverCard
-              showUserName
-              profileWidth={16}
-              userName={memoryToEdit.updatedBy}
-            />
+            <MemoryUpdatedBy userName={memoryToEdit.updatedBy} />
           )}
           {Boolean(memoryToEdit?.updatedAt) && (
             <Typography color="secondary" size="text-sm">

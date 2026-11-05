@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import React from 'react';
 import {
   Control,
@@ -21,10 +27,14 @@ import {
   useFormContext,
 } from 'react-hook-form';
 import { MemoryRouter } from 'react-router-dom';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import { OwnerType } from '../../../enums/user.enum';
 import {
   ContextMemory,
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getUserByName } from '../../../rest/userAPI';
 import CreateMemoryModal from './CreateMemoryModal.component';
 
 jest.mock('react-markdown', () => ({
@@ -55,6 +65,11 @@ jest.mock('../../../rest/contextMemoryAPI', () => ({
   createContextMemory: jest.fn(),
   updateContextMemory: jest.fn(),
   deleteContextMemory: jest.fn(),
+}));
+
+jest.mock('../../../rest/userAPI', () => ({
+  ...jest.requireActual('../../../rest/userAPI'),
+  getUserByName: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -314,7 +329,27 @@ describe('CreateMemoryModal', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    useApplicationStore.setState({ userProfilePics: {} });
+    (getUserByName as jest.Mock).mockImplementation(async (name: string) => ({
+      id: name,
+      name,
+      email: '',
+    }));
   });
+
+  /** Renders a memory read-only and settles its updater's profile, which loads after rendering. */
+  const renderViewOnly = async (memory: ContextMemory) => {
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
+      </MemoryRouter>
+    );
+    await waitFor(() =>
+      expect(
+        useApplicationStore.getState().userProfilePics[memory.updatedBy ?? '']
+      ).toBeDefined()
+    );
+  };
 
   it('renders the content input', () => {
     render(<CreateMemoryModal {...defaultProps} />);
@@ -330,9 +365,20 @@ describe('CreateMemoryModal', () => {
   });
 
   it.each([
-    { type: 'user', name: 'alice', displayName: 'Alice' },
-    { type: 'team', name: 'operations', displayName: 'Operations' },
-  ])('shows the $type owner and last updater separately', (owner) => {
+    {
+      type: 'user',
+      name: 'alice',
+      displayName: 'Alice',
+      ownerType: OwnerType.USER,
+    },
+    {
+      type: 'team',
+      name: 'operations',
+      displayName: 'Operations',
+      ownerType: OwnerType.TEAM,
+    },
+  ])('shows the $type owner and last updater separately', async (ownerCase) => {
+    const { ownerType, ...owner } = ownerCase;
     const memory: ContextMemory = {
       id: 'memory-id',
       name: 'refund-policy',
@@ -341,14 +387,14 @@ describe('CreateMemoryModal', () => {
       updatedAt: 1767225600000,
     };
 
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
-      </MemoryRouter>
-    );
+    await renderViewOnly(memory);
 
     expect(screen.getByText('label.owner')).toBeInTheDocument();
     expect(screen.getByText(owner.displayName)).toBeInTheDocument();
+    expect(UserPopOverCard).toHaveBeenCalledWith(
+      expect.objectContaining({ type: ownerType, userName: owner.name }),
+      expect.anything()
+    );
     expect(screen.queryByText('label.created-by')).not.toBeInTheDocument();
 
     const metadata = within(screen.getByTestId('memory-metadata-section'));
@@ -358,7 +404,36 @@ describe('CreateMemoryModal', () => {
     expect(metadata.getByText(/Jan 1, 2026/)).toBeInTheDocument();
   });
 
-  it('shows the last updater when a memory has no owner', () => {
+  it('names the last updater by display name, as the memory card does', async () => {
+    (getUserByName as jest.Mock).mockImplementation(async (name: string) => ({
+      id: name,
+      name,
+      displayName: 'Memory Reconciliation Agent',
+      email: '',
+    }));
+    const memory: ContextMemory = {
+      id: 'memory-id',
+      name: 'refund-policy',
+      owners: [
+        { id: 'owner-id', type: 'user', name: 'alice', displayName: 'Alice' },
+      ],
+      updatedBy: 'MemoryReconciliationApplicationBot',
+      updatedAt: 1767225600000,
+    };
+
+    await renderViewOnly(memory);
+
+    const metadata = within(screen.getByTestId('memory-metadata-section'));
+
+    expect(
+      await metadata.findByText('Memory Reconciliation Agent')
+    ).toBeInTheDocument();
+    expect(
+      metadata.queryByText('MemoryReconciliationApplicationBot')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the last updater when a memory has no owner', async () => {
     const memory: ContextMemory = {
       id: 'memory-id',
       name: 'legacy-policy',
@@ -366,11 +441,7 @@ describe('CreateMemoryModal', () => {
       updatedAt: 1767225600000,
     };
 
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
-      </MemoryRouter>
-    );
+    await renderViewOnly(memory);
 
     expect(screen.queryByText('label.owner')).not.toBeInTheDocument();
     expect(screen.queryByText('label.created-by')).not.toBeInTheDocument();
@@ -381,7 +452,7 @@ describe('CreateMemoryModal', () => {
     expect(metadata.getByText('admin')).toBeInTheDocument();
   });
 
-  it('shows the last updater when the owner also made the update', () => {
+  it('shows the last updater when the owner also made the update', async () => {
     const memory: ContextMemory = {
       id: 'memory-id',
       name: 'owned-policy',
@@ -390,11 +461,7 @@ describe('CreateMemoryModal', () => {
       updatedAt: 1767225600000,
     };
 
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
-      </MemoryRouter>
-    );
+    await renderViewOnly(memory);
 
     expect(screen.getByText('label.owner')).toBeInTheDocument();
 
