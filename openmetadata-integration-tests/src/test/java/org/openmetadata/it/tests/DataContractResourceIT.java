@@ -8281,11 +8281,11 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   private static String odcsWithExportableQualityRules(String contractName, String tableName) {
     return odcsWithQualityRules(contractName, tableName)
             .replace(
-                "rule: validValues\n                    validValues: [open, closed]",
-                "metric: invalidValues\n                    arguments:\n                      validValues: [open, closed]\n                    mustBe: 0")
+                "rule: validValues\n            validValues: [open, closed]",
+                "metric: invalidValues\n            arguments:\n              validValues: [open, closed]\n            mustBe: 0")
             .replace(
-                "metric: freshness\n                    mustBeLessOrEqualTo: 24\n                    unit: hours",
-                "type: text\n                    description: Freshness is defined by the contract SLA")
+                "metric: freshness\n            mustBeLessOrEqualTo: 24\n            unit: hours",
+                "type: text\n            description: Freshness is defined by the contract SLA")
         + "slaProperties:\n  - property: freshness\n    value: 24\n    unit: h\n    element: updated_at\n";
   }
 
