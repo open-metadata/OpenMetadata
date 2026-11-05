@@ -10,6 +10,7 @@ import org.openmetadata.schema.EntityInterface;
 public class TestNamespace {
   private static final String RUN_ID = UUID.randomUUID().toString().replaceAll("-", "");
   private static final AtomicLong UNIQUE_SHORT_ID_SEQUENCE = new AtomicLong();
+  private static volatile String pass = "";
   private static final String SHORT_ID_SEQUENCE_FORMAT = "%08x";
   private static final long SHORT_ID_SEQUENCE_MASK = 0xFFFFFFFFL;
   private static final long SHORT_ID_SEQUENCE_STEP = 0x9E3779B9L;
@@ -65,7 +66,22 @@ public class TestNamespace {
   }
 
   public String prefix(String base) {
-    return base + "__" + RUN_ID + "__" + classId + (methodId != null ? ("__" + methodId) : "");
+    return base
+        + "__"
+        + RUN_ID
+        + pass
+        + "__"
+        + classId
+        + (methodId != null ? ("__" + methodId) : "");
+  }
+
+  /**
+   * Called when failsafe's re-run pass starts in this JVM: every prefix from now on differs from the
+   * failed attempt's, so a re-run never collides with what that attempt left behind
+   * (ADR:2026-10-15-merge-queue-its-retry-a-failed-test-once).
+   */
+  public static void startRetryPass() {
+    pass = "r";
   }
 
   /**

@@ -31,6 +31,7 @@ def _junit_counts(
 ) -> tuple[dict[str, int], list[dict[str, str]], list[str]]:
     totals = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
     failed_tests = []
+    passed_ids = set()
     parse_errors = []
     for report_file in report_files:
         try:
@@ -52,12 +53,14 @@ def _junit_counts(
                 totals["failures"] += int("failure" in child_names)
                 totals["errors"] += int("error" in child_names)
                 totals["skipped"] += int("skipped" in child_names)
+                class_name = test_case.attrib.get("classname", "")
+                test_name = test_case.attrib.get("name", "")
+                if not child_names & {"failure", "error", "skipped"}:
+                    passed_ids.add(f"{class_name}#{test_name}")
                 for failure_type in ("failure", "error"):
                     failure = children_by_name.get(failure_type)
                     if failure is None:
                         continue
-                    class_name = test_case.attrib.get("classname", "")
-                    test_name = test_case.attrib.get("name", "")
                     failed_tests.append(
                         {
                             "id": f"{class_name}#{test_name}",
@@ -78,6 +81,13 @@ def _junit_counts(
                     parse_errors.append(
                         f"{report_file}: invalid {key} count {root.attrib.get(key)!r}"
                     )
+
+    # A failsafe re-run of a parallel lane can report a retried test's pass in another class's
+    # file while its first attempt's failure stays in its own; a test that passed anywhere passed.
+    for retried in [test for test in failed_tests if test["id"] in passed_ids]:
+        totals["tests"] -= 1
+        totals["failures" if retried["type"] == "failure" else "errors"] -= 1
+    failed_tests = [test for test in failed_tests if test["id"] not in passed_ids]
     return totals, failed_tests, parse_errors
 
 
