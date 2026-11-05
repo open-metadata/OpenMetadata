@@ -104,7 +104,7 @@ describe('ProfilerConfigurationPage', () => {
     await user().click(await screen.findByTestId('disabled-switch'));
 
     expect(
-      within(screen.getByTestId('metric-type-select')).getByRole('textbox', {
+      within(screen.getByTestId('metric-type-select')).getByRole('combobox', {
         name: 'label.metric-type',
       })
     ).toBeDisabled();

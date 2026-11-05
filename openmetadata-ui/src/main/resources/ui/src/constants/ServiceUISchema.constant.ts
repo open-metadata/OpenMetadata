@@ -29,6 +29,10 @@ export const DEF_UI_SCHEMA = {
     'ui:hideError': true,
   },
   supportsProfiler: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsAutoPartitionDetection: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
   supportsDatabase: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsQueryComment: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDBTExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -71,6 +75,13 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
 
 export const EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA = {
   incremental: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
+};
+
+export const EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA = {
+  enableAutoPartitionDetection: {
     'ui:widget': 'hidden',
     'ui:hideError': true,
   },

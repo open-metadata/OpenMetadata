@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { has } from 'lodash';
+import { has, mapValues } from 'lodash';
 import {
   OperationPermission,
   UIPermission,
@@ -103,7 +103,7 @@ const toAllowedBoolean = (
       // reaches this branch. It must fail CLOSED — this is the single seam every
       // entity/resource permission flows through, so returning a truthy value here
       // would grant access app-wide.
-      const _unhandled: never = access;
+      void (access satisfies never);
 
       return false;
     }
@@ -164,6 +164,18 @@ export const userPermissions = {
     checkPermission(Operation.ViewBasic, resourceEntityType, permissions) ||
     checkPermission(Operation.ViewAll, resourceEntityType, permissions),
 };
+
+/**
+ * Revokes every Edit* operation, for an entity that is read-only (disabled or
+ * soft-deleted). Revoking EditAll alone is not enough: derived flags prefer a
+ * field key (EditDomains, EditDescription…) over EditAll when it is present.
+ */
+export const revokeEditPermissions = (
+  permissions: OperationPermission
+): OperationPermission =>
+  mapValues(permissions, (granted, operation) =>
+    operation.startsWith('Edit') ? false : granted
+  ) as OperationPermission;
 
 /**
  * Prioritizes field-level edit permissions over EditAll permission

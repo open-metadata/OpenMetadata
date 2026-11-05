@@ -50,9 +50,9 @@ for (const searchItem of navbarSearchItems) {
         label
       );
 
-      await expect(page.getByTestId('global-search-selector')).toContainText(
-        label
-      );
+      await expect(
+        page.getByTestId('global-search-selector').getByRole('button')
+      ).toHaveText(label);
 
       const searchRes = waitForResponseWithStatus(
         page,

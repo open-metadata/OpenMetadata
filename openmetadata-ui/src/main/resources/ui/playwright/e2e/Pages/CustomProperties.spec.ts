@@ -111,6 +111,7 @@ import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { createTable } from '../../utils/KnowledgeCenter';
 import {
   openMatchingFieldsPanel,
+  selectSettingOption,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import {
@@ -119,7 +120,10 @@ import {
   sidebarClick,
 } from '../../utils/sidebar';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
-import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
+import {
+  RightPanelPageObject,
+  RIGHT_PANEL_TAB,
+} from '../PageObject/Explore/RightPanelPageObject';
 import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -247,7 +251,7 @@ const BASIC_PROPERTIES = [
   'Duration',
   'Email',
   'Number',
-  'Sql Query',
+  'SQL Query',
   'Time Interval',
   'Timestamp',
   'Hyperlink',
@@ -1001,10 +1005,6 @@ pickEntityMatrix(
 
           await openCustomPropertiesTab(page);
 
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
-
           await getCustomPropertyEditButton(
             page.getByTestId(`custom-property-${durationPropertyName}-card`)
           ).click();
@@ -1107,10 +1107,6 @@ pickEntityMatrix(
             await mainEntity.visitEntityPage(page);
 
             await openCustomPropertiesTab(page);
-
-            await page.locator('.ant-skeleton-active').waitFor({
-              state: 'detached',
-            });
 
             await setValueForProperty({
               page,
@@ -3382,10 +3378,6 @@ pickEntityMatrix(
 
           await openCustomPropertiesTab(page);
 
-          await page
-            .locator('.ant-skeleton-active')
-            .waitFor({ state: 'detached' })
-            .catch(() => {});
           await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
@@ -3401,9 +3393,6 @@ pickEntityMatrix(
 
           const customPropertiesTab = page.getByTestId('custom_properties');
           await customPropertiesTab.click();
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
 
           await expect(page.getByText(dashboardPropertyValue)).toBeVisible();
         });
@@ -3429,7 +3418,6 @@ pickEntityMatrix(
             { exact: true }
           );
           await customPropertyOption.click();
-          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${dashboardSearchPropertyName}`
@@ -3441,7 +3429,14 @@ pickEntityMatrix(
           );
           await expect(customPropertyBadge).toBeVisible();
 
-          await fieldPanel.click();
+          // A newly added field opens on its own; a second click on its
+          // header would close it again.
+          const collapsedFieldHeader = fieldPanel.locator(
+            'button[aria-expanded="false"]'
+          );
+          if (await collapsedFieldHeader.isVisible()) {
+            await collapsedFieldHeader.click();
+          }
           await setSliderValue(
             page,
             'field-weight-slider',
@@ -3452,13 +3447,7 @@ pickEntityMatrix(
           );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
-          await matchTypeSelect.click();
-          await page
-            .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
-            .waitFor({ state: 'visible' });
-          await page
-            .locator('.ant-select-item-option[title="Standard Match"]')
-            .click();
+          await selectSettingOption(page, matchTypeSelect, 'Standard Match');
 
           const searchSettingsSaveResponse = page.waitForResponse(
             '/api/v1/system/settings'
@@ -3538,10 +3527,6 @@ pickEntityMatrix(
 
           await openCustomPropertiesTab(page);
 
-          await page
-            .locator('.ant-skeleton-active')
-            .waitFor({ state: 'detached' })
-            .catch(() => {});
           await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
@@ -3574,7 +3559,6 @@ pickEntityMatrix(
             { exact: true }
           );
           await customPropertyOption.click();
-          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${pipelineSearchPropertyName}`
@@ -3586,7 +3570,14 @@ pickEntityMatrix(
           );
           await expect(customPropertyBadge).toBeVisible();
 
-          await fieldPanel.click();
+          // A newly added field opens on its own; a second click on its
+          // header would close it again.
+          const collapsedFieldHeader = fieldPanel.locator(
+            'button[aria-expanded="false"]'
+          );
+          if (await collapsedFieldHeader.isVisible()) {
+            await collapsedFieldHeader.click();
+          }
           await setSliderValue(
             page,
             'field-weight-slider',
@@ -3597,10 +3588,7 @@ pickEntityMatrix(
           );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
-          await matchTypeSelect.click();
-          await page
-            .locator('.ant-select-item-option[title="Phrase Match"]')
-            .click();
+          await selectSettingOption(page, matchTypeSelect, 'Phrase Match');
 
           const searchSettingsSaveResponse = page.waitForResponse(
             '/api/v1/system/settings'
@@ -3712,7 +3700,7 @@ pickEntityMatrix(
         rightPanel.setEntityConfig(mainEntity);
         // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
         test.skip(
-          !rightPanel.isTabAvailable('custom property'),
+          !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
           `Custom Property tab not available for ${entity.name}`
         );
         const fqn = getEntityFqn(mainEntity);
@@ -3741,7 +3729,7 @@ pickEntityMatrix(
         rightPanel.setEntityConfig(mainEntity);
         // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
         test.skip(
-          !rightPanel.isTabAvailable('custom property'),
+          !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
           `Custom Property tab not available for ${entity.name}`
         );
         const fqn = getEntityFqn(mainEntity);
@@ -3771,7 +3759,7 @@ pickEntityMatrix(
         rightPanel.setEntityConfig(mainEntity);
         // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
         test.skip(
-          !rightPanel.isTabAvailable('custom property'),
+          !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
           `Custom Property tab not available for ${entity.name}`
         );
         const fqn = getEntityFqn(mainEntity);
@@ -3803,7 +3791,7 @@ pickEntityMatrix(
         rightPanel.setEntityConfig(mainEntity);
         // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
         test.skip(
-          !rightPanel.isTabAvailable('custom property'),
+          !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
           `Custom Property tab not available for ${entity.name}`
         );
         const fqn = getEntityFqn(mainEntity);

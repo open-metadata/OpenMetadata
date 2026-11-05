@@ -35,6 +35,7 @@ class EvaluationScopeParamsSetter(RuntimeParameterSetter):
         partition_details = getattr(self.sampler, "partition_details", None)
 
         return EvaluationScopeRuntimeParameters(
+            execution_source=getattr(self.sampler, "execution_source", None),
             profile_sample=sample_config.profileSample if sample_config else None,
             profile_sample_type=sample_config.profileSampleType if sample_config else None,
             sampling_applied=self._sampling_applied(),

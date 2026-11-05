@@ -74,22 +74,10 @@ describe('ProfilerClassBase', () => {
   });
 
   describe('getDefaultTabKey', () => {
-    it('should return the default tab key when tour is open', () => {
-      const isTourOpen = true;
-      const expectedTabKey = ProfilerTabPath.COLUMN_PROFILE;
+    it('should return the table profile tab key', () => {
+      const tabKey = profilerClassBaseInstance.getDefaultTabKey();
 
-      const tabKey = profilerClassBaseInstance.getDefaultTabKey(isTourOpen);
-
-      expect(tabKey).toEqual(expectedTabKey);
-    });
-
-    it('should return the default tab key when tour is not open', () => {
-      const isTourOpen = false;
-      const expectedTabKey = ProfilerTabPath.TABLE_PROFILE;
-
-      const tabKey = profilerClassBaseInstance.getDefaultTabKey(isTourOpen);
-
-      expect(tabKey).toEqual(expectedTabKey);
+      expect(tabKey).toEqual(ProfilerTabPath.TABLE_PROFILE);
     });
   });
 });

@@ -12,13 +12,15 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { Upload01 as ImportIcon } from '@openmetadata/ui-core-components/icons';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import {
+  Download01,
+  Edit01,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { lowerCase } from 'lodash';
 import type { ReactElement, ReactNode } from 'react';
 import { NavigateFunction } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../assets/svg/edit-new.svg';
-import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
+import { ManageMenuItem as ItemType } from '../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageMenuItem } from '../components/common/ManageMenuButton/ManageMenuButton.component';
 import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
@@ -26,7 +28,9 @@ import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import LimitWrapper from '../hoc/LimitWrapper';
-import { exportTestCasesInCSV } from '../rest/testAPI';
+import { TestCaseExportFilters } from '../rest/testAPI';
+import { getTestCaseBulkEditSearch } from './DataQuality/DataQualityPureUtils';
+import { withTestCaseExportFilters } from './DataQuality/TestCaseExport.utils';
 import { getEntityBulkEditPath, getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 
@@ -50,13 +54,18 @@ interface TestCasePermission {
   EditAll: boolean;
 }
 
+/**
+ * `listFilters` are the filters of the test case list the menu belongs to, so
+ * Export and Bulk Edit both select the test cases the list shows.
+ */
 export const getTestCaseManageMenuItems = (
   fqn: string,
   permission: TestCasePermission,
   deleted: boolean,
   navigate: NavigateFunction,
   showModal: (data: ExportData) => void,
-  sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE
+  sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE,
+  listFilters?: TestCaseExportFilters
 ): ManageMenuItem[] => {
   const { ViewAll, EditAll } = permission;
 
@@ -73,7 +82,7 @@ export const getTestCaseManageMenuItems = (
       ? [
           {
             key: 'import-button',
-            icon: ImportIcon,
+            icon: Upload01,
             title: t('label.import'),
             description: t('message.import-entity-help', {
               entity: t('label.test-case-lowercase-plural'),
@@ -91,7 +100,7 @@ export const getTestCaseManageMenuItems = (
       ? [
           {
             key: 'export-button',
-            icon: ExportIcon,
+            icon: Download01,
             title: t('label.export'),
             description: t('message.export-entity-help', {
               entity: t('label.test-case-lowercase-plural'),
@@ -99,7 +108,7 @@ export const getTestCaseManageMenuItems = (
             onClick: () =>
               showModal({
                 name: fqn,
-                onExport: exportTestCasesInCSV,
+                onExport: withTestCaseExportFilters(listFilters),
                 exportTypes: [ExportTypes.CSV],
               }),
           },
@@ -109,7 +118,7 @@ export const getTestCaseManageMenuItems = (
       ? [
           {
             key: 'bulk-edit-button',
-            icon: IconEdit,
+            icon: Edit01,
             title: t('label.bulk-edit'),
             description: t('message.bulk-edit-entity-help', {
               entity: t('label.test-case-lowercase-plural'),
@@ -118,7 +127,10 @@ export const getTestCaseManageMenuItems = (
             limitResource: 'testCase',
             onClick: () =>
               navigate(
-                withSource(getEntityBulkEditPath(EntityType.TEST_CASE, fqn))
+                `${getEntityBulkEditPath(
+                  EntityType.TEST_CASE,
+                  fqn
+                )}${getTestCaseBulkEditSearch(sourceEntityType, listFilters)}`
               ),
           },
         ]
@@ -132,7 +144,8 @@ export const ExtraTestCaseDropdownOptions = (
   deleted: boolean,
   navigate: NavigateFunction,
   showModal: (data: ExportData) => void,
-  sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE
+  sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE,
+  listFilters?: TestCaseExportFilters
 ): ItemType[] =>
   getTestCaseManageMenuItems(
     fqn,
@@ -140,7 +153,8 @@ export const ExtraTestCaseDropdownOptions = (
     deleted,
     navigate,
     showModal,
-    sourceEntityType
+    sourceEntityType,
+    listFilters
   ).map((item) => {
     const label = (
       <ManageButtonItemLabel

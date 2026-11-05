@@ -39,6 +39,23 @@ public final class DenyPolicyPrincipals {
    */
   public static OpenMetadataClient clientDenied(
       String uniquePrefix, String resource, MetadataOperation operation) {
+    return clientDeniedWhen(uniquePrefix, resource, operation, null);
+  }
+
+  /**
+   * Same as {@link #clientDenied} but the deny only applies where the policy {@code condition}
+   * holds, e.g. {@code matchAnyTag('PII.Sensitive')}. Proves that an endpoint resolves the actual
+   * entity before evaluating, since a condition never matches without one.
+   */
+  public static OpenMetadataClient clientDeniedWhen(
+      String uniquePrefix, String resource, MetadataOperation operation, String condition) {
+    User denied = userDeniedWhen(uniquePrefix, resource, operation, condition);
+    return SdkClients.createClient(denied.getName(), denied.getEmail(), new String[] {});
+  }
+
+  /** The user {@link #clientDeniedWhen} signs in as, for a test that acts as them another way. */
+  public static User userDeniedWhen(
+      String uniquePrefix, String resource, MetadataOperation operation, String condition) {
     OpenMetadataClient admin = SdkClients.adminClient();
     List<Rule> rules = new ArrayList<>();
     if (!isReadOperation(operation)) {
@@ -54,6 +71,7 @@ public final class DenyPolicyPrincipals {
             .withName(uniquePrefix + "_deny")
             .withResources(List.of(resource))
             .withOperations(List.of(operation))
+            .withCondition(condition)
             .withEffect(Rule.Effect.DENY));
 
     Policy policy =
@@ -82,8 +100,7 @@ public final class DenyPolicyPrincipals {
     createUser.setName(uniquePrefix + "_user");
     createUser.setEmail(uniquePrefix + "_user@test.openmetadata.org");
     createUser.setTeams(List.of(team.getId()));
-    User denied = admin.users().create(createUser);
-    return SdkClients.createClient(denied.getName(), denied.getEmail(), new String[] {});
+    return admin.users().create(createUser);
   }
 
   private static boolean isReadOperation(MetadataOperation operation) {

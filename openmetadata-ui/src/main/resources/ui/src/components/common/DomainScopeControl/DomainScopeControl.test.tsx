@@ -17,6 +17,7 @@ import { DomainSelectableListProps } from '../DomainSelectableList/DomainSelecta
 import DomainScopeControl from './DomainScopeControl';
 
 const mockNavigate = jest.fn();
+const mockSwitchActiveDomain = jest.fn();
 const mockUpdateActiveDomain = jest.fn();
 const mockDomainSelectableList = jest.fn();
 
@@ -52,6 +53,10 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
+}));
+
+jest.mock('../../../hooks/useSwitchActiveDomain', () => ({
+  useSwitchActiveDomain: () => mockSwitchActiveDomain,
 }));
 
 jest.mock('../../../hooks/useDomainStore', () => ({
@@ -185,12 +190,12 @@ describe('DomainScopeControl', () => {
     }
   );
 
-  it('updates the global domain scope and reloads on selection', async () => {
+  it('switches and persists the global domain scope on selection', async () => {
     await renderControl();
     fireEvent.click(screen.getByTestId('mock-pick-domain'));
 
-    expect(mockUpdateActiveDomain).toHaveBeenCalledWith(demoDomain);
-    expect(mockNavigate).toHaveBeenCalledWith(0);
+    // Persisting goes through the shared switch, so the server-side list filter follows the pick.
+    expect(mockSwitchActiveDomain).toHaveBeenCalledWith(demoDomain);
   });
 
   it('passes the active domain and unrestricted flags to the menu', async () => {
@@ -231,7 +236,7 @@ describe('DomainScopeControl', () => {
     expect(mockDomainSelectableList).not.toHaveBeenCalled();
   });
 
-  it('restricts the menu to the user domains when access is restricted', async () => {
+  it('restricts the menu to the user domains, with All Domains, when access is restricted', async () => {
     storeState = {
       ...storeState,
       isDomainRestricted: true,
@@ -241,7 +246,7 @@ describe('DomainScopeControl', () => {
 
     const props = lastMenuProps();
 
-    expect(props.showAllDomains).toBe(false);
+    expect(props.showAllDomains).toBe(true);
     expect(props.restrictedDomains).toEqual([complianceDomain, demoDomain]);
   });
 

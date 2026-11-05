@@ -464,17 +464,12 @@ export const selectSubDomain = async (
   subDomain: SubDomain['data']
 ) => {
   const menuItem = page.getByRole('menuitem', { name: domain.displayName });
-  const isSelected = await menuItem.evaluate((element) => {
-    return element.classList.contains('ant-menu-item-selected');
-  });
 
-  if (!isSelected) {
-    const subDomainRes = page.waitForResponse(
-      '/api/v1/search/query?q=*&from=0&size=0&index=domain&deleted=false&track_total_hits=true'
-    );
-    await menuItem.click();
-    await subDomainRes;
-  }
+  const domainRes = page.waitForResponse(
+    '/api/v1/search/query?q=*&from=0&size=0&index=domain&deleted=false&track_total_hits=true'
+  );
+  await menuItem.click();
+  await domainRes;
 
   const subDomainRes = page.waitForResponse(
     '/api/v1/search/query?q=*&from=0&size=50&index=domain&deleted=false&track_total_hits=true'
@@ -1374,6 +1369,81 @@ export const addTagsAndGlossaryToDomain = async (
 };
 
 /**
+ * Clears the caller's persisted navbar selection (User.defaultDomain). The pick is stored on the
+ * user, so a spec that selects a domain must clear it or every later list call by that user
+ * (in this and other specs) stays scoped to it.
+ */
+export const clearPersistedDomain = async (apiContext: APIRequestContext) => {
+  const me = await (await apiContext.get('/api/v1/users/loggedInUser')).json();
+  const res = await apiContext.patch(`/api/v1/users/${me.id}`, {
+    data: [{ op: 'add', path: '/defaultDomain', value: null }],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+
+  expect(res.ok(), `clearing defaultDomain returned ${res.status()}`).toBe(
+    true
+  );
+};
+
+/** Saves `domainId` as the caller's navbar selection (User.defaultDomain) through the API. */
+export const setPersistedDomain = async (
+  apiContext: APIRequestContext,
+  domainId: string
+) => {
+  const me = await (await apiContext.get('/api/v1/users/loggedInUser')).json();
+  const res = await apiContext.patch(`/api/v1/users/${me.id}`, {
+    data: [
+      {
+        op: 'add',
+        path: '/defaultDomain',
+        value: { id: domainId, type: 'domain' },
+      },
+    ],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+
+  expect(res.ok(), `saving defaultDomain returned ${res.status()}`).toBe(true);
+};
+
+/**
+ * Runs a navbar domain pick and waits for it to settle: the pick is saved on the user, then the
+ * page reloads. Interacting before the reload races it (e.g. a second pick lands first).
+ * A failed save shows a toast and skips the reload, so fail on its status instead of waiting.
+ */
+export const switchNavbarDomain = async (
+  page: Page,
+  pick: () => Promise<void>
+) => {
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      /\/api\/v1\/users\/[^/]+$/.test(new URL(response.url()).pathname),
+    { timeout: ACTION_TIMEOUT }
+  );
+  const reloaded = page.waitForEvent('load', { timeout: ACTION_TIMEOUT });
+  // A failed save never reloads; keep the rejection handled until the status is checked.
+  reloaded.catch(() => undefined);
+  await pick();
+  const response = await saved;
+
+  expect(
+    response.ok(),
+    `saving the navbar domain returned ${response.status()}`
+  ).toBe(true);
+
+  await reloaded;
+  await waitForAllLoadersToDisappear(page);
+};
+
+/** Clears the navbar selection through the UI ("All Domains"), which also clears the persisted pick. */
+export const clearDomainFromNavbar = async (page: Page) => {
+  await switchNavbarDomain(page, async () => {
+    await page.getByTestId('domain-dropdown').click();
+    await page.getByTestId('tree-node-All Domains').click();
+  });
+};
+
+/**
  * Verifies if the active domain is set to All Domains (DEFAULT_DOMAIN_VALUE)
  */
 export const verifyActiveDomainIsDefault = async (page: Page) => {
@@ -2210,11 +2280,10 @@ export const selectDomainFromNavbar = async (
 
   const domainNode = page.getByTestId(`tree-node-${domain.fullyQualifiedName}`);
   await domainNode.waitFor({ state: 'visible' });
-  await domainNode.click();
+  await switchNavbarDomain(page, () => domainNode.click());
 
   // The label confirms the domain filter applied.
   await expect(domainDropdown).toContainText(searchTerm);
-  await waitForAllLoadersToDisappear(page);
 };
 
 /** Runs one Explore search and returns the FQNs it matched. */

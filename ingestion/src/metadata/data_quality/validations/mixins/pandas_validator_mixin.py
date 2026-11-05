@@ -49,6 +49,11 @@ class PandasValidatorMixin:
 
     runner: "PandasRunner"
 
+    def get_set_values_type(self) -> None:
+        """None: GenericDataFrameColumnParser types a column of "True"/"False" strings as BOOLEAN,
+        so a set keeps its values as written."""
+        return
+
     def get_column(self: HasValidatorContext, column_name: str | None = None) -> SQALikeColumn:
         """Get column object for the given column name
 

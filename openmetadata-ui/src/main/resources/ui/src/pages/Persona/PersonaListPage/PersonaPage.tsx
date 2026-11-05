@@ -19,7 +19,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -28,9 +28,9 @@ import { AddEditPersonaForm } from '../../../components/MyData/Persona/AddEditPe
 import { PersonaDetailsCard } from '../../../components/MyData/Persona/PersonaDetailsCard/PersonaDetailsCard';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
@@ -41,8 +41,6 @@ import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './persona-page.less';
-
-const PERSONA_PAGE_SIZE = 12;
 
 export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
   const { isAdminUser } = useAuth();
@@ -60,7 +58,7 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
     paging,
     pagingCursor,
     showPagination,
-  } = usePaging(PERSONA_PAGE_SIZE);
+  } = usePaging(undefined, GRID_PAGE_SIZE_OPTIONS);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.PERSONA),
@@ -113,17 +111,18 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
   const errorPlaceHolder = useMemo(
     () => (
       <div className="h-full text-center w-full p-x-box">
-        <ErrorPlaceHolder
-          buttonId="add-persona-button"
-          className="border-none"
-          heading={t('label.persona')}
-          permission={isAdminUser}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.persona'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-          onClick={handleAddNewPersona}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <CreatePlaceholder
+            buttonId="add-persona-button"
+            data-testid={`create-error-placeholder-${t('label.persona')}`}
+            heading={t('label.persona')}
+            permission={isAdminUser}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.persona'),
+            })}
+            onCreate={handleAddNewPersona}
+          />
+        </div>
       </div>
     ),
     [isAdminUser]
@@ -158,7 +157,6 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
         {errorPlaceHolder}
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
-            persona={addEditPersona}
             onCancel={handlePersonalAddEditCancel}
             onSave={handlePersonaAddEditSave}
           />
@@ -238,7 +236,6 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
 
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
-            persona={addEditPersona}
             onCancel={handlePersonalAddEditCancel}
             onSave={handlePersonaAddEditSave}
           />

@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/activateOntologyRelease.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ActivateOntologyRelease",
+  "description": "Activate an approved immutable ontology release. Selecting an older release performs an audited rollback.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.ActivateOntologyRelease",
+  "properties": {
+    "releaseId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "expectedActivationRevision": {
+      "$ref": "../../type/ontologyState.json#/properties/activationRevision"
+    }
+  },
+  "required": ["releaseId", "expectedActivationRevision"],
+  "additionalProperties": false
+}

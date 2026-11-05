@@ -19,8 +19,11 @@ import DataProductsImg from '../assets/img/widgets/landing/data-products.png';
 import DataQualityImg from '../assets/img/widgets/landing/data-quality.png';
 import DomainsImg from '../assets/img/widgets/landing/domains.png';
 import KpisImg from '../assets/img/widgets/landing/kpis.png';
+import MyTasksImg from '../assets/img/widgets/landing/my-tasks.png';
+import PipelineStatusImg from '../assets/img/widgets/landing/pipeline-status.png';
 import PlatformHealthImg from '../assets/img/widgets/landing/platform-health.png';
 import TeamActivityImg from '../assets/img/widgets/landing/team-activity.png';
+import TotalDataAssetsImg from '../assets/img/widgets/landing/total-data-assets.png';
 import YoursAndFollowedImg from '../assets/img/widgets/landing/yours-and-followed.png';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -42,6 +45,11 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 const WIDGET_IMAGE_BY_KEY: ReadonlyArray<[string, string]> = [
   [LandingPageWidgetKeys.PLATFORM_HEALTH, PlatformHealthImg],
   [LandingPageWidgetKeys.DATA_ESTATE, DataEstateImg],
+  // TotalAssets and MyTask outlived the widgets they were named for, like the
+  // two below: each now holds the topic card that replaced it.
+  [LandingPageWidgetKeys.TOTAL_DATA_ASSETS, TotalDataAssetsImg],
+  [LandingPageWidgetKeys.MY_TASK, MyTasksImg],
+  [LandingPageWidgetKeys.PIPELINE_STATUS, PipelineStatusImg],
   // Team Activity, despite the key — the card replaced the activity feed.
   [LandingPageWidgetKeys.ACTIVITY_FEED, TeamActivityImg],
   [LandingPageWidgetKeys.YOURS_AND_FOLLOWED, YoursAndFollowedImg],

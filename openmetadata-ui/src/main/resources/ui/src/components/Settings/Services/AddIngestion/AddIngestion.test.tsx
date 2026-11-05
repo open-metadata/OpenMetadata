@@ -91,11 +91,6 @@ jest.mock('../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm', () => {
   ));
 });
 
-jest.mock('../../../../utils/SchedularUtils', () => ({
-  getScheduleOptionsFromSchedules: jest.fn().mockReturnValue([]),
-  getRaiseOnErrorFormField: jest.fn().mockReturnValue({}),
-}));
-
 jest.mock('../../../../hooks/useEntityRules', () => ({
   useEntityRules: jest.fn().mockReturnValue({
     entityRules: {

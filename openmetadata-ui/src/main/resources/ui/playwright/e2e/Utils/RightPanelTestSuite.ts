@@ -20,6 +20,7 @@ import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
   PageContext,
   RightPanelPageObject,
+  RIGHT_PANEL_TAB,
 } from '../PageObject/Explore/RightPanelPageObject';
 import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
 
@@ -93,7 +94,7 @@ export class RightPanelTestSuite {
       await this.testDataQualityTab();
     }
 
-    if (shouldTestTab('custom property')) {
+    if (shouldTestTab(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES)) {
       await this.testCustomPropertiesTab();
     }
   }

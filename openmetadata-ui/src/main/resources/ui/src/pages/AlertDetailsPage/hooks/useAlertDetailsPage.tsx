@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import AlertConfigDetails from '../../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails';
 import AlertDiagnosticInfoTab from '../../../components/Alerts/AlertDetails/AlertDiagnosticInfo/AlertDiagnosticInfoTab';
 import AlertRecentEventsTab from '../../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { useAlertDetailsData } from '../../../hooks/observability/alerts/useAlertDetailsData';
@@ -48,7 +48,9 @@ export function useAlertDetailsPage(
         label: t('label.configuration'),
         key: AlertDetailTabs.CONFIGURATION,
         children: isUndefined(alertDetails) ? (
-          <ErrorPlaceHolder className="m-0" />
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder data-testid="no-data-placeholder" />
+          </div>
         ) : (
           <AlertConfigDetails
             alertDetails={alertDetails}

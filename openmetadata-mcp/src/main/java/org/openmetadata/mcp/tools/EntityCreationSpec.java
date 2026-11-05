@@ -1,5 +1,7 @@
 package org.openmetadata.mcp.tools;
 
+import static java.util.Map.entry;
+
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -7,6 +9,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.service.Entity;
@@ -34,22 +37,45 @@ record EntityCreationSpec(
           "processingStatus",
           "votes");
 
+  /** Data contract fields its repository owns: its test suite, last run, history, inheritance. */
+  private static final Set<String> DATA_CONTRACT_SYSTEM_FIELDS =
+      Set.of("contractUpdates", "inherited", "latestResult", "testSuite");
+
   private static final Map<String, String> DEDICATED_CREATE_FLOWS =
-      Map.of(
-          Entity.USER,
-          "user creation performs authentication, password, role, and invitation setup",
-          Entity.BOT,
-          "bot creation validates the bot user and applies impersonation safeguards",
-          Entity.APPLICATION,
-          "application creation installs and schedules the application",
-          Entity.EVENT_SUBSCRIPTION,
-          "event subscription creation validates destinations and registers its publisher",
-          Entity.INGESTION_PIPELINE,
-          "ingestion pipeline creation uses pipeline-specific permissions and secret handling",
-          Entity.TEST_CASE,
-          "test case creation authorizes against the tested asset",
-          Entity.WORKFLOW,
-          "workflow creation requires connection-secret masking and unmasking");
+      Map.ofEntries(
+          entry(
+              Entity.USER,
+              "user creation performs authentication, password, role, and invitation setup"),
+          entry(
+              Entity.BOT,
+              "bot creation validates the bot user and applies impersonation safeguards"),
+          entry(Entity.APPLICATION, "application creation installs and schedules the application"),
+          entry(
+              Entity.EVENT_SUBSCRIPTION,
+              "event subscription creation validates destinations and registers its publisher"),
+          entry(
+              Entity.INGESTION_PIPELINE,
+              "ingestion pipeline creation uses pipeline-specific permissions and secret handling"),
+          entry(Entity.TEST_CASE, "test case creation authorizes against the tested asset"),
+          entry(Entity.TEST_SUITE, "test suite creation authorizes against the tested table"),
+          entry(
+              Entity.WORKFLOW,
+              "workflow creation requires connection-secret masking and unmasking"),
+          entry(
+              Entity.ANNOUNCEMENT,
+              "announcement creation restricts system-wide announcements to administrators"),
+          entry(Entity.INTAKE_FORM, "intake form creation is restricted to administrators"),
+          entry(Entity.PERSONA, "persona creation is restricted to administrators"),
+          entry(Entity.DOCUMENT, "document creation keeps private document types out of reach"),
+          entry(
+              Entity.AUDIT_REPORT,
+              "audit report creation deduplicates the request and queues its generation"),
+          entry(
+              Entity.ONTOLOGY_CHANGE_SET,
+              "ontology change set creation authorizes its glossary scope and starts as a draft"),
+          entry(
+              Entity.TASK,
+              "task creation stamps the filer and authorizes against the task's target entity"));
 
   static EntityCreationSpec resolve(String entityType) {
     rejectDedicatedCreateFlow(entityType, DEDICATED_CREATE_FLOWS.get(entityType));
@@ -103,7 +129,8 @@ record EntityCreationSpec(
 
   boolean isMcpOwned(String field) {
     return (ContextMemory.class.equals(entityClass) && "sourceType".equals(field))
-        || (Page.class.equals(entityClass) && PAGE_SYSTEM_FIELDS.contains(field));
+        || (Page.class.equals(entityClass) && PAGE_SYSTEM_FIELDS.contains(field))
+        || (DataContract.class.equals(entityClass) && DATA_CONTRACT_SYSTEM_FIELDS.contains(field));
   }
 
   boolean hasConditionalRequirements() {

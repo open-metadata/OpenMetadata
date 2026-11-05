@@ -10,16 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { TFunction } from 'i18next';
+import { ReactElement } from 'react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
+import { User } from '../../../../../../generated/entity/teams/user';
 import {
   getAvailableTabs,
+  getChildTeamColumns,
   getTabLabel,
+  getUserColumns,
+  TEAM_FIELDS,
   updateTeamsHierarchy,
   withTeamChildrenPlaceholder,
 } from './MembersTeamDetail.utils';
 
 const team = (fqn: string, childrenCount = 0): Team =>
   ({ name: fqn, fullyQualifiedName: fqn, childrenCount } as Team);
+
+describe('TEAM_FIELDS', () => {
+  // Without the profile the subscription widget reads no webhook, and a save
+  // would replace the stored one with nothing.
+  it('requests the profile the subscription widget edits', () => {
+    expect(TEAM_FIELDS.split(',')).toContain('profile');
+  });
+});
 
 describe('withTeamChildrenPlaceholder', () => {
   it('adds an empty children array to teams that have sub-teams', () => {
@@ -73,7 +88,7 @@ describe('getAvailableTabs', () => {
 });
 
 describe('getTabLabel', () => {
-  const t = (key: string) => key;
+  const t = ((key: string) => key) as unknown as TFunction;
 
   it('labels custom properties without a count', () => {
     const label = getTabLabel('custom-properties', t, {} as Team, 0, 0);
@@ -85,5 +100,86 @@ describe('getTabLabel', () => {
     expect(getTabLabel('roles', t, { defaultRoles: [{}] } as Team, 0, 0)).toBe(
       'label.role-plural (1)'
     );
+  });
+});
+
+describe('getChildTeamColumns', () => {
+  const t = (key: string) => key;
+
+  const renderAssetCount = (
+    record: Team,
+    teamAssetCounts: Record<string, number>
+  ) => {
+    const column = getChildTeamColumns(t, jest.fn(), teamAssetCounts).find(
+      (col) => col.key === 'assets'
+    ) as {
+      render: (value: unknown, record: Team, index: number) => ReactElement;
+    };
+
+    // Antd hands render the dataIndex value first, then the row.
+    render(column.render(record.fullyQualifiedName, record, 0));
+
+    return screen.getByTestId(`team-asset-count-${record.name}`);
+  };
+
+  it('shows a sub-team asset count from the team asset counts', () => {
+    expect(
+      renderAssetCount(team('org.eng'), { 'org.eng': 7 })
+    ).toHaveTextContent('7');
+  });
+
+  it('shows zero for a sub-team missing from the team asset counts', () => {
+    expect(renderAssetCount(team('org.eng'), {})).toHaveTextContent('0');
+  });
+});
+
+describe('getUserColumns remove action', () => {
+  const t = ((key: string) => key) as unknown as TFunction;
+  const alice = { id: 'u1', name: 'alice', displayName: 'Alice' } as User;
+
+  const renderRemoveCell = (onRemoveUser: jest.Mock) => {
+    const column = getUserColumns(
+      t,
+      true,
+      jest.fn(),
+      'Engineering',
+      onRemoveUser
+    ).find((col) => col.key === 'actions') as {
+      render: (value: unknown, record: User, index: number) => ReactElement;
+    };
+
+    render(column.render(undefined, alice, 0));
+    fireEvent.click(screen.getByTestId('remove-user-alice'));
+  };
+
+  it('removes the user only after confirming in the popover', async () => {
+    const onRemoveUser = jest.fn().mockResolvedValue(undefined);
+    renderRemoveCell(onRemoveUser);
+
+    expect(onRemoveUser).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId('remove-from-team-popover-title')
+    ).toHaveTextContent('label.remove-entity');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('remove-from-team-popover-confirm'));
+    });
+
+    expect(onRemoveUser).toHaveBeenCalledWith(alice);
+    expect(
+      screen.queryByTestId('remove-from-team-popover')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the user when the popover is cancelled', () => {
+    const onRemoveUser = jest.fn();
+    renderRemoveCell(onRemoveUser);
+
+    fireEvent.click(screen.getByTestId('remove-from-team-popover-cancel'));
+
+    expect(onRemoveUser).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('remove-from-team-popover')
+    ).not.toBeInTheDocument();
   });
 });

@@ -65,7 +65,7 @@ const RELATION_CATEGORY_STYLES: Record<
   RelationCategoryStyle
 > = {
   other: {
-    color: 'var(--om-color-gray-600)',
+    color: 'var(--om-color-gray-700)',
     colorFallback: '#535862',
     labelBg: 'var(--om-color-gray-50)',
     labelBgFallback: '#fafafa',
@@ -81,7 +81,7 @@ const RELATION_CATEGORY_STYLES: Record<
     labelKey: 'label.lineage',
   },
   structure: {
-    color: 'var(--om-color-gray-blue-500)',
+    color: 'var(--om-color-gray-blue-600)',
     colorFallback: '#4e5ba6',
     labelBg: 'var(--om-color-gray-blue-50)',
     labelBgFallback: '#f8f9fc',

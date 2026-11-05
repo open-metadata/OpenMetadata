@@ -13,9 +13,12 @@
 System Metric
 """
 
+import itertools
+import threading
 from abc import ABC
-from collections import defaultdict
-from collections.abc import Callable
+from collections import OrderedDict, defaultdict
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar
 
 from sqlalchemy import text
@@ -34,6 +37,7 @@ from metadata.utils.profiler_utils import QueryResult
 logger = profiler_logger()
 
 MAX_SIZE_IN_BYTES = 2 * 1024**3  # 2GB
+DEFAULT_SYSTEM_METRICS_BATCH_SIZE = 50
 
 
 def recursive_dic():
@@ -81,6 +85,70 @@ class CacheProvider(ABC, Generic[T]):
         result = get_queries_fn(*args, **kwargs)
         self.cache.put(cache_path, result)
         return result
+
+
+@dataclass(frozen=True)
+class TableBatch:
+    """Tables queued together for profiling, identified so per-batch results can be cached."""
+
+    batch_id: int
+    table_fqns: tuple[str, ...]
+
+
+class TableBatchWindow:
+    """Tables the fetcher has queued for profiling, grouped in batches.
+
+    Tables are profiled one at a time, each with its own `SystemMetricsComputer`, so a
+    computer only knows its own table. Engines whose DML history lives in a shared log
+    (e.g. Snowflake QUERY_HISTORY) would otherwise scan that log once per table. The
+    fetcher registers each batch here before handing its tables over, letting the first
+    computer of a batch read the history of the whole batch in one scan.
+
+    Only the most recent batches are retained: the fetcher registers a batch only after
+    the previous one has been handed over, so memory stays bounded by the batch size
+    instead of growing with the number of tables in the service.
+    """
+
+    def __init__(self, max_batches: int = 2):
+        self._lock = threading.Lock()
+        self._ids = itertools.count()
+        self._max_batches = max_batches
+        self._batches: OrderedDict[int, TableBatch] = OrderedDict()
+        self._batch_by_fqn: dict[str, int] = {}
+
+    def register(self, table_fqns: Sequence[str]) -> TableBatch:
+        with self._lock:
+            batch = TableBatch(batch_id=next(self._ids), table_fqns=tuple(dict.fromkeys(table_fqns)))
+            self._batches[batch.batch_id] = batch
+            for table_fqn in batch.table_fqns:
+                self._batch_by_fqn[table_fqn] = batch.batch_id
+            while len(self._batches) > self._max_batches:
+                _, evicted = self._batches.popitem(last=False)
+                for table_fqn in evicted.table_fqns:
+                    if self._batch_by_fqn.get(table_fqn) == evicted.batch_id:
+                        del self._batch_by_fqn[table_fqn]
+            return batch
+
+    def discard(self, batch: TableBatch) -> None:
+        """Stop advertising a batch once its tables have left the fetcher."""
+        with self._lock:
+            self._batches.pop(batch.batch_id, None)
+            for table_fqn in batch.table_fqns:
+                if self._batch_by_fqn.get(table_fqn) == batch.batch_id:
+                    del self._batch_by_fqn[table_fqn]
+
+    def batch_for(self, table_fqn: str) -> TableBatch | None:
+        with self._lock:
+            batch_id = self._batch_by_fqn.get(table_fqn)
+            return self._batches.get(batch_id) if batch_id is not None else None
+
+    def clear(self) -> None:
+        with self._lock:
+            self._batches.clear()
+            self._batch_by_fqn.clear()
+
+
+TABLE_BATCH_WINDOW = TableBatchWindow()
 
 
 class SystemMetricsComputer(Protocol):

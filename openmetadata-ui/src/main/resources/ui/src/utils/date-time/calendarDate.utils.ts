@@ -16,6 +16,7 @@ import {
   toCalendarDate,
   today,
 } from '@internationalized/date';
+import type { DatePicker } from '@openmetadata/ui-core-components';
 import type { DateValue } from 'react-aria-components';
 
 /**
@@ -31,6 +32,28 @@ export const millisToDateValue = (ms?: number): DateValue | null =>
 
 export const dateValueToMillis = (value: Pick<DateValue, 'toDate'>): number =>
   value.toDate(getLocalTimeZone()).getTime();
+
+/**
+ * The DateValue the core pickers take. Core resolves its own
+ * `@internationalized/date` copy (a different patch version from the app's), so
+ * TypeScript treats the two DateValue types as distinct even though they are
+ * structurally the same. Picker values go through the helpers below so the
+ * cast lives in one place.
+ */
+export type PickerDateValue = NonNullable<
+  Parameters<typeof DatePicker>[0]['value']
+>;
+
+export const millisToPickerDateValue = (ms?: number) =>
+  millisToDateValue(ms) as PickerDateValue | null;
+
+/**
+ * The last millisecond of a picked day: a date-only value resolves to midnight,
+ * which would leave the end day out of a range.
+ */
+export const dateValueToEndOfDayMillis = (value: {
+  add: (duration: { days: number }) => Pick<DateValue, 'toDate'>;
+}): number => dateValueToMillis(value.add({ days: 1 })) - 1;
 
 /**
  * The last `days` days through the end of today, bounded at local midnight -

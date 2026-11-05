@@ -12,6 +12,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  createEvent,
   fireEvent,
   render,
   screen,
@@ -19,6 +20,7 @@ import {
   within,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   EntityStatus,
@@ -26,10 +28,12 @@ import {
   MetricGranularity,
   MetricType,
 } from '../../../generated/entity/data/metric';
+import { TagSource } from '../../../generated/type/tagLabel';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,
   exportMetricDetailsInCSV,
+  getMetricParentIds,
 } from '../../../rest/metricsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
@@ -123,6 +127,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onClick={onPress as React.MouseEventHandler<HTMLButtonElement>}>
       {children as React.ReactNode}
     </button>
+  );
+  const ButtonUtility = ({
+    isDisabled,
+    icon: _icon,
+    size: _size,
+    tooltip,
+    ...props
+  }: Record<string, unknown>) => (
+    <button
+      aria-label={tooltip as string | undefined}
+      {...props}
+      disabled={Boolean(isDisabled)}
+    />
   );
   const Card = ({
     children,
@@ -315,6 +332,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <nav>{items.map(({ label }) => label).join(' / ')}</nav>
     ),
     Button,
+    ButtonUtility,
     PageLayout: Object.assign(
       ({
         children,
@@ -481,6 +499,7 @@ jest.mock('../../../rest/searchAPI');
 jest.mock('../../../rest/metricsAPI', () => ({
   deleteMetricAsync: jest.fn(),
   exportMetricDetailsInCSV: jest.fn(),
+  getMetricParentIds: jest.fn(),
 }));
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
@@ -544,7 +563,7 @@ const setHierarchy = ({
   mockUseMetricHierarchy.mockImplementation(() => ({
     topLevelNodes,
     buildRows: () => rows,
-    paging: { total, offset: 0, limit: 20 },
+    paging: { total, offset: 0, limit: PAGE_SIZE_BASE },
     isPending,
     isFetching: isPending,
     error,
@@ -563,18 +582,30 @@ const buildSearchResponse = (metrics: Metric[], total = metrics.length) => ({
   },
 });
 
+jest.mock('../../../utils/ownerUtils', () => ({
+  getOwnerPath: ({ name }: { name?: string }) => `/users/${name}`,
+}));
+
+let mockAsyncDeleteJob: { jobId?: string; status?: string } | undefined;
+
+jest.mock('../../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
+  useAsyncDeleteProvider: () => ({ asyncDeleteJob: mockAsyncDeleteJob }),
+}));
+
 const renderPage = () => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
-
-  return render(
+  const buildUi = () => (
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <MetricListPage />
       </MemoryRouter>
     </QueryClientProvider>
   );
+  const result = render(buildUi());
+
+  return { ...result, rerender: () => result.rerender(buildUi()) };
 };
 
 describe('MetricListPage', () => {
@@ -614,7 +645,10 @@ describe('MetricListPage', () => {
         name: 'label.glossary-term-plural',
       })
     ).toBeInTheDocument();
-    expect(screen.getByText('AL')).toHaveAttribute('data-avatar-size', 'xs');
+    // Owners render through ProfilePicture, which shows the first letter like the entity header.
+    expect(document.querySelector('[data-avatar-size="xs"]')).toHaveTextContent(
+      /^A$/
+    );
     expect(screen.getByTestId('metric-icon-metric-1')).toBeInTheDocument();
     expect(screen.queryByText(/preview/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/value trend/i)).not.toBeInTheDocument();
@@ -837,6 +871,35 @@ describe('MetricListPage', () => {
     );
   });
 
+  it('marks an expanded empty group as empty so the next metric is not read as a member', async () => {
+    const emptyGroupRow = {
+      id: 'group:group-empty',
+      isGroupRow: true,
+      group: { id: 'group-empty', name: 'empty_group' },
+      memberCount: 0,
+    };
+    mockUseMetricHierarchy.mockReturnValue({
+      topLevelNodes: [
+        { row: emptyGroupRow, groupId: 'group-empty', members: [] },
+        { row: rootMetric },
+      ],
+      buildRows: () => [emptyGroupRow, rootMetric],
+      paging: { total: 1, offset: 0, limit: 20 },
+      isPending: false,
+      isFetching: false,
+      expandedRowKeys: [],
+      collapsedGroupIds: [],
+      loadingParentIds: [],
+      loadingGroupIds: [],
+      ...hierarchyActions,
+    });
+    renderPage();
+
+    expect(
+      await screen.findByTestId('metric-group-empty-empty_group')
+    ).toHaveTextContent('label.no-entity-found');
+  });
+
   it('keeps group context when hierarchy search matches a group or descendant', async () => {
     const groupRow = {
       id: 'group:group-1',
@@ -1012,7 +1075,7 @@ describe('MetricListPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('expands group banners once by default without expanding metric variants or overriding collapse', async () => {
+  it('expands group banners once per page scope without expanding metric variants or overriding collapse', async () => {
     const groupRow = {
       id: 'group:group-1',
       isGroupRow: true,
@@ -1034,7 +1097,7 @@ describe('MetricListPage', () => {
         { row: groupRow, groupId: 'group-1', members: [groupedMetric] },
       ],
     });
-    renderPage();
+    const { rerender } = renderPage();
 
     await waitFor(() =>
       expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(1)
@@ -1060,12 +1123,20 @@ describe('MetricListPage', () => {
         { row: groupRow, groupId: 'group-1', members: [groupedMetric] },
       ],
     });
-    fireEvent.click(cardViewButton);
+    rerender();
 
     expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('metric-group-profitability')).toHaveAttribute(
       'aria-expanded',
       'false'
+    );
+
+    // Card view pages at a different size, and useMetricHierarchy clears expansion when the size
+    // changes, so the default expansion is applied again for the new scope.
+    fireEvent.click(cardViewButton);
+
+    await waitFor(() =>
+      expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(2)
     );
   });
 
@@ -1131,7 +1202,11 @@ describe('MetricListPage', () => {
 
     await waitFor(() =>
       expect(mockUseMetricHierarchy).toHaveBeenLastCalledWith(
-        expect.objectContaining({ page: 2, pageSize: 20, query: '' })
+        expect.objectContaining({
+          page: 2,
+          pageSize: PAGE_SIZE_BASE,
+          query: '',
+        })
       )
     );
 
@@ -1236,12 +1311,146 @@ describe('MetricListPage', () => {
     fireEvent.click(screen.getByTestId('confirm-button'));
 
     expect(screen.getByTestId('confirm-button')).toBeDisabled();
-    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1');
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1', true);
 
     resolveDelete();
     await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
 
     expect(mockShowSuccessToast).toHaveBeenCalled();
+  });
+
+  it('skips a selected variant whose parent is also selected, since the recursive delete covers it', async () => {
+    const child = {
+      id: 'child-1',
+      name: 'net_sales_emea',
+      fullyQualifiedName: 'net_sales.net_sales_emea',
+    };
+    const parent = { ...rootMetric, children: [child] };
+    setHierarchy({ rows: [parent], topLevelNodes: [{ row: parent }] });
+    renderPage();
+
+    fireEvent.click(await screen.findByTestId('select-child-1'));
+    fireEvent.click(screen.getByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
+
+    expect(mockDeleteMetric).toHaveBeenCalledTimes(1);
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1', true);
+  });
+
+  it('looks up a parent that is not on the page before skipping its selected descendant', async () => {
+    const grandchild = {
+      id: 'grandchild-1',
+      name: 'net_sales_emea_uk',
+      fullyQualifiedName: 'net_sales_emea_uk',
+      parent: { id: 'hidden-parent', type: 'metric' },
+    };
+    setHierarchy({
+      rows: [rootMetric, grandchild],
+      topLevelNodes: [{ row: rootMetric }, { row: grandchild }],
+    });
+    (getMetricParentIds as jest.Mock).mockResolvedValueOnce(
+      new Map([['hidden-parent', 'metric-1']])
+    );
+    renderPage();
+
+    fireEvent.click(await screen.findByTestId('select-grandchild-1'));
+    fireEvent.click(screen.getByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
+
+    expect(getMetricParentIds).toHaveBeenCalledWith(['hidden-parent']);
+    expect(mockDeleteMetric).toHaveBeenCalledTimes(1);
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1', true);
+  });
+
+  it('refreshes the list when its own delete job completes, not for jobs started elsewhere', async () => {
+    mockAsyncDeleteJob = undefined;
+    mockDeleteMetric.mockResolvedValueOnce({ jobId: 'job-1', message: '' });
+    const { rerender } = renderPage();
+    fireEvent.click(await screen.findByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+    await waitFor(() =>
+      expect(hierarchyActions.reset).toHaveBeenCalledTimes(1)
+    );
+
+    mockAsyncDeleteJob = { jobId: 'other-job', status: 'COMPLETED' };
+    rerender();
+
+    expect(hierarchyActions.reset).toHaveBeenCalledTimes(1);
+
+    mockAsyncDeleteJob = { jobId: 'job-1', status: 'COMPLETED' };
+    rerender();
+
+    await waitFor(() =>
+      expect(hierarchyActions.reset).toHaveBeenCalledTimes(2)
+    );
+
+    mockAsyncDeleteJob = undefined;
+  });
+
+  it('refreshes when its job finished before the delete request resolved', async () => {
+    mockAsyncDeleteJob = { jobId: 'job-early', status: 'COMPLETED' };
+    mockDeleteMetric.mockResolvedValueOnce({ jobId: 'job-early', message: '' });
+    renderPage();
+    fireEvent.click(await screen.findByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    // Once from handleBulkDelete, once when the already-stored message matches the new job id.
+    await waitFor(() =>
+      expect(hierarchyActions.reset).toHaveBeenCalledTimes(2)
+    );
+
+    mockAsyncDeleteJob = undefined;
+  });
+
+  it('links glossary terms and owners to their own pages without opening the metric', async () => {
+    const taggedMetric = {
+      ...rootMetric,
+      tags: [
+        {
+          tagFQN: 'Finance.Revenue',
+          name: 'Revenue',
+          source: TagSource.Glossary,
+        },
+      ],
+    };
+    mockUseMetricHierarchy.mockReturnValue({
+      topLevelNodes: [{ row: taggedMetric }],
+      buildRows: () => [taggedMetric],
+      paging: { total: 1, offset: 0, limit: 20 },
+      isPending: false,
+      isFetching: false,
+      expandedRowKeys: [],
+      collapsedGroupIds: [],
+      loadingParentIds: [],
+      loadingGroupIds: [],
+      ...hierarchyActions,
+    });
+    renderPage();
+
+    const glossaryLink = await screen.findByTestId(
+      'metric-tag-link-Finance.Revenue'
+    );
+
+    expect(glossaryLink).toHaveAttribute('href', '/glossary/Finance.Revenue');
+    expect(screen.getByTestId('metric-owner-link-owner-1')).toHaveAttribute(
+      'href',
+      '/users/alice'
+    );
+
+    // The real table starts its row press on pointerdown; the link must keep that from bubbling.
+    const pointerDown = createEvent.pointerDown(glossaryLink);
+    const stopPropagation = jest.spyOn(pointerDown, 'stopPropagation');
+    fireEvent(glossaryLink, pointerDown);
+
+    expect(stopPropagation).toHaveBeenCalled();
   });
 
   it('exports metrics from the core action menu', async () => {

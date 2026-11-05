@@ -10,95 +10,110 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { TeamType } from '../../../../generated/entity/teams/teamHierarchy';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import TeamsSelectable from './TeamsSelectable';
 
-const mockSelChange = jest.fn();
-
-const mockProps = {
-  onSelectionChange: mockSelChange,
-};
-
-jest.mock('antd', () => ({
-  TreeSelect: jest.fn().mockImplementation(({ onChange }) => (
-    <div role="presentation" onClick={() => onChange([])}>
-      TreeSelect.component
-    </div>
-  )),
-  Alert: jest.fn().mockImplementation(() => <div>Alert</div>),
-}));
-
 jest.mock('../../../../rest/teamsAPI', () => ({
-  getTeamsHierarchy: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      data: [],
-    })
-  ),
+  getTeamsHierarchy: jest.fn(),
 }));
-
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 jest.mock('../../../../utils/EntityNameUtils', () => ({
-  getEntityName: jest.fn().mockImplementation(() => 'entityName'),
+  getEntityName: () => 'entityName',
 }));
 
-describe('TeamsSelectable component test', () => {
-  it('TeamsSelectable component should render properly', async () => {
-    const { findByText } = render(<TeamsSelectable {...mockProps} />, {
+describe('TeamsSelectable', () => {
+  beforeEach(() => {
+    (getTeamsHierarchy as jest.Mock).mockResolvedValue({ data: [] });
+  });
+
+  it('renders a searchable team picker', async () => {
+    render(<TeamsSelectable />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+
+    await waitFor(() => expect(getTeamsHierarchy).toHaveBeenCalled());
+  });
+
+  it('returns team references when selecting and clearing a group', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onSelectionChange = jest.fn();
+    (getTeamsHierarchy as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          id: 'team-id',
+          name: 'Team',
+          teamType: TeamType.Group,
+          isJoinable: true,
+        },
+      ],
+    });
+    render(<TeamsSelectable onSelectionChange={onSelectionChange} />, {
       wrapper: MemoryRouter,
     });
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByText('entityName'));
 
-    const treeSelect = await findByText('TreeSelect.component');
+    expect(onSelectionChange).toHaveBeenLastCalledWith([
+      { id: 'team-id', displayName: 'entityName', type: 'team' },
+    ]);
 
-    expect(treeSelect).toBeInTheDocument();
-  });
-
-  it('TeamsSelectable component should fire selection change', async () => {
-    const { findByText } = render(<TeamsSelectable {...mockProps} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const treeSelect = await findByText('TreeSelect.component');
-
-    fireEvent.click(
-      treeSelect,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
+    await user.click(
+      screen.getByRole('button', { name: /remove.*entityName/i })
     );
 
-    expect(treeSelect).toBeInTheDocument();
-    expect(mockSelChange).toHaveBeenCalled();
+    expect(onSelectionChange).toHaveBeenLastCalledWith([]);
   });
 
-  it('should show no teams alert when API returns no data', async () => {
-    await act(async () => {
-      render(<TeamsSelectable {...mockProps} showTeamsAlert />, {
-        wrapper: MemoryRouter,
+  it('toasts a failed load once and retries when the picker opens', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const error = new Error('network');
+    (getTeamsHierarchy as jest.Mock)
+      .mockRejectedValueOnce(error)
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'team-id',
+            name: 'Team',
+            teamType: TeamType.Group,
+            isJoinable: true,
+          },
+        ],
       });
-    });
+    render(<TeamsSelectable />, { wrapper: MemoryRouter });
 
-    const noTeamsAlert = screen.getByText('Alert');
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
 
-    expect(noTeamsAlert).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox'));
+
+    expect(await screen.findByText('entityName')).toBeInTheDocument();
+    expect(getTeamsHierarchy).toHaveBeenCalledTimes(2);
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
   });
 
-  it('should not show no teams alert when API returns teams data', async () => {
-    (getTeamsHierarchy as jest.Mock).mockImplementation(() =>
-      Promise.resolve({
-        data: [{ name: 'testTeam' }],
-      })
-    );
-    await act(async () => {
-      render(<TeamsSelectable {...mockProps} showTeamsAlert />, {
-        wrapper: MemoryRouter,
-      });
+  it('shows an empty-team message after an empty response', async () => {
+    render(<TeamsSelectable showTeamsAlert />, { wrapper: MemoryRouter });
+
+    expect(
+      await screen.findByText('message.no-entity-data-available')
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the empty-team message hidden when data exists', async () => {
+    (getTeamsHierarchy as jest.Mock).mockResolvedValue({
+      data: [{ id: 'team-id', name: 'Team', teamType: TeamType.Group }],
     });
+    render(<TeamsSelectable showTeamsAlert />, { wrapper: MemoryRouter });
+    await waitFor(() => expect(getTeamsHierarchy).toHaveBeenCalled());
 
-    const noTeamsAlert = screen.queryByText('Alert');
-
-    expect(noTeamsAlert).toBeNull();
+    expect(
+      screen.queryByText('message.no-entity-data-available')
+    ).not.toBeInTheDocument();
   });
 });

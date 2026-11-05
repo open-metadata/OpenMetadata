@@ -13,20 +13,11 @@
 
 @import '../../../../styles/variables.less';
 
-.csv-cell-chips {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--om-space-6);
-  min-width: 0;
-  overflow: hidden;
-}
-
 .csv-cell-empty {
   color: @grey-400;
 }
 
-// Chip pills for tags / glossary / domains / data products / related metrics.
+// Chip pills for domains / data products / tiers / related metrics.
 .csv-chip {
   background: @grey-36;
   border-radius: var(--om-radius-md);
@@ -39,16 +30,6 @@
   padding: var(--om-space-2) var(--om-space-8);
   text-overflow: ellipsis;
   white-space: nowrap;
-
-  &-tag {
-    background: var(--om-color-purple-50);
-    color: var(--om-color-purple-700);
-  }
-
-  &-glossary {
-    background: @primary-50;
-    color: @primary-7;
-  }
 
   &-tier {
     background: @yellow-10;
@@ -64,10 +45,6 @@
     background: @grey-36;
     color: @grey-700;
   }
-}
-
-.csv-cell-chips-custom-properties {
-  gap: var(--om-space-8);
 }
 
 .csv-chip-value {

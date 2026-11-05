@@ -26,14 +26,19 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -201,6 +206,77 @@ class AuditLogRepositoryTest {
         repository.list(null, null, null, null, null, null, null, null, null, 25, null, null);
 
     assertEquals("alice", result.getData().getFirst().getEntityFQN());
+  }
+
+  @Test
+  void anEventAboutAUserListsItsEmailMaskedForCallersWhoDoNotReadEmails() {
+    stubAUserEventWithEmails();
+
+    AuditLogEntry masked =
+        repository
+            .list(null, null, null, null, null, null, null, null, null, 25, null, null, false)
+            .getData()
+            .getFirst();
+    AuditLogEntry plain =
+        repository
+            .list(null, null, null, null, null, null, null, null, null, 25, null, null, true)
+            .getData()
+            .getFirst();
+
+    assertFalse(masked.getSummary().contains("alice@"), masked.getSummary());
+    assertFalse(masked.getRawEventJson().contains("alice@"), masked.getRawEventJson());
+    assertFalse(JsonUtils.pojoToJson(masked.getChangeEvent()).contains("alice@"));
+    assertTrue(plain.getSummary().contains("alice@example.com"), plain.getSummary());
+  }
+
+  @Test
+  void anExportMasksUserEmailsForARequesterWhoDoesNotReadThem() throws Exception {
+    stubAUserEventWithEmails();
+    ByteArrayOutputStream masked = new ByteArrayOutputStream();
+    ByteArrayOutputStream plain = new ByteArrayOutputStream();
+
+    repository.streamExportAsJson(
+        masked, null, null, null, null, null, 0L, 1L, null, 10, false, null);
+    repository.streamExportAsJson(
+        plain, null, null, null, null, null, 0L, 1L, null, 10, true, null);
+
+    assertFalse(masked.toString(StandardCharsets.UTF_8).contains("alice@"));
+    assertTrue(plain.toString(StandardCharsets.UTF_8).contains("alice@example.com"));
+  }
+
+  private void stubAUserEventWithEmails() {
+    ChangeEvent event =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType(Entity.USER)
+            .withEntityFullyQualifiedName("alice")
+            .withEntity("{\"name\":\"alice\",\"email\":\"alice@example.com\"}")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("email")
+                                .withOldValue("alice@old.example.com")
+                                .withNewValue("alice@example.com"))));
+    when(auditLogDAO.list(
+            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+            any(), any(), any(), anyInt()))
+        .thenAnswer(
+            invocation ->
+                List.of(
+                    AuditLogRecord.builder()
+                        .id(1L)
+                        .eventTs(1L)
+                        .eventType(EventType.ENTITY_UPDATED.value())
+                        .userName("admin")
+                        .entityType(Entity.USER)
+                        .entityId(UUID.randomUUID().toString())
+                        .entityFQN("alice")
+                        .eventJson(JsonUtils.pojoToJson(event))
+                        .build()));
+    stubCount();
   }
 
   private void stubList() {

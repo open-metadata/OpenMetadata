@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { InfoCircleOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -18,21 +17,17 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01, InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import {
-  GRAYED_OUT_COLOR,
-  NO_DATA_PLACEHOLDER,
-  ROUTES,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER, ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
@@ -110,7 +105,7 @@ const LoginConfigurationPage = () => {
               <Button
                 color="secondary"
                 data-testid="edit-button"
-                iconLeading={<Icon component={IconEdit} size={12} />}
+                iconLeading={Edit01}
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>
@@ -128,10 +123,10 @@ const LoginConfigurationPage = () => {
                   placement="top"
                   title={t('message.login-fail-attempt-message')}
                   triggerClassName="tw:inline-flex">
-                  <InfoCircleOutlined
-                    className="m-x-xss"
+                  <InfoCircle
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="max-login-fail-attampts-url-info"
-                    style={{ color: GRAYED_OUT_COLOR }}
+                    size={14}
                   />
                 </Tooltip>
               </Typography>
@@ -154,10 +149,10 @@ const LoginConfigurationPage = () => {
                   placement="top"
                   title={t('message.access-block-time-message')}
                   triggerClassName="tw:inline-flex">
-                  <InfoCircleOutlined
-                    className="m-x-xss"
+                  <InfoCircle
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="access-block-time-info"
-                    style={{ color: GRAYED_OUT_COLOR }}
+                    size={14}
                   />
                 </Tooltip>
               </Typography>
@@ -180,10 +175,10 @@ const LoginConfigurationPage = () => {
                   placement="top"
                   title={t('message.jwt-token-expiry-time-message')}
                   triggerClassName="tw:inline-flex">
-                  <InfoCircleOutlined
-                    className="m-x-xss"
+                  <InfoCircle
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="jwt-token-expiry-time-info"
-                    style={{ color: GRAYED_OUT_COLOR }}
+                    size={14}
                   />
                 </Tooltip>
               </Typography>

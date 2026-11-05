@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TreeDataNode } from 'antd/lib';
 import { isEmpty, isNumber } from 'lodash';
 import { LeftSidebarItem } from '../../components/MyData/LeftSidebar/LeftSidebar.interface';
 import {
@@ -18,6 +17,7 @@ import {
   LeftSidebarItemExample,
 } from '../../components/Settings/Applications/plugins/AppPlugin';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
+import { NavigationTreeNode } from '../../interface/sidebar.interface';
 import leftSidebarClassBase from '../LeftSidebarClassBase';
 
 const getBaseSidebarItems = (): LeftSidebarItem[] =>
@@ -121,26 +121,26 @@ const createNavigationMap = (
 
 const convertSidebarChildToTreeNode = (
   child: LeftSidebarItem
-): TreeDataNode => ({
+): NavigationTreeNode => ({
   title: child.title,
   key: child.key,
-  icon: child.icon as TreeDataNode['icon'],
+  icon: child.icon as NavigationTreeNode['icon'],
 });
 
 const collectNewDefaultChildNodes = (
   defaultChildren: LeftSidebarItem[],
   savedKeys: Set<string>
-): TreeDataNode[] =>
+): NavigationTreeNode[] =>
   defaultChildren
     .filter((child) => !savedKeys.has(child.key))
     .map(convertSidebarChildToTreeNode);
 
 const convertSidebarItemToTreeNode = (
   sidebarItem: LeftSidebarItem
-): TreeDataNode => ({
+): NavigationTreeNode => ({
   title: sidebarItem.title,
   key: sidebarItem.key,
-  icon: sidebarItem.icon as TreeDataNode['icon'],
+  icon: sidebarItem.icon as NavigationTreeNode['icon'],
   children: sidebarItem.children?.map(convertSidebarChildToTreeNode),
 });
 
@@ -160,14 +160,14 @@ const collectNavigationKeys = (
 const convertNavigationChildToTreeNode = (
   navChild: NavigationItem,
   sidebarMap: Map<string, LeftSidebarItem>
-): TreeDataNode | null => {
+): NavigationTreeNode | null => {
   const sidebarChild = sidebarMap.get(navChild.id);
 
   return sidebarChild
     ? {
         title: navChild.title,
         key: navChild.id,
-        icon: sidebarChild.icon as TreeDataNode['icon'],
+        icon: sidebarChild.icon as NavigationTreeNode['icon'],
       }
     : null;
 };
@@ -177,7 +177,7 @@ const buildChildrenForSavedItem = (
   sidebarItem: LeftSidebarItem | undefined,
   sidebarMap: Map<string, LeftSidebarItem>,
   savedKeys: Set<string>
-): TreeDataNode[] | undefined => {
+): NavigationTreeNode[] | undefined => {
   const defaultChildren = sidebarItem?.children ?? [];
 
   if (isEmpty(navItem.children) && isEmpty(defaultChildren)) {
@@ -186,7 +186,7 @@ const buildChildrenForSavedItem = (
 
   const savedChildNodes = (navItem.children ?? [])
     .map((child) => convertNavigationChildToTreeNode(child, sidebarMap))
-    .filter((node): node is TreeDataNode => node !== null);
+    .filter((node): node is NavigationTreeNode => node !== null);
 
   const newDefaultChildNodes = collectNewDefaultChildNodes(
     defaultChildren,
@@ -200,13 +200,13 @@ const buildTreeNodeFromSavedItem = (
   navItem: NavigationItem,
   sidebarMap: Map<string, LeftSidebarItem>,
   savedKeys: Set<string>
-): TreeDataNode => {
+): NavigationTreeNode => {
   const sidebarItem = sidebarMap.get(navItem.id);
 
   return {
     title: navItem.title,
     key: navItem.id,
-    icon: sidebarItem?.icon as TreeDataNode['icon'],
+    icon: sidebarItem?.icon as NavigationTreeNode['icon'],
     children: buildChildrenForSavedItem(
       navItem,
       sidebarItem,
@@ -219,10 +219,10 @@ const buildTreeNodeFromSavedItem = (
 const convertNewDefaultItemToTreeNode = (
   sidebarItem: LeftSidebarItem,
   savedKeys: Set<string>
-): TreeDataNode & { isHidden?: boolean } => ({
+): NavigationTreeNode & { isHidden?: boolean } => ({
   title: sidebarItem.title,
   key: sidebarItem.key,
-  icon: sidebarItem.icon as TreeDataNode['icon'],
+  icon: sidebarItem.icon as NavigationTreeNode['icon'],
   children: sidebarItem.children
     ? collectNewDefaultChildNodes(sidebarItem.children, savedKeys)
     : undefined,
@@ -232,7 +232,7 @@ const convertNewDefaultItemToTreeNode = (
 export const getTreeDataForNavigationItems = (
   navigationItems: NavigationItem[] | null,
   plugins?: AppPlugin[]
-): TreeDataNode[] => {
+): NavigationTreeNode[] => {
   const sidebarItemsWithPlugins = getSidebarItemsWithPlugins(plugins);
 
   if (navigationItems === null || isEmpty(navigationItems)) {
