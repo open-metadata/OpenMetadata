@@ -2613,6 +2613,111 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertEquals("Second proposal", storedPayload.path("newDescription").asText());
   }
 
+  @Test
+  void testFilingAnApprovalTaskAboutAnEntityNeedsEditAllOnIt(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    // The owner holds EditAll on the table through the organization's owner rule.
+    Table table = createTableWithDomainAndOwners(ns, null, List.of(shared.USER3_REF));
+    String user1 = shared.USER1.getFullyQualifiedName();
+
+    for (TaskEntityType type :
+        List.of(TaskEntityType.GlossaryApproval, TaskEntityType.RequestApproval)) {
+      CreateTask request =
+          new CreateTask()
+              .withName(ns.prefix("approval-filing-" + type.value()))
+              .withCategory(TaskCategory.Approval)
+              .withType(type)
+              .withAbout(entityLink("table", table.getFullyQualifiedName()))
+              .withAssignees(List.of(user1));
+
+      assertThrows(
+          ForbiddenException.class,
+          () -> SdkClients.user2Client().tasks().create(request),
+          type.value());
+      assertNotNull(SdkClients.user3Client().tasks().create(request).getId(), type.value());
+    }
+  }
+
+  @Test
+  void testTagTaskFieldMustBeATaggedFieldOfItsEntity(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createWithColumns(ns, schema.getFullyQualifiedName());
+
+    InvalidRequestException unknownField =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .tasks()
+                    .create(tagTaskRequest(ns, "unknown-field", table, "columns.no_such_column")));
+    assertTrue(
+        unknownField.getMessage().contains("is not a tagged field"), unknownField.getMessage());
+
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(tagTaskRequest(ns, "removed-field", table, "columns.created_at.tags"));
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    SdkClients.adminClient()
+        .tables()
+        .patch(
+            table.getId().toString(),
+            JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/columns/2\"}]"));
+
+    InvalidRequestException removedField =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .tasks()
+                    .resolve(
+                        task.getId().toString(),
+                        new ResolveTask().withResolutionType(TaskResolutionType.Approved)));
+    assertTrue(
+        removedField.getMessage().contains("is not a tagged field"), removedField.getMessage());
+    assertEquals(
+        TaskEntityStatus.Open,
+        SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
+
+    Task rejected =
+        SdkClients.adminClient()
+            .tasks()
+            .resolve(
+                task.getId().toString(),
+                new ResolveTask()
+                    .withResolutionType(TaskResolutionType.Rejected)
+                    .withComment("The column is gone"));
+    assertEquals(TaskEntityStatus.Rejected, rejected.getStatus());
+  }
+
+  private static CreateTask tagTaskRequest(
+      TestNamespace ns, String name, Table table, String fieldPath) {
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    return new CreateTask()
+        .withName(ns.prefix(name))
+        .withCategory(TaskCategory.MetadataUpdate)
+        .withType(TaskEntityType.TagUpdate)
+        .withAbout(entityLink("table", table.getFullyQualifiedName()))
+        .withPayload(
+            Map.of(
+                "fieldPath",
+                fieldPath,
+                "tagsToAdd",
+                List.of(tag),
+                "tagsToRemove",
+                List.of(),
+                "currentTags",
+                List.of(),
+                "operation",
+                "Add"));
+  }
+
   private static ResolveTask approvalWithAssignees(String newValue, List<User> assignees) {
     List<Map<String, String>> references =
         assignees.stream()

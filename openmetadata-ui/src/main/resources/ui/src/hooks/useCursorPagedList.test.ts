@@ -38,6 +38,18 @@ describe('useCursorPagedList', () => {
     expect(result.current.showPagination).toBe(true);
   });
 
+  it('starts at the first step of the scale its caller passes', async () => {
+    const { result } = renderHook(() =>
+      useCursorPagedList(fetchPage, [12, 24, 48])
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(fetchPage).toHaveBeenCalledWith({ limit: 12 });
+    expect(result.current.pageSize).toBe(12);
+    expect(result.current.totalPages).toBe(4);
+  });
+
   it('follows the after cursor forward and reloads the first page going back to 1', async () => {
     const { result } = renderHook(() => useCursorPagedList(fetchPage));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -207,5 +219,30 @@ describe('useCursorPagedList', () => {
     expect(result.current.page).toBe(1);
     expect(result.current.items).toEqual(['item-1']);
     expect(fetchPage).not.toHaveBeenCalledWith({ after: 'p3', limit: 15 });
+  });
+
+  it('keeps the pager for a single page of items at the default size', async () => {
+    fetchPage.mockResolvedValue({ data: ['a', 'b'], paging: { total: 2 } });
+
+    const { result } = renderHook(() =>
+      useCursorPagedList(fetchPage, [12, 24, 48])
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.pageSize).toBe(12);
+    expect(result.current.showPagination).toBe(true);
+  });
+
+  it('hides the pager when the list is empty', async () => {
+    fetchPage.mockResolvedValue({ data: [], paging: { total: 0 } });
+
+    const { result } = renderHook(() =>
+      useCursorPagedList(fetchPage, [12, 24, 48])
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.showPagination).toBe(false);
   });
 });
