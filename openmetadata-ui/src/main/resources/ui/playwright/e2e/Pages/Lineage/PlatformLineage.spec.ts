@@ -422,4 +422,40 @@ test.describe('Platform Lineage page (/lineage)', () => {
     await retry.click();
     await refetch;
   });
+
+  test('Zooming in quickly past the maximum zoom still drills into the card', async ({
+    page,
+  }) => {
+    // Regression: wheel events keep arriving after the zoom reaches its maximum,
+    // and each one cancelled the pending drill without starting it again, so a
+    // fast zoom-in stopped at the maximum and never opened the next level.
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
+    await redirectToHomePage(page);
+    await page.goto(
+      `/lineage?lineageLens=service&lineageBand=ASSET&lineageFocus=${encodeURIComponent(
+        tableFqn
+      )}&lineageEntityType=table`
+    );
+    await dismissLineageMapOnboarding(page);
+
+    const card = page.getByTestId(`lineage-node-${tableFqn}`);
+    await expect(card).toBeVisible();
+    await expect(page.getByTestId('loader')).toHaveCount(0);
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- the map ignores semantic zoom for 1.2s after it fits a scene, with no DOM signal
+    await page.waitForTimeout(1500);
+
+    const box = await card.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(
+      (box?.x ?? 0) + (box?.width ?? 0) / 2,
+      (box?.y ?? 0) + (box?.height ?? 0) / 2
+    );
+    // Far more steps than the maximum zoom needs, sent without pausing, the
+    // way a fast wheel or trackpad does.
+    for (let step = 0; step < 40; step++) {
+      await page.mouse.wheel(0, -100);
+    }
+
+    await expect(page).toHaveURL(/lineageBand=FIELD/);
+  });
 });
