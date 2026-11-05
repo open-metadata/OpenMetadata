@@ -508,7 +508,14 @@ test.describe('User with Data Consumer Roles', () => {
       updatedUserDetails.newPassword
     );
 
-    await visitOwnProfilePage(dataConsumerPage);
+    await dataConsumerPage.goto(
+      `/users/${encodeURIComponent(dataConsumerUser.responseData.name)}`,
+      { waitUntil: 'domcontentloaded' }
+    );
+
+    await expect(
+      dataConsumerPage.getByTestId('user-profile-manage-btn')
+    ).toBeVisible();
   });
 });
 
@@ -589,7 +596,14 @@ test.describe('User with Data Steward Roles', () => {
       updatedUserDetails.newPassword
     );
 
-    await visitOwnProfilePage(dataStewardPage);
+    await dataStewardPage.goto(
+      `/users/${encodeURIComponent(dataStewardUser.responseData.name)}`,
+      { waitUntil: 'domcontentloaded' }
+    );
+
+    await expect(
+      dataStewardPage.getByTestId('user-profile-manage-btn')
+    ).toBeVisible();
   });
 });
 

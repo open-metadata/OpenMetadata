@@ -69,7 +69,7 @@ public abstract class SecretsManager {
   @Getter private final SecretsManagerProvider secretsManagerProvider;
   @Getter private final SecretsIdConfig secretsIdConfig;
   private Fernet fernet;
-  private static final Set<Class<?>> DO_NOT_ENCRYPT_CLASSES =
+  static final Set<Class<?>> DO_NOT_ENCRYPT_CLASSES =
       Set.of(OpenMetadataJWTClientConfig.class, BasicAuthMechanism.class);
 
   protected SecretsManager(
@@ -347,8 +347,11 @@ public abstract class SecretsManager {
     // we don't store OM conn sensitive data
     IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
     try {
+      // A pipeline name is unique only within its service, so it cannot key the vault entry.
       encryptPasswordFields(
-          ingestionPipeline, buildSecretId(true, "pipeline", ingestionPipeline.getName()), true);
+          ingestionPipeline,
+          buildSecretId(true, "pipeline", ingestionPipeline.getId().toString()),
+          true);
     } catch (Exception e) {
       throw new SecretsManagerException(
           Response.Status.BAD_REQUEST,
@@ -363,7 +366,7 @@ public abstract class SecretsManager {
         decryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection());
     ingestionPipeline.setOpenMetadataServerConnection(null);
     // we don't store OM conn sensitive data
-    IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
+    IngestionPipelineBuilder.addDefinedConfigForRead(ingestionPipeline);
     try {
       decryptPasswordFields(ingestionPipeline);
     } catch (Exception e) {
@@ -473,7 +476,7 @@ public abstract class SecretsManager {
    * <p>Every walker here routes through this so that encrypt and delete derive the same secret id
    * for the same element - otherwise deleting a service would strand its secrets in the store.
    */
-  private static void forEachTraversableElement(Object obj, BiConsumer<Object, String> action) {
+  static void forEachTraversableElement(Object obj, BiConsumer<Object, String> action) {
     if (!(obj instanceof Collection<?> collection)) {
       return;
     }
@@ -643,6 +646,41 @@ public abstract class SecretsManager {
 
   protected abstract String storeValue(
       String fieldName, String value, String secretId, boolean store);
+
+  /** Credentials stored under keys derived from their owner's identity rather than a name. */
+  public OwnedSecrets ownedSecrets() {
+    return new OwnedSecrets(this);
+  }
+
+  /**
+   * Stores {@code value} under {@code secretId} and returns what the field holds instead. Only an
+   * external manager writes anywhere; here the value stays in the field, Fernet-encrypted.
+   */
+  protected String storeOwnedValue(String fieldName, String secretId, String value) {
+    return value;
+  }
+
+  /** The value {@code reference} points at, or empty when its secret does not exist. */
+  protected Optional<String> findSecretValue(String reference) {
+    return Optional.ofNullable(getSecretValue(reference));
+  }
+
+  /** Longest secret id the provider accepts. */
+  protected int maxSecretIdLength() {
+    return Integer.MAX_VALUE;
+  }
+
+  /**
+   * The name the provider resolves {@code secretName} to, so that two spellings of one secret
+   * compare equal.
+   */
+  protected String canonicalSecretName(String secretName) {
+    return secretName;
+  }
+
+  Fernet fernet() {
+    return fernet;
+  }
 
   protected static String exceptionMessage(Throwable throwable) {
     return throwable.getMessage() != null

@@ -3,6 +3,7 @@ package org.openmetadata.it.tests.alerts;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -164,6 +165,54 @@ public class EventSubscriptionResourceIT
             () -> createEntity(request),
             "A webhook endpoint written as a loopback address should be rejected");
     assertEquals(400, rejected.getStatusCode());
+  }
+
+  /** A destination's id is the server's: an id it did not issue for the alert names nothing. */
+  @Test
+  void test_destinationIdsAreTheServers(TestNamespace ns) {
+    UUID sent = UUID.randomUUID();
+    String hook = "http://localhost:8585/api/v1/test/webhook/" + ns.prefix("ids");
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_ids"))
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(
+                List.of(
+                    webhookDestination(hook + "/a", null, null).withId(sent),
+                    webhookDestination(hook + "/b", null, null).withId(sent)));
+    EventSubscription created = createEntity(request);
+    UUID first = created.getDestinations().get(0).getId();
+    UUID second = created.getDestinations().get(1).getId();
+    assertNotEquals(sent, first);
+    assertNotEquals(sent, second);
+    assertNotEquals(first, second);
+
+    assertEquals(List.of(first, second), destinationIds(putSubscription(request)), "a PUT again");
+
+    EventSubscription unknown = JsonUtils.deepCopy(created, EventSubscription.class);
+    unknown.getDestinations().get(1).withId(UUID.randomUUID());
+    assertEquals(List.of(first, second), destinationIds(patchEntity(idOf(created), unknown)));
+
+    EventSubscription repeated = JsonUtils.deepCopy(created, EventSubscription.class);
+    repeated.getDestinations().get(1).withId(first);
+    assertEquals(List.of(first, second), destinationIds(patchEntity(idOf(created), repeated)));
+
+    EventSubscription added = JsonUtils.deepCopy(created, EventSubscription.class);
+    added.getDestinations().add(webhookDestination(hook + "/c", null, null).withId(null));
+    List<UUID> ids = destinationIds(patchEntity(idOf(created), added));
+    assertEquals(List.of(first, second), ids.subList(0, 2));
+    assertNotNull(ids.get(2));
+    assertEquals(3, new HashSet<>(ids).size(), "the added destination has an id of its own");
+  }
+
+  private static List<UUID> destinationIds(EventSubscription alert) {
+    return alert.getDestinations().stream().map(SubscriptionDestination::getId).toList();
+  }
+
+  private static String idOf(EventSubscription alert) {
+    return alert.getId().toString();
   }
 
   @Test
@@ -2312,14 +2361,21 @@ public class EventSubscriptionResourceIT
 
   @Test
   void test_unrelatedPatchCopyWithLegacyNumericHeader(TestNamespace ns) throws Exception {
+    // Long enough that the random hex in the copied name never contains it by chance.
+    int numericSecret = 987654321;
     EventSubscription created =
         createEntity(
-            secretRequest(ns, "legacy_numeric", "http://localhost:8585/hook", "123", null));
+            secretRequest(
+                ns,
+                "legacy_numeric",
+                "http://localhost:8585/hook",
+                String.valueOf(numericSecret),
+                null));
     EventSubscription stored = AlertFixtures.stored(created.getId());
     Map<String, Object> config = configOf(stored.getDestinations().getFirst());
-    config.put("headers", Map.of("Authorization", 123));
+    config.put("headers", Map.of("Authorization", numericSecret));
     stored.getDestinations().getFirst().withConfig(config);
-    stored.withBatchSize(123);
+    stored.withBatchSize(numericSecret);
     AlertFixtures.writeBehindTheServer(stored);
     JsonNode patch =
         JsonUtils.readTree("[{\"op\":\"copy\",\"from\":\"/name\",\"path\":\"/displayName\"}]");
@@ -2330,8 +2386,10 @@ public class EventSubscriptionResourceIT
 
     EventSubscription updated = getEntity(created.getId().toString());
     assertEquals(created.getName(), updated.getDisplayName());
-    assertEquals(123, updated.getBatchSize());
-    assertEquals("123", decrypted(headersOf(storedConfig(created.getId())).get("Authorization")));
+    assertEquals(numericSecret, updated.getBatchSize());
+    assertEquals(
+        String.valueOf(numericSecret),
+        decrypted(headersOf(storedConfig(created.getId())).get("Authorization")));
   }
 
   @Test
@@ -2451,7 +2509,12 @@ public class EventSubscriptionResourceIT
                     null)));
 
     EventSubscription unmatched = getEntity(created.getId().toString());
-    unmatched.getDestinations().getFirst().withId(UUID.randomUUID());
+    unmatched
+        .getDestinations()
+        .add(
+            JsonUtils.deepCopy(
+                    unmatched.getDestinations().getFirst(), SubscriptionDestination.class)
+                .withId(null));
     assertRefused(() -> patchEntity(created.getId().toString(), unmatched));
 
     JsonNode copyOut =
@@ -2503,6 +2566,41 @@ public class EventSubscriptionResourceIT
           "a refused request changes nothing");
       assertSecretsMasked(getEntity(created.getId().toString()).getDestinations().getFirst());
     }
+  }
+
+  /** A destination that holds no secret moves to another channel, as the alert form sends it. */
+  @Test
+  void test_ownersDestinationMovesFromEmailToSlack(TestNamespace ns) {
+    EventSubscription created =
+        createEntity(
+            new CreateEventSubscription()
+                .withName(ns.prefix("owners_channel"))
+                .withAlertType(AlertType.NOTIFICATION)
+                .withResources(List.of("all"))
+                .withEnabled(false)
+                .withDestinations(
+                    List.of(
+                        new SubscriptionDestination()
+                            .withCategory(SubscriptionDestination.SubscriptionCategory.OWNERS)
+                            .withType(SubscriptionDestination.SubscriptionType.EMAIL)
+                            .withConfig(Map.of("sendToOwners", true)))));
+    SubscriptionDestination owners = created.getDestinations().getFirst();
+    SubscriptionDestination bySlack =
+        JsonUtils.deepCopy(owners, SubscriptionDestination.class)
+            .withType(SubscriptionDestination.SubscriptionType.SLACK);
+    JsonNode wholeListReplace =
+        JsonUtils.valueToTree(
+            List.of(Map.of("op", "replace", "path", "/destinations", "value", List.of(bySlack))));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/events/subscriptions/" + created.getId(), wholeListReplace);
+
+    SubscriptionDestination saved =
+        getEntity(created.getId().toString()).getDestinations().getFirst();
+    assertEquals(SubscriptionDestination.SubscriptionType.SLACK, saved.getType());
+    assertEquals(owners.getId(), saved.getId(), "it stays the same destination");
   }
 
   /** Gives the first destination a fresh id and a channel whose rules do not name its secrets. */
@@ -2676,6 +2774,30 @@ public class EventSubscriptionResourceIT
     }
   }
 
+  /** An id copied into another alert is not kept, so a test send reaches the alert that holds it. */
+  @Test
+  void test_testDestinationResolvesAnIdCopiedIntoAnotherAlert(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      String headerValue = ns.prefix("one");
+      EventSubscription first =
+          createEntity(
+              secretRequest(ns, "first_holder", receiver.url("/first"), headerValue, null));
+      SubscriptionDestination masked = first.getDestinations().getFirst();
+      CreateEventSubscription second =
+          secretRequest(ns, "second_holder", receiver.url("/second"), ns.prefix("two"), null);
+      second.getDestinations().getFirst().withId(masked.getId());
+      UUID secondId = createEntity(second).getDestinations().getFirst().getId();
+      assertNotEquals(masked.getId(), secondId, "a create issues its own id");
+
+      HttpResponse<String> response = postTestDestination(List.of(masked));
+
+      assertEquals(200, response.statusCode(), response.body());
+      assertEquals(1, receiver.received().size());
+      assertEquals("/first", receiver.received().getFirst().path());
+      assertEquals(headerValue, headerOf(receiver.received().getFirst(), "Authorization"));
+    }
+  }
+
   /** Stored secrets are tested only by a caller allowed to edit the alert that holds them. */
   @Test
   void test_testDestinationWithStoredSecretsNeedsEditOnTheirAlert(TestNamespace ns)
@@ -2766,24 +2888,6 @@ public class EventSubscriptionResourceIT
     return refused.getCause() instanceof OpenMetadataException cause
         ? cause.getStatusCode()
         : refused.getStatusCode();
-  }
-
-  /** A request may set a destination's id; a masked one is tested only when one alert holds it. */
-  @Test
-  void test_testDestinationRefusesAnIdTwoAlertsHold(TestNamespace ns) throws Exception {
-    try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription first =
-          createEntity(
-              secretRequest(ns, "first_holder", receiver.url("/first"), ns.prefix("one"), null));
-      SubscriptionDestination masked = first.getDestinations().getFirst();
-      CreateEventSubscription second =
-          secretRequest(ns, "second_holder", receiver.url("/second"), ns.prefix("two"), null);
-      second.getDestinations().getFirst().withId(masked.getId());
-      createEntity(second);
-
-      assertEquals(400, postTestDestination(List.of(masked)).statusCode());
-      assertTrue(receiver.received().isEmpty(), "a refused test sends nothing");
-    }
   }
 
   private static EventSubscription putSubscription(CreateEventSubscription request) {

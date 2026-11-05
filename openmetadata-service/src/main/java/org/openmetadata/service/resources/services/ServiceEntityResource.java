@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.json.JsonPatch;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -49,11 +50,9 @@ import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.masker.ConnectionSecretsGuard;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.JsonPatchUtils;
 
 public abstract class ServiceEntityResource<
@@ -62,6 +61,8 @@ public abstract class ServiceEntityResource<
         S extends ServiceConnectionEntityInterface>
     extends EntityResource<T, R> {
   private static final String CONNECTION_FIELD = "connection";
+  static final String CONNECTION_COPY_REFUSED =
+      "A patch cannot copy or move a value out of the connection.";
 
   @Getter private final ServiceEntityRepository<T, S> serviceEntityRepository;
 
@@ -102,7 +103,7 @@ public abstract class ServiceEntityResource<
    */
   private void filterPipelines(SecurityContext securityContext, T service) {
     List<EntityReference> pipelines = service.getPipelines();
-    if (nullOrEmpty(pipelines) || readsStoredSecrets(securityContext)) {
+    if (nullOrEmpty(pipelines) || ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
       return;
     }
     Set<UUID> viewable = viewPermissionFilter.viewableIds(securityContext, pipelines);
@@ -195,7 +196,8 @@ public abstract class ServiceEntityResource<
   protected T unmask(SecurityContext securityContext, T service) {
     // Only a write that carries a connection can keep a stored secret, so check that first and
     // resolve the caller's subject only then — a connectionless write needs no guard.
-    if (service.getConnection() != null && !readsStoredSecrets(securityContext)) {
+    if (service.getConnection() != null
+        && !ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
       repository.setFullyQualifiedName(service);
       requireSecretsReenteredOnRetarget(
           repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED),
@@ -204,14 +206,9 @@ public abstract class ServiceEntityResource<
     return unmask(service);
   }
 
-  /** Admins and bots may already read or replace any connection's secrets. */
-  private static boolean readsStoredSecrets(SecurityContext securityContext) {
-    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
-    return subject.isAdmin() || subject.isBot();
-  }
-
   private static boolean mayRetargetConnection(SecurityContext securityContext, JsonPatch patch) {
-    return patchMayChangeConnection(patch) && !readsStoredSecrets(securityContext);
+    return patchMayChangeConnection(patch)
+        && !ConnectionSecretsGuard.readsStoredSecrets(securityContext);
   }
 
   /**
@@ -220,10 +217,16 @@ public abstract class ServiceEntityResource<
    */
   static boolean patchMayChangeConnection(JsonPatch patch) {
     return JsonPatchUtils.replacesWholeDocument(patch)
-        || JsonUtils.extractPatchedFields(patch).contains(CONNECTION_FIELD);
+        || JsonUtils.extractPatchedFields(patch).contains(CONNECTION_FIELD)
+        || JsonPatchUtils.readsFrom(patch, "/" + CONNECTION_FIELD);
   }
 
   private void requireSecretsReenteredOnRetarget(T original, JsonPatch patch) {
+    // The caller reads the connection's secrets masked; a copy or move out of it would place a
+    // stored one where it is served as stored.
+    if (JsonPatchUtils.readsFrom(patch, "/" + CONNECTION_FIELD)) {
+      throw new BadRequestException(CONNECTION_COPY_REFUSED);
+    }
     requireSecretsReenteredOnRetarget(original, JsonUtils.applyPatch(original, patch, entityClass));
   }
 

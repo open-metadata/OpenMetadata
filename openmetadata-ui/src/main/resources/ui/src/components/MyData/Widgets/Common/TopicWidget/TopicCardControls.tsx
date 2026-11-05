@@ -14,7 +14,6 @@ import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
 import { DotsGrid, Trash01 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { TOGGLE_ICON_CLASS } from './topics.types';
 
 export interface TopicCardControlsProps {
   widgetKey: string;
@@ -53,7 +52,7 @@ const TopicCardControls: React.FC<TopicCardControlsProps> = ({
         with the button beside them: an inline box is sized by line-height and
         seats its icon on the baseline, which rides above the centre the row's
         `items-center` aligns to. The padding and icon size then match
-        ButtonUtility's own (`p-1.5` around a 14px icon) so the two read as a
+        ButtonUtility's own (`p-1.5` around a 20px icon frame) so the two read as a
         pair and the drag target is not a 16px sliver. */}
       <Tooltip
         excludeTriggerFromTabOrder
@@ -66,17 +65,13 @@ const TopicCardControls: React.FC<TopicCardControlsProps> = ({
           <DotsGrid size={14} />
         </span>
       </Tooltip>
-      <Tooltip title={t('label.remove')}>
-        <ButtonUtility
-          aria-label={t('label.remove')}
-          className={TOGGLE_ICON_CLASS}
-          color="tertiary"
-          data-testid={`remove-widget-${widgetKey}`}
-          icon={Trash01}
-          size="xs"
-          onClick={() => handleRemoveWidget?.(widgetKey)}
-        />
-      </Tooltip>
+      <ButtonUtility
+        data-testid={`remove-widget-${widgetKey}`}
+        icon={Trash01}
+        size="lg"
+        tooltip={t('label.remove')}
+        onClick={() => handleRemoveWidget?.(widgetKey)}
+      />
     </div>
   );
 };

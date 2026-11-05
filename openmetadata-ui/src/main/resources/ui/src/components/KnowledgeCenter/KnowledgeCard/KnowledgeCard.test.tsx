@@ -319,7 +319,7 @@ describe('Knowledge Card', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.getByTestId('owner-name')).toBeInTheDocument();
+    expect(screen.getByTestId('owner-name')).toHaveTextContent(/^--$/);
   });
 
   it('should render the footer row', () => {

@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.sys.JenaSystem;
 import org.apache.jena.vocabulary.RDF;
@@ -33,6 +34,7 @@ import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfOwnedResources;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -62,7 +64,7 @@ public class RdfPropertyMapper {
   private static final Set<String> STRUCTURED_PROPERTIES =
       Set.of("lifeCycle", "customProperties", "extension", "certification");
 
-  // Properties that never belong in the graph, for three reasons:
+  // Properties that never belong in the graph, for four reasons:
   //   1. Audit/helper data with no place in the graph: changeDescription, votes.
   //   2. Embedded time-series data with no structured RDF equivalent, belonging in the time-series
   //      store rather than the knowledge graph: testCaseResult. A testCase carries its latest
@@ -71,18 +73,26 @@ public class RdfPropertyMapper {
   //   3. Authentication material, which must not become SPARQL-queryable metadata:
   //      identityProviderSubject is the IdP's 'sub' claim, stored only to bind an account to one
   //      provider identity. It carries no discovery value and is an identity correlator. Contrast
-  //      user email, which reaches the graph only through a deliberate foaf:mbox mapping.
+  //      user email, which reaches the graph only through a deliberate foaf:mbox mapping. The
+  //      CREDENTIAL_PROPERTIES below carry stored secrets: a service's connection, a pipeline's
+  //      source config and server connection, a user's password hash or bot token.
+  //      ADR:2026-10-30-the-rdf-projection-never-carries-stored-secrets
   //   4. Per-user UI state with no metadata meaning: isFirstTimeUser only decides whether the
   //      first-login welcome screen shows.
   //
   // These must not be fetched at all — see isIndexableEntityField.
-  private static final Set<String> NON_GRAPH_PROPERTIES =
+  static final Set<String> CREDENTIAL_PROPERTIES =
       Set.of(
-          "changeDescription",
-          "votes",
-          "testCaseResult",
           "identityProviderSubject",
-          "isFirstTimeUser");
+          "connection",
+          "sourceConfig",
+          "openMetadataServerConnection",
+          "authenticationMechanism");
+  private static final Set<String> NON_GRAPH_PROPERTIES =
+      Stream.concat(
+              Stream.of("changeDescription", "votes", "testCaseResult", "isFirstTimeUser"),
+              CREDENTIAL_PROPERTIES.stream())
+          .collect(Collectors.toUnmodifiableSet());
 
   // Properties that DO belong in the graph but are emitted by a dedicated structured-emission step
   // (emitStructuredProperties) rather than the generic field loop, so the generic loop must not
@@ -155,10 +165,8 @@ public class RdfPropertyMapper {
           // Source provenance (translator only, not a hook)
           DCT_NS + "source",
           OM_NS + "sourceUrl",
-          // Structured sub-resources attached to the entity — the entity's
-          // direct triple pointing at the blank node must be deleted so the
-          // new model's blank node replaces it. The blank node subtree itself
-          // becomes orphaned; that's a separate (out-of-scope) GC concern.
+          // Structured sub-resources attached to the entity: the entity's link to each must be
+          // replaced when the sub-resource changes or disappears.
           OM_NS + "hasLifeCycle",
           OM_NS + "hasCertification",
           OM_NS + "hasExtension",
@@ -1254,20 +1262,7 @@ public class RdfPropertyMapper {
       Property property = createProperty(propertyId, model);
 
       if ("@list".equals(container)) {
-        // Create RDF list
-        org.apache.jena.rdf.model.RDFList list = model.createList();
-        for (JsonNode item : value) {
-          if (item.isTextual()) {
-            list = list.with(model.createLiteral(item.asText()));
-          } else if (item.isObject() && item.has("id")) {
-            // Entity reference in list
-            String refUri =
-                baseUri + "entity/" + item.get("type").asText() + "/" + item.get("id").asText();
-            list = list.with(model.createResource(refUri));
-          }
-        }
-        resource.addProperty(property, list);
-
+        resource.addProperty(property, listOf(resource, property, listItems(value, model), model));
       } else {
         // @set or default - add multiple values
         for (JsonNode item : value) {
@@ -1279,6 +1274,40 @@ public class RdfPropertyMapper {
         }
       }
     }
+  }
+
+  private List<RDFNode> listItems(JsonNode value, Model model) {
+    List<RDFNode> items = new ArrayList<>();
+    for (JsonNode item : value) {
+      if (item.isTextual()) {
+        items.add(model.createLiteral(item.asText()));
+      } else if (item.isObject() && item.has("id")) {
+        items.add(
+            model.createResource(
+                baseUri + "entity/" + item.get("type").asText() + "/" + item.get("id").asText()));
+      }
+    }
+    return items;
+  }
+
+  /**
+   * Builds the RDF list from named cells instead of blank nodes. Every projection of the same list
+   * names the same cells, so a live write can compare them with what the store holds, and a write
+   * that replaces or drops the list can find its cells and delete them
+   * ({@link RdfOwnedResources#ownedTriplesPattern()}).
+   */
+  private static RDFNode listOf(
+      Resource owner, Property property, List<RDFNode> items, Model model) {
+    RDFNode rest = RDF.nil;
+    for (int index = items.size() - 1; index >= 0; index--) {
+      Resource cell =
+          model.createResource(
+              RdfOwnedResources.listCellIri(owner.getURI(), property.getURI(), index));
+      cell.addProperty(RDF.first, items.get(index));
+      cell.addProperty(RDF.rest, rest);
+      rest = cell;
+    }
+    return rest;
   }
 
   /**
@@ -1622,9 +1651,6 @@ public class RdfPropertyMapper {
 
   private Resource createTypeResource(String entityType, Model model) {
     String curieOrUri = getRdfType(entityType);
-    if (curieOrUri == null || curieOrUri.isEmpty()) {
-      return model.createResource();
-    }
     if (curieOrUri.startsWith("http://") || curieOrUri.startsWith("https://")) {
       return model.createResource(curieOrUri);
     }

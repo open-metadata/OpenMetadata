@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
@@ -21,7 +22,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import CopyLinkButton from '../CopyLinkButton/CopyLinkButton';
-import { WidgetEditButton } from '../WidgetActionButton/WidgetActionButton';
 import { DisplayNameProps } from './DisplayName.interface';
 
 interface DisplayNamePropsWithParent extends DisplayNameProps {
@@ -97,11 +97,12 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
 
         <div className="d-flex items-center gap-2">
           {hasEditPermission ? (
-            <WidgetEditButton
-              compact
+            <ButtonUtility
               className="hover-cell-icon"
               data-testid="edit-displayName-button"
-              title={t('label.edit')}
+              icon={Edit01}
+              size="xs"
+              tooltip={t('label.edit')}
               onClick={() => setIsDisplayNameEditing(true)}
             />
           ) : null}

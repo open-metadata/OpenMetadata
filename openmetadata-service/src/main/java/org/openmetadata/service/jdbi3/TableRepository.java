@@ -127,6 +127,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.AsyncService;
@@ -145,10 +146,10 @@ public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
   public static final String PATCH_FIELDS =
-      "tableConstraints,tablePartition,columns,schemaDefinition";
+      "tableConstraints,tablePartition,tableSharding,columns,schemaDefinition";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
-      "tableConstraints,tablePartition,dataModel,sourceUrl,columns,schemaDefinition";
+      "tableConstraints,tablePartition,tableSharding,dataModel,sourceUrl,columns,schemaDefinition";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -1473,12 +1474,22 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table, boolean update) {
+    DatabaseUtil.validateTableSharding(table);
     var schema = (DatabaseSchema) getCachedParentOrLoad(table.getDatabaseSchema(), "", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
+
+    if (table.getTableSharding() != null) {
+      var source = table.getTableSharding().getRepresentative();
+      if (!source.getDatabaseName().equals(table.getDatabase().getName())
+          || !source.getSchemaName().equals(schema.getName())) {
+        throw new IllegalArgumentException(
+            "Shard representative must belong to the table database and schema");
+      }
+    }
 
     // For create operations (update=false), validate constraints immediately.
     // For update operations (PATCH/PUT), constraint validation happens in updateTableConstraints()
@@ -1872,16 +1883,23 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,columns,dataModel");
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
+    return allTags((Table) entity);
+  }
+
+  /** The tags a tag condition on a table reads: its own, its columns' and its data model's. */
+  public static List<TagLabel> allTags(Table table) {
     List<TagLabel> allTags = new ArrayList<>();
-    Table table = (Table) entity;
     EntityUtil.mergeTags(allTags, table.getTags());
-    table.getColumns().forEach(column -> EntityUtil.mergeTags(allTags, column.getTags()));
+    EntityUtil.mergeColumnTags(allTags, table.getColumns());
     if (table.getDataModel() != null) {
       EntityUtil.mergeTags(allTags, table.getDataModel().getTags());
-      for (Column column : listOrEmpty(table.getDataModel().getColumns())) {
-        EntityUtil.mergeTags(allTags, column.getTags());
-      }
+      EntityUtil.mergeColumnTags(allTags, table.getDataModel().getColumns());
     }
     return allTags;
   }
@@ -2279,6 +2297,11 @@ public class TableRepository extends EntityRepository<Table> {
           "tableType",
           () -> recordChange("tableType", origTable.getTableType(), updatedTable.getTableType()));
       compareAndUpdate(
+          "tableSharding",
+          () ->
+              recordChange(
+                  "tableSharding", origTable.getTableSharding(), updatedTable.getTableSharding()));
+      compareAndUpdate(
           "dataModel",
           () -> recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel()));
       compareAndUpdate(
@@ -2407,18 +2430,10 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> origConstraints = listOrEmpty(origTable.getTableConstraints());
       List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
       origConstraints.sort(EntityUtil.compareTableConstraint);
-      origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      origConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
+      origConstraints.forEach(EntityUtil::sortConstraintPairs);
 
       updatedConstraints.sort(EntityUtil.compareTableConstraint);
-      updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      updatedConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
+      updatedConstraints.forEach(EntityUtil::sortConstraintPairs);
 
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
@@ -3555,6 +3570,11 @@ public class TableRepository extends EntityRepository<Table> {
 
     doc.put("deleted", false);
     doc.put("entityType", "pipelineStatus");
+    // The run index is searched under the pipeline's access rules, so the document carries the
+    // pipeline's access fields; one whose pipeline does not resolve is not written.
+    doc.putAll(
+        PipelineExecutionIndex.accessFields(
+            PipelineExecutionIndex.withAccessFields(observability.getPipeline())));
 
     String docId = pipelineFqn + "_" + table.getId().toString();
     String docJson = JsonUtils.pojoToJson(doc);

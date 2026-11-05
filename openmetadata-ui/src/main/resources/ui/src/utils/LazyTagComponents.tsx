@@ -11,17 +11,14 @@
  *  limitations under the License.
  */
 
-import { Owner } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Owner } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DomainLabelProps } from '../components/common/DomainLabel/DomainLabel.interface';
 import { useGenericDomainLabel } from '../components/common/DomainLabel/useGenericDomainLabel';
 import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../components/common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../components/Customization/GenericProvider/GenericContext';
 import { EntityType } from '../enums/entity.enum';
@@ -88,16 +85,18 @@ const OwnerWidgetFromContext = ({
               owner={data.owners}
               onUpdate={handleUpdatedOwner}>
               {isEmpty(data.owners) ? (
-                <WidgetPlusButton
+                <ButtonUtility
                   data-testid="add-owner"
-                  title={t('label.add-entity', {
+                  icon={Plus}
+                  tooltip={t('label.add-entity', {
                     entity: t('label.owner-plural'),
                   })}
                 />
               ) : (
-                <WidgetEditButton
+                <ButtonUtility
                   data-testid="edit-owner"
-                  title={t('label.edit-entity', {
+                  icon={Edit01}
+                  tooltip={t('label.edit-entity', {
                     entity: t('label.owner-plural'),
                   })}
                 />

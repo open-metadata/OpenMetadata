@@ -58,14 +58,14 @@ class ColumnValuesToBeBetweenValidator(
 ):
     """Validator for column values to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> int | None:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> int | datetime | None:
         """compute result of the test case
 
         Args:
             metric: metric
             column: column
         """
-        return self.run_dataframe_results(self.runner, metric, column)
+        return self.run_dataframe_results(self.runner, metric, column, preserve_datetime=True)
 
     def _run_violation_count(self, column: SQALikeColumn | Column, test_params: dict) -> tuple[int, int]:
         """Count the rows read and the values falling outside the window

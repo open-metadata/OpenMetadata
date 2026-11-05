@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -38,10 +39,12 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.type.Status;
@@ -1001,6 +1004,30 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
 
     assertEquals("Updated description", updated.getTasks().get(0).getDescription());
     assertEquals("Original description 2", updated.getTasks().get(1).getDescription());
+  }
+
+  @Test
+  void test_taskWithADotInItsName_recordsItsChangeUnderTheQuotedName(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_dotted_task"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("extract.load").withDescription("Original")));
+    Pipeline pipeline = createEntity(request);
+
+    pipeline.setTasks(List.of(new Task().withName("extract.load").withDescription("Updated")));
+    Pipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+
+    assertTrue(
+        changedFieldNames(updated.getChangeDescription())
+            .contains("tasks.\"extract.load\".description"));
+  }
+
+  private static List<String> changedFieldNames(ChangeDescription change) {
+    return Stream.of(change.getFieldsAdded(), change.getFieldsUpdated(), change.getFieldsDeleted())
+        .flatMap(List::stream)
+        .map(FieldChange::getName)
+        .toList();
   }
 
   @Test
