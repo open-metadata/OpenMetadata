@@ -82,7 +82,14 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
     final ListFilter filter = ontologyFilter(include, ontologyId);
     OntologyResourceAccess.requireDraftListRead(authorizer, securityContext, ontologyId);
-    return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    final ResultList<OntologyAxiom> page =
+        listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    OntologyResourceAccess.requireDraftRowsRead(
+        authorizer,
+        securityContext,
+        ontologyId,
+        OntologyResourceAccess.ontologyIdsOf(page.getData()));
+    return page;
   }
 
   private static ListFilter ontologyFilter(final Include include, final UUID ontologyId) {

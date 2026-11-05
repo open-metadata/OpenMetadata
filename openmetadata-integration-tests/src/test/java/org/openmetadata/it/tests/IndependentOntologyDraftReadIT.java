@@ -16,11 +16,14 @@ import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateOntologyAxiom;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.CreateOntologyProperty;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -32,6 +35,11 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.OntologyAxiomType;
+import org.openmetadata.schema.type.OntologyExpression;
+import org.openmetadata.schema.type.OntologyExpressionKind;
+import org.openmetadata.schema.type.OntologyPropertyKind;
+import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.service.Entity;
 
 /**
@@ -170,6 +178,129 @@ class IndependentOntologyDraftReadIT extends BaseOntologyApprovalIT {
                 + other.getId()
                 + "&ontology="
                 + ontology.getFullyQualifiedName()));
+  }
+
+  @Test
+  void anUnscopedListChecksTheOntologyOfEveryRowItReturns(final TestNamespace ns) {
+    final User conditional = createConditionalEditor(ns);
+    final Ontology unowned = createOntology(ns, "unownedRows");
+    final Ontology owned =
+        ns.trackRoot(
+            Entity.ONTOLOGY,
+            SdkClients.adminClient()
+                .ontologies()
+                .create(
+                    request(ns)
+                        .withName(ns.prefix("ownedRows"))
+                        .withIri(URI.create("https://example.org/model/" + ns.shortPrefix("owned")))
+                        .withOwners(List.of(SharedEntities.get().USER1.getEntityReference()))));
+    final String unownedChangeSet = populate(ns, unowned);
+    final String ownedChangeSet = populate(ns, owned);
+
+    final String page = "?limit=1000000";
+    final List<String> collections =
+        List.of("ontologyConcepts", "ontologyProperties", "ontologyAxioms", "ontologyChangeSets");
+    for (final String collection : collections) {
+      final String base = "GET /v1/" + collection;
+      final String scopedToUnowned =
+          collection.equals("ontologyAxioms") || collection.equals("ontologyChangeSets")
+              ? "?ontologyId=" + unowned.getId()
+              : "?ontology=" + unowned.getFullyQualifiedName();
+      assertEquals(
+          403, statusOf(token(conditional), base + page), "unscoped " + collection + " as editor");
+      assertEquals(
+          200,
+          statusOf(token(conditional), base + scopedToUnowned),
+          "scoped " + collection + " as editor");
+      assertEquals(
+          200, statusOf(SdkClients.getAdminToken(), base + page), "unscoped " + collection);
+    }
+    final String scopedChangeSets =
+        bodyOf(token(conditional), "GET /v1/ontologyChangeSets?ontologyId=" + unowned.getId());
+    assertTrue(scopedChangeSets.contains(unownedChangeSet));
+    assertFalse(scopedChangeSets.contains(ownedChangeSet));
+    final String scopedConcepts =
+        bodyOf(
+            token(conditional),
+            "GET /v1/ontologyConcepts?ontology=" + unowned.getFullyQualifiedName());
+    assertTrue(scopedConcepts.contains("\"name\":\"Customer\""));
+  }
+
+  private static String populate(final TestNamespace ns, final Ontology ontology) {
+    final String base = ontology.getNamespace().toString();
+    final var admin = SdkClients.adminClient();
+    declareClass(ontology, "Customer", URI.create(base + "Customer"));
+    declareClass(ontology, "Party", URI.create(base + "Party"));
+    admin
+        .ontologyProperties()
+        .create(
+            new CreateOntologyProperty()
+                .withName("knows")
+                .withOntology(ontology.getFullyQualifiedName())
+                .withKind(OntologyPropertyKind.DATA)
+                .withIri(URI.create(base + "knows")));
+    admin
+        .ontologyAxioms()
+        .create(
+            new CreateOntologyAxiom()
+                .withName("CustomerIsParty")
+                .withDisplayName("Customer is a Party")
+                .withDescription("Every customer is a party")
+                .withOntology(ontology.getFullyQualifiedName())
+                .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
+                .withSubjectIri(URI.create(base + "Customer"))
+                .withProvenance(RelationProvenance.MANUAL)
+                .withExpressions(
+                    List.of(
+                        new OntologyExpression()
+                            .withKind(OntologyExpressionKind.NAMED_CLASS)
+                            .withClassIri(URI.create(base + "Party")))));
+    return nativeChangeSet(ns, ontology).getId().toString();
+  }
+
+  private static User createConditionalEditor(final TestNamespace ns) {
+    final var admin = SdkClients.adminClient();
+    final String name = ns.shortPrefix("condEditor");
+    final Policy policy =
+        ns.trackRoot(
+            Entity.POLICY,
+            admin
+                .policies()
+                .create(
+                    new CreatePolicy()
+                        .withName(name + "Policy")
+                        .withRules(
+                            List.of(
+                                new Rule()
+                                    .withName("EditUnownedOntologies")
+                                    .withEffect(Rule.Effect.ALLOW)
+                                    .withResources(List.of(Entity.ONTOLOGY))
+                                    .withOperations(List.of(MetadataOperation.EDIT_ALL))
+                                    .withCondition("noOwner()"),
+                                new Rule()
+                                    .withName("ViewEverything")
+                                    .withEffect(Rule.Effect.ALLOW)
+                                    .withResources(List.of("All"))
+                                    .withOperations(List.of(MetadataOperation.VIEW_ALL))))));
+    final Role role =
+        ns.trackRoot(
+            Entity.ROLE,
+            admin
+                .roles()
+                .create(
+                    new CreateRole()
+                        .withName(name + "Role")
+                        .withPolicies(List.of(policy.getFullyQualifiedName()))));
+    return ns.trackRoot(
+        Entity.USER,
+        admin
+            .users()
+            .create(
+                new org.openmetadata.schema.api.teams.CreateUser()
+                    .withName(name)
+                    .withEmail(name + "@test.om.org")
+                    .withDescription("v7 user")
+                    .withRoles(List.of(role.getId()))));
   }
 
   private static OntologyChangeSet nativeChangeSet(final TestNamespace ns, final Ontology o) {

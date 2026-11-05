@@ -3,6 +3,8 @@ package org.openmetadata.service.resources.ontology;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -63,6 +65,31 @@ final class OntologyResourceAccess {
         ontologyId == null
             ? new ResourceContext<>(Entity.ONTOLOGY)
             : new ResourceContext<>(Entity.ONTOLOGY, ontologyId, null));
+  }
+
+  /**
+   * An unscoped list names no ontology, so the type-level check above cannot see whose rows the
+   * page holds, and a conditional rule such as {@code noOwner()} passes on a context with no
+   * entity. Every distinct ontology on the page is therefore checked as a by-id read would. The
+   * page is refused whole, not filtered, to keep {@code paging.total} and the cursors honest.
+   */
+  static void requireDraftRowsRead(
+      final Authorizer authorizer,
+      final SecurityContext context,
+      final UUID requestedOntologyId,
+      final Collection<UUID> rowOntologyIds) {
+    if (requestedOntologyId != null) {
+      return;
+    }
+    new LinkedHashSet<>(rowOntologyIds)
+        .forEach(
+            id ->
+                requireDraftRead(
+                    authorizer, context, new ResourceContext<>(Entity.ONTOLOGY, id, null)));
+  }
+
+  static List<UUID> ontologyIdsOf(final List<? extends OntologyDefinition> rows) {
+    return rows.stream().map(row -> row.getOntology().getId()).toList();
   }
 
   /** A move or copy reads or removes its {@code from} field, so that field counts as touched. */

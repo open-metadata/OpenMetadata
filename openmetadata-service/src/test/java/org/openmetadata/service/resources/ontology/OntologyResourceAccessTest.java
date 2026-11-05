@@ -9,6 +9,7 @@ import jakarta.json.Json;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -80,6 +81,19 @@ class OntologyResourceAccessTest {
         () ->
             OntologyResourceAccess.requireDraftRead(
                 grantingOnly(MetadataOperation.EDIT_ALL), context, ontology));
+  }
+
+  @Test
+  void aListThatNamesAnOntologyNeedsNoPerRowCheck() {
+    final Authorizer refusing = Mockito.mock(Authorizer.class);
+    assertDoesNotThrow(
+        () ->
+            OntologyResourceAccess.requireDraftRowsRead(
+                refusing,
+                Mockito.mock(SecurityContext.class),
+                UUID.randomUUID(),
+                List.of(UUID.randomUUID())));
+    Mockito.verifyNoInteractions(refusing);
   }
 
   private static Authorizer grantingOnly(final MetadataOperation granted) {
