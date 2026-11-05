@@ -31,6 +31,7 @@ import {
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getQueryPath } from '../../../utils/RouterUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
@@ -257,13 +258,20 @@ export const getPrimaryAndRelatedEntities = (
 };
 
 export const memoryEntityToAssetOption = (
-  ref: EntityReference
-): DataAssetOption => ({
-  label: ref.displayName ?? ref.name ?? '',
-  value: ref.fullyQualifiedName ?? ref.id,
-  displayName: ref.displayName ?? ref.name ?? '',
-  reference: ref,
-});
+  ref: EntityReference,
+  t: (key: string) => string
+): DataAssetOption => {
+  const name = getEntityName(ref);
+
+  return {
+    label:
+      name ||
+      (ref.type === EntityType.QUERY ? t('message.no-permission-to-view') : ''),
+    value: ref.fullyQualifiedName ?? ref.id,
+    displayName: name,
+    reference: ref,
+  };
+};
 
 // Derives the RHF form values, tags, and linked-asset options from the memory
 // being edited, so the edit modal opens pre-populated.
@@ -286,9 +294,11 @@ export const buildMemoryFormState = (
 
   const assets: DataAssetOption[] = [
     ...(memoryToEdit.primaryEntity
-      ? [memoryEntityToAssetOption(memoryToEdit.primaryEntity)]
+      ? [memoryEntityToAssetOption(memoryToEdit.primaryEntity, t)]
       : []),
-    ...(memoryToEdit.relatedEntities ?? []).map(memoryEntityToAssetOption),
+    ...(memoryToEdit.relatedEntities ?? []).map((ref) =>
+      memoryEntityToAssetOption(ref, t)
+    ),
   ];
 
   return { formValues, tags: memoryToEdit.tags ?? [], assets };

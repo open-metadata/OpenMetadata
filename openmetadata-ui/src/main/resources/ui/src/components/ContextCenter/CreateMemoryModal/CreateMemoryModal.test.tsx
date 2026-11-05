@@ -472,6 +472,27 @@ describe('CreateMemoryModal', () => {
     ).toHaveAttribute('href', '/query-view/svc.db.sch.fct_expenses/query-id');
   });
 
+  it.each([true, false])(
+    'labels a restricted query without linking it when viewOnly is %s',
+    (viewOnly) => {
+      const restrictedQuery = { id: 'restricted-query-id', type: 'query' };
+      renderMemory(
+        { ...linkedMemory, relatedEntities: [restrictedQuery] },
+        { viewOnly }
+      );
+
+      const label = screen.getByText('message.no-permission-to-view');
+
+      expect(label).toBeVisible();
+      expect(label.closest('a')).toBeNull();
+      expect(screen.queryByText(restrictedQuery.id)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(expensesQuery.displayName)
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('query')).toBeVisible();
+    }
+  );
+
   it('leaves a linked query unlinked when the memory links several tables', () => {
     renderMemory({
       ...linkedMemory,
