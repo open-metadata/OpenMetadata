@@ -44,12 +44,22 @@ survived.
   question or answer changes takes the stage it was derived in; a reworded title or summary keeps
   its stage. Its writes are stamped when they run and updates are conditional, so a review decided
   during re-extraction wins.
-- Re-extraction never releases a pill a person decided; a derived value that resembles such a pill
-  without being its own question's rewording starts Unprocessed, so a value a reviewer rejected or
-  replaced never returns to grounding unreviewed. A pill a person decided is a Manual correction or
-  one a review moved out of `Approved` or `Unprocessed`, and its review decides it; a value
-  resembles it when it clears the similarity bar without a conflicting number, or with one
-  beside a correction, whose look-alike may be the very value the person replaced.
+- Re-extraction never releases a pill a person decided: a Manual correction, or a pill a review
+  moved to `Rejected`, `Superseded`, `Invalidated`, `Archived` or `Deprecated`. Its review decides
+  it. A `Draft` pill awaits a review instead: it is never rewritten either, but when nothing derived
+  claims it, it is released like an `Approved` or `Unprocessed` pill, and deleting it with its last
+  source closes its review.
+- A derived value that no pill claims and that resembles a Draft or decided pill starts
+  `Unprocessed`, so a value a reviewer rejected or replaced never returns to grounding unreviewed.
+  The hold runs after both matching passes, for every such pill, matched exactly or not. A value
+  resembles the pill when it clears the similarity bar without a conflicting number, its own
+  question's second rewording included. Beside a correction, a value with a conflicting number
+  resembles it too when the two questions alone clear the bar, since it may be the very value the
+  person replaced; so a correction holds any such value it does not claim, both values when two are
+  left for its question. The question test (`MemoryTextSimilarity.questionSimilarity`) compares
+  topic words, without filler, question words or a plural's "s", because number-only answers agree
+  word for word: "window for refunds" asks about the "refund window", "discount rate" not about
+  the "VAT rate".
 - Extracted memories stay owned by their writer. A conflict review over one is also assigned to
   whoever owns its source when the review opens; owning the memory would keep it readable after
   the source changes hands.
@@ -61,8 +71,17 @@ survived.
 Under a reviewing provider, a document's memories ground other users' answers only after review,
 and an edited document's changed facts leave grounding until reviewed again. Two answers to one
 question that differ without numbers are still deduplicated to the first. A pill a person decided
-stays linked to its source while the source exists, whatever re-extraction derives. A value that
-resembles one starts Unprocessed under every provider: under OSS it waits for an admin, and a
-look-alike for another question (a US rate equal to a rejected UK one) costs one review. A
-rewording too loose to clear the similarity bar is still a new fact, created in its derived stage.
-OSS otherwise keeps its behavior, except that conflicting numbers are no longer dropped.
+stays linked to its source while the source exists, whatever re-extraction derives; a Draft leaves
+with its fact, and its review closes with it.
+
+A held value starts `Unprocessed` under every provider. Under OSS that keeps it out of grounding:
+search admits only `Approved` memories (`ContextMemorySearchVisibility.SEARCHABLE_STATUSES`),
+except a memory's pending ones to its own owners when a caller asks for them
+(ADR:2026-10-15-search-admits-a-subjects-own-pending-memories-on-request). The Context Center lists
+it as Unprocessed to its owners and admins, and it grounds answers once an admin approves it
+through the API, `PATCH /v1/contextCenter/memories/{id}` setting `/entityStatus` to `Approved` (a
+move `ContextMemoryRepository.LIFECYCLE` allows); the OSS memory panel shows a memory's stage but
+cannot change it. A look-alike for another question (a US rate equal to a rejected UK one) is held
+the same way. A rewording too loose to clear the similarity bar is still a new fact, created in its
+derived stage. OSS otherwise keeps its behavior, except that conflicting numbers are no longer
+dropped.

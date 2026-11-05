@@ -39,6 +39,10 @@ final class MemoryTextSimilarity {
   private static final Set<String> FILLER =
       Set.of("a", "an", "the", "is", "are", "was", "were", "s", "do", "does", "did");
 
+  /** Words that frame a question without naming what it asks about. */
+  private static final Set<String> QUESTION_FRAME =
+      Set.of("what", "which", "who", "whom", "whose", "how", "when", "where", "why");
+
   private static final Pattern NUMBERS =
       Pattern.compile(
           "(?:(?<![\\p{L}\\p{N}])[+\\-−])?"
@@ -109,6 +113,27 @@ final class MemoryTextSimilarity {
         : Arrays.stream(text.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+"))
             .filter(word -> !word.isEmpty() && !FILLER.contains(word))
             .toList();
+  }
+
+  /**
+   * How far two questions ask about the same thing: the overlap {@link #weighted} scores, over the
+   * words naming the topic, a plural folded. "refund window" and "window for refunds" share their
+   * topic; "VAT rate" and "discount rate" do not, though most of their words are the same.
+   */
+  static double questionSimilarity(String questionA, String questionB) {
+    return jaccard(topicWords(questionA), topicWords(questionB));
+  }
+
+  private static Set<String> topicWords(String question) {
+    return tokenize(question).stream()
+        .filter(word -> !FILLER.contains(word) && !QUESTION_FRAME.contains(word))
+        .map(MemoryTextSimilarity::singular)
+        .collect(Collectors.toSet());
+  }
+
+  /** "refunds" is "refund"; a word ending in "ss" ("process") is no plural. */
+  private static String singular(String word) {
+    return word.endsWith("s") && !word.endsWith("ss") ? word.substring(0, word.length() - 1) : word;
   }
 
   static double weighted(String questionA, String answerA, String questionB, String answerB) {

@@ -450,7 +450,10 @@ class ContextMemoryReconcilerTest {
     assertEquals("25% per the HR policy", captor.getValue().getAnswer());
   }
 
-  /** Which of two values a person corrected is unknown, so neither is claimed for the correction. */
+  /**
+   * Which of two values a person corrected is unknown, so neither is claimed for the correction;
+   * either may be the one replaced, so both await review.
+   */
   @Test
   void aCorrectedPillClaimsNoValueWhenTwoAreLeft() {
     existing(
@@ -465,7 +468,11 @@ class ContextMemoryReconcilerTest {
             derived("Commission rate?", "15% per the Sales handbook"),
             derived("Commission rate?", "25% per the HR policy")));
 
-    verify(memoryRepository, times(2)).create(isNull(), any());
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository, times(2)).create(isNull(), captor.capture());
+    assertEquals(
+        List.of(ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.UNPROCESSED),
+        captor.getAllValues().stream().map(ContextMemory::getEntityStatus).toList());
   }
 
   private static final String EMPLOYEES = "How many vacation days do employees get per year?";
@@ -612,7 +619,7 @@ class ContextMemoryReconcilerTest {
   @EnumSource(
       value = ContextMemoryStatus.class,
       mode = EnumSource.Mode.EXCLUDE,
-      names = {"APPROVED", "UNPROCESSED"})
+      names = {"APPROVED", "UNPROCESSED", "DRAFT"})
   void aReviewedPillsRewordedValueAwaitsReviewBesideIt(ContextMemoryStatus reviewedStatus) {
     existing(
         pill(REFUND_WINDOW, "30 days", ContextMemorySourceType.PAGE_EXTRACTION, reviewedStatus));
@@ -624,6 +631,62 @@ class ContextMemoryReconcilerTest {
     verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
     verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
     assertCreatedAwaitingReview(WINDOW_FOR_REFUNDS);
+  }
+
+  /** Draft awaits a review, no decision: it leaves with its fact; its rewording awaits review. */
+  @Test
+  void aDraftLeavesWithItsFactWhileItsRewordingAwaitsReview() {
+    ContextMemory draft =
+        pill(
+            REFUND_WINDOW,
+            "30 days",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.DRAFT);
+    existing(draft);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcile(List.of(derived(WINDOW_FOR_REFUNDS, "30 days")));
+
+    assertEquals(1, result.deleted());
+    verify(memoryRepository).releaseExtractedMemory(draft.getId(), source);
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
+    assertCreatedAwaitingReview(WINDOW_FOR_REFUNDS);
+  }
+
+  /** A reviewed pill matched word for word still holds a look-alike the same run derives. */
+  @Test
+  void aReviewedPillMatchedExactlyStillHoldsItsLookalike() {
+    existing(
+        pill(
+            REFUND_WINDOW,
+            "30 days",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.REJECTED));
+
+    reconcile(List.of(derived(REFUND_WINDOW, "30 days"), derived(WINDOW_FOR_REFUNDS, "30 days")));
+
+    verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
+    assertCreatedAwaitingReview(WINDOW_FOR_REFUNDS);
+  }
+
+  /** A reviewed pill claims one rewording of its question; another one it leaves is held too. */
+  @Test
+  void aSecondRewordingOfAReviewedPillsQuestionAwaitsReview() {
+    existing(
+        pill(
+            REFUND_WINDOW,
+            "30 days",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.REJECTED));
+
+    reconcile(
+        List.of(
+            derived("What's the refund window?", "30 days"),
+            derived(REFUND_WINDOW, "Refunds are accepted within 30 days.")));
+
+    verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
+    assertCreatedAwaitingReview(REFUND_WINDOW);
   }
 
   /** A correction stays as it is; its value under a reworded question comes back for review. */
@@ -658,6 +721,26 @@ class ContextMemoryReconcilerTest {
     verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
     verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
     assertCreatedAwaitingReview(WINDOW_FOR_REFUNDS);
+  }
+
+  /**
+   * Number-only answers agree word for word, so only the questions tell another fact apart: a
+   * changed number beside a correction is held only when its question asks about the same thing.
+   */
+  @Test
+  void anotherFactsChangedNumberBesideACorrectionKeepsItsDerivedStage() {
+    existing(
+        pill(
+            "What is the VAT rate?",
+            "20%",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED));
+
+    reconcile(List.of(derived("What is the discount rate?", "15%")));
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).create(isNull(), captor.capture());
+    assertEquals(ContextMemoryStatus.APPROVED, captor.getValue().getEntityStatus());
   }
 
   /**
@@ -728,7 +811,7 @@ class ContextMemoryReconcilerTest {
   @EnumSource(
       value = ContextMemoryStatus.class,
       mode = EnumSource.Mode.EXCLUDE,
-      names = {"APPROVED", "UNPROCESSED"})
+      names = {"APPROVED", "UNPROCESSED", "DRAFT"})
   void aReviewedPillWhoseFactIsGoneIsNotReleased(ContextMemoryStatus reviewedStatus) {
     existing(pill("gone", "A", ContextMemorySourceType.PAGE_EXTRACTION, reviewedStatus));
 
@@ -894,14 +977,13 @@ class ContextMemoryReconcilerTest {
     assertEquals(original.getId(), captor.getValue().getId(), "identity must be preserved");
   }
 
-  /** Unlike a reviewed pill, one the engine maintains goes once its fact leaves the source. */
+  /** Unlike a reviewed pill, one the engine maintains or one in Draft leaves with its fact. */
   @ParameterizedTest
   @EnumSource(
       value = ContextMemoryStatus.class,
-      names = {"APPROVED", "UNPROCESSED"})
-  void deletesPillNoLongerDerived(ContextMemoryStatus maintainedStatus) {
-    ContextMemory gone =
-        pill("gone", "A", ContextMemorySourceType.PAGE_EXTRACTION, maintainedStatus);
+      names = {"APPROVED", "UNPROCESSED", "DRAFT"})
+  void deletesPillNoLongerDerived(ContextMemoryStatus stage) {
+    ContextMemory gone = pill("gone", "A", ContextMemorySourceType.PAGE_EXTRACTION, stage);
     existing(gone);
 
     ContextMemoryReconciler.ReconcileResult result = reconcile(List.of(derived("fresh", "A")));

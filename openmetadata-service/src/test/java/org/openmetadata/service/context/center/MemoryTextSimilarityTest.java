@@ -69,6 +69,19 @@ class MemoryTextSimilarityTest {
         MemoryTextSimilarity.hasConflictingNumbers("Results per page 50", "Results per page 100"));
   }
 
+  /** What two questions ask about decides, not the frame they share ("What is the … rate?"). */
+  @Test
+  void questionsAboutTheSameTopicAreAlike() {
+    assertTrue(
+        MemoryTextSimilarity.questionSimilarity(
+                "What is the refund window?", "What is the window for refunds?")
+            >= MemoryTextSimilarity.IDENTITY_THRESHOLD);
+    assertTrue(
+        MemoryTextSimilarity.questionSimilarity(
+                "What is the VAT rate?", "What is the discount rate?")
+            < MemoryTextSimilarity.IDENTITY_THRESHOLD);
+  }
+
   @Test
   void aQuestionInOtherWordsOfTheSameVocabularyIsTheSameQuestion() {
     assertTrue(
