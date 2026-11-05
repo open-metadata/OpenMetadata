@@ -17,7 +17,7 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { Edit05 } from '@openmetadata/ui-core-components/icons';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -68,11 +68,10 @@ const OntologyRelationControls = ({
   return (
     <>
       <ButtonUtility
-        color="tertiary"
         data-testid="ontology-relation-edit"
-        icon={Edit05}
+        icon={Edit01}
         isDisabled={isBusy}
-        size="xs"
+        size="sm"
         tooltip={t('label.edit-entity', { entity: t('label.relationship') })}
         onClick={() => setIsPicking(true)}
       />
