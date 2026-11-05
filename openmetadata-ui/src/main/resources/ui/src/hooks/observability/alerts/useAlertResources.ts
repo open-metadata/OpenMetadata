@@ -19,7 +19,7 @@ import {
   shouldShowRuleSection,
   toCapabilitiesInput,
 } from '../../../utils/Alerts/AlertSelectionUtil';
-import { UseObservabilityAlertResourcesReturn } from '../AddObservabilityPage.interface';
+import { UseObservabilityAlertResourcesReturn } from '../../../interface/observability/alertForm.interface';
 
 // One array for "nothing selected", so what depends on the sources does not change every render.
 const NO_SOURCES: string[] = [];

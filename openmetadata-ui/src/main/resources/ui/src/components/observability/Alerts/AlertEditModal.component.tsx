@@ -28,7 +28,7 @@ import {
   AlertType,
   ProviderType,
 } from '../../../generated/events/eventSubscription';
-import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
+import { useAlertFormData } from '../../../hooks/observability/alerts/useAlertFormData';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,

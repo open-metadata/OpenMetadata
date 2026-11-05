@@ -24,7 +24,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   UseObservabilityAlertTemplatesOptions,
   UseObservabilityAlertTemplatesReturn,
-} from '../AddObservabilityPage.interface';
+} from '../../../interface/observability/alertForm.interface';
 
 export function useObservabilityAlertTemplates({
   extraFormWidgets,

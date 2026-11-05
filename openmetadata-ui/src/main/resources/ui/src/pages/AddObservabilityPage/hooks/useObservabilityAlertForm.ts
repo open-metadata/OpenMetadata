@@ -20,7 +20,7 @@ import {
   UseAlertFormDataOptions,
   UseAlertFormDataReturn,
 } from '../AddObservabilityPage.interface';
-import { useAlertFormData } from './useAlertFormData';
+import { useAlertFormData } from '../../../hooks/observability/alerts/useAlertFormData';
 import { useSelectedAlertSources } from './useObservabilityAlertResources';
 
 type ObservabilityAlertFormInstance =

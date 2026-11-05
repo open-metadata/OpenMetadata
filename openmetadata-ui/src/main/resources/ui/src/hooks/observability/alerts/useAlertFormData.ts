@@ -46,11 +46,13 @@ import {
   getSettingPath,
 } from '../../../utils/RouterUtils';
 import {
-  ModifiedCreateEventSubscription,
-  ModifiedEventSubscription,
   UseAlertFormDataOptions,
   UseAlertFormDataReturn,
-} from '../AddObservabilityPage.interface';
+} from '../../../interface/observability/alertForm.interface';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from '../../../utils/AlertsClassBase.interface';
 import { useAlertResources } from './useAlertResources';
 import { useObservabilityAlertTemplates } from './useObservabilityAlertTemplates';
 

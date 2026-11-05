@@ -42,7 +42,7 @@ import { ClientErrors } from '../../../enums/Axios.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
 import { useAlertDetailsData } from '../../../hooks/observability/alerts/useAlertDetailsData';
 import { useFqn } from '../../../hooks/useFqn';
-import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
+import { useAlertFormData } from '../../../hooks/observability/alerts/useAlertFormData';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';

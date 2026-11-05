@@ -62,11 +62,11 @@ jest.mock('../../../utils/AlertsClassBase', () => ({
   },
 }));
 
-jest.mock('./useAlertResources', () => ({
+jest.mock('../../../hooks/observability/alerts/useAlertResources', () => ({
   useAlertResources: () => ({ loading: false }),
 }));
 
-jest.mock('./useObservabilityAlertTemplates', () => ({
+jest.mock('../../../hooks/observability/alerts/useObservabilityAlertTemplates', () => ({
   useObservabilityAlertTemplates: () => ({ loading: false }),
 }));
 

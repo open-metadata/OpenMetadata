@@ -33,7 +33,7 @@ import AlertEditModal from './AlertEditModal.component';
 
 const mockUseAlertFormData = jest.fn();
 
-jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+jest.mock('../../../hooks/observability/alerts/useAlertFormData', () => ({
   useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
 }));
 

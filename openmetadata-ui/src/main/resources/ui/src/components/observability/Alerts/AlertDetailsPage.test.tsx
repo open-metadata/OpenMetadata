@@ -60,7 +60,7 @@ jest.mock('../../../hooks/observability/alerts/useAlertDetailsData', () => ({
   useAlertDetailsData: (params: unknown) => mockUseAlertDetailsData(params),
 }));
 
-jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+jest.mock('../../../hooks/observability/alerts/useAlertFormData', () => ({
   useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
 }));
 
