@@ -12,12 +12,11 @@
  */
 
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { Key, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import {
@@ -115,8 +114,8 @@ function AddIngestionButton({
           className="tw:font-semibold"
           color="secondary"
           data-testid="add-new-ingestion-button"
-          iconLeading={<Plus height={14} width={14} />}
-          iconTrailing={<DropdownIcon height={12} width={12} />}
+          iconLeading={Plus}
+          iconTrailing={ChevronDown}
           isDisabled={isUnavailable}>
           {t('label.add-agent')}
         </Button>

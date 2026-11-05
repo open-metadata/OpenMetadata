@@ -28,6 +28,8 @@ export interface ListViewProps<T> {
   customPaginationProps: NextPreviousProps & {
     showPagination: boolean;
   };
+  currentView: ListViewOptions;
+  onViewChange: (view: ListViewOptions) => void;
 }
 
 export enum ListViewOptions {

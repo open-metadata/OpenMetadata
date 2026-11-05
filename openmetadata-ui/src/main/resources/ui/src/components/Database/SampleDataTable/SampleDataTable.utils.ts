@@ -13,6 +13,7 @@
 
 import { isEmpty, isObject, toString as lodashToString } from 'lodash';
 import { unparse } from 'papaparse';
+import { FORMULA_LIKE } from '../../../utils/CSV/CSVPureUtils';
 import { SampleDataColumn, SampleDataType } from './SampleData.interface';
 
 export const ROW_LIMIT_OPTIONS = [10, 100, 1000];
@@ -45,6 +46,7 @@ export const buildSampleDataCSVContent = (
         )
       ),
     },
-    { newline: '\n' }
+    // Prefix cells a spreadsheet would evaluate, as entity CSV exports do
+    { newline: '\n', escapeFormulae: FORMULA_LIKE }
   );
 };

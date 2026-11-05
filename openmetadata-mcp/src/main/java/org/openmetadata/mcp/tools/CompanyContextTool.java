@@ -23,7 +23,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -176,7 +176,7 @@ public class CompanyContextTool implements McpTool {
   private static Map<String, Object> runSearch(
       String query, Map<String, Object> params, CatalogSecurityContext securityContext) {
     Map<String, Object> result;
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    VectorIndexService vectorService = Entity.getSearchRepository().getVectorIndexService();
     if (!Entity.getSearchRepository().isVectorEmbeddingEnabled() || vectorService == null) {
       result =
           errorResponse(
@@ -189,7 +189,7 @@ public class CompanyContextTool implements McpTool {
   }
 
   private static Map<String, Object> search(
-      OpenSearchVectorService vectorService,
+      VectorIndexService vectorService,
       String query,
       Map<String, Object> params,
       CatalogSecurityContext securityContext) {

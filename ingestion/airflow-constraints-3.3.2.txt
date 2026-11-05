@@ -566,7 +566,7 @@ pure_eval==0.2.4
 py-spy==0.4.2
 pyOpenSSL==26.4.0
 pyarrow==25.0.1
-pyasn1==0.6.4
+pyasn1==0.6.5
 pyasn1_modules==0.4.2
 pybreaker==1.4.1
 pycountry==26.2.16
