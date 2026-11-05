@@ -81,7 +81,10 @@ const SubPanel: React.FC<SubPanelProps> = ({
   );
 
   return (
-    <div className="ask-sub-panel" data-testid="ask-sub-panel">
+    <div
+      className="ask-sub-panel"
+      data-testid="ask-sub-panel"
+      data-tour-step="sub-panel">
       <header className="ask-sub-panel__header">
         <span
           className="ask-sub-panel__title"
@@ -89,10 +92,9 @@ const SubPanel: React.FC<SubPanelProps> = ({
           {t(config.titleKey)}
         </span>
         <ButtonUtility
-          color="tertiary"
           data-testid="ask-sub-panel-collapse-btn"
           icon={CollapsePanelIcon}
-          size="sm"
+          size="lg"
           tooltip={t('label.collapse')}
           type="button"
           onClick={onCollapse}

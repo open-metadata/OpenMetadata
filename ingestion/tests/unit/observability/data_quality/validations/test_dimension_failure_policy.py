@@ -100,7 +100,10 @@ def test_aggregate_passes_while_one_group_breaches(create_sqlite_table, policy, 
 def test_any_dimension_names_the_failing_groups(create_sqlite_table):
     res = run(create_sqlite_table, ColumnValuesToBeNotNullValidator, not_null_within_60_percent("ANY_DIMENSION"))
 
-    assert "so this test passed" in res.result
+    assert res.testCaseStatus == TestCaseStatus.Failed
+    assert "so the aggregate passed" in res.result
+    assert "so this test passed" not in res.result
+    assert "Evaluated on the full table." in res.result
     assert "1 dimension group failed (name=Eve)" in res.result
     assert "ANY_DIMENSION" in res.result
 
@@ -112,6 +115,7 @@ def test_overall_only_leaves_the_result_message_alone(create_sqlite_table):
     )
 
     assert overall_only.result == without_policy.result
+    assert "so this test passed" in overall_only.result
     assert "ANY_DIMENSION" not in overall_only.result
 
 
@@ -326,6 +330,8 @@ def test_a_failing_group_below_the_minimum_does_not_fail_the_test_case(create_sq
     assert "1 dimension group failed with fewer than 15 rows (name=Eve)" in res.result
     assert "so it does not fail the test case" in res.result
     assert "ANY_DIMENSION policy fails the test case" not in res.result
+    assert "so this test passed" in res.result
+    assert "so the aggregate passed" not in res.result
 
 
 def test_a_failing_group_at_the_minimum_still_fails_the_test_case(create_sqlite_table):

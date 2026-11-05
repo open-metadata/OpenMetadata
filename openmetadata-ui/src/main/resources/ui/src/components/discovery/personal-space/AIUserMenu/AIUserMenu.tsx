@@ -37,7 +37,16 @@ import {
   User01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import React, { FC, ReactNode, useCallback, useEffect, useMemo } from 'react';
+import React, {
+  FC,
+  ReactNode,
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Button, SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -104,6 +113,9 @@ interface MenuRowProps {
   isDanger?: boolean;
 }
 
+const isTextTruncated = (element: HTMLElement | null) =>
+  Boolean(element && element.scrollWidth > element.clientWidth);
+
 const MenuRow = ({
   icon: Icon,
   label,
@@ -157,7 +169,10 @@ const ContextRow = ({
       <Typography className="tw:leading-4 tw:text-tertiary" size="text-xs">
         {caption}
       </Typography>
-      <Typography className="tw:truncate tw:text-primary" weight="medium">
+      <Typography
+        className="tw:text-primary"
+        ellipsis={{ excludeTriggerFromTabOrder: true, tooltip: true }}
+        weight="medium">
         {value}
       </Typography>
     </Box>
@@ -195,8 +210,10 @@ const OptionRow = ({
 interface TriggerContentProps {
   collapsed: boolean;
   name: string;
-  email: string;
+  userName: string;
   domainName?: string;
+  domainRef: RefObject<HTMLElement>;
+  nameRef: RefObject<HTMLElement>;
   isDomainScoped: boolean;
 }
 
@@ -204,8 +221,10 @@ interface TriggerContentProps {
 const TriggerContent = ({
   collapsed,
   name,
-  email,
+  userName,
   domainName,
+  domainRef,
+  nameRef,
   isDomainScoped,
 }: TriggerContentProps) => (
   <>
@@ -215,7 +234,7 @@ const TriggerContent = ({
         collapsed ? 'tw:size-[34px]' : 'tw:size-9 tw:*:text-[15px]'
       )}
       displayName={name}
-      name={email}
+      name={userName}
       size="sm"
     />
     {collapsed ? (
@@ -230,7 +249,11 @@ const TriggerContent = ({
     ) : (
       <>
         <Box className="tw:min-w-0 tw:flex-1" direction="col">
-          <Typography className="tw:truncate tw:text-primary" weight="medium">
+          <Typography
+            className="tw:truncate tw:text-primary"
+            data-testid="ask-ai-user-menu-name"
+            ref={nameRef}
+            weight="medium">
             {name}
           </Typography>
           <Box align="center" className="tw:min-w-0" gap={1}>
@@ -249,6 +272,7 @@ const TriggerContent = ({
                 isDomainScoped ? 'tw:text-brand-secondary' : 'tw:text-tertiary'
               )}
               data-testid="ask-ai-user-menu-domain"
+              ref={domainRef}
               size="text-xs"
               weight="medium">
               {domainName}
@@ -288,12 +312,15 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
   }, [appVersion, setAppVersion]);
 
   const displayName = getEntityName(currentUser) || t('label.user');
-  const email = currentUser?.email ?? '';
+  const userName = currentUser?.name ?? '';
   const domainDisplayName = getDomainDisplayName(
     activeDomainEntityRef,
     activeDomain
   );
   const isDomainScoped = activeDomain !== DEFAULT_DOMAIN_VALUE;
+  const nameRef = useRef<HTMLElement>(null);
+  const domainRef = useRef<HTMLElement>(null);
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
   const selectedPersonaName = selectedPersona
     ? getEntityName(selectedPersona)
     : t('label.default');
@@ -336,19 +363,29 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
     <Dropdown.Root>
       <Tooltip
         arrow
-        isDisabled={!collapsed}
+        isOpen={isTooltipOpen}
         placement="right"
         title={
-          <span className="tw:flex tw:items-center tw:gap-2 tw:leading-5">
-            <Typography className="tw:truncate tw:text-[13px]" weight="medium">
+          // Wraps rather than truncates: this is where a long name is read in full.
+          <span className="tw:flex tw:flex-wrap tw:items-center tw:gap-x-2 tw:leading-5 tw:break-normal">
+            <Typography className="tw:text-[13px]" weight="medium">
               {displayName}
             </Typography>
             <Typography
-              className="tw:truncate tw:text-tooltip-supporting-text"
+              className="tw:text-tooltip-supporting-text"
               weight="regular">
               {domainDisplayName}
             </Typography>
           </span>
+        }
+        onOpenChange={(isOpen) =>
+          // Expanded, the card already shows both unless one is cut off.
+          setIsTooltipOpen(
+            isOpen &&
+              (collapsed ||
+                isTextTruncated(nameRef.current) ||
+                isTextTruncated(domainRef.current))
+          )
         }>
         <Button
           aria-label={displayName}
@@ -362,9 +399,11 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           <TriggerContent
             collapsed={collapsed}
             domainName={domainDisplayName}
-            email={email}
+            domainRef={domainRef}
             isDomainScoped={isDomainScoped}
             name={displayName}
+            nameRef={nameRef}
+            userName={userName}
           />
         </Button>
       </Tooltip>
@@ -383,7 +422,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
               <ProfilePicture
                 className="tw:*:font-medium"
                 displayName={displayName}
-                name={email}
+                name={userName}
                 width="40"
               />
               <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
@@ -487,9 +526,9 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             className={ROW_CLASS}
             data-testid="ai-user-menu-my-data"
             id="my-data"
-            textValue={t('label.my-data')}
+            textValue={t('label.my-data-and-following')}
             onAction={() => openPanel('my-data')}>
-            <MenuRow icon={Assets} label={t('label.my-data')} />
+            <MenuRow icon={Assets} label={t('label.my-data-and-following')} />
           </Dropdown.Item>
 
           <SubmenuTrigger>

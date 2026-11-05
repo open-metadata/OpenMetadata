@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   FeaturedIcon,
   FileUploadDropZone,
@@ -144,12 +145,12 @@ const SelectedFileCard: FC<{
             {`${file.sizeLabel} · ${rowCountLabel}`}
           </Typography>
         </Box>
-        <Button
-          aria-label={t('label.remove')}
-          color="tertiary"
+        <ButtonUtility
           data-testid="remove-file"
-          iconLeading={XClose}
-          onPress={onRemove}
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.remove')}
+          onClick={onRemove}
         />
       </Box>
     </Card>

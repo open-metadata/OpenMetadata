@@ -62,6 +62,7 @@ import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkRetryPolicy;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.jdbi3.AppRepository;
@@ -256,7 +257,8 @@ class DistributedJobParticipantTest {
             .status(PartitionStatus.PENDING)
             .build();
 
-    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong(), any(BulkRetryPolicy.class)))
+        .thenReturn(bulkSink);
 
     // Create a processing partition to simulate work in progress
     SearchIndexPartition processingPartition =
@@ -337,7 +339,8 @@ class DistributedJobParticipantTest {
             .status(PartitionStatus.PENDING)
             .build();
 
-    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong(), any(BulkRetryPolicy.class)))
+        .thenReturn(bulkSink);
 
     try (MockedConstruction<DistributedSearchIndexCoordinator> mocked =
         mockConstruction(
@@ -421,7 +424,8 @@ class DistributedJobParticipantTest {
             .status(PartitionStatus.PENDING)
             .build();
 
-    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong(), any(BulkRetryPolicy.class)))
+        .thenReturn(bulkSink);
 
     // Create a processing partition to simulate work in progress
     SearchIndexPartition processingPartition =
@@ -522,7 +526,8 @@ class DistributedJobParticipantTest {
             .status(PartitionStatus.PENDING)
             .build();
 
-    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong(), any(BulkRetryPolicy.class)))
+        .thenReturn(bulkSink);
 
     // Create a processing partition to simulate work in progress
     SearchIndexPartition processingPartition =
@@ -688,7 +693,8 @@ class DistributedJobParticipantTest {
             .build();
 
     PollingJobNotifier pollingNotifier = new PollingJobNotifier(collectionDAO, "server-1");
-    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong(), any(BulkRetryPolicy.class)))
+        .thenReturn(bulkSink);
     when(bulkSink.flushAndAwait(60)).thenReturn(true);
 
     try (MockedConstruction<DistributedSearchIndexCoordinator> coordinatorMocked =
@@ -848,6 +854,9 @@ class DistributedJobParticipantTest {
     config.setBatchSize(50);
     config.setMaxConcurrentRequests(8);
     config.setPayLoadSize(4096L);
+    config.setMaxRetries(4);
+    config.setInitialBackoff(250);
+    config.setMaxBackoff(2000);
 
     SearchIndexJob runningJob =
         SearchIndexJob.builder()
@@ -891,7 +900,9 @@ class DistributedJobParticipantTest {
     when(collectionDAO.appExtensionTimeSeriesDao()).thenReturn(appExtensionDao);
     when(appExtensionDao.getByAppIdAndTimestamp(appId.toString(), startTime, "status"))
         .thenReturn(JsonUtils.pojoToJson(existingRecord));
-    when(searchRepository.createBulkSink(50, 8, 4096L)).thenReturn(bulkSink);
+    // The participant must hand the job's own retry settings to its bulk sink.
+    when(searchRepository.createBulkSink(50, 8, 4096L, new BulkRetryPolicy(4, 250, 2000)))
+        .thenReturn(bulkSink);
     when(bulkSink.flushAndAwait(60)).thenReturn(true);
     doAnswer(
             invocation -> {
@@ -1031,7 +1042,8 @@ class DistributedJobParticipantTest {
       invokeParticipantMethod(
           "processJobPartitions", new Class<?>[] {SearchIndexJob.class}, runningJob);
 
-      verify(searchRepository, never()).createBulkSink(anyInt(), anyInt(), anyLong());
+      verify(searchRepository, never())
+          .createBulkSink(anyInt(), anyInt(), anyLong(), any(BulkRetryPolicy.class));
       assertTrue(failureConstruction.constructed().isEmpty());
       assertTrue(workerConstruction.constructed().isEmpty());
     }
@@ -1063,7 +1075,10 @@ class DistributedJobParticipantTest {
         mock(CollectionDAO.SearchIndexFailureDAO.class);
     when(collectionDAO.searchIndexFailureDAO()).thenReturn(failureDao);
     when(searchRepository.createBulkSink(
-            100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES))
+            100,
+            100,
+            SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES,
+            new BulkRetryPolicy(5, 1_000, 10_000)))
         .thenReturn(bulkSink);
     when(bulkSink.flushAndAwait(60)).thenReturn(false);
 
@@ -1089,7 +1104,11 @@ class DistributedJobParticipantTest {
           "processJobPartitions", new Class<?>[] {SearchIndexJob.class}, runningJob);
 
       verify(searchRepository)
-          .createBulkSink(100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES);
+          .createBulkSink(
+              100,
+              100,
+              SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES,
+              new BulkRetryPolicy(5, 1_000, 10_000));
       verify(bulkSink).flushAndAwait(60);
       assertTrue(Thread.currentThread().isInterrupted());
       verify(coordinatorMocked.constructed().get(0)).claimNextPartition(jobId);
@@ -1125,7 +1144,10 @@ class DistributedJobParticipantTest {
         mock(CollectionDAO.SearchIndexFailureDAO.class);
     when(collectionDAO.searchIndexFailureDAO()).thenReturn(failureDao);
     when(searchRepository.createBulkSink(
-            100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES))
+            100,
+            100,
+            SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES,
+            new BulkRetryPolicy(5, 1_000, 10_000)))
         .thenReturn(bulkSink);
     when(bulkSink.flushAndAwait(60)).thenReturn(true);
 

@@ -16,6 +16,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.authn.AuthnRequestParams;
+import com.onelogin.saml2.settings.Saml2Settings;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Collection;
@@ -98,14 +99,14 @@ public final class TestLoginSamlHandler {
       TestLoginStageRecorder recorder) {
     Optional<Auth> validated = Optional.empty();
     try {
-      Auth auth =
-          new Auth(
-              SamlSettingsHolder.buildSettings(
-                  candidate.getAuthenticationConfiguration().getSamlConfiguration()),
-              new HttpServletRequestWrapper(request),
-              new HttpServletResponseWrapper(response));
+      Saml2Settings settings =
+          SamlSettingsHolder.buildSettings(
+              candidate.getAuthenticationConfiguration().getSamlConfiguration());
+      HttpServletRequestWrapper wrappedRequest = new HttpServletRequestWrapper(request);
+      Auth auth = new Auth(settings, wrappedRequest, new HttpServletResponseWrapper(response));
       auth.processResponse();
       if (isAccepted(auth)) {
+        SamlResponseValidator.validate(settings, wrappedRequest);
         validated = Optional.of(auth);
         recorder.pass(TestLoginStage.TOKEN_VALIDATED);
       } else {

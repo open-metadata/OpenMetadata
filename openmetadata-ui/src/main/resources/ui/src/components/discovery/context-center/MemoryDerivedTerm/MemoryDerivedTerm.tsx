@@ -22,11 +22,13 @@ import { getDerivedTerms } from './MemoryDerivedTerm.utils';
 
 export interface MemoryDerivedTermProps {
   memory: ContextMemory;
+  isViewOnly: boolean;
   onNavigate: () => void;
 }
 
 const MemoryDerivedTerm: FC<MemoryDerivedTermProps> = ({
   memory,
+  isViewOnly,
   onNavigate,
 }) => {
   const { t } = useTranslation();
@@ -41,15 +43,21 @@ const MemoryDerivedTerm: FC<MemoryDerivedTermProps> = ({
       <Typography size="text-sm" weight="medium">
         {t('label.derived-term')}
       </Typography>
-      {derivedTerms.map((term) => (
-        <Link
-          className="tw:text-link tw:hover:underline"
-          key={term.id}
-          to={getGlossaryPath(term.fullyQualifiedName)}
-          onClick={onNavigate}>
-          {getEntityName(term)}
-        </Link>
-      ))}
+      {derivedTerms.map((term) =>
+        isViewOnly ? (
+          <Link
+            className="tw:text-link tw:hover:underline"
+            key={term.id}
+            to={getGlossaryPath(term.fullyQualifiedName)}
+            onClick={onNavigate}>
+            {getEntityName(term)}
+          </Link>
+        ) : (
+          <Typography className="tw:text-tertiary" key={term.id} size="text-sm">
+            {getEntityName(term)}
+          </Typography>
+        )
+      )}
     </Box>
   );
 };

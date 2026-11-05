@@ -20,6 +20,7 @@ import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
+import { openDeleteModal } from '../../utils/asyncDelete';
 import { selectOptionWithRetry, uuid } from '../../utils/common';
 import { setupUserWithPolicy } from '../../utils/permission';
 import { performUserLogin } from '../../utils/user';
@@ -1012,6 +1013,45 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       expect(allowed.ok()).toBeTruthy();
     } finally {
+      await afterAction();
+    }
+  });
+
+  test('warns on the metric page that deleting a metric deletes its child metrics', async ({
+    browser,
+  }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+    const suffix = uuid();
+    const parentName = `pw-metric-delwarn-parent-${suffix}`;
+    let parent: MetricResponse | undefined;
+
+    try {
+      parent = await createMetric(apiContext, parentName);
+      await createMetric(
+        apiContext,
+        `pw-metric-delwarn-child-${suffix}`,
+        parentName
+      );
+
+      await page.goto(`/metric/${parentName}`);
+      await openDeleteModal(page);
+
+      const deleteModal = page.getByTestId('delete-modal');
+
+      await expect(deleteModal).toContainText(
+        `Any child metrics under "${parentName}" will be soft deleted as well.`
+      );
+      await expect(deleteModal).toContainText(
+        `Any child metrics under "${parentName}" will be permanently deleted as well.`
+      );
+    } finally {
+      if (parent) {
+        await apiContext.delete(
+          `/api/v1/metrics/${parent.id}?hardDelete=true&recursive=true`
+        );
+      }
       await afterAction();
     }
   });

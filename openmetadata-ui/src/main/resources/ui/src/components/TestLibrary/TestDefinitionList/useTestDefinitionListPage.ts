@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-} from '../../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { TEST_DEFINITION_COLUMN_BY_SORT_FIELD } from '../../../constants/TestDefinition.constants';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -39,7 +36,7 @@ export const useTestDefinitionListPage = () => {
     handlePageSizeChange,
     showPagination,
     pagingCursor,
-  } = usePaging(PAGE_SIZE_BASE);
+  } = usePaging();
 
   const {
     urlParams,

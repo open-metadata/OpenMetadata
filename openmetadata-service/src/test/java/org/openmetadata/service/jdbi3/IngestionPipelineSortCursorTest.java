@@ -23,6 +23,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository.DisplayNameCursor;
@@ -49,6 +50,8 @@ class IngestionPipelineSortCursorTest {
     when(repository.parseCursorMap(Mockito.nullable(String.class))).thenCallRealMethod();
     when(repository.forwardBeforeCursor(Mockito.nullable(String.class), Mockito.any()))
         .thenCallRealMethod();
+    when(repository.getCursorValue(Mockito.any(IngestionPipeline.class), Mockito.any()))
+        .thenCallRealMethod();
   }
 
   private IngestionPipeline pipeline(String name, String displayName) {
@@ -62,6 +65,16 @@ class IngestionPipelineSortCursorTest {
     return repository
         .parseCursorMap(repository.displayNameCursorValue(pipeline))
         .get("displayNameSort");
+  }
+
+  /** A cursor built from a row (a filtered page's) pages on the same key as the listing. */
+  @Test
+  void test_rowCursor_ofADisplayNameListing_carriesTheDisplayNameKey() {
+    IngestionPipeline pipeline = pipeline("machine-name", "Alpha");
+    ListFilter sorted = new ListFilter(Include.NON_DELETED).withSort("displayName", "asc");
+
+    assertEquals(
+        repository.displayNameCursorValue(pipeline), repository.getCursorValue(pipeline, sorted));
   }
 
   @Test

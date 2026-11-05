@@ -2,19 +2,32 @@
   "$id": "https://open-metadata.org/schema/api/data/previewNativeOntologyImport.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PreviewNativeOntologyImport",
-  "description": "Preview a local RDF document as native ontology draft operations.",
+  "description": "Preview a local RDF or native CSV document as native ontology draft operations.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.PreviewNativeOntologyImport",
+  "definitions": {
+    "format": {
+      "description": "Serialization of a native ontology import source.",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportFormat",
+      "type": "string",
+      "enum": ["turtle", "rdfxml", "ntriples", "jsonld", "csv"]
+    }
+  },
   "properties": {
     "format": {
+      "description": "Serialization of `data`. When omitted, the server detects it from the content first and the file name second.",
+      "$ref": "#/definitions/format"
+    },
+    "fileName": {
+      "description": "Name of the uploaded file. Format detection uses its extension only when the content has no recognizable signature.",
       "type": "string",
-      "enum": ["turtle", "rdfxml", "ntriples", "jsonld"]
+      "maxLength": 255
     },
     "data": {
       "type": "string",
       "maxLength": 10485760
     }
   },
-  "required": ["format", "data"],
+  "required": ["data"],
   "additionalProperties": false
 }

@@ -157,14 +157,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
     ButtonUtility: ({
       icon: Icon,
+      isDisabled,
       onClick,
       ...props
     }: {
       icon?: React.ComponentType<{ className?: string }>;
+      isDisabled?: boolean;
       onClick?: () => void;
       [key: string]: unknown;
     }) => (
-      <button type="button" onClick={onClick} {...props}>
+      <button disabled={isDisabled} type="button" onClick={onClick} {...props}>
         {Icon ? <Icon /> : null}
       </button>
     ),
@@ -489,6 +491,24 @@ describe('InlineTestCaseIncidentStatus', () => {
       expect(screen.getAllByRole('menuitem')).toHaveLength(
         Object.values(TestCaseResolutionStatusTypes).length
       );
+    });
+
+    it('status menu of an assigned incident offers only reassign and resolve', async () => {
+      renderComponent({
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      });
+
+      // An assigned chip opens on the assignee picker; Back leads to the menu.
+      await act(async () => {
+        fireEvent.click(screen.getByTestId(CHIP_TEST_ID));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('incident-status-popover-back'));
+      });
+
+      expect(
+        screen.getAllByRole('menuitem').map((item) => item.textContent)
+      ).toEqual(['label.assigned', 'label.resolved']);
     });
 
     it('selecting ACK submits directly via API', async () => {

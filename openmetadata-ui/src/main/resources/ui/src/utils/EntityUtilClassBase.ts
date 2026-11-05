@@ -206,7 +206,7 @@ const ENTITY_LINK_HANDLERS: Record<
   [EntityType.APPLICATION]: ({ fullyQualifiedName }) =>
     getSettingsLink(getApplicationDetailsPath(fullyQualifiedName)),
   [EntityType.USER]: ({ fullyQualifiedName, tab, subTab }) =>
-    getUserPath(fullyQualifiedName, tab, subTab),
+    getSettingsLink(getUserPath(fullyQualifiedName, tab, subTab)),
   [EntityType.TEAM]: ({ fullyQualifiedName }) =>
     getSettingsLink(getTeamsWithFqnPath(fullyQualifiedName)),
   [EntityType.EVENT_SUBSCRIPTION]: ({

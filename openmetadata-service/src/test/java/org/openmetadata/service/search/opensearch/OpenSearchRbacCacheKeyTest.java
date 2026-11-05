@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -27,6 +28,7 @@ class OpenSearchRbacCacheKeyTest {
   private static final UUID USER_ID = UUID.randomUUID();
   private static final UUID ROLE_ID = UUID.randomUUID();
   private static final long GENERATION = 7L;
+  private static final long POLICY_GENERATION = 3L;
 
   @Test
   @DisplayName("Two subjects sharing roles but not domains do not share a cached query")
@@ -68,7 +70,32 @@ class OpenSearchRbacCacheKeyTest {
   void testKeyToleratesNullCollections() {
     SubjectContext bareSubject = subject(null, null, null);
 
-    assertEquals(GENERATION + ":" + USER_ID + ":::", pinnedKey(bareSubject));
+    assertEquals(
+        GENERATION + ":" + POLICY_GENERATION + ":" + USER_ID + ":::", pinnedKey(bareSubject));
+  }
+
+  /**
+   * A policy-rule or role-policy edit leaves the subject's role, domain and team ids unchanged but
+   * bumps the policy generation, so the compiled query is re-evaluated rather than served stale.
+   */
+  @Test
+  @DisplayName("A policy-cache invalidation produces a different key")
+  void testPolicyGenerationChangeChangesTheKey() {
+    SubjectContext subjectContext = subject(List.of(ROLE_ID), List.of(UUID.randomUUID()));
+
+    String beforeKey;
+    String afterKey;
+    try (MockedStatic<ServiceAttributeResolver> resolver =
+            mockStatic(ServiceAttributeResolver.class);
+        MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
+      resolver.when(ServiceAttributeResolver::generation).thenReturn(GENERATION);
+      subjectCache.when(SubjectCache::policyGeneration).thenReturn(1L);
+      beforeKey = OpenSearchSearchManager.rbacCacheKey(subjectContext);
+      subjectCache.when(SubjectCache::policyGeneration).thenReturn(2L);
+      afterKey = OpenSearchSearchManager.rbacCacheKey(subjectContext);
+    }
+
+    assertNotEquals(beforeKey, afterKey);
   }
 
   /**
@@ -102,8 +129,10 @@ class OpenSearchRbacCacheKeyTest {
    */
   private static String pinnedKey(SubjectContext subjectContext) {
     try (MockedStatic<ServiceAttributeResolver> resolver =
-        mockStatic(ServiceAttributeResolver.class)) {
+            mockStatic(ServiceAttributeResolver.class);
+        MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
       resolver.when(ServiceAttributeResolver::generation).thenReturn(GENERATION);
+      subjectCache.when(SubjectCache::policyGeneration).thenReturn(POLICY_GENERATION);
       return OpenSearchSearchManager.rbacCacheKey(subjectContext);
     }
   }

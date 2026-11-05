@@ -13,10 +13,11 @@
 
 import { Avatar, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
-import { TABLE_CARD_PAGE_SIZE } from '../../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import { SearchResponse } from '../../../interface/search.interface';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
@@ -31,9 +32,19 @@ import {
   ListingData,
 } from '../../common/atoms/shared/types';
 
+const transformSearchResults = (
+  response: SearchResponse<SearchIndex.DATA_PRODUCT>
+) => response.hits.hits.map((hit) => hit._source);
+
 export const useDataProductListingData = ({
   enableNlq,
-}: { enableNlq?: boolean } = {}): ListingData<DataProduct> => {
+  pageSize = PAGE_SIZE_BASE,
+  pageSizeOptions,
+}: {
+  enableNlq?: boolean;
+  pageSize?: number;
+  pageSizeOptions?: number[];
+} = {}): ListingData<DataProduct> => {
   const { dataProductBasePath } = useMarketplaceStore();
   // Memoized because a ClassBase override may build these per call, and
   // `filterConfigs` feeds a useMemo dep list down in useUrlState.
@@ -114,10 +125,12 @@ export const useDataProductListingData = ({
     []
   );
 
-  const listingData = useListingData<DataProduct>({
+  const listingData = useListingData<DataProduct, SearchIndex.DATA_PRODUCT>({
     searchIndex: SearchIndex.DATA_PRODUCT,
+    transform: transformSearchResults,
     baseFilter: '', // No parent filter for data products
-    pageSize: TABLE_CARD_PAGE_SIZE,
+    pageSize,
+    pageSizeOptions,
     filterKeys,
     filterConfigs,
     columns,

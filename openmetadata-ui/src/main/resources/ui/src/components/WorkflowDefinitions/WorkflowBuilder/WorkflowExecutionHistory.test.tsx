@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { getWorkflowInstancesByFQN } from '../../../rest/workflowDefinitionsAPI';
 import { WorkflowExecutionHistory } from './WorkflowExecutionHistory';
@@ -74,5 +74,76 @@ describe('WorkflowExecutionHistory', () => {
     await renderHistory();
 
     expect(screen.getAllByRole('row')).toHaveLength(mockInstances.length + 1);
+  });
+
+  it('shows a run-specific empty state when the workflow has no runs', async () => {
+    (getWorkflowInstancesByFQN as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+
+    await act(async () => {
+      render(<WorkflowExecutionHistory />, { wrapper: MemoryRouter });
+    });
+
+    expect(
+      screen.getByTestId('workflow-execution-history-empty')
+    ).toHaveTextContent('message.no-runs-recorded-yet');
+    expect(
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows an access-denied state without a reload on a 403', async () => {
+    (getWorkflowInstancesByFQN as jest.Mock).mockRejectedValue({
+      response: { status: 403 },
+    });
+
+    await act(async () => {
+      render(<WorkflowExecutionHistory />, { wrapper: MemoryRouter });
+    });
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('workflow-execution-history-empty')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a reloadable error on a 500, and the reload starts again from page 1', async () => {
+    const pagedResponse = {
+      data: mockInstances,
+      paging: { total: 30, after: 'cursor-2' },
+    };
+    (getWorkflowInstancesByFQN as jest.Mock)
+      .mockResolvedValueOnce(pagedResponse)
+      .mockRejectedValueOnce({ response: { status: 500 } })
+      .mockResolvedValueOnce(pagedResponse);
+
+    await act(async () => {
+      render(<WorkflowExecutionHistory />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('next'));
+    });
+
+    expect(screen.getByText('server.entity-fetch-error')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('workflow-execution-history-empty')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+    });
+
+    expect(getWorkflowInstancesByFQN).toHaveBeenLastCalledWith('workflow-fqn', {
+      limit: expect.any(Number),
+    });
+    expect(screen.getByTestId('page-indicator')).toHaveTextContent(
+      'label.page 1'
+    );
   });
 });

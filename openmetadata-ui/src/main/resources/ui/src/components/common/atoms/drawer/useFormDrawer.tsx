@@ -11,11 +11,28 @@
  *  limitations under the License.
  */
 
+import { Box, HookForm } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import React, { ReactNode, useCallback, useMemo, useState } from 'react';
+import { noop } from 'lodash';
+import React, {
+  FormEvent,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import type { FieldValues, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import {
+  FORM_DRAWER_WIDTH_WITHOUT_HINT,
+  FORM_DRAWER_WIDTH_WITH_HINT,
+} from '../../../../constants/common/formHint.constants';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
+import { FormHintDoc } from './formHint/FormHintDoc';
+import { FormHintEmptyState } from './formHint/FormHintEmptyState';
+import { FormHintHeader } from './formHint/FormHintHeader';
+import { ShowHintToggle } from './ShowHintToggle';
 import {
   CompositeDrawerConfig,
   useCompositeDrawer,
@@ -231,6 +248,39 @@ export const useFormDrawerWithRef = <T,>(
   };
 };
 
+export interface FormDrawerHintConfig {
+  /**
+   * `false` hides the Form Hint column and its Show Hint toggle while keeping
+   * the two-column form layout, so the form does not remount. Default `true`.
+   */
+  enabled?: boolean;
+  /** Renders the active field's doc. Defaults to `FormHintDoc`. */
+  renderDoc?: (markdown: string) => ReactNode;
+  /** Classes for the scrolling form column, added to the default padding. */
+  formClassName?: string;
+}
+
+export type FormDrawerWithHookConfig<T extends FieldValues> = Omit<
+  FormDrawerConfig<T>,
+  'onSubmit'
+> & {
+  hookForm: UseFormReturn<T>;
+  onSubmit: (data: T) => Promise<void> | void;
+  /**
+   * Wraps `form` in a HookForm with a Form Hint column beside it and adds the
+   * Show Hint toggle to the header. The drawer widens and narrows with the
+   * column unless `width` is set. Pass the form's fields as `form`, not a
+   * HookForm.
+   */
+  formHint?: FormDrawerHintConfig;
+  /** Controls the drawer: it opens when `true` and closes when `false`. */
+  open?: boolean;
+};
+
+const renderDefaultFormHintDoc = (markdown: string) => (
+  <FormHintDoc markdown={markdown} />
+);
+
 /**
  * Form drawer variant backed by a react-hook-form `UseFormReturn` instance.
  *
@@ -242,12 +292,10 @@ export const useFormDrawerWithRef = <T,>(
  * caller-supplied `onCancel` handler runs.
  */
 export const useFormDrawerWithHook = <T extends FieldValues>(
-  config: Omit<FormDrawerConfig<T>, 'onSubmit'> & {
-    hookForm: UseFormReturn<T>;
-    onSubmit: (data: T) => Promise<void> | void;
-  }
+  config: FormDrawerWithHookConfig<T>
 ) => {
-  const { hookForm, onSubmit, onCancel, ...rest } = config;
+  const { hookForm, onSubmit, onCancel, formHint, open, ...rest } = config;
+  const [showHint, setShowHint] = useState(true);
   const scrollToError = useMemo(
     () =>
       createScrollToErrorHandler({
@@ -256,13 +304,18 @@ export const useFormDrawerWithHook = <T extends FieldValues>(
     []
   );
 
-  const handleSubmit = useCallback(
-    () =>
+  const handleFormSubmit = useCallback(
+    (event?: FormEvent) =>
       hookForm.handleSubmit(
         async (data) => onSubmit(data),
         () => scrollToError()
-      )(),
+      )(event),
     [hookForm, onSubmit, scrollToError]
+  );
+
+  const handleSubmit = useCallback(
+    () => handleFormSubmit(),
+    [handleFormSubmit]
   );
 
   const handleCancel = useCallback(() => {
@@ -270,9 +323,80 @@ export const useFormDrawerWithHook = <T extends FieldValues>(
     onCancel?.();
   }, [hookForm, onCancel]);
 
-  return useFormDrawer<T>({
+  const isHintShown = Boolean(formHint) && formHint?.enabled !== false;
+
+  const formHintConfig: Partial<FormDrawerConfig<T>> = formHint
+    ? {
+        form: (
+          <HookForm
+            emptyFieldDoc={<FormHintEmptyState />}
+            fieldDocDisplay="panel"
+            fieldDocHeader={<FormHintHeader />}
+            form={hookForm}
+            // The form column, not the drawer body, scrolls, so it carries the
+            // padding and is the scroll-to-error target.
+            formClassName={classNames(
+              'drawer-form-content tw:px-4 tw:py-6 tw:md:px-6',
+              formHint.formClassName
+            )}
+            renderFieldDoc={formHint.renderDoc ?? renderDefaultFormHintDoc}
+            showFieldDocs={isHintShown && showHint}
+            // The footer path catches submit errors in useFormDrawer; Enter in
+            // a field submits here, where nothing awaits the promise.
+            onSubmit={(event) => {
+              handleFormSubmit(event).catch(noop);
+            }}>
+            {rest.form}
+          </HookForm>
+        ),
+        headerActions: (
+          <>
+            {rest.headerActions}
+            {isHintShown && (
+              // pr-10 clears the header's absolutely positioned close button.
+              <Box className="tw:pr-10">
+                <ShowHintToggle isSelected={showHint} onChange={setShowHint} />
+              </Box>
+            )}
+          </>
+        ),
+        // Both columns scroll on their own: drop Content's padding, gap and
+        // stacking.
+        body: {
+          ...rest.body,
+          className: classNames(
+            'tw:flex-row tw:gap-0 tw:px-0 tw:md:px-0',
+            rest.body?.className
+          ),
+        },
+        animateWidth: true,
+        // Without the hint, narrow the drawer instead of stretching the form.
+        width:
+          rest.width ??
+          (isHintShown && showHint
+            ? FORM_DRAWER_WIDTH_WITH_HINT
+            : FORM_DRAWER_WIDTH_WITHOUT_HINT),
+      }
+    : {};
+
+  const drawer = useFormDrawer<T>({
     ...rest,
+    ...formHintConfig,
     onCancel: handleCancel,
     onSubmit: handleSubmit,
   });
+  const { openDrawer, closeDrawer, isOpen } = drawer;
+
+  useEffect(() => {
+    if (open === undefined) {
+      return;
+    }
+    if (open) {
+      openDrawer();
+    } else if (isOpen) {
+      closeDrawer();
+    }
+  }, [open, isOpen, openDrawer, closeDrawer]);
+
+  return { ...drawer, showHint };
 };

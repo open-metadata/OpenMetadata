@@ -265,6 +265,19 @@ describe('Test SearchedData Component', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('does not leave an empty spacer above the results when there is no count', () => {
+    const { container } = render(
+      <SearchedData {...MOCK_PROPS} showResultCount={false} />,
+      { wrapper: TestWrapper }
+    );
+
+    const emptySpacer = [...container.querySelectorAll('div')].find(
+      (div) => div.className === 'tw:mb-4' && div.childElementCount === 0
+    );
+
+    expect(emptySpacer).toBeUndefined();
+  });
+
   it('Should show result count when showResultCount is true and isFilterSelected is true', () => {
     const { container } = render(
       <SearchedData

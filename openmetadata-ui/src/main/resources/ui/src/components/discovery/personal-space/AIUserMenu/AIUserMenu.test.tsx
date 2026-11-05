@@ -123,8 +123,16 @@ jest.mock(
   '../../../../components/common/ProfilePicture/ProfilePicture',
   () => ({
     __esModule: true,
-    default: ({ displayName }: { displayName?: string }) => (
-      <span data-testid="profile-picture">{displayName}</span>
+    default: ({
+      displayName,
+      name,
+    }: {
+      displayName?: string;
+      name: string;
+    }) => (
+      <span data-name={name} data-testid="profile-picture">
+        {displayName}
+      </span>
     ),
   })
 );
@@ -191,20 +199,40 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   FeaturedIcon: () => <span />,
   Tooltip: ({
     children,
-    isDisabled,
+    isOpen,
+    onOpenChange,
     title,
   }: React.PropsWithChildren<{
-    isDisabled?: boolean;
+    isOpen?: boolean;
+    onOpenChange?: (isOpen: boolean) => void;
     title?: React.ReactNode;
   }>) => (
-    <div data-testid={isDisabled ? undefined : 'trigger-tooltip'}>
-      {!isDisabled && title}
+    <div>
+      <button
+        aria-label="tooltip-hover"
+        data-testid="tooltip-hover"
+        type="button"
+        onClick={() => onOpenChange?.(true)}
+      />
+      {isOpen && <div data-testid="trigger-tooltip">{title}</div>}
       {children}
     </div>
   ),
-  Typography: ({ children }: React.PropsWithChildren) => (
-    <span>{children}</span>
-  ),
+  Typography: jest
+    .requireActual('react')
+    .forwardRef(
+      (
+        {
+          children,
+          'data-testid': testId,
+        }: React.PropsWithChildren<{ 'data-testid'?: string }>,
+        ref: React.Ref<HTMLSpanElement>
+      ) => (
+        <span data-testid={testId} ref={ref}>
+          {children}
+        </span>
+      )
+    ),
 }));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -239,6 +267,18 @@ describe('AIUserMenu', () => {
     expect(trigger).toHaveTextContent('Banking');
   });
 
+  it('looks up every avatar by username, not email', () => {
+    renderMenu();
+
+    const avatars = screen.getAllByTestId('profile-picture');
+
+    expect(avatars.length).toBeGreaterThan(0);
+
+    avatars.forEach((avatar) =>
+      expect(avatar).toHaveAttribute('data-name', 'test-user')
+    );
+  });
+
   it('shows only the avatar in the collapsed rail, with name and domain in a tooltip', () => {
     renderMenu(true);
 
@@ -246,10 +286,44 @@ describe('AIUserMenu', () => {
       screen.getByTestId('ask-ai-user-menu-trigger')
     ).not.toHaveTextContent('Banking');
 
+    fireEvent.click(screen.getByTestId('tooltip-hover'));
+
     const tooltip = screen.getByTestId('trigger-tooltip');
 
     expect(tooltip).toHaveTextContent('Test User');
     expect(tooltip).toHaveTextContent('Banking');
+  });
+
+  it('keeps the expanded-card tooltip closed while the name and domain fit', () => {
+    renderMenu();
+
+    fireEvent.click(screen.getByTestId('tooltip-hover'));
+
+    expect(screen.queryByTestId('trigger-tooltip')).not.toBeInTheDocument();
+  });
+
+  it('opens the expanded-card tooltip when the domain is cut off', () => {
+    renderMenu();
+    const domain = screen.getByTestId('ask-ai-user-menu-domain');
+    Object.defineProperty(domain, 'scrollWidth', { value: 400 });
+    Object.defineProperty(domain, 'clientWidth', { value: 80 });
+
+    fireEvent.click(screen.getByTestId('tooltip-hover'));
+
+    expect(screen.getByTestId('trigger-tooltip')).toHaveTextContent('Banking');
+  });
+
+  it('opens the expanded-card tooltip when the name is cut off', () => {
+    renderMenu();
+    const name = screen.getByTestId('ask-ai-user-menu-name');
+    Object.defineProperty(name, 'scrollWidth', { value: 400 });
+    Object.defineProperty(name, 'clientWidth', { value: 80 });
+
+    fireEvent.click(screen.getByTestId('tooltip-hover'));
+
+    expect(screen.getByTestId('trigger-tooltip')).toHaveTextContent(
+      'Test User'
+    );
   });
 
   it('badges the rail avatar only while a domain is scoped', () => {

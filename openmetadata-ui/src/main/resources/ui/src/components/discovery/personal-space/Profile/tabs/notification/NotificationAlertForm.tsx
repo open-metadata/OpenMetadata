@@ -256,22 +256,16 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
 
   return (
     <Box className="tw:flex tw:flex-col tw:h-full" direction="col">
-      <Box className="tw:flex-1 tw:overflow-y-auto tw:px-8" direction="col">
-        <Box className="tw:w-1/2 tw:mx-auto" direction="col">
+      <Box
+        className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-6"
+        direction="col">
+        <Box className="tw:max-w-[50%] tw:w-full tw:mx-auto" direction="col">
           <AlertAiForm
             alert={alert}
             fieldDocDisplay="popover"
+            fieldDocVariant="muted"
             formId={ALERT_AI_FORM_MODAL_ID}
-            inlineAlert={
-              inlineAlertDetails
-                ? {
-                    heading: inlineAlertDetails.heading,
-                    description: inlineAlertDetails.description,
-                    type: inlineAlertDetails.type,
-                    onClose: inlineAlertDetails.onClose,
-                  }
-                : undefined
-            }
+            inlineAlert={inlineAlertDetails}
             mode={isEditMode ? 'edit' : 'add'}
             selection={selection}
             shouldShowActionsSection={false}
@@ -294,7 +288,13 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
         <Button
           color="tertiary"
           data-testid="cancel-btn"
-          onPress={() => onNavigate({ type: 'list' })}>
+          onPress={() =>
+            onNavigate(
+              fqn
+                ? { type: 'detail', fqn, name: getEntityName(alert) }
+                : { type: 'list' }
+            )
+          }>
           {t('label.cancel')}
         </Button>
         <Button

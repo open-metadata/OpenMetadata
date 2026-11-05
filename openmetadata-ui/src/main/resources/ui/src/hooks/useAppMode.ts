@@ -313,13 +313,17 @@ export const useAppMode = (): string =>
  *   - `'boot'` — `AuthProvider.hydrateAndResolveAppMode`'s authoritative
  *     write; re-resolvable on the next reload.
  *
+ * `tabOnly` keeps the write to this tab: the cross-tab hint is left as it
+ * is, so new tabs do not open in a mode this tab holds only for a while
+ * (the product tour's).
+ *
  * All existing callers (UI switches) default to `'manual'`, so this
  * is a backward-compatible signature change.
  */
 export const writeAppMode = (
   mode: string,
   personaAppMode?: string | null,
-  options?: { source?: AppModeSessionSource }
+  options?: { source?: AppModeSessionSource; tabOnly?: boolean }
 ): void => {
   const nextPersonaAppMode =
     personaAppMode === undefined
@@ -333,7 +337,7 @@ export const writeAppMode = (
   // their sessionStorage is empty (see APP_MODE_HINT_STORAGE_KEY docs).
   // Do NOT write the hint for `'boot'` writes: a boot-provisional
   // tuple shouldn't leak to sibling tabs as a "user chose this" hint.
-  if (source !== 'boot') {
+  if (source !== 'boot' && !options?.tabOnly) {
     writeHint(mode);
   }
 };

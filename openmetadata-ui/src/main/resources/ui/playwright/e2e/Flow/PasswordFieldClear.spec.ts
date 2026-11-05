@@ -28,7 +28,7 @@ const MASKED_PASSWORD = '*********';
 const navigateToEditConnection = async (
   page: Parameters<typeof visitServiceDetailsPage>[0],
   serviceName: string,
-  serviceType: SERVICE_TYPE = SERVICE_TYPE.Messaging
+  serviceType: (typeof SERVICE_TYPE)[keyof typeof SERVICE_TYPE] = SERVICE_TYPE.Messaging
 ) => {
   await visitServiceDetailsPage(
     page,

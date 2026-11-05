@@ -45,6 +45,20 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </div>
       );
     },
+    DotsButton: ({
+      isDisabled,
+      ...props
+    }: {
+      isDisabled?: boolean;
+      'aria-label'?: string;
+      'data-testid'?: string;
+    }) => (
+      <button
+        aria-label={props['aria-label']}
+        data-testid={props['data-testid']}
+        disabled={isDisabled}
+      />
+    ),
     Popover: ({
       children,
       ...props

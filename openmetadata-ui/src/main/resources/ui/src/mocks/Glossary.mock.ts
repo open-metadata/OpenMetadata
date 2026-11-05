@@ -38,6 +38,7 @@ export const mockedGlossaryTerms = [
     children: [
       {
         id: 'child-1-clothing',
+        glossary: { id: 'mocked-glossary-id', type: 'glossary' },
         name: 'Shirts',
         displayName: 'Shirts',
         description: 'All types of shirts',
@@ -47,6 +48,7 @@ export const mockedGlossaryTerms = [
         children: [
           {
             id: 'child-1-1-clothing',
+            glossary: { id: 'mocked-glossary-id', type: 'glossary' },
             name: 'T-Shirts',
             displayName: 'T-Shirts',
             description: 'Casual T-Shirts',
@@ -58,6 +60,7 @@ export const mockedGlossaryTerms = [
           },
           {
             id: 'child-1-2-clothing',
+            glossary: { id: 'mocked-glossary-id', type: 'glossary' },
             name: 'Formal Shirts',
             displayName: 'Formal Shirts',
             description: 'Business formal shirts',
@@ -73,6 +76,7 @@ export const mockedGlossaryTerms = [
       },
       {
         id: 'child-2-clothing',
+        glossary: { id: 'mocked-glossary-id', type: 'glossary' },
         name: 'Pants',
         displayName: 'Pants',
         description: 'All types of pants',
@@ -82,6 +86,7 @@ export const mockedGlossaryTerms = [
         children: [
           {
             id: 'child-2-1-clothing',
+            glossary: { id: 'mocked-glossary-id', type: 'glossary' },
             name: 'Jeans',
             displayName: 'Jeans',
             description: 'Denim pants',
@@ -124,6 +129,7 @@ export const mockedGlossaryTerms = [
     children: [
       {
         id: 'child-1-sales',
+        glossary: { id: 'mocked-glossary-id', type: 'glossary' },
         name: 'Revenue',
         displayName: 'Revenue',
         description: 'Income generated from sales',
@@ -133,6 +139,7 @@ export const mockedGlossaryTerms = [
         children: [
           {
             id: 'child-1-1-sales',
+            glossary: { id: 'mocked-glossary-id', type: 'glossary' },
             name: 'Gross Revenue',
             displayName: 'Gross Revenue',
             description: 'Total revenue before deductions',
@@ -144,6 +151,7 @@ export const mockedGlossaryTerms = [
           },
           {
             id: 'child-1-2-sales',
+            glossary: { id: 'mocked-glossary-id', type: 'glossary' },
             name: 'Net Revenue',
             displayName: 'Net Revenue',
             description: 'Revenue after deductions',

@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -32,6 +33,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.audience.WebhookRecipient;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 
 /**
  * Webhook addresses of one channel: the webhook a user or a team keeps on their profile for it,
@@ -47,12 +49,14 @@ public final class WebhookAddresses implements AddressDirectory {
 
   @Override
   public Recipient ofUser(User user) {
-    return WebhookRecipient.ofProfile(user.getName(), user.getProfile(), onProfile);
+    return WebhookRecipient.ofProfile(
+        user.getName(), ProfileWebhookSecrets.decrypted(user.getProfile()), onProfile);
   }
 
   @Override
   public Recipient ofTeam(Team team) {
-    return WebhookRecipient.ofProfile(team.getName(), team.getProfile(), onProfile);
+    return WebhookRecipient.ofProfile(
+        team.getName(), ProfileWebhookSecrets.decrypted(team.getProfile()), onProfile);
   }
 
   @Override
@@ -60,9 +64,10 @@ public final class WebhookAddresses implements AddressDirectory {
     Webhook webhook = action instanceof Webhook given ? given : null;
     Set<Recipient> recipients = configuredEndpoint(webhook);
     if (action != null && !nullOrEmpty(action.getReceivers())) {
+      Webhook eachReceiver = withoutReceivers(webhook);
       recipients =
           action.getReceivers().stream()
-              .map(receiver -> webhookForReceiver(webhook, receiver))
+              .map(receiver -> webhookForReceiver(eachReceiver, receiver))
               .flatMap(Optional::stream)
               .map(WebhookRecipient::new)
               .collect(Collectors.toUnmodifiableSet());
@@ -96,5 +101,11 @@ public final class WebhookAddresses implements AddressDirectory {
 
   private Webhook copyOf(Webhook webhook) {
     return webhook == null ? new Webhook() : JsonUtils.convertValue(webhook, Webhook.class);
+  }
+
+  // Each receiver gets its own copy of the webhook, so the receiver list is left out of it once:
+  // a copy that kept it would hold every receiver, and the copies together grow with its square.
+  private Webhook withoutReceivers(Webhook webhook) {
+    return copyOf(webhook).withReceivers(new LinkedHashSet<>());
   }
 }

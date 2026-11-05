@@ -20,6 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { DotsGrid } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEqual } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -176,17 +177,25 @@ const AiSidebarEditor = ({
     });
   }, [handleSave, handleReset, canSave, isSaving, onActionsChange]);
 
-  const renderNode = (node: SidebarTreeNode) => {
+  const renderNode = (node: SidebarTreeNode, depth = 1) => {
     const Icon = node.navIcon;
 
     return (
-      <Tree.Item id={node.key} key={node.key} textValue={node.title}>
+      <Tree.Item
+        className="tw:rounded-none tw:border-b tw:border-secondary tw:last:border-b-0"
+        id={node.key}
+        key={node.key}
+        textValue={node.title}>
         <Tree.ItemContent
-          className="tw:py-0 tw:px-3 tw:border-b tw:border-secondary"
+          className={classNames(
+            // The core indents by `marginLeft`; padding keeps the hover fill and divider full width.
+            'tw:ml-0! tw:h-10 tw:rounded-none tw:py-0 tw:pr-3.5',
+            depth > 1 ? 'tw:pl-10' : 'tw:pl-4'
+          )}
           hasChildItems={Boolean(node.children?.length)}>
           <Box
             align="center"
-            className="tw:w-full tw:justify-between tw:py-3 tw:group"
+            className="tw:w-full tw:justify-between tw:group"
             direction="row">
             <Box align="center" direction="row" gap={2}>
               <DotsGrid
@@ -204,22 +213,24 @@ const AiSidebarEditor = ({
               data-testid={`ai-sidebar-switch-${node.key}`}
               isDisabled={node.disablePersonaHide}
               isSelected={!hiddenKeys.includes(node.key)}
+              size="sm"
               onChange={(checked) => handleToggle(checked, node.key)}
             />
           </Box>
         </Tree.ItemContent>
-        {node.children?.map((child) => renderNode(child))}
+        {node.children?.map((child) => renderNode(child, depth + 1))}
       </Tree.Item>
     );
   };
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:w-[30%]"
+      className="tw:flex tw:w-95 tw:flex-col tw:overflow-hidden tw:rounded-xl"
       data-testid="ai-sidebar-editor"
       variant="muted">
       <Tree
         aria-label={t('label.app-mode-sidebar')}
+        className="tw:gap-0"
         defaultExpandedKeys={new Set([MORE_NAV_KEY])}
         selectionMode="none"
         onItemMove={handleItemMove}

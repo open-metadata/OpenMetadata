@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { hashSubPathToView, viewToSubPath } from './AccessControl.utils';
+import {
+  hashSubPathToView,
+  isAccessControlViewAllowed,
+  viewToSubPath,
+} from './AccessControl.utils';
 
 describe('access control rule routes', () => {
   it.each([
@@ -60,5 +64,22 @@ describe('access control rule routes', () => {
       ...named,
       ruleName: 'My%ZZ',
     });
+  });
+});
+
+describe('isAccessControlViewAllowed', () => {
+  it('opens every view to an admin', () => {
+    expect(isAccessControlViewAllowed('roles', true)).toBe(true);
+    expect(isAccessControlViewAllowed('permission-debugger', true)).toBe(true);
+  });
+
+  it('keeps a non-admin audit-log reader to the landing and Audit Logs', () => {
+    expect(isAccessControlViewAllowed('landing', false)).toBe(true);
+    expect(isAccessControlViewAllowed('audit-logs', false)).toBe(true);
+    expect(isAccessControlViewAllowed('roles', false)).toBe(false);
+    expect(isAccessControlViewAllowed('policies', false)).toBe(false);
+    expect(isAccessControlViewAllowed('permission-debugger', false)).toBe(
+      false
+    );
   });
 });

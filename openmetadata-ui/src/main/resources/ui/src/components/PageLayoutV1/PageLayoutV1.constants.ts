@@ -14,15 +14,17 @@
 // AI shell entity pages: the active tab panel fills the rest of the canvas, so a
 // tab's empty-state card reaches the bottom of the page body with its content
 // centred instead of ending under the content. Scoped to the AI shell
-// (`.assistant-content`) and to pages that render entity tabs; each level of the
-// page stack, tabs and active panel grows into the space below it.
+// (`.assistant-content`) and applied only by pages that render entity tabs
+// (PageLayoutV1's `fillEntityTabs`); each level of the page stack, tabs and
+// active panel grows into the space below it. Never gate these with
+// `:has(.entity-details-page-tabs)`: see ADR:2026-10-23-page-layout-wrappers-never-use-has-selectors.
 export const ENTITY_TABS_FILL_GRID_CLASS =
-  'tw:in-[.assistant-content]:has-[.entity-details-page-tabs]:min-h-full';
+  'tw:in-[.assistant-content]:min-h-full';
 
 export const ENTITY_TABS_FILL_COLUMN_CLASS = [
-  'tw:in-[.assistant-content]:has-[.entity-details-page-tabs]:flex',
-  'tw:in-[.assistant-content]:has-[.entity-details-page-tabs]:flex-col',
-  'tw:in-[.assistant-content]:has-[.entity-details-page-tabs]:*:flex-[1_0_auto]',
+  'tw:in-[.assistant-content]:flex',
+  'tw:in-[.assistant-content]:flex-col',
+  'tw:in-[.assistant-content]:*:flex-[1_0_auto]',
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs]:flex',
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs]:flex-col',
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs]:flex-[1_0_auto]',

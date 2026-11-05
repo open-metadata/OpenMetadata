@@ -96,7 +96,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
             to ??
             (type === OwnerType.TEAM
               ? getSettingsLink(getTeamAndUserDetailsPath(userName))
-              : getUserPath(userName))
+              : getSettingsLink(getUserPath(userName)))
           }
           onClick={handleTitleClick}>
           {showUserProfile ? profilePicture : null}
