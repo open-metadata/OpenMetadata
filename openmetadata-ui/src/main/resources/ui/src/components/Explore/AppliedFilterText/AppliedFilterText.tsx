@@ -17,7 +17,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  CheckCircle03,
+  CheckCircle02,
   Edit01,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
@@ -56,7 +56,7 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
             aria-label="success-badge"
             className="align-middle m-l-xs tw:inline-flex tw:items-center tw:leading-none"
             role="img">
-            <CheckCircle03 className="tw:text-utility-green-500" size={16} />
+            <CheckCircle02 className="tw:text-utility-green-500" size={16} />
           </span>
           <Typography data-testid="advance-search-filter-text">
             {filterText}

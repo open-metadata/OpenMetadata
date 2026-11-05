@@ -12,7 +12,7 @@
  */
 
 import {
-  CheckCircle03,
+  CheckCircle02,
   SuccessfulTests,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
@@ -504,7 +504,7 @@ export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
 };
 
 export const STATUS_ICON = {
-  success: CheckCircle03,
+  success: CheckCircle02,
   failed: XCircle,
   completed: SuccessfulTests,
 };

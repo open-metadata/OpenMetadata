@@ -13,7 +13,7 @@
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
 
-import { CheckCircle03, XCircle } from '@openmetadata/ui-core-components/icons';
+import { CheckCircle02, XCircle } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
@@ -54,7 +54,7 @@ export const TeamImportResult = ({
               itemClassName="layout-space-item"
               style={{ maxWidth: 200, minWidth: 100 }}>
               {status === Status.Success && (
-                <CheckCircle03
+                <CheckCircle02
                   className="m-t-xss tw:text-utility-green-500"
                   data-testid="success-badge"
                   size={16}

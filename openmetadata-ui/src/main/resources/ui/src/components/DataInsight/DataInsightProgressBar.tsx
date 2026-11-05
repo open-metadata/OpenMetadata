@@ -12,7 +12,7 @@
  */
 
 import { ProgressBar } from '@openmetadata/ui-core-components';
-import { CheckCircle03 } from '@openmetadata/ui-core-components/icons';
+import { CheckCircle02 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { round } from 'lodash';
 import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
@@ -81,7 +81,7 @@ const DataInsightProgressBar = ({
             {renderProgressTarget(target, suffix)}
           </div>
           {showSuccessInfo && progress >= 100 && (
-            <CheckCircle03
+            <CheckCircle02
               className="tw:align-middle tw:ml-2 tw:shrink-0 tw:text-utility-green-500"
               size={16}
             />

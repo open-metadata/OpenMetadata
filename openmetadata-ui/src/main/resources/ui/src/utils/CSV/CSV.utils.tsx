@@ -12,7 +12,7 @@
  */
 import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import {
-  CheckCircle03,
+  CheckCircle02,
   ChevronDown,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
@@ -378,7 +378,7 @@ const statusRenderer = (value: Status) => {
       size={16}
     />
   ) : (
-    <CheckCircle03
+    <CheckCircle02
       className="m-t-xss tw:text-utility-green-500"
       data-testid="success-badge"
       size={16}

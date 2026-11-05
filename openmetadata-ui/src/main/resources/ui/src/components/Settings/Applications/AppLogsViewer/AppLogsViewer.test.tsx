@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckCircle03 } from '@openmetadata/ui-core-components/icons';
+import { CheckCircle02 } from '@openmetadata/ui-core-components/icons';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
@@ -79,7 +79,7 @@ jest.mock('../../../../constants/constants', () => ({
     height: 14,
   },
   STATUS_ICON: {
-    success: CheckCircle03,
+    success: CheckCircle02,
   },
 }));
 

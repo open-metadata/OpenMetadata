@@ -17,7 +17,7 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle03 } from '@openmetadata/ui-core-components/icons';
+import { CheckCircle02 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -115,7 +115,7 @@ const SuccessScreen = ({
             className="layout-space layout-space-horizontal"
             gap={2}
             itemClassName="layout-space-item">
-            <CheckCircle03
+            <CheckCircle02
               className="tw:text-utility-green-500"
               data-testid="success-icon"
               size={20}

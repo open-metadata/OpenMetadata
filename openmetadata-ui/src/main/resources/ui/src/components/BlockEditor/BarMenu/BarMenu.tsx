@@ -16,11 +16,11 @@ import {
   FormatBulletList,
   Image01,
   Italic01,
+  Link03,
   Minus,
   QuoteMarks,
   TextEditorBold,
   TextEditorCode,
-  TextEditorLink,
   TextEditorNumberedList,
   TextEditorStrikethrough,
 } from '@openmetadata/ui-core-components/icons';
@@ -76,7 +76,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
     [
       {
         name: 'link',
-        icon: TextEditorLink,
+        icon: Link03,
         command: () => {
           editor.chain().focus().setLink({ href: '' }).run();
           onLinkToggle?.();

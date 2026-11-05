@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Article,
-  TextEditorLink,
-} from '@openmetadata/ui-core-components/icons';
+import { Article, Link03 } from '@openmetadata/ui-core-components/icons';
 import { lazy } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type { KnowledgePage } from '../interface/knowledge-center.interface';
@@ -32,7 +29,7 @@ export const getPageIcon = (pageType: PageType) => {
   const isQuickLink = pageType === PageType.QUICK_LINK;
 
   return isQuickLink ? (
-    <TextEditorLink className="tw:text-utility-gray-500" size={28} />
+    <Link03 className="tw:text-utility-gray-500" size={28} />
   ) : (
     <Article size={28} />
   );

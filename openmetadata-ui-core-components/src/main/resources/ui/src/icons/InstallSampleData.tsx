@@ -17,7 +17,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const LinkExternal02: FC<Props> = ({
+export const InstallSampleData: FC<Props> = ({
   size = 20,
   color = 'currentColor',
   ...props
@@ -33,10 +33,15 @@ export const LinkExternal02: FC<Props> = ({
     width={size}
     {...props}>
     <path
-      d="M17.5 7.5v-5m0 0h-5m5 0L10 10M8.333 2.5H6.5c-1.4 0-2.1 0-2.635.273a2.5 2.5 0 0 0-1.092 1.093C2.5 4.4 2.5 5.1 2.5 6.5v7c0 1.4 0 2.1.273 2.635a2.5 2.5 0 0 0 1.093 1.093C4.4 17.5 5.1 17.5 6.5 17.5h7c1.4 0 2.1 0 2.635-.272a2.5 2.5 0 0 0 1.093-1.092c.272-.536.272-1.236.272-2.636v-1.833"
+      d="M2 6.21v5.054c0 3.175 0 4.763.987 5.75C3.973 18 5.56 18 8.737 18h2.526c3.176 0 4.764 0 5.75-.986.987-.987.987-2.575.987-5.75V6.21M3.153 4.37 2 6.21h16l-1.055-1.757c-.718-1.198-1.078-1.797-1.657-2.125C14.708 2 14.01 2 12.613 2H7.435c-1.368 0-2.051 0-2.622.316s-.934.895-1.66 2.054M10 14.2V8.636"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M12.472 11.934S10.65 14.406 10 14.406c-.652 0-2.473-2.472-2.473-2.472"
       stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>
 );
-LinkExternal02.displayName = 'LinkExternal02';
+InstallSampleData.displayName = 'InstallSampleData';

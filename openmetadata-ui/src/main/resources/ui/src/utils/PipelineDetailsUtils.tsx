@@ -12,7 +12,7 @@
  */
 
 import {
-  CheckCircle03,
+  CheckCircle02,
   SlashCircle02,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
@@ -108,7 +108,7 @@ export const getStatusBadgeClassName = (status?: StatusType) => {
 export const getStatusBadgeIcon = (status?: StatusType) => {
   switch (status) {
     case StatusType.Successful:
-      return CheckCircle03;
+      return CheckCircle02;
 
     case StatusType.Failed:
       return XCircle;

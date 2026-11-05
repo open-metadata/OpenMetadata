@@ -23,7 +23,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
-  CheckCircle03,
+  CheckCircle02,
   ChevronRight,
   Copy01,
   InfoCircle,
@@ -94,7 +94,7 @@ const ConnectionStepStatusBadge = ({
         <Typography className="success-status">
           {`${t('label.success')}`}
         </Typography>
-        <CheckCircle03
+        <CheckCircle02
           className="tw:text-utility-green-500"
           data-testid="success-badge"
           size={20}

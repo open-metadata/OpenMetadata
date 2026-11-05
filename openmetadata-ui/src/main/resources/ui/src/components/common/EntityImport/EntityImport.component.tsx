@@ -17,7 +17,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle03 } from '@openmetadata/ui-core-components/icons';
+import { CheckCircle02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -380,7 +380,7 @@ export const EntityImport = ({
                   direction="col"
                   gap={4}
                   itemClassName="layout-space-item">
-                  <CheckCircle03
+                  <CheckCircle02
                     className="tw:text-utility-green-500"
                     data-testid="success-badge"
                     size={36}

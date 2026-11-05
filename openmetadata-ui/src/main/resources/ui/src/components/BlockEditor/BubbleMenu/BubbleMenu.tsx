@@ -14,8 +14,8 @@ import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 import {
   Code01,
   Italic01,
+  Link03,
   TextEditorBold,
-  TextEditorLink,
   TextEditorStrikethrough,
 } from '@openmetadata/ui-core-components/icons';
 import { isNodeSelection, type Editor } from '@tiptap/core';
@@ -94,7 +94,7 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
           toggleLink();
         },
         isActive: () => editor.isActive('link'),
-        icon: TextEditorLink,
+        icon: Link03,
       },
     ];
 

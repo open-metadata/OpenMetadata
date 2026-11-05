@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   AlignLeft,
-  LinkExternal02,
+  LinkExternal01,
   PlayFilled,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
@@ -376,7 +376,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               color="link-color"
               data-testid="agent-link-button"
               href={agentLinkProps.href}
-              iconTrailing={LinkExternal02}
+              iconTrailing={LinkExternal01}
               target="_blank">
               {agentLinkProps.label}
             </Button>
