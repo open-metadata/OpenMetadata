@@ -5840,6 +5840,7 @@
     "ontology-library-description": "預先建置、符合標準的本體。可直接安裝，或先選擇模組。",
     "ontology-library-load-error": "無法載入本體資源庫。",
     "ontology-link-table-before-binding": "Link a table to this concept before binding a column.",
+    "ontology-live-data-bindings-unavailable": "Bindings could not load. Retry to generate the query.",
     "ontology-live-data-needs-binding": "Bind this concept to a table to generate its query.",
     "ontology-live-data-unavailable": "無法為此概念產生 SQL。",
     "ontology-name-duplicate": "An ontology named {{name}} already exists.",

@@ -5840,6 +5840,7 @@
     "ontology-library-description": "Kant-en-klare, op standaarden afgestemde ontologieën. Installeer ze zoals ze zijn, of kies eerst modules.",
     "ontology-library-load-error": "De ontologiebibliotheek kon niet worden geladen.",
     "ontology-link-table-before-binding": "Link a table to this concept before binding a column.",
+    "ontology-live-data-bindings-unavailable": "Bindings could not load. Retry to generate the query.",
     "ontology-live-data-needs-binding": "Bind this concept to a table to generate its query.",
     "ontology-live-data-unavailable": "Er kon geen SQL worden gegenereerd voor dit concept.",
     "ontology-name-duplicate": "An ontology named {{name}} already exists.",

@@ -5840,6 +5840,7 @@
     "ontology-library-description": "Pre-built, standards-aligned ontologies — install, or customize and install.",
     "ontology-library-load-error": "The ontology library could not be loaded.",
     "ontology-link-table-before-binding": "Link a table to this concept before binding a column.",
+    "ontology-live-data-bindings-unavailable": "Bindings could not load. Retry to generate the query.",
     "ontology-live-data-needs-binding": "Bind this concept to a table to generate its query.",
     "ontology-live-data-unavailable": "SQL could not be generated for this concept.",
     "ontology-name-duplicate": "An ontology named {{name}} already exists.",

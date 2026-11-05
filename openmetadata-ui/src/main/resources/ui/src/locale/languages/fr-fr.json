@@ -5840,6 +5840,7 @@
     "ontology-library-description": "Ontologies prêtes à l'emploi, conformes aux standards. Installez-les telles quelles ou choisissez d'abord les modules.",
     "ontology-library-load-error": "Impossible de charger la bibliothèque d’ontologies.",
     "ontology-link-table-before-binding": "Link a table to this concept before binding a column.",
+    "ontology-live-data-bindings-unavailable": "Bindings could not load. Retry to generate the query.",
     "ontology-live-data-needs-binding": "Bind this concept to a table to generate its query.",
     "ontology-live-data-unavailable": "Impossible de générer le SQL pour ce concept.",
     "ontology-name-duplicate": "An ontology named {{name}} already exists.",

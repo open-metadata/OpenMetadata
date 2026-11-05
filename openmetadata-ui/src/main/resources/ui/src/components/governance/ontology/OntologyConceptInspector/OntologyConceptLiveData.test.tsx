@@ -145,7 +145,7 @@ describe('OntologyConceptLiveData', () => {
     renderLiveData('failed', onRetry);
 
     expect(
-      screen.getByText('message.ontology-binding-read-unavailable')
+      screen.getByText('message.ontology-live-data-bindings-unavailable')
     ).toBeVisible();
     expect(
       screen.queryByText('message.ontology-live-data-needs-binding')

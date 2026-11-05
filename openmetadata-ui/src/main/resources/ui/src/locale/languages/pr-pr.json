@@ -5840,6 +5840,7 @@
     "ontology-library-description": "هستی‌شناسی‌های از پیش ساخته و همسو با استانداردها. همان‌طور که هستند نصب کنید یا ابتدا ماژول‌ها را انتخاب کنید.",
     "ontology-library-load-error": "کتابخانه هستی‌شناسی بارگیری نشد.",
     "ontology-link-table-before-binding": "Link a table to this concept before binding a column.",
+    "ontology-live-data-bindings-unavailable": "Bindings could not load. Retry to generate the query.",
     "ontology-live-data-needs-binding": "Bind this concept to a table to generate its query.",
     "ontology-live-data-unavailable": "SQL برای این مفهوم ایجاد نشد.",
     "ontology-name-duplicate": "An ontology named {{name}} already exists.",
