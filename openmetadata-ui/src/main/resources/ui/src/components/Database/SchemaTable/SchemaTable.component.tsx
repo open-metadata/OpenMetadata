@@ -407,12 +407,12 @@ const SchemaTable = () => {
   };
 
   useEffect(() => {
-    fetchTestCaseSummary();
+    void fetchTestCaseSummary();
   }, [tableFqn]);
 
   useEffect(() => {
     if (searchText || hasTagFilter) {
-      searchTableColumns(searchText, currentPage, sortBy, sortOrder);
+      void searchTableColumns(searchText, currentPage, sortBy, sortOrder);
     }
   }, [
     searchText,
@@ -427,7 +427,7 @@ const SchemaTable = () => {
     if (searchText || hasTagFilter) {
       return;
     }
-    fetchTableColumns(currentPage, sortBy, sortOrder);
+    void fetchTableColumns(currentPage, sortBy, sortOrder);
   }, [
     tableFqn,
     pageSize,
@@ -566,24 +566,24 @@ const SchemaTable = () => {
     }
   };
 
-  const handleTagSelection = async (
-    selectedTags: EntityTags[],
-    editColumnTag: Column
-  ) => {
-    if (selectedTags && editColumnTag.fullyQualifiedName) {
-      try {
-        await updateColumnDetails(
-          editColumnTag.fullyQualifiedName,
-          {
-            tags: selectedTags,
-          },
-          'tags'
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
+  const handleTagSelection = useCallback(
+    async (selectedTags: EntityTags[], editColumnTag: Column) => {
+      if (selectedTags && editColumnTag.fullyQualifiedName) {
+        try {
+          await updateColumnDetails(
+            editColumnTag.fullyQualifiedName,
+            {
+              tags: selectedTags,
+            },
+            'tags'
+          );
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
       }
-    }
-  };
+    },
+    [updateColumnDetails]
+  );
 
   const handleExtensionUpdate = useCallback(
     async (record: Column, updatedExtension: Column['extension']) => {
@@ -1014,7 +1014,7 @@ const SchemaTable = () => {
   );
 
   const handleEditTable = () => {
-    navigate(getEntityBulkEditPath(EntityType.TABLE, tableFqn));
+    void navigate(getEntityBulkEditPath(EntityType.TABLE, tableFqn));
   };
 
   useEffect(() => {

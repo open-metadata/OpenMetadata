@@ -9,6 +9,10 @@ import { useBreakpoint } from '@/hooks/use-breakpoint';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import {
+  DEFAULT_PAGE_SIZE,
+  DEFAULT_PAGE_SIZE_OPTIONS,
+} from './pagination.constants';
+import {
   ArrowLeft,
   ArrowRight,
   ChevronLeft,
@@ -76,7 +80,7 @@ const compactPageInputClassName = cx(
 // harmless; keeping it would erase the border itself. `focus-visible:outline-none!` stays —
 // it reproduces what `[&>button]:focus-visible:outline-none!` used to do (no edge while focused).
 const compactRowsPerPageSelectClassName =
-  'tw:w-[42px] tw:shrink-0 tw:gap-0 tw:[&>button]:h-6 tw:[&>button]:rounded-lg tw:[&>button]:focus-visible:outline-none! tw:[&>button>span]:h-6 tw:[&>button>span]:gap-1 tw:[&>button>span]:px-1 tw:[&>button>span]:py-0 tw:[&>button>span>section]:min-w-0 tw:[&>button>span>section]:gap-0 tw:[&>button>span>section>p]:min-w-4 tw:[&>button>span>section>p]:text-center tw:[&>button>span>section>p]:text-xs tw:[&>button>span>section>p]:leading-[18px] tw:[&>button>span>svg]:size-3';
+  'tw:w-[42px] tw:shrink-0 tw:gap-0 tw:[&>button]:h-6 tw:[&>button]:rounded-lg tw:[&>button]:focus-visible:outline-none! tw:[&>button>span]:h-6 tw:[&>button>span]:gap-0.5 tw:[&>button>span]:px-1.5 tw:[&>button>span]:py-0 tw:[&>button>span>section]:min-w-0 tw:[&>button>span>section]:gap-0 tw:[&>button>span>section]:justify-center tw:[&>button>span>section>p]:min-w-4 tw:[&>button>span>section>p]:text-center tw:[&>button>span>section>p]:text-xs tw:[&>button>span>section>p]:leading-[18px] tw:[&>button>span>svg]:size-3';
 
 const compactRowsPerPageItemClassName =
   'tw:px-0 tw:[&>div]:h-8 tw:[&>div]:px-2 tw:[&>div]:py-0 tw:[&>div]:outline-none! tw:[&[data-focused]>div]:bg-primary_hover tw:[&[data-selected]>div]:bg-primary tw:[&>div>div]:min-w-0 tw:[&>div>div>span]:text-xs tw:[&>div>div>span]:leading-[18px]';
@@ -407,8 +411,8 @@ interface PaginationCardWithControlsProps extends PaginationProps {
 export const PaginationCardWithControls = ({
   page = 1,
   total = 10,
-  pageSize = 15,
-  pageSizeOptions = [15, 25, 50],
+  pageSize = DEFAULT_PAGE_SIZE,
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   className,
   minimal = false,
   onPageChange,

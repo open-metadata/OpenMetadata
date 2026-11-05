@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.drive;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 
 import org.junit.jupiter.api.Test;
@@ -11,8 +12,23 @@ import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.service.exception.BadRequestException;
 
 class DriveMapperTest {
+
+  @Test
+  void contextFileMapperRejectsRequestAssetId() {
+    CreateContextFile request =
+        new CreateContextFile().withName("report").withAssetId("stored-asset");
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () -> new ContextFileMapper().createToEntity(request, "admin"));
+
+    assertEquals(
+        "File content must be assigned through the upload endpoint.", exception.getMessage());
+  }
 
   @Test
   void folderMapperCarriesParentReference() {

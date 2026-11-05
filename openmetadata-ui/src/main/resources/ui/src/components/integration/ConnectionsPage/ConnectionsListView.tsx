@@ -440,6 +440,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
             <Owner
               isCompactView
               showDashPlaceholder
+              labelVariant="cell"
               maxVisibleOwners={1}
               owners={service.owners ?? []}
             />

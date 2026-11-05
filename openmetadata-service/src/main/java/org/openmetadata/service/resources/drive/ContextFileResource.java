@@ -989,4 +989,25 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   static int clampExpiry(int expirySeconds) {
     return Math.max(1, Math.min(expirySeconds, MAX_EXPIRY_SECONDS));
   }
+
+  /**
+   * A snapshot is decided on its file as it is now, as a read by id is: making a file private takes
+   * back the versions it was visible in.
+   */
+  @Override
+  protected List<ContextFile> retainReadableHistory(
+      SecurityContext securityContext, List<ContextFile> snapshots) {
+    return snapshots.isEmpty()
+        ? snapshots
+        : ContextFileVisibility.retainVisibleNow(
+            snapshots, currentFiles(snapshots), securityContext);
+  }
+
+  private List<ContextFile> currentFiles(List<ContextFile> snapshots) {
+    return repository.get(
+        null,
+        snapshots.stream().map(ContextFile::getId).distinct().toList(),
+        getFields(ContextFileVisibility.guardFields("")),
+        Include.ALL);
+  }
 }

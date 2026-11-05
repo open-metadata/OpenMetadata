@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.metrics;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
@@ -74,6 +76,9 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 class MetricResourceTest {
 
@@ -121,8 +126,8 @@ class MetricResourceTest {
             .withParent(new EntityReference().withId(UUID.randomUUID()))
             .withMetricGroup(new EntityReference().withId(groupId));
 
-    assertFalse(MetricResource.hierarchyMembershipChanged(original, same));
-    assertTrue(MetricResource.hierarchyMembershipChanged(original, moved));
+    assertFalse(MetricAuthorization.hierarchyMembershipChanged(original, same));
+    assertTrue(MetricAuthorization.hierarchyMembershipChanged(original, moved));
   }
 
   @Test
@@ -139,19 +144,20 @@ class MetricResourceTest {
             .withFullyQualifiedName("profitability");
     Metric updated = new Metric().withParent(parent).withMetricGroup(group);
 
-    assertEquals(List.of(parent, group), MetricResource.hierarchyDestinations(null, updated));
+    assertEquals(List.of(parent, group), MetricAuthorization.hierarchyDestinations(null, updated));
     assertEquals(
         List.of(),
-        MetricResource.hierarchyDestinations(
+        MetricAuthorization.hierarchyDestinations(
             new Metric().withParent(parent).withMetricGroup(group), updated));
-    assertEquals(List.of(), MetricResource.hierarchyDestinations(null, new Metric()));
+    assertEquals(List.of(), MetricAuthorization.hierarchyDestinations(null, new Metric()));
 
     try (ResourceFixture fixture = resourceFixture()) {
       ArgumentCaptor<OperationContext> operations = ArgumentCaptor.forClass(OperationContext.class);
       ArgumentCaptor<ResourceContextInterface> resources =
           ArgumentCaptor.forClass(ResourceContextInterface.class);
 
-      fixture.resource().authorizeHierarchyDestinations(mock(SecurityContext.class), null, updated);
+      MetricAuthorization.authorizeHierarchyDestinations(
+          fixture.authorizer(), mock(SecurityContext.class), null, updated);
 
       verify(fixture.authorizer(), times(2))
           .authorize(any(), operations.capture(), resources.capture());
@@ -193,15 +199,24 @@ class MetricResourceTest {
 
     IllegalArgumentException exception =
         assertThrows(
-            IllegalArgumentException.class, () -> MetricResource.validateMetricPatch(assets));
+            IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(assets));
 
     assertTrue(exception.getMessage().contains("assets"));
     assertThrows(
-        IllegalArgumentException.class, () -> MetricResource.validateMetricPatch(children));
+        IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(children));
     assertThrows(
-        IllegalArgumentException.class, () -> MetricResource.validateMetricPatch(childrenCount));
-    assertTrue(MetricResource.patchMutatesHierarchy(parent));
-    assertFalse(MetricResource.patchMutatesHierarchy(assets));
+        IllegalArgumentException.class,
+        () -> MetricAuthorization.validateMetricPatch(childrenCount));
+    assertTrue(MetricAuthorization.patchMutatesHierarchy(parent));
+    assertFalse(MetricAuthorization.patchMutatesHierarchy(assets));
+  }
+
+  @Test
+  void wholeDocumentReplaceCountsAsAHierarchyChange() {
+    jakarta.json.JsonPatch rootReplace =
+        Json.createPatchBuilder().replace("", Json.createObjectBuilder().build()).build();
+
+    assertTrue(MetricAuthorization.patchMutatesHierarchy(rootReplace));
   }
 
   @Test
@@ -500,6 +515,103 @@ class MetricResourceTest {
       fixture.entity().verify(() -> Entity.registerResourcePermissions(Entity.METRIC, List.of()));
       assertNotNull(fixture.resource());
       assertFalse(fixture.resource().getRepository().getAllowedFields().isEmpty());
+    }
+  }
+
+  @Test
+  void genericReadSanitizesRelationsWhenViewIsConditional() {
+    UUID metricId = UUID.randomUUID();
+    Metric stored =
+        new Metric().withId(metricId).withName("revenue").withFullyQualifiedName("revenue");
+    Metric sanitized = new Metric().withId(metricId).withName("revenue");
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture
+              .repository()
+              .get(any(), eq(metricId), any(Fields.class), any(RelationIncludes.class), eq(false)))
+          .thenReturn(stored);
+      when(fixture.repository().sanitizeMetricRelations(eq(stored), any(), any()))
+          .thenReturn(sanitized);
+
+      Metric actual =
+          fixture
+              .resource()
+              .get(null, securityContext, metricId, "parent", Include.NON_DELETED, null);
+
+      assertEquals(sanitized, actual);
+      verify(fixture.repository()).sanitizeMetricRelations(eq(stored), any(), any());
+    }
+  }
+
+  @Test
+  void genericReadSkipsSanitizationWhenViewIsUnconditional() {
+    UUID metricId = UUID.randomUUID();
+    Metric stored =
+        new Metric().withId(metricId).withName("revenue").withFullyQualifiedName("revenue");
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.ALLOW));
+      when(fixture
+              .repository()
+              .get(any(), eq(metricId), any(Fields.class), any(RelationIncludes.class), eq(false)))
+          .thenReturn(stored);
+
+      Metric actual =
+          fixture
+              .resource()
+              .get(null, securityContext, metricId, "parent", Include.NON_DELETED, null);
+
+      assertSame(stored, actual);
+      verify(fixture.repository(), never())
+          .sanitizeMetricRelations(any(Metric.class), any(), any());
+    }
+  }
+
+  @Test
+  void versionSnapshotsRedactRelationsOnlyWhenViewIsConditional() {
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.CONDITIONAL_ALLOW));
+      assertTrue(fixture.resource().snapshotRedaction(securityContext).isPresent());
+
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.ALLOW));
+      assertTrue(fixture.resource().snapshotRedaction(securityContext).isEmpty());
+    }
+  }
+
+  @Test
+  void patchResponseSanitizesRelationsForRestrictedCallers() {
+    UUID metricId = UUID.randomUUID();
+    Metric patched = new Metric().withId(metricId).withName("revenue");
+    Metric sanitized = new Metric().withId(metricId).withName("revenue");
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture.repository().patch(any(), eq(metricId), anyString(), any(), any(), any(), any()))
+          .thenReturn(new PatchResponse<>(Response.Status.OK, patched, EventType.ENTITY_UPDATED));
+      when(fixture.repository().sanitizeMetricRelations(eq(patched), any(), any()))
+          .thenReturn(sanitized);
+
+      jakarta.json.JsonPatch patch =
+          Json.createPatchBuilder().replace("/description", "updated").build();
+      Response response = fixture.resource().updateMetric(null, securityContext, metricId, patch);
+
+      assertEquals(sanitized, response.getEntity());
+      verify(fixture.repository()).sanitizeMetricRelations(eq(patched), any(), any());
     }
   }
 

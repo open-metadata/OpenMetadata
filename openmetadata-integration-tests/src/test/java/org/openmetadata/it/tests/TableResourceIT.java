@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -28,8 +30,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -113,6 +117,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -231,6 +236,28 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     request.setColumns(columns);
 
     return request;
+  }
+
+  @Test
+  void patch_documentRoot_isRefused(TestNamespace ns) {
+    Table table = createEntity(createRequest(ns.prefix("rootpatch"), ns));
+    String rootPatch =
+        "[{\"op\":\"replace\",\"path\":\"\",\"value\":{\"name\":\"" + table.getName() + "\"}}]";
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH,
+                        "/v1/tables/" + table.getId(),
+                        rootPatch,
+                        org.openmetadata.sdk.network.RequestOptions.builder()
+                            .header("Content-Type", "application/json-patch+json")
+                            .build()));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
   }
 
   @Override
@@ -7285,9 +7312,21 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Database fetchedDb = client.databases().get(db.getId().toString(), "owners");
     fetchedDb.setOwners(List.of(shared.USER1_REF));
+    long patchedAt = System.currentTimeMillis();
     client.databases().update(fetchedDb.getId().toString(), fetchedDb);
 
     String tableId = table.getId().toString();
+    try {
+      awaitInheritedOwner(client, mapper, tableId, shared);
+    } catch (ConditionTimeoutException timeout) {
+      fail(
+          "%s%n%s".formatted(timeout.getMessage(), ownerPropagationDiagnostics(tableId, patchedAt)),
+          timeout);
+    }
+  }
+
+  private void awaitInheritedOwner(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, SharedEntities shared) {
     Awaitility.await("Table search index should reflect inherited owner from database")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -7316,6 +7355,60 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                       .anyMatch(o -> shared.USER1.getId().toString().equals(o.path("id").asText())),
                   "Owner should match the user set on the database");
             });
+  }
+
+  /**
+   * The owner reaches the table through a background update-by-query whose result only the search
+   * engine keeps. On a timeout, report that result, how the child aliases it targeted resolve, and
+   * the table document, so a failure names its own cause.
+   */
+  private static String ownerPropagationDiagnostics(String tableId, long patchedAt) {
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    String prefix = nullOrEmpty(clusterAlias) ? "" : clusterAlias + "_";
+    String childAliases =
+        Stream.of("databaseSchema", "table", "storedProcedure", "testSuite", "testCase")
+            .map(alias -> prefix + alias)
+            .collect(Collectors.joining(","));
+    String tasksQuery =
+        """
+        {"size":20,"query":{"bool":{"filter":[
+          {"term":{"task.action":"indices:data/write/update/byquery"}},
+          {"range":{"task.start_time_in_millis":{"gte":%d}}}]}}}"""
+            .formatted(patchedAt - 1000);
+    String report;
+    try (Rest5Client client = TestSuiteBootstrap.createSearchClient()) {
+      report =
+          """
+          update-by-query tasks since the PATCH: %s
+          child aliases: %s
+          table document: %s"""
+              .formatted(
+                  searchEngine(client, "POST", "/.tasks/_search", tasksQuery),
+                  searchEngine(
+                      client, "GET", "/_alias/" + childAliases + "?ignore_unavailable=true", null),
+                  searchEngine(
+                      client, "GET", "/" + prefix + "table_search_index/_doc/" + tableId, null));
+    } catch (IOException | RuntimeException e) {
+      report = "search engine unavailable (%s)".formatted(e.getMessage());
+    }
+    return report;
+  }
+
+  private static String searchEngine(Rest5Client client, String method, String path, String body) {
+    String response;
+    try {
+      Request request = new Request(method, path);
+      if (body != null) {
+        request.setJsonEntity(body);
+      }
+      response =
+          new String(
+              client.performRequest(request).getEntity().getContent().readAllBytes(),
+              StandardCharsets.UTF_8);
+    } catch (Exception e) {
+      response = "unavailable (%s)".formatted(e.getMessage());
+    }
+    return response;
   }
 
   @Test
