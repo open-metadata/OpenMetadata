@@ -250,6 +250,7 @@ const ExploreExportScopeModal = ({
               <CoreCard
                 isClickable
                 className="export-scope-option-card tw:flex-1 tw:p-4"
+                variant="muted"
                 data-testid="export-scope-visible-card"
                 isSelected={exportScope === 'visible'}
                 onClick={() => onExportScopeChange('visible')}>
@@ -293,6 +294,7 @@ const ExploreExportScopeModal = ({
               <CoreCard
                 isClickable
                 className="export-scope-option-card tw:flex-1 tw:p-4"
+                variant="muted"
                 data-testid="export-scope-all-card"
                 isSelected={exportScope === 'all'}
                 onClick={() => onExportScopeChange('all')}>

@@ -183,6 +183,7 @@ const SelectServiceType = ({
               // spans every category in the `all` view so the category has to be part of the key.
               key={`${connectorCategory}-${type}`}
               size="sm"
+              variant="tile"
               onClick={() => handleServiceTypeClick(type, connectorCategory)}>
               <div className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:w-full">
                 <div
