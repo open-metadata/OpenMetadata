@@ -266,7 +266,7 @@ const NotificationListPage = () => {
           return resources?.join(', ') || '--';
         },
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EventSubscription>(),
       {
         title: t('label.action-plural').toString(),
         dataIndex: 'fullyQualifiedName',
