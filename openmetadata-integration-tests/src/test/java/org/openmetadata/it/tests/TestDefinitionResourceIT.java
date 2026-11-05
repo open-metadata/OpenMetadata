@@ -32,6 +32,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
@@ -109,13 +110,14 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
       throws Exception {
     TestDefinition definition = createEntity(createMinimalRequest(ns));
     DatabaseSchema schema =
-        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+        DatabaseSchemaTestFactory.createSimpleWithName(
+            ns.shortPrefix("schema"), ns, DatabaseServiceTestFactory.createPostgres(ns));
     Table table =
         SdkClients.adminClient()
             .tables()
             .create(
                 new CreateTable()
-                    .withName(ns.prefix("guarded_delete"))
+                    .withName(ns.shortPrefix("guarded_delete"))
                     .withDatabaseSchema(schema.getFullyQualifiedName())
                     .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").build())));
     TestCase testCase =
@@ -138,18 +140,18 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
   void test_deleteUnusedDefinitionRequiresVersionAndDeletePermission(TestNamespace ns) {
     TestDefinition definition = createEntity(createMinimalRequest(ns));
     String path = "/v1/dataQuality/testDefinitions/" + definition.getId() + "/unused";
-    ApiException missingVersion =
+    InvalidRequestException missingVersion =
         assertThrows(
-            ApiException.class,
+            InvalidRequestException.class,
             () ->
                 SdkClients.adminClient()
                     .getHttpClient()
                     .executeForString(
                         HttpMethod.DELETE, path, null, RequestOptions.builder().build()));
     assertEquals(400, missingVersion.getStatusCode());
-    ApiException denied =
+    ForbiddenException denied =
         assertThrows(
-            ApiException.class,
+            ForbiddenException.class,
             () ->
                 SdkClients.dataConsumerClient()
                     .getHttpClient()
