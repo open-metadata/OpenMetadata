@@ -393,7 +393,9 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
               {serviceLogo && (
                 <img
                   alt={service.serviceType as string}
-                  className="tw:size-[22px] tw:object-contain"
+                  className={`tw:size-[22px] tw:object-contain ${getServiceLogoThemeClass(
+                    service.serviceType as string
+                  )}`}
                   src={serviceLogo}
                 />
               )}
