@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  getJSONEditorValue,
-  getSchemaEditorValue,
-} from './SchemaEditor.utils';
+import { getJSONEditorValue, getSchemaEditorValue } from './SchemaEditor.utils';
 
 describe('getSchemaEditorValue', () => {
   describe('with autoFormat enabled (default)', () => {

@@ -211,9 +211,7 @@ export const getSearchIndexDetailsTabs = ({
       children: (
         <QueryViewer
           isActive={activeTab === EntityTabs.SEARCH_INDEX_SETTINGS}
-          sqlQuery={getJSONEditorValue(
-            searchIndexDetails?.searchIndexSettings
-          )}
+          sqlQuery={getJSONEditorValue(searchIndexDetails?.searchIndexSettings)}
         />
       ),
     },
