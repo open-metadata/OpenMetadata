@@ -12,7 +12,7 @@
  */
 
 import { Box, Tooltip } from '@openmetadata/ui-core-components';
-import { groupBy, isEmpty, isUndefined, map, toLower, uniq } from 'lodash';
+import { groupBy, isEmpty, isUndefined, map, toLower } from 'lodash';
 import React from 'react';
 import { MenuOptions } from '../constants/execution.constants';
 import {
@@ -226,7 +226,7 @@ function expandNodeChildren(
   }
 
   state.visited.add(entry.name);
-  for (const childKey of uniq(entry.downstreamTasks ?? [])) {
+  for (const childKey of new Set(entry.downstreamTasks ?? [])) {
     node.children?.push(
       state.remaining > 0
         ? // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutual recursion with buildCompleteTree
@@ -342,7 +342,7 @@ export const getTreeData = (
     labelElements.push(object);
   });
 
-  const roots = uniq(
+  const roots = new Set(
     tasks
       .filter((task) => !checkIsDownStreamTask(task, tasks))
       .map((task) => task.name)
