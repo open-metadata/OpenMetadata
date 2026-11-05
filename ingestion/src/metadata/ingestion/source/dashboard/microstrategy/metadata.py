@@ -58,7 +58,7 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.microstrategy.client import MicroStrategyClient
+from metadata.ingestion.source.dashboard.microstrategy.client import MicroStrategyApiError, MicroStrategyClient
 from metadata.ingestion.source.dashboard.microstrategy.helpers import (
     MicroStrategyColumnParser,
 )
@@ -144,9 +144,13 @@ class MicrostrategySource(DashboardServiceSource):
                     )
             except Exception as exc:
                 self._fail_listing(f"the dossiers of project {project.name}", exc)
+        if self.client.skipped_objects:
+            self._fail_listing(
+                "every object", MicroStrategyApiError(f"{self.client.skipped_objects} objects did not parse")
+            )
         # No project is never a confirmation: /projects lists only what the user may read, so
         # lost access looks like an empty server.
-        if projects and not self.listing_failed and not self.client.skipped_objects:
+        if projects and not self.listing_failed:
             self.dashboard_listing.mark_complete()
             self.datamodel_listing.mark_complete()
 

@@ -410,6 +410,14 @@ class TestSource:
         assert list(source.get_dashboards_list()) == []
         assert not source.dashboard_listing.confirms_nothing_to_ingest
 
+    def test_a_dossier_that_does_not_parse_keeps_every_stale_dashboard(self, server, client):
+        server.dossiers[TUTORIAL["id"]] = [OFFICE_ROYALE, {"name": "No id"}]
+        source = _source(client)
+
+        assert [d.id for d in source.get_dashboards_list()] == [OFFICE_ROYALE["id"]]
+        assert source.listing_failed
+        assert not source.dashboard_listing.is_complete
+
     def test_a_failed_project_search_keeps_every_stale_entity(self, server, client):
         server.projects = [MOBILE, TUTORIAL]
         server.overrides["/searches/results"] = lambda: (500, {"code": "ERR001", "message": "Search failed"})
