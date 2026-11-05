@@ -47,6 +47,9 @@ public class MigrationUtil {
   private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
   private static final String CREATE_CONVERSATION_RULE_NAME =
       "DataConsumerPolicy-CreateConversation-Rule";
+  private static final String BOT_NON_ADMIN_IMPERSONATION_POLICY = "BotNonAdminImpersonationPolicy";
+  static final String DENY_ADMIN_USERS_RULE_NAME = "BotNonAdminImpersonationPolicy-DenyAdminUsers";
+  static final String DENY_BOT_USERS_RULE_NAME = "BotNonAdminImpersonationPolicy-DenyBotUsers";
   private static final double PREVIOUS_KEYWORD_WEIGHT = 0.4;
   private static final double PREVIOUS_SEMANTIC_WEIGHT = 0.6;
   private static final double KEYWORD_WEIGHT = 0.6;
@@ -96,6 +99,58 @@ public class MigrationUtil {
           exception.getMessage(),
           exception);
     }
+  }
+
+  /**
+   * Add the bot-target deny rule of the seed to a stored BotNonAdminImpersonationPolicy. Seed loading
+   * never updates an existing policy, and this policy shipped in 2.0 without the rule.
+   */
+  public static void addDenyBotUsersRuleToBotNonAdminImpersonationPolicy(
+      CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy =
+          repository.findByName(BOT_NON_ADMIN_IMPERSONATION_POLICY, Include.NON_DELETED);
+      if (addDenyBotUsersRule(policy)) {
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Added {} to {}", DENY_BOT_USERS_RULE_NAME, BOT_NON_ADMIN_IMPERSONATION_POLICY);
+      }
+    } catch (EntityNotFoundException exception) {
+      LOG.warn("{} not found, skipping its bot-target rule", BOT_NON_ADMIN_IMPERSONATION_POLICY);
+    } catch (Exception exception) {
+      LOG.error(
+          "Failed to add {} to {}: {}",
+          DENY_BOT_USERS_RULE_NAME,
+          BOT_NON_ADMIN_IMPERSONATION_POLICY,
+          exception.getMessage(),
+          exception);
+    }
+  }
+
+  /**
+   * Returns whether the rule was added. A policy that no longer carries the admin-target deny rule
+   * was loosened on purpose by an admin, so it is left as it is.
+   */
+  static boolean addDenyBotUsersRule(Policy policy) {
+    List<Rule> rules = policy.getRules();
+    if (rules == null
+        || rules.stream().noneMatch(rule -> DENY_ADMIN_USERS_RULE_NAME.equals(rule.getName()))
+        || rules.stream().anyMatch(rule -> DENY_BOT_USERS_RULE_NAME.equals(rule.getName()))) {
+      return false;
+    }
+    rules.add(
+        new Rule()
+            .withName(DENY_BOT_USERS_RULE_NAME)
+            .withDescription(
+                "Deny impersonating bots. System and application bots can edit policies and roles,"
+                    + " this policy included.")
+            .withResources(List.of(Entity.USER))
+            .withOperations(List.of(MetadataOperation.IMPERSONATE))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("isBotUser()"));
+    return true;
   }
 
   public static void refreshConversationNotificationTemplates() {

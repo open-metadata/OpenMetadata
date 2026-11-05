@@ -3,14 +3,17 @@ package org.openmetadata.it.sso.browser;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.openmetadata.it.sso.MockHttp;
 import org.openmetadata.it.sso.browser.SsoNavigation.Hop;
 
@@ -88,6 +91,23 @@ public final class SsoBrowser {
 
   public HttpResponse<String> post(String url) {
     return send(requestTo(url).POST(HttpRequest.BodyPublishers.noBody()).build());
+  }
+
+  /** A form post, as an identity provider's auto-submitting page makes the browser send it. */
+  public HttpResponse<String> postForm(String url, Map<String, String> fields) {
+    String body =
+        fields.entrySet().stream()
+            .map(
+                field ->
+                    URLEncoder.encode(field.getKey(), StandardCharsets.UTF_8)
+                        + "="
+                        + URLEncoder.encode(field.getValue(), StandardCharsets.UTF_8))
+            .collect(Collectors.joining("&"));
+    return send(
+        requestTo(url)
+            .header(CONTENT_TYPE, FORM)
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .build());
   }
 
   private Hop requestHop(URI url) {

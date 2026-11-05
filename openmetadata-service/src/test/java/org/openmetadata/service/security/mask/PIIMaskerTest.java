@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,10 +27,13 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SearchIndexField;
@@ -37,6 +41,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -46,6 +51,40 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
 
 class PIIMaskerTest {
+
+  @Test
+  void aUserChangeEventIsMaskedAsAReadOfTheUserIs() {
+    String snapshot = "{\"name\":\"alice\",\"email\":\"alice@example.com\"}";
+    ChangeEvent stored =
+        new ChangeEvent()
+            .withEntityType(Entity.USER)
+            .withEntity(snapshot)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("email")
+                                .withOldValue("alice@old.example.com")
+                                .withNewValue("alice@example.com"),
+                            new FieldChange()
+                                .withName("displayName")
+                                .withOldValue("Alice")
+                                .withNewValue("Alice A."))));
+
+    ChangeEvent masked = PIIMasker.maskUserChangeEvent(stored);
+
+    JsonNode entity = JsonUtils.readTree((String) masked.getEntity());
+    assertEquals(PIIMasker.MASKED_MAIL, entity.get("email").asText());
+    assertEquals("alice", entity.get("name").asText());
+    FieldChange email = masked.getChangeDescription().getFieldsUpdated().get(0);
+    assertEquals(PIIMasker.MASKED_MAIL, email.getOldValue());
+    assertEquals(PIIMasker.MASKED_MAIL, email.getNewValue());
+    assertEquals("Alice A.", masked.getChangeDescription().getFieldsUpdated().get(1).getNewValue());
+
+    ChangeEvent table = new ChangeEvent().withEntityType(Entity.TABLE).withEntity(snapshot);
+    assertEquals(snapshot, PIIMasker.maskUserChangeEvent(table).getEntity());
+  }
 
   @Test
   void maskSampleDataMasksSensitiveColumnsAndWholeTables() {

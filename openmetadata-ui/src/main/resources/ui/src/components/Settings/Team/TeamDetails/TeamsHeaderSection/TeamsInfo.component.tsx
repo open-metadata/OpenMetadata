@@ -89,6 +89,10 @@ const TeamsInfo = ({
     [entityPermissions, isTeamDeleted]
   );
   const hasEditPermission = canEditAll;
+  // Members inherit the default persona, so only admins set it, even when the
+  // owner may edit the rest of the team (ADR:2026-11-03-only-admins-assign-personas).
+  const hasEditPersonaPermission =
+    hasEditPermission && Boolean(currentUser?.isAdmin);
   // Reassigning a team's domain is EditDomains on the server (EditAll still
   // subsumes it), so gate the domain control on that, not bare EditAll.
   const hasEditDomainPermission = canEditDomains;
@@ -380,7 +384,7 @@ const TeamsInfo = ({
             </Typography>
             <PersonaSelectableList
               isDefaultPersona
-              hasPermission={hasEditPermission}
+              hasPermission={hasEditPersonaPermission}
               multiSelect={false}
               selectedPersonas={
                 currentTeam.defaultPersona ? [currentTeam.defaultPersona] : []
@@ -410,7 +414,7 @@ const TeamsInfo = ({
   }, [
     isGroupType,
     currentTeam.defaultPersona,
-    hasEditPermission,
+    hasEditPersonaPermission,
     handleDefaultPersonaUpdate,
     t,
   ]);
@@ -430,13 +434,20 @@ const TeamsInfo = ({
         entityId={id ?? ''}
         entityType={EntityType.TEAM}
         hasPermission={hasEditDomainPermission}
+        labelClassName="text-primary"
       />
       <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
-      <Owner
-        hasPermission={hasEditOwnerPermission}
-        isCompactView={false}
-        owners={owners ?? []}
-        selectorContent={
+      {/* The label is drawn here, not by Owner, so it takes this header's
+          label colour like Email, Type and Persona beside it. */}
+      <Box
+        align="start"
+        className="layout-space layout-space-horizontal d-flex flex-col"
+        gap={2}
+        itemClassName="layout-space-item">
+        <div className="d-flex gap-2">
+          <Typography className="text-primary" weight="medium">
+            {t('label.owner-plural')}
+          </Typography>
           <UserTeamSelectableList
             hasPermission={Boolean(hasEditOwnerPermission)}
             multiple={{
@@ -446,8 +457,14 @@ const TeamsInfo = ({
             owner={owners}
             onUpdate={updateOwner}
           />
-        }
-      />
+        </div>
+        <Owner
+          isCompactView={false}
+          labelVariant="header"
+          owners={owners ?? []}
+          showLabel={false}
+        />
+      </Box>
       <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
       {emailRender}
 
