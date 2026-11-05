@@ -12,6 +12,7 @@
  */
 import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
+import { DomainSelectProps } from '../DomainSelect/DomainSelect.types';
 
 /**
  * Minimal controlled-open contract for the picker popover. Replaces the antd
@@ -46,5 +47,11 @@ export interface DomainSelectableListProps {
   className?: string;
   /** Let the custom trigger stretch to its container (full-width cards). */
   fullWidthTrigger?: boolean;
+  /** Fixed picker placement; omit for the default below-the-trigger dropdown. */
+  placement?: DomainSelectProps['placement'];
+  /** Gap between trigger and picker, in px. */
+  offset?: DomainSelectProps['offset'];
+  /** Extra picker classes, e.g. a width. */
+  popoverClassName?: DomainSelectProps['popoverClassName'];
   'data-testid'?: string;
 }

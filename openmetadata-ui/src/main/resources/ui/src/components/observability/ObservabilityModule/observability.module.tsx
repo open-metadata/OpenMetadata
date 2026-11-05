@@ -22,8 +22,6 @@ import { ReactComponent as IncidentActiveIcon } from '../../../assets/svg/incide
 import { ReactComponent as IncidentIcon } from '../../../assets/svg/incident-default.svg';
 import { ReactComponent as ObservabilityActiveIcon } from '../../../assets/svg/observability-active.svg';
 import { ReactComponent as ObservabilityIcon } from '../../../assets/svg/observability-default.svg';
-import { ReactComponent as PipelineActiveIcon } from '../../../assets/svg/pipeline-active.svg';
-import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-default.svg';
 import { ReactComponent as TestLibraryActiveIcon } from '../../../assets/svg/test-library-active.svg';
 import { ReactComponent as TestLibraryIcon } from '../../../assets/svg/test-library-default.svg';
 import { ResourceEntity } from '../../../enums/permissions.enum';
@@ -280,13 +278,6 @@ export const observabilityModule: AppModule = {
             activePaths: [
               OBSERVABILITY_ROUTES.OBSERVABILITY_ALERT_DETAILS.split('/:')[0],
             ],
-          },
-          {
-            key: 'pipeline',
-            icon: PipelineIcon,
-            activeIcon: PipelineActiveIcon,
-            labelKey: 'label.pipeline-observability',
-            path: OBSERVABILITY_ROUTES.OBSERVABILITY_PIPELINE,
           },
           {
             key: 'test-library',

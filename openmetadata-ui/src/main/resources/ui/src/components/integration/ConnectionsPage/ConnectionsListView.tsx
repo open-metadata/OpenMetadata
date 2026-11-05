@@ -13,7 +13,6 @@
 
 import {
   Button,
-  EmptyPlaceholder,
   Owner,
   PaginationCardWithControls,
   Table,
@@ -30,6 +29,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from '../../../constants/constants';
 import { SERVICE_EMPTY_STATE_ICON_CLASS } from '../../../constants/ServiceEmptyState.constant';
 import { ServiceHealth } from '../../../generated/api/services/servicesOverview';
 import { TagSource } from '../../../generated/type/tagLabel';
@@ -42,8 +45,10 @@ import {
   SlotContribution,
 } from '../../../utils/ExtensionPointTypes';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
+import { getServiceLogoThemeClass } from '../../../utils/ServiceIconUtils';
 import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import ConnectionsFilterButton from './ConnectionsFilterButton';
@@ -52,9 +57,7 @@ import {
   DELETED_PARAM,
   ENTITY_TYPE_TO_CATEGORY,
   getConnectionsEmptyState,
-  GRID_PAGE_SIZE_OPTIONS,
   HEALTH_PARAM,
-  LIST_PAGE_SIZE_OPTIONS,
   SERVICE_TYPE_PARAM,
 } from './ConnectionsPage.constants';
 import ConnectionsPageSkeleton from './ConnectionsPageSkeleton';
@@ -437,6 +440,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
             <Owner
               isCompactView
               showDashPlaceholder
+              labelVariant="cell"
               maxVisibleOwners={1}
               owners={service.owners ?? []}
             />
@@ -510,10 +514,9 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         <div
           className="tw:relative tw:min-h-[400px]"
           data-testid="connections-list-error-wrapper">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="connections-list-error"
             title={t('message.something-went-wrong')}
-            variant="blank"
           />
         </div>
       );
@@ -523,7 +526,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
       <div
         className="tw:relative tw:min-h-[400px]"
         data-testid="connections-list-empty-wrapper">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="connections-list-empty-first-run"
           description={!isNarrowed && t(emptyState.descriptionKey)}
           // `footer` rather than `actions` so the button keeps the LimitWrapper the header button
@@ -547,7 +550,6 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
               ? t('message.no-data-available-for-selected-filter')
               : t(emptyState.titleKey)
           }
-          variant="blank"
         />
       </div>
     ) : (
@@ -723,6 +725,15 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
                 searchable
                 label={t('label.all-service-types')}
                 options={serviceTypeOptions}
+                renderItemIcon={(serviceType) => (
+                  <img
+                    alt={serviceType}
+                    className={`tw:size-4 tw:object-contain ${getServiceLogoThemeClass(
+                      serviceType
+                    )}`}
+                    src={serviceUtilClassBase.getServiceLogo(serviceType)}
+                  />
+                )}
                 testId="connections-service-type-filter"
                 value={selectedServiceTypes}
                 onChange={(values) => setCsvParam(SERVICE_TYPE_PARAM, values)}

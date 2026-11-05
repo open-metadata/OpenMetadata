@@ -12,6 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { getEncodedFqn } from './entity';
+import { waitForAggregation } from './searchAggregation';
 
 type EntityFields = {
   id: string;
@@ -183,7 +184,9 @@ export const selectOption = async (
     'button[aria-haspopup="listbox"]'
   );
 
-  await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
+  await expect(
+    comboboxInput.or(triggerButton).filter({ visible: true })
+  ).not.toHaveCount(0);
 
   if (isSearchable) {
     if ((await triggerButton.count()) === 0) {
@@ -274,7 +277,7 @@ export const selectOption = async (
 };
 
 export const selectRange = async (
-  page: Page,
+  _page: Page,
   ruleLocator: Locator,
   startDate: string,
   endDate: string
@@ -356,16 +359,14 @@ export const fillRule = async (
       await expect
         .poll(
           async () => {
+            const aggregation = waitForAggregation(
+              page,
+              { value: searchData },
+              { timeout: 5_000 }
+            ).catch(() => null);
             await dropdownInput.fill('');
             await dropdownInput.fill(searchData);
-
-            await page
-              .waitForResponse(
-                (response) =>
-                  response.url().includes('/api/v1/search/aggregate'),
-                { timeout: 5_000 }
-              )
-              .catch(() => null);
+            await aggregation;
 
             return countMatchingOptions();
           },

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { CSVImportResult } from '../../generated/type/csvImportResult';
+
 export type CSVExportResponse = {
   jobId: string;
   message: string;
@@ -20,3 +22,23 @@ export type CSVImportAsyncResponse = {
   jobId: string;
   message: string;
 };
+
+export type CSVImportAsyncWebsocketResponse = {
+  jobId: string;
+  status: 'COMPLETED' | 'FAILED' | 'STARTED' | 'IN_PROGRESS';
+  result?: CSVImportResult;
+  error?: string | null;
+  progress?: number;
+  total?: number;
+  message?: string;
+};
+
+export type CSVImportAsyncJob = Partial<CSVImportAsyncWebsocketResponse> &
+  CSVImportAsyncResponse;
+
+export type CSVImportJobType =
+  | (Partial<CSVImportAsyncJob> & {
+      type: 'initialLoad';
+      initialResult: string;
+    })
+  | (Partial<CSVImportAsyncJob> & { type: 'onValidate' });

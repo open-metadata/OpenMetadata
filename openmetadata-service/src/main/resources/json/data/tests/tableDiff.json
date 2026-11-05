@@ -56,6 +56,13 @@
       "description": "Use case sensitivity when comparing the columns.",
       "dataType": "BOOLEAN",
       "required": false
+    },
+    {
+      "name": "parallelQueries",
+      "displayName": "Parallel queries per database",
+      "description": "How many queries the comparison may run at once against each database (defaults to 1). Both databases are always queried at the same time. A higher value compares large tables faster, but adds load to both databases and holds more rows in memory.",
+      "dataType": "NUMBER",
+      "required": false
     }
   ],
   "provider": "system",

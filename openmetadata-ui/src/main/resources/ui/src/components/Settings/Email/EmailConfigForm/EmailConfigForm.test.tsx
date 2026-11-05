@@ -11,18 +11,10 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { EMAIL_CONFIG_FORM_FIELDS } from '../../../../constants/EmailConfig.constants';
 import { TransportationStrategy } from '../../../../generated/email/smtpSettings';
 import EmailConfigForm from './EmailConfigForm.component';
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
-    .fn()
-    .mockImplementation(({ loading, onClick, children }) => (
-      <button onClick={onClick}>{loading ? 'Loader.Button' : children}</button>
-    )),
-}));
 
 const mockOnCancel = jest.fn();
 const mockOnFocus = jest.fn();
@@ -90,7 +82,9 @@ describe('Email Config Form Component', () => {
   it('submit button should be in loading state', async () => {
     render(<EmailConfigForm {...mockProps} isLoading />);
 
-    expect(screen.getByText('Loader.Button')).toBeInTheDocument();
+    expect(screen.getByText('label.save').closest('button')).toHaveAttribute(
+      'data-loading'
+    );
   });
 
   it('should call onCancel', () => {
@@ -156,10 +150,71 @@ describe('Email Config Form Component', () => {
       fireEvent.click(screen.getByText('label.save'));
     });
 
+    // Empty optional credentials are dropped rather than sent as ''.
     expect(mockOnSubmit).toHaveBeenCalledWith({
       ...emailConfigValues,
-      password: '',
-      username: '',
+      password: undefined,
+      username: undefined,
     });
+  });
+
+  it('should disable only the fields the deployment configuration owns', () => {
+    render(
+      <EmailConfigForm
+        {...mockProps}
+        managedFields={[
+          'senderMail',
+          'enableSmtpServer',
+          'transportationStrategy',
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('sender-email-input')).toBeDisabled();
+    expect(
+      within(screen.getByTestId('smtp-server-input')).getByRole('switch')
+    ).toBeDisabled();
+    expect(
+      within(screen.getByTestId('transportation-strategy-input')).getByRole(
+        'button'
+      )
+    ).toBeDisabled();
+    expect(screen.getByTestId('username-input')).toBeEnabled();
+    expect(screen.getByTestId('server-port-input')).toBeEnabled();
+    expect(screen.getByText('label.save')).toBeInTheDocument();
+  });
+
+  it('should submit the stored values of the fields it locks', async () => {
+    render(
+      <EmailConfigForm
+        {...mockProps}
+        managedFields={['senderMail', 'serverEndpoint']}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('username-input'), {
+      target: { value: 'mailer' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.save'));
+    });
+
+    // The PUT replaces the whole setting, so a locked field has to travel unchanged.
+    expect(mockOnSubmit).toHaveBeenCalledWith({
+      ...emailConfigValues,
+      username: 'mailer',
+    });
+  });
+
+  it('should not offer to save when the deployment owns every field', () => {
+    render(
+      <EmailConfigForm
+        {...mockProps}
+        managedFields={EMAIL_CONFIG_FORM_FIELDS}
+      />
+    );
+
+    expect(screen.queryByText('label.save')).not.toBeInTheDocument();
+    expect(screen.getByText('label.cancel')).toBeInTheDocument();
   });
 });

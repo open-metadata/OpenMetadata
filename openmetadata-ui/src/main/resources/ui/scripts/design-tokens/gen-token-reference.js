@@ -128,6 +128,11 @@ const GROUPS = [
     title: 'Legacy colors',
     note: 'Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.',
   },
+  {
+    key: /^--om-/,
+    title: 'Legacy LESS aliases',
+    note: 'Existing LESS palette names retain their light fallbacks; app.less supplies dark-mode overrides. Prefer semantic tokens for new work.',
+  },
 ];
 
 function classify(name) {

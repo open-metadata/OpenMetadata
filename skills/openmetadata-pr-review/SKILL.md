@@ -127,6 +127,7 @@ gh api repos/$REPO/contents/<path/to/test_file>?ref=$HEAD --jq '.content' | base
 
 | PR touches | Read |
 |---|---|
+| anything | `REVIEW.md`: the review bar, with the recurring logic defects, test gaps and flaky-test shapes, plus what not to report |
 | `**/*.java` | `.claude/rules/java.md` |
 | UI `*.{ts,tsx}` | `.claude/rules/frontend-react.md`, `component-library.md`, `frontend-styling.md`, `frontend-a11y.md`, `frontend-performance.md`, `i18n.md` |
 | `openmetadata-ui/src/main/resources/ui/playwright/**` | `.claude/rules/frontend-playwright.md` |
@@ -164,6 +165,10 @@ The high-signal checks, distilled — use these to decide *which* rule to open, 
 - No committed secrets, `.orig` merge artifacts, `package-lock.json` in a yarn repo, CRLF conversions, or vendored dependency trees.
 - **`.github/workflows/**` changes are a supply-chain surface.** Any workflow edit in a contributor PR gets read line by line — new `pull_request_target` triggers, third-party actions pinned by tag instead of SHA, and secrets exposed to fork-run jobs are blockers.
 - **License headers are per-module and only the UI is enforced.** `ingestion/` and `openmetadata-airflow-apis/` Python files carry the Collate Community License header, UI TS/TSX carries Apache-2.0, Java mostly carries none. A wrong Python or Java header ships silently — check it by eye against a sibling file in the same directory.
+
+**Decision records** (`docs/decisions/`, rules in its `README.md`) — two different findings
+- **Contradiction.** A change that undoes an Accepted record — read the records the touched code cites as `ADR:<date>-<slug>` — is NEEDS_WORK unless the PR adds the record that supersedes it.
+- **Omission.** A PR that makes a durable decision and records none goes in BLOCKERS: a contract another component or repo must agree with (schema field, REST path, payload or derived format), a new default or limit whose value was a judgment call, an ordering that must hold and is visible from no single file, or a rule its description states that exists nowhere in the tree — the squash-merge drops the description. Name the sentence the record would state; "needs an ADR" is not actionable. Not a trigger: a self-evident bug fix, a behavior-neutral refactor, a dependency bump, a test-only change, or compliance with an existing record.
 
 ### Step 4 — Assess the test (integration if possible, and meaningful)
 

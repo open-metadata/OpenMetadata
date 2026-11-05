@@ -98,6 +98,32 @@ export const markReauthAttempt = (now = Date.now()): boolean => {
   }
 };
 
+// Signing out in one tab signs every tab out. The time is persisted, not
+// broadcast, so a recovery that was already running (a sibling wait, or a
+// tab away at the identity provider) can still tell that it was overtaken.
+export const SIGNED_OUT_AT_KEY = 'om-signed-out-at';
+
+/**
+ * Records a sign-out and drops the re-auth attempt, so no tab keeps waiting
+ * on a sibling's re-authentication that should no longer be adopted.
+ */
+export const markSignedOut = (now = Date.now()): void => {
+  try {
+    localStorage.setItem(SIGNED_OUT_AT_KEY, String(now));
+    localStorage.removeItem(REAUTH_ATTEMPT_KEY);
+  } catch {
+    // Storage unavailable: other tabs still sign out on their next refresh.
+  }
+};
+
+export const hasSignedOutSince = (since: number): boolean => {
+  try {
+    return Number(localStorage.getItem(SIGNED_OUT_AT_KEY)) >= since;
+  } catch {
+    return false;
+  }
+};
+
 const delay = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 

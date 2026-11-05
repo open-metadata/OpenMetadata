@@ -74,10 +74,7 @@ test.describe('Glossary Term Details Operations', () => {
         .click();
 
       // Find and remove the first synonym
-      const synonym1Tag = page.locator(
-        `.ant-select-selection-item[title="${synonym1}"] .ant-select-selection-item-remove`
-      );
-      await synonym1Tag.click();
+      await page.getByTestId(`remove-synonym-${synonym1}`).click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-synonym-btn').click();

@@ -30,13 +30,11 @@ jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({
 // Mock the CustomAreaChart component
 jest.mock('../../../Visualisations/Chart/CustomAreaChart.component', () =>
   jest.fn().mockImplementation((props) => (
-    <div data-testid="custom-area-chart">
+    <div data-aria-label={props.ariaLabel} data-testid="custom-area-chart">
       <div>CustomAreaChart</div>
       <div data-testid="chart-name">{props.name}</div>
       <div data-testid="chart-height">{props.height}</div>
-      <div data-testid="chart-color-scheme">
-        {JSON.stringify(props.colorScheme)}
-      </div>
+      <div data-testid="chart-status">{props.status}</div>
       <div data-testid="chart-data">{JSON.stringify(props.data)}</div>
     </div>
   ))
@@ -206,7 +204,27 @@ describe('TestCaseStatusAreaChartWidget', () => {
     });
   });
 
-  it('should render with custom color scheme', async () => {
+  it.each([
+    [TestCaseStatus.Success, 'success'],
+    [TestCaseStatus.Failed, 'failed'],
+    [TestCaseStatus.Aborted, 'warning'],
+  ])(
+    'should colour the chart from test case status %s',
+    async (testCaseStatus, status) => {
+      renderWithQueryClient(
+        <TestCaseStatusAreaChartWidget
+          {...defaultProps}
+          testCaseStatus={testCaseStatus}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('chart-status')).toHaveTextContent(status);
+      });
+    }
+  );
+
+  it('should ignore chartColorScheme, which Collate still passes', async () => {
     const colorScheme: AreaChartColorScheme = {
       gradientStartColor: '#FF0000',
       gradientEndColor: '#FF8888',
@@ -217,13 +235,12 @@ describe('TestCaseStatusAreaChartWidget', () => {
       <TestCaseStatusAreaChartWidget
         {...defaultProps}
         chartColorScheme={colorScheme}
+        testCaseStatus={TestCaseStatus.Failed}
       />
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('chart-color-scheme')).toHaveTextContent(
-        JSON.stringify(colorScheme)
-      );
+      expect(screen.getByTestId('chart-status')).toHaveTextContent('failed');
     });
   });
 
@@ -506,8 +523,9 @@ describe('TestCaseStatusAreaChartWidget', () => {
       expect(screen.getByTestId('chart-height')).toHaveTextContent(
         height.toString()
       );
-      expect(screen.getByTestId('chart-color-scheme')).toHaveTextContent(
-        JSON.stringify(colorScheme)
+      expect(screen.getByTestId('custom-area-chart')).toHaveAttribute(
+        'data-aria-label',
+        defaultProps.title
       );
     });
   });

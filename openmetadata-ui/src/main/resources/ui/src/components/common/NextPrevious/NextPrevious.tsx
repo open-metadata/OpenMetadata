@@ -11,20 +11,19 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Button as CoreButton } from '@openmetadata/ui-core-components';
-import { Button, Dropdown } from 'antd';
+import {
+  Button as CoreButton,
+  Dropdown,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowRightOutlined } from '../../../assets/svg/arrow-right.svg';
-import { ReactComponent as DownOutlined } from '../../../assets/svg/ic-arrow-down.svg';
-import {
-  ICON_DIMENSION,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
@@ -52,10 +51,8 @@ const NextPrevious: FC<NextPreviousProps> = ({
   ...pagingProps
 }: NextPreviousProps) => {
   const { t } = useTranslation();
-  const {
-    pageSizeOptions = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
-    onShowSizeChange,
-  } = (pagingProps ?? {}) as PagingProps;
+  const { pageSizeOptions = LIST_PAGE_SIZE_OPTIONS, onShowSizeChange } =
+    (pagingProps ?? {}) as PagingProps;
   const totalPages = computeTotalPages(pageSize, paging.total);
   const cursorTotalPages = Math.max(
     totalPages,
@@ -96,7 +93,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
 
   const computeNextDisableState = () => {
     if (isNumberBased) {
-      return currentPage === totalPages;
+      return currentPage >= totalPages;
     } else {
       return paging.after ? false : true;
     }
@@ -116,9 +113,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
         className={PAGINATION_BUTTON_CLASS}
         color="tertiary"
         data-testid="previous"
-        iconLeading={
-          <ArrowRightOutlined className="tw:-mt-px tw:size-3 tw:shrink-0 tw:rotate-180" />
-        }
+        iconLeading={ChevronLeft}
         isDisabled={computePrevDisableState() || isLoading}
         onPress={onPreviousHandler}>
         {t('label.previous')}
@@ -131,33 +126,34 @@ const NextPrevious: FC<NextPreviousProps> = ({
         className={PAGINATION_BUTTON_CLASS}
         color="tertiary"
         data-testid="next"
-        iconTrailing={
-          <ArrowRightOutlined className="tw:-mt-0.5 tw:size-3 tw:shrink-0" />
-        }
+        iconTrailing={ChevronRight}
         isDisabled={computeNextDisableState() || isLoading}
         onPress={onNextHandler}>
         {t('label.next')}
       </CoreButton>
       {onShowSizeChange && (
-        <Dropdown
-          disabled={isLoading}
-          menu={{
-            items: pageSizeOptions.map((size) => ({
-              label: `${size} / ${t('label.page')}`,
-              value: size,
-              key: size,
-              onClick: () => onShowSizeChange(size),
-            })),
-          }}>
-          <Button
+        <Dropdown.Root>
+          <CoreButton
             className="pagination-button"
+            color="tertiary"
             data-testid="page-size-selection-dropdown"
-            type="text"
-            onClick={(e) => e.preventDefault()}>
+            iconTrailing={ChevronDown}
+            isDisabled={isLoading}>
             {`${pageSize} / ${t('label.page')}`}
-            <Icon component={DownOutlined} style={ICON_DIMENSION} />
-          </Button>
-        </Dropdown>
+          </CoreButton>
+          <Dropdown.Popover className="tw:w-auto">
+            <Dropdown.Menu
+              aria-label={t('label.size')}
+              selectionMode="none"
+              onAction={(key) => onShowSizeChange(Number(key))}>
+              {pageSizeOptions.map((size) => (
+                <Dropdown.Item id={String(size)} key={size}>
+                  {`${size} / ${t('label.page')}`}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       )}
     </div>
   );

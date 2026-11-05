@@ -41,6 +41,9 @@ const mockTestCaseLastRunBanner = jest.fn(({ nextRunTimestamp }: any) => (
     last-run-banner
   </div>
 ));
+const mockManageButton = jest
+  .fn()
+  .mockReturnValue(<div data-testid="manage-button">manage-button</div>);
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -96,15 +99,6 @@ jest.mock('components/common/Loader/Loader', () => ({
   default: () => <div data-testid="loader">Loader</div>,
 }));
 
-jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: ({ type }: { type?: string }) => (
-    <div data-testid="error-placeholder" data-type={type ?? 'default'}>
-      error-placeholder
-    </div>
-  ),
-}));
-
 jest.mock(
   'components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
   () => ({
@@ -156,7 +150,7 @@ jest.mock(
   'components/common/EntityPageInfos/ManageButton/ManageButton',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="manage-button">manage-button</div>,
+    default: (props: any) => mockManageButton(props),
   })
 );
 
@@ -174,11 +168,8 @@ jest.mock(
   'components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () => ({
     __esModule: true,
-    default: ({ open, variant }: { open?: boolean; variant?: string }) => (
-      <div
-        data-open={String(open)}
-        data-testid="test-case-form-drawer"
-        data-variant={variant}>
+    default: ({ open }: { open?: boolean }) => (
+      <div data-open={String(open)} data-testid="test-case-form-drawer">
         test-case-form-drawer
       </div>
     ),
@@ -187,20 +178,6 @@ jest.mock(
 
 jest.mock('components/common/Badge/Badge.component', () => ({
   BetaBadge: () => <span data-testid="beta-badge">beta</span>,
-}));
-
-jest.mock('components/common/IconButtons/EditIconButton', () => ({
-  AlignRightIconButton: ({
-    onClick,
-  }: {
-    onClick?: (...args: unknown[]) => void;
-  }) => (
-    <button
-      aria-label="expand-collapse-button"
-      data-testid="expand-collapse-button"
-      onClick={onClick}
-    />
-  ),
 }));
 
 jest.mock('utils/ObservabilityRouterClassBase', () => ({
@@ -257,6 +234,7 @@ const baseHookReturn = {
   hasViewPermission: true,
   hasDeletePermission: true,
   editDisplayNamePermission: true,
+  canRestorePermission: true,
   displayName: 'Test Case Display Name',
   tabs: [
     {
@@ -288,6 +266,7 @@ const baseHookReturn = {
   extraDropdownContent: [],
   handleOwnerChange: jest.fn(),
   handleDisplayNameChange: jest.fn(),
+  handleRestore: jest.fn(),
   getEntityFeedCount: jest.fn(),
   setTestCase: jest.fn(),
 };
@@ -377,7 +356,7 @@ describe('TestCaseDetail', () => {
   it('should call toggleTabExpanded from the expand/collapse button', () => {
     render(<TestCaseDetail />);
 
-    fireEvent.click(screen.getByTestId('expand-collapse-button'));
+    fireEvent.click(screen.getByTestId('tab-expand-button'));
 
     expect(mockToggleTabExpanded).toHaveBeenCalled();
   });
@@ -597,9 +576,10 @@ describe('TestCaseDetail', () => {
     it('should render the last run banner above the results tab body', () => {
       render(<TestCaseDetail />);
 
-      expect(
-        screen.getByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)
-      ).toBeInTheDocument();
+      // 22px down to the results, as in the mock.
+      expect(screen.getByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)).toHaveClass(
+        'tw:pb-5.5'
+      );
       expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toBeInTheDocument();
       expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
     });
@@ -666,7 +646,9 @@ describe('TestCaseDetail', () => {
           incidentTask: incidentHeaderWithTask.incidentTask,
           taskLinkInfo: incidentHeaderWithTask.taskLinkInfo,
           testCaseStatusData: incidentHeaderWithTask.testCaseStatusData,
-          parameterValues: [{ name: 'columnCount', value: '10' }],
+          testCase: expect.objectContaining({
+            parameterValues: [{ name: 'columnCount', value: '10' }],
+          }),
           testCaseResult: expect.objectContaining({
             testCaseStatus: 'Success',
           }),
@@ -771,10 +753,9 @@ describe('TestCaseDetail', () => {
 
     render(<TestCaseDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
   });
 
   it('should render the no-data placeholder without a test case', () => {
@@ -785,10 +766,7 @@ describe('TestCaseDetail', () => {
 
     render(<TestCaseDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'default'
-    );
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
   });
 
   it('should render the version button and manage button on detail pages', () => {
@@ -836,7 +814,7 @@ describe('TestCaseDetail', () => {
     expect(screen.queryByTestId('version-button')).not.toBeInTheDocument();
   });
 
-  it('should render the test case form drawer in modal variant while editing dimensions', () => {
+  it('should render the test case form drawer while editing dimensions', () => {
     mockUseTestCaseDetailPage.mockReturnValue({
       ...baseHookReturn,
       isDimensionEdit: true,
@@ -848,6 +826,49 @@ describe('TestCaseDetail', () => {
 
     expect(drawer).toBeInTheDocument();
     expect(drawer).toHaveAttribute('data-open', 'true');
-    expect(drawer).toHaveAttribute('data-variant', 'modal');
+  });
+
+  describe('ManageButton delete/restore wiring', () => {
+    it('should not force hard-delete-only and should wire restore props for an active test case', () => {
+      render(<TestCaseDetail />);
+
+      expect(mockManageButton).toHaveBeenCalledWith(
+        expect.objectContaining({
+          canDelete: true,
+          canRestore: true,
+          deleted: undefined,
+          entityType: 'testCase',
+          onRestoreEntity: expect.any(Function),
+        })
+      );
+
+      const props = mockManageButton.mock.calls[0][0];
+
+      expect(props.allowSoftDelete).not.toBe(false);
+    });
+
+    it('should wire restore for a soft-deleted test case reached via deep-link', () => {
+      const handleRestore = jest.fn();
+
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        testCase: { ...baseHookReturn.testCase, deleted: true },
+        hasDeletePermission: false,
+        canRestorePermission: true,
+        handleRestore,
+      });
+
+      render(<TestCaseDetail />);
+
+      expect(mockManageButton).toHaveBeenCalledWith(
+        expect.objectContaining({
+          canDelete: false,
+          canRestore: true,
+          deleted: true,
+          onRestoreEntity: handleRestore,
+        })
+      );
+      expect(screen.getByTestId('deleted-badge')).toBeInTheDocument();
+    });
   });
 });

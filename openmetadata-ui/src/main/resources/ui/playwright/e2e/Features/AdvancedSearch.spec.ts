@@ -498,8 +498,8 @@ test.describe(
             dropdown
               .getByRole('option')
               .filter({ hasText: new RegExp(`^${status}$`, 'i') })
-              .first()
-          ).toBeVisible();
+              .filter({ visible: true })
+          ).not.toHaveCount(0);
         }
       });
     });
@@ -1607,7 +1607,6 @@ test.describe(
     const SECOND_PAGE_VALUE = 'enum_val_100';
 
     let enumCPName: string;
-    let enumCPId: string;
     let lazyLoadTable: TableClass;
 
     test.beforeAll(
@@ -1650,8 +1649,7 @@ test.describe(
               },
             }
           );
-          const cpData = await cpRes.json();
-          enumCPId = cpData.id;
+          expect(cpRes.ok()).toBeTruthy();
         } finally {
           await afterAction();
         }

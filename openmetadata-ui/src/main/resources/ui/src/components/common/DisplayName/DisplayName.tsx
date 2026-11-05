@@ -10,15 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
+
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -96,22 +95,16 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
           {renderMainContent}
         </Typography>
 
-        <div className="d-flex items-center">
+        <div className="d-flex items-center gap-2">
           {hasEditPermission ? (
-            <Tooltip placement="top" title={t('label.edit')}>
-              <Button
-                ghost
-                className="hover-cell-icon flex-center"
-                data-testid="edit-displayName-button"
-                icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
-                style={{
-                  width: '24px',
-                  height: '24px',
-                }}
-                type="text"
-                onClick={() => setIsDisplayNameEditing(true)}
-              />
-            </Tooltip>
+            <ButtonUtility
+              className="hover-cell-icon"
+              data-testid="edit-displayName-button"
+              icon={Edit01}
+              size="xs"
+              tooltip={t('label.edit')}
+              onClick={() => setIsDisplayNameEditing(true)}
+            />
           ) : null}
 
           {entityType && id && (

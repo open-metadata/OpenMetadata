@@ -30,12 +30,12 @@ const REST_LIST = '/api/v1/contextCenter/pages';
 const DOMAIN_A_ARTICLE_COUNT = 6;
 const DOMAIN_B_ARTICLE_COUNT = 4;
 
-const domainA = new Domain();
-const domainB = new Domain();
-const classification = new ClassificationClass();
-const topicTag = new TagClass({ classification: classification.data.name });
+let domainA: Domain;
+let domainB: Domain;
+let classification: ClassificationClass;
+let topicTag: TagClass;
 
-const createdArticleFqns: string[] = [];
+let createdArticleFqns: string[];
 
 const createArticle = async (
   apiContext: APIRequestContext,
@@ -109,6 +109,15 @@ test.describe(
 
     test.beforeAll('Setup entities and articles', async ({ browser }) => {
       test.setTimeout(4 * 60 * 1000);
+
+      // beforeAll can run twice in one worker under fullyParallel (see frontend-playwright.md);
+      // rebuild all describe-scope state here so a re-run never reuses an entity a prior afterAll
+      // deleted, nor waits on FQNs it already hard-deleted.
+      domainA = new Domain();
+      domainB = new Domain();
+      classification = new ClassificationClass();
+      topicTag = new TagClass({ classification: classification.data.name });
+      createdArticleFqns = [];
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 

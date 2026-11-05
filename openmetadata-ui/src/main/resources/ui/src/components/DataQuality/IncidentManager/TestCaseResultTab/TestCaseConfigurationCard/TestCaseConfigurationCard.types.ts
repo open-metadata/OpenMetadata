@@ -18,6 +18,8 @@ import {
 import { TestDefinition } from '../../../../../generated/tests/testDefinition';
 
 export interface ConfigurationParameterRow {
+  /** The parameter's own name, which keys the row; the label may be its display name. */
+  name?: string;
   /** Displayed on the left of the row; already human-readable. */
   label: string;
   /** Displayed on the right. A node covers the version page's diff markup. */
@@ -37,8 +39,8 @@ export interface TestCaseConfigurationCardProps {
   withSqlParams: TestCaseParameterValue[];
   isVersionPage: boolean;
   /**
-   * Pre-rendered parameter diff for the version page. Replaces `parameterRows`
-   * when set, because a diff carries its own added/removed markup.
+   * The version page's `sqlExpression` diff, a block of its own. The other
+   * parameters arrive in `parameterRows`, each value carrying its change.
    */
   versionParameterDiff?: ReactNode;
   /**

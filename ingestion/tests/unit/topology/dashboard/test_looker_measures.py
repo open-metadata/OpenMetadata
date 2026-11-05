@@ -41,7 +41,6 @@ from metadata.ingestion.source.dashboard.looker.measures import (
     measure_references,
     merge_candidates,
     order_parents_first,
-    table_column_references,
 )
 from metadata.ingestion.source.dashboard.looker.models import LkmlFile
 
@@ -454,24 +453,6 @@ def test_related_metrics_resolve_to_emitted_metric_names(candidates):
     assert [model_str(related) for related in request.relatedMetrics] == [
         looker_metric_name(SERVICE, PROJECT, "orders", "total_revenue")
     ]
-
-
-def test_table_columns_resolve_through_dimension_references(view):
-    """`${status}` inside a measure resolves to the column that dimension reads."""
-    field_sql = {field.name: field.sql for field in (*view.dimensions, *view.dimension_groups, *view.measures)}
-
-    assert table_column_references("${TABLE}.amount", field_sql) == {"amount"}
-    assert table_column_references("CASE WHEN ${status} = 'x' THEN 1 END", field_sql) == {"status"}
-
-
-def test_table_columns_resolve_transitively_through_other_measures(view):
-    field_sql = {field.name: field.sql for field in (*view.dimensions, *view.dimension_groups, *view.measures)}
-
-    assert table_column_references("${total_revenue} / 2", field_sql) == {"amount"}
-
-
-def test_self_referencing_sql_does_not_recurse_forever():
-    assert table_column_references("${a}", {"a": "${b}", "b": "${a}"}) == set()
 
 
 # --------------------------------------------------------------------------------------

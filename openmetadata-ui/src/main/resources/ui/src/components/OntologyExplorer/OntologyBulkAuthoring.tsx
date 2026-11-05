@@ -34,7 +34,7 @@ import {
   getOntologyBulkTemplate,
   submitOntologyBulkOperation,
 } from '../../rest/ontologyAPI';
-import { downloadFile } from '../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../utils/Export/ExportUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useOntologyBulkJobs } from './hooks/useOntologyBulkJobs';
 import {
@@ -116,7 +116,7 @@ const OntologyBulkAuthoring = ({
     setIsDownloadingTemplate(true);
     try {
       const template = await getOntologyBulkTemplate();
-      downloadFile(template.csv, template.fileName, template.mediaType);
+      downloadCsv(template.csv, template.fileName);
     } catch {
       showErrorToast(t('server.unexpected-error'));
     } finally {

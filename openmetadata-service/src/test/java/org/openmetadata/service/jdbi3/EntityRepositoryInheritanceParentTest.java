@@ -73,7 +73,7 @@ class EntityRepositoryInheritanceParentTest {
      * instance would let a memoized reference appear up to date and hide staleness.
      */
     @Override
-    public EntityInterface getParentEntity(Pipeline entity, String fields) {
+    public EntityInterface<?> getParentEntity(Pipeline entity, String fields) {
       parentLoads++;
       return new Pipeline()
           .withId(parent.getId())

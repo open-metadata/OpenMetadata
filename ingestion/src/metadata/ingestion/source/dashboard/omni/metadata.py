@@ -72,7 +72,6 @@ from metadata.utils.filters import (
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -385,11 +384,10 @@ class OmniSource(DashboardServiceSource):
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(document.url) if document.url else None,
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
-                tags=get_tag_labels(
-                    metadata=self.metadata,
+                tags=self.get_tag_labels(
+                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], document.identifier),
                     tags=document.label_names,
                     classification_name=OMNI_TAG_CATEGORY,
-                    include_tags=bool(self.source_config.includeTags),
                 ),
             )
             yield Either(right=dashboard_request)
@@ -439,12 +437,11 @@ class OmniSource(DashboardServiceSource):
         """Yield the classification and tags for a document's labels."""
         if not dashboard_details or not self.source_config.includeTags:
             return
-        yield from get_ometa_tag_and_classification(
+        yield from self.yield_tag_definitions(
             tags=dashboard_details.document.label_names,
             classification_name=OMNI_TAG_CATEGORY,
             tag_description="Omni Label",
             classification_description="Labels associated with Omni documents",
-            include_tags=self.source_config.includeTags,
         )
 
     # -- lineage ------------------------------------------------------------

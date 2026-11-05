@@ -26,11 +26,11 @@ import {
   fitToScreen,
   openImpactAnalysisTab,
   performZoomOut,
-  rearrangeNodes,
   setLineageDepthAndVerify,
   visitLineageTab,
 } from '../../../utils/lineage';
 import { waitForSearchIndexed } from '../../../utils/polling';
+import { waitForAggregation } from '../../../utils/searchAggregation';
 import { test } from '../../fixtures/pages';
 
 // Alias so the existing filter-config type keeps its familiar name in the
@@ -106,7 +106,6 @@ test.describe('Lineage Filters', () => {
     await waitForAllLoadersToDisappear(page);
     await setLineageDepthAndVerify(page, 2, 2);
     await waitForAllLoadersToDisappear(page);
-    await rearrangeNodes(page);
     await fitToScreen(page);
     await expect(
       page.getByTestId(
@@ -300,22 +299,20 @@ test.describe('Lineage Filters', () => {
             await page.getByTestId('filters-button').click();
             await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
-            await page
-              .getByTestId('drop-down-menu')
-              .getByTestId('loader')
-              .waitFor({ state: 'hidden' });
+            await waitForAllLoadersToDisappear(
+              page.getByTestId('drop-down-menu')
+            );
             await page
               .getByTestId('drop-down-menu')
               .getByText(filterValue)
               .click();
 
             const lineageRes = page.waitForResponse(
-              '**/api/v1/lineage/scene?*'
+              '/api/v1/lineage/getLineage?*'
             );
             await page.getByTestId('update-btn').click();
             await lineageRes;
 
-            await rearrangeNodes(page);
             await fitToScreen(page);
 
             for (const entity of entitiesToShow) {
@@ -349,10 +346,9 @@ test.describe('Lineage Filters', () => {
             await page.getByTestId('filters-button').click();
             await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
-            await page
-              .getByTestId('drop-down-menu')
-              .getByTestId('loader')
-              .waitFor({ state: 'hidden' });
+            await waitForAllLoadersToDisappear(
+              page.getByTestId('drop-down-menu')
+            );
             await page
               .getByTestId('drop-down-menu')
               .getByText(filterValue)
@@ -434,9 +430,7 @@ test.describe('Lineage Filters', () => {
       }
       await test.step(`Select service for ${entity.entityResponseData.fullyQualifiedName}`, async () => {
         await page.getByTestId('search-dropdown-Service').click();
-        await page.getByTestId('drop-down-menu').getByTestId('loader').waitFor({
-          state: 'hidden',
-        });
+        await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
         const serviceName = get(
           entity,
           entity.type === 'Metric'
@@ -445,16 +439,10 @@ test.describe('Lineage Filters', () => {
           ''
         );
 
-        // Match the search POST loosely; a stricter body matcher (fieldName +
-        // normalized fieldValue) silently missed the response under CI load
-        // and forced the whole test to time out at 60s. The subsequent
-        // getLineageByEntityCount wait still validates that the *right*
-        // service was applied.
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/aggregate') &&
-            response.request().method() === 'POST'
-        );
+        const searchResponse = waitForAggregation(page, {
+          field: 'service.displayName.keyword',
+          value: serviceName,
+        });
 
         await page
           .getByTestId('drop-down-menu')
@@ -540,9 +528,7 @@ test.describe('Lineage Filters', () => {
       }
       await test.step(`Select service for ${entity.entityResponseData.fullyQualifiedName}`, async () => {
         await page.getByTestId('search-dropdown-Service').click();
-        await page.getByTestId('drop-down-menu').getByTestId('loader').waitFor({
-          state: 'hidden',
-        });
+        await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
         const serviceName = get(
           entity,
           entity.type === 'Metric'
@@ -551,11 +537,10 @@ test.describe('Lineage Filters', () => {
           ''
         );
 
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes(`/api/v1/search/aggregate`) &&
-            response.request().method() === 'POST'
-        );
+        const searchResponse = waitForAggregation(page, {
+          field: 'service.displayName.keyword',
+          value: serviceName,
+        });
 
         await page
           .getByTestId('drop-down-menu')
@@ -579,7 +564,6 @@ test.describe('Lineage Filters', () => {
         await page.getByTestId('update-btn').click();
         await expect(page.getByTestId('update-btn')).toBeHidden();
 
-        await rearrangeNodes(page);
         await fitToScreen(page);
 
         for (const entity of entitiesToShow) {
@@ -637,11 +621,10 @@ test.describe('Lineage Filters', () => {
           ''
         ).toLowerCase();
 
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes(`/api/v1/search/aggregate`) &&
-            response.request().method() === 'POST'
-        );
+        const searchResponse = waitForAggregation(page, {
+          field: 'serviceType',
+          value: serviceType,
+        });
         await page
           .getByTestId('drop-down-menu')
           .getByTestId('search-input')
@@ -714,11 +697,10 @@ test.describe('Lineage Filters', () => {
           ''
         ).toLowerCase();
 
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes(`/api/v1/search/aggregate`) &&
-            response.request().method() === 'POST'
-        );
+        const searchResponse = waitForAggregation(page, {
+          field: 'serviceType',
+          value: serviceType,
+        });
         await page
           .getByTestId('drop-down-menu')
           .getByTestId('search-input')
@@ -746,7 +728,6 @@ test.describe('Lineage Filters', () => {
         await page.getByTestId('update-btn').click();
         await waitForAllLoadersToDisappear(page);
 
-        await rearrangeNodes(page);
         await fitToScreen(page);
 
         for (const entity of entitiesToShow) {
@@ -792,17 +773,13 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.database.name',
         ''
       );
-      await page
-        .getByTestId('drop-down-menu')
-        .getByTestId('loader')
-        .waitFor({ state: 'hidden' });
+      await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
       await page.getByTestId('drop-down-menu').getByText(databaseName).click();
 
-      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
       await page.getByTestId('update-btn').click();
       await lineageRes;
 
-      await rearrangeNodes(page);
       await fitToScreen(page);
 
       // filtered service node should be visible
@@ -841,20 +818,16 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.databaseSchema.name',
         ''
       );
-      await page
-        .getByTestId('drop-down-menu')
-        .getByTestId('loader')
-        .waitFor({ state: 'hidden' });
+      await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
       await page
         .getByTestId('drop-down-menu')
         .getByText(databaseSchemaName)
         .click();
 
-      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
       await page.getByTestId('update-btn').click();
       await lineageRes;
 
-      await rearrangeNodes(page);
       await fitToScreen(page);
 
       // filtered service node should be visible
@@ -893,17 +866,13 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.columns[0].name',
         ''
       );
-      await page
-        .getByTestId('drop-down-menu')
-        .getByTestId('loader')
-        .waitFor({ state: 'hidden' });
+      await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
       await page.getByTestId('drop-down-menu').getByText(columnName).click();
 
-      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
       await page.getByTestId('update-btn').click();
       await lineageRes;
 
-      await rearrangeNodes(page);
       await fitToScreen(page);
 
       // filtered service node should be visible
@@ -953,16 +922,14 @@ test.describe('Lineage Filters', () => {
     await performZoomOut(page);
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
 
-    await searchSelect.click();
-
-    // LineageSearchSelect resets its allOptions state whenever the
-    // lineage `nodes` prop changes (LineageSearchSelect.tsx:133 useEffect).
-    // Under SharedInfra load the graph re-renders a few times after
-    // initial mount as async data settles, so a single fill can filter
-    // a stale allOptions and drop our target. Poll: refill, wait for
-    // option to appear, retry if the state was reset.
+    // LineageSearchSelect rebuilds its options from the lineage nodes, and
+    // under SharedInfra load the graph re-renders a few times as async data
+    // settles, so a single fill can filter a stale option list. Poll: refill,
+    // wait for the option to appear, retry if the list was rebuilt.
     const combobox = page.getByTestId('lineage-search').getByRole('combobox');
-    const option = page.getByTestId(`option-${topicFqn}`);
+    const option = page
+      .locator('[role="listbox"]:visible')
+      .getByTestId(`option-${topicFqn}`);
     await expect
       .poll(
         async () => {

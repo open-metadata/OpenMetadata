@@ -12,6 +12,7 @@
  */
 
 import { Page, Request, Response } from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../../constant/common';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage } from '../../../utils/common';
@@ -82,7 +83,7 @@ test.describe('AppMode — preference round trip', { tag: ['@Platform'] }, () =>
   }) => {
     // openSwitcherAsAi = login + profile-toggle + open-switcher: three heavy
     // sequential steps that tip past the 60s default under CI load. Bump.
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
@@ -109,7 +110,7 @@ test.describe('AppMode — preference round trip', { tag: ['@Platform'] }, () =>
   });
 
   test('Toggle "remember" OFF emits a DELETE', async ({ browser }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const context = await browser.newContext();
     const page = await context.newPage();
     try {

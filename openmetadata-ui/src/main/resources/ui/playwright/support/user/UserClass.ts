@@ -345,7 +345,7 @@ export class UserClass {
       .catch(() => false);
 
     if (hasOpenClass) {
-      await page.getByTestId('sidebar-toggle').click();
+      await page.getByTestId('sidebar-toggle').dispatchEvent('click');
     }
   }
 
@@ -382,12 +382,13 @@ export class UserClass {
   }
 
   async logout(page: Page) {
-    await page.getByRole('menuitem', { name: 'Logout' }).click();
+    await page.getByTestId('app-bar-item-logout').click();
 
     // Wait for logout confirmation modal specifically
     await page
-      .locator('.ant-modal-body')
+      .getByRole('dialog')
       .filter({ hasText: 'Are you sure you want' })
+
       .waitFor({ state: 'visible' });
 
     const waitLogout = page.waitForResponse(

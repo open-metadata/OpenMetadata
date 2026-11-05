@@ -14,10 +14,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import SectionWithEdit from './SectionWithEdit';
 
 // Mock i18n Typography usage is internal to antd; we don't need a full mock of antd
-// Mock SVG icon used by the button to avoid SVG import issues
-jest.mock('../../../assets/svg/edit.svg', () => ({
-  ReactComponent: () => <div data-testid="edit-icon">E</div>,
-}));
 
 describe('SectionWithEdit', () => {
   it('renders string title inside Typography and children', () => {
@@ -65,7 +61,6 @@ describe('SectionWithEdit', () => {
     const button = screen.getByTestId('edit-button');
 
     expect(button).toBeInTheDocument();
-    expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
 
     fireEvent.click(button);
 
@@ -86,6 +81,15 @@ describe('SectionWithEdit', () => {
     render(<SectionWithEdit title="Title">Content</SectionWithEdit>);
 
     expect(screen.queryByTestId('edit-button')).toBeNull();
+  });
+
+  it('colours the content with the theme-aware tertiary text token', () => {
+    render(<SectionWithEdit title="Title">Content</SectionWithEdit>);
+
+    const content = screen.getByTestId('section-content');
+
+    expect(content).toHaveClass('tw:text-tertiary');
+    expect(content.className).not.toMatch(/om-legacy-color/);
   });
 
   it('applies custom class names to wrapper, header and content', () => {

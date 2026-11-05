@@ -60,7 +60,7 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
               'tw:shrink-0 tw:p-4',
               firstPanel.titleContainerClassName
             )}
-            gap={2}>
+            gap={1}>
             <Typography
               as="span"
               className={firstPanel.titleClassName}
@@ -109,9 +109,9 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
           {isLeftPanelCollapsed && (
             <Card className="reflex-card tw:p-1">
               <ButtonUtility
-                color="tertiary"
                 data-testid="sidebar-toggle"
                 icon={SidebarCollapsedIcon}
+                size="lg"
                 tooltip={t('label.expand')}
                 tooltipPlacement="right"
                 onClick={handleCollapse}

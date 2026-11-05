@@ -14,6 +14,7 @@
 package org.openmetadata.service.rdf.storage;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -87,8 +88,18 @@ public final class InferenceInvalidatingRdfStorage extends ForwardingRdfStorage 
   }
 
   @Override
+  public void executeMaintenanceUpdate(final String sparqlUpdate, final Duration timeout) {
+    mutate(() -> delegate.executeMaintenanceUpdate(sparqlUpdate, timeout));
+  }
+
+  @Override
   public void loadTurtleFile(final InputStream turtleStream, final String graphUri) {
     mutate(() -> delegate.loadTurtleFile(turtleStream, graphUri));
+  }
+
+  @Override
+  public void replaceGraph(final String graph, final Model model) {
+    mutate(() -> delegate.replaceGraph(graph, model));
   }
 
   @Override

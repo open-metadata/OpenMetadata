@@ -68,9 +68,7 @@ export const openProfilerForm = async (
   }
 
   await page.getByTestId('add-new-ingestion-button').click();
-  const profilerMenuItem = page
-    .locator('.ant-dropdown:visible')
-    .getByTestId('agent-item-profiler');
+  const profilerMenuItem = page.getByTestId('agent-item-profiler');
   await expect(profilerMenuItem).toBeVisible();
   await profilerMenuItem.click();
 

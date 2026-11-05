@@ -460,7 +460,7 @@ public class PipelineServiceResource
       @Valid CreatePipelineService update) {
     PipelineService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }

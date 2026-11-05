@@ -26,6 +26,7 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { pickEntityMatrix } from '../../../utils/entityMatrix';
 import {
   ALL_OPERATIONS,
   runCommonPermissionTests,
@@ -77,7 +78,11 @@ test.afterAll('Cleanup user', async ({ browser }) => {
   await afterAction();
 });
 
-Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
+Object.entries(
+  pickEntityMatrix(__filename, SERVICE_ENTITIES, {
+    'Database Service': DatabaseServiceClass,
+  })
+).forEach(([entityType, EntityClass]) => {
   test.describe(`${entityType} Permissions`, () => {
     const entity = new EntityClass();
     const serviceConfig =

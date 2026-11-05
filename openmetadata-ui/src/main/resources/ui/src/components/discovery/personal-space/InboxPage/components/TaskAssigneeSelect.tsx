@@ -121,6 +121,7 @@ const TaskAssigneeSelect: React.FC<TaskAssigneeSelectProps> = ({
         className="tw:flex tw:items-center tw:gap-1.5 tw:rounded-md tw:bg-primary tw:py-1.5 tw:px-2.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
         key={item.id}>
         <ProfilePicture
+          matchRingToFill
           displayName={item.label ?? ''}
           name={selected?.name ?? ''}
           width="16"
@@ -148,8 +149,6 @@ const TaskAssigneeSelect: React.FC<TaskAssigneeSelectProps> = ({
       // would otherwise sit over the dialog footer.
       multiple={false}
       placeholder={t('label.select-team-member')}
-      // Core allows 320px; that overshoots this short dialog.
-      popoverClassName="tw:max-h-56!"
       ref={containerRef}
       renderTag={renderTag}
       selectedItems={selectedItems}
@@ -163,6 +162,7 @@ const TaskAssigneeSelect: React.FC<TaskAssigneeSelectProps> = ({
         <Autocomplete.Item id={String(item.id)} key={item.id}>
           <div className="tw:flex tw:items-center tw:gap-2">
             <ProfilePicture
+              matchRingToFill
               displayName={item.label ?? ''}
               name={
                 options.find((option) => option.id === String(item.id))?.name ??

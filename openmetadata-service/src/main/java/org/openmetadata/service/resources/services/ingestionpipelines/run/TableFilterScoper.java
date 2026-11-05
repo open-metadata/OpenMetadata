@@ -33,7 +33,7 @@ public class TableFilterScoper implements SourceConfigScoper {
   private static final Pattern REGEX_METACHARACTER = Pattern.compile("[\\\\.^$|?*+()\\[\\]{}]");
 
   @Override
-  public Map<String, Object> sourceConfigOverride(EntityInterface target) {
+  public Map<String, Object> sourceConfigOverride(EntityInterface<?> target) {
     Table table = (Table) target;
     // Matching on FQNs rather than names keeps a table apart from a same-named one in another
     // schema; views are included so a view can be scoped too, the patterns still match only it.

@@ -32,6 +32,7 @@ import {
   updateRelatedMetric,
   updateUnitOfMeasurement,
 } from '../../utils/metric';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 const metric1 = new MetricClass();
@@ -66,6 +67,17 @@ test.describe(
         metric2.create(apiContext),
         metric3.create(apiContext),
       ]);
+
+      // The related-metrics picker finds these through search.
+      await Promise.all(
+        [metric2, metric3].map((metric) =>
+          waitForSearchIndexed(
+            apiContext,
+            metric.entityResponseData.fullyQualifiedName,
+            'metric_search_index'
+          )
+        )
+      );
 
       await afterAction();
     });

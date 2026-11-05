@@ -72,6 +72,7 @@ export interface TestCaseStatusAreaChartWidgetProps {
   title: string;
   testCaseStatus: TestCaseStatus;
   name: string;
+  /** Not read: the chart colour follows `testCaseStatus`. Kept because Collate passes it. */
   chartColorScheme?: AreaChartColorScheme;
   chartFilter?: DataQualityDashboardChartFilters;
   height?: number;

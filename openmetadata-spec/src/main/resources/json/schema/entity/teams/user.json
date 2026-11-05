@@ -3,14 +3,19 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "User",
   "description": "A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.",
+  "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.teams.User",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
+    "org.openmetadata.schema.CreationAudited"
+  ],
   "definitions": {
     "authenticationMechanism": {
       "type": "object",
       "description": "User/Bot Authentication Mechanism.",
       "javaType": "org.openmetadata.schema.entity.teams.AuthenticationMechanism",
+      "mask": true,
       "properties": {
         "config": {
           "oneOf": [
@@ -77,6 +82,14 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "createdAt": {
+      "description": "Timestamp in Unix epoch time milliseconds corresponding to when this entity was created in OpenMetadata.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who created this entity in OpenMetadata.",
+      "type": "string"
+    },
     "impersonatedBy": {
       "description": "Bot user that performed the action on behalf of the actual user.",
       "$ref": "../../type/basic.json#/definitions/impersonatedBy"
@@ -122,6 +135,10 @@
     },
     "defaultPersona": {
       "description": "Default Persona for the user from list of personas.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "defaultDomain": {
+      "description": "The domain the user selects in the navbar to scope list views. Persisted so the global (navbar) domain filter is applied from the start of the session; it narrows lists only and never restricts access.",
       "$ref": "../../type/entityReference.json"
     },
     "personas": {
@@ -177,6 +194,11 @@
       "description": "Last time the user was active in the system.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
+    "isFirstTimeUser": {
+      "description": "When true indicates the user is accessing the product for the first time. Turns false once the user first reaches the home page.",
+      "type": "boolean",
+      "default": true
+    },
      "personaPreferences": {
       "description": "User's personal preferences for each persona. Users can customize certain UI elements per persona while inheriting base persona configuration.",
       "type": "array",
@@ -184,6 +206,10 @@
         "$ref": "../../type/personaPreferences.json"
       },
       "default": []
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "additionalProperties": false,

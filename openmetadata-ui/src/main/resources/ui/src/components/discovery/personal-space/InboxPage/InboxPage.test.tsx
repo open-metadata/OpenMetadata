@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
@@ -55,25 +55,37 @@ jest.mock('@openmetadata/ui-core-components', () => {
     EmptyPlaceholder: ({ title }: { title?: ReactNode }) => (
       <div data-testid="inbox-empty">{title}</div>
     ),
-    PageLayout: {
-      PageHeader: ({
-        footer,
-        icon,
-        title,
-        variant,
+    PageLayout: Object.assign(
+      ({
+        children,
+        'data-testid': testId,
       }: {
-        footer?: ReactNode;
-        icon?: ReactNode;
-        title?: ReactNode;
-        variant?: string;
-      }) => (
-        <div data-testid="inbox-header" data-variant={variant}>
-          {icon}
-          {title}
-          {footer}
-        </div>
-      ),
-    },
+        children?: ReactNode;
+        'data-testid'?: string;
+      }) => <div data-testid={testId}>{children}</div>,
+      {
+        Content: ({ children }: { children?: ReactNode }) => (
+          <main>{children}</main>
+        ),
+        PageHeader: ({
+          footer,
+          icon,
+          title,
+          variant,
+        }: {
+          footer?: ReactNode;
+          icon?: ReactNode;
+          title?: ReactNode;
+          variant?: string;
+        }) => (
+          <div data-testid="inbox-header" data-variant={variant}>
+            {icon}
+            {title}
+            {footer}
+          </div>
+        ),
+      }
+    ),
     Tabs,
   };
 });
@@ -98,13 +110,9 @@ jest.mock('hooks/useAppMode', () => ({
 
 import InboxPage from './InboxPage';
 
-const triageContent = <div data-testid="triage-content" />;
-const myDataContent = <div data-testid="my-data-content" />;
+const content = <div data-testid="inbox-content" />;
 
-const renderShell = () =>
-  render(
-    <InboxPage myDataContent={myDataContent} triageContent={triageContent} />
-  );
+const renderShell = () => render(<InboxPage content={content} />);
 
 describe('InboxPage', () => {
   beforeEach(() => {
@@ -113,43 +121,26 @@ describe('InboxPage', () => {
     mockIsAiMode = true;
   });
 
-  it('shows the Triage content on the /inbox route', () => {
+  it('renders the inbox body', () => {
     renderShell();
 
-    expect(screen.getByTestId('triage-content')).toBeInTheDocument();
-    expect(screen.queryByTestId('my-data-content')).not.toBeInTheDocument();
+    expect(screen.getByTestId('inbox-content')).toBeInTheDocument();
   });
 
-  it('shows the My Data content on the /my-data route', () => {
-    mockPathname = '/my-data';
+  // Activity and Triage belong to the body, which owns their counts; My Data is
+  // a separate surface, so the shell contributes no tabs at all.
+  it('contributes no tab bar of its own', () => {
     renderShell();
 
-    expect(screen.getByTestId('my-data-content')).toBeInTheDocument();
-    expect(screen.queryByTestId('triage-content')).not.toBeInTheDocument();
-  });
-
-  it('navigates to /my-data when the My Data tab is clicked', () => {
-    renderShell();
-
-    fireEvent.click(screen.getByTestId('tab-my-data'));
-
-    expect(mockNavigate).toHaveBeenCalledWith('/my-data');
-  });
-
-  it('navigates back to /inbox when the Triage tab is clicked', () => {
-    mockPathname = '/my-data';
-    renderShell();
-
-    fireEvent.click(screen.getByTestId('tab-triage'));
-
-    expect(mockNavigate).toHaveBeenCalledWith('/inbox');
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-my-data')).not.toBeInTheDocument();
   });
 
   it('renders the placeholder when the consumer contributes no content', () => {
     render(<InboxPage />);
 
     expect(screen.getByTestId('inbox-empty')).toBeInTheDocument();
-    expect(screen.queryByTestId('triage-content')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('inbox-content')).not.toBeInTheDocument();
   });
 
   it('renders the gradient header only in AI mode', () => {

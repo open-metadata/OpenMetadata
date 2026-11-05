@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Switch } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ArrowLeft,
+  MessageChatSquare,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -28,10 +37,10 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Paging } from '../../../generated/type/paging';
+import { useCloseOnNavigation } from '../../../hooks/useCloseOnNavigation';
 import { useElementInView } from '../../../hooks/useElementInView';
 import {
   createConversation,
@@ -41,6 +50,7 @@ import { TaskStatusGroup } from '../../../rest/tasksAPI';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
@@ -55,10 +65,6 @@ const TaskTabNew = withSuspenseFallback(
   )
 );
 
-const ErrorPlaceHolder = withSuspenseFallback(
-  lazy(() => import('../../common/ErrorWithPlaceholder/ErrorPlaceHolder'))
-);
-
 const FeedPanelHeader = withSuspenseFallback(
   lazy(() => import('../ActivityFeedPanel/FeedPanelHeader'))
 );
@@ -67,8 +73,8 @@ const TaskFeedCardFromTask = withSuspenseFallback(
   lazy(() => import('../TaskFeedCard/TaskFeedCardFromTask.component'))
 );
 
-const ActivityFeedEditor = withSuspenseFallback(
-  lazy(() => import('../ActivityFeedEditor/ActivityFeedEditor'))
+const CommentComposer = withSuspenseFallback(
+  lazy(() => import('../../common/CommentComposer/CommentComposer'))
 );
 
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
@@ -98,6 +104,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     TaskStatusGroup.Open
   );
   const [elementRef, isInView] = useElementInView(observerOptions);
+  useCloseOnNavigation(onCancel);
   const conversationsRef = useRef(conversations);
 
   const isTaskType = view === 'tasks';
@@ -226,9 +233,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     return (
       <Fragment>
         <Button
-          className="m-b-sm p-0"
-          size="small"
-          type="link"
+          className="tw:mb-3"
+          color="link-color"
+          size="xs"
           onClick={onBack}>
           {t('label.back')}
         </Button>
@@ -246,27 +253,43 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const renderActiveConversationView = () => (
     <Fragment>
-      <Button className="m-b-sm p-0" size="small" type="link" onClick={onBack}>
+      <Button
+        className="tw:mb-3"
+        color="link-gray"
+        data-testid="thread-back"
+        iconLeading={ArrowLeft}
+        size="sm"
+        onClick={onBack}>
         {t('label.back')}
       </Button>
-      <ActivityFeedCardNew
-        isForFeedTab
-        isOpenInDrawer
-        showThread
-        feed={selectedConversation}
-      />
+      {/* Framed like the list's cards, so the open thread reads as the same
+          conversation. Overflow stays visible: the reply composer's mention
+          list opens below the frame. */}
+      <Card className="tw:overflow-visible">
+        <ActivityFeedCardNew
+          isForFeedTab
+          isOpenInDrawer
+          isThreadPanel
+          showThread
+          feed={selectedConversation}
+        />
+      </Card>
     </Fragment>
   );
 
   const renderTaskList = () =>
     tasks.length === 0 && !loading ? (
-      <ErrorPlaceHolder className="mt-24" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as="p">
-          {isTaskClosed
-            ? t('message.no-closed-task')
-            : t('message.no-open-task')}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          icon={<MessageChatSquare />}
+          title={
+            isTaskClosed
+              ? t('message.no-closed-task')
+              : t('message.no-open-task')
+          }
+        />
+      </div>
     ) : (
       <div className={classNames(className, 'd-flex flex-col gap-3')}>
         {tasks.map((task) => (
@@ -282,11 +305,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       </div>
     );
 
+  // No isForFeedTab on the cards: Reply then opens the conversation here, as
+  // a click on the card does, rather than in a second drawer.
   const renderConversationList = () => (
     <div className={classNames(className, 'd-flex flex-col gap-3')}>
       {conversations.map((conversation) => (
         <FeedPanelBodyV1New
-          isForFeedTab
+          isThreadPanel
           feed={conversation}
           isActive={false}
           key={conversation.id}
@@ -302,15 +327,24 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     return (
       <Fragment>
         {(showNewConversation || hasNoConversations) && isConversationType && (
-          <Space className="w-full" direction="vertical">
+          <Box
+            inline
+            align="stretch"
+            className="layout-space w-full tw:mb-4"
+            direction="col"
+            gap={2}
+            itemClassName="layout-space-item">
             <Typography as="p">{t('message.new-conversation')}</Typography>
-            <ActivityFeedEditor
+            <CommentComposer
+              // Shown on demand (new conversation, or an empty panel just
+              // opened), so it takes focus.
+              focused
               placeHolder={t('message.enter-a-field', {
                 field: t('label.message-lowercase'),
               })}
               onSave={onPostConversation}
             />
-          </Space>
+          </Box>
         )}
 
         {isTaskType ? renderTaskList() : renderConversationList()}
@@ -329,7 +363,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     if (isTaskType && !isUndefined(selectedTask)) {
       return renderActiveTaskView();
     }
-    if (!isUndefined(selectedConversation)) {
+    // A conversation picked for this panel shows only on its own tab.
+    if (isConversationType && !isUndefined(selectedConversation)) {
       return renderActiveConversationView();
     }
 
@@ -341,27 +376,28 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       <div id="thread-panel-body">
         {showHeader && isConversationType && (
           <FeedPanelHeader
-            entityLink={selectedConversation?.about ?? threadLink}
-            noun={t('label.conversation-plural')}
+            hideCloseIcon
             onCancel={() => onCancel?.()}
             onShowNewConversation={newConversationHandler}
           />
         )}
         {isTaskType && (
-          <Space
+          <Box
+            inline
             align="center"
-            className="w-full justify-end p-r-xs m-t-xs"
-            size={4}>
-            <Switch
-              size="small"
-              onChange={(checked) =>
+            className="layout-space layout-space-horizontal w-full justify-end p-r-xs m-t-xs"
+            gap={1}
+            itemClassName="layout-space-item">
+            <Toggle
+              label={t('label.closed-task-plural')}
+              size="sm"
+              onChange={(isSelected) =>
                 setTaskStatusGroup(
-                  checked ? TaskStatusGroup.Closed : TaskStatusGroup.Open
+                  isSelected ? TaskStatusGroup.Closed : TaskStatusGroup.Open
                 )
               }
             />
-            <span>{t('label.closed-task-plural')}</span>
-          </Space>
+          </Box>
         )}
 
         {renderMainContent()}

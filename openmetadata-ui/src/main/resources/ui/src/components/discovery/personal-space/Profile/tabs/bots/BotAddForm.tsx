@@ -13,6 +13,7 @@
 
 import type { FieldProp } from '@openmetadata/ui-core-components';
 import {
+  Alert,
   Box,
   Button,
   FieldTypes,
@@ -131,7 +132,6 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
               label: t('label.allow-impersonation'),
               type: FieldTypes.SWITCH,
               required: false,
-              helperText: t('message.allow-impersonation-help'),
               props: { 'data-testid': 'allow-impersonation' },
             },
           ]
@@ -198,7 +198,7 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
       form={form}>
       <div className="tw:overflow-y-auto">
         <Box
-          className="tw:flex-1 tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
+          className="tw:flex-1 tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full tw:mx-auto"
           direction="col"
           gap={5}>
           <FormFields fields={nameFields} />
@@ -220,11 +220,16 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
 
           <FormFields fields={tokenFields} />
           <FormFields fields={switchFields} />
+          {isAdminUser && (
+            <Alert data-testid="impersonation-warning" variant="warning">
+              {t('message.allow-impersonation-help')}
+            </Alert>
+          )}
         </Box>
       </div>
 
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
         data-testid="add-bot-footer"
         direction="row"
         gap={3}
@@ -239,7 +244,7 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
           color="primary"
           data-testid="submit-btn"
           isLoading={isSubmitting}
-          onPress={form.handleSubmit(handleSubmit)}>
+          onPress={() => form.handleSubmit(handleSubmit)()}>
           {t('label.create')}
         </Button>
       </Box>

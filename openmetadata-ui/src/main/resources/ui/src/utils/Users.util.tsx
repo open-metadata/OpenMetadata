@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { Skeleton } from '@openmetadata/ui-core-components';
-import { Popover, Space, Tag, Tooltip } from 'antd';
+import {
+  Badge,
+  Box,
+  Popover,
+  PopoverTrigger,
+  Skeleton,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
+import { Button as AriaButton } from 'react-aria-components';
 import { Link } from 'react-router-dom';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
@@ -24,6 +31,7 @@ import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (
@@ -44,9 +52,18 @@ export const commonUserDetailColumns = (
     key: 'username',
     ellipsis: { showTitle: false },
     render: (_, record) => (
-      <Space size={4}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={1}
+        itemClassName="layout-space-item">
         {record.isBot && (
-          <Tooltip title={t('label.bot')}>
+          <Tooltip
+            arrow
+            excludeTriggerFromTabOrder
+            title={t('label.bot')}
+            triggerClassName="tw:inline-flex">
             <BotIcon
               aria-label={t('label.bot')}
               color={TEXT_GREY_MUTED}
@@ -57,7 +74,7 @@ export const commonUserDetailColumns = (
           </Tooltip>
         )}
         {userCellRenderer(record)}
-      </Space>
+      </Box>
     ),
   },
   {
@@ -83,38 +100,61 @@ export const commonUserDetailColumns = (
         return <>{t('label.no-entity', { entity: t('label.team') })}</>;
       } else {
         return (
-          <Space wrap data-testid="policy-link" size={4}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            data-testid="policy-link"
+            gap={1}
+            itemClassName="layout-space-item"
+            wrap="wrap">
             {record.teams.slice(0, LIST_CAP).map((team) => (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                to={getSettingsLink(
+                  getTeamsWithFqnPath(team.fullyQualifiedName ?? '')
+                )}>
                 {getEntityName(team)}
               </Link>
             ))}
             {hasMore && (
-              <Popover
-                className="cursor-pointer"
-                content={
-                  <Space wrap size={4}>
+              <PopoverTrigger>
+                <AriaButton
+                  className="tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2"
+                  data-testid="plus-more-count">
+                  <Badge
+                    className="tw:inline-flex tw:mr-2 m-l-xs"
+                    color="gray"
+                    size="sm"
+                    type="color">{`+${listLength - LIST_CAP} more`}</Badge>
+                </AriaButton>
+                <Popover
+                  arrow
+                  containerClassName="tw:w-40 tw:px-4 tw:py-3"
+                  placement="bottom">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={1}
+                    itemClassName="layout-space-item"
+                    wrap="wrap">
                     {record.teams.slice(LIST_CAP).map((team) => (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                        to={getSettingsLink(
+                          getTeamsWithFqnPath(team.fullyQualifiedName ?? '')
+                        )}>
                         {getEntityName(team)}
                       </Link>
                     ))}
-                  </Space>
-                }
-                overlayClassName="w-40"
-                trigger="click">
-                <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
-                  listLength - LIST_CAP
-                } more`}</Tag>
-              </Popover>
+                  </Box>
+                </Popover>
+              </PopoverTrigger>
             )}
-          </Space>
+          </Box>
         );
       }
     },
@@ -135,38 +175,61 @@ export const commonUserDetailColumns = (
         return <>{t('label.no-entity', { entity: t('label.role') })}</>;
       } else {
         return (
-          <Space wrap data-testid="policy-link" size={4}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            data-testid="policy-link"
+            gap={1}
+            itemClassName="layout-space-item"
+            wrap="wrap">
             {record.roles.slice(0, LIST_CAP).map((role) => (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                to={getSettingsLink(
+                  getRoleWithFqnPath(role.fullyQualifiedName ?? '')
+                )}>
                 {getEntityName(role)}
               </Link>
             ))}
             {hasMore && (
-              <Popover
-                className="cursor-pointer"
-                content={
-                  <Space wrap size={4}>
+              <PopoverTrigger>
+                <AriaButton
+                  className="tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2"
+                  data-testid="plus-more-count">
+                  <Badge
+                    className="tw:inline-flex tw:mr-2 m-l-xs"
+                    color="gray"
+                    size="sm"
+                    type="color">{`+${listLength - LIST_CAP} more`}</Badge>
+                </AriaButton>
+                <Popover
+                  arrow
+                  containerClassName="tw:w-40 tw:px-4 tw:py-3"
+                  placement="bottom">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={1}
+                    itemClassName="layout-space-item"
+                    wrap="wrap">
                     {record.roles.slice(LIST_CAP).map((role) => (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                        to={getSettingsLink(
+                          getRoleWithFqnPath(role.fullyQualifiedName ?? '')
+                        )}>
                         {getEntityName(role)}
                       </Link>
                     ))}
-                  </Space>
-                }
-                overlayClassName="w-40"
-                trigger="click">
-                <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
-                  listLength - LIST_CAP
-                } more`}</Tag>
-              </Popover>
+                  </Box>
+                </Popover>
+              </PopoverTrigger>
             )}
-          </Space>
+          </Box>
         );
       }
     },

@@ -30,7 +30,6 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.entity.data.RelationshipType;
-import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.RdfValidationReport;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.service.exception.BadRequestException;
@@ -199,10 +198,7 @@ class GlossaryRdfImporterTest {
             .orElseThrow();
     assertEquals("hasNpiNumber", npi.name, "local name -> custom property name");
     assertEquals(List.of(HCP + "HealthcareProvider"), npi.domainIris, "rdfs:domain captured");
-    assertEquals(
-        OntologyAttributeDataType.STRING,
-        importer.attributeDataType(npi.xsdType),
-        "xsd:string -> string");
+    assertEquals("string", importer.customPropertyTypeFor(npi.xsdType), "xsd:string -> string");
 
     DatatypeIntent years =
         datatypes.stream()
@@ -210,13 +206,38 @@ class GlossaryRdfImporterTest {
             .findFirst()
             .orElseThrow();
     assertEquals(
-        OntologyAttributeDataType.INTEGER,
-        importer.attributeDataType(years.xsdType),
-        "xsd:integer -> integer");
+        "integer", importer.customPropertyTypeFor(years.xsdType), "xsd:integer -> integer");
     assertEquals(
-        OntologyAttributeDataType.DECIMAL,
-        importer.attributeDataType("http://www.w3.org/2001/XMLSchema#double"),
+        "number",
+        importer.customPropertyTypeFor("http://www.w3.org/2001/XMLSchema#double"),
         "xsd:double -> number");
+  }
+
+  @Test
+  void ignoresVocabularyDeclarationsTheExportEmits() {
+    Model model = ModelFactory.createDefaultModel();
+    model.read(
+        new StringReader(
+            """
+            @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+            @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+            @prefix om:   <https://open-metadata.org/ontology/> .
+            @prefix hcp:  <http://example.com/ontology/hcp#> .
+
+            skos:Concept a owl:Class .
+            om:GlossaryTerm a owl:Class .
+            om:fullyQualifiedName a owl:DatatypeProperty .
+            hcp:Drug a owl:Class, skos:Concept, om:GlossaryTerm ;
+                om:fullyQualifiedName "HCP.Drug" .
+            """),
+        null,
+        "TURTLE");
+    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+
+    List<TermIntent> intents = importer.buildTermIntents(model);
+
+    assertEquals(List.of(HCP + "Drug"), intents.stream().map(intent -> intent.iri).toList());
+    assertTrue(importer.buildDatatypeIntents(model).isEmpty());
   }
 
   @Test

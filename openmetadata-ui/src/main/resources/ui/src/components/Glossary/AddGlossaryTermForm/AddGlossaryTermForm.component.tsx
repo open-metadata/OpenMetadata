@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   FieldProp,
   FieldTypes,
   FormField,
@@ -287,6 +288,8 @@ const AddGlossaryTermForm = ({
         )}
       </FormField>
 
+      {getField(applyIntakeRequired(ownersField))}
+      {getField(applyIntakeRequired(reviewersField))}
       <Box className="tw:gap-3" data-testid="references" direction="col">
         <Box align="center" justify="between">
           <FormItemLabel label={t('label.reference-plural')} />
@@ -332,21 +335,18 @@ const AddGlossaryTermForm = ({
                 type: FieldTypes.TEXT,
               })}
             </div>
-            <Button
-              aria-label={t('label.remove')}
+            <ButtonUtility
               className="tw:mt-6"
-              color="tertiary"
               data-testid={`remove-reference-${index}`}
-              iconLeading={Trash01}
-              size="sm"
-              onPress={() => removeReference(index)}
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.remove')}
+              onClick={() => removeReference(index)}
             />
           </Box>
         ))}
       </Box>
 
-      {getField(applyIntakeRequired(ownersField))}
-      {getField(applyIntakeRequired(reviewersField))}
       {getField(
         applyIntakeRequired(
           getMutuallyExclusiveField(

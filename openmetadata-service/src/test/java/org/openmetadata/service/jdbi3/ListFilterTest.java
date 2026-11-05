@@ -1,15 +1,149 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void test_parentResourceContext_resolvesExistingParent(boolean deleted) {
+    UUID tableId = UUID.randomUUID();
+    Table table = new Table().withId(tableId).withDeleted(deleted);
+    ListFilter filter =
+        new ListFilter(null)
+            .addQueryParam("entityId", tableId.toString())
+            .addQueryParam("entityType", Entity.TABLE);
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> tables = mock(EntityRepository.class);
+    when(tables.getFields(anyString())).thenReturn(Fields.EMPTY_FIELDS);
+    when(tables.get(
+            any(),
+            eq(tableId),
+            any(),
+            argThat((RelationIncludes includes) -> includes.getDefaultInclude() == Include.ALL),
+            anyBoolean()))
+        .thenReturn(table);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(tables);
+      ResourceContext<?> context = filter.getParentResourceContext();
+      assertEquals(Entity.TABLE, context.getResource());
+      assertSame(table, context.getEntity());
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    ",",
+    ",table",
+    "'',table",
+    "00000000-0000-0000-0000-000000000001,",
+    "00000000-0000-0000-0000-000000000001,''"
+  })
+  void test_parentResourceContext_requiresBothParameters(String entityId, String entityType) {
+    ListFilter filter =
+        new ListFilter(null)
+            .addQueryParam("entityId", entityId)
+            .addQueryParam("entityType", entityType);
+
+    assertNull(filter.getParentResourceContext());
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {Entity.TABLE, Entity.DASHBOARD, Entity.USER, Entity.TEAM, Entity.GLOSSARY})
+  void test_parentResourceContext_rejectsIdMissingFromRequestedType(String entityType) {
+    UUID tableId = UUID.randomUUID();
+    ListFilter filter =
+        new ListFilter(null)
+            .addQueryParam("entityId", tableId.toString())
+            .addQueryParam("entityType", entityType);
+    EntityRepository<?> repository = mock(EntityRepository.class);
+    when(repository.getFields(anyString())).thenReturn(Fields.EMPTY_FIELDS);
+    when(repository.get(any(), eq(tableId), any(), any(RelationIncludes.class), anyBoolean()))
+        .thenThrow(EntityNotFoundException.byId(tableId.toString()));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(entityType)).thenReturn(repository);
+      EntityNotFoundException exception =
+          assertThrows(EntityNotFoundException.class, filter::getParentResourceContext);
+      assertEquals(
+          CatalogExceptionMessage.entityNotFound(entityType, tableId.toString()),
+          exception.getMessage());
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true,include", "true,exclude", "false,include", "false,exclude"})
+  void fqnRegexUsesCaseInsensitiveSearch(boolean mysql, String mode) {
+    try (MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig config = mock(DatasourceConfig.class);
+      datasource.when(DatasourceConfig::getInstance).thenReturn(config);
+      when(config.isMySQL()).thenReturn(mysql);
+      for (String axis : List.of("database", "databaseSchema", "table")) {
+        for (boolean useFqn : List.of(false, true)) {
+          ListFilter filter = new ListFilter();
+          filter.addQueryParam(axis + "Regex", "Summary");
+          filter.addQueryParam(axis + "RegexField", axis.equals("table") ? "name" : axis + ".name");
+          filter.addQueryParam("regexMode", mode);
+          filter.addQueryParam("regexFilterByFqn", Boolean.toString(useFqn));
+          String condition =
+              switch (axis) {
+                case "database" -> filter.getDatabaseCondition("table_entity");
+                case "databaseSchema" -> filter.getDatabaseSchemaCondition("table_entity");
+                default -> filter.getTableNameRegexCondition("table_entity");
+              };
+          String field =
+              (axis.equals("table") ? "" : axis + ".") + (useFqn ? "fullyQualifiedName" : "name");
+          String expected =
+              mysql
+                  ? String.format(
+                      "%sREGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(table_entity.json, '$.%s')), :%sRegex, 'i')",
+                      mode.equals("exclude") ? "NOT " : "", field, axis)
+                  : String.format(
+                      "table_entity.json #>> '{%s}' %s :%sRegex",
+                      field.replace(".", ","), mode.equals("exclude") ? "!~*" : "~*", axis);
+          assertTrue(condition.contains(expected), condition);
+          assertEquals("Summary", filter.getQueryParam(axis + "Regex"));
+        }
+      }
+    }
+  }
+
   @Test
   void test_escapeApostrophe() {
     assertEquals("abcd", ListFilter.escape("abcd"));
@@ -19,6 +153,15 @@ class ListFilterTest {
     assertEquals("a''b''c\\_d", ListFilter.escape("a'b'c_d"));
     assertEquals("a''b\\_c\\_d", ListFilter.escape("a'b_c_d"));
     assertEquals("a\\_b\\_c\\_d", ListFilter.escape("a_b_c_d"));
+  }
+
+  // A bound LIKE value keeps apostrophes as typed and escapes only the LIKE metacharacters.
+  @Test
+  void test_escapeLikeBindValue() {
+    assertEquals("customer's", ListFilter.escapeLikeBindValue("customer's"));
+    assertEquals("100\\%", ListFilter.escapeLikeBindValue("100%"));
+    assertEquals("a\\_b", ListFilter.escapeLikeBindValue("a_b"));
+    assertEquals("c:\\\\dir", ListFilter.escapeLikeBindValue("c:\\dir"));
   }
 
   @Test
@@ -55,48 +198,6 @@ class ListFilterTest {
   }
 
   @Test
-  void test_escapeForMySqlRegexReplacement_passesThroughPlainStrings() {
-    assertEquals("abcd", ListFilter.escapeForMySqlRegexReplacement("abcd"));
-    assertEquals("", ListFilter.escapeForMySqlRegexReplacement(""));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_doublesApostrophesOnce() {
-    // Apostrophes only matter for the SQL string-literal layer — REGEXP_REPLACE's
-    // replacement context doesn't reserve them. Expect a single ' → '' doubling.
-    assertEquals("a''b", ListFilter.escapeForMySqlRegexReplacement("a'b"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_quadruplesBackslashes() {
-    // One input backslash needs to round-trip to one literal backslash in the
-    // REGEXP_REPLACE output, so it must be FOUR backslashes in the emitted SQL text:
-    //   SQL text  : \\\\  (4 backslashes)
-    //   SQL parser: \\    (2 backslashes — '\\' is the SQL string-literal escape for '\')
-    //   regex eng : \     (1 backslash — '\\' in the regex replacement is a literal '\')
-    // Without the regex-replacement escape, the regex engine would interpret the lone
-    // remaining '\' as the start of an escape/backref sequence.
-    assertEquals("a\\\\\\\\b", ListFilter.escapeForMySqlRegexReplacement("a\\b"));
-    assertEquals("\\\\\\\\", ListFilter.escapeForMySqlRegexReplacement("\\"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_protectsBackreferenceLookalikes() {
-    // Without the extra regex-replacement layer, "\1" in the input would survive as "\1"
-    // in the regex replacement and be interpreted as a backreference to capture group 1
-    // (REGEXP_REPLACE doesn't have groups when called like updateFqn does, but the
-    // behaviour is implementation-defined — usually empty-string substitution). After
-    // the double escape it survives as a literal "\1" in the output.
-    assertEquals("\\\\\\\\1bar", ListFilter.escapeForMySqlRegexReplacement("\\1bar"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_combinesBackslashAndApostrophe() {
-    // Backslashes get four-x'd, apostrophes double once.
-    assertEquals("a\\\\\\\\''b", ListFilter.escapeForMySqlRegexReplacement("a\\'b"));
-  }
-
-  @Test
   void addCondition() {
     String condition;
     ListFilter filter = new ListFilter();
@@ -124,6 +225,23 @@ class ListFilterTest {
     filter.addQueryParam("testCaseStatus", "Failed");
     condition = filter.getCondition("foo");
     assertEquals("WHERE foo.deleted = FALSE AND status = :testCaseStatus", condition);
+  }
+
+  @Test
+  void getCondition_executionAssetIds() {
+    // /api/v1/agentExecutions?agentId=… must reach the WHERE clause — without it the listing
+    // ignored the filter and returned another application's records.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("agentId", "agent-id");
+    String condition = filter.getCondition();
+    assertTrue(condition.contains("agentId = :agentId"), condition);
+
+    filter = new ListFilter();
+    filter.addQueryParam("serverId", "server-id");
+    condition = filter.getCondition();
+    assertTrue(condition.contains("serverId = :serverId"), condition);
+
+    assertFalse(new ListFilter().getCondition().contains("agentId"));
   }
 
   @Test
@@ -172,6 +290,93 @@ class ListFilterTest {
     assertEquals(
         "11111111-1111-1111-1111-111111111111",
         filter.getQueryParams().get("primaryEntityIdParam"));
+  }
+
+  @Test
+  void getDomainCondition_appliedForDataAssetEntityType() {
+    // A data-asset list is scoped to the selected domain (navbar global domain filter).
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("entityType", "table");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains("'11111111-1111-1111-1111-111111111111'"),
+        "data-asset list should be scoped by the selected domain");
+  }
+
+  @Test
+  void getDomainCondition_matchesEveryGivenDomainId() {
+    // The navbar filter passes the selected domain and its sub-domains as resolved ids.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam(
+        "domainId", "11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains(
+            "fromId IN ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222')"));
+    assertFalse(condition.contains("domain_entity"));
+  }
+
+  @Test
+  void getDomainCondition_bindsAnIdThatIsNotAUuid() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "x') OR ('1'='1");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(condition.contains("fromId IN (:domainId_0)"));
+    assertEquals("x) OR (1=1", filter.getQueryParams().get("domainId_0"));
+  }
+
+  @Test
+  void getDomainCondition_restrictsMembershipRowsToTheListedType() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainEntityType", "table");
+    assertTrue(
+        filter.getCondition("table_entity").contains("entity_relationship.toEntity = 'table'"));
+
+    filter.addQueryParam("domainAccessControl", "true");
+    String accessCondition = filter.getCondition("table_entity");
+    assertTrue(accessCondition.contains("er.toEntity = 'table'"));
+    assertTrue(accessCondition.contains("er2.toEntity = 'table'"));
+  }
+
+  @Test
+  void getDomainCondition_accessCheckIsOneAntiJoinOnPostgresAndAnOrOnMySql() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainAccessControl", "true");
+    String postgres = filter.getCondition("table_entity");
+    assertTrue(postgres.contains("AND NOT EXISTS (SELECT er2.toId"));
+    assertTrue(postgres.contains("er2.toId = er.toId"));
+    assertFalse(postgres.contains(" OR "));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mysqlConfig);
+      when(mysqlConfig.isMySQL()).thenReturn(true);
+      String mysql = filter.getCondition("table_entity");
+      assertTrue(mysql.contains(") OR table_entity.id IN (SELECT er2.toId"));
+      assertFalse(mysql.contains("er2.toId = er.toId"));
+    }
+  }
+
+  @Test
+  void getDomainCondition_ignoresAnEntityTypeThatIsNotAPlainName() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainEntityType", "table' OR '1'='1");
+    assertFalse(filter.getCondition("table_entity").contains("toEntity"));
+  }
+
+  @Test
+  void getDomainCondition_appliedWhenEntityTypeUnset_backwardCompatible() {
+    // Existing ?domain= callers do not set entityType; that path must keep working unchanged.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains("'11111111-1111-1111-1111-111111111111'"),
+        "explicit ?domain= without entityType must still apply (backward-compatible)");
   }
 
   @Test
@@ -287,15 +492,17 @@ class ListFilterTest {
    * `?service=` filtering must bind two related patterns:
    *   - {@code :serviceHash} for "any descendant of the service" — used by every
    *     service-filtered listing's WHERE clause via getFqnPrefixCondition.
-   *   - {@code :serviceHashChild} for "any descendant strictly below the immediate
-   *     level" — used by the root listing to negate descendants and keep only
+   *   - {@code :serviceHashExact} for "the service itself as a parent" — matched against
+   *     the generated {@code parentFqnHash} column by the root listing to keep only
    *     direct children.
    *
-   * Both binds must reflect the same MD5 prefix, only differing in the LIKE pattern's
-   * tail. This is the contract that ContainerDAO.listRoot{Before,After,Count} relies on.
+   * Both binds must reflect the same MD5 prefix; only the trailing LIKE pattern differs.
+   * This is the contract that ContainerDAO.listRoot{Before,After,Count} relies on — and
+   * {@code serviceHashExact} carries no wildcard precisely so the planner can serve it
+   * from idx_storage_container_entity_parent_children (#22530).
    */
   @Test
-  void test_getServiceCondition_bindsBothPrefixAndChildDepthPatterns() {
+  void test_getServiceCondition_bindsBothPrefixAndExactParentPatterns() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("service", "aws_s3");
 
@@ -305,20 +512,23 @@ class ListFilterTest {
         "WHERE clause should reference the service prefix LIKE bind. Got: " + condition);
 
     String hashLike = (String) filter.getQueryParams().get("serviceHash");
-    String hashLikeChild = (String) filter.getQueryParams().get("serviceHashChild");
+    String hashExact = (String) filter.getQueryParams().get("serviceHashExact");
     assertNotNull(hashLike, "serviceHash bind must be set when service is filtered");
-    assertNotNull(hashLikeChild, "serviceHashChild bind must be set for depth-aware listings");
+    assertNotNull(hashExact, "serviceHashExact bind must be set for depth-aware listings");
 
-    // Both binds share the same hashed prefix; only the LIKE-pattern tail differs.
     // In ContainerDAO.listRoot* the SQL uses them as:
-    //   fqnHash LIKE     :serviceHash       -- '<hash>.%'   matches all descendants
-    //   fqnHash NOT LIKE :serviceHashChild  -- '<hash>.%.%' rejects depth >= 2
-    // so the combination keeps only direct children (depth = 1).
+    //   fqnHash       LIKE :serviceHash       -- '<hash>.%' matches all descendants
+    //   parentFqnHash LIKE :serviceHashExact  -- '<hash>'   keeps only direct children
     int prefixEnd = hashLike.indexOf('%');
     assertTrue(prefixEnd > 0, "serviceHash should be of form '<hash>.%', got: " + hashLike);
     String prefix = hashLike.substring(0, prefixEnd);
     assertEquals(prefix + "%", hashLike);
-    assertEquals(prefix + "%.%", hashLikeChild);
+    assertEquals(prefix.substring(0, prefix.length() - 1), hashExact);
+    assertFalse(
+        hashExact.contains("%") || hashExact.contains("_"),
+        "serviceHashExact must stay wildcard-free so the LIKE degenerates to an indexable"
+            + " equality. Got: "
+            + hashExact);
   }
 
   /**
@@ -336,9 +546,9 @@ class ListFilterTest {
     filter.getCondition("storage_container_entity");
 
     String hashLike = (String) filter.getQueryParams().get("serviceHash");
-    String hashLikeChild = (String) filter.getQueryParams().get("serviceHashChild");
+    String hashExact = (String) filter.getQueryParams().get("serviceHashExact");
     assertNotNull(hashLike);
-    assertNotNull(hashLikeChild);
+    assertNotNull(hashExact);
 
     // The MD5 of a single quoted segment is 32 hex chars; with the trailing ".%" suffix
     // the prefix bind is exactly 34 chars. Two-segment-or-more service names would
@@ -347,14 +557,14 @@ class ListFilterTest {
     int prefixEnd = hashLike.indexOf('%');
     assertEquals(34, prefixEnd + 1, "Dotted service name should hash to exactly one segment");
 
-    // The child bind must mirror this: same 33-char hashed prefix + ".%.%".
-    int childPrefixEnd = hashLikeChild.indexOf('%');
-    assertEquals(prefixEnd, childPrefixEnd, "Both binds must share the same prefix length");
+    // The exact bind must mirror this: the same single 32-char hashed segment, no suffix.
+    assertEquals(32, hashExact.length(), "Dotted service name should hash to one 32-char segment");
+    assertEquals(hashLike.substring(0, 32), hashExact, "Both binds must share the same hash");
   }
 
   /**
    * {@code ?root=true} without {@code ?service=} must not bind {@code :serviceHash}
-   * either — confirming that the depth bind {@code :serviceHashChild} the
+   * either — confirming that the depth bind {@code :serviceHashExact} the
    * {@code ContainerDAO.listRoot*} SQL references is not silently produced by ListFilter
    * for a no-service call. The DAO override has to default this bind itself
    * ({@code rootListingParams}) so the SQL stays runnable. Regression guard for the
@@ -369,8 +579,8 @@ class ListFilterTest {
         filter.getQueryParams().get("serviceHash"),
         "serviceHash must not be bound when ?service= is absent");
     assertNull(
-        filter.getQueryParams().get("serviceHashChild"),
-        "serviceHashChild must not be bound when ?service= is absent — DAO defaults it");
+        filter.getQueryParams().get("serviceHashExact"),
+        "serviceHashExact must not be bound when ?service= is absent — DAO defaults it");
   }
 
   /**
@@ -562,5 +772,176 @@ class ListFilterTest {
   @Test
   void test_getServiceCondition_absentServiceYieldsNoCondition() {
     assertEquals("", new ListFilter(Include.NON_DELETED).getServiceCondition("table_entity"));
+  }
+
+  /**
+   * The generic list and count paths call {@code getCondition()}, which passes a null table name,
+   * so these predicates have to survive that rather than keying off the table.
+   */
+  @Test
+  void test_announcementStatus_derivesTheWindowWithoutATableName() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementStatus", "Expired");
+
+    String condition = filter.getCondition();
+
+    assertTrue(condition.contains("endTime <"), condition);
+  }
+
+  @Test
+  void test_announcementStatus_scheduledLooksAtStartTime() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementStatus", "Scheduled");
+
+    assertTrue(filter.getCondition().contains("startTime >"));
+  }
+
+  /**
+   * The stored {@code status} column is a snapshot of the last write, so the announcement filter
+   * must never fall through to it - and the generic {@code status} parameter, which other resources
+   * share, must keep meaning that column.
+   */
+  @Test
+  void test_announcementStatus_doesNotTouchTheStoredStatusColumn() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementStatus", "Active");
+
+    String condition = filter.getCondition();
+
+    assertFalse(condition.contains("status IN"), condition);
+    assertFalse(condition.contains("status LIKE"), condition);
+    assertTrue(condition.contains("startTime <="), condition);
+    assertTrue(condition.contains("endTime >="), condition);
+  }
+
+  @Test
+  void test_isTimeDependent_coversTheWindowDerivedFilters() {
+    // These two compare the announcement window against the wall clock, so their row set changes
+    // with nothing written — ListCountCache has to skip them rather than cache a total that
+    // invalidation hooks will never clear.
+    ListFilter byStatus = new ListFilter(Include.NON_DELETED);
+    byStatus.addQueryParam("announcementStatus", "Active");
+
+    ListFilter byActive = new ListFilter(Include.NON_DELETED);
+    byActive.addQueryParam("active", "true");
+
+    assertTrue(byStatus.isTimeDependent());
+    assertTrue(byActive.isTimeDependent());
+  }
+
+  @Test
+  void test_isTimeDependent_isFalseForFiltersDerivedFromStoredState() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementType", "Notice");
+
+    assertFalse(filter.isTimeDependent());
+    assertFalse(new ListFilter(Include.NON_DELETED).isTimeDependent());
+  }
+
+  @Test
+  void test_active_appliesWithoutATableName() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("active", "true");
+
+    String condition = filter.getCondition();
+
+    assertTrue(condition.contains("startTime <="), condition);
+    assertTrue(condition.contains("endTime >="), condition);
+  }
+
+  @Test
+  void test_announcementType_filtersOnTheGeneratedColumn() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementType", "Deprecation");
+
+    assertTrue(filter.getCondition().contains("type = :announcementType"));
+  }
+
+  @Test
+  void test_systemAnnouncement_true_matchesAnnouncementsWithNoEntityLink() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("systemAnnouncement", "true");
+
+    assertTrue(filter.getCondition().contains("entityLink IS NULL"));
+  }
+
+  @Test
+  void test_systemAnnouncement_false_matchesEntityAnnouncementsOnly() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("systemAnnouncement", "false");
+
+    assertTrue(filter.getCondition().contains("entityLink IS NOT NULL"));
+  }
+
+  private static final String POSTGRES_ENTITY_LINK_HASH_CONDITION =
+      "md5(COALESCE(entityLink, '')) = :entityLinkHash";
+  private static final String MYSQL_ENTITY_LINK_HASH_CONDITION = "entityLinkHash = :entityLinkHash";
+  private static final String ENTITY_LINK_CONDITION = "entityLink = :entityLink";
+  private static final String MD5_CALL = "md5(";
+  private static final String ENTITY_LINK_HASH_PARAM = "entityLinkHash";
+  private static final String WORKFLOW_INSTANCE_ID_PARAM = "workflowInstanceId";
+  private static final String WORKFLOW_INSTANCE_ID_CONDITION =
+      "workflowInstanceId = :workflowInstanceId";
+
+  /**
+   * The run list for an entity is only an index lookup when its condition is exactly the key of
+   * idx_wf_instance_entity_link from the 2.0.7 migration: md5(COALESCE(entityLink, '')) on
+   * PostgreSQL, the entityLinkHash virtual column on MySQL. Any drift in either text silently turns
+   * the lookup back into a scan of every run.
+   */
+  @Test
+  void entityLinkHashCondition_matchesTheEntityLinkIndexKeyOnEachDialect() {
+    final ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
+    filter.addQueryParam(ENTITY_LINK_HASH_PARAM, "0cc175b9c0f1b6a831c399e269772661");
+
+    final String postgres = filter.getCondition();
+    assertTrue(postgres.contains(POSTGRES_ENTITY_LINK_HASH_CONDITION));
+    assertTrue(postgres.contains(ENTITY_LINK_CONDITION));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      final DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mysqlConfig);
+      when(mysqlConfig.isMySQL()).thenReturn(true);
+      final String mysql = filter.getCondition();
+      assertTrue(mysql.contains(MYSQL_ENTITY_LINK_HASH_CONDITION));
+      assertFalse(mysql.contains(MD5_CALL));
+    }
+  }
+
+  @Test
+  void entityLinkHashCondition_absentWhenNotRequested() {
+    final ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
+    assertFalse(filter.getCondition().contains(ENTITY_LINK_HASH_PARAM));
+  }
+
+  @Test
+  void workflowInstanceIdCondition_appliedOnlyWhenRequested() {
+    final ListFilter filter = new ListFilter(null);
+    assertFalse(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_PARAM));
+
+    filter.addQueryParam(WORKFLOW_INSTANCE_ID_PARAM, "11111111-1111-1111-1111-111111111111");
+    assertTrue(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_CONDITION));
+  }
+
+  // A null include means "no deletion scoping" — an explicit ALL — never the no-arg
+  // NON_DELETED default, whose deleted clause is invalid on the time-series tables that
+  // have no deleted column. Consumers of getInclude() must never observe a null.
+  @Test
+  void aNullIncludeIsAnExplicitAllThatEmitsNoDeletedClause() {
+    final ListFilter filter = new ListFilter(null);
+
+    assertEquals(Include.ALL, filter.getInclude());
+    assertEquals("", filter.getIncludeCondition(null));
+    assertFalse(filter.getCondition().contains("deleted"));
+  }
+
+  @Test
+  void theNoArgConstructorKeepsTheNonDeletedDefaultForEntityTables() {
+    assertEquals(Include.NON_DELETED, new ListFilter().getInclude());
+    assertEquals("deleted = FALSE", new ListFilter().getIncludeCondition(null));
+    assertEquals("deleted = TRUE", new ListFilter(Include.DELETED).getIncludeCondition(null));
+    assertEquals("", new ListFilter(Include.ALL).getIncludeCondition(null));
   }
 }

@@ -33,7 +33,9 @@ import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsB
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
+import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.client.json.JsonData;
@@ -76,8 +78,12 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
    * {@code OpenSearchRequestBuilder#build} apply its org-wide-only default instead.
    */
   private void applyContextMemoryVisibility(
-      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
-    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder, String queryFilter) {
+    OMQueryBuilder visibilityBuilder =
+        MEMORY_VISIBILITY.buildVisibilityFilter(
+            subjectContext,
+            ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+            ContextMemoryAnchorPins.ofQueryFilters(queryFilter));
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -86,28 +92,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     }
   }
 
-  /**
-   * ANDs the caller's policy conditions into an aggregation query. Aggregations run over whole
-   * indexes, so without this a caller can read documents they are denied on the corresponding
-   * listing. A {@code null} or exempt subject (admin, or access control disabled) is left
-   * unfiltered. Bots are not exempt: they are policy-evaluated like any other caller.
-   */
   private Query applyRbacQuery(Query query, SubjectContext subjectContext) {
-    if (!SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-      return query;
-    }
-    OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-    if (rbacQueryBuilder == null) {
-      // Fail closed: policies had to be applied for this caller (access control on, not admin/bot)
-      // but produced no query. Returning the unfiltered query would leak; match nothing instead.
-      return Query.of(qb -> qb.matchNone(m -> m));
-    }
-    Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
-    if (query == null) {
-      return rbacQuery;
-    }
-    final Query existingQuery = query;
-    return Query.of(qb -> qb.bool(b -> b.must(existingQuery).filter(rbacQuery)));
+    return OpenSearchRbacQueries.withAccessPolicies(query, subjectContext, rbacConditionEvaluator);
   }
 
   /**
@@ -125,22 +111,46 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
   }
 
   /**
+   * ANDs the caller's RBAC policy and per-subject ContextMemory visibility into the aggregation
+   * query, mirroring {@code OpenSearchSearchManager#applyRbacCondition}. A {@code null} or exempt
+   * subject (admin, or access control disabled) is left unfiltered by RBAC. An identifiable subject
+   * gets its own memory visibility filter (admins are limited to searchable statuses only); a
+   * {@code null} or unidentifiable subject falls back to the org-wide-only memory filter so the
+   * aggregation never leaks private memories.
+   */
+  private Query applySubjectFilters(Query query, SubjectContext subjectContext) {
+    Query rbacFiltered = applyRbacQuery(query, subjectContext);
+    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      Query memoryFilter = ((OpenSearchQueryBuilder) visibilityBuilder).buildV2();
+      return rbacFiltered == null
+          ? memoryFilter
+          : Query.of(q -> q.bool(b -> b.must(rbacFiltered).filter(memoryFilter)));
+    }
+    return restrictToOrgWideMemories(rbacFiltered);
+  }
+
+  /**
    * A bare query_string searches every field in the mapping, which on large data-asset mappings can
    * exceed the cluster's max_clause_count, so data-asset text goes through the configured fields
-   * instead. {@code *} and other indexes keep the bare query_string.
+   * instead. So does text from a caller who may not match on private fields, which every field
+   * includes. {@code *} and other indexes keep the bare query_string.
    */
-  private static Query plainTextQuery(String index, String text) {
+  private static Query plainTextQuery(String index, String text, boolean matchesPrivateFields) {
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
-    if (!MATCH_ALL_TEXT.equals(text.trim()) && SearchUtils.usesDataAssetSearchBuilder(indexName)) {
-      return configuredFieldsQuery(index, text);
+    boolean configuredFields =
+        SearchUtils.usesDataAssetSearchBuilder(indexName) || !matchesPrivateFields;
+    if (!MATCH_ALL_TEXT.equals(text.trim()) && configuredFields) {
+      return configuredFieldsQuery(index, text, matchesPrivateFields);
     }
     return Query.of(q -> q.queryString(qs -> qs.query(text)));
   }
 
-  private static Query configuredFieldsQuery(String index, String text) {
+  private static Query configuredFieldsQuery(
+      String index, String text, boolean matchesPrivateFields) {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-    return new OpenSearchSourceBuilderFactory(searchSettings)
+    return new OpenSearchSourceBuilderFactory(searchSettings, matchesPrivateFields)
         .getSearchSourceBuilderV2(index, text, 0, 0, false, false)
         .query();
   }
@@ -160,6 +170,12 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
 
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
+    return aggregate(request, null);
+  }
+
+  @Override
+  public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot perform aggregation.");
       throw new IOException("OpenSearch client is not available");
@@ -170,6 +186,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
 
       String indexName = Entity.getSearchRepository().getIndexOrAliasName(request.getIndex());
       searchRequestBuilder.index(indexName);
+      boolean matchesPrivateFields =
+          PrivateSearchFields.matchesPrivateFields(subjectContext, request.getIndex());
 
       Query query = null;
 
@@ -183,12 +201,13 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
             throw new IOException("Failed to parse JSON query: " + e.getMessage(), e);
           }
         } else {
-          query = plainTextQuery(request.getIndex(), request.getQuery());
+          query = plainTextQuery(request.getIndex(), request.getQuery(), matchesPrivateFields);
         }
       }
 
       if (!CommonUtil.nullOrEmpty(request.getQueryText())) {
-        Query textQuery = configuredFieldsQuery(request.getIndex(), request.getQueryText());
+        Query textQuery =
+            configuredFieldsQuery(request.getIndex(), request.getQueryText(), matchesPrivateFields);
         if (textQuery != null) {
           if (query != null) {
             final Query finalQuery = query;
@@ -212,7 +231,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      searchRequestBuilder.query(restrictToOrgWideMemories(query));
+      searchRequestBuilder.query(applySubjectFilters(query, subjectContext));
 
       String aggregationField =
           SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
@@ -224,14 +243,18 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       String includeValue = request.getFieldValue().toLowerCase();
       boolean isSearchPattern = SearchUtils.isBestMatchSearchPattern(includeValue);
 
+      List<String> sourceExcludes =
+          PrivateSearchFields.sourceExcludes(subjectContext, request.getIndex(), null);
       Map<String, Aggregation> aggregations = new HashMap<>();
 
       if (isSearchPattern) {
-        buildBestMatchAggregations(
-            aggregations, aggregationField, includeValue, bucketSize, request);
+        aggregations.putAll(
+            bestMatchAggregations(
+                aggregationField, includeValue, bucketSize, request, sourceExcludes));
       } else {
         aggregations.put(
-            aggregationField, buildSingleAgg(aggregationField, includeValue, bucketSize, request));
+            aggregationField,
+            buildSingleAgg(aggregationField, includeValue, bucketSize, request, sourceExcludes));
       }
 
       searchRequestBuilder.aggregations(aggregations);
@@ -260,22 +283,28 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     }
   }
 
-  private void buildBestMatchAggregations(
-      Map<String, Aggregation> aggregations,
+  private Map<String, Aggregation> bestMatchAggregations(
       String field,
       String containsPattern,
       int size,
-      AggregationRequest request) {
+      AggregationRequest request,
+      List<String> sourceExcludes) {
     String escapedRaw = SearchUtils.extractRawSearchValue(containsPattern).replace(".", "\\.");
-    aggregations.put(SearchUtils.exactAggKey(field), buildSingleAgg(field, escapedRaw, 1, request));
-    aggregations.put(
-        SearchUtils.prefixAggKey(field), buildSingleAgg(field, escapedRaw + ".*", size, request));
-    aggregations.put(
-        SearchUtils.containsAggKey(field), buildSingleAgg(field, containsPattern, size, request));
+    return Map.of(
+        SearchUtils.exactAggKey(field),
+        buildSingleAgg(field, escapedRaw, 1, request, sourceExcludes),
+        SearchUtils.prefixAggKey(field),
+        buildSingleAgg(field, escapedRaw + ".*", size, request, sourceExcludes),
+        SearchUtils.containsAggKey(field),
+        buildSingleAgg(field, containsPattern, size, request, sourceExcludes));
   }
 
   private Aggregation buildSingleAgg(
-      String field, String includePattern, int size, AggregationRequest request) {
+      String field,
+      String includePattern,
+      int size,
+      AggregationRequest request,
+      List<String> sourceExcludes) {
     if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
       List<String> topHitFields = request.getSourceFields();
       int topHitSize = request.getTopHits() != null ? request.getTopHits().getSize() : 10;
@@ -295,7 +324,12 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
                                   topHit ->
                                       topHit
                                           .size(topHitSize)
-                                          .source(s -> s.filter(f -> f.includes(topHitFields)))))));
+                                          .source(
+                                              s ->
+                                                  s.filter(
+                                                      f ->
+                                                          f.includes(topHitFields)
+                                                              .excludes(sourceExcludes)))))));
     }
     return Aggregation.of(
         a ->
@@ -601,7 +635,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       String resolvedIndex =
           Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
 
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(subjectContext, requestBuilder, request.getQueryFilter());
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

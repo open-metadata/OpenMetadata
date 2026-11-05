@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Check: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,10 +29,14 @@ export const Check: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M20 6 9 17l-5-5" stroke="currentColor" strokeWidth={1.3} />
+    <path
+      d="M16.667 5 7.5 14.167 3.333 10"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 Check.displayName = 'Check';

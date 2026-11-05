@@ -40,7 +40,8 @@ public class TablePipelineResolver implements RunnablePipelineResolver {
   }
 
   @Override
-  public List<IngestionPipeline> pipelinesOwning(EntityInterface table, PipelineType pipelineType) {
+  public List<IngestionPipeline> pipelinesOwning(
+      EntityInterface<?> table, PipelineType pipelineType) {
     DatabaseService service =
         Entity.getEntity(((Table) table).getService(), "pipelines", Include.NON_DELETED);
     return RunnablePipelineResolver.pipelinesOfType(service.getPipelines(), pipelineType);

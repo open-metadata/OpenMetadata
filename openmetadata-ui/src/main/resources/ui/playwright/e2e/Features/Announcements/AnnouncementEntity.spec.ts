@@ -23,7 +23,8 @@
  *  limitations under the License.
  */
 
-import test from '@playwright/test';
+import test, { Page } from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../../constant/common';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
@@ -62,10 +63,7 @@ const createSeedAnnouncement = async (
   }
 };
 
-const visitDomainPage = async (
-  page: Parameters<typeof test>[0]['page'],
-  domain: Domain
-) => {
+const visitDomainPage = async (page: Page, domain: Domain) => {
   await redirectToHomePage(page);
   await sidebarClick(page, SidebarItem.DOMAIN);
   await selectDomain(page, domain.responseData);
@@ -73,7 +71,7 @@ const visitDomainPage = async (
 
 test.describe.serial('Announcement Entity Lifecycle', () => {
   test('creates an announcement on a domain', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const domain = new Domain();
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
@@ -88,8 +86,7 @@ test.describe.serial('Announcement Entity Lifecycle', () => {
           title: 'Domain Announcement Test',
           description: 'Domain Announcement Description',
         },
-        false,
-        'announcement-card'
+        false
       );
     } finally {
       await domain.delete(apiContext);
@@ -98,7 +95,7 @@ test.describe.serial('Announcement Entity Lifecycle', () => {
   });
 
   test('edits an existing announcement on a domain', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const domain = new Domain();
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
@@ -124,7 +121,7 @@ test.describe.serial('Announcement Entity Lifecycle', () => {
   });
 
   test('deletes an existing announcement on a domain', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const domain = new Domain();
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);

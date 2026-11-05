@@ -15,8 +15,10 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   buildDomainSearchQuery,
+  decodeDomainCursor,
   domainsToTreeNodes,
   domainToTreeNode,
+  encodeDomainCursor,
   entityReferencesToTreeNodes,
   fetchAllDomainChildren,
   getSelectedAncestorKeys,
@@ -80,6 +82,12 @@ describe('DomainSelect.utils', () => {
       expect(node.isLeaf).toBe(false);
       expect(node.lazyLoad).toBe(true);
       expect(node.children).toBeUndefined();
+    });
+
+    it('should carry the subdomain count as the row badge', () => {
+      expect(domainToTreeNode(parentDomain).count).toBe(3);
+      // Zero is not a badge, it is a leaf.
+      expect(domainToTreeNode(leafDomain).count).toBeUndefined();
     });
 
     it('should map preloaded children eagerly without lazy loading', () => {
@@ -178,6 +186,22 @@ describe('DomainSelect.utils', () => {
   });
 });
 
+describe('domain cursor codec', () => {
+  it('round-trips an offset', () => {
+    expect(decodeDomainCursor(encodeDomainCursor(50))).toBe(50);
+  });
+
+  it('restarts the branch for a missing or malformed cursor', () => {
+    expect(decodeDomainCursor(undefined)).toBe(0);
+    expect(decodeDomainCursor('')).toBe(0);
+    expect(decodeDomainCursor('abc')).toBe(0);
+    expect(decodeDomainCursor('-5')).toBe(0);
+    expect(decodeDomainCursor('1.5')).toBe(0);
+  });
+});
+
+// The root listing is the one level the tree cannot offer a "Show N more" row
+// for, so it still drains; every other level pages.
 describe('fetchAllDomainChildren', () => {
   const domain = (n: number) =>
     ({ id: `d${n}`, name: `d${n}`, fullyQualifiedName: `d${n}` } as never);

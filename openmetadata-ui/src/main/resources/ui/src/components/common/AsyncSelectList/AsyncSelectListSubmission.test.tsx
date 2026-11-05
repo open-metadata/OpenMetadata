@@ -18,43 +18,49 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Form } from 'antd';
 import { useState } from 'react';
 import AsyncSelectList from './AsyncSelectList';
-import { AsyncSelectListProps } from './AsyncSelectList.interface';
+import {
+  AsyncSelectListProps,
+  SelectOption,
+} from './AsyncSelectList.interface';
 
 const personal = {
   label: 'PersonalData.Personal',
   value: 'PersonalData.Personal',
 };
 
+// Mirrors how an antd Form.Item feeds the emitted options back as `value`.
 function TagForm({
   fetchOptions,
   initialOptions = [personal],
 }: Pick<AsyncSelectListProps, 'fetchOptions' | 'initialOptions'>) {
+  const [tags, setTags] = useState<Array<string | SelectOption>>(
+    initialOptions.map((option) => option.value)
+  );
   const [saved, setSaved] = useState<unknown>();
 
   return (
     <>
-      <Form
-        initialValues={{ tags: initialOptions.map((option) => option.value) }}
-        onFinish={({ tags }: { tags: Array<string | { value: string }> }) =>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
           setSaved({
             tags: tags.map((tag) =>
               typeof tag === 'string' ? tag : tag.value
             ),
-          })
-        }>
-        <Form.Item name="tags">
-          <AsyncSelectList
-            open
-            fetchOptions={fetchOptions}
-            initialOptions={initialOptions}
-            mode="multiple"
-            onCancel={() => undefined}
-          />
-        </Form.Item>
-      </Form>
+          });
+        }}>
+        <AsyncSelectList
+          open
+          fetchOptions={fetchOptions}
+          initialOptions={initialOptions}
+          mode="multiple"
+          value={tags}
+          onCancel={() => undefined}
+          onChange={setTags}
+        />
+      </form>
       <output data-testid="saved-tags">{JSON.stringify(saved)}</output>
     </>
   );
@@ -101,11 +107,11 @@ it.each([
         initialOptions={selection === 'existing' ? [personal] : []}
       />
     );
-    const option = await screen.findByTestId(`tag-${personal.value}`);
     if (selection === 'new') {
-      userEvent.click(option);
-      await screen.findByTestId(`selected-tag-${personal.value}`);
+      userEvent.click(await screen.findByTestId(`tag-${personal.value}`));
     }
+    // A selected tag is shown as a chip, not as an option in the list.
+    await screen.findByTestId(`selected-tag-${personal.value}`);
     fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'no-matching-tags' },
     });

@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Check,
+  LogOut01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
 import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import { SuggestionType } from '../../../types/taskSuggestion';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -68,47 +70,48 @@ const SuggestionsSlider = () => {
   }, [dataSuggestionType, t]);
 
   return (
-    <div className="d-flex items-center gap-2 m-r-md">
+    <Box align="center" className="m-r-md" gap={2}>
       <Typography className="right-panel-label">{suggestionLabel}</Typography>
       <AvatarCarousel />
       {suggestionPendingCount > 0 && (
         <Button
           className="suggestion-pending-btn"
+          color="primary"
           data-testid="more-suggestion-button"
-          loading={loading}
-          type="primary"
-          onClick={() => fetchSuggestions()}>
+          isLoading={loading}
+          size="xs"
+          onPress={() => fetchSuggestions()}>
           {t('label.plus-count-more', {
             count: suggestionPendingCount,
           })}
         </Button>
       )}
       {selectedUserSuggestions?.combinedData.length > 0 && (
-        <Space className="slider-btn-container m-l-xs">
+        <Box align="center" className="slider-btn-container m-l-xs" gap={2}>
           {hasSuggestionEditAccess && (
             <>
               <Button
-                ghost
-                className="text-xs text-primary font-medium"
+                className="text-xs font-medium"
+                color="secondary-brand"
                 data-testid="accept-all-suggestions"
-                disabled={loadingAccept}
-                icon={<CheckOutlined />}
-                loading={loadingAccept}
-                type="primary"
-                onClick={() =>
+                iconLeading={Check}
+                isDisabled={loadingAccept}
+                isLoading={loadingAccept}
+                size="xs"
+                onPress={() =>
                   acceptRejectAllSuggestions(SuggestionAction.Accept)
                 }>
                 {t('label.accept-all')}
               </Button>
               <Button
-                ghost
-                className="text-xs text-primary font-medium"
+                className="text-xs font-medium"
+                color="secondary-brand"
                 data-testid="reject-all-suggestions"
-                disabled={loadingReject}
-                icon={<CloseOutlined />}
-                loading={loadingReject}
-                type="primary"
-                onClick={() =>
+                iconLeading={XClose}
+                isDisabled={loadingReject}
+                isLoading={loadingReject}
+                size="xs"
+                onPress={() =>
                   acceptRejectAllSuggestions(SuggestionAction.Reject)
                 }>
                 {t('label.reject-all')}
@@ -116,17 +119,17 @@ const SuggestionsSlider = () => {
             </>
           )}
           <Button
-            ghost
-            className="text-xs text-primary font-medium close-suggestion-btn flex-center"
+            className="text-xs font-medium close-suggestion-btn"
+            color="secondary-brand"
             data-testid="close-suggestion"
-            type="primary"
-            onClick={() => onUpdateActiveUser()}>
-            <ExitIcon />
+            iconLeading={LogOut01}
+            size="xs"
+            onPress={() => onUpdateActiveUser()}>
             {t('label.close')}
           </Button>
-        </Space>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 };
 

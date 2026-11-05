@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { RuleObject } from 'antd/lib/form';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import {
   isBoolean,
@@ -23,12 +22,9 @@ import {
   startCase,
 } from 'lodash';
 import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
-import {
-  DESTINATION_DROPDOWN_TABS,
-  DESTINATION_SOURCE_ITEMS,
-  EXTERNAL_CATEGORY_OPTIONS,
-} from '../../constants/Alerts.constants';
+import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { MASKED_PASSWORD_VALUE } from '../../constants/Secrets.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
@@ -41,9 +37,11 @@ import {
   Destination,
   SubscriptionCategory,
   SubscriptionType,
+  Type,
   type Webhook,
 } from '../../generated/events/eventSubscription';
 import type { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { ModifiedWebhookConfig } from '../AlertsClassBase.interface';
 import { t } from '../i18next/LocalUtil';
 
 export const getFunctionDisplayName = (func: string): string => {
@@ -64,25 +62,6 @@ export const getFunctionDisplayName = (func: string): string => {
 
   return displayNameByFunction[func] ?? '';
 };
-
-/**
- *
- * @param name Field name used to identify which field has error
- * @param minLengthRequired how many item should be there in the list
- * @returns If validation failed throws an error else resolve
- */
-export const listLengthValidator =
-  <T>(name: string, minLengthRequired = 1) =>
-  async (_: RuleObject, list: T[]) => {
-    if (!list || list.length < minLengthRequired) {
-      throw new Error(
-        t('message.length-validator-error', {
-          length: minLengthRequired,
-          field: name,
-        })
-      );
-    }
-  };
 
 export const getAlertActionTypeDisplayName = (
   alertActionType: SubscriptionType
@@ -276,50 +255,6 @@ export const getFormattedDestinations = (
   return formattedDestinations;
 };
 
-// Destination category exclusions by entity type
-const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
-  // Most entity events have neither participants nor mention recipients.
-  __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
-  task: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-  ],
-  conversation: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-    SubscriptionCategory.Assignees,
-  ],
-  announcement: [SubscriptionCategory.Assignees],
-};
-
-export const getFilteredDestinationOptions = (
-  key: keyof typeof DESTINATION_SOURCE_ITEMS,
-  selectedSource: string
-) => {
-  const options = DESTINATION_SOURCE_ITEMS[key];
-  const isExternalDestination = !isEqual(
-    key,
-    DESTINATION_DROPDOWN_TABS.internal
-  );
-
-  if (isExternalDestination) {
-    return options;
-  }
-
-  const excludedCategories =
-    DESTINATION_CATEGORY_EXCLUDES[selectedSource] ||
-    DESTINATION_CATEGORY_EXCLUDES.__default__;
-
-  return options.filter(
-    (option) =>
-      !excludedCategories.includes(option.value as SubscriptionCategory)
-  );
-};
-
 export const getAlertEventsFilterLabels = (status: AlertRecentEventFilters) => {
   switch (status) {
     case AlertRecentEventFilters.SUCCESSFUL:
@@ -364,21 +299,43 @@ export const getChangeEventDataFromTypedEvent = (
   changeEventData: ChangeEvent;
   changeEventDataToDisplay: AlertEventDetailsToDisplay;
 } => {
-  let changeEventData = typedEvent.data[0];
+  const outer = typedEvent.data[0];
+
+  if (!outer) {
+    // Status is part of the id so a failed and a successful unreadable row
+    // sharing a timestamp still get distinct React keys.
+    const fallbackId = `unreadable-${typedEvent.status}-${typedEvent.timestamp}`;
+
+    return {
+      changeEventData: {
+        id: fallbackId,
+        timestamp: typedEvent.timestamp,
+      },
+      changeEventDataToDisplay: {
+        eventType: undefined,
+        entityId: undefined,
+        userName: undefined,
+        previousVersion: undefined,
+        currentVersion: undefined,
+        reason: undefined,
+        source: undefined,
+        failingSubscriptionId: undefined,
+      },
+    };
+  }
+
+  let changeEventData: ChangeEvent = outer;
 
   // If the event is failed, the changeEventData object is nested inside the changeEventData object.
-  if (
-    typedEvent.status === Status.Failed &&
-    !isUndefined(changeEventData.changeEvent)
-  ) {
-    changeEventData = changeEventData.changeEvent;
+  if (typedEvent.status === Status.Failed && !isUndefined(outer.changeEvent)) {
+    changeEventData = outer.changeEvent;
   }
 
   const { eventType, entityId, userName, previousVersion, currentVersion } =
     changeEventData;
 
   // Extracting the reason, source, and failingSubscriptionId from the failed changeEventData object.
-  const { reason, source, failingSubscriptionId } = typedEvent.data[0];
+  const { reason, source, failingSubscriptionId } = outer;
 
   return {
     changeEventData,
@@ -474,4 +431,73 @@ export const getMessageFromArgumentName = (argumentName: string) => {
   const entity = fieldTextEntityByArgument[argumentName];
 
   return entity ? requiredList(entity) : '';
+};
+
+/**
+ * An event count as the alert page shows it: with a trailing "+" when the server evaluated only
+ * the first unread events, so the real count is at least this one.
+ */
+export const formatEventCount = (
+  count: number | undefined,
+  isLowerBound?: boolean
+): string => `${count ?? 0}${isLowerBound ? '+' : ''}`;
+
+const SECRET_AUTH_FIELDS = ['secretKey', 'clientId', 'clientSecret'];
+
+const withoutMask = (value: unknown) =>
+  value === MASKED_PASSWORD_VALUE ? '' : value;
+
+/**
+ * The webhook settings with every secret that still shows the mask emptied. A destination whose
+ * URL or token URL changes sends its secrets somewhere new, so each one must be entered again;
+ * the form then asks for every emptied field before it saves.
+ */
+export const clearMaskedSecrets = (
+  config?: ModifiedWebhookConfig
+): ModifiedWebhookConfig | undefined => {
+  if (!config) {
+    return config;
+  }
+  const authType = (config.authType ?? {}) as Record<string, unknown>;
+  const clearedAuth = Object.fromEntries(
+    SECRET_AUTH_FIELDS.filter((key) => key in authType).map((key) => [
+      key,
+      withoutMask(authType[key]),
+    ])
+  );
+
+  return {
+    ...config,
+    ...(config.endpoint !== undefined && {
+      endpoint: withoutMask(config.endpoint) as string,
+    }),
+    ...(config.headers && {
+      headers: config.headers.map((header) => ({
+        ...header,
+        value: withoutMask(header.value) as string,
+      })),
+    }),
+    ...(config.authType && {
+      authType: { ...config.authType, ...clearedAuth },
+    }),
+  };
+};
+
+/**
+ * The webhook settings once the authentication type changes. Only the new type is kept, so no
+ * credential of the old type is stored beside it. OAuth2 alone sends through a token URL, so
+ * leaving or choosing it changes where the secrets go, and every hidden value is asked for again.
+ */
+export const withAuthType = (
+  config: ModifiedWebhookConfig | undefined,
+  type: Type
+): ModifiedWebhookConfig => {
+  const previousType = (config?.authType as { type?: Type } | undefined)?.type;
+  if (previousType === type) {
+    return config ?? {};
+  }
+  const switched = { ...config, authType: { type } };
+  const changesTokenUrl = previousType === Type.Oauth2 || type === Type.Oauth2;
+
+  return changesTokenUrl ? clearMaskedSecrets(switched) ?? switched : switched;
 };

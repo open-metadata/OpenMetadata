@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SelectItemType } from '../select/select';
@@ -21,10 +27,14 @@ const OPTIONS: SelectItemType[] = [
   { id: 'tier1', label: 'Tier 1' },
 ];
 
-const renderAutocomplete = (onItemInserted: (id: unknown) => void) =>
+const renderAutocomplete = (
+  onItemInserted: (id: unknown) => void,
+  multiple = true
+) =>
   render(
     <Autocomplete
       items={OPTIONS}
+      multiple={multiple}
       placeholder="Select"
       selectedItems={[]}
       onItemInserted={onItemInserted}>
@@ -37,6 +47,28 @@ const renderAutocomplete = (onItemInserted: (id: unknown) => void) =>
   );
 
 describe('Autocomplete – selection commit', () => {
+  it('provides a named remove button and the full selected label', async () => {
+    const label = 'service.database.schema.' + 'long_table_name_'.repeat(20);
+    render(
+      <Autocomplete items={[]} selectedItems={[{ id: label, label }]}>
+        {(item) => (
+          <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    expect(screen.getByRole('button', { name: /remove/i })).toBeVisible();
+    const chip = screen.getByTestId('autocomplete-selected-item');
+
+    expect(chip).toHaveTextContent(label);
+
+    // react-aria ignores hover until it has seen pointer modality.
+    fireEvent.mouseMove(document);
+    await userEvent.hover(within(chip).getByText(label));
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(label);
+  });
+
   it('inserts the focused option on Enter', async () => {
     const onItemInserted = vi.fn();
     renderAutocomplete(onItemInserted);
@@ -47,10 +79,8 @@ describe('Autocomplete – selection commit', () => {
     expect(onItemInserted).toHaveBeenCalledWith('pii');
   });
 
-  // react-aria's ComboBox commits the focused option when the input loses focus,
-  // and the listbox focuses whatever option the pointer last passed over — so
-  // tabbing out inserted a value the user never picked. In a query builder that
-  // silently changes what the filter means.
+  // react-aria commits the focused option when Tab leaves the input, so tabbing out inserted a
+  // value nobody picked. In a query builder that silently changes what the filter means.
   it('inserts nothing when focus leaves the input', async () => {
     const onItemInserted = vi.fn();
     renderAutocomplete(onItemInserted);
@@ -60,6 +90,59 @@ describe('Autocomplete – selection commit', () => {
     await userEvent.tab();
 
     expect(onItemInserted).not.toHaveBeenCalled();
+  });
+
+  it('inserts nothing when focus leaves backwards or after typing', async () => {
+    const onItemInserted = vi.fn();
+    renderAutocomplete(onItemInserted);
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.tab({ shift: true });
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('Tier');
+    await userEvent.tab();
+
+    expect(onItemInserted).not.toHaveBeenCalled();
+  });
+
+  // A browser runs queued microtasks between React's capture and bubble listeners; a guard that
+  // waits for one is gone by the time react-aria commits.
+  it('inserts nothing even when microtasks run between the key listeners', async () => {
+    vi.stubGlobal('queueMicrotask', (task: () => void) => task());
+    const onItemInserted = vi.fn();
+    renderAutocomplete(onItemInserted);
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.tab();
+
+    expect(onItemInserted).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('inserts exactly the picked option when Tab follows a pick', async () => {
+    const onItemInserted = vi.fn();
+    renderAutocomplete(onItemInserted);
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+    await userEvent.tab();
+
+    expect(onItemInserted).toHaveBeenCalledTimes(1);
+    expect(onItemInserted).toHaveBeenCalledWith('pii');
+  });
+
+  // One value only: Tab accepts the focused option, as a single-select combobox does.
+  it('takes the focused option on Tab when it holds one value', async () => {
+    const onItemInserted = vi.fn();
+    renderAutocomplete(onItemInserted, false);
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.tab();
+
+    expect(onItemInserted).toHaveBeenCalledWith('pii');
   });
 });
 
@@ -230,5 +313,338 @@ describe('Autocomplete – scroll paging across the virtualization threshold', (
     rerender(renderWithItems(LARGE_OPTIONS, onPopoverScroll));
 
     expect(screen.getByRole('listbox').scrollTop).toBe(scrolledTo);
+  });
+});
+
+describe('Autocomplete – popover header and footer', () => {
+  it('renders the header and footer around the open list', async () => {
+    render(
+      <Autocomplete
+        items={OPTIONS}
+        placeholder="Select"
+        popoverFooter={<div>Footer hints</div>}
+        popoverHeader={<div>Showing 2 of 2</div>}
+        selectedItems={[]}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    expect(screen.queryByText('Showing 2 of 2')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('combobox'));
+
+    const listbox = await screen.findByRole('listbox');
+    const header = screen.getByText('Showing 2 of 2');
+    const footer = screen.getByText('Footer hints');
+
+    expect(
+      header.compareDocumentPosition(listbox) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      listbox.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+});
+
+describe('Autocomplete – empty state', () => {
+  it('renders the given empty state instead of the default one', async () => {
+    render(
+      <Autocomplete
+        emptyState={<div>Loading results</div>}
+        items={[]}
+        placeholder="Select"
+        selectedItems={[]}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByRole('combobox'));
+
+    expect(await screen.findByText('Loading results')).toBeInTheDocument();
+  });
+});
+
+describe('Autocomplete – overflow chips', () => {
+  const SELECTED: SelectItemType[] = ['a', 'b', 'c'].map((id) => ({
+    id,
+    label: `Tag ${id.toUpperCase()}`,
+  }));
+  const UNSELECTED: SelectItemType = { id: 'd', label: 'Tag D' };
+
+  const renderCapped = (onItemInserted = vi.fn(), onItemCleared = vi.fn()) =>
+    render(
+      // Tag C is selected but not in the loaded items, like an async page.
+      <Autocomplete
+        items={[SELECTED[0], SELECTED[1], UNSELECTED]}
+        maxVisibleItems={1}
+        selectedItems={SELECTED}
+        onItemCleared={onItemCleared}
+        onItemInserted={onItemInserted}>
+        {(item) => (
+          <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+  it('keeps the default list when opened from the input', async () => {
+    renderCapped();
+
+    await userEvent.click(screen.getByRole('combobox'));
+
+    const options = within(await screen.findByRole('listbox')).getAllByRole(
+      'option'
+    );
+
+    expect(options.map((option) => option.textContent)).toEqual(['Tag D']);
+  });
+
+  it('opens the list from +N with the selected values still in it', async () => {
+    renderCapped();
+
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+
+    const options = within(await screen.findByRole('listbox')).getAllByRole(
+      'option'
+    );
+
+    expect(options.map((option) => option.textContent)).toEqual([
+      'Tag C',
+      'Tag A',
+      'Tag B',
+      'Tag D',
+    ]);
+  });
+
+  it('drops the checkbox view once the list closes', async () => {
+    renderCapped();
+
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+    await screen.findByRole('option', { name: 'Tag A' });
+    await userEvent.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    );
+
+    await userEvent.click(screen.getByRole('combobox'));
+
+    const options = within(await screen.findByRole('listbox')).getAllByRole(
+      'option'
+    );
+
+    expect(options.map((option) => option.textContent)).toEqual(['Tag D']);
+  });
+
+  it('unselects a checked row and selects an unchecked one', async () => {
+    const onItemInserted = vi.fn();
+    const onItemCleared = vi.fn();
+    renderCapped(onItemInserted, onItemCleared);
+
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+    await userEvent.click(await screen.findByRole('option', { name: 'Tag B' }));
+
+    expect(onItemCleared).toHaveBeenCalledWith('b');
+
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+    await userEvent.click(await screen.findByRole('option', { name: 'Tag D' }));
+
+    expect(onItemInserted).toHaveBeenCalledWith('d');
+  });
+});
+
+describe('Autocomplete – +N checkbox view edge cases', () => {
+  const SELECTED: SelectItemType[] = ['a', 'b', 'c'].map((id) => ({
+    id,
+    label: `Tag ${id.toUpperCase()}`,
+  }));
+  const LOADED: SelectItemType[] = [
+    SELECTED[0],
+    SELECTED[1],
+    { id: 'd', label: 'Tag D' },
+  ];
+  const optionLabels = async () =>
+    within(await screen.findByRole('listbox'))
+      .getAllByRole('option')
+      .map((option) => option.textContent);
+  const isChecked = (name: string) =>
+    screen
+      .getByRole('option', { name })
+      .querySelector('[class*="bg-brand-solid"]') !== null;
+
+  it.each([['isDisabled'], ['isReadOnly']])(
+    'does not open the list from +N when %s',
+    async (flag) => {
+      const onItemCleared = vi.fn();
+      render(
+        <Autocomplete
+          items={LOADED}
+          maxVisibleItems={1}
+          selectedItems={SELECTED}
+          onItemCleared={onItemCleared}
+          {...{ [flag]: true }}>
+          {(item) => (
+            <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+          )}
+        </Autocomplete>
+      );
+
+      await userEvent.click(
+        screen.getByTestId('autocomplete-overflow-trigger')
+      );
+
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      expect(onItemCleared).not.toHaveBeenCalled();
+    }
+  );
+
+  it('lists unloaded selections for static children too', async () => {
+    render(
+      <Autocomplete items={LOADED} maxVisibleItems={1} selectedItems={SELECTED}>
+        {LOADED.map((item) => (
+          <Autocomplete.Item id={String(item.id)} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        ))}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+
+    expect(await optionLabels()).toEqual(['Tag C', 'Tag A', 'Tag B', 'Tag D']);
+  });
+
+  it('marks selected rows checked and can re-check an unloaded value', async () => {
+    const onItemInserted = vi.fn();
+    const onItemCleared = vi.fn();
+    render(
+      <Autocomplete
+        items={LOADED}
+        maxVisibleItems={1}
+        selectedItems={SELECTED}
+        onItemCleared={onItemCleared}
+        onItemInserted={onItemInserted}>
+        {(item) => (
+          <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+    await screen.findByRole('listbox');
+
+    expect(isChecked('Tag C')).toBe(true);
+    expect(isChecked('Tag D')).toBe(false);
+
+    await userEvent.click(screen.getByRole('option', { name: 'Tag C' }));
+
+    expect(onItemCleared).toHaveBeenCalledWith('c');
+
+    // A value outside the loaded items stays listed, so the uncheck can be undone.
+    expect(isChecked('Tag C')).toBe(false);
+
+    await userEvent.click(screen.getByRole('option', { name: 'Tag C' }));
+
+    expect(onItemInserted).toHaveBeenCalledWith('c');
+  });
+
+  it('keeps the Backspace walk from the input to the last chip', async () => {
+    const onItemCleared = vi.fn();
+    render(
+      <Autocomplete
+        items={LOADED}
+        maxVisibleItems={1}
+        selectedItems={SELECTED}
+        onItemCleared={onItemCleared}>
+        {(item) => (
+          <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{Backspace}');
+
+    expect(screen.getByTestId('autocomplete-overflow-trigger')).toHaveFocus();
+
+    await userEvent.keyboard('{Backspace}{Backspace}');
+
+    expect(onItemCleared).toHaveBeenCalledWith('a');
+  });
+});
+
+describe('Autocomplete – +N view with created values', () => {
+  it('lists a value created in the session when children are static', async () => {
+    const items: SelectItemType[] = [
+      { id: 'low', label: 'low' },
+      { id: 'high', label: 'high' },
+    ];
+    render(
+      <Autocomplete
+        allowsCreation
+        items={items}
+        maxVisibleItems={1}
+        selectedItems={[items[0]]}>
+        {items.map((item) => (
+          <Autocomplete.Item id={String(item.id)} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        ))}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('medium{Enter}');
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+
+    const options = within(await screen.findByRole('listbox')).getAllByRole(
+      'option'
+    );
+
+    expect(options.map((option) => option.textContent)).toContain('medium');
+  });
+});
+
+describe('Autocomplete – searching the +N view', () => {
+  it('keeps an unloaded selection that matches the search', async () => {
+    const onItemCleared = vi.fn();
+    const selected: SelectItemType[] = [
+      { id: 'a', label: 'Tag A' },
+      { id: 'c', label: 'Tag C' },
+    ];
+    render(
+      // Async caller: only Tag A is loaded and the server does the filtering.
+      <Autocomplete
+        filterOption={() => true}
+        items={[selected[0]]}
+        maxVisibleItems={1}
+        selectedItems={selected}
+        onItemCleared={onItemCleared}>
+        {(item) => (
+          <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+    await screen.findByRole('listbox');
+    await userEvent.keyboard('zzz');
+
+    expect(
+      screen.queryByRole('option', { name: 'Tag C' })
+    ).not.toBeInTheDocument();
+
+    await userEvent.clear(screen.getByRole('combobox'));
+    await userEvent.keyboard('Tag C');
+    await userEvent.click(await screen.findByRole('option', { name: 'Tag C' }));
+
+    expect(onItemCleared).toHaveBeenCalledWith('c');
   });
 });

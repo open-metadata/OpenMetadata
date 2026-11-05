@@ -131,7 +131,7 @@ export function getStickyBodyCellClass(
   fixed: ColumnType<unknown>['fixed']
 ): string {
   return fixed === 'left' || fixed === 'right'
-    ? 'tw:bg-surface tw:dark:group-hover:bg-secondary tw:dark:group-data-[selected]:bg-secondary'
+    ? 'tw:bg-surface tw:group-hover:bg-secondary tw:group-data-[selected]:bg-secondary'
     : '';
 }
 
@@ -274,12 +274,14 @@ export function resolveShowClientPagination(
   } | null,
   filteredDataSourceLength: number
 ): boolean {
+  const rowCount = clientPagination?.serverTotal ?? filteredDataSourceLength;
+
   return Boolean(
     clientPagination &&
+      rowCount > 0 &&
       !(
         clientPagination.hideOnSinglePage &&
-        (clientPagination.serverTotal ?? filteredDataSourceLength) <=
-          clientPagination.pageSize
+        rowCount <= clientPagination.pageSize
       )
   );
 }

@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -308,6 +309,16 @@ public class TagLabelUtil {
    * @throws RuntimeException if derived tags cannot be fetched
    */
   public static List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) {
+    List<TagLabel> tags = getTagsForValidation(tagLabels);
+    if (!nullOrEmpty(tags) && !SettingsCache.isGlossaryTagPropagationEnabled()) {
+      // Suppressed tags must still be compatible when propagation is re-enabled.
+      checkMutuallyExclusive(tags);
+      tags.removeIf(tag -> tag.getLabelType() == TagLabel.LabelType.DERIVED);
+    }
+    return tags;
+  }
+
+  private static List<TagLabel> getTagsForValidation(List<TagLabel> tagLabels) {
     if (nullOrEmpty(tagLabels)) {
       return tagLabels;
     }
@@ -320,10 +331,10 @@ public class TagLabelUtil {
 
     List<TagLabel> updatedTagLabels = new ArrayList<>();
     EntityUtil.mergeTags(updatedTagLabels, filteredTags);
-    for (TagLabel tagLabel : tagLabels) {
-      if (tagLabel != null) {
-        EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
-      }
+    // A DERIVED label came from somewhere else -- a term's own tags or a parent the asset inherits
+    // from -- so only the asset's own labels imply further tags.
+    for (TagLabel tagLabel : filteredTags) {
+      EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
     }
     updatedTagLabels.sort(compareTagLabel);
     return updatedTagLabels;
@@ -331,11 +342,20 @@ public class TagLabelUtil {
 
   /** Add derived tags using a single batch query. Falls back to non-derived tags on failure. */
   public static List<TagLabel> addDerivedTagsGracefully(List<TagLabel> tagLabels) {
+    return nullOrEmpty(tagLabels)
+        ? tagLabels
+        : addDerivedTagsGracefully(tagLabels, SettingsCache.isGlossaryTagPropagationEnabled());
+  }
+
+  /** Use the caller's preference snapshot so a toggle during a load cannot change its cache variant. */
+  public static List<TagLabel> addDerivedTagsGracefully(
+      List<TagLabel> tagLabels, boolean propagationEnabled) {
     if (nullOrEmpty(tagLabels)) {
       return tagLabels;
     }
     try {
-      Map<String, List<TagLabel>> derivedTagsMap = batchFetchDerivedTags(tagLabels);
+      Map<String, List<TagLabel>> derivedTagsMap =
+          batchFetchDerivedTags(tagLabels, propagationEnabled);
       return addDerivedTagsWithPreFetched(tagLabels, derivedTagsMap);
     } catch (Exception ex) {
       LOG.warn(
@@ -350,8 +370,7 @@ public class TagLabelUtil {
   }
 
   private static List<TagLabel> getDerivedTags(TagLabel tagLabel) {
-    if (tagLabel.getSource()
-        == TagLabel.TagSource.GLOSSARY) { // Related tags are only supported for Glossary
+    if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
       List<TagLabel> derivedTags =
           Entity.getCollectionDAO().tagUsageDAO().getTags(tagLabel.getTagFQN());
       derivedTags.forEach(tag -> tag.setLabelType(TagLabel.LabelType.DERIVED));
@@ -362,7 +381,14 @@ public class TagLabelUtil {
 
   /** Batch fetch derived tags for all glossary terms in the list. Returns map of termFQNHash → derived tags. */
   public static Map<String, List<TagLabel>> batchFetchDerivedTags(List<TagLabel> tagLabels) {
-    if (nullOrEmpty(tagLabels)) {
+    return nullOrEmpty(tagLabels)
+        ? Collections.emptyMap()
+        : batchFetchDerivedTags(tagLabels, SettingsCache.isGlossaryTagPropagationEnabled());
+  }
+
+  private static Map<String, List<TagLabel>> batchFetchDerivedTags(
+      List<TagLabel> tagLabels, boolean propagationEnabled) {
+    if (!propagationEnabled) {
       return Collections.emptyMap();
     }
 
@@ -391,7 +417,25 @@ public class TagLabelUtil {
     return result;
   }
 
-  /** Add derived tags using a pre-fetched map to avoid per-tag DB lookups. */
+  /**
+   * Batch fetch derived tags once for a whole entity's tag set, degrading to no derived tags on
+   * failure exactly as {@link #addDerivedTagsGracefully} does. Callers hydrating many fields should
+   * prefetch through this and pass the result to {@link #addDerivedTagsWithPreFetched}, rather than
+   * calling {@code addDerivedTagsGracefully} per field — that issues one query per field.
+   */
+  public static Map<String, List<TagLabel>> batchFetchDerivedTagsGracefully(
+      List<TagLabel> tagLabels) {
+    try {
+      return batchFetchDerivedTags(tagLabels);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to batch fetch derived tags. Proceeding without derived. Error: {}",
+          ex.getMessage());
+      return Collections.emptyMap();
+    }
+  }
+
+  /** Merge the result of batchFetchDerivedTags, which already reflects the propagation preference. */
   public static List<TagLabel> addDerivedTagsWithPreFetched(
       List<TagLabel> tagLabels, Map<String, List<TagLabel>> derivedTagsMap) {
     if (nullOrEmpty(tagLabels)) {
@@ -407,8 +451,9 @@ public class TagLabelUtil {
     List<TagLabel> updatedTagLabels = new ArrayList<>();
     EntityUtil.mergeTags(updatedTagLabels, filteredTags);
 
-    for (TagLabel tagLabel : tagLabels) {
-      if (tagLabel != null && tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
+    // Only the asset's own terms imply tags; see getTagsForValidation.
+    for (TagLabel tagLabel : filteredTags) {
+      if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
         List<TagLabel> derivedTags =
             derivedTagsMap.getOrDefault(
                 FullyQualifiedName.buildHash(tagLabel.getTagFQN()), Collections.emptyList());
@@ -419,10 +464,54 @@ public class TagLabelUtil {
     return updatedTagLabels;
   }
 
+  /**
+   * An asset's own labels with {@code added} appended, ready to store. Its DERIVED labels -- implied
+   * by a term, or inherited from a parent -- are left out: they never reach {@code tag_usage}, and one
+   * for the same term would otherwise shadow {@code added} when the list is de-duplicated by FQN, so
+   * nothing would be stored.
+   */
+  public static List<TagLabel> ownTagsWith(List<TagLabel> currentTags, TagLabel added) {
+    List<TagLabel> tags =
+        new ArrayList<>(
+            listOrEmpty(currentTags).stream().filter(tag -> !isSystemGenerated(tag)).toList());
+    tags.add(added);
+    return getUniqueTags(tags);
+  }
+
   public static List<TagLabel> getUniqueTags(List<TagLabel> tags) {
     Set<TagLabel> uniqueTags = new TreeSet<>(compareTagLabel);
     uniqueTags.addAll(tags);
     return uniqueTags.stream().toList();
+  }
+
+  /**
+   * A label the read path computes rather than one applied to the asset: a classification tag a
+   * glossary term implies, or a label inherited from a parent ({@code EntityRepository#inheritTags}
+   * for entities, {@code Entity#populateEntityFieldTags} for fields). These are never written to
+   * {@code tag_usage} -- a client that reads an asset and writes it back unchanged would otherwise
+   * pin a label that should vanish with its source.
+   *
+   * <p>{@code PROPAGATED} is not one of them: it marks a label propagated along lineage and stored
+   * for the asset itself, so it is persisted and removable like any applied label. See
+   * ADR:2026-10-13-inherited-field-terms-are-derived-and-propagated-stays-lineage.
+   */
+  public static boolean isSystemGenerated(TagLabel tagLabel) {
+    return tagLabel != null && TagLabel.LabelType.DERIVED.equals(tagLabel.getLabelType());
+  }
+
+  /**
+   * Mutual-exclusivity applies to the labels applied to the asset and the classification tags their
+   * glossary terms imply, never to DERIVED labels. A field reads back its parent's glossary terms as
+   * DERIVED, so a GET → PUT round trip would otherwise present the parent's term next to the field's
+   * own and reject a table that saved fine before. A DERIVED label does not say which term it came
+   * from, so the implied tags are re-derived here from the applied labels alone. That happens even
+   * while glossary tag propagation is off, so a write accepted then stays valid when it is back on.
+   */
+  public static void checkMutuallyExclusiveForUserAppliedTags(List<TagLabel> tagLabels) {
+    List<TagLabel> userApplied =
+        listOrEmpty(tagLabels).stream().filter(tag -> !isSystemGenerated(tag)).toList();
+    checkMutuallyExclusive(
+        addDerivedTagsWithPreFetched(userApplied, batchFetchDerivedTags(userApplied, true)));
   }
 
   public static void checkMutuallyExclusive(List<TagLabel> tagLabels) {
@@ -526,7 +615,7 @@ public class TagLabelUtil {
     List<TagLabel> parentTags = filteredTags.remove(assetFqnHash);
 
     if (parentTags != null) {
-      List<TagLabel> tempList = new ArrayList<>(addDerivedTags(parentTags));
+      List<TagLabel> tempList = new ArrayList<>(getTagsForValidation(parentTags));
       tempList.addAll(glossaryTags);
       try {
         checkMutuallyExclusive(getUniqueTags(tempList));
@@ -546,7 +635,8 @@ public class TagLabelUtil {
       // Check SubFields Tags
       Set<TagLabel> subFieldTags =
           filteredTags.values().stream().flatMap(List::stream).collect(Collectors.toSet());
-      List<TagLabel> tempList = new ArrayList<>(addDerivedTags(subFieldTags.stream().toList()));
+      List<TagLabel> tempList =
+          new ArrayList<>(getTagsForValidation(subFieldTags.stream().toList()));
       tempList.addAll(glossaryTags);
       try {
         checkMutuallyExclusive(getUniqueTags(tempList));

@@ -83,3 +83,62 @@ describe('CloseButton', () => {
     );
   });
 });
+
+describe('CloseButton — keyboard focus ring', () => {
+  // CloseButton is an icon-only control, so the keyboard focus outline is the
+  // only signal that a keyboard user has focused it. `tw:focus:outline-hidden`
+  // poisons `--tw-outline-style` to `none`, which collapses the
+  // `tw:focus-visible:outline-2` ring to 0px width — see WCAG 2.4.7. The root
+  // class list must NOT carry it.
+  it('does not carry the tw:focus:outline-hidden class that suppresses the focus ring', async () => {
+    await renderInLocale('en-US');
+    const button = screen.getByRole('button');
+
+    expect(button).not.toHaveClass('tw:focus:outline-hidden');
+  });
+
+  it('renders the focus-visible outline classes for an accessible keyboard focus indicator', async () => {
+    await renderInLocale('en-US');
+    const button = screen.getByRole('button');
+
+    expect(button).toHaveClass('tw:focus-visible:outline-2');
+    expect(button).toHaveClass('tw:focus-visible:outline-offset-2');
+    expect(button).toHaveClass('tw:outline-focus-ring');
+  });
+
+  it.each(['light', 'dark'] as const)(
+    'keeps the focus-visible ring under the %s theme',
+    async (theme) => {
+      await renderInLocale('en-US', { theme });
+      const button = screen.getByRole('button');
+
+      expect(button).toHaveClass('tw:focus-visible:outline-2');
+      expect(button).toHaveClass('tw:focus-visible:outline-offset-2');
+      expect(button).toHaveClass('tw:outline-focus-ring');
+      expect(button).not.toHaveClass('tw:focus:outline-hidden');
+    }
+  );
+
+  it.each(['xs', 'sm', 'md', 'lg'] as const)(
+    'keeps the focus-visible ring at the %s size',
+    async (size) => {
+      await renderInLocale('en-US', { size });
+      const button = screen.getByRole('button');
+
+      expect(button).toHaveClass('tw:focus-visible:outline-2');
+      expect(button).not.toHaveClass('tw:focus:outline-hidden');
+    }
+  );
+
+  it('does not let a consumer className re-introduce the suppressing class', async () => {
+    await renderInLocale('en-US', { className: 'tw:top-3 tw:right-3' });
+    const button = screen.getByRole('button');
+
+    // Consumer positioning classes are applied ...
+    expect(button).toHaveClass('tw:top-3');
+    expect(button).toHaveClass('tw:right-3');
+    // ... but the focus ring stays intact and unsuppressed.
+    expect(button).toHaveClass('tw:focus-visible:outline-2');
+    expect(button).not.toHaveClass('tw:focus:outline-hidden');
+  });
+});

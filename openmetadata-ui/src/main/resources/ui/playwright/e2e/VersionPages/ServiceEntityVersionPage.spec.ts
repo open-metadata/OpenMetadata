@@ -35,6 +35,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 
 /**
  * Service entity classes here still use the legacy positional patch(apiContext, payload)
@@ -64,7 +65,7 @@ const applyServicePatch = async (
 /** Setup failures, keyed by test name, so one service cannot fail the rest. */
 const setupErrors = new Map<string, unknown>();
 
-const entities = {
+const allEntities = {
   'Api Service': new ApiServiceClass(),
   'Api Collection': new ApiCollectionClass(),
   'Dashboard Service': new DashboardServiceClass(),
@@ -78,6 +79,10 @@ const entities = {
   'Database Schema': new DatabaseSchemaClass(),
   'Drive Service': new DriveServiceClass(),
 };
+
+const entities = pickEntityMatrix(__filename, allEntities, {
+  'Database Service': allEntities['Database Service'],
+});
 
 // use the admin user to login
 

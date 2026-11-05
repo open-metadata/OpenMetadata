@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import {
+  Box,
+  Card,
+  Divider,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import entries from 'lodash/entries';
 import isNumber from 'lodash/isNumber';
 import isUndefined from 'lodash/isUndefined';
@@ -20,7 +25,6 @@ import startCase from 'lodash/startCase';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
 import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
@@ -68,11 +72,11 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
     const failedRows = payloadData.failedRows as number | undefined;
     const totalRows = (passedRows ?? 0) + (failedRows ?? 0);
     const formattedDateTime = formatDateTime(timestamp);
-    let statusColor: string | undefined;
+    let statusColor: 'danger' | 'success' | undefined;
     if (status === TestCaseStatus.Failed) {
-      statusColor = RED_3;
+      statusColor = 'danger';
     } else if (status === TestCaseStatus.Success) {
-      statusColor = GREEN_3;
+      statusColor = 'success';
     }
     // A placed value only positions a run that recorded nothing on the chart.
     // Listing it would report a result the run never produced.
@@ -104,13 +108,15 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
         : value;
 
       return (
-        <li
-          className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-          key={`item-${key}`}>
-          <Typography as="span" className="flex items-center text-grey-muted">
+        <Box align="center" gap={6} justify="between" key={`item-${key}`}>
+          <Typography as="span" color="secondary" size="text-sm">
             {startCase(key)}
           </Typography>
-          <Typography as="span" className="font-medium" data-testid={key}>
+          <Typography
+            as="span"
+            data-testid={key}
+            size="text-sm"
+            weight="medium">
             {key === TABLE_FRESHNESS_KEY && isNumber(value)
               ? convertSecondsToHumanReadableFormat(
                   value,
@@ -119,7 +125,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
                 )
               : tooltipValue}
           </Typography>
-        </li>
+        </Box>
       );
     },
     [t]
@@ -148,95 +154,99 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
       data-testid="test-summary-tooltip"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}>
-      <div className="test-summary-tooltip-container">
-        <div className="tooltip-date-time">{formattedDateTime}</div>
-        <Divider dashed className="tw:my-2" />
-        <ul data-testid="test-summary-tooltip-container">
-          <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-            <Typography as="span" className="flex items-center text-grey-muted">
-              {t('label.status')}
-            </Typography>
-            <Typography
-              as="span"
-              className="font-medium"
-              data-testid="status"
-              style={{ color: statusColor }}>
-              {status}
-            </Typography>
-          </li>
-          {incidentDisplayId && incidentPath && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.incident')}
+      <Card.Content>
+        <Box className="test-summary-tooltip-container" direction="col">
+          <Typography size="text-xs" weight="medium">
+            {formattedDateTime}
+          </Typography>
+          <Divider dashed className="tw:my-2" />
+          <Box
+            data-testid="test-summary-tooltip-container"
+            direction="col"
+            gap={1}>
+            <Box align="center" gap={6} justify="between">
+              <Typography as="span" color="secondary" size="text-sm">
+                {t('label.status')}
               </Typography>
               <Typography
                 as="span"
-                className="font-medium"
-                data-testid="incident">
-                <Link
-                  className="tooltip-incident-link font-medium cursor-pointer"
-                  to={incidentPath}>
-                  {`#${incidentDisplayId}`}
-                </Link>
+                color={statusColor}
+                data-testid="status"
+                size="text-sm"
+                weight="medium">
+                {status}
               </Typography>
-            </li>
-          )}
-          {!isUndefined(passedRows) && totalRows > 0 && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.passed-rows')}
-              </Typography>
-              <Typography
-                as="span"
-                className="font-medium"
-                data-testid="rows-passed">
-                {`${formatNumberWithComma(passedRows)}/${formatNumberWithComma(
-                  totalRows
-                )}`}
-              </Typography>
-            </li>
-          )}
-          {!isUndefined(failedRows) && totalRows > 0 && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.failed-rows')}
-              </Typography>
-              <Typography
-                as="span"
-                className="font-medium"
-                data-testid="rows-failed">
-                {`${formatNumberWithComma(failedRows)}/${formatNumberWithComma(
-                  totalRows
-                )}`}
-              </Typography>
-            </li>
-          )}
-          {data.map((entry) =>
-            tooltipRender(entry as [string, string | number])
-          )}
-          {incidentAssignees && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.assignee')}
-              </Typography>
-              <Typography
-                as="span"
-                className="font-medium"
-                data-testid="assignee">
-                <Owner owners={incidentAssignees} />
-              </Typography>
-            </li>
-          )}
-        </ul>
-      </div>
+            </Box>
+            {incidentDisplayId && incidentPath && (
+              <Box align="center" gap={6} justify="between">
+                <Typography as="span" color="secondary" size="text-sm">
+                  {t('label.incident')}
+                </Typography>
+                <Typography
+                  as="span"
+                  data-testid="incident"
+                  size="text-sm"
+                  weight="medium">
+                  <Link
+                    className="tooltip-incident-link font-medium cursor-pointer"
+                    to={incidentPath}>
+                    {`#${incidentDisplayId}`}
+                  </Link>
+                </Typography>
+              </Box>
+            )}
+            {!isUndefined(passedRows) && totalRows > 0 && (
+              <Box align="center" gap={6} justify="between">
+                <Typography as="span" color="secondary" size="text-sm">
+                  {t('label.passed-rows')}
+                </Typography>
+                <Typography
+                  as="span"
+                  data-testid="rows-passed"
+                  size="text-sm"
+                  weight="medium">
+                  {`${formatNumberWithComma(
+                    passedRows
+                  )}/${formatNumberWithComma(totalRows)}`}
+                </Typography>
+              </Box>
+            )}
+            {!isUndefined(failedRows) && totalRows > 0 && (
+              <Box align="center" gap={6} justify="between">
+                <Typography as="span" color="secondary" size="text-sm">
+                  {t('label.failed-rows')}
+                </Typography>
+                <Typography
+                  as="span"
+                  data-testid="rows-failed"
+                  size="text-sm"
+                  weight="medium">
+                  {`${formatNumberWithComma(
+                    failedRows
+                  )}/${formatNumberWithComma(totalRows)}`}
+                </Typography>
+              </Box>
+            )}
+            {data.map((entry) =>
+              tooltipRender(entry as [string, string | number])
+            )}
+            {incidentAssignees && (
+              <Box align="center" gap={6} justify="between">
+                <Typography as="span" color="secondary" size="text-sm">
+                  {t('label.assignee')}
+                </Typography>
+                <Typography
+                  as="span"
+                  data-testid="assignee"
+                  size="text-sm"
+                  weight="medium">
+                  <Owner owners={incidentAssignees} />
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </Box>
+      </Card.Content>
     </Card>
   );
 };

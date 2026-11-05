@@ -1,6 +1,5 @@
 package org.openmetadata.service.security.auth;
 
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static jakarta.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
@@ -12,17 +11,17 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MISSING_ATTR;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.unboundid.ldap.sdk.Attribute;
-import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.Filter;
+import com.unboundid.ldap.sdk.GetEntryLDAPConnectionPoolHealthCheck;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
+import com.unboundid.ldap.sdk.LDAPConnectionPoolHealthCheck;
 import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldap.sdk.SearchRequest;
@@ -31,7 +30,6 @@ import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
 import com.unboundid.util.ssl.SSLUtil;
 import freemarker.template.TemplateException;
-import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
@@ -85,6 +83,12 @@ import org.springframework.util.CollectionUtils;
 public class LdapAuthenticator implements AuthenticatorHandler {
   static final String AD_RECURSIVE_GROUP_MATCHING_RULE = "1.2.840.113556.1.4.1941";
   static final String LDAP_ERR_MSG = "[LDAP] Issue in creating a LookUp Connection ";
+  private static final String ROOT_DSE = "";
+  // Below the idle timeout of common load balancers and firewalls, so the background probe also
+  // keeps them from silently dropping pooled connections that sit idle between logins.
+  private static final long POOL_HEALTH_CHECK_INTERVAL_MILLIS = 60_000L;
+  private static final long POOL_HEALTH_CHECK_TIMEOUT_MILLIS = 5_000L;
+  private static final int DIRECTORY_TIMEOUT_MILLIS = 5_000;
   private static final int MAX_RETRIES = 3;
   private static final int BASE_DELAY_MS = 500;
   private static final String DEFAULT_EMAIL_ATTRIBUTE = "mail";
@@ -101,7 +105,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     if (SecurityConfigurationManager.getCurrentAuthConfig().getProvider().equals(AuthProvider.LDAP)
         && SecurityConfigurationManager.getCurrentAuthConfig().getLdapConfiguration() != null) {
       ldapLookupConnectionPool =
-          getLdapConnectionPool(
+          createLookupConnectionPool(
               SecurityConfigurationManager.getCurrentAuthConfig().getLdapConfiguration());
     } else {
       throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
@@ -115,38 +119,60 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         SecurityConfigurationManager.getCurrentAuthConfig().getEnableSelfSignup();
   }
 
-  private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
-    LDAPConnectionPool connectionPool;
+  static LDAPConnectionPool createLookupConnectionPool(LdapConfiguration ldapConfiguration) {
     try {
-      if (Boolean.TRUE.equals(ldapConfiguration.getSslEnabled())) {
-        LDAPConnectionOptions connectionOptions = new LDAPConnectionOptions();
-        LdapUtil ldapUtil = new LdapUtil();
-        SSLUtil sslUtil =
-            new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfiguration, connectionOptions));
-        LDAPConnection connection =
-            new LDAPConnection(
-                sslUtil.createSSLSocketFactory(),
-                connectionOptions,
-                ldapConfiguration.getHost(),
-                ldapConfiguration.getPort(),
-                ldapConfiguration.getDnAdminPrincipal(),
-                ldapConfiguration.getDnAdminPassword());
-        // Use the connection here.
-        connectionPool = new LDAPConnectionPool(connection, ldapConfiguration.getMaxPoolSize());
-      } else {
-        LDAPConnection conn =
-            new LDAPConnection(
-                ldapConfiguration.getHost(),
-                ldapConfiguration.getPort(),
-                ldapConfiguration.getDnAdminPrincipal(),
-                ldapConfiguration.getDnAdminPassword());
-        connectionPool = new LDAPConnectionPool(conn, ldapConfiguration.getMaxPoolSize());
-      }
+      LDAPConnectionPool connectionPool =
+          new LDAPConnectionPool(
+              openLookupConnection(ldapConfiguration), ldapConfiguration.getMaxPoolSize());
+      connectionPool.setHealthCheck(rootDseHealthCheck());
+      connectionPool.setHealthCheckIntervalMillis(POOL_HEALTH_CHECK_INTERVAL_MILLIS);
+      connectionPool.setRetryFailedOperationsDueToInvalidConnections(true);
+      return connectionPool;
     } catch (LDAPException | GeneralSecurityException e) {
       LOG.error("[LDAP] Issue in creating a LookUp Connection", e);
       throw new IllegalStateException(LDAP_ERR_MSG, e);
     }
-    return connectionPool;
+  }
+
+  private static LDAPConnection openLookupConnection(LdapConfiguration ldapConfiguration)
+      throws LDAPException, GeneralSecurityException {
+    LDAPConnection connection = openConnection(ldapConfiguration, new LDAPConnectionOptions());
+    try {
+      connection.bind(
+          ldapConfiguration.getDnAdminPrincipal(), ldapConfiguration.getDnAdminPassword());
+    } catch (LDAPException e) {
+      connection.close();
+      throw e;
+    }
+    return connection;
+  }
+
+  /**
+   * Reads the root DSE to prove a pooled connection still gets answers: before each checkout, on
+   * every background pass, and after an error that may have broken it. A connection that stays
+   * silent past the timeout is replaced instead of stalling the login that drew it.
+   */
+  private static LDAPConnectionPoolHealthCheck rootDseHealthCheck() {
+    boolean invokeOnCreate = false;
+    boolean invokeOnCheckout = true;
+    boolean invokeOnRelease = false;
+    boolean invokeForBackgroundChecks = true;
+    boolean invokeOnException = true;
+    return new GetEntryLDAPConnectionPoolHealthCheck(
+        ROOT_DSE,
+        POOL_HEALTH_CHECK_TIMEOUT_MILLIS,
+        invokeOnCreate,
+        invokeOnCheckout,
+        invokeOnRelease,
+        invokeForBackgroundChecks,
+        invokeOnException);
+  }
+
+  @Override
+  public void close() {
+    if (ldapLookupConnectionPool != null) {
+      ldapLookupConnectionPool.close();
+    }
   }
 
   @Override
@@ -187,7 +213,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   /** Assign directory roles to a user that is about to be created. */
   private void assignLdapRoles(String userDn, User user) {
     try {
-      getRoleForLdap(userDn, user, false);
+      getRoleForLdap(userDn, user);
     } catch (JsonProcessingException ex) {
       LOG.error(
           "Failed to assign roles from LDAP for user {} due to {}",
@@ -196,15 +222,18 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
   }
 
+  /** Returns whether the roles or the admin flag changed, so the provisioner saves either. */
   private boolean syncLdapRoles(String userDn, User user) {
     List<EntityReference> previousRoles = normalizeRoles(user.getRoles());
+    boolean wasAdmin = Boolean.TRUE.equals(user.getIsAdmin());
     try {
-      getRoleForLdap(userDn, user, false);
+      getRoleForLdap(userDn, user);
     } catch (JsonProcessingException ex) {
       LOG.error(
           "Failed to sync roles from LDAP for user {} due to {}", user.getName(), ex.getMessage());
     }
-    return !Objects.equals(previousRoles, normalizeRoles(user.getRoles()));
+    return !Objects.equals(previousRoles, normalizeRoles(user.getRoles()))
+        || wasAdmin != Boolean.TRUE.equals(user.getIsAdmin());
   }
 
   private List<EntityReference> normalizeRoles(List<EntityReference> roles) {
@@ -256,37 +285,50 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   private void performLdapBind(String userDn, String reqPassword, User dummy) {
-    BindResult bindingResult = null;
+    ResultCode resultCode = bind(userDn, reqPassword);
+    if (ResultCode.SUCCESS.equals(resultCode)) {
+      LoginAttemptCache.getInstance().recordSuccessfulLogin(dummy.getEmail());
+      return;
+    }
+    if (ResultCode.INVALID_CREDENTIALS.equals(resultCode)) {
+      recordFailedLogin(dummy);
+      throw new CustomExceptionMessage(
+          UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
+    }
+    LOG.error("LDAP bind failed with unexpected result: {}", resultCode.getName());
+    throw new CustomExceptionMessage(
+        INTERNAL_SERVER_ERROR, "LDAP_AUTH_ERROR", "Authentication failed: " + resultCode.getName());
+  }
+
+  /**
+   * The bind's result code. UnboundID reports a rejected bind by throwing rather than by returning a
+   * result, so a wrong password arrives as an exception carrying {@code INVALID_CREDENTIALS}.
+   */
+  ResultCode bind(String userDn, String reqPassword) {
     LDAPConnection userConnection = null;
     try {
       userConnection = openConnection(ldapConfiguration, new LDAPConnectionOptions());
-
-      // Perform the bind operation
-      bindingResult = userConnection.bind(userDn, reqPassword);
-      if (Objects.equals(bindingResult.getResultCode().getName(), ResultCode.SUCCESS.getName())) {
-        return;
+      return userConnection.bind(userDn, reqPassword).getResultCode();
+    } catch (LDAPException ex) {
+      if (ResultCode.INVALID_CREDENTIALS.equals(ex.getResultCode())) {
+        return ResultCode.INVALID_CREDENTIALS;
       }
-
-      if (Objects.equals(
-          bindingResult.getResultCode().getName(), ResultCode.INVALID_CREDENTIALS.getName())) {
-        recordFailedLoginAttempt(dummy.getEmail(), dummy.getName());
-        throw new CustomExceptionMessage(
-            UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
-      }
+      throw ldapFailure(ex);
     } catch (Exception ex) {
-      handleLdapException(ex);
+      throw ldapFailure(ex);
     } finally {
       if (userConnection != null) {
         userConnection.close();
       }
     }
+  }
 
-    LOG.error(
-        "LDAP bind failed with unexpected result: {}", bindingResult.getResultCode().getName());
-    throw new CustomExceptionMessage(
-        INTERNAL_SERVER_ERROR,
-        "LDAP_AUTH_ERROR",
-        "Authentication failed: " + bindingResult.getResultCode().getName());
+  private void recordFailedLogin(User dummy) {
+    try {
+      recordFailedLoginAttempt(dummy.getEmail(), dummy.getName());
+    } catch (TemplateException | IOException e) {
+      LOG.warn("Could not send the failed-login notice for {}", dummy.getName(), e);
+    }
   }
 
   @Override
@@ -349,7 +391,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         }
 
         String ldapEmail = emailAttr.getValue();
-        if (!email.equalsIgnoreCase(ldapEmail)) {
+        if (!SecurityUtil.sameIdentifier(email, ldapEmail)) {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
 
@@ -409,10 +451,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   /**
-   * Getting user's roles according to the mapping between ldap groups and roles
+   * Sets the user's roles and admin flag from the directory groups the user is in now, a user in no
+   * group included. The caller saves the user. A configured admin principal stays admin.
    */
-  private void getRoleForLdap(String userDn, User user, Boolean reAssign)
-      throws JsonProcessingException {
+  private void getRoleForLdap(String userDn, User user) throws JsonProcessingException {
     // Get user's groups from LDAP server using the DN of the user
     try {
       Filter groupFilter =
@@ -429,21 +471,14 @@ public class LdapAuthenticator implements AuthenticatorHandler {
               ldapConfiguration.getAllAttributeName());
       SearchResult searchResult = ldapLookupConnectionPool.search(searchRequest);
 
-      // if user don't belong to any group, assign empty role list to it
-      if (CollectionUtils.isEmpty(searchResult.getSearchEntries())) {
-        if (Boolean.TRUE.equals(reAssign)) {
-          user.setRoles(this.getReassignRoles(user, new ArrayList<>(0), Boolean.FALSE));
-          UserUtil.addOrUpdateUser(user);
-        }
-        return;
-      }
-
-      // get the role mapping from LDAP configuration
       Map<String, List<String>> roleMapping =
-          JsonUtils.readValue(ldapConfiguration.getAuthRolesMapping(), new TypeReference<>() {});
+          CollectionUtils.isEmpty(searchResult.getSearchEntries())
+              ? Map.of()
+              : JsonUtils.readValue(
+                  ldapConfiguration.getAuthRolesMapping(), new TypeReference<>() {});
       List<EntityReference> roleReferenceList = new ArrayList<>();
 
-      boolean adminFlag = Boolean.FALSE;
+      boolean adminFlag = isUserAdmin(user.getEmail(), user.getName());
 
       // match the user's ldap groups with the role mapping according to groupDN
       for (SearchResultEntry searchResultEntry : searchResult.getSearchEntries()) {
@@ -483,10 +518,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
                           LinkedHashMap::new))
                   .values());
       user.setRoles(this.getReassignRoles(user, roleReferenceList, adminFlag));
-
-      if (Boolean.TRUE.equals(reAssign)) {
-        UserUtil.addOrUpdateUser(user);
-      }
     } catch (Exception ex) {
       LOG.warn(
           "Failed to get user's groups from LDAP server using the DN of the user {} due to {}",
@@ -514,6 +545,14 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
     return new LDAPConnection(
         connectionOptions, ldapConfiguration.getHost(), ldapConfiguration.getPort());
+  }
+
+  /** For a connection opened on a request thread: an unreachable directory must fail in seconds. */
+  static LDAPConnectionOptions boundedConnectionOptions() {
+    LDAPConnectionOptions options = new LDAPConnectionOptions();
+    options.setConnectTimeoutMillis(DIRECTORY_TIMEOUT_MILLIS);
+    options.setResponseTimeoutMillis(DIRECTORY_TIMEOUT_MILLIS);
+    return options;
   }
 
   /** The attribute login matches the entered email against: emailClaim, else mailAttributeName. */
@@ -601,7 +640,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   @Override
   public JwtResponse getNewAccessToken(TokenRefreshRequest request) {
     if (CommonUtil.nullOrEmpty(request.getRefreshToken())) {
-      throw new BadRequestException("Token Cannot be Null or Empty String");
+      throw new AuthenticationException("Refresh token is required. Please login again.");
     }
     TokenInterface tokenInterface = tokenRepository.findByToken(request.getRefreshToken());
     User storedUser =
@@ -636,20 +675,15 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     RefreshToken storedRefreshToken =
         (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
-      throw new CustomExceptionMessage(
-          BAD_REQUEST,
-          PASSWORD_RESET_TOKEN_EXPIRED,
-          "Expired token. Please login again : " + storedRefreshToken.getToken().toString());
+      throw new AuthenticationException("Refresh token expired. Please login again.");
     }
 
-    // just delete the existing token
-    tokenRepository.deleteToken(requestRefreshToken);
-    // we use rotating refresh token , generate new token
+    // Used once, as in BasicAuthenticator: a token deleted while this request ran is not renewed.
     RefreshToken newRefreshToken =
         TokenUtil.getRefreshTokenForLDAP(currentUserId, UUID.randomUUID());
-    // save Refresh Token in Database
-    tokenRepository.insertToken(newRefreshToken);
-
+    if (!tokenRepository.replaceToken(requestRefreshToken, newRefreshToken)) {
+      throw new AuthenticationException("Refresh token is no longer valid. Please login again.");
+    }
     return newRefreshToken;
   }
 
@@ -671,7 +705,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  private void handleLdapException(Exception ex) {
+  private CustomExceptionMessage ldapFailure(Exception ex) {
     if (ex instanceof LDAPException ldapEx) {
       ResultCode resultCode = ldapEx.getResultCode();
       String errorMessage = ldapEx.getMessage();
@@ -685,23 +719,23 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           || errorMessage.contains("Connection reset")
           || errorMessage.contains("No route to host")) {
         LOG.error("LDAP connection error during authentication: {}", errorMessage);
-        throw new CustomExceptionMessage(
+        return new CustomExceptionMessage(
             SERVICE_UNAVAILABLE,
             "LDAP_CONNECTION_ERROR",
             "Unable to connect to authentication server. Please try again later.");
       }
       LOG.error("LDAP error during authentication: {}", errorMessage);
-      throw new CustomExceptionMessage(
+      return new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR, "LDAP_ERROR", "Authentication server error: " + errorMessage);
     } else if (ex instanceof GeneralSecurityException) {
       LOG.error("SSL/TLS error during LDAP authentication", ex);
-      throw new CustomExceptionMessage(
+      return new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR,
           "LDAP_SSL_ERROR",
           "SSL/TLS configuration error: " + ex.getMessage());
     } else {
       LOG.error("Unexpected error during LDAP authentication", ex);
-      throw new CustomExceptionMessage(
+      return new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR,
           "LDAP_UNEXPECTED_ERROR",
           "Unexpected authentication error: " + ex.getMessage());

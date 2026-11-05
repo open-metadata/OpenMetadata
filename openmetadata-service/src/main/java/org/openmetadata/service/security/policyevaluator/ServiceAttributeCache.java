@@ -89,7 +89,7 @@ public final class ServiceAttributeCache {
    * authorization decision; it simply stops matching the condition.
    */
   private static ServiceAttributes load(EntityReference serviceReference) {
-    EntityInterface service =
+    EntityInterface<?> service =
         Entity.getEntityOrNull(serviceReference, Entity.FIELD_TAGS, Include.ALL);
     if (service == null) {
       return NONE;

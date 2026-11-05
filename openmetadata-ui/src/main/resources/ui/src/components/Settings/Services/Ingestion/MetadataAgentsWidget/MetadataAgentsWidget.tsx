@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import { Card, Typography } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';

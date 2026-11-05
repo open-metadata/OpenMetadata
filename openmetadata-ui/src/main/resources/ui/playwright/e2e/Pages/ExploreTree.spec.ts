@@ -555,6 +555,7 @@ test.describe('Explore page', () => {
       page,
       buttonTestId: 'copy-field-link-button',
       containerTestId: 'search-index-fields-table',
+      rowName: searchIndex.children[0].name,
       expectedUrlPath: '/searchIndex/',
       entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
     });
@@ -571,6 +572,7 @@ test.describe('Explore page', () => {
       page,
       buttonTestId: 'copy-field-link-button',
       containerTestId: 'schema-fields-table',
+      rowName: apiEndpoint.children[0].name,
       expectedUrlPath: '/apiEndpoint/',
       entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
     });

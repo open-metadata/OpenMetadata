@@ -27,6 +27,8 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -45,6 +47,7 @@ import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -84,7 +87,9 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.TestCaseSearchMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -104,6 +109,7 @@ import os.org.opensearch.client.opensearch.core.search.Suggest;
 @Collection(name = "search")
 @LatencyPhase
 public class SearchResource {
+  private static final String MUST_BE_NON_NEGATIVE = "must be greater than or equal to 0";
   private final SearchRepository searchRepository;
   private final Authorizer authorizer;
 
@@ -163,10 +169,12 @@ public class SearchResource {
           Boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size,
       @Parameter(
@@ -268,7 +276,13 @@ public class SearchResource {
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
 
-    return cachedSearch(request, subjectContext);
+    return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
+  }
+
+  private Response filterTestCaseResponses(
+      Response response, SecurityContext securityContext, SearchRequest request) {
+    return TestCaseSearchMasker.maskSearch(
+        response, authorizer, securityContext, searchRepository, request);
   }
 
   private Response cachedSearch(SearchRequest request, SubjectContext subjectContext)
@@ -503,6 +517,19 @@ public class SearchResource {
           @QueryParam("from")
           int from) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
+    // The job searches later, so a search it would refuse is refused now rather than as a failed
+    // job.
+    PrivateSearchFields.refuseReferences(
+        subjectContext,
+        buildExportSearchRequest(
+            subjectContext,
+            query,
+            index,
+            deleted,
+            queryFilter,
+            postFilter,
+            sortFieldParam,
+            sortOrder));
     CsvAsyncJobArgs.SearchExportArgs searchExport =
         new CsvAsyncJobArgs.SearchExportArgs()
             .setQuery(query)
@@ -545,6 +572,12 @@ public class SearchResource {
       @RequestBody(description = "Preview request containing search settings", required = true)
           PreviewSearchRequest previewRequest)
       throws IOException {
+    // Preview runs with caller-supplied search settings, which can be made expensive enough to
+    // stall
+    // the cluster; it is an admin tool for tuning those settings, so only admins may call it.
+    authorizer.authorizeAdmin(securityContext);
+    requireNonNegative("from", previewRequest.getFrom());
+    requireNonNegative("size", previewRequest.getSize());
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
 
@@ -566,6 +599,12 @@ public class SearchResource {
 
     return searchRepository.previewSearch(
         searchRequest, subjectContext, previewRequest.getSearchSettings());
+  }
+
+  private static void requireNonNegative(String fieldName, Integer value) {
+    if (value != null && value < 0) {
+      throw new BadRequestException(String.format("%s %s", fieldName, MUST_BE_NON_NEGATIVE));
+    }
   }
 
   @GET
@@ -599,10 +638,12 @@ public class SearchResource {
           boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size,
       @Parameter(
@@ -677,7 +718,8 @@ public class SearchResource {
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain);
 
-    return searchRepository.searchWithNLQ(request, subjectContext);
+    return filterTestCaseResponses(
+        searchRepository.searchWithNLQ(request, subjectContext), securityContext, request);
   }
 
   @GET
@@ -702,6 +744,8 @@ public class SearchResource {
       @Parameter(description = "Index Name", schema = @Schema(type = "string")) @PathParam("index")
           String indexName)
       throws IOException {
+    // A raw document from any index, read by id with no policy filter; for admins and bots only.
+    authorizer.authorizeAdminOrBot(securityContext);
     return searchRepository.getDocument(indexName, id);
   }
 
@@ -734,15 +778,21 @@ public class SearchResource {
           boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size)
       throws IOException {
 
-    return searchRepository.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return filterTestCaseResponses(
+        searchRepository.searchByField(
+            fieldName, fieldValue, index, deleted, from, size, getSubjectContext(securityContext)),
+        securityContext,
+        new SearchRequest().withIndex(index));
   }
 
   @GET
@@ -765,7 +815,10 @@ public class SearchResource {
       @Parameter(description = "source url") @QueryParam("sourceUrl") String sourceUrl)
       throws IOException {
 
-    return searchRepository.searchBySourceUrl(sourceUrl);
+    return filterTestCaseResponses(
+        searchRepository.searchBySourceUrl(sourceUrl, getSubjectContext(securityContext)),
+        securityContext,
+        new SearchRequest().withIndex("all"));
   }
 
   @GET
@@ -833,7 +886,12 @@ public class SearchResource {
             .withDeleted(deleted)
             .withQueryText(queryText);
 
-    return searchRepository.aggregate(aggregationRequest);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return TestCaseSearchMasker.maskAggregation(
+        aggregationRequest,
+        authorizer,
+        securityContext,
+        new TestCaseSearchMasker.AggregationContext(searchRepository, subjectContext));
   }
 
   @POST
@@ -856,7 +914,12 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
-    return searchRepository.aggregate(aggregationRequest);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return TestCaseSearchMasker.maskAggregation(
+        aggregationRequest,
+        authorizer,
+        securityContext,
+        new TestCaseSearchMasker.AggregationContext(searchRepository, subjectContext));
   }
 
   @GET
@@ -1054,7 +1117,7 @@ public class SearchResource {
 
                       String fields =
                           String.join(",", ReindexingUtil.getSearchIndexFields(entityType));
-                      EntityInterface entity = Entity.getEntity(ref, fields, Include.ALL);
+                      EntityInterface<?> entity = Entity.getEntity(ref, fields, Include.ALL);
 
                       String indexName =
                           indexMapping.getIndexName(searchRepository.getClusterAlias());
@@ -1073,7 +1136,7 @@ public class SearchResource {
                             docSizeBytes,
                             maxContentLength);
 
-                        EntityInterface reducedEntity =
+                        EntityInterface<?> reducedEntity =
                             Entity.getEntity(
                                 ref,
                                 "id,name,fullyQualifiedName,displayName,description,owners,tags,deleted",
@@ -1272,7 +1335,8 @@ public class SearchResource {
     response.setIsSearchIndexingRunning(isSearchIndexingRunning());
 
     Map<String, org.openmetadata.search.IndexMapping> indexMap =
-        searchRepository.getEntityIndexMap();
+        new HashMap<>(searchRepository.getEntityIndexMap());
+    indexMap.keySet().removeIf(searchRepository::isIndexDisabled);
     List<String> missingIndexes = new java.util.ArrayList<>();
     for (Map.Entry<String, org.openmetadata.search.IndexMapping> entry : indexMap.entrySet()) {
       if (!searchRepository.indexExists(entry.getValue())) {

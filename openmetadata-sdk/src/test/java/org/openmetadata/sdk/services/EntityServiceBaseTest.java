@@ -12,8 +12,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.flipkart.zjsonpatch.JsonPatch;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.json.Json;
+import jakarta.json.JsonPatch;
+import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,9 +29,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.AssetRealization;
-import org.openmetadata.schema.type.AssetRealizationRole;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -36,12 +39,12 @@ import org.openmetadata.sdk.network.RequestOptions;
 
 class EntityServiceBaseTest {
   private static final String GLOSSARY_TERMS_PATH = "/v1/glossaryTerms";
-  private static final String REALIZED_IN = "realizedIn";
+  private static final String RELATED_TERMS = "relatedTerms";
   private static final String TERM_NAME = "Customer";
   private static final UUID TERM_ID = UUID.fromString("30000000-0000-0000-0000-000000000001");
-  private static final UUID ORIGINAL_ASSET_ID =
+  private static final UUID ORIGINAL_TERM_ID =
       UUID.fromString("30000000-0000-0000-0000-000000000002");
-  private static final UUID UPDATED_ASSET_ID =
+  private static final UUID UPDATED_TERM_ID =
       UUID.fromString("30000000-0000-0000-0000-000000000003");
 
   @Mock private OpenMetadataHttpClient mockHttpClient;
@@ -169,28 +172,37 @@ class EntityServiceBaseTest {
   }
 
   @Test
-  void updateFetchesFieldsContainingNestedEntityReferences() {
-    GlossaryTerm original = glossaryTerm(ORIGINAL_ASSET_ID, AssetRealizationRole.PRIMARY_STORE);
-    GlossaryTerm withoutRealizations = new GlossaryTerm().withId(TERM_ID).withName(TERM_NAME);
-    GlossaryTerm updated = glossaryTerm(UPDATED_ASSET_ID, AssetRealizationRole.REPLICA);
+  void updateFetchesFieldsContainingNestedEntityReferences() throws JsonProcessingException {
+    GlossaryTerm original = glossaryTerm(ORIGINAL_TERM_ID);
+    GlossaryTerm withoutRelations = new GlossaryTerm().withId(TERM_ID).withName(TERM_NAME);
+    GlossaryTerm updated = glossaryTerm(UPDATED_TERM_ID);
     EntityServiceBase<GlossaryTerm> glossaryTermService = glossaryTermService();
-    ArgumentCaptor<RequestOptions> getOptions =
-        stubGlossaryTermFetch(original, withoutRealizations);
+    ArgumentCaptor<RequestOptions> getOptions = stubGlossaryTermFetch(original, withoutRelations);
     ArgumentCaptor<JsonNode> patch = captureGlossaryTermPatch(updated);
 
     glossaryTermService.update(TERM_ID, updated);
 
-    assertTrue(requestedFields(getOptions.getValue()).contains(REALIZED_IN));
-    JsonNode patchedOriginal =
-        JsonPatch.apply(patch.getValue(), glossaryTermService.objectMapper.valueToTree(original));
-    assertEquals(1, patchedOriginal.path(REALIZED_IN).size());
+    assertTrue(requestedFields(getOptions.getValue()).contains(RELATED_TERMS));
+    ObjectMapper mapper = glossaryTermService.objectMapper;
+    JsonNode patchedOriginal = applyPatch(mapper, patch.getValue(), mapper.valueToTree(original));
+    assertEquals(1, patchedOriginal.path(RELATED_TERMS).size());
     assertEquals(
-        UPDATED_ASSET_ID.toString(),
-        patchedOriginal.path(REALIZED_IN).get(0).path("asset").path("id").asText());
+        UPDATED_TERM_ID.toString(),
+        patchedOriginal.path(RELATED_TERMS).get(0).path("term").path("id").asText());
+  }
+
+  private static JsonNode applyPatch(ObjectMapper mapper, JsonNode patch, JsonNode document)
+      throws JsonProcessingException {
+    JsonPatch jsonPatch =
+        Json.createPatch(Json.createReader(new StringReader(patch.toString())).readArray());
+    return mapper.readTree(
+        jsonPatch
+            .apply(Json.createReader(new StringReader(document.toString())).readObject())
+            .toString());
   }
 
   private ArgumentCaptor<RequestOptions> stubGlossaryTermFetch(
-      GlossaryTerm original, GlossaryTerm withoutRealizations) {
+      GlossaryTerm original, GlossaryTerm withoutRelations) {
     ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
     when(mockHttpClient.execute(
             eq(HttpMethod.GET),
@@ -200,9 +212,9 @@ class EntityServiceBaseTest {
             options.capture()))
         .thenAnswer(
             invocation ->
-                requestedFields(invocation.getArgument(4)).contains(REALIZED_IN)
+                requestedFields(invocation.getArgument(4)).contains(RELATED_TERMS)
                     ? original
-                    : withoutRealizations);
+                    : withoutRelations);
     return options;
   }
 
@@ -227,13 +239,15 @@ class EntityServiceBaseTest {
     };
   }
 
-  private static GlossaryTerm glossaryTerm(UUID assetId, AssetRealizationRole role) {
-    EntityReference asset = new EntityReference().withId(assetId).withType("table");
-    AssetRealization realization = new AssetRealization().withAsset(asset).withRole(role);
+  private static GlossaryTerm glossaryTerm(UUID relatedTermId) {
+    TermRelation relation =
+        new TermRelation()
+            .withTerm(new EntityReference().withId(relatedTermId).withType("glossaryTerm"))
+            .withRelationType("relatedTo");
     return new GlossaryTerm()
         .withId(TERM_ID)
         .withName(TERM_NAME)
-        .withRealizedIn(List.of(realization));
+        .withRelatedTerms(List.of(relation));
   }
 
   private static Set<String> requestedFields(RequestOptions options) {
@@ -334,6 +348,51 @@ class EntityServiceBaseTest {
 
     verify(mockHttpClient)
         .execute(eq(HttpMethod.DELETE), eq("/v1/tables/" + tableId), isNull(), eq(Void.class));
+  }
+
+  @Test
+  void testDeleteByName() {
+    String fqn = "service.db.schema.table";
+
+    when(mockHttpClient.execute(
+            eq(HttpMethod.DELETE), eq("/v1/tables/name/" + fqn), isNull(), eq(Void.class)))
+        .thenReturn(null);
+
+    tableService.deleteByName(fqn);
+
+    // by-FQN delete must hit the /name/{fqn} endpoint, never the by-id /{id} path.
+    verify(mockHttpClient)
+        .execute(eq(HttpMethod.DELETE), eq("/v1/tables/name/" + fqn), isNull(), eq(Void.class));
+    verify(mockHttpClient, never())
+        .execute(eq(HttpMethod.DELETE), eq("/v1/tables/" + fqn), isNull(), eq(Void.class));
+  }
+
+  @Test
+  void testDeleteByNameWithParams() {
+    String fqn = "service.db.schema.table";
+    Map<String, String> params = Map.of("recursive", "true", "hardDelete", "true");
+
+    ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+    when(mockHttpClient.execute(
+            eq(HttpMethod.DELETE),
+            eq("/v1/tables/name/" + fqn),
+            isNull(),
+            eq(Void.class),
+            options.capture()))
+        .thenReturn(null);
+
+    tableService.deleteByName(fqn, params);
+
+    verify(mockHttpClient)
+        .execute(
+            eq(HttpMethod.DELETE),
+            eq("/v1/tables/name/" + fqn),
+            isNull(),
+            eq(Void.class),
+            any(RequestOptions.class));
+    RequestOptions captured = options.getValue();
+    assertEquals("true", captured.getQueryParams().get("recursive"));
+    assertEquals("true", captured.getQueryParams().get("hardDelete"));
   }
 
   // Note: restore method is not part of the base EntityServiceBase class

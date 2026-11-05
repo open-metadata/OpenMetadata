@@ -223,8 +223,10 @@ class EntityRepositoryCertificationTest {
   }
 
   @Test
-  void updateCertificationBotPutOmittingCertificationWithOverrideMetadataClearsIt()
+  void updateCertificationBotPutOmittingCertificationWithOverrideMetadataPreservesIt()
       throws Exception {
+    // Most connectors never send a certification, so reading its absence as "clear" would wipe
+    // every curated certification on each override run.
     registerBotUser("ingestion-bot");
     TagLabel origLabel = new TagLabel().withTagFQN("Certification.Gold");
     AssetCertification origCert = new AssetCertification().withTagLabel(origLabel);
@@ -238,7 +240,8 @@ class EntityRepositoryCertificationTest {
 
     invokeUpdateCertification(updater);
 
-    assertNull(updated.getCertification());
+    assertNotNull(updated.getCertification());
+    assertEquals("Certification.Gold", updated.getCertification().getTagLabel().getTagFQN());
   }
 
   @Test

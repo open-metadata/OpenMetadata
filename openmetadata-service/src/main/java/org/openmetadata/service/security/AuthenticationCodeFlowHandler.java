@@ -4,10 +4,11 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.getClaimAsList;
+import static org.openmetadata.service.security.SecurityUtil.isEmailRegistrationDomainAllowed;
+import static org.openmetadata.service.security.SecurityUtil.sameIdentifier;
 import static org.openmetadata.service.security.SecurityUtil.trustedRedirects;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
-import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
 import static org.pac4j.core.util.CommonHelper.isNotEmpty;
 
@@ -16,6 +17,7 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.proc.BadJWTException;
 import com.nimbusds.oauth2.sdk.AuthorizationCode;
 import com.nimbusds.oauth2.sdk.AuthorizationCodeGrant;
@@ -37,7 +39,6 @@ import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallenge;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod;
 import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
-import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.openid.connect.sdk.AuthenticationErrorResponse;
 import com.nimbusds.openid.connect.sdk.AuthenticationRequest;
 import com.nimbusds.openid.connect.sdk.AuthenticationResponse;
@@ -52,9 +53,12 @@ import com.nimbusds.openid.connect.sdk.validators.BadJWTExceptions;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
@@ -68,25 +72,29 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
-import org.openmetadata.schema.auth.JWTAuthMechanism;
-import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
@@ -139,8 +147,16 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final String FORCED_REAUTHENTICATION_MAX_AGE = "0";
 
   private static final String MCP_CALLBACK_PATH = "/mcp/callback";
+  private static final String AUTH_CALLBACK_PATH = "/auth/callback";
+  private static final String CALLBACK_SERVLET_PATH = "/callback";
+  private static final String SIGNIN_PATH = "/signin";
+  private static final String LOGOUT_PATH = "/logout";
 
   static final String SESSION_REVOKED_DURING_REFRESH = "Session revoked during refresh";
+  static final String AUTHORIZATION_CODE_REQUIRED = "Authorization code is required";
+
+  /** The browser renews a minute before its token expires; a shorter-lived one would loop. */
+  private static final long BROWSER_RENEWAL_MARGIN_MILLIS = TimeUnit.SECONDS.toMillis(60);
 
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
@@ -155,10 +171,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private String serverUrl;
   private ClientAuthentication clientAuthentication;
   private String principalDomain;
-  private int tokenValidity;
   private String maxAge;
   private String promptType;
-  private boolean endsSessionWithProvider;
+  @Getter private String providerIssuer;
+  @Getter private URL providerKeySetUrl;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final SessionService sessionService;
@@ -274,21 +290,32 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             authorizerConfiguration.getPrincipalDomain(),
             authorizerConfiguration.getAllowedEmailDomains(),
             authorizerConfiguration.getAllowedDomains());
-    Integer configuredTokenValidity =
-        authenticationConfiguration.getOidcConfiguration().getTokenValidity();
-    if (!TokenValidityResolver.isValid(configuredTokenValidity)) {
-      LOG.warn(
-          "OIDC token validity must be positive; using the {} second default",
-          TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS);
-    }
-    this.tokenValidity = TokenValidityResolver.resolveOrDefault(configuredTokenValidity);
     this.maxAge = normalizeMaxAge(authenticationConfiguration.getOidcConfiguration().getMaxAge());
     this.promptType =
         normalizePrompt(authenticationConfiguration.getOidcConfiguration().getPrompt());
-    this.endsSessionWithProvider =
-        Boolean.TRUE.equals(
-            authenticationConfiguration.getOidcConfiguration().getEndSessionWithProvider());
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
+    OIDCProviderMetadata providerMetadata = resolveProviderMetadata(client.getConfiguration());
+    this.providerIssuer =
+        providerMetadata.getIssuer() == null ? null : providerMetadata.getIssuer().getValue();
+    this.providerKeySetUrl = keySetUrlOf(providerMetadata);
+  }
+
+  private static URL keySetUrlOf(OIDCProviderMetadata providerMetadata) {
+    URI keySetUri = providerMetadata.getJWKSetURI();
+    try {
+      return keySetUri == null ? null : keySetUri.toURL();
+    } catch (MalformedURLException | IllegalArgumentException e) {
+      throw new TechnicalException("Identity provider published an invalid jwks_uri", e);
+    }
+  }
+
+  /** Whether this handler signs users in for {@code oidcClient}: same client, same provider. */
+  public boolean servesClient(OidcClientConfig oidcClient) {
+    OidcClientConfig current = authenticationConfiguration.getOidcConfiguration();
+    return oidcClient != null
+        && Objects.equals(current.getId(), oidcClient.getId())
+        && StringUtils.trimToEmpty(current.getDiscoveryUri())
+            .equals(StringUtils.trimToEmpty(oidcClient.getDiscoveryUri()));
   }
 
   /**
@@ -443,24 +470,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         redirectUri = requireRedirectUri(requestedRedirectUri);
       }
 
-      // The active-session shortcut mints an OpenMetadata-internal JWT (issuer = deployment
-      // authority) and returns it directly. That is fine for web login, but the MCP callback
-      // validates the id_token against the external OIDC provider's issuer/JWKS and rejects an
-      // OpenMetadata-issued token as an issuer mismatch. For MCP, always run the full
-      // authorization-code round-trip so the id_token comes from the provider itself.
-      if (!isMcpFlow) {
-        Optional<UserSession> activeSession = sessionService.getActiveSession(req, resp);
-        if (activeSession.isPresent()) {
-          User user = getSessionUser(activeSession.get());
-          if (user != null) {
-            JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession.get());
-            sendRedirectWithToken(resp, redirectUri, user, jwtAuthMechanism.getJWTToken());
-            return;
-          }
-          sessionService.revokeSession(req, resp);
-        }
-      }
-
       Map<String, String> params = buildLoginParams(client.getConfiguration());
       params.put(OidcConfiguration.REDIRECT_URI, client.getCallbackUrl());
 
@@ -469,6 +478,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       if (isMcpFlow) {
         persistMcpPendingState(req, pendingLoginContext);
       }
+      revokeTheSessionThisLoginReplaces(req, resp);
       sessionService.createPendingSession(
           req,
           resp,
@@ -540,6 +550,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return (serverUrl + MCP_CALLBACK_PATH).equals(redirectUri);
   }
 
+  /**
+   * The pending session's cookie replaces the browser's current one, and nothing reaches that
+   * session again. Left active, it would keep its refresh tokens until it expires and count toward
+   * maxActiveSessionsPerUser, so signing in again on one browser could evict another device.
+   */
+  private void revokeTheSessionThisLoginReplaces(HttpServletRequest req, HttpServletResponse resp) {
+    sessionService
+        .getActiveSession(req, resp)
+        .ifPresent(session -> sessionService.revokeSession(session.getId()));
+  }
+
   private void persistMcpPendingState(HttpServletRequest req, PendingLoginContext context) {
     McpPendingStatePersister persister = mcpPendingStatePersister;
     if (persister != null) {
@@ -556,7 +577,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         // consumed). A 500 here strands the browser in a login loop; getPendingSession has
         // already cleared the stale cookie, so route the user to interactive signin instead.
         LOG.warn("No pending session found for callback, redirecting to signin");
-        resp.sendRedirect(serverUrl + "/signin");
+        resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
         return;
       }
       UserSession pendingSession = maybePendingSession.get();
@@ -576,7 +597,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         String errorCode = authenticationErrorResponse.getErrorObject().getCode();
         if (SILENT_AUTH_ERRORS.contains(errorCode)) {
           LOG.warn("Silent auth not possible (error={}), redirecting to signin", errorCode);
-          resp.sendRedirect(serverUrl + "/signin");
+          resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
           return;
         }
         LOG.error(
@@ -593,10 +614,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Optional state validation
       validateStateIfRequired(pendingSession, resp, successResponse);
 
-      // Build Credentials
       OidcCredentials credentials = buildCredentials(successResponse);
-
-      // Validations
+      requireAuthorizationCode(pendingSession, credentials);
       validateAndSendTokenRequest(pendingSession, credentials, computedCallbackUrl);
 
       // pac4j 6 re-parses the serialized id token on every toIdToken() call; parse once and reuse.
@@ -616,11 +635,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       validateNonceIfRequired(pendingSession, idTokenClaims);
 
       // The MCP callback completes its own OAuth exchange off the provider-issued id_token, which
-      // is only available here. Hand the validated credentials over on the session for it to pick
-      // up. Scoped to the MCP flow so a normal web login never parks provider tokens in a session.
+      // is only available here. Hand the validated credentials over on this request, so the MCP
+      // callback only ever reads tokens this callback validated; a session would outlive it.
       if (isMcpRedirectUri(pendingSession.getRedirectUri())) {
-        req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
-        LOG.debug("Stored OIDC credentials on session for MCP callback handoff");
+        req.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+        LOG.debug("Stored OIDC credentials on the request for MCP callback handoff");
       }
 
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -629,8 +648,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       OidcIdentityResolver.ResolvedOidcIdentity identity = resolveOidcIdentity(claims);
       User user =
           identity.emailFirstFlow()
-              ? getOrCreateEmailFirstOidcUser(identity.email(), identity.displayName(), claims)
-              : getOrCreateOidcUser(identity.userName(), identity.email(), claims);
+              ? getOrCreateEmailFirstOidcUser(identity, claims)
+              : getOrCreateOidcUser(identity, claims);
       syncRolesFromProvider(user, claims);
 
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
@@ -649,15 +668,15 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
               pendingSession,
               user,
               refreshToken.getToken().toString(),
-              providerTokensAtLogin(credentials, System.currentTimeMillis()));
+              providerTokensAtLogin(credentials, expiresAtOrNow(expirationTime)));
       if (maybeActiveSession.isEmpty()) {
         Entity.getTokenRepository().deleteToken(refreshToken.getToken().toString());
         throw new TechnicalException("Failed to activate OIDC session");
       }
-      UserSession activeSession = maybeActiveSession.get();
 
-      JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
-      sendRedirectWithToken(resp, redirectUri, user, jwtAuthMechanism.getJWTToken());
+      // The browser presents the provider's own ID token: its claims are the ones the principal
+      // configuration names, and its expiry is the provider's.
+      sendRedirectWithToken(resp, redirectUri, user, credentials.getIdToken());
     } catch (IllegalArgumentException e) {
       try {
         org.openmetadata.service.security.SecurityUtil.writeErrorResponse(
@@ -699,7 +718,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         }
       }
       sessionService.revokeSession(httpServletRequest, httpServletResponse);
-      httpServletResponse.sendRedirect(serverUrl + "/logout");
+      httpServletResponse.sendRedirect(deploymentUrl(LOGOUT_PATH));
     } catch (Exception ex) {
       LOG.error("[Auth Logout] Error while performing logout", ex);
     }
@@ -723,6 +742,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       refreshLeasedSession(httpServletRequest, httpServletResponse, leasedSession);
     } catch (SessionRefreshInProgressException e) {
       writeRefreshContentionResponse(httpServletResponse, e);
+    } catch (ServiceUnavailableException e) {
+      // No verdict from the provider (outage, client misconfiguration): keep the session so a
+      // later refresh can still renew it.
+      sessionService.releaseRefreshLease(leasedSession);
+      LOG.warn("[Auth Refresh] {}", e.getMessage());
+      SecurityUtil.writeFailureResponse(httpServletResponse, e);
     } catch (AuthenticationException e) {
       // The session can never be refreshed again, so revoke it: the browser answers a 401 here by
       // re-authenticating at the identity provider, where a 500 would just sign the user out.
@@ -747,99 +772,104 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     requireUnexpiredRefreshToken(currentRefreshToken);
     // Ask the identity provider before rotating, so a rejected or failed check leaves the
     // session's stored refresh token untouched.
-    SessionService.ProviderTokenUpdate providerTokens =
-        renewProviderTokensIfDue(session, currentRefreshToken);
+    RenewedIdToken renewed = renewProviderIdToken(session, currentRefreshToken);
     RefreshRotation rotation =
         new RefreshRotation(
             currentRefreshToken,
             rotateRefreshToken(user.getId(), currentRefreshToken),
-            providerTokens);
-    writeRefreshedTokenResponse(response, user, completeRefresh(session, rotation));
+            renewed.providerTokens());
+    completeRefresh(session, rotation);
+    writeRefreshedTokenResponse(response, renewed);
   }
 
   /**
-   * Starts the provider renewal schedule from the login's own token response, so the first access
-   * token already ends before the provider's tokens need renewing. Nothing is kept when sessions do
-   * not end with the provider's ({@code oidcConfiguration.endSessionWithProvider}), or when the
-   * provider issued no refresh token.
+   * The provider refresh token the session keeps: each refresh redeems it for the provider's next
+   * ID token. A provider that issued none leaves nothing to renew, so the session lasts as long as
+   * its first ID token, after which the browser signs in again at the provider.
    */
-  SessionService.ProviderTokenUpdate providerTokensAtLogin(OidcCredentials credentials, long now) {
-    // pac4j 6 re-parses the stored tokens on every to*Token() call; parse each once.
-    var providerRefreshToken = endsSessionWithProvider ? credentials.toRefreshToken() : null;
-    if (providerRefreshToken == null) {
-      return SessionService.ProviderTokenUpdate.NONE;
-    }
-    AccessToken providerAccessToken = credentials.toAccessToken();
-    long lifetimeSeconds = providerAccessToken == null ? 0 : providerAccessToken.getLifetime();
-    return new SessionService.ProviderTokenUpdate.Replaced(
-        providerRefreshToken.getValue(),
-        ProviderTokenSchedule.renewalDueAt(now, lifetimeSeconds, tokenValidity));
+  SessionService.ProviderTokenUpdate providerTokensAtLogin(
+      OidcCredentials credentials, long idTokenExpiresAt) {
+    var providerRefreshToken = credentials.toRefreshToken();
+    return providerRefreshToken == null
+        ? SessionService.ProviderTokenUpdate.NONE
+        : new SessionService.ProviderTokenUpdate.Replaced(
+            providerRefreshToken.getValue(), idTokenExpiresAt);
   }
 
   /**
-   * Renews the identity provider's tokens when they would lapse before the access token this
-   * refresh issues. Following the provider's schedule keeps its session alive while the user is
-   * active here (Keycloak counts refresh-token use as activity), and a rejected grant ends this
-   * session too. A renewed grant never extends the session: refresh tokens can outlive the
-   * provider's browser session, so only a new sign-in, which the browser attempts silently once the
-   * session ends, starts a new session lifetime. Only sessions that end with the provider's
-   * ({@code oidcConfiguration.endSessionWithProvider}) contact it.
-   *
-   * @return {@link SessionService.ProviderTokenUpdate#NONE} when the provider was not due or the
-   *     session holds no provider token
+   * Redeems the session's provider refresh token for the provider's next ID token, which the
+   * browser presents until it expires: the provider decides how long that is. A grant it rejects
+   * (sign-out where its refresh tokens are bound to its session, a disabled user, a revoked token)
+   * ends this session too. A successful grant never extends the session: refresh tokens can outlive
+   * the provider's browser session, so only a new sign-in, which the browser attempts silently once
+   * the session ends, starts a new session lifetime.
    */
-  private SessionService.ProviderTokenUpdate renewProviderTokensIfDue(
-      UserSession session, String omRefreshToken) {
-    String providerRefreshToken =
-        endsSessionWithProvider ? sessionService.decryptProviderRefreshToken(session) : null;
-    long now = System.currentTimeMillis();
-    if (nullOrEmpty(providerRefreshToken)
-        || !ProviderTokenSchedule.isRenewalDue(
-            session.getProviderRenewalDueAt(), now, tokenValidity)) {
-      return SessionService.ProviderTokenUpdate.NONE;
+  private RenewedIdToken renewProviderIdToken(UserSession session, String omRefreshToken) {
+    String providerRefreshToken = sessionService.decryptProviderRefreshToken(session);
+    if (nullOrEmpty(providerRefreshToken)) {
+      throw endedSession(omRefreshToken, "Identity provider issued no refresh token");
     }
     OidcProviderTokenRefresher.Outcome outcome =
         providerTokenRefresher.refresh(providerRefreshToken);
     if (outcome.isRejected()) {
-      deleteRefreshTokenIfPresent(omRefreshToken);
-      throw new AuthenticationException("Identity provider session ended");
+      throw endedSession(omRefreshToken, "Identity provider session ended");
     }
-    return scheduleNextRenewal(session, outcome, now);
-  }
-
-  private SessionService.ProviderTokenUpdate scheduleNextRenewal(
-      UserSession session, OidcProviderTokenRefresher.Outcome outcome, long now) {
-    return outcome.isRenewed()
-        ? renewedProviderTokens(outcome, now)
-        : retryProviderRenewal(session, now);
+    if (!outcome.isRenewed()) {
+      throw new ServiceUnavailableException(
+          "Identity provider gave no verdict on the session; try again shortly");
+    }
+    return renewedIdToken(outcome, omRefreshToken);
   }
 
   /** A provider that does not rotate its refresh token on use leaves the session's one valid. */
-  private SessionService.ProviderTokenUpdate renewedProviderTokens(
-      OidcProviderTokenRefresher.Outcome outcome, long now) {
-    long renewalDueAt =
-        ProviderTokenSchedule.renewalDueAt(now, outcome.lifetimeSeconds(), tokenValidity);
-    return outcome.rotatedRefreshToken() == null
-        ? new SessionService.ProviderTokenUpdate.Rescheduled(renewalDueAt)
-        : new SessionService.ProviderTokenUpdate.Replaced(
-            outcome.rotatedRefreshToken(), renewalDueAt);
+  private RenewedIdToken renewedIdToken(
+      OidcProviderTokenRefresher.Outcome outcome, String omRefreshToken) {
+    long expiresAt = idTokenExpiresAt(outcome.idToken());
+    if (!outlivesBrowserRenewal(expiresAt)) {
+      throw endedSession(omRefreshToken, "Identity provider returned no usable ID token");
+    }
+    SessionService.ProviderTokenUpdate providerTokens =
+        outcome.rotatedRefreshToken() == null
+            ? new SessionService.ProviderTokenUpdate.Rescheduled(expiresAt)
+            : new SessionService.ProviderTokenUpdate.Replaced(
+                outcome.rotatedRefreshToken(), expiresAt);
+    return new RenewedIdToken(outcome.idToken(), expiresAt, providerTokens);
   }
 
-  private SessionService.ProviderTokenUpdate retryProviderRenewal(UserSession session, long now) {
-    LOG.warn(
-        "[Auth Refresh] Identity provider gave no verdict for session {}; asking again in {}s",
-        SessionService.truncateId(session.getId()),
-        ProviderTokenSchedule.RETRY_AFTER_SECONDS);
-    return new SessionService.ProviderTokenUpdate.Rescheduled(ProviderTokenSchedule.retryAt(now));
+  /** Whether a token expiring then lasts past the browser's renewal margin. */
+  static boolean outlivesBrowserRenewal(long expiresAt) {
+    return expiresAt > System.currentTimeMillis() + BROWSER_RENEWAL_MARGIN_MILLIS;
   }
 
-  private void writeRefreshedTokenResponse(
-      HttpServletResponse response, User user, UserSession session) throws IOException {
-    JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, session);
+  /** Expiry of a provider ID token in epoch millis; 0 when there is none or it cannot be read. */
+  static long idTokenExpiresAt(String idToken) {
+    try {
+      Date expirationTime =
+          nullOrEmpty(idToken)
+              ? null
+              : JWTParser.parse(idToken).getJWTClaimsSet().getExpirationTime();
+      return expirationTime == null ? 0 : expirationTime.getTime();
+    } catch (java.text.ParseException e) {
+      LOG.warn("[Auth Refresh] Unreadable ID token from the identity provider: {}", e.getMessage());
+      return 0;
+    }
+  }
+
+  private static long expiresAtOrNow(Date expirationTime) {
+    return expirationTime == null ? System.currentTimeMillis() : expirationTime.getTime();
+  }
+
+  private AuthenticationException endedSession(String omRefreshToken, String reason) {
+    deleteRefreshTokenIfPresent(omRefreshToken);
+    return new AuthenticationException(reason);
+  }
+
+  private static void writeRefreshedTokenResponse(
+      HttpServletResponse response, RenewedIdToken renewed) throws IOException {
     JwtResponse jwtResponse = new JwtResponse();
     jwtResponse.setTokenType("Bearer");
-    jwtResponse.setAccessToken(jwtAuthMechanism.getJWTToken());
-    jwtResponse.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
+    jwtResponse.setAccessToken(renewed.idToken());
+    jwtResponse.setExpiryDuration(renewed.expiresAt());
     response.setStatus(HttpServletResponse.SC_OK);
     writeJsonResponse(response, JsonUtils.pojoToJson(jwtResponse));
   }
@@ -886,26 +916,36 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return new HashMap<>(authParams);
   }
 
+  /**
+   * A callback carries an authorization code for every configured response type: the client asks to
+   * be redirected back in query mode, where providers return one.
+   * ADR:2026-10-30-confidential-oidc-callback-takes-only-the-code
+   */
+  private void requireAuthorizationCode(UserSession session, OidcCredentials credentials) {
+    if (credentials.getCode() == null) {
+      LOG.warn(
+          "Rejecting OIDC callback without an authorization code for session {}",
+          SessionService.truncateId(session.getId()));
+      throw new IllegalArgumentException(AUTHORIZATION_CODE_REQUIRED);
+    }
+  }
+
   private void validateAndSendTokenRequest(
       UserSession session, OidcCredentials oidcCredentials, String computedCallbackUrl)
       throws URISyntaxException {
-    if (oidcCredentials.getCode() != null) {
-      LOG.debug(
-          "Initiating Token Request - Session: {}, redirect_uri: {}",
-          session.getId(),
-          computedCallbackUrl);
-      CodeVerifier verifier =
-          nullOrEmpty(session.getPkceVerifier())
-              ? null
-              : new CodeVerifier(session.getPkceVerifier());
-      TokenRequest request =
-          createTokenRequest(
-              client.getConfiguration(),
-              clientAuthentication,
-              new AuthorizationCodeGrant(
-                  oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
-      executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
-    }
+    LOG.debug(
+        "Initiating Token Request - Session: {}, redirect_uri: {}",
+        session.getId(),
+        computedCallbackUrl);
+    CodeVerifier verifier =
+        nullOrEmpty(session.getPkceVerifier()) ? null : new CodeVerifier(session.getPkceVerifier());
+    TokenRequest request =
+        createTokenRequest(
+            client.getConfiguration(),
+            clientAuthentication,
+            new AuthorizationCodeGrant(
+                oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
+    executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
   }
 
   private void validateStateIfRequired(
@@ -949,27 +989,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return configuration.getOpMetadataResolver().load();
   }
 
+  /**
+   * Keeps only the authorization code from the callback redirect; the ID token is the one the token
+   * endpoint returns for that code. ADR:2026-10-30-confidential-oidc-callback-takes-only-the-code
+   */
   static OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
     OidcCredentials credentials = new OidcCredentials();
-    // get authorization code
     AuthorizationCode code = successResponse.getAuthorizationCode();
     if (code != null) {
       // pac4j 6 stores the code as a String; toAuthorizationCode() reconstructs the nimbus type.
       credentials.setCode(code.getValue());
     }
-    // get ID token
-    JWT idToken = successResponse.getIDToken();
-    if (idToken != null) {
-      // pac4j 6 stores the id token as a serialized String; toIdToken() re-parses it to a JWT.
-      credentials.setIdToken(idToken.serialize());
-    }
-    // get access token
-    AccessToken accessToken = successResponse.getAccessToken();
-    if (accessToken != null) {
-      // pac4j 6 setAccessToken takes a Map; setAccessTokenObject keeps the nimbus AccessToken.
-      credentials.setAccessTokenObject(accessToken);
-    }
-
     return credentials;
   }
 
@@ -1126,8 +1156,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         response, validatedRedirectUri, accessToken, user.getEmail(), user.getName());
   }
 
-  private OidcIdentityResolver.ResolvedOidcIdentity resolveOidcIdentity(
-      Map<String, Object> claims) {
+  /** Public so the MCP callback resolves the same identity as the web login it wraps. */
+  public OidcIdentityResolver.ResolvedOidcIdentity resolveOidcIdentity(Map<String, Object> claims) {
     return new OidcIdentityResolver(
             authenticationConfiguration,
             authorizerConfiguration,
@@ -1138,33 +1168,47 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private User getOrCreateEmailFirstOidcUser(
-      String email, String displayName, Map<String, Object> claims) {
+      OidcIdentityResolver.ResolvedOidcIdentity identity, Map<String, Object> claims) {
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
     return EmailFirstUserProvisioner.forProvider(
             "OIDC",
             authorizerConfiguration,
             Entity.getUserRepository(),
-            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
-            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim))
+            user -> applyTeamsAndPicture(user, teamsFromClaim, identity.picture()),
+            user -> applyTeamsAndPicture(user, teamsFromClaim, identity.picture()))
         .getOrCreate(
-            email,
-            displayName,
+            identity.email(),
+            identity.displayName(),
             SecurityUtil.getClaimOrObject(claims.get(JWTTokenGenerator.SUBJECT_CLAIM)),
             Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup()));
+  }
+
+  private static boolean applyTeamsAndPicture(User user, List<String> teams, URI picture) {
+    boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teams);
+    boolean pictureChanged = UserProfileClaims.syncPicture(user, picture);
+    return teamsAssigned || pictureChanged;
+  }
+
+  private static boolean applyDisplayNameAndPicture(
+      User user, OidcIdentityResolver.ResolvedOidcIdentity identity) {
+    boolean displayNameFilled = UserProfileClaims.fillDisplayName(user, identity.displayName());
+    boolean pictureChanged = UserProfileClaims.syncPicture(user, identity.picture());
+    return displayNameFilled || pictureChanged;
   }
 
   private boolean isUserAdmin(String email, String username) {
     return UserUtil.isConfiguredAdmin(authorizerConfiguration, email, username);
   }
 
-  private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
+  private User getOrCreateOidcUser(
+      OidcIdentityResolver.ResolvedOidcIdentity identity, Map<String, Object> claims) {
+    String userName = identity.userName();
+    String email = identity.email();
     // Extract teams from claims if configured (supports array claims like groups)
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
 
     try {
-      // Fetch user with teams relationship loaded to preserve existing team memberships
-      User user =
-          Entity.getEntityByName(Entity.USER, userName, "id,roles,teams", Include.NON_DELETED);
+      User user = Entity.getUserRepository().getUserByNameForAuthUpdate(userName);
 
       boolean shouldBeAdmin = isUserAdmin(email, userName);
       boolean needsUpdate = false;
@@ -1184,7 +1228,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
       // Assign teams from claims if provided (this only adds, doesn't remove existing teams)
       boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teamsFromClaim);
-      needsUpdate = needsUpdate || teamsAssigned;
+      boolean profileChanged = applyDisplayNameAndPicture(user, identity);
+      needsUpdate = needsUpdate || teamsAssigned || profileChanged;
 
       if (needsUpdate) {
         UserUtil.addOrUpdateUser(user);
@@ -1202,11 +1247,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       String domain = email.split("@")[1];
 
       // Validate email domain against allowed registration domains
-      Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
-      if (allowedDomains != null
-          && !allowedDomains.isEmpty()
-          && !allowedDomains.contains("all")
-          && allowedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
+      if (!isEmailRegistrationDomainAllowed(
+          email, authorizerConfiguration.getAllowedEmailRegistrationDomains())) {
         LOG.warn(
             "SECURITY: Blocked OAuth signup for disallowed domain: {} (user: {})", domain, email);
         throw new AuthenticationException("Email domain not allowed for self-signup: " + domain);
@@ -1217,6 +1259,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
                   userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
               .withIsAdmin(isAdmin)
               .withIsEmailVerified(true);
+      applyDisplayNameAndPicture(newUser, identity);
 
       // Assign default role if configured
       String defaultRoleName = authorizerConfiguration.getDefaultOAuthRole();
@@ -1236,28 +1279,65 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Assign teams from claims if provided
       UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
 
-      return UserUtil.addOrUpdateUser(newUser);
+      return createOrAdoptConcurrentlyCreatedUser(
+          () -> UserUtil.addOrUpdateUser(newUser),
+          () -> Entity.getUserRepository().getUserByNameForAuthUpdate(userName),
+          email);
     }
     throw new AuthenticationException("User not found and self-signup is disabled");
   }
 
   /**
-   * Applies the identity provider's roles claim to the user before the OpenMetadata session token
-   * is minted.
-   *
-   * <p>Until 1.10.x the browser was handed the provider's raw id_token, so JwtFilter saw the
-   * provider's roles on every request and synced them. This callback now mints an OpenMetadata
-   * token carrying OpenMetadata's own roles, which makes that sync compare the database against
-   * itself. This is the last point at which the provider's roles are visible, so the sync has to
-   * happen here.
+   * Two first sign-ins of one new user race to create the account, and the loser gets a uniqueness
+   * conflict. It signs in to the account the winner just created, but only when that account
+   * carries the same email: a conflict with a differently addressed account is a different person.
+   */
+  static User createOrAdoptConcurrentlyCreatedUser(
+      Supplier<User> create, Supplier<User> loadByName, String email) {
+    try {
+      return create.get();
+    } catch (UserCreationException conflict) {
+      return adoptConcurrentlyCreatedUser(conflict, loadByName, email);
+    }
+  }
+
+  private static User adoptConcurrentlyCreatedUser(
+      UserCreationException conflict, Supplier<User> loadByName, String email) {
+    if (!UserUtil.isRetryableUserCreationConflict(conflict)) {
+      throw conflict;
+    }
+    User concurrentlyCreated = loadOrRethrow(loadByName, conflict);
+    if (!sameIdentifier(email, concurrentlyCreated.getEmail())) {
+      throw conflict;
+    }
+    LOG.debug("Signing in to the account a concurrent first login created for {}", email);
+    return concurrentlyCreated;
+  }
+
+  private static User loadOrRethrow(Supplier<User> loadByName, UserCreationException conflict) {
+    try {
+      return loadByName.get();
+    } catch (EntityNotFoundException notCreatedUnderThisName) {
+      throw conflict;
+    }
+  }
+
+  /**
+   * Applies the identity provider's roles claim to the user at sign-in, so the roles are current
+   * before the browser's first request. The sync on {@code /users/loggedInUser} reads the same
+   * claim from the provider's ID token the browser then presents.
    */
   private void syncRolesFromProvider(User user, Map<String, Object> claims) {
-    if (!Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
-        || !claims.containsKey(ROLES_CLAIM)) {
+    if (!Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())) {
       return;
     }
+    // An id_token with no roles claim revokes them all: Entra ID leaves the claim out once a
+    // user's last app role is removed, rather than sending an empty one.
     UserUtil.reSyncUserRolesFromToken(
-        null, user, new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM))));
+        null,
+        user,
+        new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM))),
+        authorizerConfiguration);
   }
 
   @SneakyThrows
@@ -1366,20 +1446,71 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return (OIDCTokenResponse) response;
   }
 
-  private String requireRedirectUri(String redirectUri) {
+  /**
+   * Redirect targets a login round-trip may land on.
+   *
+   * <p>The browser asks to land on {@code <its own origin>/auth/callback}. Besides the {@code
+   * serverUrl} entries, that landing page is trusted on the host of the configured OIDC callback
+   * URL: it has to be right for login to work at all, since the identity provider rejects any other
+   * {@code redirect_uri}, while {@code serverUrl} is routinely left at its localhost default (issue
+   * #26311). Nothing is read from the request, so no header can add a trusted target.
+   */
+  private Set<String> trustedRedirectUris() {
     Set<String> trusted =
         trustedRedirects(
             authenticationConfiguration.getCallbackUrl(),
-            serverUrl + "/auth/callback",
-            serverUrl + "/mcp/callback");
+            serverUrl + AUTH_CALLBACK_PATH,
+            serverUrl + MCP_CALLBACK_PATH,
+            landingPageOnCallbackHost());
     trusted.addAll(listOrEmpty(authenticationConfiguration.getAdditionalTrustedRedirectUris()));
-    return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    return trusted;
+  }
+
+  private String landingPageOnCallbackHost() {
+    String callbackOrigin = SecurityUtil.originOf(client.getCallbackUrl());
+    return callbackOrigin == null ? null : callbackOrigin + AUTH_CALLBACK_PATH;
+  }
+
+  private String requireRedirectUri(String redirectUri) {
+    Set<String> trusted = trustedRedirectUris();
+    try {
+      return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    } catch (IllegalArgumentException e) {
+      // Without the candidate set on the wire-facing 400 this is undiagnosable from the outside.
+      LOG.warn(
+          "Rejected login redirect URI [{}] - trusted targets are {}: {}",
+          redirectUri,
+          trusted,
+          e.getMessage());
+      throw e;
+    }
   }
 
   private String requireRedirectUriOrDefault(String redirectUri) {
     String targetRedirectUri =
-        nullOrEmpty(redirectUri) ? serverUrl + "/auth/callback" : redirectUri;
+        nullOrEmpty(redirectUri) ? serverUrl + AUTH_CALLBACK_PATH : redirectUri;
     return requireRedirectUri(targetRedirectUri);
+  }
+
+  /**
+   * {@code path} under the deployment's base URL, taken from the configured OIDC callback URL minus
+   * its trailing {@code /callback} for the same reason the landing page is trusted on its host: it
+   * has to be right for login to work, while {@code serverUrl} may be stale (#26311). A base path
+   * survives, as it would in {@code serverUrl}; a callback URL that is not the callback servlet's
+   * keeps {@code serverUrl}.
+   */
+  private String deploymentUrl(String path) {
+    String callbackBaseUrl = baseUrlOf(client.getCallbackUrl());
+    return (callbackBaseUrl == null ? serverUrl : callbackBaseUrl) + path;
+  }
+
+  private static String baseUrlOf(String callbackUrl) {
+    String origin = SecurityUtil.originOf(callbackUrl);
+    String path = origin == null ? null : URI.create(callbackUrl.trim()).getPath();
+    boolean isCallbackServletUrl = path != null && path.endsWith(CALLBACK_SERVLET_PATH);
+    return isCallbackServletUrl
+        ? origin + path.substring(0, path.length() - CALLBACK_SERVLET_PATH.length())
+        : null;
   }
 
   private User getSessionUser(UserSession session) {
@@ -1402,23 +1533,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           e);
     }
     return null;
-  }
-
-  private JWTAuthMechanism generateJwtToken(User user, UserSession session) {
-    // A renewal time kept from while the setting was on must not keep cutting tokens short.
-    Long providerRenewalDueAt = endsSessionWithProvider ? session.getProviderRenewalDueAt() : null;
-    int validitySeconds =
-        ProviderTokenSchedule.accessTokenValiditySeconds(
-            providerRenewalDueAt, System.currentTimeMillis(), tokenValidity);
-    return JWTTokenGenerator.getInstance()
-        .generateJWTTokenForSession(
-            user.getName(),
-            getRoleListFromUser(user),
-            !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
-            user.getEmail(),
-            validitySeconds,
-            ServiceTokenType.OM_USER,
-            session.getId());
   }
 
   private static void requireUnexpiredRefreshToken(String refreshToken) {
@@ -1486,6 +1600,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   record PendingLoginContext(String state, String nonce, String pkceVerifier) {}
+
+  private record RenewedIdToken(
+      String idToken, long expiresAt, SessionService.ProviderTokenUpdate providerTokens) {}
 
   private record RefreshRotation(
       String previousRefreshToken,

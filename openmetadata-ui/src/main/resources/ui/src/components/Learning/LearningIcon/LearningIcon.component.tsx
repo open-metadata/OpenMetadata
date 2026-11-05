@@ -14,15 +14,18 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowRight } from '@openmetadata/ui-core-components/icons';
+import {
+  ArrowRight,
+  Lightbulb01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LearningIconSvg } from '../../../assets/svg/ic-learning.svg';
 import { getLearningResourcesByContext } from '../../../rest/learningResourceAPI';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { LearningIconProps } from './LearningIcon.interface';
@@ -40,6 +43,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
   pageId,
   title,
   className = '',
+  size = 'sm',
 }) => {
   const { t } = useTranslation();
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -118,19 +122,18 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
       <PopoverTrigger
         isOpen={popoverOpen}
         onOpenChange={handlePopoverOpenChange}>
-        <Button
+        <ButtonUtility
           aria-label={t('label.learn-how-this-feature-works')}
           className={classNames(
-            'tw:align-middle tw:*:data-icon:text-brand-600',
+            'tw:align-middle tw:*:data-icon:text-utility-brand-600',
             className
           )}
-          color="tertiary"
           data-testid="learning-icon"
-          iconLeading={LearningIconSvg}
-          size="xs"
+          icon={Lightbulb01}
+          size={size}
+          onClick={handleClick}
           onMouseEnter={openPopover}
           onMouseLeave={closePopover}
-          onPress={handleClick}
         />
         <Popover
           isNonModal
@@ -147,7 +150,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
             <Button
               color="tertiary"
               data-testid="learning-resources-button"
-              iconTrailing={<ArrowRight size={14} />}
+              iconTrailing={ArrowRight}
               size="sm"
               onPress={handleClick}>
               {resourceCount} {t('label.resource-plural').toLowerCase()}

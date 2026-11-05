@@ -86,3 +86,20 @@ class TestGetLifeCycleData:
         life_cycle = results[0].right.life_cycle
         assert life_cycle.created.timestamp.root == datetime_to_timestamp(CREATED_AT, milliseconds=True)
         assert life_cycle.updated is None
+
+    def test_missing_created_is_not_replaced_by_placeholder(self):
+        life_cycle_data = LifeCycleQueryByTable(table_name=TABLE_NAME, created_at=None, updated_at=UPDATED_AT)
+
+        results = _run_get_life_cycle_data(life_cycle_data)
+
+        assert len(results) == 1
+        life_cycle = results[0].right.life_cycle
+        assert life_cycle.created is None
+        assert life_cycle.updated.timestamp.root == datetime_to_timestamp(UPDATED_AT, milliseconds=True)
+
+    def test_row_without_timestamps_yields_nothing(self):
+        life_cycle_data = LifeCycleQueryByTable(table_name=TABLE_NAME)
+
+        results = _run_get_life_cycle_data(life_cycle_data)
+
+        assert results == []

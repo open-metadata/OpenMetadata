@@ -11,15 +11,25 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
+import {
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Grid,
+  Popover,
+  PopoverTrigger,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../../components/common/Table/Table.interface';
 import Table from '../../../components/common/Table/TableV2';
@@ -36,13 +46,13 @@ import {
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getPolicies } from '../../../rest/rolesAPIV1';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
@@ -57,7 +67,6 @@ import {
 } from '../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './policies-list.less';
 
 const PoliciesListPage = () => {
   const { t } = useTranslation();
@@ -105,7 +114,7 @@ const PoliciesListPage = () => {
         GlobalSettingsMenuCategory.ACCESS,
         t('label.policy-plural')
       ),
-    []
+    [t]
   );
 
   const columns: ColumnsType<Policy> = useMemo(() => {
@@ -128,7 +137,7 @@ const PoliciesListPage = () => {
           </Link>
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<Policy>(),
       {
         title: t('label.role-plural').toString(),
         dataIndex: 'roles',
@@ -139,7 +148,14 @@ const PoliciesListPage = () => {
           const hasMore = listLength > LIST_CAP;
 
           return record.roles?.length ? (
-            <Space wrap data-testid="role-link" size={4}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              data-testid="role-link"
+              gap={1}
+              itemClassName="layout-space-item"
+              wrap="wrap">
               {record.roles.slice(0, LIST_CAP).map((role) =>
                 viewRolePermission ? (
                   <Link
@@ -148,16 +164,38 @@ const PoliciesListPage = () => {
                     {getEntityName(role)}
                   </Link>
                 ) : (
-                  <Tooltip key={uniqueId()} title={t(NO_PERMISSION_TO_VIEW)}>
+                  <Tooltip
+                    arrow
+                    excludeTriggerFromTabOrder
+                    key={uniqueId()}
+                    title={t(NO_PERMISSION_TO_VIEW)}
+                    triggerClassName="tw:inline-flex">
                     {getEntityName(role)}
                   </Tooltip>
                 )
               )}
               {hasMore && (
-                <Popover
-                  className="cursor-pointer"
-                  content={
-                    <Space wrap size={4}>
+                <PopoverTrigger>
+                  <AriaButton
+                    className="tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2"
+                    data-testid="plus-more-count">
+                    <Badge
+                      className="tw:inline-flex tw:mr-2 m-l-xss"
+                      color="gray"
+                      size="sm"
+                      type="color">{`+${listLength - LIST_CAP} more`}</Badge>
+                  </AriaButton>
+                  <Popover
+                    arrow
+                    containerClassName="tw:w-40 tw:px-4 tw:py-3"
+                    placement="bottom">
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={1}
+                      itemClassName="layout-space-item"
+                      wrap="wrap">
                       {record.roles.slice(LIST_CAP).map((role) =>
                         viewRolePermission ? (
                           <Link
@@ -169,22 +207,20 @@ const PoliciesListPage = () => {
                           </Link>
                         ) : (
                           <Tooltip
+                            arrow
+                            excludeTriggerFromTabOrder
                             key={uniqueId()}
-                            title={t(NO_PERMISSION_TO_VIEW)}>
+                            title={t(NO_PERMISSION_TO_VIEW)}
+                            triggerClassName="tw:inline-flex">
                             {getEntityName(role)}
                           </Tooltip>
                         )
                       )}
-                    </Space>
-                  }
-                  overlayClassName="w-40 text-center"
-                  trigger="click">
-                  <Tag className="m-l-xss" data-testid="plus-more-count">{`+${
-                    listLength - LIST_CAP
-                  } more`}</Tag>
-                </Popover>
+                    </Box>
+                  </Popover>
+                </PopoverTrigger>
               )}
-            </Space>
+            </Box>
           ) : (
             '-- '
           );
@@ -198,47 +234,48 @@ const PoliciesListPage = () => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip
-              placement="left"
-              title={
+            <ButtonUtility
+              data-testid={`delete-action-${getEntityName(record)}`}
+              icon={Trash01}
+              isDisabled={!deletePolicyPermission}
+              size="lg"
+              tooltip={
                 deletePolicyPermission
                   ? t('label.delete-entity', {
                       entity: t('label.policy'),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
-              }>
-              <Button
-                data-testid={`delete-action-${getEntityName(record)}`}
-                disabled={!deletePolicyPermission}
-                icon={<IconDelete name={t('label.delete')} width="16px" />}
-                type="text"
-                onClick={() => setSelectedPolicy(record)}
-              />
-            </Tooltip>
+              }
+              tooltipPlacement="left"
+              onClick={() => setSelectedPolicy(record)}
+            />
           );
         },
       },
     ];
-  }, []);
+  }, [deletePolicyPermission, t, viewRolePermission]);
 
-  const fetchPolicies = async (paging?: Partial<Paging>) => {
-    setIsLoading(true);
-    try {
-      const data = await getPolicies(
-        'roles',
-        paging?.after,
-        paging?.before,
-        pageSize
-      );
+  const fetchPolicies = useCallback(
+    async (paging?: Partial<Paging>) => {
+      setIsLoading(true);
+      try {
+        const data = await getPolicies(
+          'roles',
+          paging?.after,
+          paging?.before,
+          pageSize
+        );
 
-      setPolicies(data.data || []);
-      handlePagingChange(data.paging);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setPolicies(data.data || []);
+        handlePagingChange(data.paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [handlePagingChange, pageSize]
+  );
 
   const handleAfterDeleteAction = useCallback(() => {
     fetchPolicies();
@@ -284,19 +321,24 @@ const PoliciesListPage = () => {
     } else {
       fetchPolicies();
     }
-  }, [pageSize, pagingCursor]);
+  }, [fetchPolicies, pagingCursor]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.policy-plural')}>
-      <Row
-        className="policies-list-container"
+      <Grid
+        className="layout-row layout-grid policies-list-container"
         data-testid="policies-list-container"
-        gutter={[0, 16]}>
-        <Col span={24}>
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Space className="w-full justify-between">
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-between"
+            gap={2}
+            itemClassName="layout-space-item">
             <PageHeader
               data={{
                 header: t(PAGE_HEADERS.POLICIES.header),
@@ -308,15 +350,15 @@ const PoliciesListPage = () => {
 
             {addPolicyPermission && (
               <Button
+                color="primary"
                 data-testid="add-policy"
-                type="primary"
                 onClick={handleAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}
               </Button>
             )}
-          </Space>
-        </Col>
-        <Col span={24}>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Table
             columns={columns}
             containerClassName="policies-list-table"
@@ -334,16 +376,19 @@ const PoliciesListPage = () => {
             loading={isLoading}
             locale={{
               emptyText: (
-                <ErrorPlaceHolder
-                  className="border-none"
-                  heading={t('label.policy')}
-                  permission={addPolicyPermission}
-                  permissionValue={t('label.create-entity', {
-                    entity: t('label.policy'),
-                  })}
-                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={handleAddPolicy}
-                />
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <CreatePlaceholder
+                    data-testid={`create-error-placeholder-${t(
+                      'label.policy'
+                    )}`}
+                    heading={t('label.policy')}
+                    permission={addPolicyPermission}
+                    permissionValue={t('label.create-entity', {
+                      entity: t('label.policy'),
+                    })}
+                    onCreate={handleAddPolicy}
+                  />
+                </div>
               ),
             }}
             pagination={false}
@@ -362,8 +407,8 @@ const PoliciesListPage = () => {
               onDelete={handlePolicyDelete}
             />
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

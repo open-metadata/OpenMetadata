@@ -19,7 +19,6 @@ import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/type';
@@ -34,7 +33,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { resolveWidgetKey } from '../../DataAssets/CommonWidgets/CommonWidgets.utils';
 import CreatePlaceholder from '../EmptyPlaceholder/CreatePlaceholder';
-import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../EmptyPlaceholder/PermissionPlaceholder';
 import { CustomPropertiesRightPanel } from './CustomPropertiesWidget/CustomPropertiesRightPanel';
 import {
   parsePropertyLayout,
@@ -49,6 +48,25 @@ import {
 } from './CustomPropertyTable.interface';
 import { useCustomPropertyValueSave } from './useCustomPropertyValueSave';
 
+/**
+ * Callers outside the customizable-page system (team, user) have no GenericProvider above
+ * them and hand the entity and its update handler in as props instead.
+ */
+const resolveEntitySource = <T extends ExtentionEntitiesKeys>({
+  entityDetailsProp,
+  onEntityUpdate,
+  contextEntityDetails,
+  contextOnUpdate,
+}: {
+  entityDetailsProp?: ExtentionEntities[T];
+  onEntityUpdate?: CustomPropertyProps<T>['onEntityUpdate'];
+  contextEntityDetails: ExtentionEntities[T];
+  contextOnUpdate: CustomPropertyProps<T>['onEntityUpdate'];
+}) => ({
+  entityDetails: entityDetailsProp ?? contextEntityDetails,
+  onUpdate: onEntityUpdate ?? contextOnUpdate,
+});
+
 export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   entityType,
   hasEditAccess,
@@ -56,15 +74,25 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   hasPermission,
   maxDataCap,
   isRenderedInRightPanel = false,
+  entityDetails: entityDetailsProp,
+  onEntityUpdate,
   widgetSettings,
   widgetKey = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const {
-    data: entityDetails,
+    data: contextEntityDetails,
+    onUpdate: contextOnUpdate,
     filterWidgets,
     layout,
   } = useGenericContext<ExtentionEntities[T]>();
+
+  const { entityDetails, onUpdate } = resolveEntitySource<T>({
+    entityDetailsProp,
+    onEntityUpdate,
+    contextEntityDetails,
+    contextOnUpdate,
+  });
   const tabPropertyLayout = useMemo(
     () =>
       parsePropertyLayout(
@@ -79,8 +107,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     isLoading: entityTypeDetailLoading,
     error: entityTypeDetailError,
   } = useEntityTypeCustomProperties(entityType);
-  const { onPropertyValueSave } =
-    useCustomPropertyValueSave<ExtentionEntities[T]>();
+  const { onPropertyValueSave } = useCustomPropertyValueSave<
+    ExtentionEntities[T]
+  >({ entityDetails, onUpdate });
 
   useEffect(() => {
     if (entityTypeDetailError) {
@@ -181,13 +210,14 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   if (!hasPermission) {
     return (
       <div className="items-center d-block align-items-center text-center">
-        <ErrorPlaceHolder
-          className="border-none p-lg"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.custom-property-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.custom-property-plural'),
+            })}
+          />
+        </div>
       </div>
     );
   }
@@ -199,7 +229,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="h-full tw:relative tw:min-h-90">
+      <div className="border-default border-radius-sm h-full tw:relative tw:min-h-90 tw:bg-surface">
         <CreatePlaceholder
           actions={[
             {

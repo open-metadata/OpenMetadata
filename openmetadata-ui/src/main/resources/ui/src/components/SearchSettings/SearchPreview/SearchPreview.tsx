@@ -10,24 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Input, Row } from 'antd';
+import {
+  Box,
+  Button,
+  Input,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
 import { ENTITY_PATH_TO_SEARCH_INDEX } from '../../../constants/SearchSettings.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { SearchSettings } from '../../../generated/api/search/previewSearchRequest';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { searchPreview } from '../../../rest/searchAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -130,7 +133,11 @@ const SearchPreview = ({
     }
 
     if (data.length === 0) {
-      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />;
+      return (
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder data-testid="no-data-placeholder" />
+        </div>
+      );
     }
 
     return (
@@ -207,13 +214,15 @@ const SearchPreview = ({
 
   return (
     <div className="search-preview">
-      <Row className="d-flex justify-between items-center m-b-sm search-preview-header">
-        <Col>
+      <Box
+        className="layout-row d-flex justify-between items-center m-b-sm search-preview-header"
+        wrap="wrap">
+        <Box className="layout-column tw:block">
           <Typography className="header-title" data-testid="search-preview">
             {t('label.preview')}
           </Typography>
-        </Col>
-        <Col className="search-preview-actions">
+        </Box>
+        <Box className="layout-column tw:block search-preview-actions">
           <span className="ranking-details-control">
             <Typography>{t('label.ranking-detail-plural')}</Typography>
             <Toggle
@@ -224,33 +233,29 @@ const SearchPreview = ({
             />
           </span>
           <Button
-            className="restore-defaults-btn font-semibold"
+            color="secondary"
             data-testid="restore-defaults-btn"
             onClick={handleRestoreDefaults}>
             {t('label.restore-default-plural')}
           </Button>
           <Button
-            className="save-btn font-semibold"
+            color="secondary"
             data-testid="save-btn"
-            disabled={disabledSave}
-            loading={isSaving}
+            isDisabled={disabledSave}
+            isLoading={isSaving}
             onClick={handleSaveChanges}>
             {t('label.save')}
           </Button>
-        </Col>
-      </Row>
+        </Box>
+      </Box>
 
       <Input
-        allowClear
-        className="search-box"
-        data-testid="searchbar"
+        aria-label={t('message.search-for-data-assets-placeholder')}
+        icon={Search}
+        inputDataTestId="searchbar"
         placeholder={t('message.search-for-data-assets-placeholder')}
-        suffix={
-          <Icon className="text-md font-bold m-r-xs" component={IconSearchV1} />
-        }
-        type="text"
         value={searchValue}
-        onChange={(e) => handleSearch(e.target.value)}
+        onChange={handleSearch}
       />
       <div className="search-results-container">{searchResults}</div>
     </div>

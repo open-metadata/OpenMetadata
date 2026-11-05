@@ -182,7 +182,9 @@ describe('useTestCaseIncidentHeader', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(getIncidentTaskByStateId).toHaveBeenCalledWith('123');
-    expect(getListTestCaseIncidentByStateId).toHaveBeenCalledWith('123');
+    expect(getListTestCaseIncidentByStateId).toHaveBeenCalledWith('123', {
+      limit: 1,
+    });
     expect(result.current.testCaseStatusData).toEqual(
       MOCK_TEST_CASE_INCIDENT.data[0]
     );
@@ -452,9 +454,9 @@ describe('useTestCaseIncidentHeader', () => {
 
     expect(result.current.hasEditStatusPermission).toBe(false);
     expect(result.current.hasEditOwnerPermission).toBe(false);
-    // hasEditDomainPermission is unaffected by field-level denial — it reads
-    // EditAll directly (getDerivedPermissionFlags.canEditAll), not through
-    // getPrioritizedEditPermission.
+    // hasEditDomainPermission is unaffected by denial of other fields: with no
+    // EditDomains key present it falls back to EditAll (canEditDomains), so an
+    // EditStatus/EditOwners denial does not touch it.
     expect(result.current.hasEditDomainPermission).toBe(true);
   });
 

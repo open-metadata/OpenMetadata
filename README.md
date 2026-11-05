@@ -362,11 +362,13 @@ For managed enterprise capabilities, AI agents, automation, AI Studio, enterpris
 
 We welcome contributions from the community. You can help improve metadata schemas and standards, add connectors, improve ingestion workflows, enhance MCP tools, improve semantic search, add memory workflows, add documentation, fix bugs, and improve the user experience.
 
-See the contribution guide in this repository to get started.
+See [CONTRIBUTING.md](CONTRIBUTING.md) to get started. Python contributors should follow
+the checkout's [locked local Python environment guide](DEVELOPER.md#locked-local-python-environments)
+for profile selection, installation and test commands.
 
-- [How To Contribute](https://docs.open-metadata.org/v1.12.x/developers/contribute)
-- [Development Environment Setup](https://docs.open-metadata.org/v1.12.x/developers/contribute/development-environment-setup)
-- [Build Code & Run Tests](https://docs.open-metadata.org/v1.12.x/developers/contribute/build-code-and-run-tests)
+- [How To Contribute](https://docs.open-metadata.org/latest/developers/contribute)
+- [Development Environment Setup](https://docs.open-metadata.org/latest/developers/contribute/development-environment-setup)
+- [Build Code & Run Tests](https://docs.open-metadata.org/latest/developers/contribute/build-code-and-run-tests)
 
 ---
 

@@ -13,8 +13,16 @@ Unit tests for JSON schema extraction from sampled data.
 """
 
 import json
+import random
 
-from metadata.generated.schema.entity.data.table import DataType
+import pytest
+from sqlalchemy import create_engine, text
+
+from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.ingestion.api.status import Status
 from metadata.ingestion.source.database.json_schema_extractor import (
     _build_column_children,
     _build_json_schema,
@@ -22,6 +30,8 @@ from metadata.ingestion.source.database.json_schema_extractor import (
     _parse_json_values,
     infer_json_schema_from_sample,
 )
+from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
+from metadata.utils.schema_inference import InferenceLimits, InferenceReport
 
 
 class TestParseJsonValues:
@@ -900,3 +910,170 @@ class TestAllStringColumnTypes:
         assert "123" in schema["properties"]
         assert "456abc" in schema["properties"]
         assert "normal_key" in schema["properties"]
+
+
+class TestSchemaInferenceLimits:
+    """Issue #29832: maxSchemaInferenceDepth and maxChildrenPerColumn bound both the inferred
+    children and the inferred jsonSchema of a JSON column, since both come from one bounded merge.
+    A column whose children were all cut gets an empty list, so the server records the removal of
+    children an earlier unbounded run stored.
+    """
+
+    @staticmethod
+    def _values(seed: int = 0) -> list[dict]:
+        rng = random.Random(seed)
+        values = []
+        for idx in range(6):
+            keys = [f"k{n:02d}" for n in range(12)]
+            rng.shuffle(keys)
+            values.append(
+                {
+                    "payload": {key: {"x": idx, "y": idx} for key in keys[: 8 + idx % 4]},
+                    "deep": {"l1": {"l2": {"l3": {"l4": idx}}}},
+                    "lines": [{f"c{n:02d}": n for n in range(idx, idx + 5)}],
+                }
+            )
+        return values
+
+    @classmethod
+    def _schema_depth(cls, schema: dict) -> int:
+        nested = schema.get("properties") or (schema.get("items") or {}).get("properties") or {}
+        return max((1 + cls._schema_depth(child) for child in nested.values()), default=0)
+
+    @classmethod
+    def _column_depth(cls, children) -> int:
+        return max((1 + cls._column_depth(child.children) for child in children or []), default=0)
+
+    @classmethod
+    def _shape(cls, children) -> dict:
+        return {child.name.root: cls._shape(child.children) for child in children or []}
+
+    @staticmethod
+    def _by_name(children) -> dict:
+        return {child.name.root: child for child in children}
+
+    def test_limits_that_are_not_reached_keep_the_unbounded_output(self):
+        values = self._values()
+
+        assert infer_json_schema_from_sample(
+            values, limits=InferenceLimits(max_depth=50, max_children=50)
+        ) == infer_json_schema_from_sample(values)
+
+    def test_children_limit_bounds_children_and_json_schema_alike(self):
+        schema_str, children = infer_json_schema_from_sample(self._values(), limits=InferenceLimits(max_children=2))
+        schema = json.loads(schema_str)
+
+        assert list(schema["properties"]) == ["deep", "lines"]
+        assert [child.name.root for child in children] == ["deep", "lines"]
+
+        values = [{"payload": value["payload"]} for value in self._values()]
+        schema_str, children = infer_json_schema_from_sample(values, limits=InferenceLimits(max_children=2))
+
+        assert {child.name.root for child in children[0].children} == {"k00", "k01"}
+        assert set(json.loads(schema_str)["properties"]["payload"]["properties"]) == {"k00", "k01"}
+
+    def test_array_elements_are_bounded(self):
+        schema_str, children = infer_json_schema_from_sample(
+            [{"lines": value["lines"]} for value in self._values()], limits=InferenceLimits(max_children=3)
+        )
+
+        lines = children[0]
+        assert lines.dataType == DataType.ARRAY
+        assert [child.name.root for child in lines.children] == ["c00", "c01", "c02"]
+        assert list(json.loads(schema_str)["properties"]["lines"]["items"]["properties"]) == ["c00", "c01", "c02"]
+
+    def test_depth_limit_bounds_children_and_json_schema_alike(self):
+        schema_str, children = infer_json_schema_from_sample(self._values(), limits=InferenceLimits(max_depth=2))
+        schema = json.loads(schema_str)
+
+        assert self._column_depth(children) == 2
+        assert self._schema_depth(schema) == 2
+        level_one = self._by_name(children)["deep"].children[0]
+        assert (level_one.name.root, level_one.dataType, level_one.children) == ("l1", DataType.JSON, [])
+        assert schema["properties"]["deep"]["properties"]["l1"] == {"type": "object", "properties": {}}
+
+    @pytest.mark.parametrize("limits", [InferenceLimits(max_depth=0), InferenceLimits(max_children=0)])
+    def test_zero_keeps_no_inferred_children(self, limits):
+        schema_str, children = infer_json_schema_from_sample(self._values(), limits=limits)
+
+        assert children == []
+        assert json.loads(schema_str) == {"type": "object", "properties": {}}
+
+    def test_kept_children_do_not_depend_on_value_order(self):
+        values = self._values()
+        limits = InferenceLimits(max_depth=3, max_children=3)
+
+        shapes = [self._shape(infer_json_schema_from_sample(values, limits=limits)[1])]
+        shapes.append(self._shape(infer_json_schema_from_sample(list(reversed(values)), limits=limits)[1]))
+
+        assert shapes[0] == shapes[1]
+
+    def test_report_names_the_cut_columns(self):
+        report = InferenceReport()
+        limits = InferenceLimits(max_depth=2, max_children=3)
+
+        infer_json_schema_from_sample(self._values(), limits=limits, report=report, path="attrs")
+
+        assert report.warning(limits) == (
+            "Schema inference limits dropped nested columns. "
+            "maxSchemaInferenceDepth=2 cut the children of 4 column(s): "
+            "attrs.deep.l1, attrs.payload.k00, attrs.payload.k01, attrs.payload.k02. "
+            "maxChildrenPerColumn=3 cut the children of 2 column(s): attrs.lines, attrs.payload."
+        )
+
+
+class TestSqlColumnHandlerSchemaInferenceLimits:
+    """Issue #29832: the extractJsonSchema path reads the limits from the database metadata
+    pipeline, keeps the JSON typing of sampled string columns and warns once per table.
+    """
+
+    class _Source(SqlColumnHandlerMixin):
+        def __init__(self, engine, source_config):
+            self.engine = engine
+            self.source_config = source_config
+            self.status = Status()
+
+    @pytest.fixture
+    def engine(self):
+        engine = create_engine("sqlite://")
+        with engine.begin() as connection:
+            connection.execute(text("CREATE TABLE events (attrs TEXT)"))
+            for idx in range(5):
+                attrs = json.dumps({f"k{n:02d}": {"x": idx} for n in range(10 - idx, 0, -1)})
+                connection.execute(text("INSERT INTO events (attrs) VALUES (:attrs)"), {"attrs": attrs})
+        return engine
+
+    @staticmethod
+    def _extract(engine, **config) -> tuple[Column, Status]:
+        source = TestSqlColumnHandlerSchemaInferenceLimits._Source(
+            engine, DatabaseServiceMetadataPipeline(extractJsonSchema=True, **config)
+        )
+        column = Column(name="attrs", dataType=DataType.STRING, dataTypeDisplay="TEXT")
+        source._extract_json_schema_for_columns([column], schema_name="main", table_name="events")
+        return column, source.status
+
+    def test_children_limit_bounds_the_sampled_column(self, engine):
+        column, status = self._extract(engine, maxChildrenPerColumn=3)
+
+        assert column.dataType == DataType.JSON
+        assert [child.name.root for child in column.children] == ["k03", "k02", "k01"]
+        assert set(json.loads(column.jsonSchema)["properties"]) == {"k01", "k02", "k03"}
+        assert status.warnings == [
+            {
+                "main.events": "Schema inference limits dropped nested columns. "
+                "maxChildrenPerColumn=3 cut the children of 1 column(s): attrs."
+            }
+        ]
+
+    def test_zero_depth_keeps_the_json_type_without_children(self, engine):
+        column, status = self._extract(engine, maxSchemaInferenceDepth=0)
+
+        assert (column.dataType, column.children) == (DataType.JSON, [])
+        assert json.loads(column.jsonSchema) == {"type": "object", "properties": {}}
+        assert len(status.warnings) == 1
+
+    def test_unset_limits_do_not_warn(self, engine):
+        column, status = self._extract(engine)
+
+        assert len(column.children) == 10
+        assert status.warnings == []

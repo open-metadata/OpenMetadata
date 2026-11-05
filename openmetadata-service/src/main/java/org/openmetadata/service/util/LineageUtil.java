@@ -14,6 +14,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -27,6 +29,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -46,6 +49,12 @@ public class LineageUtil {
   private static final ThreadLocal<List<DeferredLineageEsWrite>> DEFERRED_LINEAGE_ES =
       new ThreadLocal<>();
 
+  private static final String ROOT_ID_FIELD = "id";
+
+  /** Source fields a lineage root lookup reads: the root's identity and the FQN keying the hits. */
+  public static final List<String> ROOT_SOURCE_FIELDS =
+      List.of(ROOT_ID_FIELD, Entity.FIELD_ENTITY_TYPE, Entity.FIELD_FULLY_QUALIFIED_NAME);
+
   /**
    * A captured lineage-ES write plus the entity whose search document carries the edge. The {@code
    * toEntity} is retained so a post-commit drain that fails the {@code updateLineage}/{@code
@@ -60,6 +69,14 @@ public class LineageUtil {
   }
 
   private LineageUtil() {}
+
+  /** A successful HTTP response can still contain incomplete hits after a search timeout. */
+  public static void rejectTimedOutSearch(final boolean timedOut, final String indexAlias) {
+    if (timedOut) {
+      throw new SearchException(
+          String.format("Lineage search for index [%s] timed out.", indexAlias));
+    }
+  }
 
   /**
    * Open a lineage-ES deferral scope on the current thread. While open, the lineage-ES leaves
@@ -345,6 +362,26 @@ public class LineageUtil {
             ref);
       }
     }
+  }
+
+  /**
+   * The entity behind the single document a lineage root lookup returns, or empty when nothing is
+   * indexed under the FQN. The hits are keyed by FQN, which is why {@link #ROOT_SOURCE_FIELDS}
+   * carries it.
+   */
+  @SuppressWarnings("unchecked")
+  public static Optional<EntityReference> lineageRoot(Map<String, Object> hitsByFqn) {
+    return hitsByFqn.values().stream()
+        .findFirst()
+        .map(doc -> rootReference((Map<String, Object>) doc));
+  }
+
+  private static EntityReference rootReference(Map<String, Object> doc) {
+    Object id = doc.get(ROOT_ID_FIELD);
+    return new EntityReference()
+        .withId(id == null ? null : UUID.fromString(id.toString()))
+        .withType(Objects.toString(doc.get(Entity.FIELD_ENTITY_TYPE), null))
+        .withFullyQualifiedName(Objects.toString(doc.get(Entity.FIELD_FULLY_QUALIFIED_NAME), null));
   }
 
   public static NodeInformation getNodeInformation(

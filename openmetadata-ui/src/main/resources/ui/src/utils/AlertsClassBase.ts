@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { FormInstance } from 'antd';
 import type { AxiosError } from 'axios';
+import type { Operation } from 'fast-json-patch';
 import { compare } from 'fast-json-patch';
-import { isUndefined, omitBy, trim } from 'lodash';
+import { isEmpty, isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
+import { PAGE_SIZE_LARGE } from '../constants/constants';
 import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import type { NotificationTemplate } from '../generated/entity/events/notificationTemplate';
@@ -22,8 +23,13 @@ import type { User } from '../generated/entity/teams/user';
 import type { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import {
   SubscriptionCategory,
+  type AlertFilteringInput,
+  type ArgumentsInput,
+  type EventFilterRule,
   type EventSubscription,
 } from '../generated/events/eventSubscription';
+import { searchContracts } from '../rest/contractAPI';
+import type { NameSearch } from './Alerts/AlertSourceSearch';
 import {
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
@@ -39,21 +45,47 @@ import type {
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { t } from './i18next/LocalUtil';
-import { showSuccessToast } from './ToastUtils';
+import { showErrorToast, showSuccessToast } from './ToastUtils';
 
 export interface AddAlertFormWidgetProps {
-  formRef: FormInstance<ModifiedCreateEventSubscription>;
   /**
-   * Current form values from a caller that keeps them in state (the AI alert modal).
-   * When set, read these instead of watching formRef.
+   * The classic antd form instance, for widgets that write into it. Typed `unknown` so this
+   * file stays antd-free; the AI alert modal does not pass it.
    */
+  formRef?: unknown;
+  /** The current form values, passed by every caller. */
   values?: ModifiedCreateEventSubscription;
+  onValuesChange?: (changes: Partial<ModifiedCreateEventSubscription>) => void;
   alertDetails?: ModifiedEventSubscription;
   templates?: NotificationTemplate[];
   loading?: boolean;
   isViewMode?: boolean;
   templateResourcePermission?: OperationPermission;
 }
+
+const DESTINATIONS_PATH = '/destinations';
+
+/**
+ * The diff of a destination list pairs the destination at each index with the one now beside it,
+ * and a destination's secrets read only as the mask, so removing the first of two keeps the
+ * removed one's configuration under the surviving one's id, which the server refuses. A list
+ * whose members carry their own identity is replaced in one whole-list move instead.
+ */
+export const destinationsAsAWholeListReplace = (
+  jsonPatch: Operation[],
+  destinations: EventSubscription['destinations']
+): Operation[] => {
+  const touchesDestinations = (op: Operation) =>
+    op.path.startsWith(DESTINATIONS_PATH);
+  if (!jsonPatch.some(touchesDestinations)) {
+    return jsonPatch;
+  }
+
+  return [
+    ...jsonPatch.filter((op) => !touchesDestinations(op)),
+    { op: 'replace', path: DESTINATIONS_PATH, value: destinations },
+  ];
+};
 
 /** Props for the notification template section of the AI alert form. */
 export interface AlertAiTemplateSectionProps {
@@ -66,6 +98,62 @@ export interface AlertAiTemplateSectionProps {
   templateResourcePermission?: OperationPermission;
 }
 
+// Data contracts are not in the search indexes, so their names come from the contract API.
+const searchDataContractNames: NameSearch = async (searchText) => {
+  try {
+    const contracts = await searchContracts(searchText, PAGE_SIZE_LARGE);
+
+    return contracts
+      .map((contract) => contract.fullyQualifiedName ?? '')
+      .filter(Boolean)
+      .map((fullyQualifiedName) => ({
+        label: fullyQualifiedName,
+        value: fullyQualifiedName,
+      }));
+  } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      t('server.entity-fetch-error', { entity: t('label.data-contract') })
+    );
+
+    return [];
+  }
+};
+
+const hasSelections = (input?: AlertFilteringInput) =>
+  !isEmpty(input?.filters) || !isEmpty(input?.actions);
+
+/**
+ * Mirrors the backend's `WrittenByHand` policy: rules stored without the form selections that
+ * compile them. Their argument values live only in each rule's SpEL `condition`, which the form
+ * cannot rebuild, so the form shows these rules read-only and a save never sends `input` — any
+ * selection would make the backend recompile `filteringRules` from it and drop the stored rules.
+ */
+export const hasRulesWithoutSelections = (
+  alert: Pick<EventSubscription, 'input' | 'filteringRules'>
+) =>
+  !hasSelections(alert.input) &&
+  (!isEmpty(alert.filteringRules?.rules) ||
+    !isEmpty(alert.filteringRules?.actions));
+
+const rulesToArgumentsInput = (rules?: EventFilterRule[]): ArgumentsInput[] =>
+  (rules ?? []).map((rule) => ({
+    arguments: rule.arguments?.map((argumentName) => ({ name: argumentName })),
+    effect: rule.effect,
+    name: rule.name,
+    prefixCondition: rule.prefixCondition,
+  }));
+
+const getAlertInputForForm = (
+  alert: EventSubscription
+): AlertFilteringInput | undefined =>
+  hasRulesWithoutSelections(alert)
+    ? {
+        filters: rulesToArgumentsInput(alert.filteringRules?.rules),
+        actions: rulesToArgumentsInput(alert.filteringRules?.actions),
+      }
+    : alert.input;
+
 class AlertsClassBase {
   /**
    * The AI alert form's notification template section. Templates are a Collate
@@ -73,6 +161,11 @@ class AlertsClassBase {
    */
   public getAlertAiTemplateSection(): React.ComponentType<AlertAiTemplateSectionProps> | null {
     return null;
+  }
+
+  /** Sources whose names are not in the search indexes, with the search that finds them. */
+  public getSourceNameSearch(): Record<string, NameSearch> {
+    return { [EntityType.DATA_CONTRACT]: searchDataContractNames };
   }
 
   public getAddAlertFormExtraWidgets() {
@@ -102,6 +195,7 @@ class AlertsClassBase {
 
       return {
         ...(initialDestination ?? {}),
+        id: d.id,
         type: d.type,
         config: {
           ...d.config,
@@ -174,10 +268,14 @@ class AlertsClassBase {
       description,
       displayName: alertDisplayName,
       name: alertName,
-      input: {
-        actions: input?.actions ?? [],
-        filters: input?.filters ?? [],
-      },
+      ...(hasRulesWithoutSelections(initialData)
+        ? {}
+        : {
+            input: {
+              actions: input?.actions ?? [],
+              filters: input?.filters ?? [],
+            },
+          }),
       owners,
       filteringRules: {
         ...initialData.filteringRules,
@@ -197,18 +295,19 @@ class AlertsClassBase {
     setInlineAlertDetails,
     currentUser,
   }: HandleAlertSaveProps) {
+    const action = fqn && !isUndefined(initialData) ? 'update' : 'create';
     try {
       let alertDetails;
 
-      if (fqn && !isUndefined(initialData)) {
+      if (action === 'update' && initialData) {
         const newAlertData: EventSubscription = this.getAlertUpdateData(
           data,
           initialData
         );
 
-        const jsonPatch = compare(
-          omitBy(initialData, isUndefined),
-          newAlertData
+        const jsonPatch = destinationsAsAWholeListReplace(
+          compare(omitBy(initialData, isUndefined), newAlertData),
+          newAlertData.destinations
         );
 
         alertDetails = await updateAlertAPI(initialData.id, jsonPatch);
@@ -222,7 +321,6 @@ class AlertsClassBase {
         alertDetails = await createAlertAPI(finalData);
       }
 
-      const action = fqn && !isUndefined(initialData) ? 'update' : 'create';
       showSuccessToast(
         t(`server.${action}-entity-success`, {
           entity: t('label.alert-plural'),
@@ -237,7 +335,7 @@ class AlertsClassBase {
         entityLowercasePlural: t('label.alert-lowercase-plural'),
         setInlineAlertDetails,
         name: data.name,
-        defaultErrorType: 'create',
+        defaultErrorType: action,
       });
     }
   }
@@ -247,10 +345,12 @@ class AlertsClassBase {
   ): ModifiedEventSubscription {
     return {
       ...alertData,
-      timeout: alertData.destinations[0].timeout ?? 10,
+      input: getAlertInputForForm(alertData),
+      hasRulesWithoutSelections: hasRulesWithoutSelections(alertData),
+      timeout: alertData.destinations?.[0]?.timeout ?? 10,
       readTimeout:
-        alertData.destinations[0].readTimeout ?? DEFAULT_READ_TIMEOUT,
-      destinations: alertData.destinations.map((destination) => {
+        alertData.destinations?.[0]?.readTimeout ?? DEFAULT_READ_TIMEOUT,
+      destinations: (alertData.destinations ?? []).map((destination) => {
         const isExternalDestination =
           destination.category === SubscriptionCategory.External;
 

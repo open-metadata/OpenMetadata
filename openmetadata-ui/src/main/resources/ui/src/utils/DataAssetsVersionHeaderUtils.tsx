@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+
 import { isEmpty, isUndefined, toString } from 'lodash';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
-import { DATA_ASSET_ICON_DIMENSION } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Chart } from '../generated/entity/data/chart';
@@ -35,6 +33,7 @@ import { getEntityName } from './EntityNameUtils';
 import { getEntityVersionByField } from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './RichTextStringUtils';
+import { getSafeHttpUrl } from './StringUtils';
 
 export const VersionExtraInfoLink = ({
   value,
@@ -45,14 +44,12 @@ export const VersionExtraInfoLink = ({
 }) => (
   <>
     <Divider
-      className="self-center m-x-sm tw:h-[0.9em]"
+      className="tw:self-center tw:mx-3 tw:h-[0.9em]"
       orientation="vertical"
     />
     <div className="d-flex items-center text-xs">
-      <Typography>
-        <a href={href} style={{ fontSize: '12px' }}>
-          {stringToHTML(value)}
-        </a>
+      <Typography size="text-xs">
+        {href ? <a href={href}>{stringToHTML(value)}</a> : stringToHTML(value)}
       </Typography>
     </div>
   </>
@@ -69,10 +66,16 @@ export const VersionExtraInfoLabel = ({
 }) => (
   <>
     <Divider
-      className="self-center m-x-sm tw:h-[0.9em]"
+      className="tw:self-center tw:mx-3 tw:h-[0.9em]"
       orientation="vertical"
     />
-    <Space align="center" data-testid={dataTestId}>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      data-testid={dataTestId}
+      gap={2}
+      itemClassName="layout-space-item">
       <Typography className="self-center text-xs whitespace-nowrap">
         {!isEmpty(label) && (
           <span className="text-grey-muted">{`${label}: `}</span>
@@ -82,7 +85,7 @@ export const VersionExtraInfoLabel = ({
       <Typography className="self-center text-xs whitespace-nowrap font-medium">
         {stringToHTML(value)}
       </Typography>
-    </Space>
+    </Box>
   </>
 );
 
@@ -102,6 +105,7 @@ export const getExtraInfoSourceUrl = (
     true
   );
   const changedEntityName = getChangedEntityName(fieldDiff);
+  const safeSourceUrl = getSafeHttpUrl(pipelineDetails.sourceUrl);
   if (isEmpty(sourceUrl)) {
     return null;
   }
@@ -111,27 +115,24 @@ export const getExtraInfoSourceUrl = (
       {isUndefined(changedEntityName) ? (
         <>
           <Divider
-            className="self-center m-x-sm tw:h-[0.9em]"
+            className="tw:self-center tw:mx-3 tw:h-[0.9em]"
             orientation="vertical"
           />
           <div className="d-flex items-center text-xs">
-            <Typography>
-              <a href={pipelineDetails.sourceUrl} style={{ fontSize: '12px' }}>
-                {getEntityName(pipelineDetails)}{' '}
-              </a>
+            <Typography size="text-xs">
+              {safeSourceUrl ? (
+                <a href={safeSourceUrl}>{getEntityName(pipelineDetails)} </a>
+              ) : (
+                getEntityName(pipelineDetails)
+              )}
             </Typography>
-            <Icon
-              className="m-l-xss"
-              component={IconExternalLink}
-              style={DATA_ASSET_ICON_DIMENSION}
-            />
+            {safeSourceUrl && (
+              <IconExternalLink className="tw:ml-1 tw:size-3.5 tw:shrink-0" />
+            )}
           </div>
         </>
       ) : (
-        <VersionExtraInfoLink
-          href={pipelineDetails.sourceUrl}
-          value={sourceUrl}
-        />
+        <VersionExtraInfoLink href={safeSourceUrl} value={sourceUrl} />
       )}
     </>
   );

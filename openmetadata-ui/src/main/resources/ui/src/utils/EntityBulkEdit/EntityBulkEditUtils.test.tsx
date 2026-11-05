@@ -15,6 +15,8 @@ import { render, screen } from '@testing-library/react';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { TestCaseStatus } from '../../generated/tests/testCase';
+import { exportTestCasesInCSV } from '../../rest/testAPI';
 import {
   getBulkEditButton,
   getBulkEditCSVExportEntityApi,
@@ -142,6 +144,35 @@ describe('EntityBulkEditUtils', () => {
       const result = getBulkEditCSVExportEntityApi(EntityType.TEST_CASE);
 
       expect(result).toBeDefined();
+    });
+
+    it('should send the test case list filters with the export', async () => {
+      const exportApi = getBulkEditCSVExportEntityApi(EntityType.TEST_CASE, {
+        testCaseStatus: TestCaseStatus.Failed,
+        q: 'nulls',
+      });
+
+      await exportApi('sample_data.ecommerce_db.shopify.fact_sale', {
+        recursive: false,
+      });
+
+      expect(exportTestCasesInCSV).toHaveBeenCalledWith(
+        'sample_data.ecommerce_db.shopify.fact_sale',
+        { recursive: false, testCaseStatus: TestCaseStatus.Failed, q: 'nulls' }
+      );
+    });
+
+    it('should export every test case when the list had no filters', async () => {
+      await getBulkEditCSVExportEntityApi(EntityType.TEST_CASE)(
+        WILD_CARD_CHAR,
+        {
+          recursive: false,
+        }
+      );
+
+      expect(exportTestCasesInCSV).toHaveBeenCalledWith(WILD_CARD_CHAR, {
+        recursive: false,
+      });
     });
 
     it('should return exportTableDetailsInCSV for unknown entity type', () => {

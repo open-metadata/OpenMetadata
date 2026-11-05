@@ -47,8 +47,7 @@ export interface RDFConfiguration {
      */
     bulkRelationshipSourceBatchSize?: number;
     /**
-     * Cache bounded in-memory inference models for better query performance. Cached models
-     * expire after 60 seconds.
+     * [DEPRECATED: ignored] OpenMetadata no longer builds in-memory inference models.
      */
     cacheInferredTriples?: boolean;
     /**
@@ -60,9 +59,8 @@ export interface RDFConfiguration {
      */
     dataset?: string;
     /**
-     * Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides
-     * OpenMetadata-specific inference rules including transitive lineage traversal and inverse
-     * relationships.
+     * [DEPRECATED: ignored] SPARQL queries use no inference unless they request 'custom', which
+     * reads materialized rule output.
      */
     defaultInferenceLevel?: ReasoningLevel;
     /**
@@ -88,13 +86,13 @@ export interface RDFConfiguration {
      */
     gzipRequests?: boolean;
     /**
-     * Enable inference/reasoning on SPARQL queries. When enabled, SPARQL queries will use the
-     * inference engine to derive additional triples based on the reasoning level.
+     * [DEPRECATED: ignored] OpenMetadata no longer runs reasoners in its own process. Use
+     * materializedInferenceEnabled for rule-based inference inside the RDF store.
      */
     inferenceEnabled?: boolean;
     /**
-     * Use durable per-rule inferred named graphs produced inside the RDF store instead of
-     * building an in-memory Jena inference model for CUSTOM inference queries.
+     * Materialize inference rules into durable per-rule named graphs inside the RDF store, so
+     * SPARQL queries can request 'custom' inference. Requires FUSEKI storage.
      */
     materializedInferenceEnabled?: boolean;
     /**
@@ -107,8 +105,7 @@ export interface RDFConfiguration {
      */
     maxAppendPayloadBytes?: number;
     /**
-     * Maximum RDF store size for in-process inference. Queries requesting inference fall back
-     * to direct SPARQL execution when the store exceeds this limit.
+     * [DEPRECATED: ignored] OpenMetadata no longer builds in-memory inference models.
      */
     maxInMemoryInferenceTriples?: number;
     /**
@@ -131,6 +128,13 @@ export interface RDFConfiguration {
      */
     requestTimeoutMs?:    number;
     shaclValidationMode?: ShaclValidationMode;
+    /**
+     * Automatic maintenance of the RDF store. Apache Jena TDB2 keeps every page a write
+     * transaction replaces until the dataset is compacted, so a store that only receives live
+     * writes grows until its disk is full. Maintenance compacts the serving dataset on a
+     * schedule, with writes to it paused so none is lost or dead-lettered.
+     */
+    storageMaintenance?: StorageMaintenance;
     /**
      * Type of RDF storage backend
      */
@@ -165,9 +169,8 @@ export interface RDFConfiguration {
 }
 
 /**
- * Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides
- * OpenMetadata-specific inference rules including transitive lineage traversal and inverse
- * relationships.
+ * [DEPRECATED: ignored] SPARQL queries use no inference unless they request 'custom', which
+ * reads materialized rule output.
  *
  * Level of reasoning/inference to apply to SPARQL queries
  */
@@ -204,6 +207,37 @@ export enum ShaclValidationMode {
     EnforceImports = "ENFORCE_IMPORTS",
     Off = "OFF",
     Report = "REPORT",
+}
+
+/**
+ * Automatic maintenance of the RDF store. Apache Jena TDB2 keeps every page a write
+ * transaction replaces until the dataset is compacted, so a store that only receives live
+ * writes grows until its disk is full. Maintenance compacts the serving dataset on a
+ * schedule, with writes to it paused so none is lost or dead-lettered.
+ */
+export interface StorageMaintenance {
+    /**
+     * Longest time between compactions of a dataset that receives writes. Fuseki blocks writers
+     * for the whole compaction, which copies only the live data.
+     */
+    compactionIntervalHours?: number;
+    /**
+     * Compact the serving dataset automatically.
+     */
+    enabled?: boolean;
+    /**
+     * Longest a compaction or the clear that starts an in-place rebuild may take before the run
+     * reports it as unfinished. Writes to the dataset stay paused meanwhile.
+     */
+    maxDurationMinutes?: number;
+    /**
+     * Compact without waiting for the interval once the store reports less free space than this
+     * share of its volume, or reports that its write guard is refusing writes. When a
+     * compaction cannot bring the store back above this share, urgent compactions wait for the
+     * next scheduled compaction. Only stores that report their volume, such as OpenMetadata's
+     * Fuseki images, are checked.
+     */
+    urgentFreeSpacePercent?: number;
 }
 
 /**

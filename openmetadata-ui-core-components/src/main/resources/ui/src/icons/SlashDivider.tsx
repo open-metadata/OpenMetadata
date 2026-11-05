@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const SlashDivider: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,10 +29,14 @@ export const SlashDivider: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M7 22 17 2" stroke="currentColor" strokeWidth={1.3} />
+    <path
+      d="m5.833 18.333 8.334-16.666"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 SlashDivider.displayName = 'SlashDivider';

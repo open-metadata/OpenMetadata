@@ -51,7 +51,7 @@ const getRequiredFieldMessage = (fieldText: string, t: TFunction) =>
 
 const NAME_MAX_LENGTH = 128;
 
-// Mirrors the classic alert forms' NAME_FIELD_RULES (constants/Form.constants.ts)
+// Mirrors NAME_FIELD_REGISTER_RULES (constants/Form.constants.ts)
 // so the AI form accepts and rejects exactly the same names.
 const setNameRuleError = (
   errors: AlertAiFormValidationErrors,
@@ -125,7 +125,12 @@ const validateAlertAiRuleFields = ({
         'input'
       );
 
-      if (isRequiredValueMissing(argument.input)) {
+      // Rules shown from `filteringRules` carry no `input`: their values live in
+      // the stored SpEL condition, and the form keeps them read-only.
+      if (
+        argument.input !== undefined &&
+        isRequiredValueMissing(argument.input)
+      ) {
         errors[argumentPath] = argument.name
           ? getMessageFromArgumentName(argument.name)
           : getRequiredFieldMessage(t('label.value'), t);
@@ -235,14 +240,14 @@ const validateAlertAiDestinationConfig = ({
   }
 };
 
-const validateAlertAiDestinationFields = ({
+export const validateAlertAiDestinationFields = ({
   errors,
   t,
   value,
 }: {
   errors: AlertAiFormValidationErrors;
   t: TFunction;
-  value: ModifiedCreateEventSubscription;
+  value: Pick<ModifiedCreateEventSubscription, 'destinations'>;
 }) => {
   setRequiredError({
     errors,

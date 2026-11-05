@@ -12,7 +12,8 @@
 Hive Metastore Dialect Mixin
 """
 
-from sqlalchemy.engine import reflection
+from sqlalchemy import text
+from sqlalchemy.engine import Connection, reflection
 
 from metadata.ingestion.source.database.hive.utils import get_columns
 from metadata.utils.sqlalchemy_utils import (
@@ -26,6 +27,19 @@ class HiveMetaStoreDialectMixin:
     """
     Mixin class
     """
+
+    # Every backend quotes metastore identifiers differently, so each dialect brings its own copy.
+    table_providers_query: str
+
+    def get_table_providers(self, connection: Connection, schema: str) -> dict[str, str | None]:
+        """Map table name to its `spark.sql.sources.provider` for one schema.
+
+        Spark, Databricks and Trino all register a Delta table in the Hive metastore by writing
+        that provider into TABLE_PARAMS, so one query per schema types every Delta table in it.
+        The value is optional because TABLE_PARAMS.PARAM_VALUE is nullable in the metastore DDL.
+        """
+        rows = connection.execute(text(self.table_providers_query), {"schema_name": schema})
+        return {row[0]: row[1] for row in rows}
 
     def get_columns(self, connection, table_name, schema=None, **kw):
         return get_columns(self, connection, table_name, schema, **kw)

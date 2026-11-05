@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { TableShardingWidget } from '../pages/TableDetailsPageV1/Sharding/TableSharding';
+
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -23,11 +24,11 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import PermissionPlaceholder from '../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/uiCustomization';
@@ -45,13 +46,6 @@ const ActivityFeedTab = withSuspenseFallback(
     import(
       '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
     ).then((module) => ({ default: module.ActivityFeedTab }))
-  ),
-  TAB_CONTENT_FALLBACK
-);
-
-const ErrorPlaceHolder = withSuspenseFallback(
-  lazy(
-    () => import('../components/common/ErrorWithPlaceholder/ErrorPlaceHolder')
   ),
   TAB_CONTENT_FALLBACK
 );
@@ -145,18 +139,6 @@ const EntityLineageTab = withSuspenseFallback(
   TAB_CONTENT_FALLBACK
 );
 
-/**
- * The product tour highlights elements rendered inside these lazy tabs, and react-tour closes
- * itself when a step's selector is still missing once its fixed stepWaitTimer elapses. Loading
- * the chunks before the tour starts keeps a slow chunk download from ending the tour.
- */
-export const preloadTourTableTabs = () =>
-  Promise.allSettled([
-    importSampleDataTable(),
-    importDataObservabilityTab(),
-    importEntityLineageTab(),
-  ]);
-
 const TableConstraints = withSuspenseFallback(
   lazy(
     () =>
@@ -213,27 +195,23 @@ const isDbtTabHidden = (
   );
 
 const getSampleDataTabChildren = ({
-  isTourOpen,
   viewSampleDataPermission,
   deleted,
   tableDetails,
   tablePermissions,
 }: Pick<
   TableDetailPageTabProps,
-  | 'isTourOpen'
-  | 'viewSampleDataPermission'
-  | 'deleted'
-  | 'tableDetails'
-  | 'tablePermissions'
+  'viewSampleDataPermission' | 'deleted' | 'tableDetails' | 'tablePermissions'
 >) =>
-  !isTourOpen && !viewSampleDataPermission ? (
-    <ErrorPlaceHolder
-      className="border-none"
-      permissionValue={t('label.view-entity', {
-        entity: t('label.sample-data'),
-      })}
-      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-    />
+  !viewSampleDataPermission ? (
+    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <PermissionPlaceholder
+        data-testid="permission-error-placeholder"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.sample-data'),
+        })}
+      />
+    </div>
   ) : (
     <SampleDataTableComponent
       isTableDeleted={deleted}
@@ -254,19 +232,19 @@ const getTableQueriesTabChildren = ({
   viewQueriesPermission ? (
     <TableQueries isTableDeleted={deleted} tableId={tableDetails?.id ?? ''} />
   ) : (
-    <ErrorPlaceHolder
-      className="border-none"
-      permissionValue={t('label.view-entity', {
-        entity: t('label.query-plural'),
-      })}
-      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-    />
+    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <PermissionPlaceholder
+        data-testid="permission-error-placeholder"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.query-plural'),
+        })}
+      />
+    </div>
   );
 
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isQueryCountLoading,
-  isTourOpen,
   tablePermissions,
   activeTab,
   deleted,
@@ -335,7 +313,6 @@ export const getTableDetailPageBaseTabs = ({
 
       key: EntityTabs.SAMPLE_DATA,
       children: getSampleDataTabChildren({
-        isTourOpen,
         viewSampleDataPermission,
         deleted,
         tableDetails,
@@ -448,7 +425,12 @@ export const getTableDetailPageBaseTabs = ({
             get(tableDetails, 'dataModel.rawSql', '')
           }
           title={
-            <Space className="p-y-xss" size="small">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal p-y-xss"
+              gap={2}
+              itemClassName="layout-space-item">
               <div>
                 <Typography color="secondary">
                   {`${t('label.dbt-source-project')}: `}
@@ -472,7 +454,7 @@ export const getTableDetailPageBaseTabs = ({
                   {tableDetails?.dataModel?.path}
                 </Typography>
               </div>
-            </Space>
+            </Box>
           }
         />
       ),
@@ -542,6 +524,9 @@ export const getTableDetailPageBaseTabs = ({
 export const getTableWidgetFromKey = (
   widgetConfig: WidgetConfig
 ): JSX.Element | null => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SHARDING)) {
+    return <TableShardingWidget />;
+  }
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
     return <SchemaTable />;
   } else if (

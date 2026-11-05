@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, SpaceProps } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC } from 'react';
@@ -20,7 +20,8 @@ import { useAirflowStatus } from '../../../context/AirflowStatusProvider/Airflow
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './airflow-message-banner.less';
 
-interface AirflowMessageBannerProps extends SpaceProps {
+interface AirflowMessageBannerProps {
+  className?: string;
   /**
    * Shown when the service is unreachable but the status call carried no `reason` — a thrown call
    * has none. Opt-in and caller-supplied, because what to say depends on what the caller left on
@@ -77,18 +78,19 @@ const AirflowMessageBanner: FC<AirflowMessageBannerProps> = ({
   }
 
   return (
-    <Space
+    <Box
+      inline
       align="center"
       className={classNames('airflow-message-banner', className)}
       data-testid="no-airflow-placeholder"
-      role="status"
-      size={16}>
+      gap={4}
+      role="status">
       <IconRetry className="align-middle" height={24} width={24} />
       <RichTextEditorPreviewerV1
         enableSeeMoreVariant={false}
         markdown={message ?? ''}
       />
-    </Space>
+    </Box>
   );
 };
 

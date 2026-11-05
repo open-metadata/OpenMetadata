@@ -6,10 +6,10 @@
 
 | Metric | Count |
 |--------|-------|
-| **Components** | 33 |
-| **Test Files** | 207 |
-| **Test Cases** | 3482 |
-| **Total Scenarios** | 5146 🚀 |
+| **Components** | 32 |
+| **Test Files** | 205 |
+| **Test Cases** | 3478 |
+| **Total Scenarios** | 5139 🚀 |
 
 ---
 
@@ -28,7 +28,7 @@
 
 ## Platform
 
-> **13 Components** | **1622 Tests** | **2327 Scenarios**
+> **12 Components** | **1619 Tests** | **2324 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
@@ -44,7 +44,6 @@
 | [General](./Platform.md#general) | 1 | 13 | 32 | 0 |
 | [Authentication](./Platform.md#authentication) | 2 | 7 | 7 | 0 |
 | [App Marketplace](./Platform.md#app-marketplace) | 2 | 5 | 11 | 0 |
-| [Onboarding](./Platform.md#onboarding) | 1 | 3 | 3 | 0 |
 
 ## Discovery
 
@@ -75,11 +74,11 @@
 
 ## Integration
 
-> **1 Components** | **61 Tests** | **66 Scenarios**
+> **1 Components** | **60 Tests** | **62 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Connectors](./Integration.md#connectors) | 7 | 61 | 66 | 0 |
+| [Connectors](./Integration.md#connectors) | 6 | 60 | 62 | 0 |
 
 
 *Last updated: 2026-03-09*

@@ -51,9 +51,13 @@ export interface Page {
      */
     editors?: EntityReference[];
     /**
-     * Status of the tag.
+     * Lifecycle stage of the page.
      */
     entityStatus?: EntityStatus;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
     /**
      * Statistics from the most recent knowledge-pill extraction run on this page's body.
      */
@@ -74,6 +78,10 @@ export interface Page {
      * Unique identifier of the Knowledge Page.
      */
     id?: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -291,7 +299,8 @@ export interface ColumnProfile {
     /**
      * No.of Rows that contain duplicates in a column.
      */
-    duplicateCount?: number;
+    duplicateCount?:  number;
+    executionSource?: TableExecutionSource;
     /**
      * First quartile of a column.
      */
@@ -431,6 +440,16 @@ export interface CustomMetricProfile {
     value?: number;
 }
 
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
+}
+
 export interface HistogramClass {
     /**
      * Boundaries of Histogram.
@@ -459,7 +478,8 @@ export interface TableProfile {
     /**
      * Custom Metrics profile list bound to a column.
      */
-    customMetrics?: CustomMetricProfile[];
+    customMetrics?:   CustomMetricProfile[];
+    executionSource?: TableExecutionSource;
     /**
      * Percentage of data or no. of rows we want to execute the profiler and tests on
      */
@@ -611,10 +631,12 @@ export interface EntityReference {
 }
 
 /**
- * Status of the tag.
+ * Lifecycle stage of the page.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",

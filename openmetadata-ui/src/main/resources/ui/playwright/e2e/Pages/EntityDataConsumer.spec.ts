@@ -37,6 +37,7 @@ import {
   waitForAllLoadersToDisappear,
   waitForWidgetsToRender,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 
 const user = new UserClass();
 
@@ -70,7 +71,7 @@ const test = base.extend<{
   },
 });
 
-entities.forEach((EntityClass) => {
+pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
   const entity = new EntityClass();
 
   const rowSelector =

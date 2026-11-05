@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Select, Space } from 'antd';
+import {
+  Box,
+  Grid,
+  Select,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NoSearchResultsPlaceholder from '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -28,7 +32,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { INITIAL_PAGING_VALUE } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
@@ -36,6 +39,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { searchQuery } from '../../rest/searchAPI';
 import { getOnlineUsers, OnlineUsersQueryParams } from '../../rest/userAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getTermQuery } from '../../utils/SearchPureUtils';
@@ -69,12 +73,12 @@ const OnlineUsersPage = () => {
 
   // Time window options
   const TIME_WINDOWS = [
-    { value: 5, label: t('label.last-n-minutes', { n: 5 }) },
-    { value: 60, label: t('label.last-hour') },
-    { value: 1440, label: t('label.last-24-hours') },
-    { value: 10080, label: t('label.last-7-days') },
-    { value: 43200, label: t('label.last-30-days') },
-    { value: 0, label: t('label.all-time') },
+    { id: '5', label: t('label.last-n-minutes', { n: 5 }) },
+    { id: '60', label: t('label.last-hour') },
+    { id: '1440', label: t('label.last-24-hours') },
+    { id: '10080', label: t('label.last-7-days') },
+    { id: '43200', label: t('label.last-30-days') },
+    { id: '0', label: t('label.all-time') },
   ];
 
   const [timeWindow, setTimeWindow] = useState<number>(1440); // Default: 24 hours
@@ -220,7 +224,13 @@ const OnlineUsersPage = () => {
         }
 
         return (
-          <Space direction="vertical" size={0}>
+          <Box
+            inline
+            align="stretch"
+            className="layout-space"
+            direction="col"
+            gap={0}
+            itemClassName="layout-space-item">
             <Typography
               className="tw:text-primary"
               style={{ color: statusColor }}>
@@ -229,7 +239,7 @@ const OnlineUsersPage = () => {
             <Typography color="secondary" style={{ fontSize: '12px' }}>
               {formatDateTime(activityTime)}
             </Typography>
-          </Space>
+          </Box>
         );
       },
     };
@@ -243,57 +253,73 @@ const OnlineUsersPage = () => {
   }, [isDataLoading, t]);
 
   if (!isAdminUser) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder data-testid="permission-error-placeholder" />
+      </div>
+    );
   }
 
   return (
     <PageLayoutV1 pageTitle={t('label.online-user-plural')}>
-      <Row data-testid="online-users-page" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        data-testid="online-users-page"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <PageHeader
             data={{
               header: t(PAGE_HEADERS.ONLINE_USERS.header),
               subHeader: t(PAGE_HEADERS.ONLINE_USERS.subHeader),
             }}
           />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Table
             className="user-list-table"
             columns={columns}
             data-testid="online-users-table"
             dataSource={userList}
             extraTableFilters={
-              <Space>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={2}
+                itemClassName="layout-space-item">
                 <Typography>{t('label.time-window')}:</Typography>
                 <Select
+                  aria-label={t('label.time-window')}
+                  className="tw:w-45"
                   data-testid="time-window-select"
-                  options={TIME_WINDOWS}
-                  size="small"
-                  style={{ width: 180 }}
-                  value={timeWindow}
-                  onChange={setTimeWindow}
-                />
-              </Space>
+                  items={TIME_WINDOWS}
+                  value={String(timeWindow)}
+                  onChange={(key) => setTimeWindow(Number(key))}>
+                  {(item) => <Select.Item id={item.id} label={item.label} />}
+                </Select>
+              </Box>
             }
             loading={isDataLoading}
             locale={{
               emptyText: (
-                <FilterTablePlaceHolder
-                  placeholderText={
-                    searchValue
-                      ? t('message.no-entity-found-for-name', {
-                          entity: t('label.user-lowercase'),
-                          name: searchValue,
-                        })
-                      : t('message.no-online-users-found')
-                  }
-                />
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <NoSearchResultsPlaceholder
+                    data-testid="search-error-placeholder"
+                    description={
+                      searchValue
+                        ? t('message.no-entity-found-for-name', {
+                            entity: t('label.user-lowercase'),
+                            name: searchValue,
+                          })
+                        : t('message.no-online-users-found')
+                    }
+                  />
+                </div>
               ),
             }}
             pagination={false}
@@ -308,10 +334,10 @@ const OnlineUsersPage = () => {
             }}
             size="small"
           />
-        </Col>
+        </Grid.Item>
 
         {showPagination && (
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <div className="w-full flex justify-center">
               {paging && (
                 <div data-testid="pagination">
@@ -319,9 +345,9 @@ const OnlineUsersPage = () => {
                 </div>
               )}
             </div>
-          </Col>
+          </Grid.Item>
         )}
-      </Row>
+      </Grid>
     </PageLayoutV1>
   );
 };

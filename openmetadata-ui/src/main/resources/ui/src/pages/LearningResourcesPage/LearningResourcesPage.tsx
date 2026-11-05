@@ -21,14 +21,16 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Search, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  Plus,
+  Search,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
-import { ReactComponent as VideoIcon } from '../../assets/svg/ic_video.svg';
 import { DeleteModal } from '../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -41,12 +43,8 @@ import {
 } from '../../components/Learning/Learning.interface';
 import { LearningResourceCard } from '../../components/Learning/LearningResourceCard/LearningResourceCard.component';
 import { ResourcePlayerModal } from '../../components/Learning/ResourcePlayer/ResourcePlayerModal.component';
+import { ResourceTypeIcon } from '../../components/Learning/ResourceTypeIcon/ResourceTypeIcon';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   MAX_VISIBLE_CONTEXTS,
@@ -55,8 +53,11 @@ import {
 } from '../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { PageViewMode } from '../../generated/type/personaPreferences';
+import { usePageForSize } from '../../hooks/paging/usePageForSize';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { LearningResource } from '../../rest/learningResourceAPI';
+import { getViewPageSizeOptions } from '../../utils/PaginationUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { useLearningResourceActions } from './hooks/useLearningResourceActions';
 import {
@@ -68,26 +69,6 @@ import { LearningResourceForm } from './LearningResourceForm.component';
 
 const CARD_GRID_STYLE: React.CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-};
-
-const RESOURCE_TYPE_ICONS: Record<
-  string,
-  React.FunctionComponent<React.SVGProps<SVGSVGElement>>
-> = {
-  Video: VideoIcon,
-  Storylane: StoryLaneIcon,
-};
-
-const getResourceTypeIcon = (type: string) => {
-  const Icon = RESOURCE_TYPE_ICONS[type] ?? VideoIcon;
-
-  return (
-    <Box
-      align="center"
-      className="tw:size-8 tw:shrink-0 tw:justify-center tw:rounded-md">
-      <Icon height={24} width={24} />
-    </Box>
-  );
 };
 
 const getCategoryLabel = (category: string) =>
@@ -105,8 +86,14 @@ export const LearningResourcesPage: React.FC = () => {
   const [filterState, setFilterState] = useState<LearningResourceFilterState>(
     {}
   );
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  const pageSizeOptions = getViewPageSizeOptions(view);
+  const { savedPageSize: pageSize, savePageSize } =
+    useSavedPageSize(pageSizeOptions);
+  const [currentPage, setCurrentPage] = usePageForSize(pageSize);
 
   const { resources, paging, isLoading, refetch } = useLearningResources({
     searchText,
@@ -133,10 +120,6 @@ export const LearningResourcesPage: React.FC = () => {
     handlePlayerClose,
   } = useLearningResourceActions({ onRefetch: refetch });
 
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
-  const [selectedView, setView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
-
   const [searchInputValue, setSearchInputValue] = useState(searchText);
 
   const debouncedSetSearchText = useMemo(
@@ -159,8 +142,16 @@ export const LearningResourcesPage: React.FC = () => {
     setCurrentPage(1);
   }, [searchText, filterState]);
 
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      savePageSize(size);
+      setCurrentPage(1);
+    },
+    [savePageSize]
+  );
+
+  const handleViewChange = useCallback((nextView: PageViewMode) => {
+    setView(nextView);
     setCurrentPage(1);
   }, []);
 
@@ -196,10 +187,17 @@ export const LearningResourcesPage: React.FC = () => {
       currentPage,
       isNumberBased: true,
       isLoading,
-      pageSizeOptions: [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+      pageSizeOptions,
       onShowSizeChange: handlePageSizeChange,
     }),
-    [paging.total, pageSize, currentPage, isLoading, handlePageSizeChange]
+    [
+      paging.total,
+      pageSize,
+      pageSizeOptions,
+      currentPage,
+      isLoading,
+      handlePageSizeChange,
+    ]
   );
 
   const renderCategoriesCell = (record: LearningResource) => {
@@ -245,20 +243,16 @@ export const LearningResourcesPage: React.FC = () => {
   const renderActionsCell = (record: LearningResource) => (
     <Box gap={2}>
       <ButtonUtility
-        aria-label={t('label.edit')}
-        color="secondary"
         data-testid={`edit-${record.name}`}
-        icon={<IconEdit height={14} width={14} />}
-        size="xs"
+        icon={Edit01}
+        size="lg"
         tooltip={t('label.edit')}
         onClick={() => handleEdit(record)}
       />
       <ButtonUtility
-        aria-label={t('label.delete')}
-        color="secondary"
         data-testid={`delete-${record.name}`}
-        icon={<Trash01 size={14} />}
-        size="xs"
+        icon={Trash01}
+        size="lg"
         tooltip={t('label.delete')}
         onClick={() => handleDelete(record)}
       />
@@ -270,7 +264,11 @@ export const LearningResourcesPage: React.FC = () => {
       case 'name':
         return (
           <Box align="center" className="tw:min-w-0" gap={2}>
-            {getResourceTypeIcon(record.resourceType)}
+            <Box
+              align="center"
+              className="tw:size-8 tw:shrink-0 tw:justify-center tw:rounded-md">
+              <ResourceTypeIcon resourceType={record.resourceType} />
+            </Box>
             <Typography
               ellipsis
               as="span"
@@ -371,7 +369,7 @@ export const LearningResourcesPage: React.FC = () => {
               />
               {quickFilters}
               <Box className="tw:flex-1" />
-              <ViewToggle value={view} onChange={setView} />
+              <ViewToggle value={view} onChange={handleViewChange} />
             </Box>
             {filterSelectionDisplay}
           </Box>
@@ -391,6 +389,7 @@ export const LearningResourcesPage: React.FC = () => {
                   {(col) => (
                     <Table.Head
                       id={col.id}
+                      isRowHeader={col.id === 'name'}
                       key={col.id}
                       label={col.label}
                       width={col.width}

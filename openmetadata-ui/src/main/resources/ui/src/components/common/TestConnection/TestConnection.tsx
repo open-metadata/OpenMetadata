@@ -41,7 +41,7 @@ import {
 } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
-import { Connection as ConfigObject } from '../../../generated/entity/automations/testServiceConnection';
+import { AirflowConnectionObject as ConfigObject } from '../../../generated/entity/automations/testServiceConnection';
 import {
   StatusType,
   TestConnectionStepResult,
@@ -166,6 +166,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   isFormValidationPending = false,
   hostIp,
   extraInfo,
+  renderFailureAction,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -850,6 +851,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
         progress={progress}
+        renderFailureAction={renderFailureAction}
         serviceType={serviceType}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}

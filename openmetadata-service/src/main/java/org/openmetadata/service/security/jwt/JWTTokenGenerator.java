@@ -26,6 +26,7 @@ import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -42,8 +43,11 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -63,8 +67,11 @@ public class JWTTokenGenerator {
   public static final String TOKEN_TYPE = "tokenType";
   public static final String PREFERRED_USERNAME = "preferred_username";
   public static final String USERNAME = "username";
-  public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   public static final String SESSION_ID_CLAIM = "sessionId";
+
+  /** The MCP OAuth client an access token was issued to (RFC 9068); only MCP tokens carry it. */
+  public static final String CLIENT_ID_CLAIM = "client_id";
+
   public static final String SCOPE_CLAIM = "scope";
   private static final String INTERNAL_TOKEN_CONFIGURATION_ERROR =
       "Internal action tokens require valid values for "
@@ -79,6 +86,7 @@ public class JWTTokenGenerator {
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
   private List<String> principalClaims = List.of();
   private Map<String, String> principalClaimsMapping = Map.of();
+  private String emailClaim;
 
   private JWTTokenGenerator() {
     /* Private constructor for singleton */
@@ -117,6 +125,7 @@ public class JWTTokenGenerator {
     principalClaims = listOrEmpty(authenticationConfiguration.getJwtPrincipalClaims());
     principalClaimsMapping =
         buildPrincipalClaimsMapping(authenticationConfiguration.getJwtPrincipalClaimsMapping());
+    emailClaim = authenticationConfiguration.getEmailClaim();
     AuthenticationConfiguration.TokenValidationAlgorithm algorithm =
         authenticationConfiguration.getTokenValidationAlgorithm();
     try {
@@ -194,6 +203,20 @@ public class JWTTokenGenerator {
       boolean isBot,
       ServiceTokenType tokenType,
       List<String> scopes) {
+    return generateJWTToken(
+        userName, roles, isAdmin, email, expiryInSeconds, isBot, tokenType, scopes, null);
+  }
+
+  public JWTAuthMechanism generateJWTToken(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      long expiryInSeconds,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      List<String> scopes,
+      String clientId) {
     return getJwtAuthMechanism(
         userName,
         roles,
@@ -203,7 +226,9 @@ public class JWTTokenGenerator {
         tokenType,
         getCustomExpiryDate(expiryInSeconds),
         null,
-        scopes);
+        scopes,
+        null,
+        clientId);
   }
 
   public JWTAuthMechanism generateJWTTokenForSession(
@@ -265,6 +290,23 @@ public class JWTTokenGenerator {
       JWTTokenExpiry expiry,
       List<String> scopes,
       String sessionId) {
+    return getJwtAuthMechanism(
+        userName, roles, isAdmin, email, isBot, tokenType, expires, expiry, scopes, sessionId,
+        null);
+  }
+
+  public JWTAuthMechanism getJwtAuthMechanism(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      Date expires,
+      JWTTokenExpiry expiry,
+      List<String> scopes,
+      String sessionId,
+      String clientId) {
     try {
       if (isAdmin) {
         if (nullOrEmpty(roles)) {
@@ -283,6 +325,10 @@ public class JWTTokenGenerator {
           .withClaim(ROLES_CLAIM, roles.stream().toList())
           .withClaim(IS_BOT_CLAIM, isBot)
           .withClaim(TOKEN_TYPE, tokenType.value())
+          // Two tokens minted in the same second for one principal would otherwise be identical,
+          // and stored tokens are told apart by hash. RFC 9068 also asks for a jti on MCP access
+          // tokens.
+          .withJWTId(UUID.randomUUID().toString())
           .withIssuedAt(new Date(System.currentTimeMillis()))
           .withExpiresAt(expires);
 
@@ -291,6 +337,9 @@ public class JWTTokenGenerator {
       }
       if (!nullOrEmpty(sessionId)) {
         tokenBuilder.withClaim(SESSION_ID_CLAIM, sessionId);
+      }
+      if (!nullOrEmpty(clientId)) {
+        tokenBuilder.withClaim(CLIENT_ID_CLAIM, clientId);
       }
 
       String token = tokenBuilder.sign(algorithm);
@@ -305,15 +354,15 @@ public class JWTTokenGenerator {
 
   /**
    * Identity claims shaped the way {@code SecurityUtil.findUserNameFromClaims}, {@code
-   * findEmailFromClaims} and {@code validateDomainEnforcement} read them under this deployment's
-   * principal-claim configuration, so a token we issue resolves to the user it was minted for - the
-   * same (name, email) the identity provider's token yields for that user.
+   * findEmailFromClaims}, {@code validateDomainEnforcement} and the email-first flow read them under
+   * this deployment's principal-claim configuration, so a token we issue resolves to the user it was
+   * minted for - the same (name, email) the identity provider's token yields for that user.
    *
    * <p>{@code preferred_username} carries the email because that is what identity providers put
    * there (Okta login, Azure UPN); a bare name there resolved to an empty domain under enforcement
    * and to a synthesized {@code name@principalDomain} email that contradicted the user's real one
-   * (#29142). {@code sub} and {@code username} stay the bare name - the stable subject - unless the
-   * deployment's claim order reads one of them first, see {@link #putConfiguredPrincipalClaims}.
+   * (#29142). {@code sub} and {@code username} stay the bare name - the stable subject. Configured
+   * claim-order handling is described in {@link #putConfiguredPrincipalClaims}.
    */
   private Map<String, String> identityClaims(String userName, String email) {
     String principal = nullOrEmpty(email) ? userName : email;
@@ -325,6 +374,7 @@ public class JWTTokenGenerator {
     }
     claims.put(PREFERRED_USERNAME, principal);
     putConfiguredPrincipalClaims(claims, userName, principal);
+    putConfiguredEmailClaim(claims, email);
     return claims;
   }
 
@@ -332,9 +382,9 @@ public class JWTTokenGenerator {
    * A deployment may resolve principals from claims we do not otherwise mint ({@code upn}, {@code
    * mail}, ...). With a mapping, the username claim gets the bare name and the email claim the
    * email - the email wins if both map to one claim, which is how the provider's token looks too.
-   * With an order, the first claim gets the email - even {@code sub} or {@code username}: a
-   * deployment that resolves principals from that claim first has an identity provider whose value
-   * there is the email-shaped login, and the first-match lookup must land on a value with a domain.
+   * With an order, only an {@code email} claim gets the email. Other claims carry the stored
+   * OpenMetadata username so email-local-part collisions cannot resolve an internally issued token
+   * to a different account.
    */
   private void putConfiguredPrincipalClaims(
       Map<String, String> claims, String userName, String principal) {
@@ -348,8 +398,41 @@ public class JWTTokenGenerator {
         claims.put(emailClaim, principal);
       }
     } else if (!principalClaims.isEmpty()) {
-      claims.put(principalClaims.getFirst(), principal);
+      String firstPrincipalClaim = principalClaims.getFirst();
+      claims.put(
+          firstPrincipalClaim, EMAIL_CLAIM.equals(firstPrincipalClaim) ? principal : userName);
     }
+  }
+
+  /**
+   * The email-first flow reads the address from {@code emailClaim} alone, so a claim the provider
+   * sends but we do not otherwise mint ({@code upn}, a custom claim) has to be in our tokens too.
+   * That flow only runs without a principal-claims mapping, which otherwise owns these claim names.
+   */
+  private void putConfiguredEmailClaim(Map<String, String> claims, String email) {
+    if (principalClaimsMapping.isEmpty() && !nullOrEmpty(emailClaim) && !nullOrEmpty(email)) {
+      claims.put(emailClaim, email);
+    }
+  }
+
+  /**
+   * The stored user name a token we minted names, read back from {@link #identityClaims}: {@code
+   * sub}, or {@code username} when the configured claims put the email into {@code sub}. Empty when
+   * the token carries neither, so the caller falls back to the configured principal claims.
+   */
+  public static Optional<String> mintedUserName(Map<String, Claim> claims) {
+    String subject = claimValue(claims, SUBJECT_CLAIM);
+    String userName =
+        subject == null || subject.equalsIgnoreCase(claimValue(claims, EMAIL_CLAIM))
+            ? claimValue(claims, USERNAME)
+            : subject;
+    return Optional.ofNullable(userName).map(name -> name.toLowerCase(Locale.ROOT));
+  }
+
+  private static String claimValue(Map<String, Claim> claims, String claimName) {
+    Claim claim = claims.get(claimName);
+    String value = claim == null ? null : claim.asString();
+    return nullOrEmpty(value) ? null : value;
   }
 
   public static Date getExpiryDate(JWTTokenExpiry jwtTokenExpiry) {
@@ -371,38 +454,6 @@ public class JWTTokenGenerator {
   public Date getCustomExpiryDate(long seconds) {
     LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(seconds);
     return Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant());
-  }
-
-  public JWTAuthMechanism generateImpersonationToken(
-      String botName,
-      String targetUser,
-      Set<String> botRoles,
-      boolean isBotAdmin,
-      String botEmail,
-      long expiryInSeconds) {
-    try {
-      Algorithm algorithm = getAlgorithm(tokenValidationAlgorithm, null, privateKey);
-      Date expiryDate = getCustomExpiryDate(expiryInSeconds);
-
-      String token =
-          JWT.create()
-              .withIssuer(issuer)
-              .withKeyId(kid)
-              .withClaim(SUBJECT_CLAIM, targetUser)
-              .withClaim(IS_BOT_CLAIM, false)
-              .withClaim(TOKEN_TYPE, ServiceTokenType.BOT.value())
-              .withClaim(IMPERSONATED_USER_CLAIM, botName)
-              .withIssuedAt(new Date(System.currentTimeMillis()))
-              .withExpiresAt(expiryDate)
-              .sign(algorithm);
-
-      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism();
-      jwtAuthMechanism.setJWTToken(token);
-      jwtAuthMechanism.setJWTTokenExpiresAt(expiryDate.getTime());
-      return jwtAuthMechanism;
-    } catch (Exception e) {
-      throw new JWTCreationException("Failed to generate impersonation token", e);
-    }
   }
 
   public JWKSResponse getJWKSResponse() {

@@ -29,6 +29,7 @@ from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils.datalake.datalake_utils import DataFrameColumnParser
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.schema_inference import NO_LIMITS, InferenceLimits, InferenceReport
 
 logger = ingestion_logger()
 
@@ -609,6 +610,8 @@ def get_first_schema_entry(
 
 def iter_archive_entries_with_schema(
     reader: ArchiveReader,
+    limits: InferenceLimits = NO_LIMITS,
+    report: InferenceReport | None = None,
 ) -> Iterator[tuple[ArchiveEntry, list, SupportedTypes | None]]:
     """Yield (entry, columns, entry_format) for each valid non-archive inner file.
 
@@ -622,11 +625,16 @@ def iter_archive_entries_with_schema(
             continue
         entry_format = detect_inner_format(entry.name)
         if not columns and entry_format is not None:
-            columns = infer_columns_from_archive_entry(entry, entry_format)
+            columns = infer_columns_from_archive_entry(entry, entry_format, limits=limits, report=report)
         yield entry, columns, entry_format
 
 
-def infer_columns_from_archive_entry(entry: ArchiveEntry, inner_format: SupportedTypes) -> list:
+def infer_columns_from_archive_entry(
+    entry: ArchiveEntry,
+    inner_format: SupportedTypes,
+    limits: InferenceLimits = NO_LIMITS,
+    report: InferenceReport | None = None,
+) -> list:
     """Infer column definitions by reading the entry's bytes into a DataFrame.
 
     Returns an empty list on any failure so callers can proceed without schema.
@@ -640,7 +648,7 @@ def infer_columns_from_archive_entry(entry: ArchiveEntry, inner_format: Supporte
             logger.warning(f"No reader for inner format {inner_format.value!r}")
             return []
         df = reader(entry.data)
-        return DataFrameColumnParser.create(df, inner_format).get_columns()
+        return DataFrameColumnParser.create(df, inner_format, limits=limits, report=report).get_columns()
     except Exception as exc:
         logger.warning(f"Failed to infer columns from {entry.name!r}: {exc}")
         logger.debug(traceback.format_exc())

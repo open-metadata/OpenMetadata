@@ -29,4 +29,6 @@ export interface WidgetCardProps {
   className?: string;
   contentClassName?: string;
   helperText?: React.ReactNode;
+  /** Rendered in Card.Footer, below the body and with its own divider, e.g. Save/Cancel actions. */
+  footer?: React.ReactNode;
 }
