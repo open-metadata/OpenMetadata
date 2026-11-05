@@ -29,13 +29,14 @@ import {
   Clock,
 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import {
+  LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../constants/constants';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
 import {
-  INCIDENT_GROUPS_PAGE_SIZE,
-  INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
   INCIDENT_TABLE_CARD_CLASS,
   INCIDENT_TABLE_PAGER_CLASS,
 } from './IncidentGroups.constants';
@@ -105,7 +106,6 @@ const IncidentGroupDrawer = ({
   } = useIncidentGroupIncidents({
     group,
     filters,
-    defaultPageSize: INCIDENT_GROUPS_PAGE_SIZE,
   });
 
   return (
@@ -246,7 +246,7 @@ const IncidentGroupDrawer = ({
                       className={INCIDENT_TABLE_PAGER_CLASS}
                       page={currentPage}
                       pageSize={pageSize}
-                      pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
+                      pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
                       total={Math.max(
                         1,
                         computeTotalPages(

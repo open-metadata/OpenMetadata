@@ -36,7 +36,6 @@ import {
   ENTITY_PATH,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
@@ -162,7 +161,7 @@ const SchemaTable = () => {
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const { filters, setFilters } = useTableFilters({
     columnSearch: undefined as string | undefined,

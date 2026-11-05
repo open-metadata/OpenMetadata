@@ -81,6 +81,15 @@ jest.mock('../../../../../../rest/alertsAPI', () => ({
 }));
 
 jest.mock('../../../../../../hooks/useSettingsHash', () => ({
+  useHashPagingParams: () => ({
+    page: 1,
+    pageSize: undefined,
+    resolvedPageSize: 15,
+    savePageSize: jest.fn(),
+    cursor: undefined,
+    cursorType: undefined,
+    setPage: jest.fn(),
+  }),
   useSettingsHash: () => ({
     state: { params: {} },
     updateParams: jest.fn(),
@@ -132,6 +141,7 @@ jest.mock('../../../../../Database/SchemaEditor/SchemaEditor', () =>
 );
 
 jest.mock('../../../../../../constants/constants', () => ({
+  ...jest.requireActual('../../../../../../constants/constants'),
   PAGE_SIZE_BASE: 10,
   PAGE_SIZE_MEDIUM: 25,
   PAGE_SIZE_LARGE: 50,

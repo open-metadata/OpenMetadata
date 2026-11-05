@@ -22,7 +22,7 @@ import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 import { Grid01, List } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isUndefined } from 'lodash';
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   SEGMENT_TOGGLE_GROUP_CLASS,
@@ -45,10 +45,9 @@ export const ListView = <T extends object = Record<string, unknown>>({
   handleDeletedSwitchChange,
   deleted = false,
   customPaginationProps,
+  currentView,
+  onViewChange,
 }: ListViewProps<T>) => {
-  const [currentView, setCurrentView] = useState<ListViewOptions>(
-    ListViewOptions.TABLE
-  );
   const { t } = useTranslation();
 
   const listViewOptions = [
@@ -128,7 +127,7 @@ export const ListView = <T extends object = Record<string, unknown>>({
             onSelectionChange={(keys) => {
               const selected = [...keys][0];
               if (selected) {
-                setCurrentView(selected as ListViewOptions);
+                onViewChange(selected as ListViewOptions);
               }
             }}>
             {listViewOptions.map(({ label, value, ariaLabel }) => (
