@@ -34,7 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
 import type { Destination } from '../../../generated/events/eventSubscription';
 import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
-import type { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { ModifiedDestination } from '../../../utils/AlertsClassBase.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import {
   getDestinationsWithTestStatus,
@@ -72,9 +72,13 @@ function DestinationFormItem({
   >(new Set());
 
   const { sources } = useAlertSelectionContext();
-  const destinations: ModifiedDestination[] =
-    (useWatch({ name: 'destinations', control }) as ModifiedDestination[]) ??
-    [];
+  const watchedDestinations = useWatch({ name: 'destinations', control }) as
+    | ModifiedDestination[]
+    | undefined;
+  const destinations = useMemo(
+    () => watchedDestinations ?? [],
+    [watchedDestinations]
+  );
 
   // Submit owns required validation; this only removes its stale error after
   // the user adds a destination, avoiding an error on untouched create forms.

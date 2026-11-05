@@ -20,7 +20,7 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
-import { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { ModifiedDestination } from '../../../utils/AlertsClassBase.interface';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
 import { AlertAiFormValue } from './AlertAiFormFields.interface';
 import {

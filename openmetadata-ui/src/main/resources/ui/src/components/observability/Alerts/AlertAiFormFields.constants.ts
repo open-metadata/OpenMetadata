@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { ModifiedDestination } from '../../../utils/AlertsClassBase.interface';
 
 export const ALERT_AI_DEFAULT_CONNECTION_TIMEOUT = 10;
 export const ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH = 1;

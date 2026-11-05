@@ -22,7 +22,7 @@ import {
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+} from '../../../utils/AlertsClassBase.interface';
 import { getMessageFromArgumentName } from '../../../utils/Alerts/AlertsUtilPure';
 import {
   AlertAiFormValidationErrors,

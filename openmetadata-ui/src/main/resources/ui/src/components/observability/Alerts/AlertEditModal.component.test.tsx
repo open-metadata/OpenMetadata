@@ -28,7 +28,7 @@ import {
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+} from '../../../utils/AlertsClassBase.interface';
 import AlertEditModal from './AlertEditModal.component';
 
 const mockUseAlertFormData = jest.fn();

@@ -29,7 +29,7 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
   ModifiedEventSubscription,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+} from '../../../utils/AlertsClassBase.interface';
 import type { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 
 export type AlertAiFormMode = 'add' | 'edit' | 'view';

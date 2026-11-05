@@ -52,7 +52,7 @@ import type { AlertSelection } from '../../../hooks/useAlertSelection';
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+} from '../../../utils/AlertsClassBase.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import type { SelectionSupport } from '../../../utils/Alerts/AlertSelectionUtil';

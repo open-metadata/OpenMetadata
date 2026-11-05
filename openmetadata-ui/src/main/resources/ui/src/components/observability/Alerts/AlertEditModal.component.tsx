@@ -31,7 +31,7 @@ import {
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+} from '../../../utils/AlertsClassBase.interface';
 import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import AlertAiForm from './AlertAiForm.component';

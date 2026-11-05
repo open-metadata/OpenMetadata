@@ -25,7 +25,7 @@ import {
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+} from '../../../utils/AlertsClassBase.interface';
 import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
 import {
