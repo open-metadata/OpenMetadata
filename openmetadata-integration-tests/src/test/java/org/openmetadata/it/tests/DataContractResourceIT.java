@@ -2473,6 +2473,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "servers:\n"
             + "  - server: prod\n"
             + "    type: snowflake\n"
+            + "    account: sample-account\n"
+            + "    database: ecommerce\n"
+            + "    schema: shopify\n"
             + "    customProperties:\n"
             + "      - property: account\n"
             + "        value: svc-account\n";
@@ -3718,12 +3721,18 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     emailNotNull.setName("email_not_null");
     emailNotNull.setType(ODCSQualityRule.Type.LIBRARY);
     emailNotNull.setMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES);
+    emailNotNull.setMustBe(0.0);
     emailProperty.setQuality(List.of(emailNotNull));
 
     ODCSSchemaElement tableObject = new ODCSSchemaElement();
     tableObject.setName(table.getName());
     tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
     tableObject.setProperties(List.of(emailProperty));
+    tableObject.setPrimaryKey(null);
+    tableObject.setPrimaryKeyPosition(null);
+    tableObject.setRequired(null);
+    tableObject.setUnique(null);
+    tableObject.setPartitionKeyPosition(null);
     odcs.setSchema(List.of(tableObject));
 
     return SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
@@ -5967,13 +5976,15 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     sqlRule.setQuery("SELECT MAX(updated_at) FROM data");
     sqlRule.setDimension(ODCSQualityRule.Dimension.TIMELINESS);
     sqlRule.setSeverity("critical");
+    sqlRule.setMustBeGreaterThan(0.0);
     qualityRules.add(sqlRule);
 
     // Library rule with metric
     ODCSQualityRule libraryRule = new ODCSQualityRule();
     libraryRule.setType(ODCSQualityRule.Type.LIBRARY);
-    libraryRule.setMetric(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES);
+    libraryRule.setMetric(ODCSQualityRule.OdcsQualityMetric.DUPLICATE_VALUES);
     libraryRule.setColumn("email");
+    libraryRule.setMustBe(0.0);
     libraryRule.setDimension(ODCSQualityRule.Dimension.UNIQUENESS);
     qualityRules.add(libraryRule);
 
@@ -6015,10 +6026,11 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .filter(r -> r.getType() == ODCSQualityRule.Type.LIBRARY)
             .findFirst()
             .orElseThrow();
-    assertEquals(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES, exportedLibraryRule.getMetric());
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.DUPLICATE_VALUES, exportedLibraryRule.getMetric());
     assertNull(exportedLibraryRule.getColumn());
     assertEquals(
-        ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES,
+        ODCSQualityRule.OdcsQualityMetric.DUPLICATE_VALUES,
         findExportedProperty(exported, "email").getQuality().getFirst().getMetric());
 
     // Verify custom rule
@@ -6203,6 +6215,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     ODCSQualityRule rule = new ODCSQualityRule();
     rule.setType(ODCSQualityRule.Type.LIBRARY);
     rule.setMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT);
+    rule.setMustBeGreaterThan(0.0);
     rule.setScheduler("cron");
     rule.setSchedule("0 0 * * *");
     qualityRules.add(rule);
@@ -6262,10 +6275,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     // Rule with multiple assertions
     ODCSQualityRule multiAssertRule = new ODCSQualityRule();
     multiAssertRule.setType(ODCSQualityRule.Type.LIBRARY);
-    multiAssertRule.setMetric(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES);
+    multiAssertRule.setMetric(ODCSQualityRule.OdcsQualityMetric.DUPLICATE_VALUES);
     multiAssertRule.setColumn("id");
-    multiAssertRule.setMustBeGreaterThan(0.0);
-    multiAssertRule.setMustBeLessThan(1000000.0);
+    multiAssertRule.setMustBeBetween(List.of(0.0, 1000000.0));
     qualityRules.add(multiAssertRule);
 
     odcs.setQuality(qualityRules);
@@ -7574,6 +7586,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "        quality:\n"
             + "          - type: library\n"
             + "            metric: nullValues\n"
+            + "            mustBe: 0\n"
             + "            name: email_not_null\n"
             + "      - name: id\n"
             + "        logicalType: integer\n"
@@ -8265,6 +8278,17 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
           new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
           new Column().withName("updated_at").withDataType(ColumnDataType.TIMESTAMP));
 
+  private static String odcsWithExportableQualityRules(String contractName, String tableName) {
+    return odcsWithQualityRules(contractName, tableName)
+            .replace(
+                "rule: validValues\n                    validValues: [open, closed]",
+                "metric: invalidValues\n                    arguments:\n                      validValues: [open, closed]\n                    mustBe: 0")
+            .replace(
+                "metric: freshness\n                    mustBeLessOrEqualTo: 24\n                    unit: hours",
+                "type: text\n                    description: Freshness is defined by the contract SLA")
+        + "slaProperties:\n  - property: freshness\n    value: 24\n    unit: h\n    element: updated_at\n";
+  }
+
   private static String odcsWithQualityRules(String contractName, String tableName) {
     return """
         apiVersion: v3.1.0
@@ -8591,7 +8615,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         SdkClients.adminClient()
             .dataContracts()
             .createOrUpdateFromODCSYaml(
-                odcsWithQualityRules(contract.getName(), table.getName()),
+                odcsWithExportableQualityRules(contract.getName(), table.getName()),
                 table.getId(),
                 "table",
                 "merge");
@@ -8842,7 +8866,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         SdkClients.adminClient()
             .dataContracts()
             .createOrUpdateFromODCSYaml(
-                odcsWithQualityRules(ns.prefix("odcs_fresh_export"), table.getName()),
+                odcsWithExportableQualityRules(ns.prefix("odcs_fresh_export"), table.getName()),
                 table.getId(),
                 "table");
     String exported = SdkClients.adminClient().dataContracts().exportToODCSYaml(contract.getId());

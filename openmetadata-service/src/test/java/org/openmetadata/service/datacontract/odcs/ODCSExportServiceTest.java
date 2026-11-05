@@ -26,7 +26,10 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSElementExtension;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 
 class ODCSExportServiceTest {
   private final ODCSExportService exporter = new ODCSExportService(contract -> List.of());
@@ -75,6 +78,37 @@ class ODCSExportServiceTest {
       assertFalse(generated.at("/definitions/SchemaObject/properties").has("primaryKey"));
       assertTrue(generated.at("/definitions/SchemaProperty/properties").has("primaryKey"));
     }
+  }
+
+  @Test
+  void unknownBinaryLengthsDoNotMakeANativeContractUnexportable() {
+    DataContract contract =
+        contract()
+            .withSchema(
+                List.of(
+                    new Column()
+                        .withName("payload")
+                        .withDataType(ColumnDataType.BINARY)
+                        .withDataLength(-1)));
+    ODCSExportService.Result result = exporter.export(contract, "v3.1.0");
+    assertTrue(result.valid(), result.issues().toString());
+    assertFalse(result.document().at("/schema/0/properties/0").has("logicalTypeOptions"));
+  }
+
+  @Test
+  void legacyElementMetadataIsAttachedBeforeValidation() {
+    DataContract contract =
+        contract()
+            .withSchema(
+                List.of(new Column().withName("email").withDataType(ColumnDataType.VARCHAR)))
+            .withOdcsElementExtensions(
+                List.of(
+                    new ODCSElementExtension()
+                        .withElement("email")
+                        .withTransformSourceObjects(List.of("source.email"))));
+    JsonNode document = exporter.export(contract, "v3.1.0").requireValid();
+    assertEquals(
+        "source.email", document.at("/schema/0/properties/0/transformSourceObjects/0").asText());
   }
 
   private static DataContract contract() {

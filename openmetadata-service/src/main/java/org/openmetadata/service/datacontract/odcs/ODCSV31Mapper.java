@@ -178,7 +178,8 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
       property.setRequired(column.getConstraint() == ColumnConstraint.NOT_NULL);
     }
     if (property.getLogicalType() == SchemaProperty.LogicalType.STRING
-        && column.getDataLength() != null) {
+        && column.getDataLength() != null
+        && column.getDataLength() >= 0) {
       property.setLogicalTypeOptions(
           new LogicalTypeOptions().withMaxLength(column.getDataLength()));
     }
