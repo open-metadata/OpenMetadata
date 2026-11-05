@@ -323,7 +323,14 @@ test.describe(
       });
 
       await test.step('Validate no pipeline on the entity page', async () => {
+        const pipelineCountResponse = page.waitForResponse(
+          (response: Response) =>
+            response.url().includes('/api/v1/services/ingestionPipelines?') &&
+            response.url().includes('pipelineType=TestSuite') &&
+            response.url().includes('limit=0')
+        );
         await visitDataQualityTab(page, table);
+        await pipelineCountResponse;
 
         await expect(
           page.getByTestId('tableRowCountToEqual_test_case')
