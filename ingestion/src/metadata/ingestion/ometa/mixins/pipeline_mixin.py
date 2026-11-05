@@ -14,6 +14,9 @@ Mixin class containing Pipeline specific methods
 To be used by OpenMetadata class
 """
 
+from collections.abc import Callable
+from typing import Any, cast
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
@@ -41,6 +44,7 @@ class OMetaPipelineMixin:
     """
 
     client: REST
+    get_suffix: Callable[..., str]
 
     def add_bulk_pipeline_status(self, fqn: str, statuses: list[PipelineStatus]) -> Pipeline:
         """
@@ -110,11 +114,9 @@ class OMetaPipelineMixin:
             params = f"startTs={start_ts}&endTs={end_ts}&limit={page_size}"
             if after:
                 params += f"&after={after}"
-            resp = (
-                self.client.get(
-                    f"{self.get_suffix(Pipeline)}/{quote(normalized_fqn)}/status?{params}",
-                )
-                or {}
+            resp = cast(
+                "dict[str, Any]",
+                self.client.get(f"{self.get_suffix(Pipeline)}/{quote(normalized_fqn)}/status?{params}") or {},
             )
             page = [PipelineStatus(**status) for status in resp.get("data", [])]
             statuses.extend(page)
