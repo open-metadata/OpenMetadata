@@ -56,6 +56,26 @@ class OdcsExportModelProjectionTest(unittest.TestCase):
                 self.assertEqual(1_000_000_000, target.stat().st_mtime_ns)
                 self.assertTrue(MODULE.generate(True))
 
+    def test_open_legacy_objects_keep_their_upstream_extension_policy(self):
+        source = json.loads(
+            (
+                ROOT / "openmetadata-spec/src/main/resources/odcs/v2.2.2/schema.json"
+            ).read_text()
+        )
+        model = MODULE.project_model(source, "v2.2.2")
+        self.assertNotEqual(False, model.get("additionalProperties"))
+        self.assertNotEqual(
+            False, model["definitions"]["Column"].get("additionalProperties")
+        )
+
+    def test_export_model_declares_only_its_exact_profile_version(self):
+        model = MODULE.project_model(self.source, "v3.1.0")
+        self.assertEqual(["v3.1.0"], model["properties"]["apiVersion"]["enum"])
+        self.assertEqual(
+            "ODCS export profile v3.1.0.",
+            model["properties"]["apiVersion"]["description"],
+        )
+
     def test_table_and_column_models_derive_their_distinct_fields(self):
         model = MODULE.project_model(self.source, "v3.1.0")
         table = model["definitions"]["SchemaObject"]["properties"]

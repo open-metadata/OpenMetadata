@@ -119,7 +119,7 @@ def _project_node(node, root: dict, *, definition: bool = False):
             continue
         else:
             result[key] = copy.deepcopy(value)
-    if result.get("properties"):
+    if result.get("properties") and composed.get("unevaluatedProperties") is False:
         result["additionalProperties"] = False
     if result.get("type") == "array":
         result["default"] = None
@@ -144,6 +144,8 @@ def project_model(source: dict, version: str, digest: str | None = None) -> dict
     )
     model["title"] = "odcsContract"
     model["javaType"] = f"{package}.OdcsContract"
+    model["properties"]["apiVersion"]["enum"] = [version]
+    model["properties"]["apiVersion"]["description"] = f"ODCS export profile {version}."
     model["x-odcs-version"] = version
     model["x-odcs-upstream-sha256"] = (
         digest

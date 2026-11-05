@@ -1124,7 +1124,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   @Operation(
       operationId = "exportDataContractToODCS",
       summary = "Export data contract to ODCS format",
-      description = "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 format.",
+      description = "Export a data contract to the requested ODCS version; the default is v3.1.0.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1132,7 +1132,10 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = ODCSDataContract.class))),
+                    schema =
+                        @Schema(
+                            type = "object",
+                            description = "ODCS document matching the requested export version"))),
         @ApiResponse(responseCode = "404", description = "Data contract not found")
       })
   public JsonNode exportToODCS(
@@ -1146,7 +1149,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Requested ODCS export version")
+      @Parameter(
+              description =
+                  "Requested ODCS export version; only profiles with published schemas are supported")
           @QueryParam("odcsVersion")
           @DefaultValue(ODCSExportService.DEFAULT_VERSION)
           String odcsVersion) {
@@ -1166,7 +1171,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "exportDataContractToODCSYaml",
       summary = "Export data contract to ODCS YAML format",
       description =
-          "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 YAML format.",
+          "Export a data contract as YAML for the requested ODCS version; the default is v3.1.0.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1185,7 +1190,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Requested ODCS export version")
+      @Parameter(
+              description =
+                  "Requested ODCS export version; only profiles with published schemas are supported")
           @QueryParam("odcsVersion")
           @DefaultValue(ODCSExportService.DEFAULT_VERSION)
           String odcsVersion) {
@@ -1210,7 +1217,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "exportDataContractToODCSByFQN",
       summary = "Export data contract to ODCS format by FQN",
       description =
-          "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 format by fully qualified name.",
+          "Export a data contract by fully qualified name to the requested ODCS version; the default is v3.1.0.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1218,7 +1225,10 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = ODCSDataContract.class))),
+                    schema =
+                        @Schema(
+                            type = "object",
+                            description = "ODCS document matching the requested export version"))),
         @ApiResponse(responseCode = "404", description = "Data contract not found")
       })
   public JsonNode exportToODCSByFqn(
@@ -1234,7 +1244,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Requested ODCS export version")
+      @Parameter(
+              description =
+                  "Requested ODCS export version; only profiles with published schemas are supported")
           @QueryParam("odcsVersion")
           @DefaultValue(ODCSExportService.DEFAULT_VERSION)
           String odcsVersion) {
@@ -1254,7 +1266,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "exportDataContractToODCSYamlByFQN",
       summary = "Export data contract to ODCS YAML format by FQN",
       description =
-          "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 YAML format by fully qualified name.",
+          "Export a data contract by fully qualified name as YAML for the requested ODCS version; the default is v3.1.0.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1275,7 +1287,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Requested ODCS export version")
+      @Parameter(
+              description =
+                  "Requested ODCS export version; only profiles with published schemas are supported")
           @QueryParam("odcsVersion")
           @DefaultValue(ODCSExportService.DEFAULT_VERSION)
           String odcsVersion) {

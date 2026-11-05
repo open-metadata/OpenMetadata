@@ -25,4 +25,12 @@ public interface ODCSVersionAdapter {
   String schemaLocation();
 
   JsonNode write(DataContract contract, List<ODCSQualityRule> nativeRules);
+
+  default JsonNode preservationView(JsonNode document) {
+    return document;
+  }
+
+  default JsonNode materialize(JsonNode document) {
+    return document;
+  }
 }

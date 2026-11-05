@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 
@@ -29,15 +30,30 @@ import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 public final class ODCSExportService {
   public static final String DEFAULT_VERSION = "v3.1.0";
   private static final Map<String, ODCSVersionAdapter> ADAPTERS =
-      Map.of(DEFAULT_VERSION, new ODCSV31Mapper());
+      Map.of(
+          DEFAULT_VERSION,
+          new ODCSV31Mapper(),
+          "v3.0.2",
+          new ODCSV30Mapper("v3.0.2"),
+          "v3.0.1",
+          new ODCSV30Mapper("v3.0.1"),
+          "v3.0.0",
+          new ODCSV30Mapper("v3.0.0"),
+          "v2.2.2",
+          new ODCSV22Mapper("v2.2.2"),
+          "v2.2.1",
+          new ODCSV22Mapper("v2.2.1"));
   // Generated POJOs cannot enforce every conditional ODCS constraint, and preserved metadata is
   // merged as raw JSON after serialization. Validate the complete export against the pinned schema
   // for its target version; these bundled validators are loaded once and reused.
   private static final Map<String, Schema> SCHEMAS =
-      Map.of(
-          DEFAULT_VERSION,
-          SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2019_09)
-              .getSchema(SchemaLocation.of(ADAPTERS.get(DEFAULT_VERSION).schemaLocation())));
+      ADAPTERS.entrySet().stream()
+          .collect(
+              Collectors.toUnmodifiableMap(
+                  Map.Entry::getKey,
+                  entry ->
+                      SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2019_09)
+                          .getSchema(SchemaLocation.of(entry.getValue().schemaLocation()))));
   private final Function<DataContract, List<ODCSQualityRule>> qualityRules;
 
   public record Result(String version, JsonNode document, List<String> issues) {
@@ -62,8 +78,11 @@ public final class ODCSExportService {
   }
 
   public Result export(DataContract contract, String version) {
-    JsonNode nativeDocument = adapter(version).write(contract, qualityRules.apply(contract));
-    JsonNode document = ODCSMetadataOverlay.apply(contract, nativeDocument, Set.of());
+    ODCSVersionAdapter adapter = adapter(version);
+    JsonNode nativeDocument = adapter.write(contract, qualityRules.apply(contract));
+    JsonNode restored =
+        ODCSMetadataOverlay.apply(contract, adapter.preservationView(nativeDocument), Set.of());
+    JsonNode document = adapter.materialize(restored);
     List<String> issues =
         SCHEMAS.get(version).validate(document).stream().map(Object::toString).toList();
     return new Result(version, document, issues);

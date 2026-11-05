@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -279,7 +280,9 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
     List<String> scope =
         nullOrEmpty(source.getColumn()) || source.getColumn().equals(table.getName())
             ? List.of()
-            : List.of(FullyQualifiedName.split(source.getColumn()));
+            : Arrays.stream(FullyQualifiedName.split(source.getColumn()))
+                .map(FullyQualifiedName::unquoteName)
+                .toList();
     List<DataQuality> target;
     if (scope.isEmpty()) {
       if (table.getQuality() == null) table.setQuality(new ArrayList<>());

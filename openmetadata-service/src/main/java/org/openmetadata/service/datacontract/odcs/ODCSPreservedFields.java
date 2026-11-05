@@ -235,6 +235,10 @@ public final class ODCSPreservedFields {
     JsonNode saved = field.getValue();
     JsonNode current = result.path(field.getKey());
     if (location.section() != null && (saved.isArray() || saved.isObject())) {
+      // Incompatible saved containers cannot replace a native collection that now exists.
+      if ((saved.isArray() && current.isObject()) || (saved.isObject() && current.isArray())) {
+        return;
+      }
       JsonNode merged =
           saved.isArray()
               ? mergeArray(saved, current, location, unapplied)

@@ -16,7 +16,7 @@
  */
 export interface OdcsContract {
     /**
-     * Version of the standard used to build data contract. Default value is v3.1.0.
+     * ODCS export profile v3.1.0.
      */
     apiVersion:                APIVersion;
     authoritativeDefinitions?: AuthoritativeDefinition[];
@@ -93,15 +93,9 @@ export interface OdcsContract {
 }
 
 /**
- * Version of the standard used to build data contract. Default value is v3.1.0.
+ * ODCS export profile v3.1.0.
  */
 export enum APIVersion {
-    V220 = "v2.2.0",
-    V221 = "v2.2.1",
-    V222 = "v2.2.2",
-    V300 = "v3.0.0",
-    V301 = "v3.0.1",
-    V302 = "v3.0.2",
     V310 = "v3.1.0",
 }
 
@@ -165,6 +159,7 @@ export interface Description {
      * Intended usage of the dataset.
      */
     usage?: string;
+    [property: string]: any;
 }
 
 /**
@@ -614,6 +609,38 @@ export enum Format {
  */
 export interface DataQuality {
     /**
+     * Additional arguments for the metric, if needed.
+     */
+    arguments?:                { [key: string]: any };
+    authoritativeDefinitions?: AuthoritativeDefinition[];
+    /**
+     * Consequences of the rule failure.
+     */
+    businessImpact?: string;
+    /**
+     * Additional properties required for rule execution.
+     */
+    customProperties?: CustomProperty[];
+    /**
+     * Describe the quality check to be completed.
+     */
+    description?: string;
+    /**
+     * The key performance indicator (KPI) or dimension for data quality.
+     */
+    dimension?: Dimension;
+    /**
+     * Name of the engine which executes the data quality checks.
+     */
+    engine?:         string;
+    id?:             string;
+    implementation?: { [key: string]: any } | string;
+    method?:         string;
+    /**
+     * Define a data quality check based on the predefined metrics as per ODCS.
+     */
+    metric?: Metric;
+    /**
      * Must be equal to the value to be valid. When using numbers, it is equivalent to '='.
      */
     mustBe?: any;
@@ -645,6 +672,81 @@ export interface DataQuality {
      * Must not be between the two numbers to be valid. Smallest number first in the array.
      */
     mustNotBeBetween?: number[];
+    /**
+     * Name of the data quality check.
+     */
+    name?: string;
+    /**
+     * Query string that adheres to the dialect of the provided server.
+     */
+    query?: string;
+    /**
+     * Use metric instead
+     */
+    rule?: string;
+    /**
+     * Rule execution schedule details.
+     */
+    schedule?: string;
+    /**
+     * The name or type of scheduler used to start the data quality check.
+     */
+    scheduler?: string;
+    /**
+     * The severance of the quality rule.
+     */
+    severity?: string;
+    tags?:     string[];
+    /**
+     * The type of quality check. 'text' is human-readable text that describes the quality of
+     * the data. 'library' is a set of maintained predefined quality attributes such as row
+     * count or unique. 'sql' is an individual SQL query that returns a value that can be
+     * compared. 'custom' is quality attributes that are vendor-specific, such as Soda or Great
+     * Expectations.
+     */
+    type?: DataQualityType;
+    /**
+     * Unit the rule is using, popular values are `rows` or `percent`, but any value is allowed.
+     */
+    unit?: string;
+}
+
+/**
+ * The key performance indicator (KPI) or dimension for data quality.
+ */
+export enum Dimension {
+    Accuracy = "accuracy",
+    Completeness = "completeness",
+    Conformity = "conformity",
+    Consistency = "consistency",
+    Coverage = "coverage",
+    Timeliness = "timeliness",
+    Uniqueness = "uniqueness",
+}
+
+/**
+ * Define a data quality check based on the predefined metrics as per ODCS.
+ */
+export enum Metric {
+    DuplicateValues = "duplicateValues",
+    InvalidValues = "invalidValues",
+    MissingValues = "missingValues",
+    NullValues = "nullValues",
+    RowCount = "rowCount",
+}
+
+/**
+ * The type of quality check. 'text' is human-readable text that describes the quality of
+ * the data. 'library' is a set of maintained predefined quality attributes such as row
+ * count or unique. 'sql' is an individual SQL query that returns a value that can be
+ * compared. 'custom' is quality attributes that are vendor-specific, such as Soda or Great
+ * Expectations.
+ */
+export enum DataQualityType {
+    Custom = "custom",
+    Library = "library",
+    SQL = "sql",
+    Text = "text",
 }
 
 /**
@@ -758,6 +860,7 @@ export interface PropertyLogicalTypeOptions {
  * matching types.
  */
 export interface RelationshipSchemaLevel {
+    customProperties?: CustomProperty[];
     /**
      * Source property or properties.
      */
@@ -766,6 +869,10 @@ export interface RelationshipSchemaLevel {
      * Target property or properties to reference.
      */
     to: string[] | string;
+    /**
+     * The type of relationship. Defaults to 'foreignKey'.
+     */
+    type?: RelationshipType;
 }
 
 /**

@@ -17,15 +17,9 @@
     },
     "apiVersion": {
       "type": "string",
-      "description": "Version of the standard used to build data contract. Default value is v3.1.0.",
+      "description": "ODCS export profile v3.1.0.",
       "enum": [
-        "v3.1.0",
-        "v3.0.2",
-        "v3.0.1",
-        "v3.0.0",
-        "v2.2.2",
-        "v2.2.1",
-        "v2.2.0"
+        "v3.1.0"
       ]
     },
     "id": {
@@ -91,8 +85,7 @@
           "$ref": "#/definitions/CustomProperties",
           "default": null
         }
-      },
-      "additionalProperties": false
+      }
     },
     "domain": {
       "type": "string",
@@ -1455,7 +1448,6 @@
           "default": null
         }
       },
-      "additionalProperties": false,
       "javaType": "org.openmetadata.schema.type.datacontract.odcs.v310.SchemaElement"
     },
     "SchemaObject": {
@@ -2584,8 +2576,7 @@
           },
           "required": [
             "mustBe"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2595,8 +2586,7 @@
           },
           "required": [
             "mustNotBe"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2607,8 +2597,7 @@
           },
           "required": [
             "mustBeGreaterThan"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2619,8 +2608,7 @@
           },
           "required": [
             "mustBeGreaterOrEqualTo"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2631,8 +2619,7 @@
           },
           "required": [
             "mustBeLessThan"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2643,8 +2630,7 @@
           },
           "required": [
             "mustBeLessOrEqualTo"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2662,8 +2648,7 @@
           },
           "required": [
             "mustBeBetween"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2681,8 +2666,7 @@
           },
           "required": [
             "mustNotBeBetween"
-          ],
-          "additionalProperties": false
+          ]
         }
       ],
       "additionalProperties": false,
@@ -2754,8 +2738,7 @@
           },
           "required": [
             "mustBe"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2765,8 +2748,7 @@
           },
           "required": [
             "mustNotBe"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2777,8 +2759,7 @@
           },
           "required": [
             "mustBeGreaterThan"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2789,8 +2770,7 @@
           },
           "required": [
             "mustBeGreaterOrEqualTo"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2801,8 +2781,7 @@
           },
           "required": [
             "mustBeLessThan"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2813,8 +2792,7 @@
           },
           "required": [
             "mustBeLessOrEqualTo"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2832,8 +2810,7 @@
           },
           "required": [
             "mustBeBetween"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2851,11 +2828,9 @@
           },
           "required": [
             "mustNotBeBetween"
-          ],
-          "additionalProperties": false
+          ]
         }
       ],
-      "additionalProperties": false,
       "javaType": "org.openmetadata.schema.type.datacontract.odcs.v310.DataQualityOperators"
     },
     "DataQualityLibrary": {
@@ -2936,8 +2911,7 @@
           },
           "required": [
             "mustBe"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2947,8 +2921,7 @@
           },
           "required": [
             "mustNotBe"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2959,8 +2932,7 @@
           },
           "required": [
             "mustBeGreaterThan"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2971,8 +2943,7 @@
           },
           "required": [
             "mustBeGreaterOrEqualTo"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2983,8 +2954,7 @@
           },
           "required": [
             "mustBeLessThan"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -2995,8 +2965,7 @@
           },
           "required": [
             "mustBeLessOrEqualTo"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -3014,8 +2983,7 @@
           },
           "required": [
             "mustBeBetween"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -3033,14 +3001,12 @@
           },
           "required": [
             "mustNotBeBetween"
-          ],
-          "additionalProperties": false
+          ]
         }
       ],
       "required": [
         "metric"
       ],
-      "additionalProperties": false,
       "javaType": "org.openmetadata.schema.type.datacontract.odcs.v310.DataQualityLibrary"
     },
     "DataQualitySql": {
@@ -3108,8 +3074,7 @@
           },
           "required": [
             "mustBe"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -3119,8 +3084,7 @@
           },
           "required": [
             "mustNotBe"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -3131,8 +3095,7 @@
           },
           "required": [
             "mustBeGreaterThan"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -3143,8 +3106,7 @@
           },
           "required": [
             "mustBeGreaterOrEqualTo"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -3155,8 +3117,7 @@
           },
           "required": [
             "mustBeLessThan"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -3167,8 +3128,7 @@
           },
           "required": [
             "mustBeLessOrEqualTo"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -3186,8 +3146,7 @@
           },
           "required": [
             "mustBeBetween"
-          ],
-          "additionalProperties": false
+          ]
         },
         {
           "properties": {
@@ -3205,14 +3164,12 @@
           },
           "required": [
             "mustNotBeBetween"
-          ],
-          "additionalProperties": false
+          ]
         }
       ],
       "required": [
         "query"
       ],
-      "additionalProperties": false,
       "javaType": "org.openmetadata.schema.type.datacontract.odcs.v310.DataQualitySql"
     },
     "DataQualityCustom": {
@@ -3243,7 +3200,6 @@
         "engine",
         "implementation"
       ],
-      "additionalProperties": false,
       "javaType": "org.openmetadata.schema.type.datacontract.odcs.v310.DataQualityCustom"
     },
     "AuthoritativeDefinitions": {
@@ -3750,7 +3706,6 @@
           "default": null
         }
       },
-      "additionalProperties": false,
       "javaType": "org.openmetadata.schema.type.datacontract.odcs.v310.RelationshipBase"
     },
     "RelationshipSchemaLevel": {
@@ -3863,8 +3818,7 @@
             "to": {
               "type": "string"
             }
-          },
-          "additionalProperties": false
+          }
         },
         {
           "description": "Composite key relationship - both fields must be arrays with matching lengths",
@@ -3885,8 +3839,7 @@
               "minItems": 1,
               "default": null
             }
-          },
-          "additionalProperties": false
+          }
         }
       ],
       "additionalProperties": false,

@@ -3261,6 +3261,13 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
               .withEntity(table.getEntityReference())
               .withSchema(table.getColumns())
               .withQualityExpectations(List.of(check.getEntityReference()))
+              .withOwners(List.of(client.users().getByName("admin").getEntityReference()))
+              .withSla(
+                  new ContractSLA()
+                      .withRefreshFrequency(
+                          new RefreshFrequency()
+                              .withInterval(24)
+                              .withUnit(RefreshFrequency.Unit.HOUR)))
               .withExtension(values);
       DataContract created = client.dataContracts().create(request);
       DataContract stored =
@@ -3318,6 +3325,69 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         assertEquals(90, properties.get(retentionDays).asInt());
         assertEquals(99.5, properties.get(qualityTarget).asDouble());
         assertFalse(document.at("/schema/0/properties/0/quality/0").has("column"));
+      }
+      for (String version : List.of("v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1")) {
+        for (String route :
+            List.of(
+                "/v1/dataContracts/" + created.getId() + "/odcs",
+                "/v1/dataContracts/" + created.getId() + "/odcs/yaml",
+                "/v1/dataContracts/name/" + created.getFullyQualifiedName() + "/odcs",
+                "/v1/dataContracts/name/" + created.getFullyQualifiedName() + "/odcs/yaml")) {
+          JsonNode document =
+              mapper.readTree(
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          route + "?odcsVersion=" + version + "&fields=schema",
+                          null));
+          assertEquals(version, document.path("apiVersion").asText());
+          assertEquals(3, document.path("customProperties").size());
+          for (JsonNode property : document.path("customProperties")) {
+            String name = property.path("property").asText();
+            if (name.equals(costCenter))
+              assertEquals("ANALYTICS-042", property.path("value").asText());
+            if (name.equals(retentionDays)) assertEquals(90, property.path("value").asInt());
+            if (name.equals(qualityTarget)) assertEquals(99.5, property.path("value").asDouble());
+          }
+          assertEquals(24, document.at("/slaProperties/0/value").asInt());
+          if (version.startsWith("v2")) {
+            assertFalse(document.has("schema"));
+            assertEquals(created.getId().toString(), document.path("uuid").asText());
+            assertEquals(table.getName(), document.at("/dataset/0/table").asText());
+            assertEquals("admin", document.at("/stakeholders/0/username").asText());
+            assertEquals(
+                "columnValuesToBeNotNull",
+                document.at("/dataset/0/quality/0/templateName").asText());
+          } else {
+            assertEquals(
+                "admin",
+                version.equals("v3.1.0")
+                    ? document.at("/team/members/0/username").asText()
+                    : document.at("/team/0/username").asText());
+            assertEquals(
+                version.equals("v3.1.0") ? "nullValues" : "nullCount",
+                document
+                    .at(
+                        version.equals("v3.1.0")
+                            ? "/schema/0/properties/0/quality/0/metric"
+                            : "/schema/0/properties/0/quality/0/rule")
+                    .asText());
+          }
+        }
+      }
+      for (String version : List.of("v2.2.0", "v3.2.0")) {
+        OpenMetadataException unsupported =
+            assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    client
+                        .getHttpClient()
+                        .executeForString(
+                            HttpMethod.GET,
+                            "/v1/dataContracts/" + created.getId() + "/odcs?odcsVersion=" + version,
+                            null));
+        assertEquals(400, unsupported.getStatusCode());
       }
       String externalProperty = ns.prefix("externalOnly");
       ObjectNode reimportDocument = (ObjectNode) exported.getFirst().deepCopy();
