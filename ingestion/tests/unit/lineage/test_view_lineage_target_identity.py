@@ -11,6 +11,7 @@
 """View lineage for a view whose definition only reads (no target table in the query)."""
 
 import uuid
+from queue import Queue
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,7 +22,14 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_lineage_via_table_entity
+from metadata.ingestion.lineage.sql_lineage import (
+    _view_target,
+    get_lineage_via_table_entity,
+    populate_column_lineage_map,
+    search_cache,
+)
+from metadata.ingestion.source.database.clickhouse.lineage_utils import get_mv_target_lineage
+from metadata.ingestion.source.database.lineage_processors import view_lineage_processor
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
@@ -32,7 +40,7 @@ def _table(table_fqn: str) -> Table:
         id=uuid.uuid4(),
         name=fqn.split(table_fqn)[-1].strip('"'),
         fullyQualifiedName=table_fqn,
-        columns=[Column(name="id", dataType=DataType.INT)],
+        columns=[Column(name="id", dataType=DataType.INT, fullyQualifiedName=f"{table_fqn}.id")],
         serviceType=DatabaseServiceType.Mssql,
     )
 
@@ -162,3 +170,99 @@ def test_create_view_lineage_targets_the_view(view, view_fqn, lookalike_fqn):
 
     edges = [(result.right.from_entity_fqn, result.right.to_entity_fqn) for result in results if result.right]
     assert edges == [("svc.db.reporting.src", view_fqn)]
+    (result,) = results
+    assert result.right.to_entity_id == view_entity.id
+    (column_lineage,) = result.right.lineage_details.columnsLineage
+    assert [column.root for column in column_lineage.fromColumns] == ["svc.db.reporting.src.id"]
+    assert column_lineage.toColumn.root == f"{view_fqn}.id"
+    parser = LineageParser(view.view_definition, Dialect.TSQL, parser_type="Auto")
+    raw_columns = populate_column_lineage_map(parser.column_lineage)
+    assert str(parser.target_tables[0]) in raw_columns
+
+
+@pytest.mark.parametrize(
+    ("view_fqn", "target", "matches"),
+    [
+        ("svc.db.schema1.orders", "orders", True),
+        ("svc.db.schema1.orders", "schema1.orders", True),
+        ("svc.db.schema1.orders", "db.schema1.orders", True),
+        ("svc.db.schema1.orders", "SCHEMA1.ORDERS", True),
+        ("svc.db.schema1.orders", "schema2.orders", False),
+        ("svc.db.schema1.orders", "otherdb.schema1.orders", False),
+        ("svc.db.schema1.orders", "other.schema1.orders", False),
+        ("svc.db.schema1.orders", "svc.db.schema1.orders", False),
+        ('svc."db.prod"."schema.one"."warehouse.orders"', "[warehouse.orders]", True),
+        ('svc."db.prod"."schema.one"."warehouse.orders"', "[schema.one].[warehouse.orders]", True),
+        ('svc."db.prod"."schema.one"."warehouse.orders"', "`db.prod`.`schema.one`.`warehouse.orders`", True),
+        ('svc."db.prod"."schema.one"."warehouse.orders"', "other.warehouse.orders", False),
+        ('svc."db.prod"."schema.one"."warehouse.orders"', "other.schema.one.warehouse.orders", False),
+        ('svc."db.prod"."schema.one"."warehouse.orders"', "db.other.schema.one.warehouse.orders", False),
+    ],
+)
+def test_view_target_respects_catalog_qualifications(view_fqn, target, matches):
+    view_entity = _table(view_fqn)
+    assert _view_target(view_entity, target) == ([view_entity] if matches else None)
+
+
+def test_materialized_view_processor_preserves_distinct_same_name_target():
+    """Both the parsed intermediate hop and ClickHouse TO extension retain the target identity."""
+    search_cache.clear()
+    view_entity = _table("svc.db.schema1.orders")
+    source = _table("svc.db.schema1.src")
+    target = _table("svc.db.schema2.orders")
+    entities = {entity.fullyQualifiedName.root: entity for entity in (view_entity, source, target)}
+    metadata = MagicMock()
+    metadata.get_by_name.side_effect = lambda entity, fqn, **_: entities.get(fqn)
+    metadata.es_search_from_fqn.side_effect = lambda entity_type, fqn_search_string, **_: (
+        [entities[fqn_search_string]] if fqn_search_string in entities else []
+    )
+    query = "CREATE MATERIALIZED VIEW schema1.orders TO schema2.orders AS SELECT id FROM schema1.src"
+    parser = LineageParser(query, Dialect.CLICKHOUSE, parser_type="Auto")
+    assert [str(table) for table in parser.intermediate_tables] == ["schema1.orders"]
+    assert [str(table) for table in parser.target_tables] == ["schema2.orders"]
+    queue = Queue()
+    try:
+        view_lineage_processor(
+            views=[TableView(db_name="db", schema_name="schema1", table_name="orders", view_definition=query)],
+            queue=queue,
+            metadata=metadata,
+            service_name="svc",
+            connectionType="Clickhouse",
+            processCrossDatabaseLineage=False,
+            crossDatabaseServiceNames=[],
+            parsingTimeoutLimit=10,
+            overrideViewLineage=True,
+            parser_type="Auto",
+            extension=get_mv_target_lineage,
+        )
+        results = []
+        while not queue.empty():
+            result = queue.get_nowait()
+            assert result.left is None
+            results.append(result.right)
+        assert len(results) == 3
+        for result in results:
+            edge = result.lineage_request
+            assert edge.from_entity_id != edge.to_entity_id
+            assert edge.from_entity_id == entities[edge.from_entity_fqn].id
+            assert edge.to_entity_id == entities[edge.to_entity_fqn].id
+        upstream = [result for result in results if result.lineage_request.from_entity_id == source.id]
+        assert len(upstream) == 1
+        assert upstream[0].lineage_request.to_entity_fqn == view_entity.fullyQualifiedName.root
+        assert upstream[0].override_lineage is True
+        downstream = [result for result in results if result.lineage_request.from_entity_id == view_entity.id]
+        assert len(downstream) == 2
+        assert all(result.lineage_request.to_entity_fqn == target.fullyQualifiedName.root for result in downstream)
+        assert all(result.override_lineage is False for result in downstream)
+    finally:
+        search_cache.clear()
+
+
+def test_view_target_without_fetched_entity():
+    assert _view_target(None, "schema.orders") is None
+
+
+def test_view_target_without_fqn_only_matches_exact_leaf_name():
+    view_entity = _table("svc.db.schema.orders").model_copy(update={"fullyQualifiedName": None})
+    assert _view_target(view_entity, "orders") == [view_entity]
+    assert _view_target(view_entity, "schema.orders") is None

@@ -878,18 +878,17 @@ def populate_column_lineage_map(raw_column_lineage):
 
 
 def _view_target(view_entity: Table | None, target_table: object) -> list[Table] | None:
-    """The view entity if the parsed target table is that view, else None.
-
-    The parser keeps a name with a dot as one string, so `[reporting].[warehouse.orders]`
-    comes back as `warehouse.orders` or `[warehouse.orders]`. Resolving that string again
-    finds a different table, so the view's own entity is used when the parsed name, without
-    its identifier quotes, ends with the view's name.
-    """
+    """Bind only the view's own SQL name, preserving its catalog qualifications."""
     if view_entity is None:
         return None
     target_name = re.sub(r'[\[\]"`]', "", str(target_table)).lower()
-    view_name = view_entity.name.root.lower()
-    if target_name == view_name or target_name.endswith(f".{view_name}"):
+    # Some parsers drop the qualifiers around a dotted leaf name entirely.
+    if target_name == model_str(view_entity.name).lower():
+        return [view_entity]
+    if view_entity.fullyQualifiedName is None:
+        return None
+    view_parts = [fqn.unquote_name(part).lower() for part in fqn.split(model_str(view_entity.fullyQualifiedName))[1:]]
+    if any(target_name == ".".join(view_parts[index:]) for index in range(len(view_parts))):
         return [view_entity]
     return None
 
