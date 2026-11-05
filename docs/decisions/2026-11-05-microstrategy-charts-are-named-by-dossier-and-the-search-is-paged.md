@@ -30,7 +30,7 @@ also asked for every result in one response (`limit=-1`).
   model. A run that could not read a dossier's definition deletes no stale chart or data model.
   `markDeleted*` would otherwise soft-delete what a non-empty seen-set leaves out, and the
   `SourceListing` confirmation only governs an empty one. A dossier whose definition fails is still
-  ingested from its listing; one ingested before is left as it was, so its charts stay linked.
+  ingested from its listing and keeps the charts it already has linked.
 
 ## Consequences
 - The upgrade renames every MicroStrategy chart. With `markDeletedCharts` on, the first run

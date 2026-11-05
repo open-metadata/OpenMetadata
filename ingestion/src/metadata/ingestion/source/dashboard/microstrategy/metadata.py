@@ -206,8 +206,6 @@ class MicrostrategySource(DashboardServiceSource):
         Method to Get Dashboard Entity
         """
         try:
-            if not dashboard_details.definition_read and self._keep_existing_dashboard(dashboard_details):
-                return
             dashboard_url = (
                 f"{clean_uri(str(self.service_connection.hostPort))}/MicroStrategyLibrary/app/"
                 f"{dashboard_details.projectId}/{dashboard_details.id}"
@@ -218,17 +216,7 @@ class MicrostrategySource(DashboardServiceSource):
                 description=Markdown(dashboard_details.description) if dashboard_details.description else None,
                 sourceUrl=SourceUrl(dashboard_url),
                 project=dashboard_details.projectName,
-                charts=[
-                    FullyQualifiedEntityName(
-                        fqn.build(
-                            self.metadata,
-                            entity_type=Chart,
-                            service_name=self.context.get().dashboard_service,
-                            chart_name=chart,
-                        )
-                    )
-                    for chart in self.context.get().charts or []
-                ],
+                charts=self._chart_fqns(dashboard_details),
                 service=self.context.get().dashboard_service,
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
@@ -243,22 +231,28 @@ class MicrostrategySource(DashboardServiceSource):
                 )
             )
 
-    def _keep_existing_dashboard(self, dashboard_details: MstrDashboardDetails) -> bool:
+    def _chart_fqns(self, dashboard_details: MstrDashboardDetails) -> list[FullyQualifiedEntityName]:
         """
-        Without its definition a dossier's charts are unknown, and sending an empty chart list
-        would unlink the charts of a dashboard ingested before. An existing dashboard is kept as
-        it is; only a new one is created from its listing.
+        Without its definition a dossier's charts are unknown, and an empty chart list would
+        unlink the charts of a dashboard ingested before, so it keeps the charts it has.
         """
-        dashboard_fqn = fqn.build(
-            self.metadata,
-            entity_type=Dashboard,
-            service_name=self.context.get().dashboard_service,
-            dashboard_name=dashboard_details.id,
+        service = self.context.get().dashboard_service
+        if dashboard_details.definition_read:
+            return [
+                FullyQualifiedEntityName(
+                    fqn.build(self.metadata, entity_type=Chart, service_name=service, chart_name=chart)
+                )
+                for chart in self.context.get().charts or []
+            ]
+        existing = self.metadata.get_by_name(
+            entity=Dashboard,
+            fqn=fqn.build(
+                self.metadata, entity_type=Dashboard, service_name=service, dashboard_name=dashboard_details.id
+            ),
+            fields=["charts"],
         )
-        if self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn) is None:
-            return False
-        self.dashboard_source_state.add(dashboard_fqn)
-        return True
+        charts = existing.charts.root if existing and existing.charts else []
+        return [FullyQualifiedEntityName(chart.fullyQualifiedName) for chart in charts if chart.fullyQualifiedName]
 
     def yield_dashboard_lineage_details(
         self,

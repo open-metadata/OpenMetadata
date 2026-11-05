@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Unit tests for MicroStrategy connection handling."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -124,8 +125,7 @@ def test_resolve_verify_maps_every_mode():
     )
     try:
         assert verify == ssl_manager.ca_file_path
-        with open(verify, encoding="utf-8") as ca_file:
-            assert ca_file.read() == "-----BEGIN CERTIFICATE-----"
+        assert Path(verify).read_text(encoding="utf-8") == "-----BEGIN CERTIFICATE-----"
     finally:
         ssl_manager.cleanup_temp_files()
 

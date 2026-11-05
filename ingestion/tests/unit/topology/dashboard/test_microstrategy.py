@@ -17,9 +17,8 @@ The payloads are trimmed from responses of the public MicroStrategy demo server.
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 from urllib.parse import urlparse
 
@@ -38,6 +37,9 @@ from metadata.ingestion.source.dashboard.microstrategy.client import (
 )
 from metadata.ingestion.source.dashboard.microstrategy.metadata import MicrostrategySource
 from metadata.ingestion.source.dashboard.microstrategy.models import MstrDashboard
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 CLIENT_MODULE = "metadata.ingestion.source.dashboard.microstrategy.client"
 API = "/MicroStrategyLibrary/api"
@@ -190,7 +192,7 @@ class FakeMicroStrategy:
         self.logins = 0
         self.calls: list[SimpleNamespace] = []
 
-    def login(self, url: str, json: dict, timeout: Any, verify: Any) -> requests.Response:  # noqa: A002
+    def login(self, url: str, json: dict, timeout: Any, verify: Any) -> requests.Response:
         self.logins += 1
         self.calls.append(SimpleNamespace(method="POST", path=urlparse(url).path, params={}, headers={}, body=json))
         return _response(
@@ -479,12 +481,16 @@ class TestSource:
             assert list(source.mark_datamodels_as_deleted()) == []
         delete.assert_not_called()
 
-    def test_an_existing_dashboard_is_kept_when_its_definition_fails(self, client):
+    def test_an_existing_dashboard_keeps_its_charts_when_its_definition_fails(self, client):
         source = _source(client)
         source.dashboard_source_state = set()
-        source.metadata.get_by_name.return_value = MagicMock()
+        linked = SimpleNamespace(fullyQualifiedName=f"mstr.{BROKEN['id']}_K1_W1")
+        source.metadata.get_by_name.return_value = SimpleNamespace(charts=SimpleNamespace(root=[linked]))
 
-        assert list(source.yield_dashboard(_details(source, BROKEN))) == []
+        (dashboard,) = [either.right for either in source.yield_dashboard(_details(source, BROKEN))]
+
+        assert [chart.root for chart in dashboard.charts] == [linked.fullyQualifiedName]
+        assert dashboard.owners is not None
         assert source.dashboard_source_state == {f"mstr.{BROKEN['id']}"}
 
     def test_datamodel_columns(self, client):
@@ -522,7 +528,7 @@ class TestSource:
 
         def tables_for(table_name: str, **_: Any) -> list:
             searched.append(table_name)
-            return [table(table_name.split(".")[-1])]
+            return [table(table_name.rsplit(".", maxsplit=1)[-1])]
 
         with patch(
             "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
