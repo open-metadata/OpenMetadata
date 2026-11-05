@@ -32,10 +32,8 @@ needed none either.
   entity built by the same `JsonUtils.applyPatch` call the repository stores. A label's operation
   follows its source first: a glossary term is EditGlossaryTerms whatever its glossary is called.
 - A patch that touches tags without changing a label needs EditTags; an empty patch needs ViewBasic.
-- The guards that inspect patch paths (`UserResource.patch`, notification templates, context-file
-  sharing, conversations) look at every touched location too.
-- A caller who reads stored secrets masked cannot copy or move a value out of a service's
-  `connection` or an ingestion pipeline's `sourceConfig` (400).
+- The guards that inspect patch paths (`UserResource.patch`, notification templates) look at every
+  touched location too.
 - A date field refuses an object or array value instead of reading it as null.
 
 ## Consequences
