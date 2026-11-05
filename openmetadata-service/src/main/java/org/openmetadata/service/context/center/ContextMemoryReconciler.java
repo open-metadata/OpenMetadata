@@ -29,13 +29,14 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
  * in two passes — exact normalized question and answer first, for every pill, then word-overlap
  * similarity that never pairs two pills whose numbers conflict — so a re-derived
  * fact keeps its pill identity (and the usageCount/lastUsedAt retrieval telemetry that rides it)
- * even when the model rephrases the question between runs. An automated pill that is no longer
- * derived from its last source is hard-deleted; a shared pill is detached from only the changed
- * source. A pill a human has edited (sourceType flipped to Manual) is left untouched, and so is one
- * a review moved out of Approved or Unprocessed: re-extraction never rewrites it or approves it
- * again. Two answers the source gives to one question stay two pills for review. Equivalent
- * file-derived facts may be linked to more than one source; retiring one source preserves the
- * memory while another still references it.
+ * even when the model rephrases the question between runs. An extracted pill still Approved or
+ * Unprocessed that is no longer derived from its last source is hard-deleted; a shared pill is
+ * detached from only the changed source. A pill a person decided, by editing it (sourceType flipped
+ * to Manual) or by a review that moved it out of Approved or Unprocessed, is left untouched:
+ * re-extraction never rewrites it, approves it again or releases it, and a derived value that
+ * resembles it without asking its question starts Unprocessed. Two answers the source gives to one
+ * question stay two pills for review. Equivalent file-derived facts may be linked to more than one
+ * source; retiring one source preserves the memory while another still references it.
  */
 @Slf4j
 public class ContextMemoryReconciler {
@@ -91,7 +92,7 @@ public class ContextMemoryReconciler {
 
     List<ContextMemory> unmatched = planExactMatches(sourceRef, derivedByQuestion, existing, plan);
     planSimilarMatches(sourceRef, derivedByQuestion, unmatched, plan);
-    planNewMemories(sourceRef, derivedByQuestion.values(), plan);
+    planNewMemories(sourceRef, derivedByQuestion, plan);
     // ADR:2026-10-27-memory-reconciliation-resolves-comparisons-before-writes
     plan.writes.forEach(Runnable::run);
 
@@ -133,30 +134,67 @@ public class ContextMemoryReconciler {
     List<ContextMemory> ordered = new ArrayList<>(unmatched);
     ordered.sort(Comparator.comparing(ContextMemoryReconciler::isHumanOwned));
     for (ContextMemory pill : ordered) {
-      ContextMemory match = removeMostSimilar(derivedByQuestion, pill);
-      if (match == null) {
-        if (isAutomated(pill)) {
-          planRelease(sourceRef, pill, plan);
-        }
+      if (isEngineManaged(pill)) {
+        planMaintainedMatch(sourceRef, pill, derivedByQuestion, plan);
       } else {
-        planMatchedMemory(sourceRef, pill, match, derivedByQuestion, plan);
+        planDecidedMatch(pill, derivedByQuestion, plan);
       }
     }
   }
 
+  /** Takes its closest rewording, or is released when the source no longer states it. */
+  private void planMaintainedMatch(
+      EntityReference sourceRef,
+      ContextMemory pill,
+      Map<String, ContextMemory> derivedByQuestion,
+      ReconciliationPlan plan) {
+    List<Candidate> clearing = candidatesClearingTheBar(derivedByQuestion, pill);
+    ContextMemory match = removeMostSimilar(derivedByQuestion, pill, clearing);
+    if (match == null) {
+      planRelease(sourceRef, pill, plan);
+    } else {
+      planMatchedMemory(sourceRef, pill, match, derivedByQuestion, plan);
+    }
+  }
+
+  /**
+   * Never released or rewritten, so its review decides it. It claims its own question's rewording;
+   * a look-alike it cannot claim may be it in other words, so a memory made from one awaits review.
+   */
+  private static void planDecidedMatch(
+      ContextMemory pill, Map<String, ContextMemory> derivedByQuestion, ReconciliationPlan plan) {
+    List<Candidate> clearing = candidatesClearingTheBar(derivedByQuestion, pill);
+    clearing.stream()
+        .filter(Candidate::isLookalike)
+        .map(Candidate::key)
+        .forEach(plan.heldForReview::add);
+    removeMostSimilar(derivedByQuestion, pill, clearing);
+  }
+
   private void planNewMemories(
-      EntityReference sourceRef, Iterable<ContextMemory> derived, ReconciliationPlan plan) {
-    for (ContextMemory pill : derived) {
+      EntityReference sourceRef,
+      Map<String, ContextMemory> derivedByQuestion,
+      ReconciliationPlan plan) {
+    for (Map.Entry<String, ContextMemory> entry : derivedByQuestion.entrySet()) {
+      ContextMemory pill = entry.getValue();
       ContextMemory equivalent = duplicateFinder.findEquivalent(pill);
       if (equivalent == null || plan.changingIds.contains(equivalent.getId())) {
-        plan.writes.add(
-            () -> memoryRepository.create(null, pill.withUpdatedAt(System.currentTimeMillis())));
-        plan.created++;
+        planCreate(pill, plan.heldForReview.contains(entry.getKey()), plan);
       } else {
         plan.writes.add(() -> memoryRepository.linkExtractedMemory(equivalent.getId(), sourceRef));
         plan.kept++;
       }
     }
+  }
+
+  /** A value held for review starts Unprocessed, whatever stage extraction derived it in. */
+  private void planCreate(ContextMemory pill, boolean heldForReview, ReconciliationPlan plan) {
+    if (heldForReview) {
+      pill.setEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    }
+    plan.writes.add(
+        () -> memoryRepository.create(null, pill.withUpdatedAt(System.currentTimeMillis())));
+    plan.created++;
   }
 
   private void planMatchedMemory(
@@ -206,19 +244,24 @@ public class ContextMemoryReconciler {
     return byFact;
   }
 
-  private record Candidate(String key, double score, boolean conflicting, boolean sameQuestion) {}
+  private record Candidate(String key, double score, boolean conflicting, boolean sameQuestion) {
+    /** Agrees with the pill's value, under a question that is not its own in other words. */
+    boolean isLookalike() {
+      return !conflicting && !sameQuestion;
+    }
+  }
 
   /**
-   * Claims and returns the remaining candidate most similar to {@code pill}, or null when none
-   * clears the identity bar. Always the best match above the bar rather than the first, so a loose
-   * bar cannot let a weaker candidate take a pill a closer one should own. A changed number is a
-   * different claim, never the same pill reworded, except for a pill a person corrected: it claims
-   * the document's value for its own question when that is the only one left, so the value is
-   * never recreated beside the correction and no other fact is taken for it.
+   * Claims and returns the candidate in {@code clearing} most similar to {@code pill}, or null when
+   * it may claim none. Always the best match above the bar rather than the first, so a loose bar
+   * cannot let a weaker candidate take a pill a closer one should own. A changed number is a
+   * different claim, never the same pill reworded, and a pill a person decided claims only its own
+   * question's rewording. A pill a person corrected also claims the document's value for its own
+   * question when that is the only one left, so the value is never recreated beside the correction
+   * and no other fact is taken for it.
    */
   private static ContextMemory removeMostSimilar(
-      Map<String, ContextMemory> derivedByQuestion, ContextMemory pill) {
-    List<Candidate> clearing = candidatesClearingTheBar(derivedByQuestion, pill);
+      Map<String, ContextMemory> derivedByQuestion, ContextMemory pill, List<Candidate> clearing) {
     Candidate best =
         clearing.stream()
             .filter(
@@ -366,6 +409,10 @@ public class ContextMemoryReconciler {
   private static final class ReconciliationPlan {
     private final List<Runnable> writes = new ArrayList<>();
     private final Set<UUID> changingIds = new HashSet<>();
+
+    /** Fact keys of derived values resembling a pill a person decided that it could not claim. */
+    private final Set<String> heldForReview = new HashSet<>();
+
     private int created;
     private int updated;
     private int kept;

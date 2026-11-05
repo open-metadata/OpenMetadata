@@ -44,6 +44,11 @@ survived.
   question or answer changes takes the stage it was derived in; a reworded title or summary keeps
   its stage. Its writes are stamped when they run and updates are conditional, so a review decided
   during re-extraction wins.
+- Re-extraction never releases a pill a person decided; a derived value that resembles such a pill
+  without being its own question's rewording starts Unprocessed, so a value a reviewer rejected or
+  replaced never returns to grounding unreviewed. A pill a person decided is a Manual correction or
+  one a review moved out of `Approved` or `Unprocessed`, and its review decides it; a value
+  resembles it when it clears the similarity bar without a conflicting number.
 - Extracted memories stay owned by their writer. A conflict review over one is also assigned to
   whoever owns its source when the review opens; owning the memory would keep it readable after
   the source changes hands.
@@ -54,5 +59,9 @@ survived.
 
 Under a reviewing provider, a document's memories ground other users' answers only after review,
 and an edited document's changed facts leave grounding until reviewed again. Two answers to one
-question that differ without numbers are still deduplicated to the first. OSS keeps its
-behavior, except that conflicting numbers are no longer dropped.
+question that differ without numbers are still deduplicated to the first. A pill a person decided
+stays linked to its source while the source exists, whatever re-extraction derives. A value that
+resembles one starts Unprocessed under every provider: under OSS it waits for an admin, and a
+look-alike for another question (a US rate equal to a rejected UK one) costs one review. A
+rewording too loose to clear the similarity bar is still a new fact, created in its derived stage.
+OSS otherwise keeps its behavior, except that conflicting numbers are no longer dropped.
