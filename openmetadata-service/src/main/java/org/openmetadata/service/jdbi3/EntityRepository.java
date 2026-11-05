@@ -108,6 +108,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.Response.Status;
@@ -4458,6 +4459,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
         impersonatedBy);
   }
 
+  private static boolean replacesWholeDocument(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .anyMatch(
+            operation ->
+                operation.getValueType() == JsonValue.ValueType.OBJECT
+                    && "".equals(operation.asJsonObject().getString("path", null)));
+  }
+
   private PatchResponse<T> patchCommonWithOptimisticLocking(
       T original,
       JsonPatch patch,
@@ -4467,6 +4476,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeSource changeSource,
       boolean useOptimisticLocking,
       String impersonatedBy) {
+    // A patch to the document root replaces the whole entity, skipping the per-field checks below.
+    // It is refused: a client edits fields (ADR:2026-11-03-input-parsing-is-bounded).
+    if (replacesWholeDocument(patch)) {
+      throw new IllegalArgumentException(
+          "A JSON Patch operation on the document root (\"path\": \"\") is not allowed");
+    }
     T updated;
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);

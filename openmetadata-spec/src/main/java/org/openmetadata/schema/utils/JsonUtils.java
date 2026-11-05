@@ -325,9 +325,20 @@ public final class JsonUtils {
   }
 
   /** Applies the patch on original object and returns the updated object */
+  /**
+   * How far a single patch may grow the document beyond its own size. {@code copy} and {@code add}
+   * build the result, so a few operations can double a growing array each time; this caps that
+   * before the work is done, on top of the input bound the reader applies
+   * (ADR:2026-11-03-input-parsing-is-bounded).
+   */
+  public static final int MAX_PATCH_GROWTH_BYTES = 10 * 1024 * 1024;
+
   public static JsonValue applyPatch(Object original, JsonPatch patch) {
     JsonStructure targetJson = JsonUtils.getJsonStructure(original);
     JsonStructure currentJson = targetJson;
+    // Computed from the input the first time a growing operation runs, so a patch of in-place edits
+    // pays nothing.
+    long sizeBudget = -1;
 
     // ---------------------------------------------------------------------
     // JSON patch modification - Ignore operations related to read-only fields
@@ -377,6 +388,19 @@ public final class JsonUtils {
       singleOp.add(operation);
       JsonPatch singlePatch = Json.createPatch(singleOp.build());
       currentJson = singlePatch.apply(currentJson);
+
+      // copy and add are the operations that grow the document; checking only after them keeps a
+      // large patch of in-place edits from paying for the measurement.
+      String op = operation.getString("op", "");
+      if (op.equalsIgnoreCase("copy") || op.equalsIgnoreCase("add")) {
+        if (sizeBudget < 0) {
+          sizeBudget = (long) targetJson.toString().length() + MAX_PATCH_GROWTH_BYTES;
+        }
+        if (currentJson.toString().length() > sizeBudget) {
+          throw new IllegalArgumentException(
+              "JSON Patch grows the document beyond the allowed size");
+        }
+      }
     }
     return currentJson;
   }
