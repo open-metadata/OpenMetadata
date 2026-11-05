@@ -34,7 +34,7 @@ import hive from '../assets/img/service-icon-hive.webp';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.webp';
 import impala from '../assets/img/service-icon-impala.webp';
 import iomete from '../assets/img/service-icon-iomete.webp';
-import mariadb from '../assets/img/service-icon-mariadb.webp';
+import mariadb from '../assets/img/service-icon-mariadb.svg';
 import mongodb from '../assets/img/service-icon-mongodb.webp';
 import mssql from '../assets/img/service-icon-mssql.webp';
 import neo4j from '../assets/img/service-icon-neo4j.svg';
@@ -54,7 +54,7 @@ import snowflake from '../assets/img/service-icon-snowflakes.webp';
 import mysql from '../assets/img/service-icon-sql.webp';
 import sqlite from '../assets/img/service-icon-sqlite.webp';
 import starrocks from '../assets/img/service-icon-starrocks.webp';
-import timescale from '../assets/img/service-icon-timescale.webp';
+import timescale from '../assets/img/service-icon-timescale.svg';
 import trino from '../assets/img/service-icon-trino.webp';
 import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
 import vertica from '../assets/img/service-icon-vertica.webp';
@@ -68,7 +68,7 @@ import redpanda from '../assets/img/service-icon-redpanda.webp';
 import pubsub from '../assets/svg/service-icon-pubsub.svg';
 
 // Dashboard services
-import domo from '../assets/img/service-icon-domo.webp';
+import domo from '../assets/img/service-icon-domo.svg';
 import grafana from '../assets/img/service-icon-grafana.webp';
 import lightdash from '../assets/img/service-icon-lightdash.webp';
 import looker from '../assets/img/service-icon-looker.webp';
@@ -123,6 +123,8 @@ import googledrive from '../assets/svg/service-icon-google-drive.svg';
 import sftp from '../assets/svg/service-icon-sftp.svg';
 
 // Default icons
+import drivedefault from '../assets/img/service-icon-drive-default.svg';
+import securitydefault from '../assets/img/service-icon-security-default.svg';
 import synapse from '../assets/img/service-icon-synapse.webp';
 import dashboarddefault from '../assets/svg/dashboard.svg';
 import defaultservice from '../assets/svg/default-service-icon.svg';
@@ -131,11 +133,9 @@ import customdrivedefault from '../assets/svg/ic-custom-drive.svg';
 import mlmodeldefault from '../assets/svg/ic-custom-model.svg';
 import searchdefault from '../assets/svg/ic-custom-search.svg';
 import storagedefault from '../assets/svg/ic-custom-storage.svg';
-import drivedefault from '../assets/svg/ic-drive-service.svg';
 import restservice from '../assets/svg/ic-service-rest-api.svg';
 import openMetadataLogo from '../assets/svg/logo-monogram.svg';
 import pipelinedefault from '../assets/svg/pipeline.svg';
-import securitydefault from '../assets/svg/security-safe.svg';
 import topicdefault from '../assets/svg/topic.svg';
 import brandClassBase from './BrandData/BrandClassBase';
 
