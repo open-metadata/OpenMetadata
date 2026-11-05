@@ -17,7 +17,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.BadRequestException;
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,27 +27,23 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.rdf.OwlEntityDeclarations;
 
 public final class OntologyChangePreflight {
-  private static final List<String> BUILT_IN_VOCABULARIES =
-      List.of(
-          "http://www.w3.org/2002/07/owl#",
-          "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-          "http://www.w3.org/2000/01/rdf-schema#",
-          "http://www.w3.org/2001/XMLSchema#");
-
   private final EntityLoader entityLoader;
   private final DeclaredConcepts declaredConcepts;
 
@@ -83,10 +81,12 @@ public final class OntologyChangePreflight {
   }
 
   /**
-   * The concepts an axiom or property names are read from the operation itself, because the
-   * client-supplied requiresConceptIris is optional and a partial import can drop it. A concept is
-   * satisfied by an UPSERT_CONCEPT in the set or by one already declared in the ontology. Terms of
-   * the OWL, RDF, RDFS and XSD vocabularies are built in and need no declaration.
+   * The concepts an axiom or property must state as classes are read from the operation itself,
+   * because the client-supplied requiresConceptIris is optional and a partial import can drop it.
+   * The positions are the ones the importer validates, so a preview that is clean here is clean on
+   * apply. A class is satisfied by a vocabulary class, an UPSERT_CONCEPT in the set, or a concept
+   * the ontology declares. Datatypes are skipped because the set may not carry the data property
+   * whose filler names one, and a datatype is never a concept.
    */
   private void requireReferencedConcepts(
       final UUID ontologyId, final List<OntologyChangeOperation> operations) {
@@ -98,10 +98,15 @@ public final class OntologyChangePreflight {
                         && operation.getConcept() != null)
             .map(operation -> operation.getConcept().getIri().toString())
             .collect(Collectors.toSet());
+    final Predicate<URI> isDataProperty = dataProperties(operations);
     final Map<OntologyChangeOperation, Set<String>> unresolved = new LinkedHashMap<>();
     for (final OntologyChangeOperation operation : operations) {
-      final Set<String> missing = new TreeSet<>(referencedConcepts(operation));
-      missing.removeIf(iri -> created.contains(iri) || isBuiltIn(iri));
+      final Set<String> missing = new TreeSet<>(classPositions(operation, isDataProperty));
+      missing.removeIf(
+          iri ->
+              created.contains(iri)
+                  || OntologyClassHierarchy.isVocabularyClass(iri)
+                  || OwlEntityDeclarations.isDatatype(iri));
       if (!missing.isEmpty()) {
         unresolved.put(operation, missing);
       }
@@ -127,16 +132,39 @@ public final class OntologyChangePreflight {
         });
   }
 
-  private static Set<String> referencedConcepts(final OntologyChangeOperation operation) {
-    return switch (operation.getOperationType()) {
-      case UPSERT_AXIOM -> OntologyConceptReferences.of(operation.getAxiom());
-      case UPSERT_PROPERTY -> OntologyConceptReferences.of(operation.getProperty());
-      default -> Set.of();
-    };
+  private static Set<String> classPositions(
+      final OntologyChangeOperation operation, final Predicate<URI> isDataProperty) {
+    final List<OntologyClassHierarchy.ClassPosition> positions =
+        switch (operation.getOperationType()) {
+          case UPSERT_AXIOM -> OntologyClassHierarchy.classPositions(
+              operation.getAxiom(),
+              isDataProperty,
+              () -> {
+                throw new BadRequestException(
+                    "Ontology operation '"
+                        + operation.getId()
+                        + "' has a class expression with more than 10000 steps");
+              });
+          case UPSERT_PROPERTY -> OntologyClassHierarchy.classPositions(operation.getProperty());
+          default -> List.of();
+        };
+    return positions.stream()
+        .map(OntologyClassHierarchy.ClassPosition::iri)
+        .filter(Objects::nonNull)
+        .map(URI::toString)
+        .collect(Collectors.toSet());
   }
 
-  private static boolean isBuiltIn(final String iri) {
-    return BUILT_IN_VOCABULARIES.stream().anyMatch(iri::startsWith);
+  private static Predicate<URI> dataProperties(final List<OntologyChangeOperation> operations) {
+    final Map<String, OntologyProperty> inSet = new HashMap<>();
+    operations.stream()
+        .filter(
+            operation ->
+                operation.getOperationType() == OntologyChangeOperationType.UPSERT_PROPERTY)
+        .map(OntologyChangeOperation::getProperty)
+        .filter(property -> property.getIri() != null)
+        .forEach(property -> inSet.putIfAbsent(property.getIri().toString(), property));
+    return iri -> OntologyClassHierarchy.isDataProperty(iri, inSet);
   }
 
   /**

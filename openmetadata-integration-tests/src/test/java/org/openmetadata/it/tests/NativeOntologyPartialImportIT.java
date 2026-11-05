@@ -67,6 +67,34 @@ public class NativeOntologyPartialImportIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void aClientThatDropsRequiresConceptIrisStillCannotLeaveAConceptBehind(TestNamespace ns) {
+    final var client = SdkClients.adminClient();
+    final Ontology ontology = createOntology(ns, "partialNoDeclaredNeeds");
+    final NativeOntologyImportPreview preview =
+        client.ontologies().previewImport(ontology.getId(), file(ns));
+    final UUID relationship = operationOf(preview, "Ledger is a kind of Account");
+    final UUID account = operationOf(preview, "Account");
+
+    final var chosen =
+        preview.getChangeSet().getOperations().stream()
+            .filter(operation -> !operation.getId().equals(account))
+            .map(operation -> operation.withRequiresConceptIris(null))
+            .toList();
+    final OpenMetadataException refusal =
+        assertThrows(
+            OpenMetadataException.class, () -> apply(ns, ontology, preview, chosen, "noNeeds"));
+
+    assertEquals(400, refusal.getStatusCode());
+    assertTrue(refusal.getMessage().contains(relationship.toString()), refusal.getMessage());
+    assertTrue(
+        refusal
+            .getMessage()
+            .contains("https://example.org/partial/" + ns.shortPrefix() + "/Account"),
+        refusal.getMessage());
+    assertEquals(Set.of(), conceptNames(ontology));
+  }
+
+  @Test
   void droppingTheRelationshipWithItsConceptOrKeepingEverythingApplies(TestNamespace ns) {
     final var client = SdkClients.adminClient();
     final Ontology ontology = createOntology(ns, "partialAccepted");
