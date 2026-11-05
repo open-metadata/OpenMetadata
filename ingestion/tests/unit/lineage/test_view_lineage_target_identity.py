@@ -110,3 +110,55 @@ def test_table_entity_lineage_uses_the_given_entity_as_target():
 
     (result,) = results
     assert result.right.to_entity_fqn == 'svc.db."dbo.reporting".orders'
+
+
+@pytest.mark.parametrize(
+    ("view", "view_fqn", "lookalike_fqn"),
+    [
+        (
+            TableView(db_name="db", schema_name="reporting", table_name="warehouse.orders"),
+            'svc.db.reporting."warehouse.orders"',
+            "svc.db.warehouse.orders",
+        ),
+        (
+            TableView(db_name="db", schema_name="dbo.reporting", table_name="orders"),
+            'svc.db."dbo.reporting".orders',
+            "svc.dbo.reporting.orders",
+        ),
+    ],
+)
+def test_create_view_lineage_targets_the_view(view, view_fqn, lookalike_fqn):
+    """A full CREATE VIEW definition sends its edge to the view, not to a lookalike table."""
+    schema = view.schema_name if "." not in view.schema_name else f"[{view.schema_name}]"
+    name = view.table_name if "." not in view.table_name else f"[{view.table_name}]"
+    view = view.model_copy(update={"view_definition": f"CREATE VIEW {schema}.{name} AS SELECT id FROM src"})
+    view_entity = _table(view_fqn)
+    source = _table("svc.db.reporting.src")
+    lookalike = _table(lookalike_fqn)
+
+    metadata = MagicMock()
+    metadata.get_by_name.side_effect = lambda entity, fqn, **_: view_entity if fqn == view_fqn else None
+
+    def es_search_from_fqn(entity_type, fqn_search_string, **_):
+        if fqn_search_string.endswith(".src"):
+            return [source]
+        if fqn_search_string == view_fqn:
+            return [view_entity]
+        # Anything resolved by the dotted name finds the lookalike.
+        return [lookalike]
+
+    metadata.es_search_from_fqn.side_effect = es_search_from_fqn
+
+    results = list(
+        get_view_lineage(
+            view=view,
+            metadata=metadata,
+            service_names="svc",
+            connection_type="Mssql",
+            timeout_seconds=10,
+            parser_type="Auto",
+        )
+    )
+
+    edges = [(result.right.from_entity_fqn, result.right.to_entity_fqn) for result in results if result.right]
+    assert edges == [("svc.db.reporting.src", view_fqn)]

@@ -14,6 +14,7 @@ Helper functions to handle SQL lineage operations
 
 import functools
 import itertools
+import re
 import traceback
 from collections import defaultdict
 from collections.abc import Iterable
@@ -796,15 +797,14 @@ def _create_lineage_by_table_name(
             schema_fallback=schema_fallback,
         )
 
-        if to_table_entities is None:
-            to_table_entities = get_table_entities_from_query(
-                metadata=metadata,
-                service_names=service_names,
-                database_name=database_name,
-                database_schema=schema_name,
-                table_name=to_table,
-                schema_fallback=schema_fallback,
-            )
+        to_table_entities = to_table_entities or get_table_entities_from_query(
+            metadata=metadata,
+            service_names=service_names,
+            database_name=database_name,
+            database_schema=schema_name,
+            table_name=to_table,
+            schema_fallback=schema_fallback,
+        )
 
         for table_name, entity in (
             (from_table, from_table_entities),
@@ -877,6 +877,23 @@ def populate_column_lineage_map(raw_column_lineage):
     return lineage_map
 
 
+def _view_target(view_entity: Table | None, target_table: object) -> list[Table] | None:
+    """The view entity if the parsed target table is that view, else None.
+
+    The parser keeps a name with a dot as one string, so `[reporting].[warehouse.orders]`
+    comes back as `warehouse.orders` or `[warehouse.orders]`. Resolving that string again
+    finds a different table, so the view's own entity is used when the parsed name, without
+    its identifier quotes, ends with the view's name.
+    """
+    if view_entity is None:
+        return None
+    target_name = re.sub(r'[\[\]"`]', "", str(target_table)).lower()
+    view_name = view_entity.name.root.lower()
+    if target_name == view_name or target_name.endswith(f".{view_name}"):
+        return [view_entity]
+    return None
+
+
 # pylint: disable=too-many-locals
 def get_lineage_by_query(
     metadata: OpenMetadata,
@@ -892,12 +909,16 @@ def get_lineage_by_query(
     schema_fallback: bool = False,
     service_name: str | None = None,  # backward compatibility for python sdk
     parser_type: QueryParserType = QueryParserType.Auto,
+    view_entity: Table | None = None,
 ) -> Iterable[Either[LineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
     and returns True if target table is found to create lineage otherwise returns False.
 
     Now supports cross-database lineage by accepting a list of service names.
+
+    `view_entity` is the view whose definition is `query`. A target that names it uses
+    the entity as is instead of being resolved again by its dotted name.
     """
     column_lineage = {}
 
@@ -955,6 +976,7 @@ def get_lineage_by_query(
                     lineage_source=lineage_source,
                     schema_fallback=schema_fallback,
                     graph=graph,
+                    to_table_entities=_view_target(view_entity, target_table),
                 )
         if not lineage_parser.intermediate_tables:
             for target_table in lineage_parser.target_tables:
@@ -982,6 +1004,7 @@ def get_lineage_by_query(
                             procedure=procedure,
                             graph=graph,
                             schema_fallback=schema_fallback,
+                            to_table_entities=_view_target(view_entity, target_table),
                         )
     except Exception as exc:
         yield Either(

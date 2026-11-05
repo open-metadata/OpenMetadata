@@ -139,6 +139,7 @@ def get_view_lineage(
                     lineage_source=LineageSource.ViewLineage,
                     lineage_parser=lineage_parser,
                     schema_fallback=schema_fallback,
+                    view_entity=table_entity,
                 )
                 or []
             )
