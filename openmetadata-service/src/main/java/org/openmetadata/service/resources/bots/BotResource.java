@@ -51,6 +51,7 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
@@ -68,7 +69,11 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.seeding.EssentialSeeds;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
@@ -87,6 +92,8 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   static final String IMPERSONATION_GRANT_AT_CREATION_ONLY =
       "Bot impersonation can only be enabled when the bot is created. "
           + "Delete and re-create the bot with allowImpersonation set to true.";
+  private static final String BOT_USER_SEED_PATH = ".*json/data/botUser/.*\\.json$";
+  private static final String BOT_SEED_PATH = ".*json/data/bot/.*\\.json$";
   private final BotMapper mapper = new BotMapper();
 
   public BotResource(Authorizer authorizer, Limits limits) {
@@ -95,46 +102,51 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    String domain = SecurityUtil.getDomain(config);
-    // First, load the bot users and assign their roles
+    EssentialSeeds essentialSeeds = EssentialSeeds.getInstance();
+    // Bots get the domain of the effective (stored) authorizer, which an admin may have changed.
+    AuthorizerConfiguration authorizer = SecurityConfigurationManager.getCurrentAuthzConfig();
+    String domain =
+        SecurityUtil.getDomain(
+            authorizer == null ? config.getAuthorizerConfiguration() : authorizer);
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    List<User> botUsers = userRepository.getEntitiesFromSeedData(".*json/data/botUser/.*\\.json$");
-    for (User botUser : botUsers) {
-      // Seeded grant applies on first creation only: UserUpdater preserves the stored value on
-      // every subsequent PUT, so restarts never upgrade an already-created bot's token holders.
-      User user =
-          UserUtil.user(botUser.getName(), domain, botUser.getName())
-              .withIsBot(true)
-              .withIsAdmin(false)
-              .withAllowImpersonation(botUser.getAllowImpersonation());
-      user.setRoles(
-          listOrEmpty(botUser.getRoles()).stream()
-              .map(
-                  entityReference -> {
-                    Role role =
-                        Entity.getEntityByName(
-                            Entity.ROLE,
-                            entityReference.getName(),
-                            "id",
-                            Include.NON_DELETED,
-                            true);
-                    return role.getEntityReference();
-                  })
-              .toList());
-      // Add or update User Bot
-      UserUtil.addOrUpdateBotUser(user);
+    List<User> botUsers = userRepository.getEntitiesFromSeedData(BOT_USER_SEED_PATH);
+    List<Bot> bots = repository.getEntitiesFromSeedData(BOT_SEED_PATH);
+    essentialSeeds.register(Entity.USER, botUsers.stream().map(User::getName).toList());
+    essentialSeeds.register(Entity.BOT, bots.stream().map(Bot::getName).toList());
+    essentialSeeds.seedEach(
+        Entity.USER, botUsers, User::getName, user -> seedBotUser(user, domain));
+    if (SeedDataGate.getInstance().shouldSeed()) {
+      essentialSeeds.seedEach(Entity.BOT, bots, Bot::getName, bot -> seedBot(bot, userRepository));
     }
+  }
 
-    // Then, load the bots and bind them to the users
-    List<Bot> bots = repository.getEntitiesFromSeedData();
-    for (Bot bot : bots) {
-      String userName = bot.getBotUser().getName();
-      bot.withBotUser(
-          userRepository
-              .getByName(null, userName, userRepository.getFields("id"))
-              .getEntityReference());
-      repository.initializeEntity(bot);
-    }
+  private static void seedBotUser(User botUser, String domain) {
+    // Seeded grant applies on first creation only: UserUpdater preserves the stored value on
+    // every subsequent PUT, so restarts never upgrade an already-created bot's token holders.
+    User user =
+        UserUtil.user(botUser.getName(), domain, botUser.getName())
+            .withIsBot(true)
+            .withIsAdmin(false)
+            .withAllowImpersonation(botUser.getAllowImpersonation());
+    user.setRoles(
+        listOrEmpty(botUser.getRoles()).stream().map(BotResource::toRoleReference).toList());
+    UserUtil.addOrUpdateBotUser(user);
+  }
+
+  private static EntityReference toRoleReference(EntityReference roleReference) {
+    Role role =
+        Entity.getEntityByName(
+            Entity.ROLE, roleReference.getName(), "id", Include.NON_DELETED, true);
+    return role.getEntityReference();
+  }
+
+  private void seedBot(Bot bot, UserRepository userRepository) {
+    String userName = bot.getBotUser().getName();
+    bot.withBotUser(
+        userRepository
+            .getByName(null, userName, userRepository.getFields("id"))
+            .getEntityReference());
+    repository.initializeEntity(bot);
   }
 
   @Override
@@ -301,6 +313,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @IdentityEndpoint
   @POST
   @Operation(
       operationId = "createBot",
@@ -325,6 +338,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         impersonationChange, updatedBy, () -> create(uriInfo, securityContext, bot));
   }
 
+  @IdentityEndpoint
   @PUT
   @Operation(
       operationId = "createOrUpdateBot",
@@ -349,6 +363,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         impersonationChange, updatedBy, () -> createOrUpdate(uriInfo, securityContext, bot));
   }
 
+  @IdentityEndpoint
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -377,6 +392,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @IdentityEndpoint
   @PATCH
   @Path("/name/{fqn}")
   @Operation(
@@ -406,6 +422,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
+  @IdentityEndpoint
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -428,6 +445,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
+  @IdentityEndpoint
   @DELETE
   @Path("/async/{id}")
   @Operation(
@@ -450,6 +468,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
   }
 
+  @IdentityEndpoint
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -474,6 +493,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), true, hardDelete);
   }
 
+  @IdentityEndpoint
   @PUT
   @Path("/restore")
   @Operation(

@@ -13,16 +13,15 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   Divider,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Edit02,
+  Edit01,
   MessageChatSquare,
   MessagePlusSquare,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -75,12 +74,24 @@ const Description = ({
   isDescriptionExpanded,
   entityFullyQualifiedName,
   changeSummaryEntry,
+  headerVariant = 'default',
 }: DescriptionProps) => {
+  const isWidgetHeader = headerVariant === 'widget';
   const navigate = useNavigate();
-  const { isVersionView, changeSummary, onThreadLinkSelect } =
-    useGenericContext<Domain>();
+  const {
+    isVersionView,
+    changeSummary,
+    onThreadLinkSelect,
+    type: contextEntityType,
+  } = useGenericContext<Domain>();
+  // The context's changeSummary belongs to the page-level entity. Only fall back to it
+  // when the entity being rendered is that same entity — otherwise a nested Description
+  // (e.g. a Query in TableQueryRightPanel) inherits the parent table's provenance.
   const descriptionChangeSummary =
-    changeSummaryEntry ?? changeSummary?.['description'];
+    changeSummaryEntry ??
+    (entityType === contextEntityType
+      ? changeSummary?.['description']
+      : undefined);
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn } = useFqn();
@@ -132,25 +143,20 @@ const Description = ({
     let button: ReactNode = null;
 
     if (TASK_ENTITIES.includes(entityType)) {
+      const requestLabel = hasDescription
+        ? t('message.request-update-description')
+        : t('message.request-description');
+      const handleRequest = hasDescription
+        ? handleUpdateDescription
+        : handleRequestDescription;
+
       button = (
-        <Tooltip
-          title={
-            hasDescription
-              ? t('message.request-update-description')
-              : t('message.request-description')
-          }>
-          <Button
-            color="secondary"
-            data-testid="request-description"
-            iconLeading={MessagePlusSquare}
-            size="xxs"
-            onPress={
-              hasDescription
-                ? handleUpdateDescription
-                : handleRequestDescription
-            }
-          />
-        </Tooltip>
+        <ButtonUtility
+          data-testid="request-description"
+          icon={MessagePlusSquare}
+          tooltip={requestLabel}
+          onClick={handleRequest}
+        />
       );
     }
 
@@ -162,51 +168,51 @@ const Description = ({
     handleRequestDescription,
   ]);
 
-  const actionButtons = useMemo(
-    () => (
+  const editDescriptionLabel = t('label.edit-entity', {
+    entity: t('label.description'),
+  });
+
+  const actionButtons = useMemo(() => {
+    const canEdit = !isVersionView && !isReadOnly && hasEditAccess;
+    const threadLabel = t('label.list-entity', {
+      entity: t('label.conversation'),
+    });
+    const openThread = () => onThreadLinkSelect?.(entityLink);
+    const editButton = (
+      <ButtonUtility
+        data-testid="edit-description"
+        icon={Edit01}
+        tooltip={editDescriptionLabel}
+        onClick={handleEditDescription}
+      />
+    );
+    const commentButton = (
+      <ButtonUtility
+        data-testid="description-thread"
+        icon={MessageChatSquare}
+        tooltip={threadLabel}
+        onClick={openThread}
+      />
+    );
+
+    return (
       <div className="tw:flex tw:items-center tw:gap-2">
-        {!isVersionView && !isReadOnly && hasEditAccess && (
-          <Tooltip
-            title={t('label.edit-entity', {
-              entity: t('label.description'),
-            })}>
-            <Button
-              color="secondary"
-              data-testid="edit-description"
-              iconLeading={Edit02}
-              size="xxs"
-              onPress={handleEditDescription}
-            />
-          </Tooltip>
-        )}
+        {canEdit && editButton}
         {taskActionButton}
-        {showCommentsIcon && (
-          <Tooltip
-            title={t('label.list-entity', {
-              entity: t('label.conversation'),
-            })}>
-            <Button
-              color="secondary"
-              data-testid="description-thread"
-              iconLeading={MessageChatSquare}
-              size="xxs"
-              onPress={() => onThreadLinkSelect?.(entityLink)}
-            />
-          </Tooltip>
-        )}
+        {showCommentsIcon && commentButton}
       </div>
-    ),
-    [
-      isReadOnly,
-      isVersionView,
-      hasEditAccess,
-      handleEditDescription,
-      taskActionButton,
-      showCommentsIcon,
-      onThreadLinkSelect,
-      entityLink,
-    ]
-  );
+    );
+  }, [
+    editDescriptionLabel,
+    isReadOnly,
+    isVersionView,
+    hasEditAccess,
+    handleEditDescription,
+    taskActionButton,
+    showCommentsIcon,
+    onThreadLinkSelect,
+    entityLink,
+  ]);
 
   const suggestionData = useMemo(() => {
     const activeSuggestion = selectedUserSuggestions?.description.find(
@@ -255,7 +261,11 @@ const Description = ({
       <Box align="center" className="tw:min-w-0" gap={2} wrap="wrap">
         <Typography
           as="span"
-          className="tw:text-text-secondary"
+          className={
+            isWidgetHeader
+              ? 'tw:whitespace-nowrap tw:text-quaternary'
+              : 'tw:text-secondary'
+          }
           size="text-sm"
           weight="semibold">
           {t('label.description')}
@@ -276,7 +286,7 @@ const Description = ({
       <Box
         className={classNames(
           wrapInCard
-            ? 'tw:rounded-xl tw:border tw:border-secondary tw:bg-bg-primary tw:p-[18px] tw:shadow-xs'
+            ? 'tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:p-[18px] tw:shadow-card'
             : undefined,
           className
         )}

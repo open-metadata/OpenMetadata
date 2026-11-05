@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.analytics;
 
+import static org.openmetadata.service.util.JsonStorageUtils.removeNulCharacters;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,7 +58,9 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 @Path("/v1/analytics/web/events")
@@ -86,6 +90,9 @@ public class WebAnalyticEventResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     // Find the existing webAnalyticEventTypes and add them from json files
     List<WebAnalyticEvent> webAnalyticEvents =
         repository.getEntitiesFromSeedData(".*json/data/analytics/webAnalyticEvents/.*\\.json$");
@@ -526,8 +533,20 @@ public class WebAnalyticEventResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid WebAnalyticEventData webAnalyticEventData) {
+    WebAnalyticEventData sanitized = sanitizeWebAnalyticEventData(webAnalyticEventData);
+    attributeToCaller(sanitized, securityContext);
+    return repository.addWebAnalyticEventData(sanitized);
+  }
 
-    return repository.addWebAnalyticEventData(sanitizeWebAnalyticEventData(webAnalyticEventData));
+  /**
+   * Every user records their own page views here, and Data Insights reports activity per user, so
+   * a page view always belongs to the caller whatever user id the payload names.
+   */
+  private static void attributeToCaller(
+      WebAnalyticEventData eventData, SecurityContext securityContext) {
+    if (eventData.getEventData() instanceof PageViewData pageView) {
+      pageView.setUserId(DefaultAuthorizer.getSubjectContext(securityContext).user().getId());
+    }
   }
 
   @DELETE
@@ -595,6 +614,8 @@ public class WebAnalyticEventResource
           @NonNull
           @QueryParam("endTs")
           Long endTs) {
+    // Raw events are every user's browsing history: user ids, full URLs and session ids.
+    authorizer.authorizeAdminOrBot(securityContext);
     return repository.getWebAnalyticEventData(eventType, startTs, endTs);
   }
 
@@ -633,28 +654,18 @@ public class WebAnalyticEventResource
   }
 
   private static void stripNullCharacters(PageViewData data) {
-    data.setFullUrl(removeNullCharacters(data.getFullUrl()));
-    data.setUrl(removeNullCharacters(data.getUrl()));
-    data.setHostname(removeNullCharacters(data.getHostname()));
-    data.setLanguage(removeNullCharacters(data.getLanguage()));
-    data.setScreenSize(removeNullCharacters(data.getScreenSize()));
-    data.setReferrer(removeNullCharacters(data.getReferrer()));
+    data.setFullUrl(removeNulCharacters(data.getFullUrl()));
+    data.setUrl(removeNulCharacters(data.getUrl()));
+    data.setHostname(removeNulCharacters(data.getHostname()));
+    data.setLanguage(removeNulCharacters(data.getLanguage()));
+    data.setScreenSize(removeNulCharacters(data.getScreenSize()));
+    data.setReferrer(removeNulCharacters(data.getReferrer()));
   }
 
   private static void stripNullCharacters(CustomEvent event) {
-    event.setFullUrl(removeNullCharacters(event.getFullUrl()));
-    event.setUrl(removeNullCharacters(event.getUrl()));
-    event.setHostname(removeNullCharacters(event.getHostname()));
-    event.setEventValue(removeNullCharacters(event.getEventValue()));
-  }
-
-  // PostgreSQL jsonb rejects strings containing the NUL character (\u0000). Strip it from
-  // user-supplied analytics fields so click events that capture page text (e.g. error messages
-  // surfaced from the database) do not fail the insert.
-  static String removeNullCharacters(String input) {
-    if (input == null || input.indexOf('\u0000') < 0) {
-      return input;
-    }
-    return input.replace("\u0000", "");
+    event.setFullUrl(removeNulCharacters(event.getFullUrl()));
+    event.setUrl(removeNulCharacters(event.getUrl()));
+    event.setHostname(removeNulCharacters(event.getHostname()));
+    event.setEventValue(removeNulCharacters(event.getEventValue()));
   }
 }

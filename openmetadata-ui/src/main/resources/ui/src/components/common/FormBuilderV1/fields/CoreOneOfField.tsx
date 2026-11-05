@@ -17,15 +17,10 @@ import {
   getDiscriminatorFieldFromSchema,
   RJSFSchema,
 } from '@rjsf/utils';
-import { Hexagon01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
-const SAMPLE_DATA_STORAGE_CONFIG_ID = '/sampleDataStorageConfig';
-const STORAGE_CONFIG_ID_SUFFIX =
-  '/sampleDataStorageConfig/config/storageConfig';
-const AWS_S3_STORAGE_CONFIG_TITLE = 'AWS S3 Storage Config';
 const MAX_SEGMENTED_OPTION_COUNT = 3;
 const MAX_SEGMENTED_OPTION_LABEL_LENGTH = 28;
 const COMPACT_SELECTOR_ID_PATTERN = /(source|projectId)$/i;
@@ -55,16 +50,78 @@ const shouldRenderSegmentedOptions = (
     getOptionTitle(element, index)
   );
 
+  const isSegmentedOptionCountWithinLimit =
+    options.length > 1 && options.length <= MAX_SEGMENTED_OPTION_COUNT;
+
   return (
-    options.length > 1 &&
-    options.length <= MAX_SEGMENTED_OPTION_COUNT &&
-    !id.includes(SAMPLE_DATA_STORAGE_CONFIG_ID) &&
+    isSegmentedOptionCountWithinLimit &&
     !COMPACT_SELECTOR_ID_PATTERN.test(id) &&
     optionLabels.every(
       (label) => label.length <= MAX_SEGMENTED_OPTION_LABEL_LENGTH
     ) &&
     options.every(isObjectLikeSchema)
   );
+};
+
+const getSelectedSchema = (
+  resolvedOptions: RJSFSchema[],
+  safeSelectedOption: number
+): RJSFSchema =>
+  safeSelectedOption >= 0 ? resolvedOptions[safeSelectedOption] ?? {} : {};
+
+interface OneOfLayoutFlags {
+  shouldRenderInlineSelectedBranch: boolean;
+  shouldSuppressSelectedBranchLabel: boolean;
+}
+
+// Extracted so the boolean short-circuits live in their own complexity scope
+// instead of CoreOneOfField's render body.
+const computeOneOfLayoutFlags = (
+  hasMultipleOptions: boolean,
+  selectedBranchIsObjectLike: boolean,
+  shouldRenderAsTabs: boolean
+): OneOfLayoutFlags => {
+  const shouldRenderInlineSelectedBranch =
+    hasMultipleOptions && !selectedBranchIsObjectLike && !shouldRenderAsTabs;
+  const shouldSuppressSelectedBranchLabel =
+    hasMultipleOptions && selectedBranchIsObjectLike;
+
+  return {
+    shouldRenderInlineSelectedBranch,
+    shouldSuppressSelectedBranchLabel,
+  };
+};
+
+interface OneOfSelectedBranchRender {
+  selectedKey: string | null;
+  selectedSchemaForRender: RJSFSchema;
+  selectedDescription: string | undefined;
+}
+
+const computeSelectedBranchRender = (
+  hasMultipleOptions: boolean,
+  safeSelectedOption: number,
+  selectedSchema: RJSFSchema,
+  shouldSuppressSelectedBranchLabel: boolean
+): OneOfSelectedBranchRender => {
+  const selectedKey =
+    hasMultipleOptions && safeSelectedOption >= 0
+      ? String(safeSelectedOption)
+      : null;
+  const selectedSchemaForRender =
+    hasMultipleOptions && selectedSchema
+      ? {
+          ...selectedSchema,
+          description: undefined,
+          ...(shouldSuppressSelectedBranchLabel ? { title: undefined } : {}),
+        }
+      : selectedSchema;
+  const selectedDescription =
+    hasMultipleOptions && typeof selectedSchema.description === 'string'
+      ? selectedSchema.description
+      : undefined;
+
+  return { selectedKey, selectedSchemaForRender, selectedDescription };
 };
 
 const CoreOneOfField = (props: FieldProps) => {
@@ -147,19 +204,19 @@ const CoreOneOfField = (props: FieldProps) => {
     resolvedOptions.length
   );
   const hasMultipleOptions = resolvedOptions.length > 1;
-  const selectedSchema =
-    safeSelectedOption >= 0 ? resolvedOptions[safeSelectedOption] ?? {} : {};
+  const selectedSchema = getSelectedSchema(resolvedOptions, safeSelectedOption);
   const shouldRenderAsTabs = shouldRenderSegmentedOptions(
     idSchema.$id,
     resolvedOptions
   );
   const selectedBranchIsObjectLike = isObjectLikeSchema(selectedSchema);
-  const shouldRenderInlineSelectedBranch =
-    hasMultipleOptions && !selectedBranchIsObjectLike && !shouldRenderAsTabs;
-  const shouldSuppressSelectedBranchLabel =
-    hasMultipleOptions && selectedBranchIsObjectLike;
-  const isStorageConfigSelector = idSchema.$id.endsWith(
-    STORAGE_CONFIG_ID_SUFFIX
+  const {
+    shouldRenderInlineSelectedBranch,
+    shouldSuppressSelectedBranchLabel,
+  } = computeOneOfLayoutFlags(
+    hasMultipleOptions,
+    selectedBranchIsObjectLike,
+    shouldRenderAsTabs
   );
   const recommendedTitle = (uiSchema?.['ui:options']?.recommended ??
     undefined) as string | undefined;
@@ -170,20 +227,12 @@ const CoreOneOfField = (props: FieldProps) => {
         const label = getOptionTitle(option, index);
 
         return {
-          icon:
-            isStorageConfigSelector && label === AWS_S3_STORAGE_CONFIG_TITLE ? (
-              <Hexagon01
-                aria-hidden="true"
-                data-testid="storage-config-title-icon"
-                size={16}
-              />
-            ) : undefined,
           id: String(index),
           isRecommended: recommendedTitle === label,
           label,
         };
       }),
-    [isStorageConfigSelector, recommendedTitle, resolvedOptions]
+    [recommendedTitle, resolvedOptions]
   );
 
   const selectedIdSchema = useMemo(
@@ -239,22 +288,128 @@ const CoreOneOfField = (props: FieldProps) => {
   };
 
   const fieldLabel = label ?? schema.title ?? getFormDisplayLabel(name);
-  const selectedKey =
-    hasMultipleOptions && safeSelectedOption >= 0
-      ? String(safeSelectedOption)
-      : null;
-  const selectedSchemaForRender =
-    hasMultipleOptions && selectedSchema
-      ? {
-          ...selectedSchema,
-          description: undefined,
-          ...(shouldSuppressSelectedBranchLabel ? { title: undefined } : {}),
-        }
-      : selectedSchema;
-  const selectedDescription =
-    hasMultipleOptions && typeof selectedSchema.description === 'string'
-      ? selectedSchema.description
-      : undefined;
+  const { selectedKey, selectedSchemaForRender, selectedDescription } =
+    computeSelectedBranchRender(
+      hasMultipleOptions,
+      safeSelectedOption,
+      selectedSchema,
+      shouldSuppressSelectedBranchLabel
+    );
+
+  const renderTabsSelector = () => {
+    if (!hasMultipleOptions || !shouldRenderAsTabs) {
+      return null;
+    }
+
+    return (
+      <div className="core-one-of-field-tabs tw:flex tw:flex-col tw:gap-1">
+        {!hideLabel && fieldLabel && (
+          <span
+            className="core-one-of-field-tabs-label tw:text-sm tw:font-medium tw:text-secondary"
+            id={`${idSchema.$id}__title`}>
+            {fieldLabel}
+          </span>
+        )}
+        <div
+          aria-label={fieldLabel}
+          className="tw:grid tw:gap-1 tw:rounded-lg tw:border tw:border-primary tw:bg-secondary tw:p-1"
+          role="tablist"
+          style={{
+            gridTemplateColumns: `repeat(${resolvedOptions.length}, minmax(0, 1fr))`,
+          }}>
+          {optionItems.map((item) => {
+            const isSelected = selectedKey === item.id;
+
+            return (
+              <button
+                aria-selected={isSelected}
+                className={classNames(
+                  'tw:flex tw:min-h-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
+                  isSelected
+                    ? 'tw:border-primary tw:bg-surface tw:font-medium tw:text-primary tw:shadow-xs'
+                    : 'tw:border-transparent tw:font-medium tw:text-tertiary'
+                )}
+                data-selected={isSelected}
+                data-testid={`oneof-option-${item.id}`}
+                key={item.id}
+                role="tab"
+                type="button"
+                onClick={() => handleOptionChange(Number(item.id))}
+                onFocus={() =>
+                  onFocus(
+                    `${idSchema.$id}${
+                      schema.oneOf ? '__oneof_select' : '__anyof_select'
+                    }`,
+                    formData
+                  )
+                }>
+                {item.label}
+                {item.isRecommended && isSelected && (
+                  <span
+                    className="tw:size-1.5 tw:rounded-full tw:bg-fg-success-primary"
+                    data-testid="recommended-indicator"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSelectedBranchSelector = () => (
+    <Box direction="col" gap={1}>
+      {hasMultipleOptions && !shouldRenderAsTabs && (
+        <Select
+          className={classNames(
+            'core-one-of-field-select',
+            shouldRenderInlineSelectedBranch &&
+              'tw:col-start-1 tw:self-stretch tw:w-full'
+          )}
+          data-testid={`select-widget-${idSchema.$id}${
+            schema.oneOf ? '__oneof_select' : '__anyof_select'
+          }`}
+          fontSize="sm"
+          isDisabled={disabled || readonly}
+          isRequired={required}
+          items={optionItems}
+          label={hideLabel ? undefined : fieldLabel}
+          popoverClassName="core-one-of-field-select-popover"
+          selectedKey={selectedKey}
+          size="sm"
+          onFocus={() =>
+            onFocus(
+              `${idSchema.$id}${
+                schema.oneOf ? '__oneof_select' : '__anyof_select'
+              }`,
+              formData
+            )
+          }
+          onSelectionChange={(key: Key | null) => {
+            if (key !== null) {
+              handleOptionChange(Number(key));
+            }
+          }}>
+          {(item) => (
+            <Select.Item
+              icon={item.icon}
+              id={item.id}
+              key={item.id}
+              textValue={item.label}>
+              {item.label}
+            </Select.Item>
+          )}
+        </Select>
+      )}
+
+      {selectedDescription && (
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
+          {selectedDescription}
+        </Typography>
+      )}
+    </Box>
+  );
 
   return (
     <div
@@ -265,112 +420,9 @@ const CoreOneOfField = (props: FieldProps) => {
           : 'tw:flex tw:flex-col tw:gap-4'
       )}
       data-field-id={idSchema.$id}>
-      {hasMultipleOptions && shouldRenderAsTabs && (
-        <div className="core-one-of-field-tabs tw:flex tw:flex-col tw:gap-1">
-          {!hideLabel && fieldLabel && (
-            <span
-              className="core-one-of-field-tabs-label tw:text-sm tw:font-medium tw:text-secondary"
-              id={`${idSchema.$id}__title`}>
-              {fieldLabel}
-            </span>
-          )}
-          <div
-            aria-label={fieldLabel}
-            className="tw:grid tw:gap-1 tw:rounded-lg tw:border tw:border-primary tw:bg-secondary tw:p-1"
-            role="tablist"
-            style={{
-              gridTemplateColumns: `repeat(${resolvedOptions.length}, minmax(0, 1fr))`,
-            }}>
-            {optionItems.map((item) => {
-              const isSelected = selectedKey === item.id;
+      {renderTabsSelector()}
 
-              return (
-                <button
-                  aria-selected={isSelected}
-                  className={classNames(
-                    'tw:flex tw:min-h-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
-                    isSelected
-                      ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
-                      : 'tw:border-transparent tw:font-medium tw:text-tertiary'
-                  )}
-                  data-selected={isSelected}
-                  data-testid={`oneof-option-${item.id}`}
-                  key={item.id}
-                  role="tab"
-                  type="button"
-                  onClick={() => handleOptionChange(Number(item.id))}
-                  onFocus={() =>
-                    onFocus(
-                      `${idSchema.$id}${
-                        schema.oneOf ? '__oneof_select' : '__anyof_select'
-                      }`,
-                      formData
-                    )
-                  }>
-                  {item.label}
-                  {item.isRecommended && isSelected && (
-                    <span
-                      className="tw:size-1.5 tw:rounded-full tw:bg-fg-success-primary"
-                      data-testid="recommended-indicator"
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <Box direction="col" gap={1}>
-        {hasMultipleOptions && !shouldRenderAsTabs && (
-          <Select
-            className={classNames(
-              'core-one-of-field-select',
-              shouldRenderInlineSelectedBranch &&
-                'tw:col-start-1 tw:self-stretch tw:w-full'
-            )}
-            data-testid={`select-widget-${idSchema.$id}${
-              schema.oneOf ? '__oneof_select' : '__anyof_select'
-            }`}
-            fontSize="sm"
-            isDisabled={disabled || readonly}
-            isRequired={required}
-            items={optionItems}
-            label={hideLabel ? undefined : fieldLabel}
-            popoverClassName="core-one-of-field-select-popover"
-            selectedKey={selectedKey}
-            size="sm"
-            onFocus={() =>
-              onFocus(
-                `${idSchema.$id}${
-                  schema.oneOf ? '__oneof_select' : '__anyof_select'
-                }`,
-                formData
-              )
-            }
-            onSelectionChange={(key: Key | null) => {
-              if (key !== null) {
-                handleOptionChange(Number(key));
-              }
-            }}>
-            {(item) => (
-              <Select.Item
-                icon={item.icon}
-                id={item.id}
-                key={item.id}
-                textValue={item.label}>
-                {item.label}
-              </Select.Item>
-            )}
-          </Select>
-        )}
-
-        {selectedDescription && (
-          <Typography as="span" className="tw:text-tertiary" size="text-xs">
-            {selectedDescription}
-          </Typography>
-        )}
-      </Box>
+      {renderSelectedBranchSelector()}
 
       <div className="core-one-of-field-selected">
         <SchemaField

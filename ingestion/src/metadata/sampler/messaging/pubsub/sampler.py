@@ -12,8 +12,6 @@
 PubSub sampler implementation (stub — not yet implemented).
 """
 
-from typing import List  # noqa: UP035
-
 from metadata.sampler.messaging.sampler import MessagingSampler
 from metadata.utils.logger import sampler_logger
 
@@ -23,6 +21,6 @@ logger = sampler_logger()
 class PubSubSampler(MessagingSampler):
     """Sampler for Google Cloud Pub/Sub messaging service."""
 
-    def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
+    def _fetch_messages(self, count: int) -> list[dict]:
         logger.warning("PubSub sampler not yet implemented for auto-classification")
         return []

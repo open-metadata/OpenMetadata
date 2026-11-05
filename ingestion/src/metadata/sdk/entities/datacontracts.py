@@ -3,7 +3,7 @@ DataContracts entity SDK with fluent API for ODCS import/export
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Optional, Type  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
@@ -100,8 +100,8 @@ class ODCSImportOperation:
     client: OMetaClient
     entity_id: str
     entity_type: str
-    odcs_data: Optional[ODCSDataContract] = None  # noqa: UP045
-    yaml_data: Optional[str] = None  # noqa: UP045
+    odcs_data: ODCSDataContract | None = None
+    yaml_data: str | None = None
     smart_merge: bool = field(default=False, init=False)
 
     def from_odcs(self, odcs: ODCSDataContract) -> "ODCSImportOperation":
@@ -126,7 +126,7 @@ class ODCSImportOperation:
         self.smart_merge = False
         return self
 
-    def execute(self) -> Optional[DataContract]:  # noqa: UP045
+    def execute(self) -> DataContract | None:
         """Execute the import and return the created/updated DataContract."""
         if self.odcs_data is None and self.yaml_data is None:
             raise ValueError("Must call from_odcs() or from_yaml() before execute()")
@@ -189,7 +189,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
     """
 
     @classmethod
-    def entity_type(cls) -> Type[DataContract]:  # noqa: UP006
+    def entity_type(cls) -> type[DataContract]:
         """Return the DataContract entity type"""
         return DataContract
 
@@ -266,7 +266,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         )
 
     @classmethod
-    def get_by_entity(cls, entity_id: UuidLike, entity_type: str) -> Optional[DataContract]:  # noqa: UP045
+    def get_by_entity(cls, entity_id: UuidLike, entity_type: str) -> DataContract | None:
         """
         Get the effective data contract for an entity
         """
@@ -274,7 +274,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         return client.get_data_contract_by_entity_id(ensure_uuid(entity_id), entity_type)
 
     @classmethod
-    def validate_by_entity(cls, entity_id: UuidLike, entity_type: str) -> Optional[DataContractResult]:  # noqa: UP045
+    def validate_by_entity(cls, entity_id: UuidLike, entity_type: str) -> DataContractResult | None:
         """
         Validate a data contract for an entity
         """
@@ -282,7 +282,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         return client.validate_data_contract_by_entity_id(ensure_uuid(entity_id), entity_type)
 
     @classmethod
-    def validate_request(cls, request: CreateDataContractRequest) -> Optional[DataContractResult]:  # noqa: UP045
+    def validate_request(cls, request: CreateDataContractRequest) -> DataContractResult | None:
         """
         Validate a CreateDataContract request without creating
         """
@@ -290,7 +290,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         return client.validate_data_contract_request(request)
 
     @classmethod
-    def validate_request_yaml(cls, yaml_content: str) -> Optional[Any]:  # noqa: UP045
+    def validate_request_yaml(cls, yaml_content: str) -> Any | None:
         """
         Validate a CreateDataContract request from YAML without creating
         """
@@ -303,8 +303,8 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         entity_id: UuidLike,
         entity_type: str,
         yaml_content: str,
-        object_name: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[Any]:  # noqa: UP045
+        object_name: str | None = None,
+    ) -> Any | None:
         """
         Validate ODCS YAML without importing
         """
@@ -317,7 +317,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         )
 
     @classmethod
-    def parse_odcs_yaml(cls, yaml_content: str) -> Optional[Any]:  # noqa: UP045
+    def parse_odcs_yaml(cls, yaml_content: str) -> Any | None:
         """
         Parse ODCS YAML and return metadata
         """

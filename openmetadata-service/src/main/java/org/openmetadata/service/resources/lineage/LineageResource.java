@@ -53,17 +53,21 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
 import org.openmetadata.schema.api.lineage.HydrateLineageResponse;
+import org.openmetadata.schema.api.lineage.LineageBand;
 import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.LineageLens;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
+import org.openmetadata.schema.api.lineage.LineageScene;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -71,18 +75,22 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobArgs;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.lineage.LineageHydrator;
+import org.openmetadata.service.lineage.LineagePermissionFilter;
+import org.openmetadata.service.lineage.LineageSceneResolver;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.AsyncService;
-import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Path("/v1/lineage")
 @Tag(
@@ -98,11 +106,17 @@ public class LineageResource {
   private final LineageRepository dao;
   private final Authorizer authorizer;
   private final LineageHydrator hydrator;
+  private final LineagePermissionFilter lineagePermissionFilter;
+  private final SearchLineagePermissionFilter searchLineagePermissionFilter;
+  private final LineageSceneResolver sceneResolver;
 
   public LineageResource(Authorizer authorizer) {
     this.dao = Entity.getLineageRepository();
     this.authorizer = authorizer;
     this.hydrator = new LineageHydrator(authorizer);
+    this.lineagePermissionFilter = new LineagePermissionFilter(authorizer);
+    this.searchLineagePermissionFilter = new SearchLineagePermissionFilter(authorizer);
+    this.sceneResolver = new LineageSceneResolver(hydrator);
   }
 
   private static void validateTemporalBounds(Long startTime, Long endTime) {
@@ -113,20 +127,104 @@ public class LineageResource {
 
   private void authorizeLineageReference(
       SecurityContext securityContext, EntityReference entityReference) {
+    authorizeLineageReference(securityContext, entityReference, MetadataOperation.EDIT_LINEAGE);
+  }
+
+  private void authorizeLineageReference(
+      SecurityContext securityContext,
+      EntityReference entityReference,
+      MetadataOperation operation) {
     authorizer.authorize(
         securityContext,
-        new OperationContext(entityReference.getType(), MetadataOperation.EDIT_LINEAGE),
+        new OperationContext(entityReference.getType(), operation),
         new ResourceContext<>(
             entityReference.getType(), entityReference.getId(), entityReference.getName()));
   }
 
-  private void authorizeLineageReference(
-      SecurityContext securityContext, String entityType, String entityFQN) {
-    authorizeLineageReference(securityContext, getLineageReferenceByName(entityType, entityFQN));
+  /**
+   * A lineage write names a third entity besides the two ends: the pipeline, which the edge copies
+   * into the downstream entity's search document for every user to read. So linking one needs
+   * ViewBasic on it, on top of EditLineage on the ends. Only a pipeline the stored edge does not
+   * already carry is checked: ingestion re-sends the stored one on every write, and it may have
+   * been deleted since. Any type other than a pipeline or stored procedure is refused by the
+   * repository with a 400, so it is not authorized here.
+   */
+  private void authorizeEdgePipeline(
+      SecurityContext securityContext, UUID fromId, UUID toId, LineageDetails requested) {
+    EntityReference requestedPipeline = requested == null ? null : requested.getPipeline();
+    authorizeNewlyLinkedEdgePipeline(
+        securityContext,
+        LineageRepository.newlyLinkedEdgePipeline(
+            requestedPipeline, dao.getLineageDetails(fromId, toId)));
   }
 
-  private EntityReference getLineageReferenceByName(String entityType, String entityFQN) {
-    return Entity.getEntityReferenceByName(entityType, entityFQN, Include.NON_DELETED);
+  /**
+   * ViewBasic on a pipeline a write newly links to an edge, when there is one; the edge copies it
+   * into the downstream entity's world-readable search document. PATCH runs this from inside the
+   * repository, against the resolved pipeline it is about to persist, so a concurrent write cannot
+   * substitute a different, unviewable pipeline between the check and the insert.
+   */
+  private void authorizeNewlyLinkedEdgePipeline(
+      SecurityContext securityContext, EntityReference pipeline) {
+    if (pipeline != null) {
+      authorizeLineageReference(securityContext, pipeline, MetadataOperation.VIEW_BASIC);
+    }
+  }
+
+  private void authorizeLineageSceneFocus(
+      SecurityContext securityContext, String focusFqn, String entityType, boolean includeDeleted) {
+    boolean hasFocus = !nullOrEmpty(focusFqn);
+    boolean hasEntityType = !nullOrEmpty(entityType);
+    if (hasFocus != hasEntityType) {
+      throw new IllegalArgumentException("focusFqn and entityType must be provided together");
+    }
+    if (hasFocus) {
+      Include include = includeDeleted ? Include.DELETED : Include.NON_DELETED;
+      EntityReference focus = getLineageReferenceByName(entityType, focusFqn, include);
+      authorizeLineageReference(securityContext, focus, MetadataOperation.VIEW_BASIC);
+    }
+  }
+
+  private void authorizeLineageReference(
+      SecurityContext securityContext, String entityType, String entityFQN, Include include) {
+    authorizeLineageReference(
+        securityContext, getLineageReferenceByName(entityType, entityFQN, include));
+  }
+
+  private EntityReference getLineageReferenceByName(
+      String entityType, String entityFQN, Include include) {
+    return Entity.getEntityReferenceByName(entityType, entityFQN, include);
+  }
+
+  /**
+   * Search lineage roots its graph on the indexed entity with {@code fqn}; {@code type} is optional
+   * and the search never uses it to find the root. So the check covers that indexed entity, looked
+   * up the same way, whatever type the caller sent or left out. A root the index does not have yet
+   * falls back to the type and FQN the caller named, as before.
+   */
+  private void authorizeLineageRoot(SecurityContext securityContext, String entityType, String fqn)
+      throws IOException {
+    if (!nullOrEmpty(fqn) && !getSubjectContext(securityContext).isAdmin()) {
+      Entity.getSearchRepository()
+          .getLineageRoot(fqn)
+          .or(() -> namedLineageRoot(entityType, fqn))
+          .ifPresent(root -> authorizeLineageRootView(securityContext, root));
+    }
+  }
+
+  private static Optional<EntityReference> namedLineageRoot(String entityType, String fqn) {
+    return !nullOrEmpty(entityType) && Entity.hasEntityRepository(entityType)
+        ? Optional.of(new EntityReference().withType(entityType).withFullyQualifiedName(fqn))
+        : Optional.empty();
+  }
+
+  private void authorizeLineageRootView(SecurityContext securityContext, EntityReference root) {
+    // Include.ALL: a soft-deleted root still has its policies evaluated, not skipped as missing.
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(root.getType(), MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(
+            root.getType(), root.getId(), root.getFullyQualifiedName(), Include.ALL));
   }
 
   @GET
@@ -173,9 +271,15 @@ public class LineageResource {
           @Max(3)
           @QueryParam("downstreamDepth")
           int downStreamDepth) {
+    authorizeLineageReference(
+        securityContext,
+        new EntityReference().withType(entity).withId(UUID.fromString(id)),
+        MetadataOperation.VIEW_BASIC);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    EntityLineage lineage = dao.get(entity, id, upstreamDepth, downStreamDepth, subjectContext);
     return addHref(
         uriInfo,
-        dao.get(entity, id, upstreamDepth, downStreamDepth, getSubjectContext(securityContext)));
+        lineagePermissionFilter.filter(securityContext, subjectContext, lineage).lineage());
   }
 
   @GET
@@ -222,10 +326,91 @@ public class LineageResource {
           @Max(3)
           @QueryParam("downstreamDepth")
           int downStreamDepth) {
+    authorizeLineageReference(
+        securityContext,
+        getLineageReferenceByName(entity, fqn, Include.NON_DELETED),
+        MetadataOperation.VIEW_BASIC);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    EntityLineage lineage =
+        dao.getByName(entity, fqn, upstreamDepth, downStreamDepth, subjectContext);
     return addHref(
         uriInfo,
-        dao.getByName(
-            entity, fqn, upstreamDepth, downStreamDepth, getSubjectContext(securityContext)));
+        lineagePermissionFilter.filter(securityContext, subjectContext, lineage).lineage());
+  }
+
+  @GET
+  @Path("/scene")
+  @Operation(
+      operationId = "getLineageScene",
+      summary = "Get semantic lineage scene",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Semantic lineage scene",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = LineageScene.class)))
+      })
+  public LineageScene getLineageScene(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Focused entity fully qualified name") @QueryParam("focusFqn")
+          String focusFqn,
+      @Parameter(description = "Focused entity type") @QueryParam("entityType") String entityType,
+      @Parameter(description = "Lineage lens")
+          @QueryParam("lens")
+          @DefaultValue("service")
+          @Pattern(
+              regexp = "service|domain|dataProduct",
+              message = "Invalid lens. Allowed values: service, domain, dataProduct.")
+          String lens,
+      @Parameter(description = "Lineage altitude band")
+          @QueryParam("band")
+          @DefaultValue("ASSET")
+          @Pattern(
+              regexp = "LAYER|ASSET|FIELD",
+              message = "Invalid band. Allowed values: LAYER, ASSET, FIELD.")
+          String band,
+      @Parameter(description = "Upstream depth")
+          @DefaultValue("1")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(3)
+          @QueryParam("upstreamDepth")
+          int upstreamDepth,
+      @Parameter(description = "Downstream depth")
+          @DefaultValue("1")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(3)
+          @QueryParam("downstreamDepth")
+          int downstreamDepth,
+      @Parameter(description = "Maximum scene nodes")
+          @DefaultValue("200")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(1000)
+          @QueryParam("size")
+          int size,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          boolean includeDeleted)
+      throws IOException {
+    authorizeLineageSceneFocus(securityContext, focusFqn, entityType, includeDeleted);
+    return sceneResolver.getScene(
+        focusFqn,
+        entityType,
+        LineageLens.fromValue(lens),
+        LineageBand.fromValue(band),
+        upstreamDepth,
+        downstreamDepth,
+        size,
+        queryFilter,
+        includeDeleted,
+        securityContext,
+        getSubjectContext(securityContext));
   }
 
   @GET
@@ -292,24 +477,28 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
-    return Entity.getSearchRepository()
-        .searchLineage(
-            new SearchLineageRequest()
-                .withFqn(fqn)
-                .withUpstreamDepth(upstreamDepth)
-                .withDownstreamDepth(downstreamDepth)
-                .withQueryFilter(queryFilter)
-                .withIncludeDeleted(deleted)
-                .withIsConnectedVia(isConnectedVia(entityType))
-                .withLayerFrom(from)
-                .withLayerSize(size)
-                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
-                .withColumnFilter(columnFilter)
-                .withPreservePaths(preservePaths)
-                .withStartTime(startTime)
-                .withEndTime(endTime),
-            getSubjectContext(securityContext));
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    SearchLineageResult lineage =
+        Entity.getSearchRepository()
+            .searchLineage(
+                new SearchLineageRequest()
+                    .withFqn(fqn)
+                    .withUpstreamDepth(upstreamDepth)
+                    .withDownstreamDepth(downstreamDepth)
+                    .withQueryFilter(queryFilter)
+                    .withIncludeDeleted(deleted)
+                    .withIsConnectedVia(isConnectedVia(entityType))
+                    .withLayerFrom(from)
+                    .withLayerSize(size)
+                    .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
+                    .withColumnFilter(columnFilter)
+                    .withPreservePaths(preservePaths)
+                    .withStartTime(startTime)
+                    .withEndTime(endTime),
+                subjectContext);
+    return searchLineagePermissionFilter.filter(securityContext, subjectContext, lineage, fqn);
   }
 
   @GET
@@ -344,6 +533,8 @@ public class LineageResource {
           @QueryParam("includeDeleted")
           boolean deleted)
       throws IOException {
+    // The whole catalog's lineage, unfiltered: only the lineage scene serves it per caller.
+    authorizer.authorizeAdmin(securityContext);
     return Entity.getSearchRepository()
         .searchPlatformLineage(view, queryFilter, deleted, getSubjectContext(securityContext));
   }
@@ -415,25 +606,29 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
-    return Entity.getSearchRepository()
-        .searchLineageWithDirection(
-            new SearchLineageRequest()
-                .withFqn(fqn)
-                .withUpstreamDepth(upstreamDepth)
-                .withDownstreamDepth(downstreamDepth)
-                .withQueryFilter(queryFilter)
-                .withIncludeDeleted(deleted)
-                .withIsConnectedVia(isConnectedVia(entityType))
-                .withDirection(direction)
-                .withLayerFrom(from)
-                .withLayerSize(size)
-                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
-                .withColumnFilter(columnFilter)
-                .withPreservePaths(preservePaths)
-                .withStartTime(startTime)
-                .withEndTime(endTime),
-            getSubjectContext(securityContext));
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    SearchLineageResult lineage =
+        Entity.getSearchRepository()
+            .searchLineageWithDirection(
+                new SearchLineageRequest()
+                    .withFqn(fqn)
+                    .withUpstreamDepth(upstreamDepth)
+                    .withDownstreamDepth(downstreamDepth)
+                    .withQueryFilter(queryFilter)
+                    .withIncludeDeleted(deleted)
+                    .withIsConnectedVia(isConnectedVia(entityType))
+                    .withDirection(direction)
+                    .withLayerFrom(from)
+                    .withLayerSize(size)
+                    .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
+                    .withColumnFilter(columnFilter)
+                    .withPreservePaths(preservePaths)
+                    .withStartTime(startTime)
+                    .withEndTime(endTime),
+                subjectContext);
+    return searchLineagePermissionFilter.filter(securityContext, subjectContext, lineage, fqn);
   }
 
   @GET
@@ -464,6 +659,7 @@ public class LineageResource {
           @QueryParam("includeDeleted")
           boolean deleted)
       throws IOException {
+    authorizeLineageRoot(securityContext, Entity.TABLE, fqn);
 
     return Entity.getSearchRepository()
         .searchDataQualityLineage(
@@ -502,6 +698,7 @@ public class LineageResource {
           boolean deleted,
       @Parameter(description = "entity type") @QueryParam("type") String entityType)
       throws IOException {
+    authorizeLineageRoot(securityContext, entityType, fqn);
     return dao.exportCsv(
         fqn,
         upstreamDepth,
@@ -525,7 +722,7 @@ public class LineageResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = CSVExportMessage.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class)))
       })
   public Response exportLineageAsync(
       @Context UriInfo uriInfo,
@@ -552,33 +749,36 @@ public class LineageResource {
               description =
                   "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
           @QueryParam("endTime")
-          Long endTime) {
+          Long endTime)
+      throws IOException {
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
-    String jobId = UUID.randomUUID().toString();
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            String csvData =
-                dao.exportCsvAsync(
-                    fqn,
-                    upstreamDepth,
-                    downstreamDepth,
-                    queryFilter,
-                    entityType,
-                    deleted,
-                    startTime,
-                    endTime,
-                    subjectContext);
-            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
-                jobId, securityContext, csvData);
-          } catch (Exception e) {
-            WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                jobId, securityContext, e.getMessage());
-          }
-        });
-    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
+    CsvAsyncJobArgs.LineageExportArgs args =
+        new CsvAsyncJobArgs.LineageExportArgs()
+            .setByEntityCount(false)
+            .setFqn(fqn)
+            .setEntityType(entityType)
+            .setQueryFilter(queryFilter)
+            .setDeleted(deleted)
+            .setStartTime(startTime)
+            .setEndTime(endTime)
+            .setUpstreamDepth(upstreamDepth)
+            .setDownstreamDepth(downstreamDepth);
+    return acceptLineageExportJob(securityContext, args);
+  }
+
+  /**
+   * Queues the export on the shared job table rather than a local executor, so the result is
+   * downloadable from any server via {@code GET /v1/csvAsyncJobs/{jobId}/result}.
+   */
+  private Response acceptLineageExportJob(
+      SecurityContext securityContext, CsvAsyncJobArgs.LineageExportArgs args) {
+    args.setImpersonatedBy(ImpersonationContext.getImpersonatedBy());
+    CsvAsyncJob job =
+        CsvAsyncJobManager.getInstance()
+            .createLineageExportJob(securityContext.getUserPrincipal().getName(), args);
+    CSVExportResponse response =
+        new CSVExportResponse(job.getJobId(), "Export initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
@@ -628,6 +828,7 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
     return Entity.getSearchRepository()
         .getLineagePaginationInfo(
@@ -654,7 +855,7 @@ public class LineageResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = CSVExportMessage.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class)))
       })
   public Response exportLineageByEntityCountAsync(
       @Context UriInfo uriInfo,
@@ -711,38 +912,26 @@ public class LineageResource {
               description =
                   "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
           @QueryParam("endTime")
-          Long endTime) {
+          Long endTime)
+      throws IOException {
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
-    String jobId = UUID.randomUUID().toString();
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            String csvData =
-                dao.exportByEntityCountCsvAsync(
-                    fqn,
-                    direction,
-                    from,
-                    size,
-                    nodeDepth,
-                    maxDepth,
-                    queryFilter,
-                    deleted,
-                    entityType,
-                    includeSourceFields,
-                    startTime,
-                    endTime,
-                    subjectContext);
-            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
-                jobId, securityContext, csvData);
-          } catch (Exception e) {
-            WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                jobId, securityContext, e.getMessage());
-          }
-        });
-    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
-    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+    CsvAsyncJobArgs.LineageExportArgs args =
+        new CsvAsyncJobArgs.LineageExportArgs()
+            .setByEntityCount(true)
+            .setFqn(fqn)
+            .setEntityType(entityType)
+            .setQueryFilter(queryFilter)
+            .setDeleted(deleted)
+            .setStartTime(startTime)
+            .setEndTime(endTime)
+            .setDirection(direction)
+            .setFrom(from)
+            .setSize(size)
+            .setNodeDepth(nodeDepth)
+            .setMaxDepth(maxDepth)
+            .setIncludeSourceFields(includeSourceFields);
+    return acceptLineageExportJob(securityContext, args);
   }
 
   @GET
@@ -837,31 +1026,34 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
     if (nullOrEmpty(direction)) {
       throw new IllegalArgumentException("Lineage Direction is required.");
     }
-    return Entity.getSearchRepository()
-        .searchLineageByEntityCount(
-            new EntityCountLineageRequest()
-                .withFqn(fqn)
-                .withDirection(direction)
-                .withFrom(from)
-                .withSize(size)
-                .withNodeDepth(nodeDepth)
-                .withMaxDepth(maxDepth)
-                .withUpstreamDepth(upstreamDepth)
-                .withDownstreamDepth(downstreamDepth)
-                .withQueryFilter(queryFilter)
-                .withIncludeDeleted(deleted)
-                .withIsConnectedVia(isConnectedVia(entityType))
-                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
-                .withColumnFilter(columnFilter)
-                .withPreservePaths(preservePaths)
-                .withIncludePaginationInfo(includePaginationInfo)
-                .withStartTime(startTime)
-                .withEndTime(endTime),
-            getSubjectContext(securityContext));
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    EntityCountLineageRequest request =
+        new EntityCountLineageRequest()
+            .withFqn(fqn)
+            .withDirection(direction)
+            .withFrom(from)
+            .withSize(size)
+            .withNodeDepth(nodeDepth)
+            .withMaxDepth(maxDepth)
+            .withUpstreamDepth(upstreamDepth)
+            .withDownstreamDepth(downstreamDepth)
+            .withQueryFilter(queryFilter)
+            .withIncludeDeleted(deleted)
+            .withIsConnectedVia(isConnectedVia(entityType))
+            .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
+            .withColumnFilter(columnFilter)
+            .withPreservePaths(preservePaths)
+            .withIncludePaginationInfo(includePaginationInfo)
+            .withStartTime(startTime)
+            .withEndTime(endTime);
+    SearchLineageResult page =
+        Entity.getSearchRepository().searchLineageByEntityCount(request, subjectContext);
+    return searchLineagePermissionFilter.filterPage(securityContext, subjectContext, page, request);
   }
 
   @PUT
@@ -878,8 +1070,14 @@ public class LineageResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid AddLineage addLineage) {
-    authorizeLineageReference(securityContext, addLineage.getEdge().getFromEntity());
-    authorizeLineageReference(securityContext, addLineage.getEdge().getToEntity());
+    EntitiesEdge edge = addLineage.getEdge();
+    authorizeLineageReference(securityContext, edge.getFromEntity());
+    authorizeLineageReference(securityContext, edge.getToEntity());
+    authorizeEdgePipeline(
+        securityContext,
+        edge.getFromEntity().getId(),
+        edge.getToEntity().getId(),
+        edge.getLineageDetails());
     dao.addLineage(addLineage, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
   }
@@ -917,8 +1115,11 @@ public class LineageResource {
           @PathParam("toFQN")
           String toFQN,
       @Valid LineageDetails lineageDetails) {
-    authorizeLineageReference(securityContext, fromEntity, fromFQN);
-    authorizeLineageReference(securityContext, toEntity, toFQN);
+    EntityReference from = getLineageReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
+    EntityReference to = getLineageReferenceByName(toEntity, toFQN, Include.NON_DELETED);
+    authorizeLineageReference(securityContext, from);
+    authorizeLineageReference(securityContext, to);
+    authorizeEdgePipeline(securityContext, from.getId(), to.getId(), lineageDetails);
     dao.addLineageByFQN(
         fromEntity,
         fromFQN,
@@ -936,15 +1137,20 @@ public class LineageResource {
       summary = "Batch-hydrate lineage nodes into full entity objects",
       description =
           "Replaces N per-node entity GETs with a single round-trip. Accepts a list of "
-              + "(type, id) pairs; returns hydrated entities grouped by entityType. Each entity "
-              + "is authorized individually with VIEW_BASIC — entities the caller cannot read "
-              + "are silently dropped from the response (rather than failing the whole batch).",
+              + "(type, id) pairs of lineage data assets (tables, topics, dashboards, pipelines, "
+              + "...); returns hydrated entities grouped by entityType. Each entity is authorized "
+              + "individually with the view operations its requested fields need — entities the "
+              + "caller cannot read are silently dropped from the response (rather than failing "
+              + "the whole batch). Other entity types, such as services and users, are refused.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Hydrated entities grouped by entityType",
             content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "400", description = "Request body is missing or empty")
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Request body is missing or empty, or names a type that is not a lineage data asset")
       })
   public HydrateLineageResponse hydrateLineageEntities(
       @Context UriInfo uriInfo,
@@ -975,6 +1181,9 @@ public class LineageResource {
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toId")
           UUID toId) {
+    for (EntityReference end : dao.getLineageEdgeEnds(fromId, toId)) {
+      authorizeLineageReference(securityContext, end, MetadataOperation.VIEW_BASIC);
+    }
     return dao.getLineageEdge(fromId, toId);
   }
 
@@ -1012,7 +1221,11 @@ public class LineageResource {
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toFQN")
           String toFQN) {
-    return dao.getLineageEdgeByFQN(fromEntity, fromFQN, toEntity, toFQN);
+    EntityReference from = getLineageReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
+    EntityReference to = getLineageReferenceByName(toEntity, toFQN, Include.NON_DELETED);
+    authorizeLineageReference(securityContext, from, MetadataOperation.VIEW_BASIC);
+    authorizeLineageReference(securityContext, to, MetadataOperation.VIEW_BASIC);
+    return dao.getLineageEdge(from.getId(), to.getId());
   }
 
   @PATCH
@@ -1068,7 +1281,13 @@ public class LineageResource {
         new OperationContext(toEntity, MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(toEntity, toId, null));
     return dao.patchLineageEdge(
-        fromEntity, fromId, toEntity, toId, patch, securityContext.getUserPrincipal().getName());
+        fromEntity,
+        fromId,
+        toEntity,
+        toId,
+        patch,
+        securityContext.getUserPrincipal().getName(),
+        pipeline -> authorizeNewlyLinkedEdgePipeline(securityContext, pipeline));
   }
 
   @PATCH
@@ -1115,10 +1334,18 @@ public class LineageResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    authorizeLineageReference(securityContext, fromEntity, fromFQN);
-    authorizeLineageReference(securityContext, toEntity, toFQN);
+    EntityReference from = getLineageReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
+    EntityReference to = getLineageReferenceByName(toEntity, toFQN, Include.NON_DELETED);
+    authorizeLineageReference(securityContext, from);
+    authorizeLineageReference(securityContext, to);
     return dao.patchLineageEdgeByFQN(
-        fromEntity, fromFQN, toEntity, toFQN, patch, securityContext.getUserPrincipal().getName());
+        fromEntity,
+        fromFQN,
+        toEntity,
+        toFQN,
+        patch,
+        securityContext.getUserPrincipal().getName(),
+        pipeline -> authorizeNewlyLinkedEdgePipeline(securityContext, pipeline));
   }
 
   @DELETE
@@ -1209,8 +1436,8 @@ public class LineageResource {
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toFQN")
           String toFQN) {
-    authorizeLineageReference(securityContext, fromEntity, fromFQN);
-    authorizeLineageReference(securityContext, toEntity, toFQN);
+    authorizeLineageReference(securityContext, fromEntity, fromFQN, Include.ALL);
+    authorizeLineageReference(securityContext, toEntity, toFQN, Include.ALL);
     boolean deleted =
         dao.deleteLineageByFQN(
             fromEntity, fromFQN, toEntity, toFQN, securityContext.getUserPrincipal().getName());
@@ -1293,7 +1520,7 @@ public class LineageResource {
               schema = @Schema(type = "string", example = "ViewLineage"))
           @PathParam("lineageSource")
           String lineageSource) {
-    authorizeLineageReference(securityContext, entityType, entityFQN);
+    authorizeLineageReference(securityContext, entityType, entityFQN, Include.ALL);
     dao.deleteLineageBySourceByFQN(
         entityType, entityFQN, lineageSource, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
@@ -1323,7 +1550,7 @@ public class LineageResource {
     }
 
     @Override
-    public EntityInterface getEntity() {
+    public EntityInterface<?> getEntity() {
       return null;
     }
 

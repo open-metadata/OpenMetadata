@@ -18,12 +18,14 @@ import os
 import time
 import traceback
 from abc import ABC
+from collections.abc import Callable, Iterable, Iterator
 from multiprocessing import Process, Queue
 from threading import Thread
-from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any
 
 import networkx as nx
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -52,6 +54,8 @@ from metadata.ingestion.source.database.lineage_processors import (
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
+from metadata.utils import fqn
+from metadata.utils.db_utils import ViewLineageExtension
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -84,7 +88,7 @@ class LineageSource(QueryParserSource, ABC):
     def generate_lineage_with_processes(  # noqa: C901
         producer_fn: Callable[[], Iterable[Any]],
         processor_fn: Callable[[Any, Queue], None],
-        args: Tuple[Any, ...],  # noqa: UP006
+        args: tuple[Any, ...],
         chunk_size: int = CHUNK_SIZE,
         processor_timeout: int = PROCESS_TIMEOUT,
         max_threads: int = MAX_ACTIVE_TIMED_OUT_THREADS,
@@ -311,37 +315,42 @@ class LineageSource(QueryParserSource, ABC):
         yield a TableQuery with query parsing info
         """
         for engine in self.get_engine():
-            with engine.connect() as conn:
-                sql_statement = self.get_sql_statement(
-                    start_time=self.start,
-                    end_time=self.end,
-                )
-                logger.debug(f"Executing lineage query: {sql_statement}")
-                rows = conn.execute(text(sql_statement))
-                row_count = 0
-                for row in rows:
-                    row_count += 1
-                    query_dict = row._asdict() if hasattr(row, "_asdict") else row
-                    try:
-                        query_dict.update({k.lower(): v for k, v in query_dict.items()})
-                        yield TableQuery(
-                            dialect=self.dialect.value,
-                            query=query_dict["query_text"],
-                            databaseName=self.get_database_name(query_dict),
-                            serviceName=self.config.serviceName,
-                            databaseSchema=self.get_schema_name(query_dict),
-                        )
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(f"Error processing query_dict {query_dict}: {exc}")
-                logger.info(f"Processed {row_count} query log entries for lineage")
-                result_limit = getattr(self.source_config, "resultLimit", None)
-                if isinstance(result_limit, int) and row_count >= result_limit:
-                    logger.debug(
-                        f"Reached the configured resultLimit of {result_limit} query log entries; "
-                        f"if more queries exist they were truncated and lineage may be incomplete. "
-                        f"Consider increasing resultLimit."
-                    )
+            # Built outside the guard below: a failure here is a bug in the source's
+            # statement builder, not an unreachable engine, and must not be reported
+            # as a skipped connection.
+            sql_statement = self.get_sql_statement(
+                start_time=self.start,
+                end_time=self.end,
+            )
+            logger.debug(f"Executing lineage query: {sql_statement}")
+            try:
+                with engine.connect() as conn:  # pyright: ignore[reportOptionalMemberAccess]
+                    rows = conn.execute(text(sql_statement))
+                    row_count = 0
+                    for row in rows:
+                        row_count += 1
+                        query_dict = row._asdict() if hasattr(row, "_asdict") else row
+                        try:
+                            query_dict.update({k.lower(): v for k, v in query_dict.items()})
+                            yield TableQuery(
+                                dialect=self.dialect.value,
+                                query=query_dict["query_text"],
+                                databaseName=self.get_database_name(query_dict),
+                                serviceName=self.config.serviceName,  # pyright: ignore[reportArgumentType]
+                                databaseSchema=self.get_schema_name(query_dict),
+                            )
+                        except Exception as exc:
+                            logger.debug(traceback.format_exc())
+                            logger.warning(f"Error processing query_dict {query_dict}: {exc}")
+                    logger.info(f"Processed {row_count} query log entries for lineage")
+                    self.warn_if_query_log_truncated(row_count, "lineage")
+            # Narrowed: SQLAlchemy wraps driver failures, but mssql+pytds leaks raw
+            # OSError subclasses on connect (socket.gaierror, TimeoutError) - the same
+            # types NETWORK_ERRORS matches. A KeyError/AttributeError here is a code
+            # bug and must keep propagating.
+            except (SQLAlchemyError, OSError) as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Failed to fetch lineage query log from a connection, skipping it: %s", exc)
 
     def get_table_query(self) -> Iterator[TableQuery]:
         """
@@ -363,7 +372,7 @@ class LineageSource(QueryParserSource, ABC):
 
     def yield_query_lineage(
         self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    ) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink
@@ -414,15 +423,15 @@ class LineageSource(QueryParserSource, ABC):
             if (
                 filter_by_database(
                     self.source_config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
-                    view.db_name,
+                    fqn.unquote_name(view.db_name),
                 )
                 or filter_by_schema(
                     self.source_config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
-                    view.schema_name,
+                    fqn.unquote_name(view.schema_name),
                 )
                 or filter_by_table(
                     self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
-                    view.table_name,
+                    fqn.unquote_name(view.table_name),
                 )
             ):
                 self.status.filter(
@@ -431,6 +440,16 @@ class LineageSource(QueryParserSource, ABC):
                 )
                 continue
             yield view
+
+    def get_view_lineage_extension(self) -> ViewLineageExtension | None:
+        """
+        Extra view lineage this source contributes on top of what the SQL parsers report.
+
+        Some dialects express an edge outside of the query itself -- a Clickhouse
+        materialized view writes its rows into the table named by its `TO` clause -- and
+        those connectors return the builder of that edge here.
+        """
+        return None
 
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing View Lineage")
@@ -445,6 +464,7 @@ class LineageSource(QueryParserSource, ABC):
             self.source_config.parsingTimeoutLimit,  # pyright: ignore[reportAttributeAccessIssue]
             self.source_config.overrideViewLineage,  # pyright: ignore[reportAttributeAccessIssue]
             self.get_query_parser_type(),
+            self.get_view_lineage_extension(),
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,
@@ -455,13 +475,13 @@ class LineageSource(QueryParserSource, ABC):
 
     def yield_procedure_lineage(
         self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    ) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """
         By default stored   procedure lineage is not supported.
         """
         logger.info(f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}")  # noqa: RUF010
 
-    def get_column_lineage(self, from_table: Table, to_table: Table) -> List[ColumnLineage]:  # noqa: UP006
+    def get_column_lineage(self, from_table: Table, to_table: Table) -> list[ColumnLineage]:
         """
         Get the column lineage from the fields
         """
@@ -484,8 +504,8 @@ class LineageSource(QueryParserSource, ABC):
         self,
         from_entity: Table,
         to_entity: Table,
-        column_lineage: List[ColumnLineage] = None,  # noqa: RUF013, UP006
-    ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
+        column_lineage: list[ColumnLineage] = None,  # noqa: RUF013
+    ) -> Either[AddLineageRequest] | None:
         """
         Get the add cross database lineage request
         """
@@ -510,7 +530,7 @@ class LineageSource(QueryParserSource, ABC):
         By default cross database lineage is not supported.
         """
 
-    def _iter(self, *_, **__) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink

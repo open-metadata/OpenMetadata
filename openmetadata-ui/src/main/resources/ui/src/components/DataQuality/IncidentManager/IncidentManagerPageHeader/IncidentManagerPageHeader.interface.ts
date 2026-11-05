@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 import { EntityReference } from '../../../../generated/entity/type';
-import { TestCase } from '../../../../generated/tests/testCase';
+import type { UseTestCaseIncidentHeaderResult } from './useTestCaseIncidentHeader';
 
 export interface IncidentManagerPageHeaderProps {
   onOwnerUpdate: (owner?: EntityReference[]) => Promise<void>;
-  testCaseData?: TestCase;
-  fetchTaskCount: () => void;
+  incidentHeaderData: UseTestCaseIncidentHeaderResult;
   isVersionPage?: boolean;
 }

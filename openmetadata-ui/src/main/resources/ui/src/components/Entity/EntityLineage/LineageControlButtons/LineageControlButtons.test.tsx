@@ -11,306 +11,129 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import LineageControlButtons from './LineageControlButtons';
 
-const mockNavigate = jest.fn();
-const mockToggleColumnView = jest.fn();
 const mockZoomIn = jest.fn();
 const mockZoomOut = jest.fn();
 const mockFitView = jest.fn();
-const mockSetCenter = jest.fn();
-const mockGetNodes = jest.fn();
-const mockRedraw = jest.fn();
 const mockReactFlowInstance = {
   zoomIn: mockZoomIn,
   zoomOut: mockZoomOut,
   fitView: mockFitView,
-  setCenter: mockSetCenter,
-  getNodes: mockGetNodes,
+};
+let mockZoom = 1;
+
+const mockLineageState = {
+  reactFlowInstance: mockReactFlowInstance as
+    | typeof mockReactFlowInstance
+    | undefined,
 };
 
-const mockLineageProviderValues = {
-  activeLayer: [],
-  isEditMode: false,
-  expandAllColumns: false,
-  toggleColumnView: mockToggleColumnView,
-  reactFlowInstance: mockReactFlowInstance,
-  redraw: mockRedraw,
-};
-
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-}));
-
-jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({ search: '' })),
-}));
-
-jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: jest.fn().mockImplementation(() => ({
-    ...mockLineageProviderValues,
-    reactFlowInstance: mockReactFlowInstance,
-  })),
+jest.mock('reactflow', () => ({
+  useViewport: () => ({ x: 0, y: 0, zoom: mockZoom }),
 }));
 
 jest.mock('../../../../hooks/useLineageStore', () => ({
-  useLineageStore: jest.fn(() => ({
-    selectedColumn: null,
-    setSelectedColumn: jest.fn(),
-    setTracedColumns: jest.fn(),
-    isEditMode: false,
-    tracedColumns: new Set(),
-  })),
+  useLineageStore: jest.fn((selector) =>
+    selector ? selector(mockLineageState) : mockLineageState
+  ),
 }));
 
 const mockOnToggleMiniMap = jest.fn();
-const mockProps = {
-  onToggleMiniMap: mockOnToggleMiniMap,
-  miniMapVisible: false,
-};
+
+const renderControls = (miniMapVisible = false, onFitView?: () => void) =>
+  render(
+    <LineageControlButtons
+      miniMapVisible={miniMapVisible}
+      onFitView={onFitView}
+      onToggleMiniMap={mockOnToggleMiniMap}
+    />
+  );
 
 describe('LineageControlButtons', () => {
-  describe('Rendering', () => {
-    it('should render all control buttons', () => {
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      expect(screen.getByTestId('fit-screen')).toBeInTheDocument();
-      expect(screen.getByTestId('toggle-mind-map')).toBeInTheDocument();
-      expect(screen.getByTestId('zoom-in')).toBeInTheDocument();
-      expect(screen.getByTestId('zoom-out')).toBeInTheDocument();
-      expect(screen.getByTestId('full-screen')).toBeInTheDocument();
-    });
-
-    it('should show minimap as selected when miniMapVisible is true', () => {
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} miniMapVisible />
-        </MemoryRouter>
-      );
-
-      const miniMapButton = screen.getByTestId('toggle-mind-map');
-
-      expect(miniMapButton).toHaveAttribute('data-selected', 'true');
-    });
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockZoom = 1;
+    mockLineageState.reactFlowInstance = mockReactFlowInstance;
   });
 
-  describe('MiniMap Toggle', () => {
-    it('should call onToggleMiniMap when mind map button is clicked', () => {
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
+  it('gives every icon button an accessible name', () => {
+    renderControls();
 
-      fireEvent.click(screen.getByTestId('toggle-mind-map'));
-
-      expect(mockOnToggleMiniMap).toHaveBeenCalledTimes(1);
-    });
+    expect(
+      screen.getByRole('button', { name: 'label.mind-map' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.zoom-in' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.zoom-out' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.fit-to-screen' })
+    ).toBeInTheDocument();
   });
 
-  describe('Fullscreen', () => {
-    it('should navigate to fullscreen view when fullscreen button is clicked', () => {
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
+  it('shows the viewport zoom as a percentage', () => {
+    mockZoom = 0.746;
+    renderControls();
 
-      fireEvent.click(screen.getByTestId('full-screen'));
-
-      expect(mockNavigate).toHaveBeenCalledWith({
-        search: 'fullscreen=true',
-      });
-    });
-
-    it('should exit fullscreen view when already in fullscreen', () => {
-      (useCustomLocation as jest.Mock).mockReturnValueOnce({
-        search: '?fullscreen=true',
-      });
-
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      expect(screen.getByTestId('exit-full-screen')).toBeInTheDocument();
-
-      fireEvent.click(screen.getByTestId('exit-full-screen'));
-
-      expect(mockNavigate).toHaveBeenCalledWith({ search: '' });
-    });
+    expect(screen.getByTestId('zoom-level')).toHaveTextContent('75%');
   });
 
-  describe('Zoom Controls', () => {
-    it('should call zoomIn when zoom in button is clicked', () => {
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
+  it('marks the mini map toggle as pressed only while it is shown', () => {
+    const { unmount } = renderControls(false);
 
-      fireEvent.click(screen.getByTestId('zoom-in'));
+    expect(screen.getByTestId('toggle-mind-map')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
 
-      expect(mockZoomIn).toHaveBeenCalledTimes(1);
-    });
+    unmount();
+    renderControls(true);
 
-    it('should call zoomOut when zoom out button is clicked', () => {
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      fireEvent.click(screen.getByTestId('zoom-out'));
-
-      expect(mockZoomOut).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle missing reactFlowInstance gracefully', () => {
-      (useLineageProvider as jest.Mock).mockReturnValueOnce({
-        ...mockLineageProviderValues,
-        reactFlowInstance: undefined,
-      });
-
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      fireEvent.click(screen.getByTestId('zoom-in'));
-
-      expect(mockZoomIn).not.toHaveBeenCalled();
-    });
+    expect(screen.getByTestId('toggle-mind-map')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
   });
 
-  describe('Lineage View Options Menu', () => {
-    it('should open menu when fit screen button is clicked', () => {
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
+  it('toggles the mini map', () => {
+    renderControls();
+    fireEvent.click(screen.getByTestId('toggle-mind-map'));
 
-      fireEvent.click(screen.getByTestId('fit-screen'));
+    expect(mockOnToggleMiniMap).toHaveBeenCalledTimes(1);
+  });
 
-      expect(screen.getByRole('menu')).toBeInTheDocument();
-    });
+  it('zooms in and out through the flow instance', () => {
+    renderControls();
+    fireEvent.click(screen.getByTestId('zoom-in'));
+    fireEvent.click(screen.getByTestId('zoom-out'));
 
-    it('should call fitView when "Fit to screen" menu item is clicked', () => {
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
+    expect(mockZoomIn).toHaveBeenCalledTimes(1);
+    expect(mockZoomOut).toHaveBeenCalledTimes(1);
+  });
 
-      fireEvent.click(screen.getByTestId('fit-screen'));
-      fireEvent.click(screen.getByText('label.fit-to-screen'));
+  it('does not throw without a flow instance', () => {
+    mockLineageState.reactFlowInstance = undefined;
+    renderControls();
 
-      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.2, maxZoom: 1 });
-    });
+    expect(() => fireEvent.click(screen.getByTestId('zoom-in'))).not.toThrow();
+  });
 
-    it('should call fitView with selected nodes when "Refocus to selected" is clicked', () => {
-      const selectedNodes = [
-        {
-          id: '1',
-          position: { x: 5, y: 5 },
-          width: 10,
-          height: 10,
-          selected: true,
-        },
-        {
-          id: '2',
-          position: { x: 15, y: 15 },
-          width: 10,
-          height: 10,
-          selected: true,
-        },
-      ];
-      mockGetNodes.mockReturnValue(selectedNodes);
+  it('fits the view with the map handler when one is given', () => {
+    const onFitView = jest.fn();
+    renderControls(false, onFitView);
+    fireEvent.click(screen.getByTestId('fit-screen'));
 
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
+    expect(onFitView).toHaveBeenCalledTimes(1);
+    expect(mockFitView).not.toHaveBeenCalled();
+  });
 
-      fireEvent.click(screen.getByTestId('fit-screen'));
-      fireEvent.click(screen.getByText('label.refocused-to-selected'));
+  it('falls back to the flow instance fitView', () => {
+    renderControls();
+    fireEvent.click(screen.getByTestId('fit-screen'));
 
-      expect(mockSetCenter).toHaveBeenCalledWith(10, 38, {
-        duration: 800,
-        zoom: 0.65,
-      });
-    });
-
-    it('should call redraw when "Rearrange nodes" is clicked', () => {
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      fireEvent.click(screen.getByTestId('fit-screen'));
-      fireEvent.click(screen.getByText('label.rearrange-nodes'));
-
-      expect(mockRedraw).toHaveBeenCalledTimes(1);
-    });
-
-    it('should call setCenter when "Refocus to home" is clicked', () => {
-      const selectedNodes = [
-        { id: '1', selected: true, data: { isRootNode: false } },
-        {
-          id: '2',
-          position: { x: 5, y: 5 },
-          width: 20,
-          selected: true,
-          data: { isRootNode: true },
-        },
-      ];
-      mockGetNodes.mockReturnValue(selectedNodes);
-
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      fireEvent.click(screen.getByTestId('fit-screen'));
-      fireEvent.click(screen.getByText('label.refocused-to-home'));
-
-      expect(mockSetCenter).toHaveBeenCalledWith(15, 38, {
-        duration: 800,
-        zoom: 0.65,
-      });
-    });
-
-    it('should handle missing reactFlowInstance gracefully', () => {
-      (useLineageProvider as jest.Mock).mockReturnValue({
-        ...mockLineageProviderValues,
-        reactFlowInstance: undefined,
-      });
-
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      fireEvent.click(screen.getByTestId('fit-screen'));
-      fireEvent.click(screen.getByText('label.fit-to-screen'));
-
-      expect(mockFitView).not.toHaveBeenCalled();
-    });
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.2, maxZoom: 1 });
   });
 });

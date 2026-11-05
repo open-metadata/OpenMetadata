@@ -1,0 +1,20 @@
+{
+  "requestId": "0b6c9f53-3c1e-4a8f-9a2e-6a1f0d2c7e41",
+  "operation": "REFRESH",
+  "sourceRevision": {
+    "datasetGeneration": "9d72cf3b-3657-4ee3-809c-5bc70b9308bd",
+    "liveWriteWatermark": 18460
+  },
+  "ontologySelection": "APPROVED",
+  "ontologyDigest": "sha256:1d6b2a3c0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a29180f7e6d5c4b3a2918",
+  "ruleBundleDigest": "sha256:9e4f1c2b3a4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7",
+  "rules": [
+    {
+      "name": "domain-membership-inheritance",
+      "ruleType": "CONSTRUCT",
+      "priority": 400,
+      "enabled": true,
+      "ruleBody": "PREFIX om: <https://open-metadata.org/ontology/>\nCONSTRUCT { ?column om:belongsToDomain ?domain }\nWHERE {\n  ?table a om:Table ;\n         om:belongsToDomain ?domain ;\n         om:hasColumn ?column .\n}"
+    }
+  ]
+}

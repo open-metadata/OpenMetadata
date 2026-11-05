@@ -1,0 +1,244 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Clean up what dead merge-queue refs leave behind: Actions caches (prune) and
+# workflow runs that are still going (cancel-stale-runs).
+#
+# A merge-queue entry runs on gh-readonly-queue/main/pr-<n>-<sha>, which GitHub
+# deletes the moment the entry merges or is dequeued. Caches saved there
+# outlive the ref: unreachable by every future run (Actions scopes a cache to
+# the ref that wrote it) but still charged against the repo's 10 GB LRU budget,
+# where they evict the main-scoped copies that every run does restore from.
+#
+# Observed 2026-09-04: 11.3 GB active against a 10 GB budget, with 5.1 GB of it
+# in four ~1.28 GB ingestion images on queue refs, three of them already dead.
+#
+# playwright-e2e-reusable.yml no longer saves from merge_group, which stops the
+# Playwright assets accumulating, and setup-uv is now gated the same way (it
+# does take an `enable-cache` input — the earlier note here claiming otherwise
+# was wrong, and it cost 3.3 GB across 19 dead queue refs). This workflow is
+# the backstop for what still cannot be gated — cache-apt-pkgs has no such
+# input — and it clears whatever was stranded before those changes landed.
+#
+# Note the backstop alone cannot win: it runs every 30 minutes while the queue
+# writes continuously, so 19 setup-uv entries came back within 19 minutes of
+# run 33878696968 deleting them. Prefer gating a save over pruning it.
+#
+# Runs leak the same way. A queue rebuild (an entry ahead fails, is dequeued,
+# or merges) deletes the old refs and creates new ones, but GitHub does NOT
+# cancel the runs already started on the deleted refs, and no `concurrency`
+# group catches them: merge_group runs key on run_id (so sibling PRs never
+# cancel each other) or on the ref name, which is new on every rebuild. The
+# orphans keep holding runners, and keep starting jobs, for results nothing
+# reads. Observed 2026-10-13 05:49Z: 16 runs / 30 running jobs on 5 deleted
+# refs, one for PR 35141 nearly an hour after it merged. A rebuild deletes the
+# old refs before creating the new ones, so the merge_group trigger sees them
+# dead as soon as the next entry starts; the dequeued trigger covers a PR
+# leaving the queue with nothing rebuilt behind it, and the schedule anything
+# else.
+#
+# SAFETY: a cache is deleted, or a run cancelled, only when its ref no longer
+# resolves (and, for runs, its PR did not merge). Entries still in the queue keep their caches and runs. If the ref
+# listing fails the job aborts without acting — an empty list must never be
+# read as "every queue ref is dead".
+name: Prune dead merge-queue refs
+
+on:
+  merge_group:
+  # pull_request_target, not pull_request: fork PRs get a read-only token and
+  # could not cancel. Safe only while nothing checks out or reads PR content.
+  pull_request_target:
+    types: [dequeued]
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: List what would be deleted or cancelled without acting.
+        type: boolean
+        default: false
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  prune:
+    # Only on schedule/dispatch: the sweep is slow and caches are not urgent.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    concurrency:
+      group: prune-ephemeral-caches
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      DRY_RUN: ${{ inputs.dry_run || false }}
+      QUEUE_PREFIX: refs/heads/gh-readonly-queue/
+    steps:
+      - name: Delete caches on dead merge-queue refs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Live queue refs first. `set -e` aborts the job if this fails, so a
+          # transient API error can never be mistaken for "nothing is queued".
+          live=$(gh api --paginate \
+            "repos/${GH_REPO}/git/matching-refs/heads/gh-readonly-queue/" \
+            --jq '.[].ref' | sort -u)
+          echo "live queue refs:"
+          printf '%s\n' "${live:-  (none)}"
+
+          # /actions/caches returns an object, not an array, so --paginate
+          # cannot flatten it; walk the pages by hand until one comes back empty.
+          caches=$(mktemp)
+          truncated=no
+          page=1
+          while :; do
+            body=$(gh api "repos/${GH_REPO}/actions/caches?per_page=100&page=${page}")
+            count=$(jq '.actions_caches | length' <<<"$body")
+            if [[ "$count" -eq 0 ]]; then
+              break
+            fi
+            jq -r '.actions_caches[] | [.id, .ref, .size_in_bytes, .key] | @tsv' \
+              <<<"$body" >> "$caches"
+            page=$((page + 1))
+            # Runaway guard. Hitting it means the listing was TRUNCATED and the
+            # sweep is incomplete, which would otherwise be indistinguishable
+            # from a clean one — say so rather than report a partial reclaim as
+            # the whole job. 2000 entries is far past the 10 GB budget, so this
+            # firing is itself the signal something else is wrong.
+            if [[ "$page" -gt 20 ]]; then
+              truncated=yes
+              listed=$(wc -l < "$caches" | tr -d ' ')
+              echo "::warning::cache listing truncated at the 20-page cap after ${listed} entries; caches beyond it were not examined and may still be stranded"
+              break
+            fi
+          done
+
+          deleted=0
+          reclaimed=0
+          kept=0
+          while IFS=$'\t' read -r id ref size key; do
+            [[ "$ref" == "${QUEUE_PREFIX}"* ]] || continue
+            if grep -qxF "$ref" <<<"$live"; then
+              kept=$((kept + 1))
+              continue
+            fi
+            printf 'delete %s (%s MB) %s\n' "$key" "$((size / 1048576))" "$ref"
+            if [[ "$DRY_RUN" != "true" ]]; then
+              # A cache can be evicted between the listing and the delete;
+              # that is the outcome we wanted, so do not fail the job for it.
+              gh api -X DELETE "repos/${GH_REPO}/actions/caches/${id}" \
+                --silent || echo "::warning::could not delete cache ${id} (${key})"
+            fi
+            deleted=$((deleted + 1))
+            reclaimed=$((reclaimed + size))
+          done < "$caches"
+
+          {
+            echo "### Ephemeral cache prune"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| dry run | \`${DRY_RUN}\` |"
+            echo "| caches on live queue refs (kept) | ${kept} |"
+            echo "| caches on dead queue refs (deleted) | ${deleted} |"
+            echo "| reclaimed | $((reclaimed / 1048576)) MB |"
+            echo "| listing truncated | \`${truncated}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ADR:2026-10-13-stale-merge-queue-runs-are-cancelled-by-a-central-sweep
+  cancel-stale-runs:
+    if: github.event_name != 'pull_request_target' || !github.event.pull_request.merged
+    # A rebuild fires one merge_group event per new entry; let one sweep run
+    # and collapse the rest into a single pending one.
+    concurrency:
+      group: cancel-stale-merge-queue-runs
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      DRY_RUN: ${{ inputs.dry_run || false }}
+      SELF_RUN_ID: ${{ github.run_id }}
+      EVENT_NAME: ${{ github.event_name }}
+    steps:
+      - name: Cancel runs on dead merge-queue refs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # GitHub deletes the queue ref ~2s after the dequeued event fires.
+          # A fixed wait is enough; the schedule catches a slower delete.
+          if [[ "$EVENT_NAME" == "pull_request_target" ]]; then
+            sleep 20
+          fi
+
+          # Runs BEFORE refs: a run only exists once its ref does, so every
+          # listed run's ref is in the listing below if still live. The other
+          # order would cancel runs of an entry created between the two calls.
+          runs=$(mktemp)
+          for status in in_progress queued waiting requested pending; do
+            gh api --paginate \
+              "repos/${GH_REPO}/actions/runs?event=merge_group&status=${status}&per_page=100" \
+              --jq '.workflow_runs[] | [.id, .head_branch, .name] | @tsv' >> "$runs"
+          done
+
+          live=$(gh api --paginate \
+            "repos/${GH_REPO}/git/matching-refs/heads/gh-readonly-queue/" \
+            --jq '.[].ref | sub("^refs/heads/"; "")' | sort -u)
+          echo "live queue refs:"
+          printf '%s\n' "${live:-  (none)}"
+
+          cancelled=0
+          kept=0
+          declare -A merged=()
+          while IFS=$'\t' read -r id branch name; do
+            [[ "$id" == "$SELF_RUN_ID" ]] && continue
+            [[ "$branch" == gh-readonly-queue/* ]] || continue
+            if grep -qxF "$branch" <<<"$live"; then
+              kept=$((kept + 1))
+              continue
+            fi
+            # A group that merged also loses its ref, but its non-required
+            # checks still running are the only post-merge signal for code now
+            # on main (several have no push trigger). Leave those alone.
+            pr=${branch#gh-readonly-queue/*/pr-}
+            pr=${pr%%-*}
+            if [[ -z "${merged[$pr]+x}" ]]; then
+              merged[$pr]=$(gh api "repos/${GH_REPO}/pulls/${pr}" --jq '.merged')
+            fi
+            if [[ "${merged[$pr]}" == "true" ]]; then
+              kept=$((kept + 1))
+              continue
+            fi
+            printf 'cancel %s %s (%s)\n' "$id" "$name" "$branch"
+            if [[ "$DRY_RUN" != "true" ]]; then
+              # The run can finish between the listing and the cancel; that is
+              # the outcome we wanted, so do not fail the job for it.
+              gh api -X POST "repos/${GH_REPO}/actions/runs/${id}/cancel" \
+                --silent || echo "::warning::could not cancel run ${id} (${name})"
+            fi
+            cancelled=$((cancelled + 1))
+          done < <(sort -u "$runs")
+
+          {
+            echo "### Stale merge-queue runs"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| dry run | \`${DRY_RUN}\` |"
+            echo "| runs on live refs or merged PRs (kept) | ${kept} |"
+            echo "| runs on dead queue refs (cancelled) | ${cancelled} |"
+          } >> "$GITHUB_STEP_SUMMARY"

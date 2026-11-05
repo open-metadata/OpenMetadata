@@ -16,7 +16,7 @@ import hashlib
 import json
 import time
 import traceback
-from typing import Any, List  # noqa: UP035
+from typing import Any
 
 try:
     from confluent_kafka import Consumer, KafkaException
@@ -48,12 +48,12 @@ class KafkaSampler(MessagingSampler):
     service_connection_config: KafkaConnection
 
     def get_client(self):
-        from metadata.ingestion.source.messaging.kafka.connection import get_connection  # noqa: PLC0415
+        from metadata.ingestion.source.messaging.kafka.connection import get_connection
 
         return get_connection(self.service_connection_config)
 
     def _get_topic_name(self) -> str:
-        from metadata.utils.fqn import split as fqn_split  # noqa: PLC0415
+        from metadata.utils.fqn import split as fqn_split
 
         fqn = self.entity.fullyQualifiedName.root if self.entity.fullyQualifiedName else ""
         parts = fqn_split(fqn)
@@ -70,7 +70,7 @@ class KafkaSampler(MessagingSampler):
         return f"openmetadata-auto-classification-{digest}"
 
     def _build_consumer_config(self) -> dict[str, Any]:
-        from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (  # noqa: PLC0415
+        from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
             SecurityProtocol,
         )
 
@@ -151,12 +151,15 @@ class KafkaSampler(MessagingSampler):
             client = self.get_client()
             schema_registry_client = getattr(client, "schema_registry_client", None) if client else None
             if AvroDeserializer and schema_registry_client:
-                self._avro_deserializer = AvroDeserializer(schema_registry_client)
+                # See common_broker_source: upstream's stacked `import *` in
+                # confluent_kafka.schema_registry.avro hides the real signature from the
+                # type checker; _sync wins at runtime and takes this argument.
+                self._avro_deserializer = AvroDeserializer(schema_registry_client)  # pyright: ignore[reportCallIssue]
         except Exception as exc:
             logger.debug(f"Avro deserializer init attempt {self._avro_init_attempts} failed: {exc}")
         return getattr(self, "_avro_deserializer", None)
 
-    def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
+    def _fetch_messages(self, count: int) -> list[dict]:
         if not Consumer:
             logger.warning("confluent_kafka not installed; cannot sample Kafka topics")
             return []
@@ -176,14 +179,16 @@ class KafkaSampler(MessagingSampler):
                 elapsed = time.time() - start_time
                 if msg is None:
                     continue
-                if msg.error():
-                    if msg.error().retriable():
-                        logger.debug("Transient Kafka consumer error, retrying: %s", msg.error())
+                error = msg.error()
+                if error is not None:
+                    if error.retriable():
+                        logger.debug("Transient Kafka consumer error, retrying: %s", error)
                         continue
-                    logger.warning("Kafka consumer error: %s", msg.error())
+                    logger.warning("Kafka consumer error: %s", error)
                     break
-                if msg.value():
-                    messages.append(self._try_parse_message(msg.value()))
+                value = msg.value()
+                if value:
+                    messages.append(self._try_parse_message(value))
             if len(messages) < count and elapsed >= FETCH_TIMEOUT_SECONDS:
                 logger.warning(
                     "Kafka message fetch timeout after %s seconds; collected %s of %s messages",

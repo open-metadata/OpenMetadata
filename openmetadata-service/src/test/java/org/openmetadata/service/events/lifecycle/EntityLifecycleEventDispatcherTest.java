@@ -33,14 +33,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @ExtendWith(MockitoExtension.class)
 class EntityLifecycleEventDispatcherTest {
 
-  @Mock private EntityInterface mockEntity;
+  @Mock private EntityInterface<?> mockEntity;
   @Mock private EntityReference mockEntityRef;
   @Mock private ChangeDescription mockChangeDescription;
   @Mock private SubjectContext mockSubjectContext;
@@ -56,7 +58,7 @@ class EntityLifecycleEventDispatcherTest {
     dispatcher = EntityLifecycleEventDispatcher.getInstance();
 
     // Clear any existing handlers from previous tests
-    clearHandlers();
+    dispatcher.clearHandlers();
 
     // Setup mock entity with actual UUID to avoid circular dependencies
     UUID entityId = UUID.randomUUID();
@@ -70,17 +72,6 @@ class EntityLifecycleEventDispatcherTest {
     syncHandler = new TestHandler("SyncHandler", 100, false, Set.of());
     asyncHandler = new TestHandler("AsyncHandler", 200, true, Set.of());
     specificEntityHandler = new TestHandler("SpecificHandler", 50, false, Set.of(Entity.TABLE));
-  }
-
-  private void clearHandlers() {
-    // Clear handlers by accessing the private handlers field
-    try {
-      var handlersField = EntityLifecycleEventDispatcher.class.getDeclaredField("handlers");
-      handlersField.setAccessible(true);
-      ((java.util.List<?>) handlersField.get(dispatcher)).clear();
-    } catch (Exception e) {
-      // Ignore - this is just cleanup
-    }
   }
 
   @Test
@@ -134,13 +125,103 @@ class EntityLifecycleEventDispatcherTest {
   }
 
   @Test
+  void testReplaceHandlerSwapsTheInstanceHeldUnderOneName() {
+    TestHandler stale = new TestHandler("SwappableHandler", 100, false, Set.of());
+    TestHandler fresh = new TestHandler("SwappableHandler", 5, false, Set.of());
+    dispatcher.registerHandler(syncHandler);
+    dispatcher.registerHandler(stale);
+    assertEquals(2, dispatcher.getHandlerCount());
+
+    dispatcher.replaceHandler(fresh);
+
+    assertEquals(2, dispatcher.getHandlerCount());
+    assertFalse(dispatcher.getHandlers().contains(stale));
+    // re-sorted to the replacement's own priority, not left where the stale one sat
+    assertSame(fresh, dispatcher.getHandlers().getFirst());
+
+    dispatcher.onEntityCreated(createAsyncSafeEntity(), mockSubjectContext);
+    assertTrue(fresh.createdCalled);
+    assertFalse(stale.createdCalled);
+  }
+
+  @Test
+  void testReplaceHandlerRegistersWhenNoneIsHeldUnderThatName() {
+    dispatcher.replaceHandler(syncHandler);
+    assertEquals(1, dispatcher.getHandlerCount());
+    assertSame(syncHandler, dispatcher.getHandlers().getFirst());
+  }
+
+  @Test
+  void testReplaceNullHandlerIsIgnored() {
+    dispatcher.registerHandler(syncHandler);
+    dispatcher.replaceHandler(null);
+    assertEquals(1, dispatcher.getHandlerCount());
+  }
+
+  /**
+   * A dispatch walking the handler list must not observe a slot vacated by a concurrent
+   * unregister. {@code ArrayList#removeIf} shrinks {@code size} first and then nulls the vacated
+   * tail slot, so an in-flight stream whose fence is already bound to the pre-removal size reads
+   * that slot back as a null handler and fails the write with an NPE on {@code
+   * getSupportedEntityTypes()}. Reproduces the parallel-CI failure where one integration test
+   * re-registering {@code VectorEmbeddingHandler} broke unrelated entity writes (issue #33711).
+   */
+  @Test
+  void testUnregisterDuringDispatchNeverExposesANullHandler() throws InterruptedException {
+    CountDownLatch dispatchInsideHandlerList = new CountDownLatch(1);
+    CountDownLatch unregisterApplied = new CountDownLatch(1);
+
+    // Priority 10 pins this handler ahead of the doomed one, so the dispatch parks mid-walk with
+    // the slot that the unregister is about to vacate still ahead of it.
+    TestHandler gate =
+        new TestHandler("GateHandler", 10, false, Set.of()) {
+          @Override
+          public Set<String> getSupportedEntityTypes() {
+            dispatchInsideHandlerList.countDown();
+            try {
+              unregisterApplied.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+            return Set.of();
+          }
+        };
+    dispatcher.registerHandler(gate);
+    dispatcher.registerHandler(new TestHandler("TailHandler", 200, false, Set.of()));
+
+    AtomicReference<Throwable> dispatchFailure = new AtomicReference<>();
+    Thread dispatchThread =
+        new Thread(
+            () -> {
+              try {
+                dispatcher.onEntityCreated(createAsyncSafeEntity(), mockSubjectContext);
+              } catch (Throwable t) {
+                dispatchFailure.set(t);
+              }
+            },
+            "lifecycle-dispatch");
+    dispatchThread.start();
+
+    assertTrue(
+        dispatchInsideHandlerList.await(10, TimeUnit.SECONDS),
+        "dispatch never reached the handler list");
+    assertTrue(dispatcher.unregisterHandler("TailHandler"));
+    unregisterApplied.countDown();
+    dispatchThread.join(TimeUnit.SECONDS.toMillis(10));
+
+    if (dispatchFailure.get() != null) {
+      fail("dispatch failed while a handler was unregistered concurrently", dispatchFailure.get());
+    }
+  }
+
+  @Test
   void testHandlerPriorityOrdering() throws InterruptedException {
     CountDownLatch asyncLatch = new CountDownLatch(1);
     TestHandler lowPrioritySyncHandler = new TestHandler("LowPrioritySync", 50, false, Set.of());
     TestHandler orderedAsyncHandler =
         new TestHandler("AsyncHandler", 200, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             asyncLatch.countDown();
           }
@@ -189,7 +270,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler asyncHandlerWithLatch =
         new TestHandler("AsyncWithLatch", 100, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             latch.countDown();
           }
@@ -208,7 +289,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler faultyHandler =
         new TestHandler("FaultyHandler", 100, false, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             throw new RuntimeException("Test exception");
           }
@@ -231,7 +312,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler faultyAsyncHandler =
         new TestHandler("FaultyAsyncHandler", 100, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             faultyLatch.countDown();
             throw new RuntimeException("Async test exception");
@@ -241,7 +322,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler goodAsyncHandler =
         new TestHandler("GoodAsyncHandler", 200, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             goodLatch.countDown();
           }
@@ -257,7 +338,7 @@ class EntityLifecycleEventDispatcherTest {
     assertTrue(goodLatch.await(10, TimeUnit.SECONDS));
   }
 
-  private EntityInterface createAsyncSafeEntity() {
+  private EntityInterface<?> createAsyncSafeEntity() {
     Table entity = new Table();
     UUID entityId = UUID.randomUUID();
     entity.setId(entityId);
@@ -281,11 +362,40 @@ class EntityLifecycleEventDispatcherTest {
   }
 
   @Test
+  void handlersReceiveRepositoryEventTypes() {
+    List<EventType> receivedEventTypes = new ArrayList<>();
+    TestHandler eventTypeHandler =
+        new TestHandler("EventTypeHandler", 100, false, Set.of()) {
+          @Override
+          public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+            receivedEventTypes.add(eventType);
+            return true;
+          }
+        };
+    dispatcher.registerHandler(eventTypeHandler);
+
+    dispatcher.onEntityCreated(mockEntity, mockSubjectContext);
+    dispatcher.onEntityUpdated(mockEntity, mockChangeDescription, mockSubjectContext);
+    dispatcher.onEntityDeleted(mockEntity, mockSubjectContext);
+    dispatcher.onEntitySoftDeletedOrRestored(mockEntity, true, mockSubjectContext);
+    dispatcher.onEntitySoftDeletedOrRestored(mockEntity, false, mockSubjectContext);
+
+    assertEquals(
+        List.of(
+            EventType.ENTITY_CREATED,
+            EventType.ENTITY_UPDATED,
+            EventType.ENTITY_DELETED,
+            EventType.ENTITY_SOFT_DELETED,
+            EventType.ENTITY_RESTORED),
+        receivedEventTypes);
+  }
+
+  @Test
   void testOnEntitiesUpdatedUsesEntitySpecificChangeDescriptions() {
     TestHandler allEntitiesHandler = new TestHandler("AllEntitiesHandler", 100, false, Set.of());
     dispatcher.registerHandler(allEntitiesHandler);
 
-    EntityInterface dashboardEntity = mock(EntityInterface.class);
+    EntityInterface<?> dashboardEntity = mock(EntityInterface.class);
     ChangeDescription dashboardChangeDescription = mock(ChangeDescription.class);
     when(dashboardEntity.getChangeDescription()).thenReturn(dashboardChangeDescription);
 
@@ -303,7 +413,7 @@ class EntityLifecycleEventDispatcherTest {
         new TestHandler("ContextHandler", 100, false, Set.of()) {
           @Override
           public void onEntitiesUpdated(
-              List<? extends EntityInterface> entities,
+              List<? extends EntityInterface<?>> entities,
               ChangeDescription changeDescription,
               SubjectContext subjectContext,
               EntityUpdateContext updateContext) {
@@ -320,14 +430,14 @@ class EntityLifecycleEventDispatcherTest {
 
   @Test
   void testAsyncBulkCreateIsSlicedPerEntityForOwnLaneOrdering() throws InterruptedException {
-    List<EntityInterface> entities =
+    List<EntityInterface<?>> entities =
         List.of(asyncSafeEntity("a"), asyncSafeEntity("b"), asyncSafeEntity("c"));
-    List<UUID> ids = entities.stream().map(EntityInterface::getId).toList();
+    List<UUID> ids = entities.stream().map(EntityInterface<?>::getId).toList();
     CountDownLatch allCreated = new CountDownLatch(entities.size());
     TestHandler bulkAsyncHandler =
         new TestHandler("BulkAsyncHandler", 100, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             allCreated.countDown();
           }
@@ -368,7 +478,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler asyncOne =
         new TestHandler("AsyncOne", 100, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             bothRan.countDown();
           }
@@ -376,7 +486,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler asyncTwo =
         new TestHandler("AsyncTwo", 200, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             bothRan.countDown();
           }
@@ -384,7 +494,7 @@ class EntityLifecycleEventDispatcherTest {
     dispatcher.registerHandler(asyncOne);
     dispatcher.registerHandler(asyncTwo);
 
-    EntityInterface original = createAsyncSafeEntity();
+    EntityInterface<?> original = createAsyncSafeEntity();
     dispatcher.onEntityCreated(original, mockSubjectContext);
 
     assertTrue(bothRan.await(10, TimeUnit.SECONDS), "Both async handlers should run");
@@ -399,14 +509,65 @@ class EntityLifecycleEventDispatcherTest {
   }
 
   @Test
+  void decliningAsyncHandlersDoNotCreateEntitySnapshot() {
+    AtomicInteger columnsReadCount = new AtomicInteger();
+    AtomicInteger shouldProcessCount = new AtomicInteger();
+    Table entity =
+        new Table() {
+          @Override
+          public List<Column> getColumns() {
+            columnsReadCount.incrementAndGet();
+            return super.getColumns();
+          }
+        };
+    entity.setId(UUID.randomUUID());
+    entity.setName("declined_table");
+    entity.setFullyQualifiedName("service.db.schema.declined_table");
+    entity.setColumns(new ArrayList<>());
+
+    TestHandler decliningHandler =
+        new TestHandler("DecliningHandler", 100, true, Set.of()) {
+          @Override
+          public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+            shouldProcessCount.incrementAndGet();
+            return false;
+          }
+        };
+    dispatcher.registerHandler(decliningHandler);
+
+    dispatcher.onEntityUpdated(entity, mockChangeDescription, mockSubjectContext);
+
+    assertEquals(1, shouldProcessCount.get());
+    assertEquals(0, columnsReadCount.get(), "Declined handlers must not serialize the entity");
+    assertFalse(decliningHandler.updatedCalled);
+  }
+
+  @Test
+  void failingHandlerFilterDoesNotEscapeTheCommittedWritePath() {
+    TestHandler handler =
+        new TestHandler("FailingFilter", 100, false, Set.of()) {
+          @Override
+          public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+            throw new IllegalStateException("filter failed");
+          }
+        };
+    dispatcher.registerHandler(handler);
+
+    assertDoesNotThrow(
+        () -> dispatcher.onEntityUpdated(mockEntity, mockChangeDescription, mockSubjectContext));
+    assertTrue(
+        handler.updatedCalled, "A failed filter must preserve the previous dispatch behavior");
+  }
+
+  @Test
   void asyncBulkCreateSharesOneSnapshotPerEntityAcrossHandlers() throws InterruptedException {
-    EntityInterface entityA = asyncSafeEntity("a");
-    EntityInterface entityB = asyncSafeEntity("b");
+    EntityInterface<?> entityA = asyncSafeEntity("a");
+    EntityInterface<?> entityB = asyncSafeEntity("b");
     CountDownLatch allRan = new CountDownLatch(4);
     TestHandler asyncOne =
         new TestHandler("BulkAsyncOne", 100, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             allRan.countDown();
           }
@@ -414,7 +575,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler asyncTwo =
         new TestHandler("BulkAsyncTwo", 200, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             allRan.countDown();
           }
@@ -461,14 +622,14 @@ class EntityLifecycleEventDispatcherTest {
         "Async handler is skipped on snapshot failure; the entity is routed to the retry outbox");
   }
 
-  private static EntityInterface snapshotFor(TestHandler handler, UUID id) {
+  private static EntityInterface<?> snapshotFor(TestHandler handler, UUID id) {
     return handler.receivedCreatedEntities.stream()
         .filter(entity -> entity != null && id.equals(entity.getId()))
         .findFirst()
         .orElseThrow();
   }
 
-  private EntityInterface asyncSafeEntity(String suffix) {
+  private EntityInterface<?> asyncSafeEntity(String suffix) {
     Table entity = new Table();
     entity.setId(UUID.randomUUID());
     entity.setName("test_table_" + suffix);
@@ -537,14 +698,14 @@ class EntityLifecycleEventDispatcherTest {
     int updatedCallCount = 0;
     final AtomicInteger createdCallCount = new AtomicInteger(0);
 
-    EntityInterface lastCreatedEntity;
-    EntityInterface lastUpdatedEntity;
-    EntityInterface lastDeletedEntity;
+    EntityInterface<?> lastCreatedEntity;
+    EntityInterface<?> lastUpdatedEntity;
+    EntityInterface<?> lastDeletedEntity;
     ChangeDescription lastChangeDescription;
     boolean lastIsDeleted;
     List<ChangeDescription> receivedChangeDescriptions = new ArrayList<>();
     List<UUID> perEntityCreatedIds = java.util.Collections.synchronizedList(new ArrayList<>());
-    List<EntityInterface> receivedCreatedEntities =
+    List<EntityInterface<?>> receivedCreatedEntities =
         java.util.Collections.synchronizedList(new ArrayList<>());
 
     TestHandler(String name, int priority, boolean async, Set<String> supportedEntityTypes) {
@@ -555,7 +716,7 @@ class EntityLifecycleEventDispatcherTest {
     }
 
     @Override
-    public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+    public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
       createdCalled = true;
       createdCallCount.incrementAndGet();
       lastCreatedEntity = entity;
@@ -566,13 +727,14 @@ class EntityLifecycleEventDispatcherTest {
     }
 
     @Override
-    public void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {
+    public void onEntitiesCreated(
+        List<EntityInterface<?>> entities, SubjectContext subjectContext) {
       bulkCreatedCalled = true;
     }
 
     @Override
     public void onEntityUpdated(
-        EntityInterface entity,
+        EntityInterface<?> entity,
         ChangeDescription changeDescription,
         SubjectContext subjectContext) {
       updatedCalled = true;
@@ -583,14 +745,14 @@ class EntityLifecycleEventDispatcherTest {
     }
 
     @Override
-    public void onEntityDeleted(EntityInterface entity, SubjectContext subjectContext) {
+    public void onEntityDeleted(EntityInterface<?> entity, SubjectContext subjectContext) {
       deletedCalled = true;
       lastDeletedEntity = entity;
     }
 
     @Override
     public void onEntitySoftDeletedOrRestored(
-        EntityInterface entity, boolean isDeleted, SubjectContext subjectContext) {
+        EntityInterface<?> entity, boolean isDeleted, SubjectContext subjectContext) {
       softDeletedOrRestoredCalled = true;
       lastIsDeleted = isDeleted;
     }

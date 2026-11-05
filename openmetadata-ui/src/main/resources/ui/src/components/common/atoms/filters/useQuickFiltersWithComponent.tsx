@@ -20,11 +20,11 @@ import {
   useRef,
   useState,
 } from 'react';
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
-import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 
 export enum SelectMode {
   SINGLE = 'single',
@@ -36,6 +36,7 @@ interface QuickFiltersWithComponentConfig {
   aggregations?: Aggregations;
   parsedFilters?: ExploreQuickFilterField[];
   searchIndex: SearchIndex | SearchIndex[];
+  defaultQueryFilter?: Record<string, unknown>;
   assetType?: AssetsOfEntity;
   onFilterChange: (filters: ExploreQuickFilterField[]) => void;
   additionalActions?: ReactNode;
@@ -130,6 +131,7 @@ export const useQuickFiltersWithComponent = (
         showSelectedCounts
         additionalActions={config.additionalActions}
         aggregations={config.aggregations || {}}
+        defaultQueryFilter={config.defaultQueryFilter}
         fields={selectedQuickFilters}
         index={config.searchIndex}
         showDeleted={false}
@@ -139,6 +141,7 @@ export const useQuickFiltersWithComponent = (
     [
       config.aggregations,
       config.searchIndex,
+      config.defaultQueryFilter,
       config.additionalActions,
       selectedQuickFilters,
       handleQuickFiltersValueSelect,

@@ -38,36 +38,53 @@ export enum ImageQuality {
  * Then it will try for `1x` or return `undefined` if not found
  *
  */
+const computeImageFallbacks = (imageList?: ImageList) => {
+  const { image, image24, image32, image48, image72, image192, image512 } =
+    imageList || {};
+
+  const fallbackFrom24 = image24 || image;
+  const fallbackFrom32 = image32 || fallbackFrom24;
+  const fallbackFrom48 = image48 || fallbackFrom32;
+  const fallbackFrom72 = image72 || fallbackFrom48;
+  const fallbackFrom192 = image192 || fallbackFrom72;
+  const fallbackFrom512 = image512 || fallbackFrom192;
+
+  return {
+    image,
+    fallbackFrom24,
+    fallbackFrom32,
+    fallbackFrom48,
+    fallbackFrom72,
+    fallbackFrom192,
+    fallbackFrom512,
+  };
+};
+
 export const getImageWithResolutionAndFallback = (
   quality: ImageQuality,
   imageList?: ImageList
 ): string | undefined => {
-  const { image, image24, image32, image48, image72, image192, image512 } =
-    imageList || {};
+  const {
+    image,
+    fallbackFrom24,
+    fallbackFrom32,
+    fallbackFrom48,
+    fallbackFrom72,
+    fallbackFrom192,
+    fallbackFrom512,
+  } = computeImageFallbacks(imageList);
 
-  switch (quality) {
-    case ImageQuality['1.5x']:
-      return image24 || image;
-    case ImageQuality['2x']:
-      return image32 || image24 || image;
-    case ImageQuality['3x']:
-      return image48 || image32 || image24 || image;
-    case ImageQuality['4x']:
-      return image72 || image48 || image32 || image24 || image;
-    case ImageQuality['5x']:
-      return image192 || image72 || image48 || image32 || image24 || image;
-    case ImageQuality['6x']:
-      return (
-        image512 ||
-        image192 ||
-        image72 ||
-        image48 ||
-        image32 ||
-        image24 ||
-        image
-      );
-    case ImageQuality['1x']:
-    default:
-      return image;
-  }
+  // Each quality resolves to its own fallback chain (e.g. 4x falls back
+  // through 72->48->32->24->base), computed above; anything not in the map
+  // (including 1x) returns the base image.
+  const qualityToImage: Partial<Record<ImageQuality, string | undefined>> = {
+    [ImageQuality['1.5x']]: fallbackFrom24,
+    [ImageQuality['2x']]: fallbackFrom32,
+    [ImageQuality['3x']]: fallbackFrom48,
+    [ImageQuality['4x']]: fallbackFrom72,
+    [ImageQuality['5x']]: fallbackFrom192,
+    [ImageQuality['6x']]: fallbackFrom512,
+  };
+
+  return qualityToImage[quality] ?? image;
 };

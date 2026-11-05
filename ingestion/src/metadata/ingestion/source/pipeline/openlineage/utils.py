@@ -3,12 +3,11 @@ Utils used by OpenlineageSource connector.
 """
 
 from functools import reduce
-from typing import Dict  # noqa: UP035
 
 from metadata.ingestion.source.pipeline.openlineage.models import OpenLineageEvent
 
 
-def message_to_open_lineage_event(incoming_event: Dict) -> OpenLineageEvent:  # noqa: UP006
+def message_to_open_lineage_event(incoming_event: dict) -> OpenLineageEvent:
     """
     Method that takes raw Open Lineage event and parses is to shape into OpenLineageEvent.
 

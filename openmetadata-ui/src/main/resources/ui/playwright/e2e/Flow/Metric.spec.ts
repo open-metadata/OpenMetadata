@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   redirectToHomePage,
-  waitForMetricsSearchResponse,
+  waitForMetricsListingResponse,
 } from '../../utils/common';
 import {
   addMetric,
@@ -31,6 +32,7 @@ import {
   updateRelatedMetric,
   updateUnitOfMeasurement,
 } from '../../utils/metric';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 const metric1 = new MetricClass();
@@ -43,18 +45,18 @@ const adminUser = new UserClass();
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
 });
 
+test.describe.configure({ mode: 'serial' });
+
 test.describe(
   'Metric Entity Special Test Cases',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await adminUser.create(apiContext);
@@ -65,6 +67,17 @@ test.describe(
         metric2.create(apiContext),
         metric3.create(apiContext),
       ]);
+
+      // The related-metrics picker finds these through search.
+      await Promise.all(
+        [metric2, metric3].map((metric) =>
+          waitForSearchIndexed(
+            apiContext,
+            metric.entityResponseData.fullyQualifiedName,
+            'metric_search_index'
+          )
+        )
+      );
 
       await afterAction();
     });
@@ -86,16 +99,23 @@ test.describe(
     });
 
     test('Metric creation flow should work', async ({ page }) => {
-      const listAPIPromise = waitForMetricsSearchResponse(page);
+      const listAPIPromise = waitForMetricsListingResponse(page);
 
       await sidebarClick(page, SidebarItem.METRICS);
 
       await listAPIPromise;
 
-      await expect(page.getByTestId('heading')).toHaveText('Metrics');
-      await expect(page.getByTestId('sub-heading')).toHaveText(
-        'Define and catalog standardized metrics across your organization.'
-      );
+      const metricListHeader = page.getByTestId('metric-list-header');
+
+      await expect(
+        metricListHeader.getByRole('heading', { name: 'Metrics' })
+      ).toBeVisible();
+      await expect(
+        metricListHeader.getByText(
+          'Define and catalog standardized metrics across your organization.',
+          { exact: true }
+        )
+      ).toBeVisible();
 
       await page.getByTestId('create-metric').click();
 
@@ -126,8 +146,8 @@ test.describe(
     });
 
     test('Verify Related Metrics Update', async ({ page }) => {
-      await updateRelatedMetric(page, metric2, metric1.entity.name, 'add');
-      await updateRelatedMetric(page, metric3, metric1.entity.name, 'update');
+      await updateRelatedMetric(page, metric2, 'add');
+      await updateRelatedMetric(page, metric3, 'update');
     });
   }
 );

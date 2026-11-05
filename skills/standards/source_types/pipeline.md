@@ -56,17 +56,27 @@ OMetaPipelineStatus(
     pipeline_fqn=pipeline_fqn,
     pipeline_status=PipelineStatus(
         executionStatus=StatusType.Successful,
-        timestamp=Timestamp(execution["start_time"]),
+        timestamp=Timestamp(execution["run_id_or_logical_date"]),
+        endTime=Timestamp(execution["finished_at"]),
         taskStatus=[
             TaskStatus(
                 name=task["name"],
                 executionStatus=StatusType.Successful,
+                startTime=Timestamp(task["started_at"]),
+                endTime=Timestamp(task["finished_at"]),
             )
             for task in execution.get("tasks", [])
         ],
     ),
 )
 ```
+
+`timestamp` is the **unique key** for an execution, not a clock. It only has to be stable per run so
+re-ingesting the same run updates one row instead of creating another.
+
+Populate a real wall clock separately, in `endTime` or in the per-task `startTime`/`endTime`.
+Alerting uses it to tell a run that just failed from one backfilled out of the source's history; a
+connector that supplies neither has its executions delivered unfiltered.
 
 ## Schema Properties
 - `hostPort` (required)

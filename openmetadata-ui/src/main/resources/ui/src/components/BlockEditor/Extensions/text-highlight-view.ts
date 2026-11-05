@@ -81,7 +81,7 @@ export default Node.create({
     });
 
     textHighlightNode.dataset.highlight = 'true';
-    textHighlightNode.innerHTML = node.textContent;
+    textHighlightNode.textContent = node.textContent;
 
     return {
       dom: textHighlightNode,

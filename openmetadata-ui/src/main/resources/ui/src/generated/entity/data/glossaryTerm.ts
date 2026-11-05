@@ -253,6 +253,8 @@ export interface FieldChange {
  * Parent glossary term that this term is child of. When `null` this term is the root term
  * of the glossary.
  *
+ * Resolved first-class relationship type.
+ *
  * Reference to the related glossary term.
  */
 export interface EntityReference {
@@ -299,11 +301,11 @@ export interface EntityReference {
 }
 
 /**
- * Mapping to an external concept (e.g., SKOS concept IRI).
+ * Mapping from an ontology term to an external concept.
  */
 export interface ConceptMapping {
     /**
-     * External concept IRI to map this glossary term to.
+     * External concept IRI to map this ontology term to.
      */
     conceptIri: string;
     /**
@@ -337,8 +339,12 @@ export enum ConceptMappingType {
 /**
  * Approval status of the glossary term.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
+ *
+ * Approval status of this relation edge.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -379,14 +385,50 @@ export interface TermReference {
  */
 export interface TermRelation {
     /**
+     * Time the relationship was first persisted.
+     */
+    createdAt?: number;
+    /**
+     * User who first authored or imported the relationship.
+     */
+    createdBy?: string;
+    /**
+     * Unique identifier of this relation edge.
+     */
+    id?: string;
+    /**
+     * How this relation edge originated. Defaults to 'Manual'.
+     */
+    provenance?: Provenance;
+    /**
+     * Resolved first-class relationship type.
+     */
+    relationshipType?: EntityReference;
+    /**
      * Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to
      * 'relatedTo' for backward compatibility.
      */
     relationType?: string;
     /**
+     * Approval status of this relation edge.
+     */
+    status?: EntityStatus;
+    /**
      * Reference to the related glossary term.
      */
     term: EntityReference;
+}
+
+/**
+ * How this relation edge originated. Defaults to 'Manual'.
+ *
+ * How this relation edge originated.
+ */
+export enum Provenance {
+    AISuggested = "AiSuggested",
+    Imported = "Imported",
+    Inferred = "Inferred",
+    Manual = "Manual",
 }
 
 /**

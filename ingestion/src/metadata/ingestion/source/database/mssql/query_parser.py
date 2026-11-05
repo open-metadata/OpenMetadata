@@ -12,9 +12,10 @@
 MSSQL usage module
 """
 
+import traceback
 from abc import ABC
+from collections.abc import Iterator
 from copy import deepcopy
-from typing import Iterator, Optional  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -48,13 +49,13 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
 
     filters: str
     engine: Engine
-    _query_store_enabled: Optional[bool] = None  # noqa: UP045
+    _query_store_enabled: bool | None = None
     # Query Store state of the engine currently being iterated in the ingest-all
     # per-database path. None means the single-engine path (use the global decision).
-    _active_query_store: Optional[bool] = None  # noqa: UP045
+    _active_query_store: bool | None = None
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MssqlConnection = config.serviceConnection.root.config
@@ -111,14 +112,39 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
             yield self.engine
 
     def _per_database_engines(self) -> Iterator[Engine]:
-        databases = list(self._databases_to_scan())
+        try:
+            databases = list(self._databases_to_scan())
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Could not enumerate MSSQL databases for query history, falling back to the "
+                "single instance-wide connection: %s",
+                exc,
+            )
+            databases = []
         if not databases:
             self._active_query_store = None
             yield self.engine
             return
         for database in databases:
-            engine = self._engine_for_database(database)
+            try:
+                engine = self._engine_for_database(database)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Skipping MSSQL database %s for query history: %s", database, exc)
+                continue
             self._active_query_store = is_query_store_enabled(engine)
+            if self._active_query_store:
+                logger.info(
+                    "MSSQL query history for database %s: Query Store is enabled.",
+                    database,
+                )
+            else:
+                logger.info(
+                    "MSSQL query history for database %s: Query Store is not enabled or not accessible, "
+                    "using plan-cache DMVs.",
+                    database,
+                )
             try:
                 yield engine
             finally:

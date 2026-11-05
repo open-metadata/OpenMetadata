@@ -20,6 +20,7 @@ public class UserSession {
   private String email;
   private String omRefreshToken;
   private String providerRefreshToken;
+  private Long providerRenewalDueAt;
   private String redirectUri;
   private String state;
   private String nonce;
@@ -46,4 +47,10 @@ public class UserSession {
         && refreshLeaseUntil != null
         && refreshLeaseUntil <= now;
   }
+
+  /**
+   * Lombok fills in this builder. It is declared so javadoc, which runs no annotation processors,
+   * can resolve method signatures that name it; without it the {@code release} build fails.
+   */
+  public static class UserSessionBuilder {}
 }

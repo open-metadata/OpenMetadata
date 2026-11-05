@@ -13,18 +13,26 @@ This script generates the Python models from the JSON Schemas definition. Additi
 pydantic class used for the password fields with the `CustomSecretStr` pydantic class which retrieves the secrets
 from a configured secrets' manager.
 """
-import glob
-import os
 
+import os
+import re
+import subprocess
+import sys
+import warnings
+from pathlib import Path
+
+from datamodel_code_generator import DataModelType, InputFileType, generate
 from datamodel_code_generator.imports import Import
-from datamodel_code_generator.model import pydantic as pydantic_model
-from datamodel_code_generator.__main__ import main
+
+# `model.pydantic` held the Pydantic v1 models and was removed in datamodel-code-generator 0.60+.
+# We generate with `--output-model-type pydantic_v2.BaseModel`, so patch the v2 type map.
+from datamodel_code_generator.model import pydantic_v2 as pydantic_model
 
 pydantic_model.types.IMPORT_SECRET_STR = Import.from_full_path(
     "metadata.ingestion.models.custom_pydantic.CustomSecretStr"
 )
 
-current_directory = os.getcwd()
+current_directory = str(Path.cwd())
 ingestion_path = "./" if current_directory.endswith("/ingestion") else "ingestion/"
 directory_root = "../" if current_directory.endswith("/ingestion") else "./"
 
@@ -37,26 +45,96 @@ UNICODE_REGEX_REPLACEMENT_FILE_PATHS = [
     f"{ingestion_path}src/metadata/generated/schema/type/basic.py",
 ]
 
-args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schema --output-model-type pydantic_v2.BaseModel --use-annotated --base-class metadata.ingestion.models.custom_pydantic.BaseModel --input-file-type jsonschema --output {ingestion_path}src/metadata/generated/schema --set-default-enum-member".split(" ")
+# OpenMetadata uses `format` as its own vocabulary rather than only the JSON Schema standard one:
+# the UI form builder picks a widget from it (`FormBuilder.tsx` maps "queryBuilder" to
+# QueryBuilderWidget, "password" to a masked input), and the rest are semantic hints for readers and
+# for the Java/TS generators. datamodel-code-generator only knows the standard formats, so it warns
+# and falls back to the base type -- which is exactly the behaviour we want here.
+#
+# Silence only the vocabulary we own, so a genuinely new or misspelled format still surfaces.
+# Changing these in the schemas is NOT a safe cleanup: `format` drives UI widget selection.
+KNOWN_CUSTOM_FORMATS = (
+    "int64",
+    "json",
+    "queryBuilder",
+    "string",
+    "timezone",
+    "URI",
+    "url",
+    "utc-millisec",
+)
+warnings.filterwarnings(
+    "ignore",
+    message=rf"format of '(?:{'|'.join(map(re.escape, KNOWN_CUSTOM_FORMATS))})' not understood",
+    category=UserWarning,
+)
 
-main(args)
+schema_root = Path(f"{directory_root}openmetadata-spec/src/main/resources/json/schema").resolve()
+output_root = Path(f"{ingestion_path}src/metadata/generated/schema").resolve()
+# The directory reader sorts only basenames; duplicate names need a stable path tie-breaker.
+schema_files = sorted(
+    (path for path in schema_root.rglob("*") if path.is_file()),
+    key=lambda path: (path.name, path.relative_to(schema_root).as_posix()),
+)
+os.chdir(schema_root)
+try:
+    generate(
+        schema_files,
+        input_file_type=InputFileType.JsonSchema,
+        output_model_type=DataModelType.PydanticV2BaseModel,
+        output=output_root,
+        use_annotated=True,
+        field_constraints=True,
+        base_class="metadata.ingestion.models.custom_pydantic.BaseModel",
+        set_default_enum_member=True,
+        disable_timestamp=True,
+        # Formatted below with ruff rather than black, so black stays out of the lock.
+        formatters=[],
+    )
+finally:
+    os.chdir(current_directory)
+
+# --isolated --no-respect-gitignore: the generated tree is ruff-excluded and gitignored. The post-processing below
+# matches black's layout (88 columns), which ruff's defaults reproduce.
+subprocess.run(
+    [
+        sys.executable,
+        "-m",
+        "ruff",
+        "check",
+        "--isolated",
+        "--no-respect-gitignore",
+        "--select",
+        "I",
+        "--fix",
+        "--quiet",
+        str(output_root),
+    ],
+    check=True,
+)
+subprocess.run(
+    [sys.executable, "-m", "ruff", "format", "--isolated", "--no-respect-gitignore", "--quiet", str(output_root)],
+    check=True,
+)
 
 # Replace Unicode regex flags
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
+    with Path(file_path).open("r", encoding=UTF_8) as file_:
         content = file_.read()
         content = content.replace("(?U)", "(?u)")
-    with open(file_path, "w", encoding=UTF_8) as file_:
+    with Path(file_path).open("w", encoding=UTF_8) as file_:
         file_.write(content)
 
 # Add missing Union import
-MISSING_IMPORTS = [f"{ingestion_path}src/metadata/generated/schema/entity/applications/app.py",]
+MISSING_IMPORTS = [
+    f"{ingestion_path}src/metadata/generated/schema/entity/applications/app.py",
+]
 WRITE_AFTER = "from __future__ import annotations"
 
 for file_path in MISSING_IMPORTS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
+    with Path(file_path).open("r", encoding=UTF_8) as file_:
         lines = file_.readlines()
-    with open(file_path, "w", encoding=UTF_8) as file_:
+    with Path(file_path).open("w", encoding=UTF_8) as file_:
         for line in lines:
             file_.write(line)
             if line.strip() == WRITE_AFTER:
@@ -78,7 +156,7 @@ for file_path in MISSING_IMPORTS:
 # construction time -- that would make it impossible to ever construct the
 # raw-named object that transform_entity_names is meant to encode, breaking
 # tests in tests/unit/models/test_custom_basemodel_validation.py.
-generated_files = glob.glob(f"{ingestion_path}src/metadata/generated/schema/**/*.py", recursive=True)
+generated_files = Path(f"{ingestion_path}src/metadata/generated/schema").rglob("*.py")
 
 patterns_to_remove = [
     "pattern='^((?!::).)*$',",
@@ -90,11 +168,11 @@ patterns_to_remove = [
 ]
 
 for file_path in generated_files:
-    with open(file_path, "r", encoding=UTF_8) as f:
+    with Path(file_path).open("r", encoding=UTF_8) as f:
         content = f.read()
     for pat in patterns_to_remove:
         content = content.replace(pat, "")
-    with open(file_path, "w", encoding=UTF_8) as f:
+    with Path(file_path).open("w", encoding=UTF_8) as f:
         f.write(content)
 
 
@@ -106,15 +184,59 @@ DATETIME_AWARE_FILE_PATHS = [
 ]
 
 for file_path in DATETIME_AWARE_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8) as f:
+    with Path(file_path).open("r", encoding=UTF_8) as f:
         content = f.read()
         content = content.replace(
             "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel",
-            "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel"
+            "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel",
         )
         content = content.replace("from datetime import date, time", "from datetime import date, time, datetime")
         content = content.replace("AwareDatetime", "datetime")
-    with open(file_path, "w", encoding=UTF_8) as f:
+    with Path(file_path).open("w", encoding=UTF_8) as f:
         f.write(content)
 
-print("Model generation and post-processing completed successfully.")
+
+# -------------------------------------------------------------------------
+# PIN UNION RESOLUTION FOR SourceConfig.config
+# -------------------------------------------------------------------------
+# `sourceConfig.config` is an undiscriminated `oneOf`: every member declares a
+# `type` with a JSON Schema default and none of them list it as required, so a
+# config that omits `type` validates against several members at once and pydantic
+# has to break the tie itself. Under datamodel-code-generator 0.25.6 smart mode
+# resolved to the leftmost match (DatabaseServiceMetadataPipeline); under 0.64.0
+# it resolves to DatabaseServiceProfilerPipeline, so a metadata workflow silently
+# receives a profiler config and then dies on `source_config.threads`.
+# `left_to_right` restores the previous winner.
+#
+# This is a stopgap for the Python models only. The real fix is a discriminator on
+# `type` in openmetadata-spec/.../metadataIngestion/workflow.json, which would
+# resolve the union deterministically for the Java and TypeScript consumers too.
+UNION_MODE_FILE = f"{ingestion_path}src/metadata/generated/schema/metadataIngestion/workflow.py"
+# black may wrap the long union annotation (older layout: `config: (\n ... \n    ) = None`)
+# or the default value (newer layout: `config: ... | None = (\n        None\n    )`). Handle both
+# so a black formatting change does not silently drop the union_mode pin.
+SOURCE_CONFIG_BLOCKS = (
+    re.compile(r"(class SourceConfig\(BaseModel\):.*?\n    \) )= None\n", re.DOTALL),
+    re.compile(r"(class SourceConfig\(BaseModel\):.*?\| None )= \(\s*None\s*\)\n", re.DOTALL),
+)
+
+with Path(UNION_MODE_FILE).open("r", encoding=UTF_8) as f:
+    content = f.read()
+
+applied = 0
+for source_config_block in SOURCE_CONFIG_BLOCKS:
+    content, applied = source_config_block.subn(r'\1= Field(None, union_mode="left_to_right")\n', content, count=1)
+    if applied == 1:
+        break
+if applied != 1:
+    # Fail loudly: silently skipping this leaves every `type`-less workflow config
+    # resolving to the wrong pipeline model at runtime.
+    raise RuntimeError(
+        f"Could not pin union_mode on SourceConfig.config in {UNION_MODE_FILE}. "
+        "The generated layout changed -- update SOURCE_CONFIG_BLOCK."
+    )
+
+with Path(UNION_MODE_FILE).open("w", encoding=UTF_8) as f:
+    f.write(content)
+
+sys.stdout.write("Model generation and post-processing completed successfully.\n")

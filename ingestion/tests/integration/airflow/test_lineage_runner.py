@@ -13,7 +13,6 @@ Test lineage parser to get inlets and outlets information
 """
 
 from datetime import datetime
-from typing import List  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -54,7 +53,7 @@ PIPELINE_SERVICE_NAME = "test-lineage-runner"
 DB_SERVICE_NAME = "test-service-lineage-runner"
 
 
-def get_captured_log_messages(log) -> List[str]:  # noqa: UP006
+def get_captured_log_messages(log) -> list[str]:
     return [record.getMessage() for record in log.records]
 
 

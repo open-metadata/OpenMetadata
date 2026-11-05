@@ -1,6 +1,6 @@
 # OpenMetadata Data Quality
 ## Structure
-OpenMetadata data quality is structured around 3 componants:
+OpenMetadata data quality is structured around 3 components:
 1. Test Definition: a test definition is a generic definition describing a test (supported data types, platform is was created from (OM, dbt, etc.), parameter definition, etc.)
 2. Test Case: a test case is the implementation of a specific test definition. It specifies the values parameters should respect for the test to pass or fail
 3. Test Suite: a test suite is a logical or an executable container. Executable test suites are automatically created when you add a new test case to an entity. Logical test suite allow users to logically group together tests from different entity to create data contracts.

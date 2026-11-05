@@ -28,25 +28,187 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonPatchBuilder;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonStructure;
+import jakarta.json.JsonValue;
+import java.io.IOException;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.auth.BasicAuthMechanism;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
+import org.openmetadata.schema.services.connections.database.AthenaConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /** This test provides examples of how to use applyPatch */
 @Slf4j
 class JsonUtilsTest {
+  @Test
+  void typeNameExtractionMatchesSchemaAnnotations() {
+    String fieldSchema =
+        """
+        {
+          "definitions": {
+            "seedField": {"$comment": "@om-field-type"},
+            "ordinaryField": {"type": "string"}
+          }
+        }
+        """;
+    String entitySchema = "{\"$comment\":\"@om-entity-type\"}";
+
+    assertEquals(
+        List.of("seedField"),
+        JsonUtils.getTypeNames(
+            "json/schema/type/example.json", fieldSchema.getBytes(StandardCharsets.UTF_8)));
+    assertEquals(
+        List.of("exampleEntity"),
+        JsonUtils.getTypeNames(
+            "json/schema/entity/data/exampleEntity.json",
+            entitySchema.getBytes(StandardCharsets.UTF_8)));
+    assertTrue(
+        JsonUtils.getTypeNames(
+                "json/schema/entity/data/unannotated.json", "{}".getBytes(StandardCharsets.UTF_8))
+            .isEmpty());
+  }
+
+  @Test
+  void typeNameExtractionSupportsWindowsResourcePaths() {
+    String fieldSchema = "{\"definitions\":{\"seedField\":{\"$comment\":\"@om-field-type\"}}}";
+    String entitySchema = "{\"$comment\":\"@om-entity-type\"}";
+
+    assertEquals(
+        List.of("seedField"),
+        JsonUtils.getTypeNames(
+            "json\\schema\\type\\example.json", fieldSchema.getBytes(StandardCharsets.UTF_8)));
+    assertEquals(
+        List.of("exampleEntity"),
+        JsonUtils.getTypeNames(
+            "json\\schema\\entity\\data\\exampleEntity.json",
+            entitySchema.getBytes(StandardCharsets.UTF_8)));
+  }
+
+  @ParameterizedTest
+  @MethodSource("patchConversionCases")
+  void applyPatchConversionMatchesTheStringBridge(String originalJson, String patchJson) {
+    JsonNode original = JsonUtils.readTree(originalJson);
+    JsonPatch patch = readPatch(patchJson);
+
+    JsonNode expected = applyPatchThroughStringBridge(original, patch, JsonNode.class);
+    JsonNode actual = JsonUtils.applyPatch(original, patch, JsonNode.class);
+
+    assertEquals(expected.toString(), actual.toString());
+  }
+
+  @ParameterizedTest
+  @MethodSource("failingPatchConversionCases")
+  void applyPatchConversionPreservesFailures(String originalJson, String patchJson) {
+    JsonNode original = JsonUtils.readTree(originalJson);
+    JsonPatch patch = readPatch(patchJson);
+
+    RuntimeException expected =
+        assertThrows(
+            RuntimeException.class,
+            () -> applyPatchThroughStringBridge(original, patch, JsonNode.class));
+    RuntimeException actual =
+        assertThrows(
+            RuntimeException.class, () -> JsonUtils.applyPatch(original, patch, JsonNode.class));
+
+    assertEquals(expected.getClass(), actual.getClass());
+    assertEquals(expected.getMessage(), actual.getMessage());
+  }
+
+  private static Stream<Arguments> patchConversionCases() {
+    return Stream.of(
+        Arguments.of(
+            "{\"items\":[1,2],\"ratio\":1.25}",
+            "[{\"op\":\"add\",\"path\":\"/items/-\",\"value\":3}]"),
+        Arguments.of("[1,2]", "[{\"op\":\"add\",\"path\":\"/-\",\"value\":3}]"),
+        Arguments.of(
+            "{\"name\":\"old\",\"removeMe\":true}",
+            "[{\"op\":\"replace\",\"path\":\"/name\",\"value\":\"new\"},"
+                + "{\"op\":\"remove\",\"path\":\"/removeMe\"}]"),
+        Arguments.of(
+            "{\"a/b\":{\"tilde~key\":\"value\"},\"target\":{}}",
+            "[{\"op\":\"copy\",\"from\":\"/a~1b/tilde~0key\",\"path\":\"/target/copied\"},"
+                + "{\"op\":\"move\",\"from\":\"/target/copied\",\"path\":\"/target/moved\"}]"),
+        Arguments.of(
+            "{\"extension\":{\"integer\":7,\"float\":1.5,\"enabled\":true,\"date\":\"2026-07-13\"}}",
+            "[{\"op\":\"test\",\"path\":\"/extension/float\",\"value\":1.5},"
+                + "{\"op\":\"replace\",\"path\":\"/extension/integer\",\"value\":8}]"));
+  }
+
+  private static Stream<Arguments> failingPatchConversionCases() {
+    return Stream.of(
+        Arguments.of("{\"value\":1}", "[{\"op\":\"test\",\"path\":\"/value\",\"value\":2}]"),
+        Arguments.of("{\"items\":[1]}", "[{\"op\":\"add\",\"path\":\"/items/3\",\"value\":2}]"));
+  }
+
+  private static JsonPatch readPatch(String patchJson) {
+    try (JsonReader reader = Json.createReader(new StringReader(patchJson))) {
+      return Json.createPatch(reader.readArray());
+    }
+  }
+
+  private static <T> T applyPatchThroughStringBridge(
+      Object original, JsonPatch patch, Class<T> targetClass) {
+    JsonStructure target;
+    try (JsonReader reader = Json.createReader(new StringReader(JsonUtils.pojoToJson(original)))) {
+      target = reader.read();
+    }
+    JsonValue patched = patch.apply(target);
+    JsonNode tree = JsonUtils.readTree(patched.toString());
+    return JsonUtils.convertValue(tree, targetClass);
+  }
+
+  @Test
+  void tokenBufferSnapshotCanRestoreAnObjectAcrossRetries() {
+    Team team = new Team().withId(UUID.randomUUID()).withName("original");
+    var snapshot = JsonUtils.toTokenBuffer(team);
+
+    team.setName("first-attempt");
+    JsonUtils.overwriteFromTokenBuffer(team, snapshot);
+    assertEquals("original", team.getName());
+
+    team.setName("second-attempt");
+    JsonUtils.overwriteFromTokenBuffer(team, snapshot);
+    assertEquals("original", team.getName());
+  }
+
+  @Test
+  void getJsonDataResourcesUsesCommonClasspathIndex() throws IOException {
+    Pattern pattern = Pattern.compile(".*json/schema/type/changeEvent\\.json$");
+
+    List<String> resources = JsonUtils.getJsonDataResources(pattern);
+
+    assertFalse(resources.isEmpty());
+    assertEquals(CommonUtil.getResources(pattern), resources);
+  }
+
   /** Test apply patch method with different operations. */
   @Test
   void applyPatch() {
@@ -117,6 +279,112 @@ class JsonUtilsTest {
             JsonException.class,
             () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("An array item index is out of range"));
+  }
+
+  @Test
+  void applyPatchRejectsRenamedFieldWithSuggestion() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    // "status" was renamed to "entityStatus" in #22904. Clients (and LLMs trained before the
+    // rename) still send the old name; the failure must read as a client error, not a 500.
+    JsonPatch patch = Json.createPatchBuilder().add("/status", "Approved").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid field 'status'"));
+    assertTrue(ex.getMessage().contains("GlossaryTerm"));
+    assertTrue(ex.getMessage().contains("Did you mean 'entityStatus'"));
+    assertTrue(ex.getMessage().contains("Valid fields are:"));
+  }
+
+  @Test
+  void applyPatchSuggestsPluralFormOfSingularField() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    JsonPatch patch = Json.createPatchBuilder().add("/reviewer", "alice").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Did you mean 'reviewers'"));
+  }
+
+  @Test
+  void applyPatchRejectsUnknownFieldWithoutSuggestionWhenNothingMatches() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    JsonPatch patch = Json.createPatchBuilder().add("/zzzNoSuchField", "x").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid field 'zzzNoSuchField'"));
+    assertFalse(ex.getMessage().contains("Did you mean"));
+    assertTrue(ex.getMessage().contains("entityStatus"));
+  }
+
+  @Test
+  void applyPatchRejectsInvalidEnumValueAndListsAllowedValues() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    // The field name is right but the value is not one this enum accepts. That is still the
+    // caller's mistake, so it must not read as an internal fault either.
+    JsonPatch patch = Json.createPatchBuilder().add("/entityStatus", "Bogus").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid value for field 'entityStatus'"));
+    assertTrue(ex.getMessage().contains("GlossaryTerm"));
+    assertTrue(ex.getMessage().contains("Allowed values are:"));
+    assertTrue(ex.getMessage().contains("Approved"));
+  }
+
+  @Test
+  void applyPatchRejectsWronglyTypedValue() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    JsonPatch patch = Json.createPatchBuilder().add("/synonyms", "not-an-array").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid value for field 'synonyms'"));
+  }
+
+  @Test
+  void applyPatchNeverQuotesTheRejectedValue() {
+    EventSubscription original =
+        new EventSubscription()
+            .withId(UUID.randomUUID())
+            .withName("alert")
+            .withDescription("value-from-elsewhere")
+            .withBatchSize(10);
+    JsonPatch patch = Json.createPatchBuilder().copy("/batchSize", "/description").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, EventSubscription.class));
+    assertTrue(ex.getMessage().contains("Invalid value for field 'batchSize'"), ex.getMessage());
+    assertTrue(ex.getMessage().contains("must be a valid Integer"), ex.getMessage());
+    assertFalse(ex.getMessage().contains("value-from-elsewhere"), ex.getMessage());
   }
 
   @Test
@@ -209,6 +477,28 @@ class JsonUtilsTest {
     assertEquals(0, actualJson.get("connection").size());
     assertTrue(actualJson.has("deleted"));
     assertFalse(actualJson.get("deleted").asBoolean());
+  }
+
+  @Test
+  void testPojoToMaskedJsonLeavesOutAUsersAuthenticationMechanism() {
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("alice")
+            .withEmail("alice@example.com")
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.BASIC)
+                    .withConfig(new BasicAuthMechanism().withPassword("$2a$12$storedHash")));
+    ChangeEvent changeEvent = new ChangeEvent().withEntityType("user").withEntity(user);
+
+    JsonNode userJson = JsonUtils.readTree(JsonUtils.pojoToMaskedJson(user));
+    JsonNode changeEventJson = JsonUtils.readTree(JsonUtils.pojoToMaskedJson(changeEvent));
+
+    assertEquals("alice", userJson.get("name").asText());
+    assertFalse(userJson.has("authenticationMechanism"));
+    assertFalse(changeEventJson.get("entity").has("authenticationMechanism"));
+    assertFalse(changeEventJson.toString().contains("storedHash"));
   }
 
   @Test
@@ -395,5 +685,145 @@ class JsonUtilsTest {
     assertTrue(
         cause.getMessage().contains("appliedAt") || cause.getMessage().contains("ISO-8601"),
         "error should mention the field or expected format: " + cause.getMessage());
+  }
+
+  /**
+   * An object or array where a date belongs is refused; returning without reading it would leave
+   * its members to be bound as fields of the label.
+   */
+  @Test
+  void testTagLabelAppliedAtObjectOrArrayIsRefused() {
+    for (String value : List.of("{\"tagFQN\":\"other.tag\"}", "[\"other.tag\"]")) {
+      String json = "{\"tagFQN\":\"x.y\",\"appliedAt\":" + value + "}";
+      assertThrows(
+          org.openmetadata.schema.exception.JsonParsingException.class,
+          () -> JsonUtils.readValue(json, TagLabel.class),
+          json);
+    }
+  }
+
+  @Test
+  void describeBindingFailureNamesTheFieldAndUriConstraintWithoutTheValue() {
+    Map<String, Object> config = athenaConfigWith("s3StagingDir", "s3://bucket/athena results/");
+
+    Optional<String> description = describeAthenaBindingFailure(config);
+
+    assertEquals(
+        Optional.of("'s3StagingDir' must be a valid URI (Illegal character in path at index 18)"),
+        description);
+  }
+
+  @Test
+  void describeBindingFailureListsTheAllowedEnumValues() {
+    Map<String, Object> config = athenaConfigWith("scheme", "not-a-scheme");
+
+    Optional<String> description = describeAthenaBindingFailure(config);
+
+    assertEquals(Optional.of("'scheme' must be one of: awsathena+rest"), description);
+  }
+
+  @Test
+  void describeBindingFailureNamesAnUnknownField() {
+    Map<String, Object> config = athenaConfigWith("s3StagingDirectory", "s3://bucket/results/");
+
+    Optional<String> description = describeAthenaBindingFailure(config);
+
+    assertEquals(Optional.of("unknown field 's3StagingDirectory'"), description);
+  }
+
+  @Test
+  void describeBindingFailureNamesTheExpectedTypeForOtherMismatches() {
+    Map<String, Object> config = athenaConfigWith("supportsMetadataExtraction", "sometimes");
+
+    Optional<String> description = describeAthenaBindingFailure(config);
+
+    assertEquals(Optional.of("'supportsMetadataExtraction' must be a valid Boolean"), description);
+  }
+
+  @Test
+  void describeBindingFailureIsEmptyForAFailureThatIsNotABindingFailure() {
+    assertEquals(
+        Optional.empty(), JsonUtils.describeBindingFailure(new IllegalStateException("boom")));
+  }
+
+  private static Map<String, Object> athenaConfigWith(String field, Object value) {
+    Map<String, Object> config = new HashMap<>();
+    config.put("type", "Athena");
+    config.put("s3StagingDir", "s3://bucket/results/");
+    config.put("workgroup", "primary");
+    config.put("awsConfig", Map.of("awsRegion", "us-east-1"));
+    config.put(field, value);
+    return config;
+  }
+
+  private static Optional<String> describeAthenaBindingFailure(Map<String, Object> config) {
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.convertValue(config, AthenaConnection.class));
+    return JsonUtils.describeBindingFailure(failure);
+  }
+
+  @Test
+  void applyPatch_refusesAPatchThatDoublesTheDocumentPastTheBudget() {
+    JsonObject document =
+        Json.createObjectBuilder().add("items", Json.createArrayBuilder()).build();
+    // Each copy appends the whole "items" array to itself, doubling it every operation.
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    ops.add(
+        Json.createObjectBuilder()
+            .add("op", "add")
+            .add("path", "/items/-")
+            .add("value", "x".repeat(1024)));
+    for (int i = 0; i < 40; i++) {
+      ops.add(
+          Json.createObjectBuilder()
+              .add("op", "copy")
+              .add("from", "/items")
+              .add("path", "/items/-"));
+    }
+    JsonPatch patch = Json.createPatch(ops.build());
+
+    IllegalArgumentException refused =
+        assertThrows(IllegalArgumentException.class, () -> JsonUtils.applyPatch(document, patch));
+    assertTrue(refused.getMessage().contains("size"), refused.getMessage());
+  }
+
+  @Test
+  void applyPatch_allowsAnOrdinaryGrowingPatch() {
+    JsonObject document =
+        Json.createObjectBuilder().add("items", Json.createArrayBuilder()).build();
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    for (int i = 0; i < 1000; i++) {
+      ops.add(Json.createObjectBuilder().add("op", "add").add("path", "/items/-").add("value", i));
+    }
+
+    JsonValue patched = JsonUtils.applyPatch(document, Json.createPatch(ops.build()));
+    assertEquals(1000, patched.asJsonObject().getJsonArray("items").size());
+  }
+
+  /** The values a patch adds are in its body, which the reader bounds; only copy is charged. */
+  @Test
+  void applyPatch_acceptsAnAddHeavyPatchOnALargeDocument() {
+    int columnCount = 256;
+    String text = "d".repeat(JsonUtils.MAX_PATCH_GROWTH_BYTES / columnCount + 1);
+    JsonArrayBuilder columns = Json.createArrayBuilder();
+    for (int i = 0; i < columnCount; i++) {
+      columns.add(Json.createObjectBuilder().add("name", "column" + i).add("description", text));
+    }
+    JsonObject table = Json.createObjectBuilder().add("columns", columns).build();
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    for (int i = 0; i < columnCount; i++) {
+      ops.add(
+          Json.createObjectBuilder()
+              .add("op", "add")
+              .add("path", "/columns/" + i + "/displayName")
+              .add("value", text));
+    }
+
+    JsonValue patched = JsonUtils.applyPatch(table, Json.createPatch(ops.build()));
+
+    JsonArray patchedColumns = patched.asJsonObject().getJsonArray("columns");
+    assertEquals(text, patchedColumns.getJsonObject(columnCount - 1).getString("displayName"));
   }
 }

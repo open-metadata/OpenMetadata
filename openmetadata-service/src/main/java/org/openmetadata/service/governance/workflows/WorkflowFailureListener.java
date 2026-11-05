@@ -46,7 +46,10 @@ public class WorkflowFailureListener implements FlowableEventListener {
           "Cleanup before redeployment",
           "Cleanup old workflow version",
           "Terminated due to conflicting workflow instance",
-          Workflow.SUPERSEDED_BY_NEWER_RUN);
+          "Workflow definition deleted",
+          "Entity deleted",
+          Workflow.SUPERSEDED_BY_NEWER_RUN,
+          Workflow.TERMINATED_BY_ADMIN);
 
   private static final String DRAFT_TASK_CANCEL_CAUSE_PREFIX = "Workflow-managed draft task ";
 

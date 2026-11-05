@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
+import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { clickOutside, redirectToExplorePage } from '../../utils/common';
+import {
+  clickOutside,
+  getApiContext,
+  redirectToExplorePage,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickUpdateButtonIfVisible,
@@ -22,13 +28,20 @@ import {
   getExportModalContent,
   openExportScopeModal,
 } from '../../utils/explore';
-import { test } from '../fixtures/pages';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
+
+// Dedicated admin user so that completed search-export background jobs
+// accumulate in this user's tray instead of the shared admin session,
+// preventing the tray from blocking other admin tests in the same worker.
+let searchExportUser: UserClass;
 
 const startAsyncExport = async (page: Page) => {
-  const exportAsyncPromise = page.waitForResponse(
+  const exportAsyncPromise = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/search/export/async') &&
-      response.status() === 202
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/search/export/async'),
+    202
   );
 
   await getExportModalContent(page)
@@ -45,10 +58,10 @@ const startAsyncExport = async (page: Page) => {
   return jobId;
 };
 
-const fetchCompletedExportCsv = async (
+const waitForExportJobCompleted = async (
   apiContext: APIRequestContext,
   jobId: string
-): Promise<string> => {
+): Promise<void> => {
   await expect
     .poll(
       async () => {
@@ -58,11 +71,28 @@ const fetchCompletedExportCsv = async (
           status: string;
         }>;
 
+        // An unauthenticated or errored call returns an object, not a list, and
+        // `jobs.find` then fails with a TypeError that says nothing about why.
+        if (!Array.isArray(jobs)) {
+          throw new Error(
+            `csvAsyncJobs returned ${response.status()}: ${JSON.stringify(
+              jobs
+            ).slice(0, 200)}`
+          );
+        }
+
         return jobs.find((job) => job.jobId === jobId)?.status;
       },
       { timeout: 90_000 }
     )
     .toBe('COMPLETED');
+};
+
+const fetchCompletedExportCsv = async (
+  apiContext: APIRequestContext,
+  jobId: string
+): Promise<string> => {
+  await waitForExportJobCompleted(apiContext, jobId);
 
   const resultResponse = await apiContext.get(
     `/api/v1/csvAsyncJobs/${jobId}/result`
@@ -94,12 +124,24 @@ test.describe(
             headers: { 'Content-Type': 'application/json-patch+json' },
           }
         );
+      }
 
+      searchExportUser = new UserClass(undefined, true);
+      await searchExportUser.create(apiContext);
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      if (searchExportUser) {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await searchExportUser.delete(apiContext);
         await afterAction();
       }
     });
 
     test.beforeEach(async ({ page }) => {
+      await searchExportUser.signIn(page);
       await redirectToExplorePage(page);
     });
 
@@ -122,9 +164,9 @@ test.describe(
 
         const modalContent = getExportModalContent(page);
 
-        await expect(modalContent.locator('.ant-modal-title')).toContainText(
-          'Export'
-        );
+        await expect(
+          modalContent.getByTestId('export-scope-modal-title')
+        ).toContainText('Export');
         await expect(modalContent.getByText('Export Scope')).toBeVisible();
       });
 
@@ -141,16 +183,16 @@ test.describe(
 
       await test.step('All matching assets is selected by default', async () => {
         await expect(
-          getExportModalContent(page).locator('input[value="all"]')
+          getExportModalContent(page).getByRole('radio', { name: 'All assets' })
         ).toBeChecked();
       });
 
       await test.step('Selecting the tab-scope card checks the visible radio', async () => {
         const modalContent = getExportModalContent(page);
 
-        await modalContent.locator('input[value="visible"]').click();
+        await modalContent.getByTestId('export-scope-visible-card').click();
         await expect(
-          modalContent.locator('input[value="visible"]')
+          modalContent.getByRole('radio', { name: 'Visible results' })
         ).toBeChecked();
       });
 
@@ -165,17 +207,20 @@ test.describe(
 
     test('Search mode visible export downloads CSV with tab-specific row count', async ({
       page,
-      browser,
     }) => {
       test.slow();
 
-      await page.goto('/explore/tables?search=sample_data');
+      await page.goto('/explore/tables?search=sample_data', {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page.getByTestId('explore-page')).toBeVisible();
 
-      const countApiPromise = page.waitForResponse(
+      const countApiPromise = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/search/query'),
+        200
       );
 
       await openExportScopeModal(page);
@@ -183,7 +228,7 @@ test.describe(
 
       const modalContent = getExportModalContent(page);
 
-      await modalContent.locator('input[value="visible"]').click();
+      await modalContent.getByTestId('export-scope-visible-card').click();
 
       const expectedCount =
         await test.step('Read displayed count from Visible Results card', () =>
@@ -192,7 +237,7 @@ test.describe(
       const jobId = await startAsyncExport(page);
 
       await test.step('CSV row count matches the displayed tab count', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const { apiContext, afterAction } = await getApiContext(page);
         const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
         expect(countCsvResponseRows(csvText)).toBe(expectedCount);
@@ -204,57 +249,50 @@ test.describe(
     test('Search mode visible export count matches the first result tab count', async ({
       page,
     }) => {
-      const countApiPromise = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.status() === 200
-      );
+      // The active tab renders a count of 0 until entityTypeCounts resolves,
+      // and both counts move whenever another worker indexes a matching asset,
+      // so re-read the two together on each attempt rather than comparing a
+      // point-in-time read with one taken later.
+      await expect(async () => {
+        await page.goto(
+          '/explore/tables?search=sample_data.ecommerce_db.shopify.dim_customer',
+          { waitUntil: 'domcontentloaded' }
+        );
+        await expect(page.getByTestId('explore-page')).toBeVisible();
+        await openExportScopeModal(page);
 
-      await page.goto(
-        '/explore/tables?search=sample_data.ecommerce_db.shopify.dim_customer'
-      );
-      await expect(page.getByTestId('explore-page')).toBeVisible();
-      await countApiPromise;
+        const visibleExportCount = await getExportCountFromModal(
+          getExportModalContent(page),
+          'export-scope-visible-count'
+        );
 
-      const firstTabCount =
-        await test.step('Read the count from the first left panel result tab', async () => {
-          const firstTabCountText = await page
+        // 0 would also match the active tab before its count has loaded.
+        expect(visibleExportCount).toBeGreaterThan(0);
+        await expect(
+          page
             .getByTestId('explore-left-panel')
-            .locator('[role="menuitem"]')
-            .first()
+            .getByRole('tab', { selected: true })
             .getByTestId('filter-count')
-            .textContent();
-
-          return parseInt(firstTabCountText?.trim() ?? '0', 10);
-        });
-
-      await openExportScopeModal(page);
-
-      const visibleExportCount =
-        await test.step('Read the visible results count from the export modal', () =>
-          getExportCountFromModal(
-            getExportModalContent(page),
-            'export-scope-visible-count'
-          ));
-
-      await test.step('Visible export count matches the first result tab count', async () => {
-        expect(visibleExportCount).toBe(firstTabCount);
-      });
+        ).toHaveText(String(visibleExportCount), { timeout: 10_000 });
+      }).toPass({ timeout: 45_000 });
     });
 
     test('Filtered search visible export downloads CSV with the filtered record count', async ({
       page,
-      browser,
     }) => {
       test.slow();
 
-      const searchResultsPromise = page.waitForResponse(
+      const searchResultsPromise = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/search/query'),
+        200
       );
 
-      await page.goto('/explore/tables?search=sample_data');
+      await page.goto('/explore/tables?search=sample_data', {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await searchResultsPromise;
       await waitForAllLoadersToDisappear(page);
@@ -262,23 +300,30 @@ test.describe(
       await test.step('Apply Service filter from the Explore page', async () => {
         await page.getByTestId('search-dropdown-Service').click();
 
-        const serviceAggregatePromise = page.waitForResponse(
+        const serviceAggregatePromise = waitForResponseWithStatus(
+          page,
           (response) =>
+            response.request().method() === 'GET' &&
             response.url().includes('/api/v1/search/aggregate') &&
-            response.url().includes('sample_data') &&
-            response.status() === 200
+            response.url().includes('sample_data'),
+          200
         );
 
         await page.getByTestId('search-input').fill('sample_data');
         await serviceAggregatePromise;
-        const filteredQueryPromise = page.waitForResponse(
+        const filteredQueryPromise = waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            response.url().includes('/api/v1/search/query'),
+          200
         );
 
         await page.getByTestId('sample_data').click();
-        await expect(page.getByTestId('sample_data-checkbox')).toBeChecked();
+        await expect(page.getByTestId('sample_data')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
 
         await clickUpdateButtonIfVisible(page);
         await filteredQueryPromise;
@@ -289,7 +334,7 @@ test.describe(
         await test.step('Read filtered count from the first left panel tab', async () => {
           const filteredCountText = await page
             .getByTestId('explore-left-panel')
-            .locator('[role="menuitem"]')
+            .getByRole('tab')
             .first()
             .getByTestId('filter-count')
             .textContent();
@@ -300,7 +345,7 @@ test.describe(
       await openExportScopeModal(page);
 
       const modalContent = getExportModalContent(page);
-      await modalContent.locator('input[value="visible"]').click();
+      await modalContent.getByTestId('export-scope-visible-card').click();
 
       const visibleExportCount =
         await test.step('Read filtered visible count from the export modal', () =>
@@ -313,7 +358,7 @@ test.describe(
       const jobId = await startAsyncExport(page);
 
       await test.step('CSV row count matches the filtered record count', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const { apiContext, afterAction } = await getApiContext(page);
         const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
         expect(countCsvResponseRows(csvText)).toBe(filteredCount);
@@ -324,35 +369,38 @@ test.describe(
 
     test('Browse mode visible export downloads CSV with current page row count', async ({
       page,
-      browser,
     }) => {
       test.slow();
 
       // Browse mode (no search term) queries the unified `dataAsset` index
       // regardless of the tab in the URL, so wait for that rather than a
       // per-entity `index=topic` request (which only fires for a tab search).
-      const browseQueryPromise = page.waitForResponse(
+      const browseQueryPromise = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=dataAsset') &&
-          response.status() === 200
+          response.url().includes('index=dataAsset'),
+        200
       );
 
-      await page.goto('/explore/topics');
+      await page.goto('/explore/topics', { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await browseQueryPromise;
       await waitForAllLoadersToDisappear(page);
       await expect(
-        page.locator('[data-testid^="table-data-card_"]').first()
-      ).toBeVisible();
+        page
+          .locator('[data-testid^="table-data-card_"]')
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
 
       await openExportScopeModal(page);
 
       const modalContent = getExportModalContent(page);
 
-      await modalContent.locator('input[value="visible"]').click();
+      await modalContent.getByTestId('export-scope-visible-card').click();
       await expect(
-        modalContent.locator('input[value="visible"]')
+        modalContent.getByRole('radio', { name: 'Visible results' })
       ).toBeChecked();
 
       const expectedCount =
@@ -362,7 +410,7 @@ test.describe(
       const jobId = await startAsyncExport(page);
 
       await test.step('CSV row count matches the displayed page count', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const { apiContext, afterAction } = await getApiContext(page);
         const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
         expect(countCsvResponseRows(csvText)).toBe(expectedCount);
@@ -415,13 +463,17 @@ test.describe(
     }) => {
       test.slow();
 
-      const countApiPromise = page.waitForResponse(
+      const countApiPromise = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/search/query'),
+        200
       );
 
-      await page.goto('/explore/tables?search=sample_data');
+      await page.goto('/explore/tables?search=stored_procedures', {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await countApiPromise;
 
@@ -430,26 +482,76 @@ test.describe(
       const jobId = await startAsyncExport(page);
 
       await test.step('Jobs tray surfaces the export job', async () => {
-        await page
-          .getByRole('button', { name: /Background jobs|jobs running/ })
-          .click();
+        // PR #30615 added a useEffect that calls setOpen(true) when a job
+        // reaches a terminal state, auto-opening the tray and hiding the
+        // launcher button ({!open && !isEmpty(visibleJobs) && ...} renders
+        // nothing once open=true).
+        //
+        // Race: right after startAsyncExport, visibleJobs may still be
+        // empty (socket event not yet received), so neither the launcher
+        // nor the tray has rendered yet. A bare click() on the launcher
+        // fails during this window.
+        //
+        // Fix: wait for whichever surface appears first, then open the tray
+        // only if it has not already been auto-opened.
+        const launcherButton = page.getByRole('button', {
+          name: /Background jobs|jobs running/,
+        });
+        const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+        // Block until the launcher (job in progress) or the tray (job
+        // completed and auto-opened by the useEffect) is in the DOM.
+        await expect(launcherButton.or(trayPopover)).toBeVisible();
+
+        // Open the tray only if it has not already been auto-opened. Reading
+        // isVisible() and then clicking is not enough: the tray can auto-open in
+        // between, and the launcher unmounts the moment it does, so the click
+        // waits out the test on an element that is gone. Retry the pair and let
+        // the popover being open end it however it got there.
+        await expect(async () => {
+          if (await trayPopover.isVisible()) {
+            return;
+          }
+          await launcherButton.click({ timeout: 5_000 });
+          await expect(trayPopover).toBeVisible({ timeout: 5_000 });
+        }).toPass({ timeout: 30_000 });
 
         await expect(
-          page.getByText(/Exporting|Exported/).first()
-        ).toBeVisible();
+          page.getByText(/Exporting|Exported/).filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       await test.step('Download from the tray serves the job result CSV', async () => {
-        const downloadButton = page
-          .getByRole('button', { name: 'Download' })
-          .first();
+        // The Download button only renders once the async job finishes, so waiting
+        // blind on it spent up to 90s of the test budget before the download waits
+        // even started -- the remainder then ran out mid-wait and surfaced as
+        // "Target page, context or browser has been closed". Poll the job over the
+        // API first (the same way fetchCompletedExportCsv does), so a stalled job is
+        // named as such and the UI waits that follow are short.
+        //
+        // getApiContext(page), not page.request: page.request carries cookies but
+        // not the bearer token the csvAsyncJobs endpoint requires. getApiContext
+        // extracts the token from the page's storage so the request is authenticated
+        // as searchExportUser — the same user who created the job.
+        const { apiContext, afterAction } = await getApiContext(page);
+        await waitForExportJobCompleted(apiContext, jobId);
+        await afterAction();
 
-        await expect(downloadButton).toBeVisible({ timeout: 90_000 });
+        // Scope to the specific job's tray row so we don't accidentally click
+        // an already-visible Download button from a different completed job
+        // (e.g. "Exported Lineage") whose result URL won't match jobId.
+        const jobRow = page.locator(`[data-testid="csv-job-${jobId}"]`);
+        await expect(jobRow).toBeVisible();
 
-        const resultResponsePromise = page.waitForResponse(
+        const downloadButton = jobRow.getByRole('button', { name: 'Download' });
+        await expect(downloadButton).toBeVisible();
+
+        const resultResponsePromise = waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes(`/api/v1/csvAsyncJobs/${jobId}/result`) &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            response.url().includes(`/api/v1/csvAsyncJobs/${jobId}/result`),
+          200
         );
         const downloadPromise = page.waitForEvent('download');
 
@@ -460,6 +562,17 @@ test.describe(
 
         expect(download.suggestedFilename()).toContain(jobId);
         expect(download.suggestedFilename()).toContain('.csv');
+
+        // Excel decodes a CSV as UTF-8 only when it starts with a BOM.
+        const stream = await download.createReadStream();
+        const chunks: Buffer[] = [];
+        for await (const chunk of stream) {
+          chunks.push(Buffer.from(chunk));
+        }
+
+        expect([...Buffer.concat(chunks).subarray(0, 3)]).toEqual([
+          0xef, 0xbb, 0xbf,
+        ]);
       });
     });
   }

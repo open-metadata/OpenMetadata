@@ -42,6 +42,14 @@ class TestBurstIQClient(TestCase):
             "token_type": "Bearer",
         }
 
+    def test_session_retry_ignores_server_retry_after(self):
+        """Retry-After from the server is ignored so one call can't hang for hours."""
+        client = BurstIQClient(self.config)
+
+        retry = client.session.get_adapter("https://api.burstiq.com").max_retries
+        self.assertFalse(retry.respect_retry_after_header)
+        self.assertEqual(retry.total, 3)
+
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
     def test_authentication_success(self, mock_post):
         """Test successful authentication with BurstIQ"""

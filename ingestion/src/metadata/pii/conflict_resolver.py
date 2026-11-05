@@ -13,7 +13,6 @@ Conflict resolution for auto-classification tags.
 """
 
 from collections import defaultdict
-from typing import Dict, List  # noqa: UP035
 
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
@@ -33,9 +32,9 @@ class ConflictResolver:
 
     def resolve_conflicts(
         self,
-        scored_tags: List[ScoredTag],  # noqa: UP006
-        enabled_classifications: List[Classification],  # noqa: UP006
-    ) -> List[ScoredTag]:  # noqa: UP006
+        scored_tags: list[ScoredTag],
+        enabled_classifications: list[Classification],
+    ) -> list[ScoredTag]:
         """
         Apply conflict resolution per classification.
 
@@ -52,11 +51,11 @@ class ConflictResolver:
         if not scored_tags:
             return []
 
-        by_classification: Dict[str, List[ScoredTag]] = defaultdict(list)  # noqa: UP006
+        by_classification: dict[str, list[ScoredTag]] = defaultdict(list)
         for scored_tag in scored_tags:
             by_classification[scored_tag.classification_name].append(scored_tag)
 
-        resolved: List[ScoredTag] = []  # noqa: UP006
+        resolved: list[ScoredTag] = []
 
         for classification in enabled_classifications:
             config = classification.autoClassificationConfig
@@ -97,7 +96,7 @@ class ConflictResolver:
 
         return resolved
 
-    def _select_winner(self, tags: List[ScoredTag], strategy: ConflictResolution) -> ScoredTag:  # noqa: UP006
+    def _select_winner(self, tags: list[ScoredTag], strategy: ConflictResolution) -> ScoredTag:
         """
         Select winning tag based on strategy.
 

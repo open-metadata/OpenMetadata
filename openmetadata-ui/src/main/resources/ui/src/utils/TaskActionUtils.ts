@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { Duration } from 'luxon';
 import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
-import { ReactComponent as EditSuggestionIcon } from '../assets/svg/edit-new.svg';
 import { ReactComponent as CloseIcon } from '../assets/svg/ic-close-circle.svg';
 import { ReactComponent as CheckIcon } from '../assets/svg/ic-tick-circle.svg';
-import { TaskType } from '../generated/entity/feed/thread';
 import {
   TaskActionMode,
   type TaskAction,
@@ -40,7 +39,7 @@ export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: t('label.edit-suggestion'),
     key: TaskActionMode.EDIT,
-    icon: EditSuggestionIcon,
+    icon: Edit01,
   },
   {
     label: t('label.close'),
@@ -66,7 +65,7 @@ export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
   {
     label: t('label.re-assign'),
     key: TaskActionMode.RE_ASSIGN,
-    icon: EditSuggestionIcon,
+    icon: Edit01,
   },
   {
     label: t('label.resolve'),
@@ -74,12 +73,6 @@ export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
     icon: CloseIcon,
   },
 ];
-
-export const isDescriptionTask = (taskType: TaskType) =>
-  [TaskType.RequestDescription, TaskType.UpdateDescription].includes(taskType);
-
-export const isTagsTask = (taskType: TaskType) =>
-  [TaskType.RequestTag, TaskType.UpdateTag].includes(taskType);
 
 export const isDescriptionTaskType = (taskType: TaskEntityType) =>
   [TaskEntityType.DescriptionUpdate].includes(taskType);

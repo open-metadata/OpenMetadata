@@ -80,13 +80,9 @@ public class IncidentPaginationIT {
 
     Table table = createTestTable();
     tableFqn = table.getFullyQualifiedName();
-    String testDefFqn =
-        client
-            .testDefinitions()
-            .list(new ListParams().withLimit(1))
-            .getData()
-            .get(0)
-            .getFullyQualifiedName();
+    // A definition that supports the BIGINT `id` column: the server rejects a column type the
+    // definition does not list, and the first definition the listing returns need not list it.
+    String testDefFqn = "columnValuesToBeNotNull";
 
     for (int i = 0; i < TEST_DATA_SIZE; i++) {
       TestCase testCase = createTestCase(table, i, testDefFqn);
@@ -186,27 +182,41 @@ public class IncidentPaginationIT {
             .withOffset(0)
             .withLatest(true)
             .addFilter("originEntityFQN", tableFqn);
-    ListResponse<TestCaseResolutionStatus> firstPage =
-        client.testCaseResolutionStatuses().searchList(firstPageParams);
-
     ListParams secondPageParams =
         new ListParams()
             .withLimit(PAGE_SIZE)
             .withOffset(PAGE_SIZE)
             .withLatest(true)
             .addFilter("originEntityFQN", tableFqn);
-    ListResponse<TestCaseResolutionStatus> secondPage =
-        client.testCaseResolutionStatuses().searchList(secondPageParams);
+
+    AtomicReference<ListResponse<TestCaseResolutionStatus>> firstPageRef = new AtomicReference<>();
+    AtomicReference<ListResponse<TestCaseResolutionStatus>> secondPageRef = new AtomicReference<>();
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              ListResponse<TestCaseResolutionStatus> first =
+                  client.testCaseResolutionStatuses().searchList(firstPageParams);
+              ListResponse<TestCaseResolutionStatus> second =
+                  client.testCaseResolutionStatuses().searchList(secondPageParams);
+              assertEquals(
+                  first.getPaging().getTotal(),
+                  second.getPaging().getTotal(),
+                  "Total count should be consistent across pages");
+              firstPageRef.set(first);
+              secondPageRef.set(second);
+            });
+    ListResponse<TestCaseResolutionStatus> firstPage = firstPageRef.get();
+    ListResponse<TestCaseResolutionStatus> secondPage = secondPageRef.get();
 
     assertNotNull(secondPage);
     assertEquals(
         PAGE_SIZE,
         secondPage.getData().size(),
         "Second page should return " + PAGE_SIZE + " results");
-    assertEquals(
-        firstPage.getPaging().getTotal(),
-        secondPage.getPaging().getTotal(),
-        "Total count should be consistent across pages");
 
     if (!firstPage.getData().isEmpty() && !secondPage.getData().isEmpty()) {
       Object firstItem = firstPage.getData().get(0);

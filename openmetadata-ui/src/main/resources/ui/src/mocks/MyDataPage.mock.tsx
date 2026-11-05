@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
+import type { ComponentType } from 'react';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
-import { Thread, ThreadType } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
 import { PageType } from '../generated/system/ui/page';
 import { Paging } from '../generated/type/paging';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { AnnouncementEntity } from '../rest/announcementsAPI';
 
 export const mockPersonaName = 'testPersona';
 
@@ -135,6 +136,19 @@ export const mockCustomizePageClassBase = {
   landingPageMaxGridSize: 4,
   landingPageWidgetMargin: 16,
   landingPageRowHeight: 200,
+  getExcludedWidgetFqns: () => [] as string[],
+  // Required lazily: this mock is shared by suites that never touch the
+  // landing registry and should not pay for loading it.
+  getKnownWidgetKeyPrefixes: (): string[] => [
+    ...jest.requireActual('../utils/CustomizeMyDataPageWidgetUtils')
+      .MY_DATA_WIDGET_KEYS,
+  ],
+  getPickableWidgetKeyPrefixes: (): string[] => [
+    ...jest.requireActual('../utils/CustomizeMyDataPageWidgetUtils')
+      .MY_DATA_WIDGET_KEYS,
+  ],
+  getPlatformHealthInsight: () => null,
+  getNeedsYouNowSection: (): ComponentType | null => null,
   getWidgetsFromKey: (i: string) => {
     if (!widgetComponentCache[i]) {
       widgetComponentCache[i] = () => <div data-testid={i}>{i}</div>;
@@ -158,21 +172,22 @@ export const mockDocumentData: Document = {
   },
 };
 
-export const mockAnnouncementsData: Array<Thread> = [
+export const mockAnnouncementsData: AnnouncementEntity[] = [
   {
     id: '444c10b8-e0bb-4e0b-9286-1eeaa2efbf95',
-    type: ThreadType.Announcement,
-    about: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-    message: 'Test Announcement',
-    announcement: {
-      description: '',
-      startTime: 1701620135,
-      endTime: 1701706538,
-    },
+    name: 'test-announcement',
+    displayName: 'Test Announcement',
+    description: '',
+    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    startTime: 1701620135000,
+    endTime: 1701706538000,
   },
 ];
 
-export const mockActiveAnnouncementData: { data: Thread[]; paging: Paging } = {
+export const mockActiveAnnouncementData: {
+  data: AnnouncementEntity[];
+  paging: Paging;
+} = {
   data: mockAnnouncementsData,
   paging: { total: 1 },
 };

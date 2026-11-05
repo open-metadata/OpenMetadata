@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -92,6 +93,65 @@ class UriUtilsTest {
   }
 
   @Test
+  void testConstructAuthorizationResponseUri_addsIssuer() {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("code", "abc123");
+    params.put("state", "xyz");
+
+    String result =
+        UriUtils.constructAuthorizationResponseUri(
+            "https://example.com/callback", params, "https://om.example.com/mcp");
+
+    assertThat(result).contains("code=abc123");
+    assertThat(result).contains("state=xyz");
+    assertThat(result)
+        .contains("iss=" + URLEncoder.encode("https://om.example.com/mcp", StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void testConstructAuthorizationResponseUri_omitsNullIssuer() {
+    String result =
+        UriUtils.constructAuthorizationResponseUri(
+            "https://example.com/callback", Map.of("code", "abc123"), null);
+
+    assertThat(result).contains("code=abc123");
+    assertThat(result).doesNotContain("iss=");
+  }
+
+  @Test
+  void testConstructAuthorizationResponseUri_omitsEmptyIssuer() {
+    String result =
+        UriUtils.constructAuthorizationResponseUri(
+            "https://example.com/callback", Map.of("code", "abc123"), "");
+
+    assertThat(result).doesNotContain("iss=");
+  }
+
+  @Test
+  void testConstructAuthorizationResponseUri_doesNotMutateCallerParams() {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("code", "abc123");
+
+    UriUtils.constructAuthorizationResponseUri(
+        "https://example.com/callback", params, "https://om.example.com/mcp");
+
+    assertThat(params).containsOnlyKeys("code");
+  }
+
+  @Test
+  void testConstructAuthorizationResponseUri_preservesExistingQueryParams() {
+    String result =
+        UriUtils.constructAuthorizationResponseUri(
+            "https://example.com/callback?tenant=acme",
+            Map.of("code", "abc123"),
+            "https://om.example.com/mcp");
+
+    assertThat(result).contains("tenant=acme");
+    assertThat(result).contains("code=abc123");
+    assertThat(result).contains("iss=");
+  }
+
+  @Test
   void testValidateIssuerUrl_httpsAccepted() {
     UriUtils.validateIssuerUrl(URI.create("https://example.com"));
   }
@@ -150,5 +210,26 @@ class UriUtilsTest {
     assertThat(result.getPath()).isEqualTo("/new/path");
     assertThat(result.getHost()).isEqualTo("example.com");
     assertThat(result.getScheme()).isEqualTo("https");
+  }
+
+  @Test
+  void testWithoutTrailingSlash_dropsOnlyTheTrailingSlash() {
+    assertThat(UriUtils.withoutTrailingSlash("http://localhost:8585/om/"))
+        .isEqualTo("http://localhost:8585/om");
+    assertThat(UriUtils.withoutTrailingSlash("http://localhost:8585/om"))
+        .isEqualTo("http://localhost:8585/om");
+    assertThat(UriUtils.withoutTrailingSlash(null)).isNull();
+  }
+
+  @Test
+  void isRemoteWebUri_onlyForHttpOnAnotherMachine() {
+    assertThat(UriUtils.isRemoteWebUri(URI.create("https://attacker.example/cb"))).isTrue();
+    assertThat(UriUtils.isRemoteWebUri(URI.create("HTTP://client.example/cb"))).isTrue();
+    // getHost() is null for a_b.example, which a browser still opens; it is not loopback.
+    assertThat(UriUtils.isRemoteWebUri(URI.create("https://a_b.example/cb"))).isTrue();
+    assertThat(UriUtils.isRemoteWebUri(URI.create("http://127.0.0.1:33418/cb"))).isFalse();
+    assertThat(UriUtils.isRemoteWebUri(URI.create("http://localhost:6274/cb"))).isFalse();
+    assertThat(UriUtils.isRemoteWebUri(URI.create("http://[::1]:8080/cb"))).isFalse();
+    assertThat(UriUtils.isRemoteWebUri(URI.create("cursor://anysphere.cursor-mcp/cb"))).isFalse();
   }
 }

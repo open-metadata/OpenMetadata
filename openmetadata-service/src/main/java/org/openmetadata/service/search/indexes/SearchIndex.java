@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableConstraint.RelationshipType;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -93,7 +94,7 @@ public interface SearchIndex {
     Map<String, Object> esDoc = JsonUtils.getMap(entity);
 
     // Phase 1: Common entity fields (owners, domains, displayName, etc.)
-    if (entity instanceof EntityInterface ei) {
+    if (entity instanceof EntityInterface<?> ei) {
       populateCommonFields(esDoc, ei, getEntityTypeName());
     }
 
@@ -167,12 +168,26 @@ public interface SearchIndex {
   }
 
   /**
+   * Fields computed on read that this index writes but that the entity reaching a live write never
+   * carries. A create, an update or a CSV import holds only what that operation loaded, so a count
+   * such as {@code childrenCount} arrives as null or as a placeholder and would be indexed as 0.
+   * {@code SearchRepository} loads these onto a copy before each such write. Each one must also be
+   * in {@link #getRequiredReindexFields()} and have a field fetcher in its repository. Safe to call
+   * on a probe instance whose entity is null.
+   *
+   * <p>ADR:2026-10-29-search-documents-load-computed-counts-on-every-write
+   */
+  default Set<String> getFieldsLoadedOnWrite() {
+    return Collections.emptySet();
+  }
+
+  /**
    * Populates common entity fields into the search index document. Called automatically by {@link
    * #buildSearchIndexDoc()} for all EntityInterface-based entities. Individual index classes should
    * NOT call this — it is handled by the framework.
    */
   default void populateCommonFields(
-      Map<String, Object> doc, EntityInterface entity, String entityType) {
+      Map<String, Object> doc, EntityInterface<?> entity, String entityType) {
     doc.put(
         "displayName",
         entity.getDisplayName() != null && !entity.getDisplayName().isBlank()
@@ -196,7 +211,7 @@ public interface SearchIndex {
     doc.put(
         "entityStatus",
         entity.getEntityStatus() != null
-            ? entity.getEntityStatus().value()
+            ? entity.getEntityStatus().toString()
             : org.openmetadata.schema.type.EntityStatus.UNPROCESSED.value());
     if (entity.getVotes() != null) {
       int upVotes = entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0;
@@ -270,7 +285,7 @@ public interface SearchIndex {
     return cloneEntity;
   }
 
-  default String getDescriptionStatus(EntityInterface entity) {
+  default String getDescriptionStatus(EntityInterface<?> entity) {
     return nullOrEmpty(entity.getDescription()) ? "INCOMPLETE" : "COMPLETE";
   }
 
@@ -300,7 +315,7 @@ public interface SearchIndex {
    * falls back to per-entity DB lookups via {@link #getLineageData(EntityReference)}.
    */
   static Map<UUID, List<EsLineageData>> prefetchLineageIfSupported(
-      String entityType, List<? extends EntityInterface> entities) {
+      String entityType, List<? extends EntityInterface<?>> entities) {
     Map<UUID, List<EsLineageData>> result = null;
     if (!nullOrEmpty(entities) && supportsLineagePrefetch(entityType)) {
       Map<UUID, List<EsLineageData>> prefetched = prefetchUpstreamLineage(entities);
@@ -312,7 +327,7 @@ public interface SearchIndex {
   }
 
   static Map<UUID, Optional<Style>> prefetchServiceStylesIfSupported(
-      String entityType, List<? extends EntityInterface> entities) {
+      String entityType, List<? extends EntityInterface<?>> entities) {
     Map<UUID, Optional<Style>> result = null;
     if (!nullOrEmpty(entities) && supportsServiceStylePrefetch(entityType)) {
       Map<UUID, Optional<Style>> prefetched = prefetchServiceStyles(entities);
@@ -407,7 +422,7 @@ public interface SearchIndex {
    * so doc-build falls back to per-entity DB lookups.
    */
   static Map<UUID, List<EsLineageData>> prefetchUpstreamLineage(
-      List<? extends EntityInterface> entities) {
+      List<? extends EntityInterface<?>> entities) {
     Map<UUID, List<EsLineageData>> result = new HashMap<>();
     if (!nullOrEmpty(entities)) {
       populatePrefetchedUpstreamLineage(entities, result);
@@ -416,7 +431,7 @@ public interface SearchIndex {
   }
 
   static Map<UUID, Optional<Style>> prefetchServiceStyles(
-      List<? extends EntityInterface> entities) {
+      List<? extends EntityInterface<?>> entities) {
     Map<UUID, Optional<Style>> result = new HashMap<>();
     if (!nullOrEmpty(entities)) {
       populatePrefetchedServiceStyles(entities, result);
@@ -433,10 +448,10 @@ public interface SearchIndex {
   }
 
   private static void populatePrefetchedServiceStyles(
-      List<? extends EntityInterface> entities, Map<UUID, Optional<Style>> result) {
+      List<? extends EntityInterface<?>> entities, Map<UUID, Optional<Style>> result) {
     Map<UUID, UUID> serviceIdByEntityId = new HashMap<>();
     Map<String, Set<UUID>> serviceIdsByType = new HashMap<>();
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       UUID entityId = entity.getId();
       if (entityId == null) {
         continue;
@@ -489,13 +504,13 @@ public interface SearchIndex {
   }
 
   private static void populatePrefetchedUpstreamLineage(
-      List<? extends EntityInterface> entities, Map<UUID, List<EsLineageData>> result) {
+      List<? extends EntityInterface<?>> entities, Map<UUID, List<EsLineageData>> result) {
     Map<UUID, EntityReference> toRefByEntityId = new HashMap<>(entities.size());
     List<String> toIds = new ArrayList<>(entities.size());
     // Seed every input id with the shared immutable empty-list sentinel. Reindex batches are
     // typically sparse in upstream lineage (most entities have none), so deferring the
     // ArrayList allocation to the first edge keeps the no-lineage path GC-free.
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       UUID entityId = entity.getId();
       if (entityId == null) {
         continue;
@@ -740,7 +755,7 @@ public interface SearchIndex {
   }
 
   private static Map<String, Object> buildUpstreamRelationshipMap(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Table relatedEntity,
       TableConstraint tableConstraint,
       String referredColumn,
@@ -787,14 +802,7 @@ public interface SearchIndex {
           "docId", relatedEntity.getId().toString() + "-" + entity.getId().toString());
 
       List<Map<String, Object>> columnsList = new ArrayList<>();
-      String columnFQN =
-          FullyQualifiedName.add(entity.getFullyQualifiedName(), columns.get(columnIndex));
-
-      Map<String, Object> columnMap = new HashMap<>();
-      columnMap.put("columnFQN", referredColumn); // Upstream column
-      columnMap.put("relatedColumnFQN", columnFQN); // Downstream column
-      columnMap.put("relationshipType", tableConstraint.getRelationshipType());
-      columnsList.add(columnMap);
+      columnsList.add(buildUpstreamColumnMap(entity, tableConstraint, referredColumn, columnIndex));
 
       relationshipMap.put("columns", columnsList);
       return relationshipMap;
@@ -811,6 +819,36 @@ public interface SearchIndex {
     }
   }
 
+  private static Map<String, Object> buildUpstreamColumnMap(
+      EntityInterface<?> entity,
+      TableConstraint tableConstraint,
+      String referredColumn,
+      int columnIndex) {
+    String columnFQN =
+        FullyQualifiedName.add(
+            entity.getFullyQualifiedName(), tableConstraint.getColumns().get(columnIndex));
+
+    Map<String, Object> columnMap = new HashMap<>();
+    columnMap.put("columnFQN", referredColumn); // Upstream column
+    columnMap.put("relatedColumnFQN", columnFQN); // Downstream column
+    columnMap.put(
+        "relationshipType", toUpstreamRelationshipType(tableConstraint.getRelationshipType()));
+    return columnMap;
+  }
+
+  // A foreign key states its relationshipType from the constrained (downstream) column's side,
+  // while the edge runs from the referenced (upstream) column, so the one-to-many direction is
+  // read the other way round.
+  private static RelationshipType toUpstreamRelationshipType(
+      RelationshipType foreignKeyRelationshipType) {
+    return switch (foreignKeyRelationshipType) {
+      case null -> null;
+      case ONE_TO_MANY -> RelationshipType.MANY_TO_ONE;
+      case MANY_TO_ONE -> RelationshipType.ONE_TO_MANY;
+      case ONE_TO_ONE, MANY_TO_MANY -> foreignKeyRelationshipType;
+    };
+  }
+
   static Map<String, Object> checkUpstreamRelationship(
       String entityFQN, String relatedEntityFQN, List<Map<String, Object>> relationships) {
     for (Map<String, Object> relationship : relationships) {
@@ -824,7 +862,7 @@ public interface SearchIndex {
   }
 
   private static void updateExistingUpstreamRelationship(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       TableConstraint tableConstraint,
       Map<String, Object> existingRelationship,
       String referredColumn,
@@ -861,17 +899,10 @@ public interface SearchIndex {
     }
 
     try {
-      String columnFQN =
-          FullyQualifiedName.add(entity.getFullyQualifiedName(), columns.get(columnIndex));
-
-      Map<String, Object> columnMap = new HashMap<>();
-      columnMap.put("columnFQN", referredColumn); // Upstream column
-      columnMap.put("relatedColumnFQN", columnFQN); // Downstream column
-      columnMap.put("relationshipType", tableConstraint.getRelationshipType());
-
       List<Map<String, Object>> existingColumns =
           (List<Map<String, Object>>) existingRelationship.get("columns");
-      existingColumns.add(columnMap);
+      existingColumns.add(
+          buildUpstreamColumnMap(entity, tableConstraint, referredColumn, columnIndex));
 
     } catch (Exception ex) {
       LOG.error(

@@ -82,18 +82,27 @@ Keep the structure identical across connectors — users recognize the pattern. 
 
 **File**: `openmetadata-ui/src/main/resources/ui/src/utils/{ServiceType}ServiceUtils.tsx`
 
-Import the resolved connection schema and add a switch case so the Add Service form renders:
+Connection schemas live under `public/jsons/connectionSchemas/connections/{serviceType}/`
+and are fetched at runtime via the shared `loadConnectionSchema` helper — the
+service util no longer static-imports the JSON. Add a loader entry so the Add
+Service form renders:
 
 ```typescript
-import myDbConnection from '../jsons/connectionSchemas/connections/{serviceType}/myDbConnection.json';
+import { loadConnectionSchema } from './loadConnectionSchema';
+
+const {serviceType}SchemaLoaders: Partial<Record<{ServiceType}Type, SchemaLoader>> = {
+  [{ServiceType}Type.MyDb]: () =>
+    loadConnectionSchema('connections/{serviceType}/myDbConnection.json'),
+  // ...
+};
 ```
 
-```typescript
-case {ServiceType}Type.MyDb: {
-    schema = myDbConnection;
-    break;
-}
-```
+The `getXxxConfig` function then awaits the loader and resolves the schema
+module. Look at `DatabaseServicePureUtils.ts` for the canonical pattern.
+
+The JSON itself is generated from `openmetadata-spec` by `yarn parse-schema`
+(or `parseSchemas.js`) into `public/jsons/connectionSchemas/`; commit the
+generated file alongside the code change.
 
 ### 5. Service Icon Asset
 

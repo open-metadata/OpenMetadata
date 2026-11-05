@@ -7,6 +7,7 @@ import org.openmetadata.schema.analytics.ReportData.ReportDataType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.resources.analytics.ReportDataResource;
 
 public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData> {
@@ -34,8 +35,10 @@ public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData>
   }
 
   public void deleteReportDataAtDate(ReportDataType reportDataType, String date) {
+    long startTs = TimestampUtils.getTimestampFromDateString(date);
+    long endTs = TimestampUtils.addDays(startTs, 1);
     ((CollectionDAO.ReportDataTimeSeriesDAO) timeSeriesDao)
-        .deleteReportDataTypeAtDate(reportDataType.value(), date);
+        .deleteReportDataTypeAtDate(reportDataType.value(), startTs, endTs);
     cleanUpIndex(reportDataType, date);
   }
 

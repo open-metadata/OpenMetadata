@@ -10,26 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isUndefined } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import type { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import type { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
-import type { Glossary } from '../generated/entity/data/glossary';
 import {
   EntityStatus,
+  ProviderType,
   type GlossaryTerm,
 } from '../generated/entity/data/glossaryTerm';
-import type { Domain } from '../generated/entity/domains/domain';
 import type { Task } from '../generated/entity/tasks/task';
 import type { User } from '../generated/entity/teams/user';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
-import { calculatePercentageFromValue } from './NumberUtils';
 import { getGlossaryPath } from './RouterUtils';
 
-export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
+export const buildTree = (
+  data: GlossaryTerm[],
+  // FQN of the container the flat list was fetched under (the glossary or the
+  // term being viewed). Its direct children reference it as their parent but it
+  // is not itself part of the data, so they must be treated as genuine roots
+  // rather than orphans of a not-yet-loaded page.
+  rootParentFqn?: string
+): GlossaryTerm[] => {
   const nodes: Record<string, GlossaryTerm> = {};
 
   data.forEach((obj) => {
@@ -42,11 +46,35 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const tree: GlossaryTerm[] = [];
   data.forEach((obj) => {
     const current = nodes[obj.fullyQualifiedName ?? ''];
-    const parent = nodes[obj.parent?.fullyQualifiedName ?? ''];
+    const parentFqn = obj.parent?.fullyQualifiedName;
+    const parentNode = parentFqn ? nodes[parentFqn] : undefined;
 
-    if (parent?.children) {
-      parent.children.push({ ...current, type: 'glossaryTerm' });
-    } else {
+    if (parentNode) {
+      // Push the live node (mutated in place), not a shallow copy: children can
+      // be attached to this node on a later page, and a snapshot would keep the
+      // node's original (possibly undefined) children array, orphaning any
+      // grandchildren added afterwards.
+      (parentNode.children ??= []).push(
+        Object.assign(current, { type: 'glossaryTerm' })
+      );
+
+      return;
+    }
+
+    // A term that references a parent term absent from this data set is an
+    // orphan of a not-yet-loaded page (progressive expand-all paginates all
+    // levels by name, so a descendant can arrive before its parent). Hold it
+    // back instead of promoting it to a spurious root and corrupting the
+    // hierarchy; it attaches once its parent's page loads. Gate on the parent
+    // FQN's presence — not a populated parent.type, which the API may omit —
+    // and treat as genuine roots the terms whose parent is the glossary itself
+    // or the view's root container (its direct children are never in the data).
+    const isOrphanOfUnloadedParent =
+      Boolean(parentFqn) &&
+      obj.parent?.type !== EntityType.GLOSSARY &&
+      parentFqn !== rootParentFqn;
+
+    if (!isOrphanOfUnloadedParent) {
       tree.push(current);
     }
   });
@@ -174,40 +202,6 @@ export const updateGlossaryTermByFqn = (
   }) as ModifiedGlossary[];
 };
 
-export const findItemByFqn = (
-  list: ModifiedGlossaryTerm[] | Domain[],
-  fullyQualifiedName: string,
-  withReference = true
-): GlossaryTerm | Glossary | ModifiedGlossary | Domain | null => {
-  for (const item of list) {
-    if (
-      (item.fullyQualifiedName ?? (item as ModifiedGlossaryTerm).value) ===
-      fullyQualifiedName
-    ) {
-      return withReference
-        ? item
-        : {
-            ...item,
-            fullyQualifiedName:
-              item.fullyQualifiedName ??
-              (item as ModifiedGlossaryTerm).data?.tagFQN,
-            ...((item as ModifiedGlossaryTerm).data ?? {}),
-          };
-    }
-    if (item.children) {
-      const found = findItemByFqn(
-        item.children as ModifiedGlossaryTerm[],
-        fullyQualifiedName
-      );
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return null;
-};
-
 export const findExpandableKeys = (
   glossaryTerm?: ModifiedGlossaryTerm
 ): string[] => {
@@ -226,10 +220,8 @@ export const findExpandableKeys = (
     if (glossaryTerm.fullyQualifiedName) {
       expandableKeys.push(glossaryTerm.fullyQualifiedName);
     }
-  } else if (glossaryTerm.childrenCount) {
-    if (glossaryTerm.fullyQualifiedName) {
-      expandableKeys.push(glossaryTerm.fullyQualifiedName);
-    }
+  } else if (glossaryTerm.childrenCount && glossaryTerm.fullyQualifiedName) {
+    expandableKeys.push(glossaryTerm.fullyQualifiedName);
   }
 
   return expandableKeys;
@@ -245,43 +237,6 @@ export const findExpandableKeysForArray = (
   });
 
   return expandableKeys;
-};
-
-export const filterTreeNodeOptions = (
-  options: Glossary[],
-  filterOptions: string[]
-): Glossary[] => {
-  if (isEmpty(filterOptions)) {
-    return options;
-  }
-
-  const filterNodes = (
-    nodes: ModifiedGlossaryTerm[]
-  ): ModifiedGlossaryTerm[] => {
-    return nodes.reduce(
-      (acc: ModifiedGlossaryTerm[], node: ModifiedGlossaryTerm) => {
-        const isMatching = filterOptions.includes(
-          node.fullyQualifiedName ?? ''
-        );
-
-        const filteredChildren = !isUndefined(node.children)
-          ? filterNodes(node.children as unknown as ModifiedGlossaryTerm[])
-          : [];
-
-        if (!isMatching) {
-          acc.push({
-            ...node,
-            children: filteredChildren,
-          });
-        }
-
-        return acc;
-      },
-      []
-    );
-  };
-
-  return filterNodes(options as ModifiedGlossaryTerm[]);
 };
 
 export const findAndUpdateNested = (
@@ -315,22 +270,53 @@ export const findAndUpdateNested = (
   });
 };
 
-export const glossaryTermTableColumnsWidth = (
-  tableWidth: number,
-  havingCreatePermission: boolean
-) => {
+// Fixed pixel column widths (with horizontal scroll) so the glossary terms
+// table has the same consistent cell spacing as the classification table,
+// instead of columns squeezing/stretching with the container width.
+export const glossaryTermTableColumnsWidth = () => {
   return {
-    name: calculatePercentageFromValue(tableWidth, 30),
-    description: calculatePercentageFromValue(
-      tableWidth,
-      havingCreatePermission ? 21 : 33
-    ),
-    reviewers: calculatePercentageFromValue(tableWidth, 33),
-    synonyms: calculatePercentageFromValue(tableWidth, 33),
-    owners: calculatePercentageFromValue(tableWidth, 17),
-    status: calculatePercentageFromValue(tableWidth, 20),
+    name: 250,
+    descriptionMin: 420,
+    // Ceiling for the same cell: under auto table layout an unbounded cell
+    // would take its longest line's width and keep widening the column —
+    // the two-line clamp only clamps against a bounded box.
+    descriptionMax: 480,
+    reviewers: 200,
+    synonyms: 200,
+    owners: 220,
+    status: 150,
   };
 };
+
+interface TermStatusNode {
+  fullyQualifiedName?: string;
+  entityStatus?: EntityStatus;
+  children?: unknown[];
+}
+
+/** The term tree with one term's status replaced, wherever it sits. */
+export const updateGlossaryTermStatus = <T extends TermStatusNode>(
+  terms: T[],
+  targetFqn: string,
+  newStatus: EntityStatus
+): T[] =>
+  terms.map((term) => {
+    if (term.fullyQualifiedName === targetFqn) {
+      return { ...term, entityStatus: newStatus };
+    }
+    if (term.children?.length) {
+      return {
+        ...term,
+        children: updateGlossaryTermStatus(
+          term.children as T[],
+          targetFqn,
+          newStatus
+        ),
+      };
+    }
+
+    return term;
+  });
 
 export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
   `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFQN}>`;
@@ -382,3 +368,15 @@ export const referenceURLValidator = (
     new Error(i18n.t('message.url-must-start-with-http-or-https'))
   );
 };
+
+const AWAITING_DECISION = new Set<EntityStatus>([
+  EntityStatus.Draft,
+  EntityStatus.InReview,
+]);
+
+/** A term an automation (an AI agent) created that no one has approved yet. */
+export const isAiGeneratedDraft = (
+  term: Pick<GlossaryTerm, 'entityStatus' | 'provider'>
+): boolean =>
+  term.provider === ProviderType.Automation &&
+  AWAITING_DECISION.has(term.entityStatus ?? EntityStatus.Approved);

@@ -20,6 +20,8 @@ import subprocess
 import tarfile
 from pathlib import Path
 
+import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / ".github" / "scripts"
@@ -75,9 +77,7 @@ def test_distribution_fingerprint_ignores_tests_but_tracks_runtime_and_bundle_mo
     )
     initialize_repository(tmp_path)
 
-    regular = fingerprints.fingerprint(
-        "distribution", root=tmp_path, bundle_mode="regular", toolchain="maven"
-    )
+    regular = fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="regular", toolchain="maven")
     write(
         tmp_path,
         "openmetadata-ui/src/main/resources/ui/src/App.test.tsx",
@@ -93,30 +93,15 @@ def test_distribution_fingerprint_ignores_tests_but_tracks_runtime_and_bundle_mo
         "openmetadata-ui/src/main/resources/ui/playwright.config.ts",
         "export default { retries: 1 };",
     )
-    assert (
-        fingerprints.fingerprint(
-            "distribution", root=tmp_path, bundle_mode="regular", toolchain="maven"
-        )
-        == regular
-    )
+    assert fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="regular", toolchain="maven") == regular
 
     write(
         tmp_path,
         "openmetadata-ui/src/main/resources/ui/src/App.tsx",
         "export const App = 2;",
     )
-    assert (
-        fingerprints.fingerprint(
-            "distribution", root=tmp_path, bundle_mode="regular", toolchain="maven"
-        )
-        != regular
-    )
-    assert (
-        fingerprints.fingerprint(
-            "distribution", root=tmp_path, bundle_mode="coarse", toolchain="maven"
-        )
-        != regular
-    )
+    assert fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="regular", toolchain="maven") != regular
+    assert fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="coarse", toolchain="maven") != regular
 
 
 def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
@@ -162,6 +147,22 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
         assert fingerprints.fingerprint("fixture", root=tmp_path) != before
 
 
+def test_fixture_fingerprint_tracks_search_mappings(tmp_path: Path) -> None:
+    mapping = "openmetadata-spec/src/main/resources/elasticsearch/en/metric_index_mapping.json"
+    write(tmp_path, "pom.xml", "<project />")
+    write(tmp_path, mapping, '{"mappings":{"properties":{}}}')
+    initialize_repository(tmp_path)
+
+    initial = fingerprints.fingerprint("fixture", root=tmp_path)
+    write(
+        tmp_path,
+        mapping,
+        '{"mappings":{"properties":{"followers":{"type":"keyword"}}}}',
+    )
+
+    assert fingerprints.fingerprint("fixture", root=tmp_path) != initial
+
+
 def test_fixture_typescript_dependency_scan_follows_dynamic_imports(
     tmp_path: Path,
 ) -> None:
@@ -186,23 +187,39 @@ def test_fixture_typescript_dependency_scan_appends_extension_to_dotted_basename
     assert dependencies == {entrypoint, helper}
 
 
+def test_fixture_fingerprint_ignores_playwright_config_but_tracks_setup_scripts(
+    tmp_path: Path,
+) -> None:
+    """Retry/shard/quarantine edits must not evict the golden fixture.
+
+    playwright.config.ts only reads the seeded auth state; auth.setup.ts writes
+    it. Hashing the config made every quarantine edit pay a fixture rebuild.
+    """
+    config = "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
+    setup = "openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts"
+    write(tmp_path, "pom.xml", "<version>1</version>")
+    write(tmp_path, config, "export default { retries: 1 };")
+    write(tmp_path, setup, "const adminFile = 'playwright/.auth/admin.json';")
+    initialize_repository(tmp_path)
+
+    initial = fingerprints.fingerprint("fixture", root=tmp_path)
+
+    write(tmp_path, config, "export default { retries: 2, grepInvert: /@quarantine/ };")
+    assert fingerprints.fingerprint("fixture", root=tmp_path) == initial
+
+    write(tmp_path, setup, "const adminFile = 'playwright/.auth/root.json';")
+    assert fingerprints.fingerprint("fixture", root=tmp_path) != initial
+
+
 def test_fixture_fingerprint_tracks_ui_auth_storage_format(tmp_path: Path) -> None:
     storage_inputs = {
-        "openmetadata-ui/src/main/resources/ui/public/app-worker.js": (
-            "const DB_NAME = 'AppDataStore';"
-        ),
+        "openmetadata-ui/src/main/resources/ui/public/app-worker.js": ("const DB_NAME = 'AppDataStore';"),
         "openmetadata-ui/src/main/resources/ui/playwright/utils/tokenStorage.ts": (
             "export const DB_NAME = 'AppDataStore';"
         ),
-        "openmetadata-ui/src/main/resources/ui/src/utils/OidcTokenStorage.ts": (
-            "export const storage = {};"
-        ),
-        "openmetadata-ui/src/main/resources/ui/src/utils/SwMessenger.ts": (
-            "export const send = () => undefined;"
-        ),
-        "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorage.ts": (
-            "export const store = {};"
-        ),
+        "openmetadata-ui/src/main/resources/ui/src/utils/OidcTokenStorage.ts": ("export const storage = {};"),
+        "openmetadata-ui/src/main/resources/ui/src/utils/SwMessenger.ts": ("export const send = () => undefined;"),
+        "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorage.ts": ("export const store = {};"),
         "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorageUtils.ts": (
             "export const APP_STATE_KEY = 'app_state';"
         ),
@@ -265,11 +282,7 @@ def test_ingestion_fingerprint_covers_every_dockerfile_ci_copy_input(
 
 def token(email: str, session_id: str, expiry: int = 4_000_000_000) -> str:
     payload = (
-        base64.urlsafe_b64encode(
-            json.dumps(
-                {"email": email, "sessionId": session_id, "exp": expiry}
-            ).encode()
-        )
+        base64.urlsafe_b64encode(json.dumps({"email": email, "sessionId": session_id, "exp": expiry}).encode())
         .decode()
         .rstrip("=")
     )
@@ -305,9 +318,7 @@ def storage_state(email: str) -> dict:
                                 "records": [
                                     {
                                         "key": "app_state",
-                                        "value": json.dumps(
-                                            {"primary": token(email, "expired")}
-                                        ),
+                                        "value": json.dumps({"primary": token(email, "expired")}),
                                     }
                                 ],
                                 "indexes": [],
@@ -320,9 +331,7 @@ def storage_state(email: str) -> dict:
     }
 
 
-def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(tmp_path: Path, monkeypatch) -> None:
     auth_dir = tmp_path / "auth"
     auth_dir.mkdir()
     states = {
@@ -341,9 +350,7 @@ def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(
     monkeypatch.setattr(auth_rotation, "login", fake_login)
     admin_token = auth_rotation.rotate_auth_state(auth_dir, "https://localhost:8585")
 
-    assert json.loads((auth_dir / "admin-api-token.json").read_text()) == {
-        "token": admin_token
-    }
+    assert json.loads((auth_dir / "admin-api-token.json").read_text()) == {"token": admin_token}
     assert calls == [
         ("https://localhost:8585", auth_rotation.ADMIN_EMAIL, "admin"),
         (
@@ -354,14 +361,10 @@ def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(
     ]
     for filename, email in states.items():
         state = json.loads((auth_dir / filename).read_text())
-        cookie = next(
-            cookie for cookie in state["cookies"] if cookie["name"] == "OM_SESSION"
-        )
+        cookie = next(cookie for cookie in state["cookies"] if cookie["name"] == "OM_SESSION")
         assert cookie["value"] == f"fresh-{email.split('@')[0]}"
         assert cookie["secure"] is True
-        fresh_token = json.loads(auth_rotation.app_state_record(state)["value"])[
-            "primary"
-        ]
+        fresh_token = json.loads(auth_rotation.app_state_record(state)["value"])["primary"]
         assert auth_rotation.decode_jwt_payload(fresh_token)["email"] == email
         assert oct(os.stat(auth_dir / filename).st_mode & 0o777) == "0o600"
 
@@ -381,18 +384,14 @@ def test_ingestion_sidecar_validator_rejects_archive_tampering(tmp_path: Path) -
     ).strip()
     manifest = {
         "version": 1,
-        "sourceSha": subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-        ).strip(),
+        "sourceSha": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "createdAt": "2026-07-22T00:00:00Z",
         "compatibilityHash": compatibility,
         "image": f"openmetadata-playwright-ingestion:{compatibility}",
         "imageId": f"sha256:{'1' * 64}",
         "archiveHash": hashlib.sha256(archive.read_bytes()).hexdigest(),
     }
-    archive.with_name("playwright-ingestion-image.manifest.json").write_text(
-        json.dumps(manifest)
-    )
+    archive.with_name("playwright-ingestion-image.manifest.json").write_text(json.dumps(manifest))
     validator = SCRIPTS / "validate_playwright_ingestion_image.sh"
     subprocess.run([validator, archive, compatibility], cwd=ROOT, check=True)
 
@@ -454,58 +453,319 @@ def test_distribution_cache_validates_manifest_archive_and_bundle_mode(
 
 
 def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None:
-    workflow = (ROOT / ".github/workflows/playwright-postgresql-e2e.yml").read_text()
-    assert (
-        "restore-playwright-fixture:\n    needs: [cache-keys, plan-playwright]"
-        in workflow
-    )
+    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    assert "restore-playwright-fixture:\n    needs: [cache-keys, plan-playwright]" in workflow
     assert "build:\n    needs: [check-changes, cache-keys]" in workflow
-    assert "actions/cache/restore@v5" in workflow
-    assert "actions/cache/save@v5" in workflow
+    assert "actions/cache/restore@v6" in workflow
+    assert "actions/cache/save@v6" in workflow
     assert "playwright-golden-fixture-v2-" in workflow
     assert "playwright-ingestion-image-v2-" in workflow
     assert "playwright-distribution-v2-" in workflow
     assert "mvn -DskipTests clean package -pl openmetadata-dist -am" in workflow
     assert "npx playwright test --project=bundle-smoke --reporter=line" in workflow
-    assert (
-        "COARSE_BUNDLE: ${{ github.event_name != 'workflow_dispatch' || inputs.coarse_bundle }}"
-        in workflow
-    )
-    assert (
-        "PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}"
-        in workflow
-    )
+    assert "COARSE_BUNDLE: ${{ inputs.coarse_bundle }}" in workflow
+    assert "PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}" in workflow
     assert "compression-level: 0" in workflow
-    assert "CACHE_KEYS_RESULT: ${{ needs.cache-keys.result }}" in workflow
-    assert (
-        "FIXTURE_RESTORE_RESULT: ${{ needs.restore-playwright-fixture.result }}"
-        in workflow
-    )
+    # CACHE_KEYS_RESULT / FIXTURE_RESTORE_RESULT are consumed by the summary
+    # job that now lives in the postgres PR caller. Confirm the reusable
+    # surfaces them via workflow_call outputs (which the caller renames to
+    # cache_keys_result / restore_playwright_fixture_result).
+    assert "cache_keys_result:" in workflow
+    assert "restore_playwright_fixture_result:" in workflow
 
-    restore_job = workflow.split("  restore-playwright-fixture:", 1)[1].split(
-        "  prepare-playwright-fixture:", 1
-    )[0]
-    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split(
-        "  playwright-ci-postgresql:", 1
-    )[0]
+    restore_job = workflow.split("  restore-playwright-fixture:", 1)[1].split("  prepare-playwright-fixture:", 1)[0]
+    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split("  prepare-ingestion-image:", 1)[0]
+    ingestion_job = workflow.split("  prepare-ingestion-image:", 1)[1].split("  playwright-ci:", 1)[0]
     assert "if: ${{ steps.validate-fixture.outputs.usable == 'true' }}" in restore_job
-    assert "if: ${{ steps.validate-ingestion.outputs.usable == 'true' }}" in restore_job
-    assert (
-        "if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}"
-        in prepare_job
-    )
-    assert (
-        "needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true'"
-        in prepare_job
-    )
+    assert "if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}" in prepare_job
+    # The ingestion image is restored or built once, alongside `build`, and the
+    # fixture rebuild loads it instead of building it again.
+    assert "ingestion" not in restore_job.lower()
+    assert "  prepare-ingestion-image:\n    needs: [cache-keys]\n" in workflow
+    assert "if: ${{ steps.validate-ingestion.outputs.usable != 'true' }}" in ingestion_job
+    assert "pack_playwright_ingestion_image.sh" in ingestion_job
+    assert 'echo "OM_INGESTION_IMAGE_PRELOADED=true" >> "$GITHUB_ENV"' in prepare_job
+    assert prepare_job.index("name: Load ingestion image") < prepare_job.index("name: Prepare seeded environment")
+    planner = workflow.split("  plan-playwright:", 1)[1].split("  restore-playwright-fixture:", 1)[0]
+    assert "    needs: [check-changes, detect-changes]\n" in planner
     assert "${{ env.DISTRIBUTION_CACHE_DIR }}/openmetadata-*.tar.gz" in workflow
-    assert (
-        workflow.count("npx playwright test --project=bundle-smoke --reporter=line")
-        == 2
-    )
+    assert workflow.count("npx playwright test --project=bundle-smoke --reporter=line") == 2
 
     fixture_start = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
-    assert (
-        'jq -r .sourceSha "$manifest")" != "$(git rev-parse HEAD)' not in fixture_start
-    )
+    assert 'jq -r .sourceSha "$manifest")" != "$(git rev-parse HEAD)' not in fixture_start
     assert "rotate_playwright_auth_state.py" in fixture_start
+
+
+def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
+    """Merge-queue refs are deleted on dequeue, so a save there helps nobody.
+
+    Actions scopes a cache to the ref that wrote it. gh-readonly-queue refs are
+    unique per entry and short-lived, so those saves are unreadable by every
+    future run while still consuming the repo's 10 GB LRU budget and evicting
+    the main-scoped copies runs actually restore. Measured before the guard:
+    0/13 golden-fixture hits on merge_group, ~17 min rebuilt every time.
+    """
+    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    guard = "github.event_name != 'merge_group'"
+
+    writers = workflow.count("uses: actions/cache/save@")
+    assert writers == 5, f"cache writer count changed to {writers}; guard each one"
+    cache_steps = [step for step in workflow.split("      - name:") if "uses: actions/cache/save@" in step]
+    assert len(cache_steps) == writers
+    assert all(guard in step for step in cache_steps)
+
+    # cache-ui-dist is the documented exception: it wraps `actions/cache`, whose
+    # save is a post-step, so a step-level `if:` would suppress the restore too
+    # and cost every queue entry the ~5 min frontend build.
+    ui_dist_step = workflow.split("- name: Restore openmetadata-ui dist cache", 1)[1].split(
+        "- name: Build with Maven", 1
+    )[0]
+    assert "uses: ./.github/actions/cache-ui-dist" in ui_dist_step
+    assert guard not in ui_dist_step
+
+    # populate-playwright-caches.yml is the SINGLE main-scoped writer that
+    # replaces them, and its warm job must stop before the shards.
+    warm = (ROOT / ".github/workflows/populate-playwright-caches.yml").read_text()
+    assert "warm_caches_only: true" in warm
+    assert "uses: ./.github/workflows/playwright-e2e-reusable.yml" in warm
+    assert "!inputs.warm_caches_only" in workflow
+
+    # The push trigger must stay unfiltered: the fixture and distribution
+    # fingerprints span far more than the apt/yarn/browser key inputs, and a
+    # skipped warm costs every queue entry ~17 min.
+    #
+    # Bound to the `on:` block first. `push:` is the LAST trigger, so slicing
+    # forward to a sibling key finds no terminator and silently runs to EOF —
+    # the assertions would then be inspecting the jobs, and a `paths:` added
+    # anywhere later in the file would trip the check for the wrong reason.
+    triggers = warm.split("\non:\n", 1)[1].split("\npermissions:", 1)[0]
+    assert "jobs:" not in triggers
+    push_trigger = triggers.split("  push:", 1)[1]
+    assert "branches:\n      - main" in push_trigger
+    assert "paths:" not in push_trigger
+
+    # One writer, not two — a second warmer workflow is the drift the
+    # one-writer rule exists to prevent.
+    second_writer = ROOT / ".github/workflows/populate-playwright-fixture-cache.yml"
+    assert not second_writer.exists()
+
+
+def test_prune_workflow_only_deletes_caches_on_dead_queue_refs() -> None:
+    prune = (ROOT / ".github/workflows/prune-ephemeral-caches.yml").read_text()
+    assert "actions: write" in prune
+    # Deleting a cache whose ref is still live would force an in-flight queue
+    # entry to rebuild it.
+    assert 'grep -qxF "$ref" <<<"$live"' in prune
+    assert "kept=$((kept + 1))" in prune
+    assert "refs/heads/gh-readonly-queue/" in prune
+    # `set -e` must abort before the delete loop if the ref listing fails —
+    # an empty list must never read as "every queue ref is dead".
+    listing = prune.split("live=$(gh api", 1)[0]
+    assert "set -euo pipefail" in listing
+
+
+def test_prune_workflow_only_cancels_runs_on_dead_queue_refs() -> None:
+    prune = (ROOT / ".github/workflows/prune-ephemeral-caches.yml").read_text()
+    # Rebuilds start new entries via merge_group; the sweep must fire there.
+    assert "\n  merge_group:\n" in prune
+    cancel = prune.split("  cancel-stale-runs:", 1)[1]
+    # Cancelling a run whose ref is still live would kill a real queue check.
+    assert 'grep -qxF "$branch" <<<"$live"' in cancel
+    assert '[[ "$id" == "$SELF_RUN_ID" ]] && continue' in cancel
+    # A merged group's still-running checks are post-merge signal for main.
+    assert '[[ "${merged[$pr]}" == "true" ]]' in cancel
+    assert "gh-readonly-queue/" in cancel
+    assert "  pull_request_target:\n    types: [dequeued]\n" in prune
+    listing = cancel.split("live=$(gh api", 1)[0]
+    assert "set -euo pipefail" in listing
+    # Refs listed after runs, or a just-created entry's runs read as dead.
+    assert "actions/runs?event=merge_group" in listing
+
+
+FIXTURE_DATABASES = ("postgresql", "mysql")
+
+
+def fixture_profile(database: str) -> dict[str, str]:
+    output = subprocess.check_output(
+        [
+            "bash",
+            "-c",
+            'set -a && source "$1" && load_playwright_fixture_profile "$2" && env | grep "^PW_"',
+            "profile",
+            str(SCRIPTS / "playwright_fixture_profile.sh"),
+            database,
+        ],
+        env={"PATH": os.environ["PATH"]},
+        text=True,
+    )
+    return dict(line.split("=", 1) for line in output.splitlines())
+
+
+def compose_service(compose_file: str, service: str) -> dict:
+    return yaml.safe_load((ROOT / compose_file).read_text())["services"][service]
+
+
+def volume_targets(service: dict) -> set[str]:
+    return {
+        volume["target"] if isinstance(volume, dict) else volume.split(":")[1]
+        for volume in service.get("volumes", [])
+    }
+
+
+@pytest.mark.parametrize("database", FIXTURE_DATABASES)
+def test_fixture_profile_matches_the_seeded_and_fast_compose_stacks(database: str) -> None:
+    """The builder snapshots the seeded stack's mounts and the launcher restores
+    them into the fast stack, so both must agree with the profile. A container
+    name that does not exist made every MySQL fixture build fail."""
+    profile = fixture_profile(database)
+    for kind in ("DATABASE", "SEARCH"):
+        seeded = compose_service(profile["PW_COMPOSE_FILE"], profile[f"PW_{kind}_SERVICE"])
+        fast = compose_service(profile["PW_FAST_COMPOSE_FILE"], profile[f"PW_{kind}_SERVICE"])
+        assert seeded["container_name"] == profile[f"PW_{kind}_CONTAINER"]
+        assert profile[f"PW_{kind}_DATA_PATH"] in volume_targets(seeded)
+        assert profile[f"PW_{kind}_DATA_PATH"] in volume_targets(fast)
+
+    base_image = (ROOT / profile["PW_DATABASE_DOCKERFILE"]).read_text().split()[1]
+    fast_database = compose_service(profile["PW_FAST_COMPOSE_FILE"], profile["PW_DATABASE_SERVICE"])
+    assert fast_database["image"].endswith(f":-{base_image}}}")
+    seeded_search = compose_service(profile["PW_COMPOSE_FILE"], profile["PW_SEARCH_SERVICE"])
+    fast_search = compose_service(profile["PW_FAST_COMPOSE_FILE"], profile["PW_SEARCH_SERVICE"])
+    assert fast_search["image"].endswith(f":-{seeded_search['image']}}}")
+
+
+def build_seeded_fixture(tmp_path: Path, database: str, layout: tuple[str, ...]) -> Path:
+    stage = tmp_path / "stage"
+    for relative in layout:
+        write(stage, relative, "data")
+    for relative in (
+        "auth/admin.json",
+        "auth/admin-api-token.json",
+        "entity-response-data.json",
+        "lineage-data.json",
+        "shared-infra.json",
+    ):
+        write(stage, f"playwright-state/{relative}", "{}")
+
+    def fingerprint(kind: str) -> str:
+        return subprocess.check_output(
+            ["python3", str(SCRIPTS / "playwright_cache_fingerprint.py"), "--kind", kind],
+            cwd=ROOT,
+            text=True,
+        ).strip()
+
+    state_hash = subprocess.check_output(
+        "find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d ' ' -f1",
+        shell=True,
+        cwd=stage / "playwright-state",
+        text=True,
+    ).strip()
+    seed_version = subprocess.check_output(
+        "sed -n 's:.*<version>\\([^<]*\\)</version>.*:\\1:p' pom.xml | head -1",
+        shell=True,
+        cwd=ROOT,
+        text=True,
+    ).strip()
+    manifest = {
+        "version": 3,
+        "sourceSha": "a" * 40,
+        "createdAt": "2026-10-28T00:00:00Z",
+        "compatibilityHash": fingerprint("fixture"),
+        "database": database,
+        "databaseImage": f"{database}@sha256:{'1' * 64}",
+        "searchImage": f"search@sha256:{'2' * 64}",
+        "searchClusterAlias": "openmetadata",
+        "schemaHash": fingerprint("schema"),
+        "seedHash": fingerprint("seed"),
+        "seedVersion": seed_version,
+        "playwrightStateHash": state_hash,
+    }
+    (stage / "fixture-manifest.json").write_text(json.dumps(manifest))
+    fixture = tmp_path / "playwright-fixture.tar.zst"
+    subprocess.run(["tar", "--zstd", "-C", stage, "-cf", fixture, "."], check=True)
+    return fixture
+
+
+MYSQL_LAYOUT = ("database/mysql.ibd", "search/indices/abc/0/index/segments_1")
+POSTGRES_LAYOUT = ("database/PG_VERSION", "search/nodes/0/indices/abc/0/index/segments_1")
+
+
+def validate_fixture(fixture: Path, expected_database: str) -> subprocess.CompletedProcess:
+    compatibility = json.loads(
+        subprocess.check_output(["tar", "--zstd", "-xOf", fixture, "./fixture-manifest.json"])
+    )["compatibilityHash"]
+    return subprocess.run(
+        [SCRIPTS / "validate_playwright_fixture.sh", fixture, compatibility],
+        cwd=ROOT,
+        env={**os.environ, "GITHUB_WORKSPACE": str(ROOT), "PLAYWRIGHT_DATABASE": expected_database},
+        capture_output=True,
+        text=True,
+    )
+
+
+@pytest.mark.parametrize(
+    ("database", "layout"), [("mysql", MYSQL_LAYOUT), ("postgresql", POSTGRES_LAYOUT)]
+)
+def test_fixture_validator_accepts_a_fixture_seeded_on_the_requested_database(
+    tmp_path: Path, database: str, layout: tuple[str, ...]
+) -> None:
+    result = validate_fixture(build_seeded_fixture(tmp_path, database, layout), database)
+    assert result.returncode == 0, result.stderr
+
+
+def test_fixture_validator_rejects_a_fixture_seeded_on_another_database(tmp_path: Path) -> None:
+    fixture = build_seeded_fixture(tmp_path, "postgresql", POSTGRES_LAYOUT)
+    result = validate_fixture(fixture, "mysql")
+    assert result.returncode != 0
+    assert "seeded on 'postgresql', not 'mysql'" in result.stderr
+
+
+def test_fixture_validator_requires_the_search_layout_of_the_fixture_database(
+    tmp_path: Path,
+) -> None:
+    fixture = build_seeded_fixture(tmp_path, "mysql", ("database/mysql.ibd", "search/nodes/0/x"))
+    result = validate_fixture(fixture, "mysql")
+    assert result.returncode != 0
+    assert "missing ./search/indices/" in result.stderr
+
+
+def test_golden_fixture_cache_is_scoped_by_database() -> None:
+    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    keys = [line.strip() for line in workflow.splitlines() if "key: playwright-golden-fixture-" in line]
+    assert len(keys) == 2
+    assert all("playwright-golden-fixture-v2-${{ inputs.database }}-" in key for key in keys)
+    assert "PLAYWRIGHT_DATABASE: ${{ inputs.database }}" in workflow
+
+
+def test_visual_renders_the_regular_bundle_in_front_of_the_shared_server() -> None:
+    # ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle
+    workflows = ROOT / ".github/workflows"
+    reusable = (workflows / "playwright-e2e-reusable.yml").read_text()
+    outputs = reusable.split("  check-changes:", 1)[1].split("    steps:", 1)[0]
+    visual = next(line for line in outputs.splitlines() if line.startswith("      visual:"))
+    rdf = next(line for line in outputs.splitlines() if line.startswith("      rdf:"))
+    assert "coarse_bundle" not in visual
+    assert "inputs.protocol != 'h2'" in visual
+    assert "inputs.protocol != 'h2'" in rdf
+    assert visual.endswith("|| 'false' }}") and rdf.endswith("|| 'false' }}")
+
+    for workflow in ("playwright-e2e-reusable.yml", "playwright-postgresql-e2e.yml",
+                     "postgresql-nightly-e2e.yml", "mysql-nightly-e2e.yml"):
+        block = (workflows / workflow).read_text().split("      coarse_bundle:\n", 1)[1]
+        assert block.split("default:", 1)[1].split("\n", 1)[0].strip() == "true", workflow
+
+    ui_job = reusable.split("\n  build-visual-ui:\n", 1)[1].split("\n  detect-changes:\n", 1)[0]
+    assert "needs.check-changes.outputs.visual == 'true'" in ui_job
+    assert "variant: pw-e2e-build" in ui_job
+    assert 'PW_E2E_BUILD: "true"' in ui_job and "PW_E2E_BUNDLE" not in ui_job
+    assert "name: playwright-visual-ui" in ui_job
+
+    shard = reusable.split("\n  playwright-ci:\n", 1)[1].split("\n  slack-notify:\n", 1)[0]
+    for step in ("Restore Playwright browser cache", "Cache Playwright system deps", "Install Playwright Browsers"):
+        body = shard.split(f"      - name: {step}\n", 1)[1].split("      - name:", 1)[0]
+        assert body.count("if: ${{ matrix.lane != 'visual' }}") == 1, step
+    assert "        build-visual-ui,\n" in shard
+    serve = shard.split("      - name: Serve the regular UI in front of the visual server\n", 1)[1].split("      - name:", 1)[0]
+    assert "if: ${{ matrix.lane == 'visual' }}" in serve
+    assert "serve_playwright_ui.cjs" in serve
+    assert 'PLAYWRIGHT_TEST_BASE_URL=http://127.0.0.1:3300' in serve
+    assert shard.index("Serve the regular UI in front of the visual server") < shard.index("      - name: Run Playwright tests")

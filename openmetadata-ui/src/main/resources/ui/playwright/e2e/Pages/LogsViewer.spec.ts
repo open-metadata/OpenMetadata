@@ -25,6 +25,7 @@ import {
   navigateToBundleSuiteWithPagination,
   waitForFirstPipelineStatusNotQueued,
 } from '../../utils/logsViewer';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 let table: TableClass;
@@ -70,12 +71,16 @@ test.describe(
       await test.step('Open Data Quality → Bundle Suites and click on the newly created bundle', async () => {
         await redirectToHomePage(page);
 
-        const listResponse = page.waitForResponse(
+        const listResponse = waitForResponseWithStatus(
+          page,
           (r) =>
-            r.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
-            r.status() === 200
+            r.request().method() === 'GET' &&
+            r.url().includes('/api/v1/dataQuality/testSuites/search/list'),
+          200
         );
-        await page.goto('/data-quality/test-suites/bundle-suites');
+        await page.goto('/data-quality/test-suites/bundle-suites', {
+          waitUntil: 'domcontentloaded',
+        });
         await listResponse;
         await waitForAllLoadersToDisappear(page);
 
@@ -92,12 +97,16 @@ test.describe(
       await test.step('Open Pipeline tab and click Logs for first pipeline', async () => {
         await waitForFirstPipelineStatusNotQueued(page);
 
-        const pipelinesResponse = page.waitForResponse(
+        const pipelinesResponse = waitForResponseWithStatus(
+          page,
           (r) =>
-            r.url().includes('/api/v1/services/ingestionPipelines') &&
-            r.status() === 200
+            r.request().method() === 'GET' &&
+            r.url().includes('/api/v1/services/ingestionPipelines'),
+          200
         );
-        await expect(page.getByTestId('logs-button').first()).toBeVisible();
+        await expect(
+          page.getByTestId('logs-button').filter({ visible: true })
+        ).not.toHaveCount(0);
         await page.getByTestId('logs-button').first().click();
         await pipelinesResponse;
       });
@@ -107,6 +116,10 @@ test.describe(
         await expect(page.getByTestId('log-viewer-fullscreen')).toBeVisible();
         await expect(page.getByTestId('log-viewer-jump-to-end')).toBeVisible();
         await expect(page.getByTestId('log-viewer-close')).toBeVisible();
+
+        // Following the tail only means anything while a run streams, so a
+        // finished run must not offer the toggle at all.
+        await expect(page.getByTestId('log-viewer-follow')).toBeHidden();
 
         // The URL must NOT change — the logs viewer is now an in-place modal.
         expect(page.url()).not.toContain('/logs');

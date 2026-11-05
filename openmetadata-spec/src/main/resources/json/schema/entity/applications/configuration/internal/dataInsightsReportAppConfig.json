@@ -1,6 +1,6 @@
 {
   "$id": "DataInsightsReportApplication.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DataInsightsReportAppConfig",
   "description": "This schema defines configuration for Data Insights Report Application.",
   "definitions": {

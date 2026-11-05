@@ -15,6 +15,8 @@ REST Auth & Client for Apache Superset
 import json
 import traceback
 
+from cachetools import LRUCache
+
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
@@ -102,6 +104,8 @@ class SupersetAPIClient:
             verify=get_verify_ssl(config.connection.sslConfig),
         )
         self.client = TrackedREST(client_config, source_name="superset")
+        self._datasource_cache = LRUCache(maxsize=512)
+        self._database_cache = LRUCache(maxsize=512)
 
     def get_dashboard_count(self) -> int:
         resp_dashboards = self.client.get("/dashboard/?q=(page:0,page_size:1)")
@@ -223,12 +227,16 @@ class SupersetAPIClient:
         Returns:
             requests.Response
         """
-
+        # Cache only real responses; a transient failure must stay retryable, not
+        # poison the id with an empty result for the rest of the run.
+        if datasource_id in self._datasource_cache:
+            return self._datasource_cache[datasource_id]
         try:
             datasource_response = self.client.get(f"/dataset/{datasource_id}")
             if datasource_response:
                 datasource_list = SupersetDatasource(**datasource_response)
-                return datasource_list  # noqa: RET504
+                self._datasource_cache[datasource_id] = datasource_list
+                return datasource_list
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the datasource list")
@@ -244,12 +252,15 @@ class SupersetAPIClient:
         Returns:
             requests.Response
         """
-
+        # Cache only real responses; keep transient failures retryable.
+        if database_id in self._database_cache:
+            return self._database_cache[database_id]
         try:
             database_response = self.client.get(f"/database/{database_id}")
             if database_response:
                 database_list = ListDatabaseResult(**database_response)
-                return database_list  # noqa: RET504
+                self._database_cache[database_id] = database_list
+                return database_list
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the database list")

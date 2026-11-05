@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.when;
@@ -46,6 +47,9 @@ class OpenSearchBulkSinkColumnBackpressureTest {
     searchRepository = mock(SearchRepository.class);
     OpenSearchClient searchClient = mock(OpenSearchClient.class);
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    lenient()
+        .when(searchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     when(searchRepository.getClusterAlias()).thenReturn("cluster");
   }
 
@@ -65,7 +69,7 @@ class OpenSearchBulkSinkColumnBackpressureTest {
           new OpenSearchBulkSink(searchRepository, 10, 2, 1_000L) {
             @Override
             protected void indexTableColumns(
-                EntityInterface entity, ReindexContext reindexContext) {
+                EntityInterface<?> entity, ReindexContext reindexContext) {
               started.incrementAndGet();
               try {
                 gate.await(30, TimeUnit.SECONDS);
@@ -130,8 +134,8 @@ class OpenSearchBulkSinkColumnBackpressureTest {
         "column-submit-producer");
   }
 
-  private EntityInterface tableEntity(int index) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private EntityInterface<?> tableEntity(int index) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
     when(entity.getName()).thenReturn("table-" + index);
     return entity;

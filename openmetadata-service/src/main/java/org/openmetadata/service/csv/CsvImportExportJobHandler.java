@@ -27,21 +27,23 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jobs.BackgroundJobException;
 import org.openmetadata.service.jobs.JobHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultCsvExporter;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVImportMessage;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -63,6 +65,12 @@ public class CsvImportExportJobHandler implements JobHandler {
         runImport(job, args);
       } else if (args.getSearchExport() != null) {
         runSearchExport(job, args.getSearchExport());
+      } else if (args.getLineageExport() != null) {
+        runLineageExport(job, args.getLineageExport());
+      } else if (args.getAuditExport() != null) {
+        runAuditExport(job, args.getAuditExport());
+      } else if (args.getTestCaseExport() != null) {
+        runTestCaseExport(job, args);
       } else {
         runExport(job, args);
       }
@@ -101,7 +109,7 @@ public class CsvImportExportJobHandler implements JobHandler {
           }
         };
 
-    EntityRepository<EntityInterface> repository = getRepository(args.getEntityType());
+    EntityRepository<EntityInterface<?>> repository = getRepository(args.getEntityType());
     CsvImportResult result =
         nullOrEmpty(args.getVersioningEntityType())
             ? repository.importFromCsv(
@@ -122,46 +130,66 @@ public class CsvImportExportJobHandler implements JobHandler {
 
     createBulkImportVersion(args, result, job.getCreatedBy());
     jobManager.completeImportJob(jobId, result, "Import completed.");
-    sendImportMessage(job.getCreatedBy(), new CSVImportMessage(jobId, "COMPLETED", result, null));
+    // Result is persisted on the job row above; the completion frame stays thin (id + status) so a
+    // large import result is fetched once over REST, not relayed through the websocket table.
+    sendImportMessage(job.getCreatedBy(), new CSVImportMessage(jobId, "COMPLETED", null, null));
   }
 
   private void runExport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {
-    String jobId = String.valueOf(job.getId());
-    EntityRepository<EntityInterface> repository = getRepository(args.getEntityType());
-    CsvExportProgressCallback progressCallback =
-        new CsvExportProgressCallback() {
-          @Override
-          public void onProgress(int exported, int total, String message) {
-            jobManager.updateProgress(jobId, exported, total, message);
-            sendExportMessage(
-                job.getCreatedBy(),
-                new CSVExportMessage(jobId, "IN_PROGRESS", null, null, exported, total, message));
-          }
-
-          @Override
-          public void checkpoint() {
-            jobManager.checkpoint(jobId);
-          }
-        };
-
+    EntityRepository<EntityInterface<?>> repository = getRepository(args.getEntityType());
     String csvData =
         repository.exportToCsv(
             args.getTargetFqn(),
             job.getCreatedBy(),
             Boolean.TRUE.equals(args.getRecursive()),
-            progressCallback);
+            exportProgressCallback(job));
+    completeEntityExport(job, csvData);
+  }
+
+  private void runTestCaseExport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {
+    TestCaseRepository repository =
+        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    String csvData =
+        repository.exportToCsv(
+            args.getTargetFqn(),
+            job.getCreatedBy(),
+            args.getTestCaseExport(),
+            exportProgressCallback(job));
+    completeEntityExport(job, csvData);
+  }
+
+  private CsvExportProgressCallback exportProgressCallback(BackgroundJob job) {
+    String jobId = String.valueOf(job.getId());
+    return new CsvExportProgressCallback() {
+      @Override
+      public void onProgress(int exported, int total, String message) {
+        jobManager.updateProgress(jobId, exported, total, message);
+        sendExportMessage(
+            job.getCreatedBy(),
+            new CSVExportMessage(jobId, "IN_PROGRESS", null, null, exported, total, message));
+      }
+
+      @Override
+      public void checkpoint() {
+        jobManager.checkpoint(jobId);
+      }
+    };
+  }
+
+  private void completeEntityExport(BackgroundJob job, String csvData) {
+    String jobId = String.valueOf(job.getId());
     CsvAsyncJob finishedJob = jobManager.getJob(jobId);
     int progress = finishedJob.getProgress() == null ? 0 : finishedJob.getProgress();
     int total = finishedJob.getTotal() == null ? progress : finishedJob.getTotal();
-    jobManager.completeExportJob(jobId, csvData, "Export completed.", progress, total);
+    jobManager.completeExportJob(jobId, job.getCreatedBy(), csvData, progress, total);
     // The completion event intentionally omits the CSV — clients download it
     // via GET /csvAsyncJobs/{jobId}/result instead of receiving a potentially
     // huge payload over the websocket.
     sendExportMessage(job.getCreatedBy(), new CSVExportMessage(jobId, "COMPLETED", null, null));
   }
 
-  // Streams matching search documents straight into the spool file — the only
-  // export path that never materializes the whole CSV in memory.
+  // Streams matching search documents straight into the compressing buffer — the
+  // only export path that never materializes the whole CSV in memory.
   private void runSearchExport(BackgroundJob job, CsvAsyncJobArgs.SearchExportArgs searchExport)
       throws IOException {
     String jobId = String.valueOf(job.getId());
@@ -190,14 +218,113 @@ public class CsvImportExportJobHandler implements JobHandler {
               effectiveTotal, SearchResultCsvExporter.MAX_EXPORT_ROWS));
     }
 
-    try (OutputStream spool = CsvExportSpool.openForWrite(jobId)) {
+    final String encodedResult;
+    try (CsvExportPayload.Buffer buffer = new CsvExportPayload.Buffer()) {
       OutputStream progressTracking =
-          new RowCountingOutputStream(spool, effectiveTotal, jobId, jobManager);
+          new RowCountingOutputStream(buffer.stream(), effectiveTotal, jobId, jobManager);
       searchRepository.exportSearchResultsCsvStream(
           request, subjectContext, effectiveTotal, from, progressTracking);
+      encodedResult = buffer.finish();
     }
-    jobManager.completeSpooledExportJob(jobId, "Export completed.", effectiveTotal, effectiveTotal);
+    jobManager.completeCompressedExportJob(
+        jobId, job.getCreatedBy(), encodedResult, effectiveTotal, effectiveTotal);
     sendExportMessage(job.getCreatedBy(), new CSVExportMessage(jobId, "COMPLETED", null, null));
+  }
+
+  // Lineage exports used to run on a fire-and-forget executor and push the whole
+  // CSV over the websocket, so the result was lost whenever the user's socket was
+  // on a different server. Routing them through the job row makes the result
+  // downloadable from any server and survivable across a restart.
+  private void runLineageExport(BackgroundJob job, CsvAsyncJobArgs.LineageExportArgs args) {
+    String jobId = String.valueOf(job.getId());
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(job.getCreatedBy());
+    LineageRepository lineageRepository = Entity.getLineageRepository();
+    // Policies read the bot a request is made on behalf of from the request's context, which this
+    // worker thread does not have, so the export restores it while it decides what to include.
+    ImpersonationContext.setImpersonatedBy(args.getImpersonatedBy());
+    String csvData;
+    try {
+      csvData =
+          Boolean.TRUE.equals(args.getByEntityCount())
+              ? exportLineageByEntityCount(lineageRepository, args, subjectContext)
+              : lineageRepository.exportCsvAsync(
+                  args.getFqn(),
+                  args.getUpstreamDepth(),
+                  args.getDownstreamDepth(),
+                  args.getQueryFilter(),
+                  args.getEntityType(),
+                  Boolean.TRUE.equals(args.getDeleted()),
+                  args.getStartTime(),
+                  args.getEndTime(),
+                  subjectContext);
+    } finally {
+      ImpersonationContext.clear();
+    }
+    int rows = countRows(csvData);
+    jobManager.completeExportJob(jobId, job.getCreatedBy(), csvData, rows, rows);
+    sendExportMessage(job.getCreatedBy(), new CSVExportMessage(jobId, "COMPLETED", null, null));
+  }
+
+  private String exportLineageByEntityCount(
+      LineageRepository lineageRepository,
+      CsvAsyncJobArgs.LineageExportArgs args,
+      SubjectContext subjectContext) {
+    return lineageRepository.exportByEntityCountCsvAsync(
+        args.getFqn(),
+        args.getDirection(),
+        args.getFrom(),
+        args.getSize(),
+        args.getNodeDepth(),
+        args.getMaxDepth(),
+        args.getQueryFilter(),
+        Boolean.TRUE.equals(args.getDeleted()),
+        args.getEntityType(),
+        args.getIncludeSourceFields(),
+        args.getStartTime(),
+        args.getEndTime(),
+        subjectContext);
+  }
+
+  // Audit exports produce JSON rather than CSV, but ride the same job row so the
+  // result is downloadable from any server instead of a local spool file.
+  private void runAuditExport(BackgroundJob job, CsvAsyncJobArgs.AuditExportArgs args)
+      throws IOException {
+    String jobId = String.valueOf(job.getId());
+    AuditLogRepository repository = Entity.getAuditLogRepository();
+    final String encodedResult;
+    final int exported;
+    try (CsvExportPayload.Buffer buffer = new CsvExportPayload.Buffer()) {
+      exported =
+          repository.streamExportAsJson(
+              buffer.stream(),
+              args.getUserName(),
+              args.getActorType(),
+              args.getServiceName(),
+              args.getEntityType(),
+              args.getEventType(),
+              args.getStartTs(),
+              args.getEndTs(),
+              args.getSearchTerm(),
+              args.getLimit(),
+              Boolean.TRUE.equals(args.getReadsUserEmails()),
+              (fetched, total, message) -> {
+                jobManager.updateProgress(jobId, fetched, total, message);
+                sendExportMessage(
+                    job.getCreatedBy(),
+                    new CSVExportMessage(
+                        jobId, "IN_PROGRESS", null, null, fetched, total, message));
+              });
+      encodedResult = buffer.finish();
+    }
+    jobManager.completeCompressedExportJob(
+        jobId, job.getCreatedBy(), encodedResult, exported, exported);
+    sendExportMessage(job.getCreatedBy(), new CSVExportMessage(jobId, "COMPLETED", null, null));
+  }
+
+  /** Data rows in a CSV, excluding the header, for job progress reporting. */
+  private int countRows(String csvData) {
+    int newlines = (int) csvData.chars().filter(character -> character == '\n').count();
+    return Math.max(newlines - 1, 0);
   }
 
   // Counts CSV rows as they stream by so the job reports live progress and
@@ -257,19 +384,13 @@ public class CsvImportExportJobHandler implements JobHandler {
         || Boolean.TRUE.equals(args.getDryRun())) {
       return;
     }
-    EntityRepository<EntityInterface> versioningRepo = getRepository(effectiveVersioningEntityType);
+    EntityRepository<EntityInterface<?>> versioningRepo =
+        getRepository(effectiveVersioningEntityType);
     if (!versioningRepo.supportsBulkImportVersioning()) {
       return;
     }
-    versioningRepo.createChangeEventForBulkOperation(
-        versioningRepo.getByName(
-            null,
-            args.getTargetFqn(),
-            new Fields(versioningRepo.getAllowedFields(), ""),
-            Include.NON_DELETED,
-            false),
-        result,
-        updatedBy);
+    BulkImportVersioning.recordVersion(
+        versioningRepo, null, args.getTargetFqn(), updatedBy, result);
   }
 
   private void handleCancellation(
@@ -302,8 +423,8 @@ public class CsvImportExportJobHandler implements JobHandler {
   }
 
   @SuppressWarnings("unchecked")
-  private EntityRepository<EntityInterface> getRepository(String entityType) {
-    return (EntityRepository<EntityInterface>) Entity.getEntityRepository(entityType);
+  private EntityRepository<EntityInterface<?>> getRepository(String entityType) {
+    return (EntityRepository<EntityInterface<?>>) Entity.getEntityRepository(entityType);
   }
 
   private String getStartedMessage(CsvAsyncJobArgs args) {

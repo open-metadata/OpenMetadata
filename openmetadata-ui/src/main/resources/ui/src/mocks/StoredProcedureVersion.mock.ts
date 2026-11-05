@@ -12,6 +12,7 @@
  */
 
 import { StoredProcedureVersionProp } from '../components/Database/StoredProcedureVersion/StoredProcedureVersion.interface';
+import { Language } from '../generated/entity/data/storedProcedure';
 import { DatabaseServiceType, TableType } from '../generated/entity/data/table';
 import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import {
@@ -22,6 +23,9 @@ import {
   mockVersionHandler,
   mockVersionList,
 } from '../mocks/VersionCommon.mock';
+
+export const mockStoredProcedureCode =
+  'CREATE OR REPLACE PROCEDURE update_dim_address_table()';
 
 const mockData = {
   id: 'ab4f893b-c303-43d9-9375-3e620a670b02',
@@ -86,7 +90,10 @@ const mockData = {
     previousVersion: 0.1,
   },
   deleted: false,
-  storedProcedureCode: '',
+  storedProcedureCode: {
+    code: mockStoredProcedureCode,
+    language: Language.SQL,
+  },
 };
 
 export const storedProcedureVersionMockProps: StoredProcedureVersionProp = {

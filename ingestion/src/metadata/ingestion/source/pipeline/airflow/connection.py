@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os
 from functools import singledispatch
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, urlparse
 
 from packaging import version
@@ -113,7 +113,7 @@ def _(_: BackendConnection) -> Engine:
     return engine
 
 
-def _get_backend_engine_from_session() -> Optional[Engine]:  # noqa: UP045
+def _get_backend_engine_from_session() -> Engine | None:
     """
     Try to get the Airflow metadata engine via airflow.settings.Session.
     This is allowed on Airflow 2.x but raises a RuntimeError on Airflow 3.x.
@@ -185,14 +185,14 @@ def _get_engine_from_env_vars() -> Engine:
 
 @_get_connection.register
 def _(airflow_connection: MysqlConnectionConfig) -> Engine:
-    from metadata.ingestion.source.database.mysql.connection import MySQLConnection  # noqa: PLC0415
+    from metadata.ingestion.source.database.mysql.connection import MySQLConnection
 
     return MySQLConnection(airflow_connection)._get_client()
 
 
 @_get_connection.register
 def _(airflow_connection: PostgresConnectionConfig) -> Engine:
-    from metadata.ingestion.source.database.postgres.connection import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.postgres.connection import (
         PostgresConnection,
     )
 
@@ -201,7 +201,7 @@ def _(airflow_connection: PostgresConnectionConfig) -> Engine:
 
 @_get_connection.register
 def _(airflow_connection: SQLiteConnectionConfig) -> Engine:
-    from metadata.ingestion.source.database.sqlite.connection import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.sqlite.connection import (
         SQLiteConnection,
     )
 
@@ -214,7 +214,7 @@ class AirflowTaskDetailsAccessError(Exception):
     """
 
 
-def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
+def _test_task_detail_access(session) -> Any | None:
     """
     Verify task-level access to serialized_dag.
     Extracted to module level so it can be unit-tested directly.
@@ -274,7 +274,7 @@ def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # 
     Uses the strict accessor, not get_version: the latter tolerates a reply it
     cannot parse, which would pass the gate against any web server.
     """
-    from metadata.ingestion.source.pipeline.airflow.api.diagnostics import (  # noqa: PLC0415
+    from metadata.ingestion.source.pipeline.airflow.api.diagnostics import (
         diagnose,
     )
 
@@ -464,7 +464,7 @@ class AirflowChecks:
 
 class AirflowConnection(BaseConnection[AirflowConnectionConfig, Any]):
     def _get_client(self) -> Any:
-        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel
             AirflowRestApiConnection,
         )
 

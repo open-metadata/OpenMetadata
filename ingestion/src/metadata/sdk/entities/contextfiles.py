@@ -1,7 +1,5 @@
 """ContextFiles entity SDK with fluent API for Context Center."""
 
-from typing import Type  # noqa: UP035
-
 from metadata.generated.schema.api.data.createContextFile import CreateContextFile
 from metadata.generated.schema.entity.data.contextFile import ContextFile
 from metadata.sdk.entities.base import BaseEntity
@@ -17,6 +15,6 @@ class ContextFiles(BaseEntity[ContextFile, CreateContextFile]):
     """
 
     @classmethod
-    def entity_type(cls) -> Type[ContextFile]:  # noqa: UP006
+    def entity_type(cls) -> type[ContextFile]:
         """Return the ContextFile entity type."""
         return ContextFile

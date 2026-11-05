@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Skeleton } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,11 +19,14 @@ import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import SettingsSourceBanner from '../../components/platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import EmailConfigForm from '../../components/Settings/Email/EmailConfigForm/EmailConfigForm.component';
+import { EMAIL_CONFIG_FORM_FIELDS } from '../../constants/EmailConfig.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { MASKED_PASSWORD_VALUE } from '../../constants/Secrets.constants';
 import {
   EMAIL_CONFIG_SERVICE_CATEGORY,
   OPEN_METADATA,
@@ -32,12 +35,29 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useSettingsSource } from '../../hooks/platform/useSettingsSource';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
+import {
+  findSettingSource,
+  isPathManaged,
+  toJsonPointer,
+} from '../../utils/platform/settingsSource.utils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+
+const EMAIL_SETTING_TYPES = [SettingType.EmailConfiguration];
+
+const withoutMaskedPassword = (configValues: SMTPSettings) => {
+  const updateValues = { ...configValues };
+  if (updateValues.password === MASKED_PASSWORD_VALUE) {
+    delete updateValues.password;
+  }
+
+  return updateValues;
+};
 
 function EditEmailConfigPage() {
   const navigate = useNavigate();
@@ -46,6 +66,19 @@ function EditEmailConfigPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
   const [activeField, setActiveField] = useState<string>('');
+  const { sources, refetch: refetchSources } =
+    useSettingsSource(EMAIL_SETTING_TYPES);
+
+  const managedFields = useMemo(() => {
+    const emailSource = findSettingSource(
+      sources,
+      SettingType.EmailConfiguration
+    );
+
+    return EMAIL_CONFIG_FORM_FIELDS.filter((field) =>
+      isPathManaged(emailSource, toJsonPointer(field))
+    );
+  }, [sources]);
 
   const slashedBreadcrumb = useMemo(
     () => [
@@ -106,7 +139,7 @@ function EditEmailConfigPage() {
         setIsSaveLoading(true);
         const settingsConfigData: Settings = {
           config_type: SettingType.EmailConfiguration,
-          config_value: configValues,
+          config_value: withoutMaskedPassword(configValues),
         };
         await updateSettingsConfig(settingsConfigData);
 
@@ -130,7 +163,7 @@ function EditEmailConfigPage() {
     []
   );
 
-  const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
+  const handleFieldFocus = useCallback((event: FocusEvent<HTMLElement>) => {
     setActiveField(event.target.id);
   }, []);
 
@@ -142,12 +175,29 @@ function EditEmailConfigPage() {
     <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
+        <SettingsSourceBanner
+          className="tw:mb-4"
+          sources={sources}
+          onAdopted={fetchEmailConfigValues}
+          onRefetch={refetchSources}
+        />
         {loading ? (
-          <Skeleton title paragraph={{ rows: 8 }} />
+          <div className="tw:flex tw:flex-col tw:gap-3">
+            <Skeleton animation={false} height={16} width="40%" />
+            {Array.from({ length: 8 }, (_, index) => (
+              <Skeleton
+                animation={false}
+                height={16}
+                key={index}
+                width={index === 7 ? '60%' : '100%'}
+              />
+            ))}
+          </div>
         ) : (
           <EmailConfigForm
             emailConfigValues={emailConfigValues}
             isLoading={isSaveLoading}
+            managedFields={managedFields}
             onCancel={handleRedirectionToSettingsPage}
             onFocus={handleFieldFocus}
             onSubmit={updateEmailConfigValues}

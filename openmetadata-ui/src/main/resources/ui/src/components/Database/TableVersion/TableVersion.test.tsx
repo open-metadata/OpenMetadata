@@ -21,6 +21,12 @@ import {
 import VersionTable from '../../Entity/VersionTable/VersionTable.component';
 import TableVersion from './TableVersion.component';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 const mockNavigate = jest.fn();
 
 jest.mock(
@@ -192,7 +198,7 @@ describe('TableVersion tests', () => {
       },
     };
 
-    let rerender: ReturnType<typeof render>['rerender'] = () => {
+    let rerender: ReturnType<typeof render>['rerender'] = (_ui) => {
       throw new Error('rerender not initialized');
     };
 

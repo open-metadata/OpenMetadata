@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { CreatedTask, getTaskCard } from '../../../utils/taskWorkflow';
 
 /**
  * Task Creation Tests
@@ -68,7 +69,7 @@ test.describe('Task Creation - Request Description', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should create request description task for table', async ({ page }) => {
@@ -83,7 +84,7 @@ test.describe('Task Creation - Request Description', () => {
     await expect(page.getByTestId('form-container')).toBeVisible();
 
     // Verify title contains description request info
-    const titleField = page.locator('#title');
+    const titleField = page.getByTestId('title').locator('input');
     await expect(titleField).toBeVisible();
     const titleValue = await titleField.inputValue();
     expect(titleValue.toLowerCase()).toContain('description');
@@ -102,11 +103,15 @@ test.describe('Task Creation - Request Description', () => {
         response.request().method() === 'POST'
     );
     await submitBtn.click();
-    await taskResponse;
 
-    // Verify task appears in activity feed
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    await expect(taskCard).toBeVisible({ timeout: 10000 });
+    // The create response carries the task's own id, and the card announces it
+    // via aria-label -- so the card this test just produced can be named
+    // rather than taken as whichever one happens to sit on top of the feed.
+    const createdTask = (await (await taskResponse).json()) as CreatedTask;
+
+    await expect(getTaskCard(page, createdTask)).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('should create request description task for column', async ({
@@ -139,7 +144,7 @@ test.describe('Task Creation - Request Description', () => {
       await expect(page.getByTestId('form-container')).toBeVisible();
 
       // Verify this is a column-level task by checking the about field references a column
-      const titleField = page.locator('#title');
+      const titleField = page.getByTestId('title').locator('input');
       const titleValue = await titleField.inputValue();
       expect(titleValue.toLowerCase()).toContain('description');
 
@@ -150,8 +155,8 @@ test.describe('Task Creation - Request Description', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }
@@ -170,9 +175,15 @@ test.describe('Task Creation - Request Description', () => {
     await expect(page.getByTestId('form-container')).toBeVisible();
 
     // Assignee field - search and select user
-    const assigneeInput = page.locator(
-      '[data-testid="select-assignee"] .ant-select-selector input'
-    );
+    const assigneeInput = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
+    await expect(assigneeInput).toHaveAccessibleName(/^Assignees\b/);
+    await page
+      .locator('label')
+      .filter({ hasText: /^Assignees\b/ })
+      .click();
+    await expect(assigneeInput).toBeFocused();
     await assigneeInput.click();
 
     // Search for user
@@ -192,8 +203,8 @@ test.describe('Task Creation - Request Description', () => {
     await taskResponse;
 
     await expect(
-      page.locator('[data-testid="task-feed-card"]').first()
-    ).toBeVisible({
+      page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+    ).not.toHaveCount(0, {
       timeout: 10000,
     });
   });
@@ -212,7 +223,7 @@ test.describe('Task Creation - Request Description', () => {
     await submitBtn.click();
 
     // Should show validation error for assignee field
-    const assigneeError = page.locator('.ant-form-item-explain-error');
+    const assigneeError = page.getByTestId('assignees').getByText(/required/i);
     await expect(assigneeError).toBeVisible();
   });
 });
@@ -253,7 +264,7 @@ test.describe('Task Creation - Request Tags', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should create request tags task for table', async ({ page }) => {
@@ -269,7 +280,7 @@ test.describe('Task Creation - Request Tags', () => {
       await expect(page.getByTestId('form-container')).toBeVisible();
 
       // Verify title contains tag info
-      const titleField = page.locator('#title');
+      const titleField = page.getByTestId('title').locator('input');
       const titleValue = await titleField.inputValue();
       expect(titleValue.toLowerCase()).toContain('tag');
 
@@ -280,8 +291,8 @@ test.describe('Task Creation - Request Tags', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }
@@ -324,7 +335,7 @@ test.describe('Task Creation - Suggest Description', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should create suggest description task with suggested value', async ({
@@ -399,7 +410,7 @@ test.describe('Task Creation - Suggest Tags', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should create suggest tags task with suggested tags', async ({
@@ -417,9 +428,7 @@ test.describe('Task Creation - Suggest Tags', () => {
       await expect(page.getByTestId('form-container')).toBeVisible();
 
       // Add suggested tags using the tag selector
-      const tagsInput = page.locator(
-        '[data-testid="tag-selector"] .ant-select-selector input'
-      );
+      const tagsInput = page.getByTestId('tag-selector').getByRole('combobox');
       if (await tagsInput.isVisible()) {
         await tagsInput.click();
 
@@ -431,8 +440,10 @@ test.describe('Task Creation - Suggest Tags', () => {
         await expect(tagOption).toBeVisible();
         await tagOption.click();
 
-        // Close the dropdown by pressing Escape
-        await page.keyboard.press('Escape');
+        // The multi-select schedules a re-open (~150ms) while its input still
+        // has focus, which would undo an Escape; blurring closes it for good.
+        await tagsInput.blur();
+        await expect(tagsInput).toHaveAttribute('aria-expanded', 'false');
       }
 
       // Submit - tag request pages use submit-tag-request
@@ -442,8 +453,8 @@ test.describe('Task Creation - Suggest Tags', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }

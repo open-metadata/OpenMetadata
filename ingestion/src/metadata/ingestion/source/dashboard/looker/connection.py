@@ -44,6 +44,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.lookerConne
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.helpers import clean_uri
 
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
@@ -278,7 +279,11 @@ class LookerSettings(ApiSettings):
 
     def __init__(self, connection: LookerConnectionConfig) -> None:
         self._config: SettingsConfig = {
-            "base_url": str(connection.hostPort),
+            # Stripped, not just stringified: pydantic renders a hostPort with no path
+            # as "https://host/", and the SDK builds the login URL by concatenation
+            # (f"{base_url}/api/{version}/login"), so the slash would reach Looker as
+            # //api/4.0/login - a 404 that reads as rejected credentials.
+            "base_url": clean_uri(str(connection.hostPort)),
             "client_id": connection.clientId,
             "client_secret": connection.clientSecret.get_secret_value(),
         }

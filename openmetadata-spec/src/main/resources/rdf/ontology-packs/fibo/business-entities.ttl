@@ -1,0 +1,17 @@
+@prefix fibo: <https://open-metadata.org/library/fibo/business-entities/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+fibo:BusinessEntity a skos:Concept ;
+  skos:prefLabel "Business Entity" .
+
+fibo:LegalEntity a skos:Concept ;
+  skos:prefLabel "Legal Entity" ;
+  skos:broader fibo:BusinessEntity .
+
+fibo:Organization a skos:Concept ;
+  skos:prefLabel "Organization" ;
+  skos:broader fibo:BusinessEntity .
+
+fibo:BusinessIdentifier a skos:Concept ;
+  skos:prefLabel "Business Identifier" ;
+  skos:broader fibo:BusinessEntity .

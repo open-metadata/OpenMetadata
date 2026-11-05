@@ -5,7 +5,7 @@ import {
   getLocalTimeZone,
   today,
 } from '@internationalized/date';
-import { ChevronLeft, ChevronRight } from '@untitledui/icons';
+import { ChevronLeft, ChevronRight } from '../../../icons';
 import type {
   CalendarProps as AriaCalendarProps,
   DateValue,
@@ -22,6 +22,8 @@ import {
   useSlottedContext,
 } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { CalendarCell } from './cell';
 import { DateInput } from './date-input';
@@ -80,6 +82,7 @@ export const Calendar = ({
   className,
   ...props
 }: CalendarProps) => {
+  const { t } = useCoreTranslation();
   const context = useSlottedContext(AriaCalendarContext)!;
 
   const ContextWrapper = context ? Fragment : CalendarContextProvider;
@@ -95,26 +98,16 @@ export const Calendar = ({
           )
         }>
         <header className="tw:flex tw:items-center tw:justify-between">
-          <Button
-            className="tw:size-8"
-            color="tertiary"
-            iconLeading={ChevronLeft}
-            size="sm"
-            slot="previous"
-          />
+          <ButtonUtility icon={ChevronLeft} size="lg" slot="previous" />
           <AriaHeading className="tw:text-sm tw:font-semibold tw:text-fg-secondary" />
-          <Button
-            className="tw:size-8"
-            color="tertiary"
-            iconLeading={ChevronRight}
-            size="sm"
-            slot="next"
-          />
+          <ButtonUtility icon={ChevronRight} size="lg" slot="next" />
         </header>
 
         <div className="tw:flex tw:gap-3">
           <DateInput className="tw:flex-1" />
-          <PresetButton value={today(getLocalTimeZone())}>Today</PresetButton>
+          <PresetButton value={today(getLocalTimeZone())}>
+            {t('label.today', 'Today')}
+          </PresetButton>
         </div>
 
         <AriaCalendarGrid className="tw:w-max" weekdayStyle="short">

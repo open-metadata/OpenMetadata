@@ -1,5 +1,3 @@
-from typing import Optional
-
 import pytest
 
 from metadata.utils.dependency_injector.dependency_injector import (
@@ -43,7 +41,7 @@ class Cache:
     def __init__(self, host: str):
         self.host = host
 
-    def get(self, key: str) -> Optional[str]:  # noqa: UP045
+    def get(self, key: str) -> str | None:
         if key == "user:1":
             return "Cache hit for user:1"
         return None

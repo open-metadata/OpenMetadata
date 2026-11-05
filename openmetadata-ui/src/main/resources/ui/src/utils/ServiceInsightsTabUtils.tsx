@@ -13,9 +13,9 @@
 import { isNil, isUndefined } from 'lodash';
 import type { ServiceTypes } from 'Models';
 import type { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
+import { getEntityIcon } from './EntityIconUtils';
 import { getEntityNameLabel } from './EntityNameUtils';
 import { getAssetsByServiceType } from './ServiceInsightsTabPureUtils';
-import { getEntityIcon } from './TableUtils';
 
 export const getFormattedTotalAssetsDataFromSocketData = (
   socketData: DataInsightCustomChartResult,

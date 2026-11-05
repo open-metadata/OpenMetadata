@@ -24,12 +24,15 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   getOidcToken: jest.fn().mockResolvedValue('test-jwt-token'),
 }));
 
-const mockRefreshToken = jest.fn().mockResolvedValue(undefined);
+const mockEnsureFreshToken = jest.fn().mockResolvedValue(undefined);
 
-jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
-  __esModule: true,
-  default: {
-    getInstance: () => ({ refreshToken: mockRefreshToken }),
+// `ensureFreshToken` is wrapped in an arrow function rather than referenced
+// directly so the read of `mockEnsureFreshToken` is deferred until the real
+// call site invokes it — jest hoists this factory above the `const`
+// declaration above, so an eager read would throw a TDZ ReferenceError.
+jest.mock('../../../utils/Auth/AuthCoordinator/AuthCoordinator', () => ({
+  authCoordinator: {
+    ensureFreshToken: (...args: unknown[]) => mockEnsureFreshToken(...args),
   },
 }));
 
@@ -208,7 +211,7 @@ describe('useServiceProgressStream', () => {
 
       await flushAsync();
 
-      expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+      expect(mockEnsureFreshToken).toHaveBeenCalledTimes(1);
 
       await act(async () => {
         jest.advanceTimersByTime(1000);
@@ -304,6 +307,41 @@ describe('useServiceProgressStream', () => {
     second.unmount();
 
     expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  it('opens a fresh connection for the next subscriber after a fatal error', async () => {
+    mockFetchEventSource.mockImplementation(async (_url, options) => {
+      await options?.onopen?.({ ok: false, status: 503 } as Response);
+    });
+
+    const first = renderHook(() =>
+      useServiceProgressStream({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        serviceFqn: 'fatalErrorService',
+        onEvent: jest.fn(),
+      })
+    );
+
+    await flushAsync();
+
+    expect(first.result.current.streamHealth).toBe('unavailable');
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(1);
+
+    const second = renderHook(() =>
+      useServiceProgressStream({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        serviceFqn: 'fatalErrorService',
+        onEvent: jest.fn(),
+      })
+    );
+
+    await flushAsync();
+
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(2);
+
+    second.unmount();
+
+    expect(() => first.unmount()).not.toThrow();
   });
 
   it('dispatches each frame to every subscriber of the shared connection', async () => {

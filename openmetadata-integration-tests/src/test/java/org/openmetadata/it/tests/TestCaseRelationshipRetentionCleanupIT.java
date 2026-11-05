@@ -12,9 +12,11 @@
  */
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +41,6 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OrphanTestCaseRelationshipCleanup;
@@ -94,10 +95,14 @@ public class TestCaseRelationshipRetentionCleanupIT {
     // Broken test case and its results are gone.
     assertEquals(
         0, testCaseRowCount(broken.getId().toString()), "broken test case must be deleted");
-    assertEquals(
-        0,
-        resultRowCount(broken.getFullyQualifiedName()),
-        "broken test case's results must be cascaded away");
+    await("broken test case results should be deleted asynchronously")
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    0,
+                    resultRowCount(broken.getFullyQualifiedName()),
+                    "broken test case's results must be cascaded away"));
 
     // Healthy test case and its results survive — the cleanup is selective.
     assertEquals(1, testCaseRowCount(healthy.getId().toString()), "healthy test case must survive");
@@ -135,20 +140,15 @@ public class TestCaseRelationshipRetentionCleanupIT {
 
   private TestCase createTestCase(Table table, String name) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    String testDefFqn =
-        client
-            .testDefinitions()
-            .list(new ListParams().withLimit(1))
-            .getData()
-            .get(0)
-            .getFullyQualifiedName();
+    // A definition that supports the BIGINT `id` column: the server rejects a column type the
+    // definition does not list, and the first definition the listing returns need not list it.
     return client
         .testCases()
         .create(
             new CreateTestCase()
                 .withName(name)
                 .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
-                .withTestDefinition(testDefFqn));
+                .withTestDefinition("columnValuesToBeNotNull"));
   }
 
   private void seedResult(String testCaseFqn) {

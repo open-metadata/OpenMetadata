@@ -15,9 +15,9 @@ Mixin class with common Stored Procedures logic aimed at lineage.
 import re
 import time
 import traceback
+from collections.abc import Iterable
 from datetime import datetime
 from multiprocessing import Queue
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 import networkx as nx
 from pydantic import BaseModel, ConfigDict, Field
@@ -28,22 +28,29 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
 )
-from metadata.generated.schema.type.basic import SqlQuery, Timestamp
+from metadata.generated.schema.type.basic import (
+    FullyQualifiedEntityName,
+    SqlQuery,
+    Timestamp,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.lineage.tsql import TSQL_SWITCH_STATEMENT
 from metadata.ingestion.models.ometa_lineage import (
     LineageRequest,
     OMetaFQNLineageRequest,
     OMetaLineageRequest,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
-from metadata.utils.db_utils import get_view_lineage
+from metadata.utils.db_utils import ViewLineageExtension, get_view_lineage
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
@@ -57,17 +64,22 @@ class QueryByProcedure(BaseModel):
     Query(ies) executed by each stored procedure
     """
 
-    procedure_name: str = Field(None, alias="PROCEDURE_NAME")
+    # The name and the body are each optional because either one alone identifies the
+    # procedure: history that reports no name is resolved by parsing the body, and an
+    # engine that cannot return a body still reports the name. SQL Server returns a NULL
+    # body for encrypted and CLR modules, and the body feeds nothing but that name
+    # fallback, so requiring it would discard otherwise complete query history.
+    procedure_name: str | None = Field(None, alias="PROCEDURE_NAME")
     query_type: str = Field(..., alias="QUERY_TYPE")
-    query_database_name: Optional[str] = Field(None, alias="QUERY_DATABASE_NAME")  # noqa: UP045
-    query_schema_name: Optional[str] = Field(None, alias="QUERY_SCHEMA_NAME")  # noqa: UP045
-    procedure_text: str = Field(..., alias="PROCEDURE_TEXT")
+    query_database_name: str | None = Field(None, alias="QUERY_DATABASE_NAME")
+    query_schema_name: str | None = Field(None, alias="QUERY_SCHEMA_NAME")
+    procedure_text: str | None = Field(None, alias="PROCEDURE_TEXT")
     procedure_start_time: datetime = Field(..., alias="PROCEDURE_START_TIME")
     procedure_end_time: datetime = Field(..., alias="PROCEDURE_END_TIME")
-    query_start_time: Optional[datetime] = Field(None, alias="QUERY_START_TIME")  # noqa: UP045
-    query_duration: Optional[float] = Field(None, alias="QUERY_DURATION")  # noqa: UP045
+    query_start_time: datetime | None = Field(None, alias="QUERY_START_TIME")
+    query_duration: float | None = Field(None, alias="QUERY_DURATION")
     query_text: str = Field(..., alias="QUERY_TEXT")
-    query_user_name: Optional[str] = Field(None, alias="QUERY_USER_NAME")  # noqa: UP045
+    query_user_name: str | None = Field(None, alias="QUERY_USER_NAME")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -102,6 +114,9 @@ def is_lineage_query(query_type: str, query_text: str) -> bool:
     if query_type in ("MERGE", "UPDATE", "CREATE_TABLE_AS_SELECT"):
         return True
 
+    if TSQL_SWITCH_STATEMENT.match(query_text.strip()):
+        return True
+
     if query_type == "INSERT" and re.search("^.*insert.*into.*select.*$", query_text.replace("\n", " "), re.IGNORECASE):  # noqa: SIM103
         return True
 
@@ -113,11 +128,11 @@ def _yield_procedure_lineage(
     service_name: str,
     dialect: Dialect,
     processCrossDatabaseLineage: bool,  # noqa: N803
-    crossDatabaseServiceNames: List[str],  # noqa: N803, UP006
+    crossDatabaseServiceNames: list[str],  # noqa: N803
     parsingTimeoutLimit: int,  # noqa: N803
     query_by_procedure: QueryByProcedure,
     procedure: StoredProcedure,
-    procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],  # noqa: UP006
+    procedure_graph_map: dict[str, ProcedureAndProcedureGraph],
     enableTempTableLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
 ) -> Iterable[Either[LineageRequest]]:
@@ -170,15 +185,15 @@ def _yield_procedure_lineage(
 
 
 def procedure_lineage_processor(
-    procedure_and_queries: List[ProcedureAndQuery],  # noqa: UP006
+    procedure_and_queries: list[ProcedureAndQuery],
     queue: Queue,
     metadata: OpenMetadata,
     service_name: str,
     dialect: Dialect,
     processCrossDatabaseLineage: bool,  # noqa: N803
-    crossDatabaseServiceNames: List[str],  # noqa: N803, UP006
+    crossDatabaseServiceNames: list[str],  # noqa: N803
     parsingTimeoutLimit: int,  # noqa: N803
-    procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],  # noqa: UP006
+    procedure_graph_map: dict[str, ProcedureAndProcedureGraph],
     enableTempTableLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
 ) -> None:
@@ -281,25 +296,59 @@ def process_chunk_in_subprocess(chunk, processor_fn, queue, *args):
         return False
 
 
-def _query_already_processed(metadata: OpenMetadata, table_query: TableQuery) -> bool:
+def _lineage_endpoints(lineage_request: LineageRequest) -> list[EntityReference]:
+    """References to both ends of a lineage edge, when the request carries their ids"""
+    if isinstance(lineage_request, OMetaFQNLineageRequest):
+        ends = (
+            (lineage_request.from_entity_id, lineage_request.from_entity_type),
+            (lineage_request.to_entity_id, lineage_request.to_entity_type),
+        )
+        return [EntityReference(id=entity_id, type=entity_type) for entity_id, entity_type in ends if entity_id]
+    return [lineage_request.edge.fromEntity, lineage_request.edge.toEntity]
+
+
+def _lineage_is_intact(table_ids: set[str], upstreams: dict[str, set[str]]) -> bool:
     """
-    Check if a query has already been processed by validating if exists
-    in ES with lineageProcessed as True
+    Whether every table recorded on a processed query is still indexed and joined by an
+    edge to another recorded table. Usage and search reindexes rewrite the recorded tables
+    from the current relationships, so a re-created table can be recorded under its new id;
+    it still has no edges, so the query fails this check and is processed again.
     """
-    checksums = metadata.es_get_queries_with_lineage(
-        service_name=table_query.serviceName,
+    if not table_ids or not table_ids <= upstreams.keys():
+        return False
+    joined: set[str] = set()
+    for table_id in table_ids:
+        sources = (upstreams[table_id] & table_ids) - {table_id}
+        if sources:
+            joined |= sources | {table_id}
+    return joined == table_ids
+
+
+def _checksums_with_intact_lineage(
+    metadata: OpenMetadata, service_name: str, table_queries: list[TableQuery]
+) -> set[str]:
+    """
+    Checksums of the queries whose lineage needs no processing: the service processed
+    them before and the edges between the tables they connected are still there.
+    Deleting a table deletes its edges, so a query that connected a deleted or
+    re-created table is processed again, as is one stored before its tables were recorded.
+    See ADR:2026-10-13-processed-lineage-queries-link-the-tables-their-edges-connect.
+    """
+    processed = metadata.es_get_lineage_processed_queries(
+        service_name, {fqn.get_query_checksum(table_query.query) for table_query in table_queries}
     )
-    return fqn.get_query_checksum(table_query.query) in checksums or {}
+    upstreams = metadata.es_get_upstream_entity_ids(Table, set().union(*processed.values()))
+    return {checksum for checksum, table_ids in processed.items() if _lineage_is_intact(table_ids, upstreams)}
 
 
 def query_lineage_processor(
-    table_queries: List[TableQuery],  # noqa: UP006
+    table_queries: list[TableQuery],
     queue: Queue,
     metadata: OpenMetadata,
     dialect: Dialect,
     graph: nx.DiGraph,
     processCrossDatabaseLineage: bool,  # noqa: N803
-    crossDatabaseServiceNames: List[str],  # noqa: N803, UP006
+    crossDatabaseServiceNames: list[str],  # noqa: N803
     parsingTimeoutLimit: int,  # noqa: N803
     serviceName: str,  # noqa: N803
     parser_type: QueryParserType,
@@ -307,55 +356,91 @@ def query_lineage_processor(
     """
     Generate lineage for a list of table queries
     """
+    table_queries = table_queries or []
+    intact_checksums = _checksums_with_intact_lineage(metadata, serviceName, table_queries)
 
-    for table_query in table_queries or []:
-        if not _query_already_processed(metadata, table_query):
-            # Prepare service names for lineage processing
-            service_names = [table_query.serviceName]
-            if processCrossDatabaseLineage and crossDatabaseServiceNames:
-                service_names.extend(crossDatabaseServiceNames)
+    for table_query in table_queries:
+        if fqn.get_query_checksum(table_query.query) in intact_checksums:
+            continue
+        # Prepare service names for lineage processing
+        service_names = [table_query.serviceName]
+        if processCrossDatabaseLineage and crossDatabaseServiceNames:
+            service_names.extend(crossDatabaseServiceNames)
 
-            lineages: Iterable[Either[LineageRequest]] = get_lineage_by_query(
-                metadata,
-                query=table_query.query,
-                service_names=service_names,
-                database_name=table_query.databaseName,
-                schema_name=table_query.databaseSchema,
-                dialect=dialect,
-                timeout_seconds=parsingTimeoutLimit,
-                graph=graph,
-                parser_type=parser_type,
+        lineages: Iterable[Either[LineageRequest]] = get_lineage_by_query(
+            metadata,
+            query=table_query.query,
+            service_names=service_names,
+            database_name=table_query.databaseName,
+            schema_name=table_query.databaseSchema,
+            dialect=dialect,
+            timeout_seconds=parsingTimeoutLimit,
+            graph=graph,
+            parser_type=parser_type,
+        )
+
+        lineage_found = False
+        endpoints: dict[str, EntityReference] = {}
+        for lineage_request in lineages or []:
+            queue.put(lineage_request)
+            if lineage_request.right:
+                lineage_found = True
+                endpoints.update({model_str(ref.id): ref for ref in _lineage_endpoints(lineage_request.right)})
+
+        # If we identified lineage properly, ingest the original query, linked to the
+        # tables its edges connect so a later run can tell when one of them is gone
+        if lineage_found:
+            queue.put(
+                Either(
+                    left=None,
+                    right=CreateQueryRequest(
+                        query=SqlQuery(table_query.query),
+                        query_type=table_query.query_type,
+                        duration=table_query.duration,
+                        processedLineage=True,
+                        queryUsedIn=EntityReferenceList(root=list(endpoints.values())),
+                        service=FullyQualifiedEntityName(serviceName),
+                    ),
+                )
             )
 
-            for lineage_request in lineages or []:
-                queue.put(lineage_request)
 
-                # If we identified lineage properly, ingest the original query
-                if lineage_request.right:
-                    queue.put(
-                        Either(
-                            right=CreateQueryRequest(
-                                query=SqlQuery(table_query.query),
-                                query_type=table_query.query_type,
-                                duration=table_query.duration,
-                                processedLineage=True,
-                                service=serviceName,
-                            )
-                        )
-                    )
+def _writes_into_view(lineage_request: LineageRequest, view_fqn: str | None) -> bool:
+    """
+    Whether a view lineage edge points at the view being processed.
+
+    `overrideViewLineage` deletes the existing view lineage of the entity an edge points
+    at before writing it. That is only safe while the edge points at the view itself:
+    an edge into another table -- a Clickhouse materialized view writing into its
+    `TO` target, for instance -- would wipe the lineage that the sibling views writing
+    into that same table just created.
+
+    Edges whose target FQN is unknown -- and views whose own FQN could not be built --
+    keep the previous behaviour of honouring the flag.
+    """
+    if not view_fqn:
+        return True
+    if isinstance(lineage_request, OMetaFQNLineageRequest):
+        target_fqn = lineage_request.to_entity_fqn
+    else:
+        target_fqn = lineage_request.edge.toEntity.fullyQualifiedName
+    if not target_fqn:
+        return True
+    return model_str(target_fqn).lower() == view_fqn.lower()
 
 
 def view_lineage_processor(
-    views: List[TableView],  # noqa: UP006
+    views: list[TableView],
     queue: Queue,
     metadata: OpenMetadata,
     service_name: str,
     connectionType: str,  # noqa: N803
     processCrossDatabaseLineage: bool,  # noqa: N803
-    crossDatabaseServiceNames: List[str],  # noqa: N803, UP006
+    crossDatabaseServiceNames: list[str],  # noqa: N803
     parsingTimeoutLimit: int,  # noqa: N803
     overrideViewLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
+    extension: ViewLineageExtension | None = None,
 ) -> None:
     """
     Generate lineage for a list of views
@@ -374,6 +459,7 @@ def view_lineage_processor(
                 connection_type=connectionType,
                 timeout_seconds=parsingTimeoutLimit,
                 parser_type=parser_type,
+                extension=extension,
             ):
                 if lineage.right is not None:
                     view_fqn = fqn.build(
@@ -389,7 +475,7 @@ def view_lineage_processor(
                         Either(
                             right=OMetaLineageRequest(
                                 lineage_request=lineage.right,
-                                override_lineage=overrideViewLineage,
+                                override_lineage=(overrideViewLineage and _writes_into_view(lineage.right, view_fqn)),
                                 entity_fqn=view_fqn,
                                 entity=Table,
                             )

@@ -20,8 +20,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 # pyright: reportUnusedCallResult=false
-from typing import List, Optional, Union  # noqa: UP035
-
 from metadata.__version__ import get_metadata_version
 from metadata.cli.app import run_app
 from metadata.cli.classify import run_classification
@@ -54,6 +52,7 @@ class MetadataCommands(Enum):
     LINEAGE = "lineage"
     APP = "app"
     AUTO_CLASSIFICATION = "classify"
+    INSTALL_CLASSIFICATION_MODELS = "install-classification-models"
     SCAFFOLD_CONNECTOR = "scaffold-connector"
 
 
@@ -77,6 +76,13 @@ def create_common_config_parser_args(parser: argparse.ArgumentParser):
         type=Path,
         required=True,
     )
+    parser.add_argument(
+        "--status-file",
+        help="path to write structured JSON status output (optional)",
+        type=Path,
+        required=False,
+        default=None,
+    )
 
 
 def create_dbt_parser_args(parser: argparse.ArgumentParser):
@@ -90,6 +96,12 @@ def create_dbt_parser_args(parser: argparse.ArgumentParser):
         type=Path,
         default=Path("."),  # noqa: PTH201
         required=False,
+    )
+    parser.add_argument(
+        "--status-file",
+        help="path to write structured JSON status output (optional)",
+        type=Path,
+        default=None,
     )
 
 
@@ -115,7 +127,7 @@ def add_metadata_args(parser: argparse.ArgumentParser):
     )
 
 
-def get_parser(args: Optional[List[str]] = None):  # noqa: UP006, UP045
+def get_parser(args: list[str] | None = None):
     """
     Parser method that returns parsed_args
     """
@@ -151,6 +163,15 @@ def get_parser(args: Optional[List[str]] = None):  # noqa: UP006, UP045
             MetadataCommands.AUTO_CLASSIFICATION.value,
             help="Workflow for running auto classification",
         )
+    )
+    install_classification_models_parser = sub_parser.add_parser(
+        MetadataCommands.INSTALL_CLASSIFICATION_MODELS.value,
+        help="Install spaCy models for auto classification",
+    )
+    install_classification_models_parser.add_argument(
+        "--languages",
+        required=True,
+        help="Comma-separated ClassificationLanguage identifiers, for example en,es",
     )
     webhook_args(
         sub_parser.add_parser(
@@ -212,14 +233,15 @@ def get_parser(args: Optional[List[str]] = None):  # noqa: UP006, UP045
     return parser.parse_args(args)
 
 
-def metadata(args: Optional[List[str]] = None):  # noqa: UP006, UP045
+def metadata(args: list[str] | None = None):
     """
     This method implements parsing of the arguments passed from CLI
     """
     contains_args = vars(get_parser(args))
     metadata_workflow = contains_args.get("command")
-    config_file: Optional[Path] = contains_args.get("config")  # noqa: UP045
-    dbt_project_path: Optional[Path] = contains_args.get("dbt_project_path")  # noqa: UP045
+    config_file: Path | None = contains_args.get("config")
+    dbt_project_path: Path | None = contains_args.get("dbt_project_path")
+    status_file: Path | None = contains_args.get("status_file")
 
     path = None
     if config_file:
@@ -230,11 +252,11 @@ def metadata(args: Optional[List[str]] = None):  # noqa: UP006, UP045
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     else:
-        log_level: Union[str, int] = contains_args.get("log_level") or logging.INFO  # noqa: UP007
+        log_level: str | int = contains_args.get("log_level") or logging.INFO
         set_loggers_level(log_level)
 
     if path and metadata_workflow and metadata_workflow in RUN_PATH_METHODS:
-        RUN_PATH_METHODS[metadata_workflow](path)
+        RUN_PATH_METHODS[metadata_workflow](path, status_file)
 
     if metadata_workflow == MetadataCommands.SCAFFOLD_CONNECTOR.value:
         has_name = contains_args.get("name")
@@ -246,6 +268,18 @@ def metadata(args: Optional[List[str]] = None):  # noqa: UP006, UP045
             sys.exit(1)
         else:
             run_scaffold_interactive()
+        return
+
+    if metadata_workflow == MetadataCommands.INSTALL_CLASSIFICATION_MODELS.value:
+        try:
+            from metadata.cli.install_classification_models import (
+                run_install_classification_models,
+            )
+
+            run_install_classification_models(contains_args["languages"])
+        except (RuntimeError, ValueError) as exc:
+            logger.error("Auto classification model provisioning failed: %s", exc)
+            sys.exit(1)
         return
 
     if metadata_workflow == MetadataCommands.WEBHOOK.value:

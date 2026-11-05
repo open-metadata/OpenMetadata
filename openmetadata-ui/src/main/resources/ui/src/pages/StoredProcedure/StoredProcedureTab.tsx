@@ -10,17 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import Table from '../../components/common/Table/Table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
+import Table from '../../components/common/Table/TableV2';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
@@ -32,14 +34,16 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
-import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { ServicePageData } from '../../interface/platform/service.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { stringToHTML } from '../../utils/StringUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -172,7 +176,7 @@ const StoredProcedureTab = () => {
         sorter: getColumnSorter<ServicePageData, 'name'>('name'),
         render: (_, record) => (
           <DisplayName
-            displayName={stringToHTML(
+            displayName={renderHighlightedText(
               highlightSearchText(record.displayName, searchValue)
             )}
             id={record.id ?? ''}
@@ -181,11 +185,13 @@ const StoredProcedureTab = () => {
               EntityType.STORED_PROCEDURE,
               record.fullyQualifiedName ?? ''
             )}
-            name={stringToHTML(highlightSearchText(record.name, searchValue))}
+            name={renderHighlightedText(
+              highlightSearchText(record.name, searchValue)
+            )}
           />
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<ServicePageData>(),
     ],
     [searchValue]
   );
@@ -263,20 +269,35 @@ const StoredProcedureTab = () => {
       data-testid="stored-procedure-table"
       dataSource={storedProcedure}
       extraTableFilters={
-        <span>
-          <Switch
-            checked={showDeletedStoredProcedures}
+        <span className="tw:inline-flex tw:items-center">
+          <Toggle
             data-testid="show-deleted-stored-procedure"
-            onClick={handleShowDeletedStoredProcedures}
+            isSelected={showDeletedStoredProcedures}
+            onChange={handleShowDeletedStoredProcedures}
           />
-          <Typography.Text className="m-l-xs">
-            {t('label.deleted')}
-          </Typography.Text>
+          <Typography className="m-l-xs">{t('label.deleted')}</Typography>
         </span>
       }
       loading={isLoading}
       locale={{
-        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+        emptyText: (
+          <div className="tw:relative tw:min-h-70">
+            {searchValue ? (
+              <NoSearchResultsPlaceholder
+                description={t('message.check-spelling-or-try-shorter-term')}
+                icon={<NoSearch />}
+                title={t('label.no-matching-result-plural')}
+              />
+            ) : (
+              <NoDataPlaceholder
+                icon={<Assets />}
+                title={t('message.no-entity-data-available', {
+                  entity: t('label.stored-procedure-plural'),
+                })}
+              />
+            )}
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="id"

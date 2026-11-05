@@ -14,6 +14,12 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -23,25 +29,28 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { resolveParents } from './ParentResolver';
+import { PipelineServiceClass } from './service/PipelineServiceClass';
+
+/**
+ * Without `service` the pipeline sits in the shard's shared pipelineService.
+ * Pass a PipelineServiceClass when the test needs its own service — to
+ * assert on a unique service name, visit the service page, or mutate it.
+ */
+export type PipelineClassOptions = {
+  name?: string;
+  tasks?: Array<{ name: string; displayName: string }>;
+  service?: PipelineServiceClass;
+  sharedInfraKey?: string;
+};
 
 export interface PipelineType extends ResponseDataWithServiceType {
   tasks?: Array<EntityReference>;
 }
 export class PipelineClass extends EntityClass {
   private pipelineName: string;
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        host: string;
-        token: string;
-        timeout: number;
-        supportsMetadataExtraction: boolean;
-      };
-    };
-  };
+  service = new PipelineServiceClass().entity;
+  private readonly serviceOverride?: PipelineServiceClass;
   children: Array<{ name: string; displayName: string }>;
   entity: {
     name: string;
@@ -55,34 +64,21 @@ export class PipelineClass extends EntityClass {
   entityResponseData: PipelineType = {} as PipelineType;
   ingestionPipelineResponseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(
-    name?: string,
-    tasks?: Array<{ name: string; displayName: string }>
-  ) {
+  constructor(options: PipelineClassOptions = {}) {
     super(EntityTypeEndpoint.Pipeline);
     this.type = 'Pipeline';
     this.childrenTabId = 'tasks';
     this.serviceCategory = SERVICE_TYPE.Pipeline;
     this.serviceType = ServiceTypes.PIPELINE_SERVICES;
+    this.serviceOverride = options.service;
+    this.sharedInfraKey = options.sharedInfraKey;
+    if (options.service) {
+      this.service = options.service.entity;
+    }
 
-    const serviceName = name ?? `pw-pipeline-service-${uuid()}`;
-    this.pipelineName = `pw-pipeline-${uuid()}`;
+    this.pipelineName = options.name ?? `pw-pipeline-${uuid()}`;
 
-    this.service = {
-      name: serviceName,
-      serviceType: 'Dagster',
-      connection: {
-        config: {
-          type: 'Dagster',
-          host: 'http://localhost:3000',
-          token: 'admin',
-          timeout: 1000,
-          supportsMetadataExtraction: true,
-        },
-      },
-    };
-
-    this.children = tasks ?? [
+    this.children = options.tasks ?? [
       { name: 'snowflake_task', displayName: 'Snowflake Task' },
       { name: 'presto_task', displayName: 'Presto Task' },
     ];
@@ -99,22 +95,27 @@ export class PipelineClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/pipelineServices',
-      {
-        data: this.service,
-      }
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
+      apiContext,
+      'pipeline',
+      { service: this.serviceOverride },
+      this.sharedInfraKey
     );
-    const entityResponse = await apiContext.post('/api/v1/pipelines', {
+    this.serviceResponseData = parents.service as ResponseDataType;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
+    this.service = { ...this.service, name: this.serviceResponseData.name };
+    this.entity.service = this.serviceResponseData.name;
+
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'PipelineClass.create pipeline',
+      createPath: '/api/v1/pipelines',
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
-
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 
@@ -125,17 +126,18 @@ export class PipelineClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/pipelines/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/pipelines/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
-
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'PipelineClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -146,15 +148,21 @@ export class PipelineClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
   public set(data: {
     entity: ResponseDataWithServiceType;
     service: ResponseDataType;
+    ownedRootPath?: string;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.entity.service = data.service.name;
+    this.service = { ...this.service, name: data.service.name };
   }
 
   async createIngestionPipeline(apiContext: APIRequestContext, name?: string) {
@@ -171,16 +179,24 @@ export class PipelineClass extends EntityClass {
             type: 'pipelineService',
           },
           sourceConfig: {
-            config: {},
+            config: {
+              type: 'PipelineMetadata',
+            },
           },
         },
       }
     );
 
-    this.ingestionPipelineResponseData = await ingestionPipelineResponse.json();
+    this.ingestionPipelineResponseData = await okJson(
+      ingestionPipelineResponse,
+      'PipelineClass.createIngestionPipeline'
+    );
 
     return {
-      ingestionPipeline: await ingestionPipelineResponse.json(),
+      ingestionPipeline: await okJson(
+        ingestionPipelineResponse,
+        'PipelineClass.createIngestionPipeline'
+      ),
     };
   }
 
@@ -193,15 +209,22 @@ export class PipelineClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
-      `/api/v1/services/pipelineServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
+    // The ingestion pipeline is a child of the service, not of the pipeline,
+    // so the recursive pipeline delete below never reaches it — and in the
+    // shared service it would outlive the test and collide with the next one.
+    if (this.ingestionPipelineResponseData.id) {
+      await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/services/ingestionPipelines/${this.ingestionPipelineResponseData.id}?hardDelete=true`
+      );
+      this.ingestionPipelineResponseData = {} as ResponseDataType;
+    }
+
+    await this.deleteOwnedOrLeaf(
+      apiContext,
+      `/api/v1/pipelines/${this.entityResponseData?.id}`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 }

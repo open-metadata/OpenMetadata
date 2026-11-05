@@ -15,7 +15,6 @@ Source connection handler for OpenSearch
 
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
@@ -149,9 +148,9 @@ class OpenSearchConnection(BaseConnection[OpenSearchConnectionConfig, OpenSearch
                 else None
             )
             aws_region = connection.authType.awsRegion  # Region as a plain string
-            # awsSessionToken is a plain str in the schema (no "format": "password"),
-            # so we use it directly without calling .get_secret_value()
-            aws_session_token = connection.authType.awsSessionToken or None
+            aws_session_token = (
+                connection.authType.awsSessionToken.get_secret_value() if connection.authType.awsSessionToken else None
+            )
             aws_auth = AWS4Auth(
                 aws_access_key,
                 aws_secret_key,
@@ -179,8 +178,8 @@ class OpenSearchConnection(BaseConnection[OpenSearchConnectionConfig, OpenSearch
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection for OpenSearch. This can be executed either as part

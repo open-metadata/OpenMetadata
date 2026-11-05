@@ -65,6 +65,8 @@ const makeProps = (
   pagingCursor: {},
   urlFilters: {},
   urlParams: {},
+  sortField: 'displayName',
+  sortOrder: 'asc',
   fetchTestDefinitionPermissions: mockFetchPermissions,
   ...overrides,
 });
@@ -129,6 +131,8 @@ describe('useTestDefinitionData', () => {
         limit: 15,
         entityType: undefined,
         testPlatform: undefined,
+        sortField: 'displayName',
+        sortOrder: 'asc',
       });
       expect(result.current.testDefinitions).toEqual(MOCK_TEST_DEFINITIONS);
       expect(mockHandlePagingChange).toHaveBeenCalledWith(MOCK_PAGING);
@@ -157,7 +161,138 @@ describe('useTestDefinitionData', () => {
         limit: 15,
         entityType: 'table',
         testPlatform: 'OpenMetadata',
+        q: undefined,
+        sortField: 'displayName',
+        sortOrder: 'asc',
       });
+    });
+
+    // Search runs server side - the listing is cursor-paged, so filtering the
+    // rows already fetched would only ever search the current page.
+    it('should forward the trimmed search term as the q list param', async () => {
+      await renderAndSettle(makeProps({ urlParams: { q: '  column  ' } }));
+
+      expect(getListTestDefinitions).toHaveBeenCalledWith(
+        expect.objectContaining({ q: 'column' })
+      );
+    });
+
+    it('should omit q entirely for a blank search term', async () => {
+      await renderAndSettle(makeProps({ urlParams: { q: '   ' } }));
+
+      expect(getListTestDefinitions).toHaveBeenCalledWith(
+        expect.objectContaining({ q: undefined })
+      );
+    });
+
+    it('should refetch when the search term changes', async () => {
+      const { rerender } = await renderAndSettle();
+
+      (getListTestDefinitions as jest.Mock).mockClear();
+
+      rerender(makeProps({ urlParams: { q: 'rows' } }));
+
+      await waitFor(() => {
+        expect(getListTestDefinitions).toHaveBeenCalledWith(
+          expect.objectContaining({ q: 'rows' })
+        );
+      });
+    });
+
+    it('should forward the sort field and order to the listing endpoint', async () => {
+      await renderAndSettle(
+        makeProps({ sortField: 'entityType', sortOrder: 'desc' })
+      );
+
+      expect(getListTestDefinitions).toHaveBeenCalledWith(
+        expect.objectContaining({ sortField: 'entityType', sortOrder: 'desc' })
+      );
+    });
+
+    it('should refetch when the sort changes', async () => {
+      const { rerender } = await renderAndSettle();
+
+      (getListTestDefinitions as jest.Mock).mockClear();
+
+      rerender(makeProps({ sortField: 'testPlatforms', sortOrder: 'desc' }));
+
+      await waitFor(() => {
+        expect(getListTestDefinitions).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sortField: 'testPlatforms',
+            sortOrder: 'desc',
+          })
+        );
+      });
+    });
+
+    // The keyset cursor walks the server's display-name collation, so a page
+    // re-sorted here would be reshuffled against the sequence the next page
+    // continues from - rows would repeat or disappear across a page boundary.
+    it('should list the page in the order the server returned it', async () => {
+      (getListTestDefinitions as jest.Mock).mockResolvedValueOnce({
+        data: [
+          { id: 'id-z', name: 'aaa', displayName: 'Zulu rule' },
+          { id: 'id-m', name: 'mRule' },
+          { id: 'id-a', name: 'zzz', displayName: 'Alpha rule' },
+        ],
+        paging: MOCK_PAGING,
+      });
+
+      const { result } = await renderAndSettle();
+
+      expect(result.current.testDefinitions.map((row) => row.id)).toEqual([
+        'id-z',
+        'id-m',
+        'id-a',
+      ]);
+    });
+
+    it('should ignore a stale response that resolves after a newer search', async () => {
+      const newerRows = [
+        { id: 'id-new', name: 'tableRowCountToEqual' },
+      ] as unknown as TestDefinition[];
+      const stalePaging = {
+        after: 'stale-cursor',
+        before: undefined,
+        total: 9,
+      };
+      let resolveStale: ((value: unknown) => void) | undefined;
+
+      (getListTestDefinitions as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveStale = resolve;
+            })
+        )
+        .mockResolvedValueOnce({ data: newerRows, paging: MOCK_PAGING });
+
+      const { result, rerender } = renderData(
+        makeProps({ urlParams: { q: 'col' } })
+      );
+
+      await waitFor(() => {
+        expect(getListTestDefinitions).toHaveBeenCalledTimes(1);
+      });
+
+      rerender(makeProps({ urlParams: { q: 'rows' } }));
+
+      await waitFor(() => {
+        expect(result.current.testDefinitions).toEqual(newerRows);
+      });
+
+      // The first term's request now lands. It must not put its rows - or its
+      // paging - back on screen over the search that replaced it.
+      expect(resolveStale).toBeDefined();
+
+      await act(async () => {
+        resolveStale?.({ data: MOCK_TEST_DEFINITIONS, paging: stalePaging });
+      });
+
+      expect(result.current.testDefinitions).toEqual(newerRows);
+      expect(mockHandlePagingChange).not.toHaveBeenCalledWith(stalePaging);
+      expect(mockFetchPermissions).toHaveBeenCalledTimes(1);
     });
 
     it('should surface a list failure through showErrorToast and stop loading', async () => {
@@ -201,6 +336,8 @@ describe('useTestDefinitionData', () => {
           limit: 15,
           entityType: undefined,
           testPlatform: undefined,
+          sortField: 'displayName',
+          sortOrder: 'asc',
         });
       });
     });
@@ -226,6 +363,8 @@ describe('useTestDefinitionData', () => {
           limit: 15,
           entityType: undefined,
           testPlatform: undefined,
+          sortField: 'displayName',
+          sortOrder: 'asc',
         });
       });
     });

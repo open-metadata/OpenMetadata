@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { AlertTriangle, Building07, Mail01, User01 } from '@untitledui/icons';
+import { AlertTriangle, Building07, Mail01, User01 } from '../icons';
 import { Button } from '../components/base/buttons/button';
 import { Input } from '../components/base/input/input';
 import { TextArea } from '../components/base/textarea/textarea';
@@ -408,4 +408,94 @@ export const ContentOnly: Story = {
       </ModalOverlay>
     </DialogTrigger>
   ),
+};
+
+// ─── Dark overlay & surface ──────────────────────────────────────────────────
+// React Aria portals the modal to document.body, so a `theme: 'both'` decorator
+// (which only wraps the story root) cannot theme it. Toggle `.dark-mode` on
+// <body> so the portalled overlay/surface pick up the dark tokens.
+
+export const DarkOverlay: Story = {
+  name: 'Dark overlay & surface',
+  render: () => {
+    const [isOpen, setIsOpen] = useState(true);
+
+    useEffect(() => {
+      document.body.classList.add('dark-mode');
+
+      return () => document.body.classList.remove('dark-mode');
+    }, []);
+
+    return (
+      <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Button color="primary" onPress={() => setIsOpen(true)}>
+          Open Modal
+        </Button>
+        <ModalOverlay>
+          <Modal>
+            <Dialog
+              showCloseButton
+              title="Delete workspace"
+              onClose={() => setIsOpen(false)}>
+              <Dialog.Content>
+                <p className="tw:text-sm tw:text-secondary">
+                  Panel sits on Raised (gray-700); the scrim is a 60% near-black
+                  veil in dark mode.
+                </p>
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button color="secondary" onPress={() => setIsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button color="primary-destructive">Delete</Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      </DialogTrigger>
+    );
+  },
+};
+
+export const Fullscreen: Story = {
+  name: 'Fullscreen library',
+  render: () => {
+    const [isOpen, setIsOpen] = useState(true);
+    const [dark, setDark] = useState(false);
+    useEffect(() => {
+      document.body.classList.toggle('dark-mode', dark);
+
+      return () => document.body.classList.remove('dark-mode');
+    }, [dark]);
+
+    return (
+      <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Button onPress={() => setIsOpen(true)}>Open library</Button>
+        <ModalOverlay presentation="fullscreen">
+          <Modal>
+            <Dialog
+              showCloseButton
+              dividers="scroll"
+              title="Ontology library"
+              onClose={() => setIsOpen(false)}>
+              <Dialog.Content>
+                <div className="tw:mx-auto tw:w-full tw:max-w-5xl">
+                  <Button
+                    color="secondary"
+                    onPress={() => setDark((value) => !value)}>
+                    {dark ? 'Light theme' : 'Dark theme'}
+                  </Button>
+                  <p className="tw:mt-4 tw:text-primary">
+                    A full-page workflow keeps its header visible while the
+                    content scrolls.
+                  </p>
+                  <div className="tw:h-[120vh]" />
+                </div>
+              </Dialog.Content>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      </DialogTrigger>
+    );
+  },
 };

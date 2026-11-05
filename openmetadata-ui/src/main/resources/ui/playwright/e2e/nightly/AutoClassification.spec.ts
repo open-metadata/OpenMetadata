@@ -66,7 +66,7 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     // Check if the classification is successful
 
     // Click on databases tab
-    await page.click('.ant-tabs-nav-list [data-testid="databases"]');
+    await page.getByRole('tab', { name: /^Databases/ }).click();
 
     // Click on the database name
     await page.getByTestId('column-name').getByText('default').click();

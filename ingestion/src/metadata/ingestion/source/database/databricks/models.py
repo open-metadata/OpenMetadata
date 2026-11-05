@@ -15,7 +15,7 @@ Pydantic shapes for the ``DESCRIBE TABLE EXTENDED ... AS JSON`` payload
 (Databricks Runtime 16.2+).
 """
 
-from typing import List, Optional  # noqa: UP035
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -28,30 +28,30 @@ class DescribeJsonType(BaseModel):
     ``decimal``/``varchar``/``char`` populate ``precision``/``scale``/``length``.
     """
 
-    name: Optional[str] = None  # noqa: UP045
-    fields: Optional[List["DescribeJsonField"]] = None  # noqa: UP006, UP045
+    name: str | None = None
+    fields: list["DescribeJsonField"] | None = None
     element_type: Optional["DescribeJsonType"] = None
     key_type: Optional["DescribeJsonType"] = None
     value_type: Optional["DescribeJsonType"] = None
-    precision: Optional[int] = None  # noqa: UP045
-    scale: Optional[int] = None  # noqa: UP045
-    length: Optional[int] = None  # noqa: UP045
+    precision: int | None = None
+    scale: int | None = None
+    length: int | None = None
 
 
 class DescribeJsonField(BaseModel):
     """A struct field, with optional ``COMMENT '...'``."""
 
-    name: Optional[str] = None  # noqa: UP045
-    type: Optional[DescribeJsonType] = None  # noqa: UP045
-    comment: Optional[str] = None  # noqa: UP045
+    name: str | None = None
+    type: DescribeJsonType | None = None
+    comment: str | None = None
 
 
 class DescribeJsonColumn(BaseModel):
     """A top-level column from the AS JSON payload."""
 
-    name: Optional[str] = None  # noqa: UP045
-    type: Optional[DescribeJsonType] = None  # noqa: UP045
-    comment: Optional[str] = None  # noqa: UP045
+    name: str | None = None
+    type: DescribeJsonType | None = None
+    comment: str | None = None
 
 
 class DescribeJsonPayload(BaseModel):
@@ -60,13 +60,13 @@ class DescribeJsonPayload(BaseModel):
     support ``AS JSON`` makes the query error out and callers fall back to the
     legacy per-statement ``DESCRIBE`` path."""
 
-    columns: List[DescribeJsonColumn] = []  # noqa: UP006
-    type: Optional[str] = None  # noqa: UP045
-    comment: Optional[str] = None  # noqa: UP045
-    owner: Optional[str] = None  # noqa: UP045
-    location: Optional[str] = None  # noqa: UP045
-    view_text: Optional[str] = None  # noqa: UP045
-    view_original_text: Optional[str] = None  # noqa: UP045
+    columns: list[DescribeJsonColumn] = []
+    type: str | None = None
+    comment: str | None = None
+    owner: str | None = None
+    location: str | None = None
+    view_text: str | None = None
+    view_original_text: str | None = None
 
 
 # Resolve forward references in ``DescribeJsonType``.

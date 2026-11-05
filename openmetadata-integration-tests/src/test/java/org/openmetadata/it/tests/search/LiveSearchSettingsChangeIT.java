@@ -62,7 +62,7 @@ class LiveSearchSettingsChangeIT {
     Assumptions.assumeTrue(
         !OssTestServer.isExternalMode(), "Mutates the global SearchSettings cache — embedded only");
 
-    final String marker = ns.uniqueShortId();
+    final String marker = RelevancyFixtures.uniqueToken("lt");
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     final Table tier1Table = RelevancyFixtures.createTable(schema, marker + "a", marker, TIER_1);
     RelevancyFixtures.createTable(schema, marker + "b", marker, TIER_2);
@@ -71,6 +71,7 @@ class LiveSearchSettingsChangeIT {
     try {
       final SearchSettings settings =
           SearchSettingsTestHelper.copyOf(SearchSettingsTestHelper.currentSettings(server));
+      SearchSettingsTestHelper.clearBoosts(settings, TABLE_INDEX);
       SearchSettingsTestHelper.addGlobalTermBoost(settings, TIER_FIELD, TIER_1, STRONG_BOOST);
       SearchSettingsTestHelper.putSettings(server, settings);
 

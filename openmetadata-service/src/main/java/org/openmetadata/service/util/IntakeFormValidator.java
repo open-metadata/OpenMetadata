@@ -23,6 +23,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.jdbi3.IntakeFormRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,12 +51,15 @@ public final class IntakeFormValidator {
   private IntakeFormValidator() {}
 
   /**
-   * Validate the entity against org-configured intake-form required fields, if any.
+   * Validate the entity against org-configured intake-form required fields, if any. A workflow
+   * moving the entity between stages is not an edit the form gates, so its writes are not checked:
+   * an asset created before a field became required can still be approved or rejected.
    *
    * @throws IllegalArgumentException if any intake-form required field is unset.
    */
-  public static void validate(EntityInterface entity, String entityType) {
-    IntakeForm form = loadIntakeForm(entityType);
+  public static void validate(EntityInterface<?> entity, String entityType) {
+    IntakeForm form =
+        EntityStatusWorkflows.isWorkflowChange(entity) ? null : loadIntakeForm(entityType);
     if (form == null) return;
 
     List<String> intakeMissing = checkIntakeFormRequiredFields(entity, form);
@@ -69,22 +73,34 @@ public final class IntakeFormValidator {
   }
 
   private static List<String> checkIntakeFormRequiredFields(
-      EntityInterface entity, IntakeForm form) {
+      EntityInterface<?> entity, IntakeForm form) {
     List<String> missing = new ArrayList<>();
     for (IntakeFormField field : IntakeFormUtil.getEffectiveFormFields(form)) {
       if (!Boolean.TRUE.equals(field.getRequired())) continue;
       if (field.getFieldPath() == null || field.getFieldPath().isBlank()) continue;
       if (!isFieldSet(entity, field)) {
-        missing.add(
-            field.getErrorMessage() != null && !field.getErrorMessage().isBlank()
-                ? field.getErrorMessage()
-                : (field.getFieldLabel() != null ? field.getFieldLabel() : field.getFieldPath()));
+        missing.add(describe(field));
       }
     }
     return missing;
   }
 
-  private static boolean isFieldSet(EntityInterface entity, IntakeFormField field) {
+  /**
+   * How a missing field is named in the error. Falls through to the field path when the label is
+   * blank as well as when it is absent: a form field configured with an empty label would otherwise
+   * contribute an empty entry, leaving the caller an error that names nothing.
+   */
+  private static String describe(IntakeFormField field) {
+    String described = field.getFieldPath();
+    if (field.getErrorMessage() != null && !field.getErrorMessage().isBlank()) {
+      described = field.getErrorMessage();
+    } else if (field.getFieldLabel() != null && !field.getFieldLabel().isBlank()) {
+      described = field.getFieldLabel();
+    }
+    return described;
+  }
+
+  private static boolean isFieldSet(EntityInterface<?> entity, IntakeFormField field) {
     boolean isCustomProperty =
         IntakeFormField.FieldKind.CUSTOM_PROPERTY.equals(field.getFieldKind())
             || field.getFieldPath().startsWith(EXTENSION_PREFIX);
@@ -94,7 +110,7 @@ public final class IntakeFormValidator {
     return isNativeFieldSet(entity, field.getFieldPath());
   }
 
-  private static boolean isNativeFieldSet(EntityInterface entity, String fieldName) {
+  private static boolean isNativeFieldSet(EntityInterface<?> entity, String fieldName) {
     try {
       JsonNode node = MAPPER.valueToTree(entity);
       return hasMeaningfulValue(node.get(fieldName));
@@ -104,7 +120,7 @@ public final class IntakeFormValidator {
     }
   }
 
-  private static boolean isExtensionFieldSet(EntityInterface entity, String path) {
+  private static boolean isExtensionFieldSet(EntityInterface<?> entity, String path) {
     String propertyName =
         path.startsWith(EXTENSION_PREFIX) ? path.substring(EXTENSION_PREFIX.length()) : path;
     Object ext = entity.getExtension();

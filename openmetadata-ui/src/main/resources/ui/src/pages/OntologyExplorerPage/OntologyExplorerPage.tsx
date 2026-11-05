@@ -13,162 +13,2129 @@
 
 import {
   Badge,
+  BadgeWithDot,
   Box,
-  Card,
-  Dot,
-  Skeleton,
+  Button,
+  Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import React, { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import {
-  getGlossaryHomeCrumb,
-  getHomeCrumb,
-} from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
-import { OntologyExplorer } from '../../components/OntologyExplorer';
+  Cube02,
+  CubeOutline,
+  GitBranch01,
+  Grid01,
+  LayoutGrid01,
+  Plus,
+  Share07,
+} from '@openmetadata/ui-core-components/icons';
+import { useQueryClient } from '@tanstack/react-query';
+import classNames from 'classnames';
+import { TFunction } from 'i18next';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
+import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import Loader from '../../components/common/Loader/Loader';
+import AllOntologiesGraphView from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView';
+import { FILTERS as NATIVE_FILTERS } from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView.constants';
+import OntologyCreateDialog from '../../components/governance/ontology/OntologyCreateDialog/OntologyCreateDialog';
+import OntologyEmptyState from '../../components/governance/ontology/OntologyEmptyState/OntologyEmptyState';
+import { OntologyGraphSearchSlotContext } from '../../components/governance/ontology/OntologyGraphView/OntologyGraphSearchSlot.context';
+import { OntologyModelStats } from '../../components/governance/ontology/OntologyGraphView/OntologyGraphView';
+import OntologyNativeImportDialog from '../../components/governance/ontology/OntologyNativeImportDialog/OntologyNativeImportDialog';
+import OntologyPublicationModal from '../../components/governance/ontology/OntologyPublicationModal/OntologyPublicationModal';
+import OntologyStudioHeader from '../../components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader';
+import OntologyStudioScopeMenu from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyStudioScopeMenu';
+import OntologyStudioSubBar from '../../components/governance/ontology/OntologyStudioSubBar/OntologyStudioSubBar';
+import OntologyStudioWorkspace from '../../components/governance/ontology/OntologyStudioWorkspace/OntologyStudioWorkspace';
+import OntologyTasksDrawer from '../../components/governance/ontology/OntologyTasksDrawer/OntologyTasksDrawer';
+import OntologyVersionChip from '../../components/governance/ontology/OntologyVersionChip/OntologyVersionChip';
+import { useOntologyAiCapability } from '../../components/OntologyExplorer/hooks/useOntologyAiCapability';
+import OntologyAiAssistant from '../../components/OntologyExplorer/OntologyAiAssistant';
+import OntologyEditLeaseStatus from '../../components/OntologyExplorer/OntologyEditLeaseStatus';
+import OntologyExplorer from '../../components/OntologyExplorer/OntologyExplorer';
+import { OntologyGraphData } from '../../components/OntologyExplorer/OntologyExplorer.interface';
+import OntologyImportExportMenu from '../../components/OntologyExplorer/OntologyImportExportMenu';
+import OntologyLibrary from '../../components/OntologyExplorer/OntologyLibrary';
+import OntologyMemoryReviewPanel from '../../components/OntologyExplorer/OntologyMemoryReviewPanel';
+import { ONTOLOGY_STUDIO_STYLE } from '../../components/OntologyExplorer/OntologyStudio.styles';
+import { getOntologyHealthSummary } from '../../components/OntologyExplorer/OntologyStudio.utils';
+import OntologyStudioQueryConsole from '../../components/OntologyExplorer/OntologyStudioQueryConsole';
+import OntologyVisualQueryBuilder from '../../components/OntologyExplorer/OntologyVisualQueryBuilder';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import OntologyDraftProvider from '../../context/OntologyDraft/OntologyDraftProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { UIPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
+import { Glossary } from '../../generated/entity/data/glossary';
+import { Ontology } from '../../generated/entity/data/ontology';
+import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { Operation } from '../../generated/entity/policies/policy';
+import { useAuth } from '../../hooks/authHooks';
+import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
+import {
+  OntologyEditLeaseState,
+  useOntologyEditLease,
+} from '../../hooks/governance/ontology/useOntologyEditLease';
+import { ONTOLOGY_WORKING_DIFF_QUERY_KEY } from '../../hooks/governance/ontology/useOntologyPublication';
+import {
+  ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
+  useAllOntologyStudioModels,
+} from '../../hooks/governance/ontology/useOntologyStudioModel';
+import {
+  ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY,
+  useOntologyStudioScopes,
+} from '../../hooks/governance/ontology/useOntologyStudioScopes';
+import { useOntologyUnpublishedCount } from '../../hooks/governance/ontology/useOntologyUnpublishedCount';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../hooks/useAppMode';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
+import { getOntology } from '../../rest/ontologyAPI';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import {
+  ALL_ONTOLOGIES_SCOPE,
+  getScopeKey,
+  getStudioScope,
+  isOntologyScope,
+  OntologyStudioScope,
+} from '../../utils/governance/ontology/OntologyStudioScope.utils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../utils/PermissionsUtils';
+import { generateUUID } from '../../utils/StringUtils';
+import {
+  showErrorToast,
+  showInfoToast,
+  showSuccessToast,
+} from '../../utils/ToastUtils';
 
-const OntologyExplorerPage: React.FC = () => {
+// 'review' has no tab; a memory's "view draft" link (?draft=) still opens it.
+type StudioMode = 'view' | 'edit' | 'query' | 'ai' | 'review';
+type ViewSurface = 'graph' | 'tree';
+type QuerySurface = 'console' | 'builder';
+
+interface StudioTab {
+  id: string;
+  label: string;
+}
+
+interface StudioModeTab {
+  id: StudioMode;
+  label: string;
+}
+
+interface StudioSubMode {
+  id: string;
+  items: StudioTab[];
+}
+
+function getStatCount(stats: string[], label: string): string {
+  const normalizedLabel = label.toLocaleLowerCase();
+  const item = stats.find((stat) =>
+    stat.toLocaleLowerCase().includes(normalizedLabel)
+  );
+
+  return item?.split(' ')[0] ?? '0';
+}
+
+function RdfDisabledNotice() {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:p-8 tw:text-center"
+      data-testid="ontology-rdf-disabled-notice">
+      <span className="tw:grid tw:size-12 tw:place-items-center tw:rounded-full tw:bg-tertiary tw:text-quaternary">
+        <Share07 aria-hidden="true" className="tw:size-6" />
+      </span>
+      <Typography
+        as="h3"
+        className="tw:font-body tw:text-base tw:font-semibold tw:text-primary">
+        {t('message.knowledge-graph-disabled-heading')}
+      </Typography>
+      <Typography
+        as="p"
+        className="tw:max-w-md tw:font-body tw:text-sm tw:text-tertiary">
+        {t('message.knowledge-graph-disabled-description')}
+      </Typography>
+    </div>
+  );
+}
+
+function findGlossaryById(
+  glossaries: Glossary[],
+  id?: string
+): Glossary | undefined {
+  return glossaries.find((glossary) => glossary.id === id);
+}
+
+function computeCanEditOntology(
+  isAdminUser: boolean | undefined,
+  permissions: UIPermission
+): boolean {
+  return (
+    Boolean(isAdminUser) ||
+    checkPermission(Operation.EditAll, ResourceEntity.GLOSSARY, permissions) ||
+    checkPermission(
+      Operation.EditGlossaryTerms,
+      ResourceEntity.GLOSSARY,
+      permissions
+    ) ||
+    checkPermission(
+      Operation.EditEntityRelationship,
+      ResourceEntity.GLOSSARY_TERM,
+      permissions
+    )
+  );
+}
+
+function computeCanCreateConcept(
+  isAdminUser: boolean | undefined,
+  permissions: UIPermission,
+  canEditOntology: boolean
+): boolean {
+  return (
+    canEditOntology ||
+    Boolean(isAdminUser) ||
+    checkPermission(Operation.Create, ResourceEntity.GLOSSARY_TERM, permissions)
+  );
+}
+
+function computeChangeSetPermissions(
+  isAdminUser: boolean | undefined,
+  permissions: UIPermission
+) {
+  const canApply =
+    Boolean(isAdminUser) ||
+    checkPermission(Operation.EditAll, ResourceEntity.GLOSSARY, permissions);
+  const canSubmit =
+    canApply ||
+    checkPermission(
+      Operation.EditGlossaryTerms,
+      ResourceEntity.GLOSSARY,
+      permissions
+    );
+  const canDiscard =
+    Boolean(isAdminUser) ||
+    checkPermission(
+      Operation.EditAll,
+      ResourceEntity.ONTOLOGY_CHANGE_SET,
+      permissions
+    );
+
+  return { canApply, canDiscard, canSubmit };
+}
+
+function computeModeTabs(
+  t: TFunction,
+  canEditOntology: boolean,
+  isOntologyAiEnabled: boolean
+): StudioModeTab[] {
+  const editModeTabs: StudioModeTab[] = canEditOntology
+    ? [{ id: 'edit', label: t('label.edit') }]
+    : [];
+  const aiModeTabs: StudioModeTab[] = isOntologyAiEnabled
+    ? [{ id: 'ai', label: t('label.ai') }]
+    : [];
+
+  return [
+    { id: 'view', label: t('label.view') },
+    ...editModeTabs,
+    { id: 'query', label: t('label.query') },
+    ...aiModeTabs,
+  ];
+}
+
+function resolveLeaseGlossary(
+  conceptDraft: { defaultGlossaryId?: string; id: string } | undefined,
+  authoringGlossary: Glossary | undefined,
+  graphLeaseGlossary: Glossary | undefined,
+  glossaries: Glossary[]
+): Glossary | undefined {
+  if (!conceptDraft) {
+    return graphLeaseGlossary;
+  }
+
+  return (
+    authoringGlossary ??
+    findGlossaryById(glossaries, conceptDraft.defaultGlossaryId)
+  );
+}
+
+function getEditLeaseState(
+  isOwned: boolean,
+  isForCurrentGlossary: boolean,
+  state: OntologyEditLeaseState
+): OntologyEditLeaseState | 'acquiring' {
+  return isOwned && !isForCurrentGlossary ? 'acquiring' : state;
+}
+
+function getSelectedGlossaryLabel(
+  selectedGlossary: Glossary | undefined,
+  allGlossariesLabel: string
+): string {
+  return (
+    selectedGlossary?.displayName ??
+    selectedGlossary?.name ??
+    allGlossariesLabel
+  );
+}
+
+function resolveGraphLeaseGlossary(
+  selectedGlossary: Glossary | undefined,
+  authoringGlossary: Glossary | undefined
+): Glossary | undefined {
+  return selectedGlossary ?? authoringGlossary;
+}
+
+interface LeaseOwnership {
+  isLeaseForCurrentGlossary: boolean;
+  isLeaseOwned: boolean;
+}
+
+function getLeaseOwnership(
+  editLease: ReturnType<typeof useOntologyEditLease>,
+  leaseGlossary: Glossary | undefined
+): LeaseOwnership {
+  const isLeaseForCurrentGlossary =
+    !editLease.lock || editLease.lock.resourceId === leaseGlossary?.id;
+
+  return {
+    isLeaseForCurrentGlossary,
+    isLeaseOwned: editLease.isOwned && isLeaseForCurrentGlossary,
+  };
+}
+
+interface StudioVisibilityFlags {
+  showAiAssistant: boolean;
+  showHealth: boolean;
+  showQuerySurface: boolean;
+  showReviewSurface: boolean;
+  showRdfDisabledNotice: boolean;
+}
+
+function computeVisibilityFlags(
+  mode: StudioMode,
+  isOntologyAiEnabled: boolean,
+  isRdfEnabled: boolean,
+  isCapabilityLoading: boolean
+): StudioVisibilityFlags {
+  return {
+    showAiAssistant: mode === 'ai' && isOntologyAiEnabled,
+    showHealth: mode === 'view' || mode === 'edit',
+    showQuerySurface: mode === 'query',
+    showReviewSurface: mode === 'review',
+    showRdfDisabledNotice:
+      mode === 'query' && !isRdfEnabled && !isCapabilityLoading,
+  };
+}
+
+function getViewSubModeConfiguration(
+  viewSurface: ViewSurface,
+  t: TFunction
+): StudioSubMode {
+  return {
+    id: viewSurface,
+    items: [
+      { id: 'graph', label: t('label.graph') },
+      { id: 'tree', label: t('label.tree') },
+    ],
+  };
+}
+
+function getQuerySubModeConfiguration(
+  querySurface: QuerySurface,
+  isRdfEnabled: boolean,
+  showVisualBuilder: boolean,
+  t: TFunction
+): StudioSubMode {
+  return {
+    id: querySurface,
+    items: isRdfEnabled
+      ? [
+          { id: 'console', label: t('label.sparql-console') },
+          ...(showVisualBuilder
+            ? [{ id: 'builder', label: t('label.visual-builder') }]
+            : []),
+        ]
+      : [],
+  };
+}
+
+function getSubModeConfiguration(
+  mode: StudioMode,
+  surfaces: {
+    editSurface: 'graph' | 'definitions';
+    viewSurface: ViewSurface;
+    querySurface: QuerySurface;
+  },
+  isRdfEnabled: boolean,
+  isNativeOntology: boolean,
+  t: TFunction
+): StudioSubMode {
+  const configByMode: Record<StudioMode, () => StudioSubMode> = {
+    ai: () => ({ id: 'ai', items: [] }),
+    edit: () => ({
+      id: isNativeOntology ? surfaces.editSurface : 'graph',
+      items: [
+        { id: 'graph', label: t('label.graph') },
+        ...(isNativeOntology
+          ? [{ id: 'definitions', label: t('label.term') }]
+          : []),
+      ],
+    }),
+    query: () =>
+      getQuerySubModeConfiguration(
+        surfaces.querySurface,
+        isRdfEnabled || isNativeOntology,
+        true,
+        t
+      ),
+    review: () => ({ id: 'review', items: [] }),
+    view: () => getViewSubModeConfiguration(surfaces.viewSurface, t),
+  };
+
+  return configByMode[mode]();
+}
+
+function resolveViewSurfaceChange(id: string): ViewSurface | undefined {
+  return id === 'graph' || id === 'tree' ? (id as ViewSurface) : undefined;
+}
+
+function resolveQuerySurfaceChange(id: string): QuerySurface | undefined {
+  return id === 'console' || id === 'builder'
+    ? (id as QuerySurface)
+    : undefined;
+}
+
+const DRAFT_SEARCH_PARAM = 'draft';
+
+// A memory modal links straight to its draft, which opens Studio in review mode.
+function useLinkedDraftId(): string | undefined {
+  const [searchParams] = useSearchParams();
+
+  return searchParams.get(DRAFT_SEARCH_PARAM) ?? undefined;
+}
+
+const studioModeFor = (linkedDraftId?: string): StudioMode =>
+  linkedDraftId ? 'review' : 'view';
+
+const canCreateNativeOntology = (
+  isAdminUser: boolean | undefined,
+  permissions: Parameters<typeof checkPermission>[2]
+) =>
+  Boolean(isAdminUser) ||
+  checkPermission(Operation.Create, ResourceEntity.ONTOLOGY, permissions);
+
+function getSelectedOntology(
+  ontologyId: string | null,
+  loadedOntology?: Ontology
+): Ontology | undefined {
+  return loadedOntology?.id === ontologyId ? loadedOntology : undefined;
+}
+
+function mergeSelectedOntology(
+  ontologies: Ontology[],
+  selectedOntology?: Ontology
+): Ontology[] {
+  if (
+    !selectedOntology ||
+    ontologies.some((ontology) => ontology.id === selectedOntology.id)
+  ) {
+    return ontologies;
+  }
+
+  return [selectedOntology, ...ontologies];
+}
+
+function getStudioScopeLabel(
+  scope: OntologyStudioScope,
+  selectedOntology: Ontology | undefined,
+  selectedGlossary: Glossary | undefined,
+  allGlossariesLabel: string,
+  t: TFunction
+): string {
+  if (selectedOntology) {
+    return getEntityName(selectedOntology);
+  }
+  if (scope.kind === 'ontology') {
+    return t('label.ontology');
+  }
+  if (scope.kind === 'allOntologies') {
+    return t('label.all-entity', {
+      entity: t('label.ontology-plural').toLocaleLowerCase(),
+    });
+  }
+
+  return getSelectedGlossaryLabel(selectedGlossary, allGlossariesLabel);
+}
+
+function shouldShowDefaultSurface(flags: StudioVisibilityFlags): boolean {
+  return !(
+    flags.showAiAssistant ||
+    flags.showQuerySurface ||
+    flags.showReviewSurface ||
+    flags.showRdfDisabledNotice
+  );
+}
+
+function getSubModeCaption(mode: StudioMode, t: TFunction): string {
+  if (mode === 'view') {
+    return t('label.explore');
+  }
+  if (mode === 'edit') {
+    return t('label.author');
+  }
+
+  return t('label.query');
+}
+
+function getStudioStatsLabel(
+  scope: OntologyStudioScope,
+  aggregateGraph: OntologyGraphData | null,
+  ontologyId: string | null,
+  nativeStats: OntologyModelStats | undefined,
+  termCount: string,
+  relationCount: string,
+  t: TFunction
+): string {
+  if (scope.kind === 'allOntologies') {
+    return `${aggregateGraph?.nodes.length ?? 0} ${t(
+      'label.concept-plural'
+    ).toLocaleLowerCase()} · ${aggregateGraph?.edges.length ?? 0} ${t(
+      'label.relation-plural'
+    ).toLocaleLowerCase()}`;
+  }
+  if (scope.kind === 'ontology') {
+    const currentStats =
+      nativeStats?.ontologyId === ontologyId ? nativeStats : undefined;
+
+    if (!currentStats) {
+      return '';
+    }
+
+    return `${currentStats.conceptCount} ${t(
+      'label.concept-plural'
+    ).toLocaleLowerCase()} · ${currentStats.relationCount} ${t(
+      'label.relation-plural'
+    ).toLocaleLowerCase()}`;
+  }
+
+  return `${termCount} ${t(
+    'label.term-plural'
+  ).toLocaleLowerCase()} · ${relationCount} ${t(
+    'label.relation-plural'
+  ).toLocaleLowerCase()}`;
+}
+
+function getScopeGlossaryId(scope: OntologyStudioScope): string | undefined {
+  return scope.kind === 'glossaries' ? scope.glossaryId : undefined;
+}
+
+function getIsolatedCount(
+  stats: OntologyModelStats | undefined,
+  ontology: Ontology | undefined
+): number {
+  return ontology && stats?.ontologyId === ontology.id
+    ? stats.isolatedCount
+    : 0;
+}
+
+function canEditStudioScope(
+  scope: OntologyStudioScope,
+  selectedOntology: Ontology | undefined,
+  canEditGlossary: boolean
+): boolean {
+  if (scope.kind === 'allOntologies') {
+    return true;
+  }
+  if (scope.kind === 'ontology') {
+    return Boolean(selectedOntology);
+  }
+
+  return canEditGlossary;
+}
+
+function nextConceptRequest(
+  current: { key: number; ontologyId: string } | undefined,
+  ontologyId: string
+) {
+  return {
+    key: current?.ontologyId === ontologyId ? current.key + 1 : 1,
+    ontologyId,
+  };
+}
+
+function aggregateEnabled(
+  isAllOntologies: boolean,
+  scopes: ReturnType<typeof useOntologyStudioScopes>
+): boolean {
+  return (
+    isAllOntologies && !scopes.isOntologyLoading && !scopes.isOntologyError
+  );
+}
+
+const getHeaderActionSize = (isAiMode: boolean) => (isAiMode ? 'sm' : 'xs');
+
+const OntologyExplorerContent: React.FC = () => {
+  const guard = useOntologyDraftGuard();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const [stats, setStats] = useState<string[]>([]);
-  const [isStatsLoading, setIsStatsLoading] = useState(true);
+  const { isAdminUser } = useAuth();
+  const { permissions } = usePermissionProvider();
+  const queryClient = useQueryClient();
+  const userId = useApplicationStore((store) => store.currentUser?.id);
+  const {
+    isEnabled: isOntologyAiEnabled,
+    isRdfEnabled,
+    isLoading: isCapabilityLoading,
+  } = useOntologyAiCapability();
+  const initialDraftId = useLinkedDraftId();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [loadedOntology, setLoadedOntology] = useState<Ontology>();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEmptyImportOpen, setIsEmptyImportOpen] = useState(false);
+  const [pendingFirstClass, setPendingFirstClass] = useState<{
+    ontologyId: string;
+    isUrlReached: boolean;
+  }>();
+  const [isGlossaryScopeMenuOpen, setIsGlossaryScopeMenuOpen] = useState(false);
+  const [mode, setMode] = useState<StudioMode>(() =>
+    studioModeFor(initialDraftId)
+  );
+  const studioScope = getStudioScope(searchParams);
+  const isAllOntologies = studioScope.kind === 'allOntologies';
+  const isGlossaryScope = studioScope.kind === 'glossaries';
+  const ontologyId = searchParams.get('ontology');
+  const selectedConceptId = searchParams.get('concept') ?? undefined;
+  const requestedNativeMode = useRef<StudioMode>();
+  const selectNativeConcept = useCallback(
+    (id?: string) => {
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          if (id) {
+            next.set('concept', id);
+          } else {
+            next.delete('concept');
+          }
 
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+  const selectedGlossaryId = getScopeGlossaryId(studioScope);
+  const setSelectedGlossaryId = useCallback(
+    (id?: string) => {
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.delete('ontology');
+        const scopeKey = getScopeKey({ kind: 'glossaries', glossaryId: id });
+        if (getScopeKey(getStudioScope(current)) !== scopeKey) {
+          next.delete(DRAFT_SEARCH_PARAM);
+        }
+        next.set('scope', scopeKey);
+
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
+  const [ontologyLoadFailed, setOntologyLoadFailed] = useState(false);
+  const [ontologyLoadAttempt, setOntologyLoadAttempt] = useState(0);
+  const selectedOntology = getSelectedOntology(ontologyId, loadedOntology);
+  const canCreateOntology = canCreateNativeOntology(isAdminUser, permissions);
+  const selectedOntologyId = selectedOntology?.id ?? '';
+  const refreshNativeWorkingDiff = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: [ONTOLOGY_STUDIO_MODEL_QUERY_KEY],
+    });
+    if (selectedOntologyId) {
+      void queryClient.invalidateQueries({
+        queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, selectedOntologyId],
+      });
+    }
+  }, [queryClient, selectedOntologyId]);
+  const { canEditAll: canEditNativeOntology } = useEntityPermissions(
+    ResourceEntity.ONTOLOGY,
+    { id: selectedOntologyId },
+    { enabled: Boolean(selectedOntology), deleted: selectedOntology?.deleted }
+  );
+  const canCreateNativeClass = [
+    ResourceEntity.ONTOLOGY_CONCEPT,
+    ResourceEntity.ONTOLOGY_CHANGE_SET,
+  ].every(
+    (resource) =>
+      getDerivedPermissionFlags(
+        permissions[resource] ?? DEFAULT_ENTITY_PERMISSION,
+        selectedOntology?.deleted
+      ).canCreate
+  );
+  const [publicationScopeKey, setPublicationScopeKey] = useState<string>();
+  const [publicationTab, setPublicationTab] = useState<'changes' | 'releases'>(
+    'changes'
+  );
+  const currentScopeKey = getScopeKey(studioScope);
+  const [selectedReviewTaskId] = searchParams.getAll('task');
+  const publicationIdentity = JSON.stringify([userId, currentScopeKey]);
+  const isPublicationOpen = publicationScopeKey === publicationIdentity;
+  const setIsPublicationOpen = (open: boolean) =>
+    setPublicationScopeKey(open ? publicationIdentity : undefined);
+  useEffect(() => {
+    setPublicationScopeKey((key) =>
+      !selectedReviewTaskId && key === publicationIdentity ? key : undefined
+    );
+  }, [publicationIdentity, selectedReviewTaskId]);
+
+  useEffect(() => {
+    if (!ontologyId) {
+      return;
+    }
+    if (loadedOntology?.id === ontologyId) {
+      return;
+    }
+    const controller = new AbortController();
+    setOntologyLoadFailed(false);
+    getOntology(ontologyId, 'owners,reviewers', controller.signal)
+      .then((ontology) => {
+        if (!controller.signal.aborted) {
+          setLoadedOntology(ontology);
+        }
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          showErrorToast(error);
+          setLoadedOntology(undefined);
+          setOntologyLoadFailed(true);
+        }
+      });
+
+    return () => controller.abort();
+  }, [loadedOntology?.id, ontologyId, ontologyLoadAttempt]);
+
+  useEffect(() => {
+    setMode(requestedNativeMode.current ?? studioModeFor(initialDraftId));
+    requestedNativeMode.current = undefined;
+  }, [initialDraftId, ontologyId]);
+  const [viewSurface, setViewSurface] = useState<ViewSurface>('graph');
+  const [editSurface, setEditSurface] = useState<'graph' | 'definitions'>(
+    'graph'
+  );
+  const [querySurface, setQuerySurface] = useState<QuerySurface>('console');
+  const [stats, setStats] = useState<string[]>([]);
+  const [glossaries, setGlossaries] = useState<Glossary[]>([]);
+  const [graphData, setGraphData] = useState<OntologyGraphData | null>(null);
+  const [relationTypes, setRelationTypes] = useState<RelationshipType[]>([]);
+  const [authoringGlossaryId, setAuthoringGlossaryId] = useState<string>();
+  const [pendingGlossaryName, setPendingGlossaryName] = useState<string>();
+  const [explorerRevision, setExplorerRevision] = useState(0);
+  const [generatedQuery, setGeneratedQuery] = useState<{
+    scopeKey: string;
+    query: string;
+  }>();
+  const [queryConsoleKey, setQueryConsoleKey] = useState(0);
+  const [isNewQueryRequested, setIsNewQueryRequested] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [nativeStats, setNativeStats] = useState<OntologyModelStats>();
+  const [nativeRefresh, setNativeRefresh] = useState(0);
+  const [nativeAuthoringLocked, setNativeAuthoringLocked] = useState(false);
+  const [nativeConceptRequest, setNativeConceptRequest] = useState<{
+    key: number;
+    ontologyId: string;
+  }>();
+  const [searchSlot, setSearchSlot] = useState<HTMLDivElement | null>(null);
+  const [conceptDraft, setConceptDraft] = useState<{
+    defaultGlossaryId?: string;
+    id: string;
+  }>();
+  const studioScopes = useOntologyStudioScopes({
+    enabled: true,
+    loadGlossaries: isGlossaryScopeMenuOpen,
+    knownGlossaries: glossaries,
+  });
+  const availableOntologies = useMemo(
+    () => mergeSelectedOntology(studioScopes.ontologies, selectedOntology),
+    [selectedOntology, studioScopes.ontologies]
+  );
+
+  const isCatalogEmpty = [
+    isAllOntologies,
+    !studioScopes.isOntologyLoading,
+    !studioScopes.isOntologyError,
+    availableOntologies.length === 0,
+  ].every(Boolean);
+  const isFirstListLoading = isAllOntologies && studioScopes.isOntologyLoading;
+
+  const unpublishedCount = useOntologyUnpublishedCount(
+    studioScopes.ontologies,
+    aggregateEnabled(isAllOntologies, studioScopes)
+  );
+  const publicationStatus = studioScopes.ontologies.find(
+    (owner) => owner.id === selectedOntologyId
+  )?.publicationStatus;
+  const allModels = useAllOntologyStudioModels(
+    studioScopes.ontologies,
+    aggregateEnabled(isAllOntologies, studioScopes)
+  );
+
+  const aggregateHealth = useMemo(
+    () =>
+      ![
+        allModels.isError,
+        allModels.isLoading,
+        studioScopes.isOntologyError,
+        studioScopes.isOntologyLoading,
+      ].some(Boolean) && allModels.graph
+        ? getOntologyHealthSummary(allModels.graph, NATIVE_FILTERS)
+        : undefined,
+    [
+      allModels.graph,
+      allModels.isError,
+      allModels.isLoading,
+      studioScopes.isOntologyError,
+      studioScopes.isOntologyLoading,
+    ]
+  );
+
+  const selectOntology = (
+    ontology?: Ontology,
+    conceptId?: string,
+    nextMode: StudioMode = 'view'
+  ) => {
+    if (nativeAuthoringLocked) {
+      showErrorToast(t('message.ontology-class-attempt-pending'));
+
+      return;
+    }
+    setIsPublicationOpen(false);
+    setLoadedOntology(undefined);
+    setOntologyLoadAttempt((attempt) => attempt + 1);
+    requestedNativeMode.current = nextMode;
+    setMode(nextMode);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if ((ontology?.id ?? null) !== current.get('ontology')) {
+        next.delete(DRAFT_SEARCH_PARAM);
+      }
+      next.delete('scope');
+      if (conceptId) {
+        next.set('concept', conceptId);
+      } else {
+        next.delete('concept');
+      }
+      if (ontology) {
+        next.set('ontology', ontology.id);
+      } else {
+        next.delete('ontology');
+      }
+
+      return next;
+    });
+  };
+  useEffect(() => {
+    if (!pendingFirstClass) {
+      return;
+    }
+    const pendingId = pendingFirstClass.ontologyId;
+    if (ontologyId !== pendingId) {
+      if (pendingFirstClass.isUrlReached) {
+        setPendingFirstClass(undefined);
+      }
+    } else if (selectedOntology?.id === pendingId && mode === 'edit') {
+      setPendingFirstClass(undefined);
+      setNativeConceptRequest((current) =>
+        nextConceptRequest(current, pendingId)
+      );
+    } else if (!pendingFirstClass.isUrlReached) {
+      setPendingFirstClass({ ontologyId: pendingId, isUrlReached: true });
+    }
+  }, [mode, ontologyId, pendingFirstClass, selectedOntology?.id]);
   const handleStatsChange = useCallback((newStats: string[]) => {
     setStats(newStats);
   }, []);
 
-  const handleLoadingChange = useCallback((loading: boolean) => {
-    setIsStatsLoading(loading);
+  const handleGlossariesChange = useCallback((items: Glossary[]) => {
+    setGlossaries(items);
   }, []);
 
-  // The base crumb is chosen explicitly by mode: the governance crumb (→ Glossary)
-  // in AI mode, the home crumb (→ app root) in classic mode, so classic keeps the
-  // original navigation target.
-  const breadcrumb = (
-    <HeaderBreadcrumb
-      noMargin
-      items={[
-        isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
-        { label: t('label.ontology-explorer') },
-      ]}
-      showHome={false}
+  const handleOpenGlossary = useCallback((glossaryName: string) => {
+    setPendingGlossaryName(glossaryName);
+    setIsLibraryOpen(false);
+    setMode('view');
+    setViewSurface('graph');
+    setExplorerRevision((revision) => revision + 1);
+  }, []);
+
+  useEffect(() => {
+    const targetGlossary = glossaries.find(
+      (glossary) => glossary.name === pendingGlossaryName
+    );
+
+    if (targetGlossary) {
+      setSelectedGlossaryId(targetGlossary.id);
+      setPendingGlossaryName(undefined);
+    }
+  }, [glossaries, pendingGlossaryName, setSelectedGlossaryId]);
+
+  const handleGraphDataChange = useCallback((data: OntologyGraphData) => {
+    setGraphData(data);
+  }, []);
+
+  const handleRelationTypesChange = useCallback((items: RelationshipType[]) => {
+    setRelationTypes(items);
+  }, []);
+
+  const allGlossariesLabel = useMemo(() => {
+    const label = t('label.all-glossaries');
+
+    return `${label.charAt(0)}${label.slice(1).toLocaleLowerCase()}`;
+  }, [t]);
+  const scopeGlossaries = studioScopes.glossaries;
+  const selectedGlossary = glossaries.find(
+    (glossary) => glossary.id === selectedGlossaryId
+  );
+  const selectedScopeGlossary = scopeGlossaries.find(
+    (glossary) => glossary.id === selectedGlossaryId
+  );
+  const isNativeOntology = isOntologyScope(studioScope);
+  const scopeLabel = getStudioScopeLabel(
+    studioScope,
+    selectedOntology,
+    selectedScopeGlossary,
+    allGlossariesLabel,
+    t
+  );
+
+  const authoringGlossary = glossaries.find(
+    (glossary) => glossary.id === authoringGlossaryId
+  );
+  const graphLeaseGlossary = resolveGraphLeaseGlossary(
+    selectedGlossary,
+    authoringGlossary
+  );
+  const leaseGlossary = resolveLeaseGlossary(
+    conceptDraft,
+    authoringGlossary,
+    graphLeaseGlossary,
+    glossaries
+  );
+
+  function isGlossaryEditMode() {
+    return isGlossaryScope && mode === 'edit' && Boolean(leaseGlossary);
+  }
+
+  const editLease = useOntologyEditLease({
+    isActive: isGlossaryEditMode(),
+    resourceId: leaseGlossary?.id,
+    resourceType: EntityType.GLOSSARY,
+  });
+  const { isLeaseForCurrentGlossary, isLeaseOwned } = getLeaseOwnership(
+    editLease,
+    leaseGlossary
+  );
+  const editLeaseState = getEditLeaseState(
+    editLease.isOwned,
+    isLeaseForCurrentGlossary,
+    editLease.state
+  );
+  // Already in Edit without the lease (another session holds it): asking to
+  // edit again retries the lease and says who is holding it.
+  const handleRequestEdit = () => {
+    setMode('edit');
+    if (mode !== 'edit' || isLeaseOwned) {
+      return;
+    }
+    editLease.retry();
+    if (editLease.state === 'contended') {
+      showInfoToast(
+        t('message.ontology-edit-held-by', {
+          holder:
+            editLease.lock?.holder.displayName ??
+            editLease.lock?.holder.name ??
+            t('label.user'),
+        })
+      );
+    }
+  };
+
+  const selectedGlossaryIds = useMemo(
+    () => (selectedGlossaryId ? [selectedGlossaryId] : []),
+    [selectedGlossaryId]
+  );
+  const termCount = getStatCount(stats, t('label.term-plural'));
+  const relationCount = getStatCount(stats, t('label.relation-plural'));
+  const statsLabel = getStudioStatsLabel(
+    studioScope,
+    allModels.graph,
+    ontologyId,
+    nativeStats,
+    termCount,
+    relationCount,
+    t
+  );
+
+  const explorerSurface: ViewSurface = mode === 'view' ? viewSurface : 'graph';
+
+  const canEditOntology = computeCanEditOntology(isAdminUser, permissions);
+  const changeSetPermissions = computeChangeSetPermissions(
+    isAdminUser,
+    permissions
+  );
+  // Approving applies the draft to its glossaries and edits the draft itself
+  // under a change-set lease, so it needs both permissions.
+  const proposalPermissions = useMemo(
+    () => ({
+      canApprove: Boolean(
+        changeSetPermissions.canApply && changeSetPermissions.canDiscard
+      ),
+      canReject: Boolean(changeSetPermissions.canDiscard),
+    }),
+    [changeSetPermissions.canApply, changeSetPermissions.canDiscard]
+  );
+  const canCreateConcept = computeCanCreateConcept(
+    isAdminUser,
+    permissions,
+    canEditOntology
+  );
+  // Native child permissions are entity-scoped; each editor authorizes its own writes.
+  const canEditCurrentScope = canEditStudioScope(
+    studioScope,
+    selectedOntology,
+    canEditOntology
+  );
+  const isOntologyAiAvailable = isGlossaryScope && isOntologyAiEnabled;
+  const modeTabs = computeModeTabs(
+    t,
+    canEditCurrentScope,
+    isOntologyAiAvailable
+  );
+
+  useEffect(() => {
+    if (ontologyId && !selectedOntology) {
+      return;
+    }
+    const isUnavailableEditMode = mode === 'edit' && !canEditCurrentScope;
+    const isUnavailableAiMode =
+      mode === 'ai' && (isNativeOntology || !isOntologyAiEnabled);
+    if (isUnavailableEditMode || isUnavailableAiMode) {
+      setMode('view');
+    }
+  }, [
+    canEditCurrentScope,
+    isNativeOntology,
+    isOntologyAiEnabled,
+    mode,
+    ontologyId,
+    selectedOntology,
+  ]);
+
+  const subModeConfiguration = getSubModeConfiguration(
+    mode,
+    { editSurface, querySurface, viewSurface },
+    isRdfEnabled,
+    isNativeOntology,
+    t
+  );
+
+  const handleSubModeChange = useCallback(
+    (id: string) => {
+      if (nativeAuthoringLocked) {
+        showErrorToast(t('message.ontology-class-attempt-pending'));
+
+        return;
+      }
+      if (mode === 'edit' && (id === 'graph' || id === 'definitions')) {
+        setEditSurface(id);
+      }
+      if (mode === 'view') {
+        const nextViewSurface = resolveViewSurfaceChange(id);
+        if (nextViewSurface) {
+          setViewSurface(nextViewSurface);
+        }
+
+        return;
+      }
+      if (mode === 'query') {
+        const nextQuerySurface = resolveQuerySurfaceChange(id);
+        if (nextQuerySurface) {
+          setQuerySurface(nextQuerySurface);
+        }
+      }
+    },
+    [mode, nativeAuthoringLocked, t]
+  );
+
+  const {
+    showAiAssistant,
+    showHealth,
+    showQuerySurface,
+    showReviewSurface,
+    showRdfDisabledNotice,
+  } = computeVisibilityFlags(
+    mode,
+    isOntologyAiAvailable,
+    isNativeOntology || isRdfEnabled,
+    isCapabilityLoading
+  );
+
+  const showDefaultSurface = shouldShowDefaultSurface({
+    showAiAssistant,
+    showHealth,
+    showQuerySurface,
+    showReviewSurface,
+    showRdfDisabledNotice,
+  });
+
+  const defaultModeContent = (
+    <OntologyExplorer
+      className="tw:min-h-0 tw:flex-1"
+      conceptDraftId={conceptDraft?.id}
+      defaultConceptGlossaryId={conceptDraft?.defaultGlossaryId}
+      globalGlossaryIds={selectedGlossaryIds}
+      height="100%"
+      isAuthoringMode={mode === 'edit'}
+      isEditMode={mode === 'edit' && isLeaseOwned}
+      key={explorerRevision}
+      proposalPermissions={proposalPermissions}
+      scope="global"
+      searchSlot={searchSlot}
+      showHealth={showHealth}
+      surface={explorerSurface}
+      onConceptCreated={(concept) => {
+        setConceptDraft(undefined);
+        if (concept.glossary?.id) {
+          setSelectedGlossaryId(concept.glossary.id);
+        }
+      }}
+      onConceptDraftClose={() => setConceptDraft(undefined)}
+      onGlossariesChange={handleGlossariesChange}
+      onGraphDataChange={handleGraphDataChange}
+      onRelationTypesChange={handleRelationTypesChange}
+      onRequestEdit={handleRequestEdit}
+      onSelectedNodeChange={(node) => setAuthoringGlossaryId(node?.glossaryId)}
+      onStatsChange={handleStatsChange}
     />
   );
 
-  const heading = (
-    <Typography
-      as="span"
-      data-testid="heading"
-      size="text-xl"
-      weight="semibold">
-      {t('label.ontology-explorer')}
-    </Typography>
-  );
+  function handleScopeChange(nextScope: OntologyStudioScope) {
+    if (nativeAuthoringLocked) {
+      showErrorToast(t('message.ontology-class-attempt-pending'));
 
-  const betaBadge = (
-    <Badge color="blue-light" data-testid="beta-badge" size="sm" type="color">
-      {t('label.beta').toUpperCase()}
-    </Badge>
-  );
+      return;
+    }
+    setIsPublicationOpen(false);
+    setIsLibraryOpen(false);
+    if (nextScope.kind === 'allOntologies') {
+      setLoadedOntology(undefined);
+      setMode('view');
+      setConceptDraft(undefined);
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.delete('ontology');
+        next.delete('scope');
+        next.delete(DRAFT_SEARCH_PARAM);
+        next.delete('concept');
 
-  const statsRow = (
-    <Box
-      align="center"
-      data-testid="ontology-explorer-stats"
-      gap={3}
-      wrap="wrap">
-      {isStatsLoading
-        ? [1, 2, 3].map((i) => (
-            <Skeleton height={20} key={i} variant="rounded" width={80} />
-          ))
-        : stats.map((item, index) => {
-            const spaceIndex = item.indexOf(' ');
-            const count = spaceIndex > 0 ? item.slice(0, spaceIndex) : item;
-            const label = spaceIndex > 0 ? item.slice(spaceIndex + 1) : '';
+        return next;
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ['ontology-studio-model', 'all'],
+      });
 
-            return (
-              <React.Fragment key={item}>
-                {index > 0 && (
-                  <Dot className="tw:text-quaternary" size="tiny" />
-                )}
-                <Typography
-                  as="span"
-                  data-testid={
-                    index === 0 ? 'ontology-explorer-stats-item' : undefined
-                  }
-                  size="text-sm">
-                  <span className="tw:font-semibold">{count}</span>
-                  {label && (
-                    <span className="tw:text-xs tw:font-normal"> {label}</span>
-                  )}
-                </Typography>
-              </React.Fragment>
+      return;
+    }
+    if (isOntologyScope(nextScope)) {
+      const ontology = availableOntologies.find(
+        (item) => item.id === nextScope.ontologyId
+      );
+      if (ontology) {
+        selectOntology(ontology);
+      }
+
+      return;
+    }
+
+    const domainChanged = !isGlossaryScope;
+    const scopeChanged =
+      domainChanged || selectedGlossaryId !== nextScope.glossaryId;
+    setLoadedOntology(undefined);
+    if (scopeChanged) {
+      setConceptDraft(undefined);
+    }
+    if (domainChanged) {
+      setMode('view');
+      setViewSurface('graph');
+    }
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete('ontology');
+      next.delete('concept');
+      next.set('scope', getScopeKey(nextScope));
+      if (scopeChanged) {
+        next.delete(DRAFT_SEARCH_PARAM);
+      }
+
+      return next;
+    });
+  }
+
+  function handleModeChange(nextMode: StudioMode) {
+    if (nativeAuthoringLocked) {
+      showErrorToast(t('message.ontology-class-attempt-pending'));
+
+      return;
+    }
+    if (isAllOntologies && nextMode === 'edit') {
+      const owner = allModels.models?.find((model) =>
+        model.concepts.some((concept) => concept.id === selectedConceptId)
+      );
+      if (owner) {
+        selectOntology(owner.ontology, selectedConceptId, 'edit');
+
+        return;
+      }
+    }
+    if (nextMode !== 'edit') {
+      setConceptDraft(undefined);
+    }
+    setMode(nextMode);
+  }
+
+  function renderScopeMenu() {
+    return (
+      <OntologyStudioScopeMenu
+        glossaries={scopeGlossaries}
+        isError={
+          isGlossaryScope ? studioScopes.isError : studioScopes.isOntologyError
+        }
+        isLoading={
+          isGlossaryScope
+            ? studioScopes.isLoading
+            : studioScopes.isOntologyLoading
+        }
+        label={scopeLabel}
+        ontologies={availableOntologies}
+        scope={studioScope}
+        onCreateOntology={
+          canCreateOntology && !nativeAuthoringLocked
+            ? () =>
+                guard(() => {
+                  handleModeChange('view');
+                  setIsCreateDialogOpen(true);
+                })
+            : undefined
+        }
+        onEditOntology={
+          canEditCurrentScope && !isAllOntologies
+            ? () => handleModeChange('edit')
+            : undefined
+        }
+        onOpenChange={(open) =>
+          setIsGlossaryScopeMenuOpen(open && isGlossaryScope)
+        }
+        onRetry={() =>
+          void (isGlossaryScope
+            ? studioScopes.refetch()
+            : studioScopes.refetchOntologies())
+        }
+        onScopeChange={(scope) => guard(() => handleScopeChange(scope))}
+      />
+    );
+  }
+
+  function handleAddConcept() {
+    if (isNativeOntology) {
+      setNativeConceptRequest((current) =>
+        nextConceptRequest(current, ontologyId ?? '')
+      );
+
+      return;
+    }
+
+    const defaultGlossaryId = graphLeaseGlossary?.id;
+    setAuthoringGlossaryId(defaultGlossaryId);
+    setConceptDraft({
+      defaultGlossaryId,
+      id: `ontology-concept-draft-${generateUUID()}`,
+    });
+  }
+
+  const headerActionSize = getHeaderActionSize(isAiMode);
+
+  function renderPrimaryAction() {
+    const canAddConcept = isNativeOntology
+      ? canCreateNativeClass && canEditNativeOntology && editSurface === 'graph'
+      : canCreateConcept;
+
+    if (mode === 'edit' && canAddConcept) {
+      return (
+        <Button
+          color="primary"
+          data-testid="ontology-add-concept"
+          iconLeading={Plus}
+          isDisabled={!isNativeOntology && Boolean(conceptDraft)}
+          size={headerActionSize}
+          onPress={() => guard(handleAddConcept)}>
+          {t('label.add-entity', { entity: t('label.concept') })}
+        </Button>
+      );
+    }
+
+    if (mode === 'query' && (isNativeOntology || isRdfEnabled)) {
+      return (
+        <Button
+          color="primary"
+          data-testid="ontology-new-query"
+          iconLeading={Plus}
+          size={headerActionSize}
+          onPress={() => {
+            setGeneratedQuery(undefined);
+            setIsNewQueryRequested(true);
+            setQuerySurface('console');
+            setQueryConsoleKey((key) => key + 1);
+          }}>
+          {t('label.new-entity', { entity: t('label.query') })}
+        </Button>
+      );
+    }
+
+    return null;
+  }
+
+  function publicationPendingCount() {
+    if (studioScopes.isOntologyError) {
+      return t('label.unavailable');
+    }
+    if (isAllOntologies) {
+      if (unpublishedCount.status === 'unavailable') {
+        return t('label.unavailable');
+      }
+
+      return unpublishedCount.status === 'ready'
+        ? String(unpublishedCount.count)
+        : t('label.loading');
+    }
+    if (studioScopes.isOntologyLoading) {
+      return t('label.loading');
+    }
+
+    return publicationStatus?.unpublishedChanges === undefined
+      ? t('label.unavailable')
+      : String(publicationStatus.unpublishedChanges);
+  }
+
+  function renderPublicationLabel() {
+    if (!isAiMode) {
+      return (
+        <>
+          {t('label.publish')} ({publicationPendingCount()})
+        </>
+      );
+    }
+
+    return (
+      <span className="tw:flex tw:items-center tw:whitespace-nowrap">
+        {t('label.publish')}
+        <Badge
+          className="tw:ml-1.5"
+          color="brand"
+          data-testid="ontology-publication-count"
+          size="sm"
+          type="pill-color">
+          {publicationPendingCount()}
+        </Badge>
+      </span>
+    );
+  }
+
+  function renderPublicationActions() {
+    if (
+      (!selectedOntology && !isAllOntologies) ||
+      isCatalogEmpty ||
+      isFirstListLoading
+    ) {
+      return null;
+    }
+    const isolatedCount = isAllOntologies
+      ? aggregateHealth?.isolatedTerms.length ?? 0
+      : getIsolatedCount(nativeStats, selectedOntology);
+
+    return (
+      <>
+        <Button
+          color={isAiMode ? 'secondary-brand' : 'primary'}
+          data-testid="ontology-publication-trigger"
+          iconLeading={GitBranch01}
+          isDisabled={isAllOntologies && studioScopes.isOntologyError}
+          size={headerActionSize}
+          onPress={() => {
+            setPublicationTab('changes');
+            setIsPublicationOpen(true);
+          }}>
+          {renderPublicationLabel()}
+        </Button>
+        {isolatedCount > 0 && (
+          <BadgeWithDot color="warning" size="sm">
+            {isolatedCount} {t('label.isolated')}
+          </BadgeWithDot>
+        )}
+      </>
+    );
+  }
+
+  function renderLibraryTrigger() {
+    return (
+      <Button
+        aria-haspopup="dialog"
+        aria-label={t('label.library')}
+        color="secondary"
+        data-testid="ontology-library-trigger"
+        iconLeading={
+          isAiMode ? Grid01 : <Grid01 className="tw:text-fg-brand-primary" />
+        }
+        size="sm"
+        tooltip={t('label.library')}
+        tooltipPlacement="bottom"
+        onPress={() =>
+          guard(() => {
+            if (isNativeOntology) {
+              handleModeChange('view');
+            }
+            setIsLibraryOpen(true);
+          })
+        }
+      />
+    );
+  }
+
+  function selectReviewTask(taskId?: string) {
+    setIsPublicationOpen(false);
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      if (taskId) {
+        next.set('task', taskId);
+      } else {
+        next.delete('task');
+      }
+
+      return next;
+    });
+  }
+
+  function renderImportExport() {
+    return (
+      <>
+        {isNativeOntology && selectedOntology ? (
+          <OntologyImportExportMenu
+            canImport={canEditNativeOntology}
+            key={String(userId) + selectedOntology.id}
+            kind="ontology"
+            ontology={selectedOntology}
+            onApplied={() => {
+              setNativeStats(undefined);
+              setNativeRefresh((value) => value + 1);
+              refreshNativeWorkingDiff();
+            }}
+            onOpen={() => handleModeChange('view')}
+          />
+        ) : null}
+        {isAllOntologies ? (
+          <OntologyImportExportMenu
+            isCatalogEmpty={isCatalogEmpty}
+            key={String(userId) + currentScopeKey}
+            kind="allOntologies"
+            ontologies={availableOntologies}
+            onApplied={() => {
+              void studioScopes.refetchOntologies();
+              void allModels.refetch();
+              refreshNativeWorkingDiff();
+            }}
+          />
+        ) : null}
+        {isGlossaryScope ? (
+          <OntologyImportExportMenu
+            glossaries={glossaries}
+            glossary={selectedGlossary}
+            isAdminUser={Boolean(isAdminUser)}
+            kind="glossary"
+            relationCount={relationCount}
+            termCount={termCount}
+          />
+        ) : null}
+      </>
+    );
+  }
+
+  function renderHeader(tasksAction: React.ReactNode) {
+    return (
+      <OntologyStudioHeader
+        actions={
+          <Box align="center" gap={2} wrap="wrap">
+            {isAiMode ? null : renderLibraryTrigger()}
+            {renderImportExport()}
+            {isAiMode ? renderLibraryTrigger() : null}
+            {renderPublicationActions()}
+            {tasksAction}
+          </Box>
+        }
+        breadcrumb={
+          isAiMode ? (
+            <HeaderBreadcrumb
+              noMargin
+              items={
+                isGlossaryScope
+                  ? [
+                      getGlossaryHomeCrumb(t),
+                      { label: t('label.ontology-studio') },
+                    ]
+                  : [{ label: t('label.ontology-studio') }]
+              }
+              showHome={false}
+            />
+          ) : undefined
+        }
+        mode={mode}
+        modes={isCatalogEmpty || isFirstListLoading ? [] : modeTabs}
+        scopeMenu={renderScopeMenu()}
+        onModeChange={(mode) => guard(() => handleModeChange(mode))}
+      />
+    );
+  }
+
+  function renderVersionChip() {
+    return selectedOntology ? (
+      <OntologyVersionChip
+        isDisabled={
+          studioScopes.isOntologyLoading || studioScopes.isOntologyError
+        }
+        status={publicationStatus}
+        onPress={() => {
+          setPublicationTab('releases');
+          setIsPublicationOpen(true);
+        }}
+      />
+    ) : null;
+  }
+
+  function renderSearchSlot() {
+    const hasNativeSlot =
+      isAiMode && !isGlossaryScope && (mode === 'view' || mode === 'edit');
+    if (!(isGlossaryScope && showDefaultSurface) && !hasNativeSlot) {
+      return null;
+    }
+
+    return (
+      <div
+        className={
+          isAiMode
+            ? 'tw:w-81 tw:shrink-0 tw:border-l tw:border-secondary tw:pl-3.5 tw:empty:hidden'
+            : 'tw:min-w-35 tw:max-w-70 tw:flex-1 tw:border-l tw:border-secondary tw:pl-3 tw:empty:hidden'
+        }
+        ref={setSearchSlot}
+      />
+    );
+  }
+
+  function renderSubModeNav() {
+    if (mode === 'ai' || mode === 'review') {
+      return null;
+    }
+
+    const caption = getSubModeCaption(mode, t);
+
+    return (
+      <OntologyStudioSubBar
+        caption={caption}
+        surface={subModeConfiguration.id}
+        surfaces={subModeConfiguration.items}
+        trailing={
+          <Box align="center" gap={3}>
+            {!isNativeOntology && mode === 'edit' && leaseGlossary ? (
+              <OntologyEditLeaseStatus
+                hasResource
+                lock={editLease.lock}
+                state={editLeaseState}
+                onRetry={editLease.retry}
+              />
+            ) : null}
+            <Typography
+              className="tw:whitespace-nowrap"
+              color="secondary"
+              data-testid="ontology-explorer-stats"
+              size="text-xs">
+              {statsLabel}
+            </Typography>
+          </Box>
+        }
+        onSurfaceChange={(surface) =>
+          guard(() => handleSubModeChange(surface))
+        }>
+        {renderPrimaryAction()}
+        {renderVersionChip()}
+        {renderSearchSlot()}
+      </OntologyStudioSubBar>
+    );
+  }
+
+  function renderQuerySurface() {
+    return (
+      <div className="tw:min-h-0 tw:min-w-0 tw:flex-1 tw:overflow-auto">
+        {querySurface === 'console' ? (
+          <OntologyStudioQueryConsole
+            createQueryOnMount={isNewQueryRequested}
+            graphData={isNativeOntology ? null : graphData}
+            initialQuery={
+              generatedQuery?.scopeKey === currentScopeKey
+                ? generatedQuery.query
+                : undefined
+            }
+            key={queryConsoleKey}
+            relationTypes={isNativeOntology ? [] : relationTypes}
+            selectedGlossaryIds={isNativeOntology ? [] : selectedGlossaryIds}
+            selectedOntologyId={selectedOntology?.id}
+            onQueryCreated={() => setIsNewQueryRequested(false)}
+          />
+        ) : (
+          <OntologyVisualQueryBuilder
+            graphData={isNativeOntology ? undefined : graphData}
+            ontology={isNativeOntology ? selectedOntology : undefined}
+            relationTypes={relationTypes}
+            selectedGlossaryIds={selectedGlossaryIds}
+            onEditAsSparql={(query) => {
+              setGeneratedQuery({ scopeKey: currentScopeKey, query });
+              setQuerySurface('console');
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  function renderMainContent() {
+    if (showReviewSurface) {
+      return (
+        <OntologyMemoryReviewPanel
+          canApply={changeSetPermissions.canApply}
+          canDiscard={changeSetPermissions.canDiscard}
+          canSubmit={changeSetPermissions.canSubmit}
+          initialDraftId={initialDraftId}
+          onApplied={() => setExplorerRevision((revision) => revision + 1)}
+        />
+      );
+    }
+
+    if (showAiAssistant) {
+      return (
+        <OntologyAiAssistant
+          canCreateDraft={canEditOntology}
+          glossary={selectedGlossary}
+          graphData={graphData}
+          relationshipTypes={relationTypes}
+          onOpenQuery={(query) => {
+            setGeneratedQuery({ scopeKey: currentScopeKey, query });
+            setQuerySurface('console');
+            setMode('query');
+          }}
+        />
+      );
+    }
+
+    if (showRdfDisabledNotice) {
+      return <RdfDisabledNotice />;
+    }
+
+    if (showQuerySurface) {
+      return renderQuerySurface();
+    }
+
+    return null;
+  }
+
+  function renderMainSection() {
+    return (
+      <section
+        className={classNames(
+          'tw:flex tw:min-h-0 tw:flex-1',
+          mode === 'query' || mode === 'ai' || mode === 'review'
+            ? 'tw:bg-secondary'
+            : 'tw:bg-primary'
+        )}>
+        {/* Query and AI must not discard the loaded graph or restart its requests. */}
+        <div
+          className={classNames(
+            'tw:min-h-0 tw:min-w-0 tw:flex-1',
+            showDefaultSurface ? 'tw:flex' : 'tw:hidden'
+          )}
+          hidden={!showDefaultSurface}>
+          {defaultModeContent}
+        </div>
+        {renderMainContent()}
+      </section>
+    );
+  }
+
+  const renderNativeContent = (ontology: Ontology) => {
+    if (mode === 'query' || mode === 'ai') {
+      return renderMainContent();
+    }
+
+    return (
+      <OntologyStudioWorkspace
+        createConceptRequestKey={
+          nativeConceptRequest?.ontologyId === ontology.id
+            ? nativeConceptRequest.key
+            : 0
+        }
+        initialDraftId={initialDraftId}
+        key={`${ontology.id}:${nativeRefresh}`}
+        mode={
+          mode === 'edit' && editSurface === 'definitions'
+            ? 'definitions'
+            : mode
+        }
+        ontology={ontology}
+        selectedConceptId={selectedConceptId}
+        viewSurface={explorerSurface}
+        onAuthoringLockChange={setNativeAuthoringLocked}
+        onRequestCreateConcept={() => guard(handleAddConcept)}
+        onRequestEdit={() => {
+          setEditSurface('graph');
+          handleModeChange('edit');
+        }}
+        onRequestGraphSurface={() => setViewSurface('graph')}
+        onSaved={(ontology) => {
+          void queryClient.invalidateQueries({
+            queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
+          });
+          refreshNativeWorkingDiff();
+          selectOntology(ontology);
+        }}
+        onSelectedConceptChange={selectNativeConcept}
+        onStatsChange={setNativeStats}
+        onWorkingChange={refreshNativeWorkingDiff}
+      />
+    );
+  };
+
+  function renderAggregateError() {
+    const ontologyActions = availableOntologies.map((ontology) => ({
+      key: ontology.id,
+      label: getEntityName(ontology),
+      color: 'secondary' as const,
+      onPress: () => selectOntology(ontology),
+    }));
+
+    return (
+      <div
+        className="tw:relative tw:min-h-70 tw:flex-1"
+        data-testid="all-ontologies-load-error"
+        role="alert">
+        {allModels.isTooLarge ? (
+          <NoDataPlaceholder
+            actions={ontologyActions}
+            description={t('message.ontology-aggregate-capacity')}
+          />
+        ) : (
+          <SomethingWentWrongPlaceholder
+            actions={[
+              {
+                key: 'reload',
+                label: t('label.reload'),
+                onPress: () => {
+                  void studioScopes.refetchOntologies();
+                  void allModels.refetch();
+                },
+              },
+              ...ontologyActions,
+            ]}
+          />
+        )}
+      </div>
+    );
+  }
+
+  function renderNoOntologies() {
+    const newOntologyLabel = t('label.new-entity', {
+      entity: t('label.ontology'),
+    });
+    const startCreating = () => setIsCreateDialogOpen(true);
+
+    if (isAiMode) {
+      return (
+        <div
+          className="tw:relative tw:h-full tw:min-h-70 tw:overflow-hidden tw:rounded-lg tw:bg-primary"
+          data-testid="all-ontologies-empty">
+          <FeaturesPlaceholder
+            description={t('message.ontology-empty-description')}
+            features={[
+              {
+                key: 'relationships',
+                icon: <LayoutGrid01 className="tw:text-fg-brand-primary" />,
+                title: t('label.relationship-plural'),
+                description: t(
+                  'message.ontology-relationships-feature-description'
+                ),
+              },
+              {
+                key: 'the-graph',
+                icon: <Cube02 className="tw:text-fg-warning-primary" />,
+                title: t('label.the-graph'),
+                description: t('message.ontology-graph-feature-description'),
+              },
+              {
+                key: 'what-it-unlocks',
+                icon: <CubeOutline className="tw:text-fg-success-primary" />,
+                title: t('label.what-it-unlocks'),
+                description: t('message.ontology-unlocks-feature-description'),
+              },
+            ]}
+            footer={
+              canCreateOntology ? (
+                <Button
+                  color="primary"
+                  data-testid="all-ontologies-new-ontology"
+                  iconLeading={Plus}
+                  size="sm"
+                  onPress={startCreating}>
+                  {newOntologyLabel}
+                </Button>
+              ) : undefined
+            }
+            title={t('message.ontology-empty-title')}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <OntologyEmptyState
+        canCreate={canCreateOntology}
+        onCreateFromScratch={startCreating}
+        onImportFile={() => setIsEmptyImportOpen(true)}
+        onInstallFromLibrary={() => setIsLibraryOpen(true)}
+      />
+    );
+  }
+
+  function renderAllOntologies() {
+    if (studioScopes.isOntologyLoading || allModels.isLoading) {
+      return <Loader />;
+    }
+    if (studioScopes.isOntologyError || allModels.isError) {
+      return renderAggregateError();
+    }
+
+    if (!allModels.graph) {
+      return null;
+    }
+
+    return (
+      <AllOntologiesGraphView
+        graph={allModels.graph}
+        isFetching={allModels.isFetching}
+        models={allModels.models ?? []}
+        selectedConceptId={selectedConceptId}
+        surface={viewSurface}
+        onEditConcept={(ontology, conceptId) =>
+          selectOntology(ontology, conceptId, 'edit')
+        }
+        onRefresh={() => {
+          void studioScopes.refetchOntologies();
+          void allModels.refetch();
+        }}
+        onRequestGraphSurface={() => setViewSurface('graph')}
+        onSelectedConceptChange={(id) => {
+          if (mode === 'edit' && id) {
+            const owner = allModels.models?.find((model) =>
+              model.concepts.some((concept) => concept.id === id)
             );
-          })}
-    </Box>
+            if (owner) {
+              selectOntology(owner.ontology, id, 'edit');
+
+              return;
+            }
+          }
+          selectNativeConcept(id);
+        }}
+      />
+    );
+  }
+
+  const renderOwnerLoading = () => {
+    return ontologyLoadFailed ? (
+      <div className="tw:relative tw:min-h-70 tw:flex-1" role="alert">
+        <SomethingWentWrongPlaceholder
+          actions={[
+            {
+              key: 'reload',
+              label: t('label.reload'),
+              onPress: () => setOntologyLoadAttempt((attempt) => attempt + 1),
+            },
+            {
+              key: 'all-ontologies',
+              label: t('label.all-entity', {
+                entity: t('label.ontology-plural').toLocaleLowerCase(),
+              }),
+              color: 'secondary',
+              onPress: () => handleScopeChange(ALL_ONTOLOGIES_SCOPE),
+            },
+          ]}
+        />
+      </div>
+    ) : (
+      <Loader />
+    );
+  };
+
+  const renderAggregateWorkspace = () => (
+    <>
+      {renderSubModeNav()}
+      {mode === 'edit' || mode === 'query' ? (
+        <Box className="tw:p-4" direction="col" gap={3}>
+          <Select
+            className="tw:w-75"
+            items={availableOntologies.map((ontology) => ({
+              id: ontology.id,
+              label: getEntityName(ontology),
+            }))}
+            label={t('label.select-entity', {
+              entity: t('label.ontology'),
+            })}
+            onChange={(id) => {
+              const ontology = availableOntologies.find(
+                (item) => item.id === id
+              );
+              if (ontology) {
+                selectOntology(ontology, undefined, mode);
+              }
+            }}>
+            {(item) => (
+              <Select.Item id={item.id} key={item.id} label={item.label} />
+            )}
+          </Select>
+        </Box>
+      ) : null}
+      {mode !== 'query' ? renderAllOntologies() : null}
+    </>
+  );
+
+  const renderWorkspace = () => {
+    if (ontologyId && !selectedOntology) {
+      return renderOwnerLoading();
+    }
+
+    if (isCatalogEmpty) {
+      return renderNoOntologies();
+    }
+
+    if (isAllOntologies) {
+      return renderAggregateWorkspace();
+    }
+
+    if (selectedOntology) {
+      return (
+        <>
+          {renderSubModeNav()}
+          <section className="tw:flex tw:min-h-0 tw:flex-1 tw:bg-primary">
+            {renderNativeContent(selectedOntology)}
+          </section>
+        </>
+      );
+    }
+
+    return (
+      <>
+        {renderSubModeNav()}
+        {renderMainSection()}
+      </>
+    );
+  };
+
+  function renderPublicationModal() {
+    if (selectedReviewTaskId || !isPublicationOpen) {
+      return null;
+    }
+    if (selectedOntology) {
+      return (
+        <OntologyPublicationModal
+          canEdit={canEditNativeOntology}
+          initialTab={publicationTab}
+          key={String(userId) + selectedOntology.id}
+          ontology={selectedOntology}
+          onClose={() => setIsPublicationOpen(false)}
+          onOpenTask={selectReviewTask}
+        />
+      );
+    }
+    if (!isAllOntologies) {
+      return null;
+    }
+
+    return (
+      <OntologyPublicationModal
+        canEdit={false}
+        initialTab={publicationTab}
+        key={String(userId)}
+        ontologies={availableOntologies}
+        onClose={() => setIsPublicationOpen(false)}
+        onOpenTask={selectReviewTask}
+      />
+    );
+  }
+
+  const renderLibrary = () => {
+    if (!isLibraryOpen) {
+      return null;
+    }
+    if (isGlossaryScope) {
+      return (
+        <OntologyLibrary
+          canInstall={Boolean(isAdminUser)}
+          onClose={() => setIsLibraryOpen(false)}
+          onOpenGlossary={handleOpenGlossary}
+        />
+      );
+    }
+
+    return (
+      <OntologyLibrary
+        native={{
+          ontologies: availableOntologies,
+          initialOntology:
+            selectedOntology ??
+            allModels.models?.find((model) =>
+              model.concepts.some((concept) => concept.id === selectedConceptId)
+            )?.ontology,
+          canCreate: canCreateOntology,
+          onCreated: () => {
+            void queryClient.invalidateQueries({
+              queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
+            });
+          },
+          onOpenOntology: (ontology) => {
+            guard(() => {
+              selectOntology(ontology);
+              setViewSurface('graph');
+              setIsLibraryOpen(false);
+            });
+          },
+          onApplied: (ontology) => {
+            void queryClient.invalidateQueries({
+              queryKey: [ONTOLOGY_STUDIO_MODEL_QUERY_KEY],
+            });
+            void queryClient.invalidateQueries({
+              queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontology.id],
+            });
+          },
+        }}
+        onClose={() => setIsLibraryOpen(false)}
+      />
+    );
+  };
+
+  const handleOntologyCreated = (ontology: Ontology) => {
+    setIsCreateDialogOpen(false);
+    setEditSurface('graph');
+    setPendingFirstClass({ ontologyId: ontology.id, isUrlReached: false });
+    void queryClient.invalidateQueries({
+      queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
+    });
+    selectOntology(ontology, undefined, 'edit');
+    showSuccessToast(
+      t('message.ontology-created-add-first-class', {
+        name: getEntityName(ontology),
+      })
+    );
+  };
+
+  const renderOverlays = () => (
+    <>
+      {renderLibrary()}
+      {renderPublicationModal()}
+      {isCreateDialogOpen ? (
+        <OntologyCreateDialog
+          ontologies={
+            studioScopes.isOntologyLoading || studioScopes.isOntologyError
+              ? undefined
+              : availableOntologies
+          }
+          onClose={() => setIsCreateDialogOpen(false)}
+          onCreated={handleOntologyCreated}
+        />
+      ) : null}
+      {isEmptyImportOpen ? (
+        <OntologyNativeImportDialog
+          onClose={() => setIsEmptyImportOpen(false)}
+        />
+      ) : null}
+    </>
   );
 
   return (
     <PageLayoutV1
-      className="ontology-explorer-page"
-      fullHeight={isAiMode}
-      mainContainerClassName="ontology-explorer-page-layout"
-      pageTitle={t('label.ontology-explorer')}
-      variant={isAiMode ? 'compact' : 'default'}>
-      <Box
-        className={
-          isAiMode ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col' : undefined
-        }
-        direction="col"
-        gap={4}>
-        {isAiMode ? (
-          <HeaderShell
-            hasStats
-            badge={betaBadge}
-            breadcrumb={breadcrumb}
-            className="tw:mb-0!"
-            meta={statsRow}
-            padding="comfortable"
-            title={heading}
-            variant="gradient"
-          />
-        ) : (
-          <>
-            {breadcrumb}
-            <Card className="tw:p-5">
-              <Box align="center" gap={2}>
-                {heading}
-                {betaBadge}
-              </Box>
-              {statsRow}
-            </Card>
-          </>
-        )}
-
-        {isAiMode ? (
-          <div className="tw:min-h-0 tw:flex-1">
-            <OntologyExplorer
-              height="100%"
-              scope="global"
-              onLoadingChange={handleLoadingChange}
-              onStatsChange={handleStatsChange}
-            />
-          </div>
-        ) : (
-          <OntologyExplorer
-            height="calc(100vh - 230px)"
-            scope="global"
-            onLoadingChange={handleLoadingChange}
-            onStatsChange={handleStatsChange}
-          />
-        )}
-      </Box>
+      fullHeight
+      className={classNames('tw:p-0!', {
+        'tw:h-full!': isAiMode,
+      })}
+      mainContainerClassName={classNames('ontology-studio-page-layout', {
+        'tw:h-full!': isAiMode,
+      })}
+      pageTitle={t('label.ontology-studio')}>
+      <main
+        className="tw:relative tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-primary tw:font-body tw:antialiased"
+        data-testid="ontology-studio-shell"
+        style={ONTOLOGY_STUDIO_STYLE}>
+        <OntologyTasksDrawer
+          taskId={selectedReviewTaskId}
+          onTaskChange={selectReviewTask}>
+          {({ tasksAction, banner }) => (
+            <>
+              {renderHeader(tasksAction)}
+              {/* The AI header is an inset card; the workspace below takes the
+                  same inset and card frame so their edges line up. */}
+              <div
+                className={classNames(
+                  'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
+                  isAiMode &&
+                    'tw:mx-2 tw:mb-2 tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
+                )}>
+                {banner}
+                <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
+                  {renderWorkspace()}
+                </OntologyGraphSearchSlotContext.Provider>
+              </div>
+              {renderOverlays()}
+            </>
+          )}
+        </OntologyTasksDrawer>
+      </main>
     </PageLayoutV1>
   );
 };
+
+const OntologyExplorerPage: React.FC = () => (
+  <OntologyDraftProvider>
+    <OntologyExplorerContent />
+  </OntologyDraftProvider>
+);
 
 export default OntologyExplorerPage;

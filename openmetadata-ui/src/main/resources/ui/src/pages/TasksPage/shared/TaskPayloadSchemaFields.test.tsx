@@ -25,17 +25,30 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { act } from 'react';
-import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { act, ReactNode } from 'react';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import TaskPayloadSchemaFields from './TaskPayloadSchemaFields';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children }: any) => <div>{children}</div>,
-  Button: ({ children, onPress }: any) => (
-    <button onClick={onPress}>{children}</button>
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Button: ({
+    children,
+    onPress,
+  }: {
+    children?: ReactNode;
+    onPress?: () => void;
+  }) => <button onClick={onPress}>{children}</button>,
+  Typography: ({ children }: { children?: ReactNode }) => (
+    <span>{children}</span>
   ),
-  Typography: ({ children }: any) => <span>{children}</span>,
 }));
 
 jest.mock('./DescriptionTabs', () => ({
@@ -57,15 +70,15 @@ jest.mock('./TagsTabs', () => ({
       onClick={() =>
         onChange([
           {
-            labelType: 'Manual',
+            labelType: LabelType.Manual,
             source: TagSource.Classification,
-            state: 'Confirmed',
+            state: State.Confirmed,
             tagFQN: 'Classification.PersonalData.Personal',
           },
           {
-            labelType: 'Manual',
+            labelType: LabelType.Manual,
             source: TagSource.Classification,
-            state: 'Confirmed',
+            state: State.Confirmed,
             tagFQN: 'PII.Sensitive',
           },
         ])
@@ -82,9 +95,9 @@ jest.mock('./TagSuggestion', () =>
       onClick={() =>
         onChange([
           {
-            labelType: 'Manual',
+            labelType: LabelType.Manual,
             source: TagSource.Classification,
-            state: 'Confirmed',
+            state: State.Confirmed,
             tagFQN: 'Tier.Tier1',
           },
         ])
@@ -95,20 +108,40 @@ jest.mock('./TagSuggestion', () =>
 );
 
 const PERSONAL_TAG: TagLabel = {
-  labelType: 'Manual',
+  labelType: LabelType.Manual,
   source: TagSource.Classification,
-  state: 'Confirmed',
+  state: State.Confirmed,
   tagFQN: 'Classification.PersonalData.Personal',
 };
 
 const CONFIDENTIAL_TAG: TagLabel = {
-  labelType: 'Manual',
+  labelType: LabelType.Manual,
   source: TagSource.Classification,
-  state: 'Confirmed',
+  state: State.Confirmed,
   tagFQN: 'Classification.PersonalData.Confidential',
 };
 
 describe('TaskPayloadSchemaFields', () => {
+  it('associates required schema fields with their accessible labels', () => {
+    render(
+      <TaskPayloadSchemaFields
+        payload={{ reviewNotes: '' }}
+        schema={{
+          type: 'object',
+          required: ['reviewNotes'],
+          properties: {
+            reviewNotes: { title: 'Review Notes', type: 'string' },
+          },
+        }}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole('textbox', { name: /Review Notes/ })
+    ).toBeRequired();
+  });
+
   it('updates description payload fields through the schema widget', () => {
     const onChange = jest.fn();
     const schema: JsonSchemaObject = {
@@ -186,9 +219,9 @@ describe('TaskPayloadSchemaFields', () => {
       currentTags: [PERSONAL_TAG, CONFIDENTIAL_TAG],
       tagsToAdd: [
         {
-          labelType: 'Manual',
+          labelType: LabelType.Manual,
           source: TagSource.Classification,
-          state: 'Confirmed',
+          state: State.Confirmed,
           tagFQN: 'PII.Sensitive',
         },
       ],

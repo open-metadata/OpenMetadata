@@ -537,3 +537,123 @@ SET json = JSON_INSERT(
 WHERE serviceType = 'DatabricksPipeline'
   AND JSON_EXTRACT(json, '$.connection.config.token') IS NOT NULL
   AND NOT JSON_CONTAINS_PATH(json, 'one', '$.connection.config.authType');
+
+-- Services overview endpoint (/v1/services/overview) - OpenMetadata 2.0.0
+
+-- The (deleted, name) composite that lets `WHERE deleted = FALSE ORDER BY name, id` be served
+-- index-only. Nine service tables got it in 1.8.2; these four were added later and were missed,
+-- so the overview endpoint's per-type key scan would full-scan them.
+CREATE INDEX idx_security_service_entity_deleted_name ON security_service_entity(deleted, name);
+CREATE INDEX idx_drive_service_entity_deleted_name ON drive_service_entity(deleted, name);
+CREATE INDEX idx_llm_service_entity_deleted_name ON llm_service_entity(deleted, name);
+CREATE INDEX idx_mcp_service_entity_deleted_name ON mcp_service_entity(deleted, name);
+
+-- The overview endpoint derives both the per-entity-type total and the per-connector breakdown
+-- from one `GROUP BY serviceType` per service table. Without a (deleted, serviceType) composite
+-- that grouping reads the table; with it the aggregate is index-only.
+CREATE INDEX idx_dbservice_entity_deleted_service_type ON dbservice_entity(deleted, serviceType);
+CREATE INDEX idx_dashboard_service_entity_deleted_service_type ON dashboard_service_entity(deleted, serviceType);
+CREATE INDEX idx_messaging_service_entity_deleted_service_type ON messaging_service_entity(deleted, serviceType);
+CREATE INDEX idx_metadata_service_entity_deleted_service_type ON metadata_service_entity(deleted, serviceType);
+CREATE INDEX idx_mlmodel_service_entity_deleted_service_type ON mlmodel_service_entity(deleted, serviceType);
+CREATE INDEX idx_pipeline_service_entity_deleted_service_type ON pipeline_service_entity(deleted, serviceType);
+CREATE INDEX idx_search_service_entity_deleted_service_type ON search_service_entity(deleted, serviceType);
+CREATE INDEX idx_storage_service_entity_deleted_service_type ON storage_service_entity(deleted, serviceType);
+CREATE INDEX idx_api_service_entity_deleted_service_type ON api_service_entity(deleted, serviceType);
+CREATE INDEX idx_security_service_entity_deleted_service_type ON security_service_entity(deleted, serviceType);
+CREATE INDEX idx_drive_service_entity_deleted_service_type ON drive_service_entity(deleted, serviceType);
+CREATE INDEX idx_llm_service_entity_deleted_service_type ON llm_service_entity(deleted, serviceType);
+CREATE INDEX idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(deleted, serviceType);
+
+-- App-mode preferences v2: lightweight, app-managed (no FK) per-user preferences bag.
+-- Deliberately not a full entity table - no versioning/audit/soft-delete, cascade-deleted
+-- via UserRepository#postDelete rather than a foreign key.
+CREATE TABLE IF NOT EXISTS user_preferences (
+    userId VARCHAR(36) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (userId)
+);
+
+-- The Postgres counterpart of this version adds idx_profiler_data_time_series_fqnhash_pattern, a
+-- text_pattern_ops index that lets the table hard-delete profiler purge (issue #27041) serve
+--   entityFQNHash LIKE '<table hash>.%'
+-- from an index instead of a sequential scan.
+--
+-- MySQL needs no equivalent. profiler_data_time_series.entityFQNHash is declared
+--   VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin
+-- since 1.1.5 — a binary collation — so InnoDB can already answer a LIKE prefix predicate with a
+-- range scan on the leading column of the existing unique index
+-- profiler_data_time_series_unique_hash_extension_ts (entityFQNHash, extension, operation,
+-- timestamp). Adding a second index on the same leading column would be write overhead with no
+-- read benefit.
+
+-- Tables that 2.1.0 creates (see 2.1.0/schemaChanges.sql), also created here: an upgrade from below
+-- 2.0.0 runs the 2.0.0 Java data migration before the 2.1.0 SQL, and the platform code it calls reads
+-- them. Keep each statement identical to its 2.1.0 copy, which still creates them for databases
+-- already past 2.0.0.
+CREATE TABLE IF NOT EXISTS test_case_incident (
+    stateId varchar(36) NOT NULL,
+    entityFQNHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    testCaseResolutionStatusType varchar(36) NOT NULL,
+    assignee varchar(256) DEFAULT NULL,
+    severity varchar(36) DEFAULT NULL,
+    createdAt bigint unsigned NOT NULL,
+    updatedAt bigint unsigned NOT NULL,
+    latestRecordId varchar(36) NOT NULL,
+    PRIMARY KEY (stateId),
+    INDEX idx_tci_status_fqn (testCaseResolutionStatusType, entityFQNHash),
+    INDEX idx_tci_fqn (entityFQNHash),
+    INDEX idx_tci_assignee (assignee, testCaseResolutionStatusType),
+    INDEX idx_tci_updated (updatedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS metric_group_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.id'))) STORED NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedAt'))) VIRTUAL NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedBy'))) VIRTUAL NOT NULL,
+    deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(`json`, '$.deleted')) VIRTUAL,
+    fqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.name'))) VIRTUAL NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY metric_group_entity_fqn_hash (fqnHash),
+    KEY metric_group_entity_name_index (name),
+    KEY idx_metric_group_entity_deleted_name_id (deleted, name, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS change_request (
+  id varchar(36) NOT NULL,
+  entityType varchar(256) NOT NULL,
+  entityId varchar(36) NOT NULL,
+  requestedBy varchar(256) NOT NULL,
+  workflowDefinitionId varchar(36) NOT NULL,
+  status varchar(32) NOT NULL,
+  activeInterceptKey varchar(300) DEFAULT NULL,
+  taskId varchar(36) DEFAULT NULL,
+  deliveryStatus varchar(32) NOT NULL,
+  deliveryAttempts int NOT NULL DEFAULT 0,
+  nextDeliveryAt bigint unsigned NOT NULL,
+  claimToken varchar(36) DEFAULT NULL,
+  leaseUntil bigint unsigned DEFAULT NULL,
+  updatedAt bigint unsigned NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY change_request_active_intercept_key (activeInterceptKey),
+  KEY change_request_entity_status_index (entityId, status),
+  KEY change_request_requester_status_index (requestedBy, status),
+  KEY change_request_workflow_status_index (workflowDefinitionId, status),
+  KEY change_request_delivery_index (deliveryStatus, nextDeliveryAt),
+  KEY change_request_task_index (taskId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS custom_property_reference (
+    id VARCHAR(36) NOT NULL,
+    columnKey VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+    propertyName VARCHAR(256) NOT NULL,
+    targetId VARCHAR(36) NOT NULL,
+    holderType VARCHAR(256) NOT NULL,
+    targetType VARCHAR(256) NOT NULL,
+    position INT NOT NULL,
+    json JSON NOT NULL,
+    PRIMARY KEY (id, columnKey, propertyName, targetId),
+    INDEX custom_property_reference_target (targetId),
+    INDEX custom_property_reference_property (holderType, propertyName)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

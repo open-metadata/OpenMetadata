@@ -28,7 +28,7 @@ import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.ApplicationDAO;
+import org.openmetadata.service.jdbi3.EntityDataDAOs.ApplicationDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 
 class RdfScheduleMigrationTest {

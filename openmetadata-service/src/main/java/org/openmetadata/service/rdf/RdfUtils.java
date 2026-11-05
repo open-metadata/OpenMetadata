@@ -1,11 +1,16 @@
 package org.openmetadata.service.rdf;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Set;
 
 /**
  * Utility methods for RDF operations
  */
-public class RdfUtils {
+public final class RdfUtils {
 
   private static final Set<String> PROV_ACTIVITY_TYPES =
       Set.of(
@@ -44,9 +49,7 @@ public class RdfUtils {
           "dataproduct",
           "domain");
 
-  private RdfUtils() {
-    // Private constructor for utility class
-  }
+  private RdfUtils() {}
 
   /**
    * Maps an entity type to its PROV-O class (Entity, Activity, or Agent).
@@ -57,7 +60,7 @@ public class RdfUtils {
     if (entityType == null) {
       return null;
     }
-    String key = entityType.toLowerCase();
+    String key = entityType.toLowerCase(Locale.ROOT);
     if (PROV_ACTIVITY_TYPES.contains(key)) {
       return "prov:Activity";
     }
@@ -71,7 +74,7 @@ public class RdfUtils {
   }
 
   public static String getRdfType(String entityType) {
-    return switch (entityType.toLowerCase()) {
+    return switch (entityType.toLowerCase(Locale.ROOT)) {
       case "table" -> "dcat:Dataset";
       case "database" -> "dcat:Catalog";
       case "dashboard" -> "dcat:DataService";
@@ -98,7 +101,50 @@ public class RdfUtils {
       case "policy" -> "om:Policy";
       case "dataproduct" -> "dprod:DataProduct"; // W3C Data Product vocabulary
       case "domain" -> "skos:Collection"; // Organizational grouping
-      default -> "om:" + entityType.substring(0, 1).toUpperCase() + entityType.substring(1);
+      case "persona" -> "om:Persona";
+      case "llmmodel" -> "om:LLMModel";
+      case "aiapplication" -> "om:AIApplication";
+      case "mcpserver" -> "om:McpServer";
+      case "agentexecution" -> "om:AgentExecution";
+      case "mcpexecution" -> "om:McpExecution";
+      case "prompttemplate" -> "om:PromptTemplate";
+      case "workflow", "workflowdefinition" -> "om:Workflow";
+      case "workflowinstance" -> "om:WorkflowInstance";
+      case "automation" -> "om:Automation";
+      default -> "om:" + getOpenMetadataType(entityType);
     };
+  }
+
+  public static String getOpenMetadataType(String entityType) {
+    if (nullOrEmpty(entityType)) {
+      return null;
+    }
+    return switch (entityType.toLowerCase(Locale.ROOT)) {
+      case "aiapplication" -> "AIApplication";
+      case "apicollection" -> "APICollection";
+      case "apiendpoint" -> "APIEndpoint";
+      case "apiservice" -> "APIService";
+      case "llmmodel" -> "LLMModel";
+      case "llmservice" -> "LLMService";
+      case "mlmodel" -> "MLModel";
+      case "mlmodelservice" -> "MLModelService";
+      case "mcpexecution" -> "McpExecution";
+      case "mcpserver" -> "McpServer";
+      case "mcpservice" -> "McpService";
+      default -> entityType.substring(0, 1).toUpperCase(Locale.ROOT) + entityType.substring(1);
+    };
+  }
+
+  /**
+   * Mints a stable, FQN-derived URI for a Column resource. Columns are sub-objects of a Table and
+   * have no UUID, so the FQN is the only universal identifier. The same scheme is used by the
+   * Table-side mapping (Table om:hasColumn) and by column-level lineage (om:fromColumn /
+   * om:toColumn) so that SPARQL traversal across both sides resolves to the same resource.
+   */
+  public static String columnUri(String baseUri, String columnFqn) {
+    if (columnFqn == null || columnFqn.isEmpty()) {
+      return null;
+    }
+    return baseUri + "entity/column/" + URLEncoder.encode(columnFqn, StandardCharsets.UTF_8);
   }
 }

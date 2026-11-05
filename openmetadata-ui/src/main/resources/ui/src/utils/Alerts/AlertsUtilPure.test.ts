@@ -1,0 +1,246 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Destination,
+  SubscriptionCategory,
+  SubscriptionType,
+  Type,
+} from '../../generated/events/eventSubscription';
+import { Status } from '../../generated/events/testDestinationStatus';
+import { ModifiedWebhookConfig } from '../AlertsClassBase.interface';
+import {
+  clearMaskedSecrets,
+  formatDiagnosticValue,
+  formatEventCount,
+  getDestinationsWithTestStatus,
+  withAuthType,
+} from './AlertsUtilPure';
+
+const webhookDestination = {
+  category: SubscriptionCategory.External,
+  type: SubscriptionType.Webhook,
+  config: {
+    endpoint: 'https://example.com/webhook',
+    authType: { type: 'oauth2', clientSecret: 'super-secret' },
+  },
+} as unknown as Destination;
+
+const slackDestination = {
+  category: SubscriptionCategory.External,
+  type: SubscriptionType.Slack,
+  config: { endpoint: 'https://hooks.slack.com/services/xxx' },
+} as unknown as Destination;
+
+describe('getDestinationsWithTestStatus', () => {
+  it('should keep the submitted config since the API redacts it from the response', () => {
+    const redactedResults = [
+      {
+        category: SubscriptionCategory.External,
+        type: SubscriptionType.Webhook,
+        statusDetails: { status: Status.Success, statusCode: 200 },
+      },
+    ] as unknown as Destination[];
+
+    const result = getDestinationsWithTestStatus(
+      [webhookDestination],
+      redactedResults
+    );
+
+    expect(result[0].config).toEqual(webhookDestination.config);
+    expect(result[0].statusDetails).toEqual({
+      status: Status.Success,
+      statusCode: 200,
+    });
+  });
+
+  it('should pair results with destinations positionally', () => {
+    const redactedResults = [
+      { statusDetails: { status: Status.Success } },
+      {
+        statusDetails: { status: Status.Failed, reason: 'Connection refused' },
+      },
+    ] as unknown as Destination[];
+
+    const result = getDestinationsWithTestStatus(
+      [webhookDestination, slackDestination],
+      redactedResults
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result[0].type).toBe(SubscriptionType.Webhook);
+    expect(result[0].statusDetails).toEqual({ status: Status.Success });
+    expect(result[1].type).toBe(SubscriptionType.Slack);
+    expect(result[1].statusDetails).toEqual({
+      status: Status.Failed,
+      reason: 'Connection refused',
+    });
+  });
+
+  it('should leave the status undefined when a result is missing', () => {
+    const result = getDestinationsWithTestStatus(
+      [webhookDestination, slackDestination],
+      [] as Destination[]
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result[0].statusDetails).toBeUndefined();
+    expect(result[1].config).toEqual(slackDestination.config);
+  });
+});
+
+describe('formatDiagnosticValue', () => {
+  it('shows flags as Yes/No, numbers as-is and a placeholder when unset', () => {
+    expect(formatDiagnosticValue(true)).toBe('label.yes');
+    expect(formatDiagnosticValue(false)).toBe('label.no');
+    expect(formatDiagnosticValue(0)).toBe('0');
+    expect(formatDiagnosticValue(42)).toBe('42');
+    expect(formatDiagnosticValue(undefined)).toBe('--');
+  });
+});
+
+describe('formatEventCount', () => {
+  it('shows an exact count as it is', () => {
+    expect(formatEventCount(12, false)).toBe('12');
+    expect(formatEventCount(12)).toBe('12');
+  });
+
+  it('marks a count the server capped with a plus', () => {
+    expect(formatEventCount(500, true)).toBe('500+');
+  });
+
+  it('shows a missing count as zero', () => {
+    expect(formatEventCount(undefined)).toBe('0');
+  });
+});
+
+describe('clearMaskedSecrets', () => {
+  it('empties every secret that still shows the mask', () => {
+    expect(
+      clearMaskedSecrets({
+        endpoint: 'https://new.example.com/hook',
+        headers: [
+          { key: 'Authorization', value: '*********' },
+          { key: 'Content-Type', value: 'application/json' },
+        ],
+        authType: {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/token',
+          clientId: '*********',
+          clientSecret: '*********',
+          scope: 'read',
+        },
+      } as ModifiedWebhookConfig)
+    ).toEqual({
+      endpoint: 'https://new.example.com/hook',
+      headers: [
+        { key: 'Authorization', value: '' },
+        { key: 'Content-Type', value: 'application/json' },
+      ],
+      authType: {
+        type: 'oauth2',
+        tokenUrl: 'https://auth.example.com/token',
+        clientId: '',
+        clientSecret: '',
+        scope: 'read',
+      },
+    });
+  });
+
+  it('empties a URL that still shows the mask, as a token URL change needs', () => {
+    expect(
+      clearMaskedSecrets({
+        endpoint: '*********',
+        authType: {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/new-token',
+          clientId: '*********',
+          clientSecret: '*********',
+        },
+      } as ModifiedWebhookConfig)
+    ).toEqual({
+      endpoint: '',
+      authType: {
+        type: 'oauth2',
+        tokenUrl: 'https://auth.example.com/new-token',
+        clientId: '',
+        clientSecret: '',
+      },
+    });
+  });
+
+  it('keeps secrets the user has already typed', () => {
+    const config = {
+      endpoint: 'https://new.example.com/hook',
+      headers: [{ key: 'Authorization', value: 'Bearer new' }],
+      authType: { type: 'bearer', secretKey: 'new-key' },
+    } as ModifiedWebhookConfig;
+
+    expect(clearMaskedSecrets(config)).toStrictEqual(config);
+  });
+
+  it('adds nothing to a destination without headers or authentication', () => {
+    const config = { endpoint: 'https://new.example.com/hook' };
+
+    expect(clearMaskedSecrets(config)).toStrictEqual(config);
+  });
+});
+
+describe('withAuthType', () => {
+  const savedOauth2 = {
+    endpoint: '*********',
+    headers: [{ key: 'X-Api-Key', value: '*********' }],
+    authType: {
+      type: Type.Oauth2,
+      tokenUrl: 'https://auth.example.com/token',
+      clientId: '*********',
+      clientSecret: '*********',
+    },
+  } as ModifiedWebhookConfig;
+
+  it('keeps no credential of the old type and asks again for the hidden values when leaving OAuth2', () => {
+    expect(withAuthType(savedOauth2, Type.Bearer)).toEqual({
+      endpoint: '',
+      headers: [{ key: 'X-Api-Key', value: '' }],
+      authType: { type: Type.Bearer },
+    });
+  });
+
+  it('asks again for the hidden values when choosing OAuth2', () => {
+    const savedBearer = {
+      endpoint: '*********',
+      authType: { type: Type.Bearer, secretKey: '*********' },
+    } as ModifiedWebhookConfig;
+
+    expect(withAuthType(savedBearer, Type.Oauth2)).toEqual({
+      endpoint: '',
+      authType: { type: Type.Oauth2 },
+    });
+  });
+
+  it('keeps the hidden URL between authentication types without a token URL', () => {
+    const savedBearer = {
+      endpoint: '*********',
+      authType: { type: Type.Bearer, secretKey: '*********' },
+    } as ModifiedWebhookConfig;
+
+    expect(withAuthType(savedBearer, Type.None)).toEqual({
+      endpoint: '*********',
+      authType: { type: Type.None },
+    });
+  });
+
+  it('changes nothing when the same type is chosen again', () => {
+    expect(withAuthType(savedOauth2, Type.Oauth2)).toBe(savedOauth2);
+  });
+});

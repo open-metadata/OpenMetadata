@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Directory;
@@ -29,11 +30,13 @@ import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.QueryCostRecord;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
@@ -79,6 +82,7 @@ import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
 import org.openmetadata.service.search.indexes.DashboardServiceIndex;
+import org.openmetadata.service.search.indexes.DataContractIndex;
 import org.openmetadata.service.search.indexes.DataProductIndex;
 import org.openmetadata.service.search.indexes.DatabaseIndex;
 import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
@@ -99,6 +103,7 @@ import org.openmetadata.service.search.indexes.McpServerIndex;
 import org.openmetadata.service.search.indexes.McpServiceIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
 import org.openmetadata.service.search.indexes.MetadataServiceIndex;
+import org.openmetadata.service.search.indexes.MetricGroupIndex;
 import org.openmetadata.service.search.indexes.MetricIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.MlModelServiceIndex;
@@ -110,6 +115,7 @@ import org.openmetadata.service.search.indexes.PromptTemplateIndex;
 import org.openmetadata.service.search.indexes.QueryCostRecordIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.RawCostAnalysisReportDataIndex;
+import org.openmetadata.service.search.indexes.RelationshipTypeIndex;
 import org.openmetadata.service.search.indexes.SearchEntityIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
@@ -155,6 +161,24 @@ public class SearchIndexFactory {
     return SearchIndex.COMMON_REINDEX_FIELDS;
   }
 
+  /**
+   * {@link SearchIndex#getFieldsLoadedOnWrite()} for the given entity type, probed the same way as
+   * {@link #getReindexFieldsFor(String)}. Asked on every live write, so a failed probe loads
+   * nothing rather than failing the write.
+   */
+  public java.util.Set<String> getFieldsLoadedOnWriteFor(String entityType) {
+    java.util.Set<String> fields = java.util.Set.of();
+    try {
+      SearchIndex probe = buildIndex(entityType, null);
+      if (probe != null) {
+        fields = probe.getFieldsLoadedOnWrite();
+      }
+    } catch (Exception e) {
+      LOG.debug("Failed to probe fields loaded on write for {}: {}", entityType, e.getMessage());
+    }
+    return fields;
+  }
+
   public SearchIndex buildIndex(String entityType, Object entity) {
     return switch (entityType) {
       case Entity.TABLE -> new TableIndex((Table) entity);
@@ -165,8 +189,10 @@ public class SearchIndexFactory {
       case Entity.USER -> new UserIndex((User) entity);
       case Entity.TEAM -> new TeamIndex((Team) entity);
       case Entity.METRIC -> new MetricIndex((Metric) entity);
+      case Entity.METRIC_GROUP -> new MetricGroupIndex((MetricGroup) entity);
       case Entity.GLOSSARY -> new GlossaryIndex((Glossary) entity);
       case Entity.GLOSSARY_TERM -> new GlossaryTermIndex((GlossaryTerm) entity);
+      case Entity.RELATIONSHIP_TYPE -> new RelationshipTypeIndex((RelationshipType) entity);
       case Entity.MLMODEL -> new MlModelIndex((MlModel) entity);
       case Entity.LLM_MODEL -> new LlmModelIndex((LLMModel) entity);
       case Entity.AI_APPLICATION -> new AiApplicationIndex((AIApplication) entity);
@@ -215,6 +241,7 @@ public class SearchIndexFactory {
       case Entity.CONTEXT_FILE -> new ContextFileIndex((ContextFile) entity);
       case Entity.CONTEXT_MEMORY -> new ContextMemoryIndex((ContextMemory) entity);
       case Entity.PAGE -> new PageIndex((Page) entity);
+      case Entity.DATA_CONTRACT -> new DataContractIndex((DataContract) entity);
       case Entity.DATA_PRODUCT -> new DataProductIndex((DataProduct) entity);
       case Entity.METADATA_SERVICE -> new MetadataServiceIndex((MetadataService) entity);
       case Entity.ENTITY_REPORT_DATA -> new EntityReportDataIndex((ReportData) entity);

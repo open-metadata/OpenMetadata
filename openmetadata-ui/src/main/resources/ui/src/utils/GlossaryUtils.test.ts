@@ -10,11 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactElement } from 'react';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
-import { EntityType } from '../enums/entity.enum';
-import { Glossary } from '../generated/entity/data/glossary';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import {
+  EntityStatus,
+  GlossaryTerm,
+  ProviderType,
+} from '../generated/entity/data/glossaryTerm';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCKED_GLOSSARY_TERMS_1,
@@ -23,16 +27,17 @@ import {
 } from '../mocks/Glossary.mock';
 import {
   buildTree,
-  filterTreeNodeOptions,
   findAndUpdateNested,
   findExpandableKeys,
   findExpandableKeysForArray,
   getQueryFilterToExcludeTerm,
   glossaryTermTableColumnsWidth,
+  isAiGeneratedDraft,
   permissionForApproveOrReject,
   referenceURLValidator,
   validateReferenceURL,
 } from './GlossaryPureUtils';
+import { getReviewTab } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
   it('getQueryFilterToExcludeTerm returns the correct query filter', () => {
@@ -93,6 +98,123 @@ describe('Glossary Utils', () => {
     expect(buildTree(MOCKED_GLOSSARY_TERMS_1)).toEqual(
       MOCKED_GLOSSARY_TERMS_TREE_1
     );
+  });
+
+  it('should hold back a nested term whose parent term is absent instead of promoting it to a root', () => {
+    // Progressive expand-all paginates all levels by name, so a descendant can
+    // arrive on an earlier page than its parent term. Such an orphan must be
+    // held back (not rendered as a spurious root) and attach once its parent's
+    // page loads.
+    const orphanChild = {
+      fullyQualifiedName: 'G.Parent.Child',
+      name: 'Child',
+      parent: {
+        fullyQualifiedName: 'G.Parent',
+        type: EntityType.GLOSSARY_TERM,
+      },
+    } as unknown as GlossaryTerm;
+    const topLevel = {
+      fullyQualifiedName: 'G.Top',
+      name: 'Top',
+    } as unknown as GlossaryTerm;
+    const parentTerm = {
+      fullyQualifiedName: 'G.Parent',
+      name: 'Parent',
+      children: [],
+    } as unknown as GlossaryTerm;
+
+    // Parent not yet loaded: only the genuine root is returned.
+    expect(buildTree([orphanChild, topLevel])).toEqual([topLevel]);
+
+    // Parent loaded on a later page: the child attaches beneath it.
+    expect(buildTree([orphanChild, topLevel, parentTerm])).toEqual([
+      topLevel,
+      { ...parentTerm, children: [{ ...orphanChild, type: 'glossaryTerm' }] },
+    ]);
+  });
+
+  it('should hold back an orphan even when the parent reference omits its type', () => {
+    // The API may return a parent reference with only fqn/id and no type. The
+    // orphan must still be held back rather than promoted to a spurious root.
+    const orphanChild = {
+      fullyQualifiedName: 'G.Parent.Child',
+      name: 'Child',
+      parent: { fullyQualifiedName: 'G.Parent' },
+    } as unknown as GlossaryTerm;
+    const topLevel = {
+      fullyQualifiedName: 'G.Top',
+      name: 'Top',
+    } as unknown as GlossaryTerm;
+
+    expect(buildTree([orphanChild, topLevel])).toEqual([topLevel]);
+  });
+
+  it('should treat direct children of the view root as roots when the root itself is absent', () => {
+    // When expanding a term (not a glossary), the flat list holds that term's
+    // descendants but not the term itself. Its direct children reference it as
+    // their parent, so they must render as roots — passing the root FQN lets
+    // buildTree distinguish them from orphans of a not-yet-loaded page.
+    const rootTermFqn = 'G.Term1';
+    const child = {
+      fullyQualifiedName: 'G.Term1.Term2',
+      name: 'Term2',
+      children: [],
+      parent: {
+        fullyQualifiedName: rootTermFqn,
+        type: EntityType.GLOSSARY_TERM,
+      },
+    } as unknown as GlossaryTerm;
+    const grandChild = {
+      fullyQualifiedName: 'G.Term1.Term2.Term3',
+      name: 'Term3',
+      parent: {
+        fullyQualifiedName: 'G.Term1.Term2',
+        type: EntityType.GLOSSARY_TERM,
+      },
+    } as unknown as GlossaryTerm;
+
+    // Without the root FQN the direct child would be held back as an orphan.
+    expect(buildTree([child, grandChild])).toEqual([]);
+
+    // With the root FQN it renders as a root with its grandchild nested.
+    expect(buildTree([child, grandChild], rootTermFqn)).toEqual([
+      { ...child, children: [{ ...grandChild, type: 'glossaryTerm' }] },
+    ]);
+  });
+
+  it('should keep grandchildren when an intermediate term has no inline children', () => {
+    // Flat pages deliver a parent before its children, and an intermediate
+    // term may arrive with an empty children field. The grandchild must still
+    // appear beneath it (regression: a snapshot copy would orphan it).
+    const root = {
+      fullyQualifiedName: 'A',
+      name: 'A',
+      children: [],
+    } as unknown as GlossaryTerm;
+    const intermediate = {
+      fullyQualifiedName: 'A.B',
+      name: 'B',
+      children: [],
+      parent: { fullyQualifiedName: 'A', type: EntityType.GLOSSARY_TERM },
+    } as unknown as GlossaryTerm;
+    const leaf = {
+      fullyQualifiedName: 'A.B.C',
+      name: 'C',
+      parent: { fullyQualifiedName: 'A.B', type: EntityType.GLOSSARY_TERM },
+    } as unknown as GlossaryTerm;
+
+    expect(buildTree([root, intermediate, leaf])).toEqual([
+      {
+        ...root,
+        children: [
+          {
+            ...intermediate,
+            type: 'glossaryTerm',
+            children: [{ ...leaf, type: 'glossaryTerm' }],
+          },
+        ],
+      },
+    ]);
   });
 
   it('should return an empty array if no glossary term is provided', () => {
@@ -169,69 +291,16 @@ describe('Glossary Utils', () => {
     expect(expandableKeys).toEqual(['example1', 'example2']);
   });
 
-  it('Should return same Glossary when no filterOption is provided', () => {
-    const glossary = [
-      {
-        fullyQualifiedName: 'example1',
-        children: [
-          {
-            fullyQualifiedName: 'child1',
-          },
-        ],
-      },
-      {
-        fullyQualifiedName: 'example2',
-        childrenCount: 2,
-      },
-      {
-        fullyQualifiedName: 'example3',
-      },
-    ];
-
-    const filteredOptions = filterTreeNodeOptions(glossary as Glossary[], []);
-
-    expect(filteredOptions).toEqual(glossary);
-  });
-
-  it('Should return filtered Glossary when filterOption is provided', () => {
-    const glossary = [
-      {
-        fullyQualifiedName: 'example1',
-        children: [
-          {
-            fullyQualifiedName: 'child1',
-          },
-        ],
-      },
-      {
-        fullyQualifiedName: 'example3',
-      },
-    ];
-
-    const expected_glossary = [
-      {
-        fullyQualifiedName: 'example1',
-        children: [],
-      },
-      {
-        fullyQualifiedName: 'example3',
-        children: [],
-      },
-    ];
-
-    const filteredOptions = filterTreeNodeOptions(glossary as Glossary[], [
-      'child1',
-    ]);
-
-    expect(filteredOptions).toEqual(expected_glossary);
-  });
-
   it('should allow glossary review actions for task assignees even when reviewers are not hydrated', () => {
     const result = permissionForApproveOrReject(
       {
+        id: 'term-id',
+        name: 'Term',
+        description: 'Term description',
+        glossary: { id: 'glossary-id', type: 'glossary' },
         fullyQualifiedName: '"Glossary"."Term"',
         reviewers: [],
-      } as ModifiedGlossaryTerm,
+      },
       { id: 'user-1' } as never,
       {
         '<#E::glossaryTerm::"Glossary"."Term">': [
@@ -405,29 +474,17 @@ describe('Glossary Utils - findAndUpdateNested', () => {
 });
 
 describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
-  it('should return columnsWidth object based on Table width', () => {
-    const columnWidthObject = glossaryTermTableColumnsWidth(1000, true);
+  it('should return fixed pixel column widths, with description exposed as a minimum rather than a fixed width', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth();
 
     expect(columnWidthObject).toEqual({
-      description: 210,
-      name: 300,
-      owners: 170,
-      reviewers: 330,
-      status: 200,
-      synonyms: 330,
-    });
-  });
-
-  it('should return columnsWidth object based on Table width when not having create permission', () => {
-    const columnWidthObject = glossaryTermTableColumnsWidth(1000, false);
-
-    expect(columnWidthObject).toEqual({
-      description: 330,
-      name: 300,
-      owners: 170,
-      reviewers: 330,
-      status: 200,
-      synonyms: 330,
+      descriptionMax: 480,
+      descriptionMin: 420,
+      name: 250,
+      owners: 220,
+      reviewers: 200,
+      status: 150,
+      synonyms: 200,
     });
   });
 
@@ -475,5 +532,67 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
     it('should resolve for empty string', async () => {
       await expect(referenceURLValidator({}, '')).resolves.toBeUndefined();
     });
+  });
+});
+
+describe('AI-generated glossary drafts', () => {
+  const draft = (overrides: Partial<GlossaryTerm> = {}): GlossaryTerm =>
+    ({
+      id: 'term-id',
+      name: 'churn',
+      description: 'Customers who cancel',
+      glossary: { id: 'glossary-id', type: EntityType.GLOSSARY },
+      provider: ProviderType.Automation,
+      entityStatus: EntityStatus.Draft,
+      ...overrides,
+    } as GlossaryTerm);
+
+  it('marks an automation term until it is approved', () => {
+    expect(isAiGeneratedDraft(draft())).toBe(true);
+    expect(
+      isAiGeneratedDraft(draft({ entityStatus: EntityStatus.InReview }))
+    ).toBe(true);
+    expect(
+      isAiGeneratedDraft(draft({ entityStatus: EntityStatus.Approved }))
+    ).toBe(false);
+    expect(isAiGeneratedDraft(draft({ entityStatus: undefined }))).toBe(false);
+    expect(isAiGeneratedDraft(draft({ provider: ProviderType.User }))).toBe(
+      false
+    );
+  });
+});
+
+describe('getReviewTab', () => {
+  it('lists the tasks about the glossary in the Review tab, counting the open ones', () => {
+    const onTasksChange = jest.fn();
+    const reviewTab = getReviewTab({
+      entityFqn: 'Banking Core',
+      openTaskCount: 6,
+      onTasksChange,
+    }) as unknown as {
+      label: ReactElement<{ children: ReactElement }>;
+      children: ReactElement<{ children: ReactElement }>;
+    };
+
+    expect(reviewTab.label.props).toEqual(
+      expect.objectContaining({
+        count: 6,
+        id: EntityTabs.REVIEW,
+        name: 'label.review',
+      })
+    );
+    expect(reviewTab.children.props.children.props).toEqual({
+      aboutEntity: 'Banking Core',
+      onCountChange: onTasksChange,
+    });
+  });
+
+  it('names the Review tab as a persona renamed it', () => {
+    const reviewTab = getReviewTab({
+      entityFqn: 'Banking Core',
+      name: 'Approvals',
+    }) as unknown as { label: ReactElement<{ name: string }> };
+
+    expect(reviewTab.label.props.name).toBe('Approvals');
   });
 });

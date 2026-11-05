@@ -11,77 +11,73 @@
  *  limitations under the License.
  */
 
-import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
-import CuratedAssetsImg from '../assets/img/curated-assets.png';
-import DataAssetsImg from '../assets/img/data-assets-widget.png';
-import DataProductsImg from '../assets/img/data-products-widget.png';
-import DomainsImg from '../assets/img/domains-widget.png';
-import FollowingImg from '../assets/img/following-widget.png';
-import KPISmallImg from '../assets/img/kpi-widget.png';
-import KPIImg from '../assets/img/kpi.png';
-import MyDataImg from '../assets/img/my-data-widget.png';
-import MyTaskImg from '../assets/img/my-task-widget.png';
-import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
-import TotalAssetsImg from '../assets/img/total-assets-widget.png';
-import KnowledgeCenterWidgetImg from '../assets/img/widgets/knowledge-center-widget.png';
-import {
-  LandingPageWidgetKeys,
-  WidgetWidths,
-} from '../enums/CustomizablePage.enum';
+import KnowledgeCenterWidgetImg from '../assets/img/widgets/context-center-widget.png';
+import ContextCenterImg from '../assets/img/widgets/landing/context-center.png';
+import CuratedAssetsImg from '../assets/img/widgets/landing/curated-assets.png';
+import DataEstateImg from '../assets/img/widgets/landing/data-estate.png';
+import DataProductsImg from '../assets/img/widgets/landing/data-products.png';
+import DataQualityImg from '../assets/img/widgets/landing/data-quality.png';
+import DomainsImg from '../assets/img/widgets/landing/domains.png';
+import KpisImg from '../assets/img/widgets/landing/kpis.png';
+import MyTasksImg from '../assets/img/widgets/landing/my-tasks.png';
+import PipelineStatusImg from '../assets/img/widgets/landing/pipeline-status.png';
+import PlatformHealthImg from '../assets/img/widgets/landing/platform-health.png';
+import TeamActivityImg from '../assets/img/widgets/landing/team-activity.png';
+import TotalDataAssetsImg from '../assets/img/widgets/landing/total-data-assets.png';
+import YoursAndFollowedImg from '../assets/img/widgets/landing/yours-and-followed.png';
+import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 
 // Widget preview screenshots are only needed inside customize/add-widget flows.
 // Keeping them out of CustomizeMyDataPageClassBase avoids preloading these
 // image modules when /my-data only needs layout defaults.
-export const getMyDataWidgetImageFromKey = (
-  widgetKey: string,
-  size?: number
-): string => {
-  switch (widgetKey) {
-    case LandingPageWidgetKeys.ACTIVITY_FEED: {
-      return ActivityFeedImg;
-    }
-    case LandingPageWidgetKeys.DATA_ASSETS: {
-      return DataAssetsImg;
-    }
-    case LandingPageWidgetKeys.DATA_PRODUCTS: {
-      return DataProductsImg;
-    }
-    case LandingPageWidgetKeys.MY_DATA: {
-      return MyDataImg;
-    }
-    case LandingPageWidgetKeys.KPI: {
-      if (size === WidgetWidths.small) {
-        return KPISmallImg;
-      }
+/**
+ * One entry per landing-page widget, keyed by the key the picker looks up.
+ *
+ * The screenshots live under `widgets/landing/`, apart from the detail-page
+ * previews beside it. Several keys outlived the widget they were named for —
+ * `ACTIVITY_FEED` is the Team Activity card, not the old feed — so the files
+ * are named for what they show, not for the key.
+ *
+ * A key with no entry still resolves to `''`, which WidgetCard renders as an
+ * empty tile rather than a broken image.
+ */
+const WIDGET_IMAGE_BY_KEY: ReadonlyArray<[string, string]> = [
+  [LandingPageWidgetKeys.PLATFORM_HEALTH, PlatformHealthImg],
+  [LandingPageWidgetKeys.DATA_ESTATE, DataEstateImg],
+  // TotalAssets and MyTask outlived the widgets they were named for, like the
+  // two below: each now holds the topic card that replaced it.
+  [LandingPageWidgetKeys.TOTAL_DATA_ASSETS, TotalDataAssetsImg],
+  [LandingPageWidgetKeys.MY_TASK, MyTasksImg],
+  [LandingPageWidgetKeys.PIPELINE_STATUS, PipelineStatusImg],
+  // Team Activity, despite the key — the card replaced the activity feed.
+  [LandingPageWidgetKeys.ACTIVITY_FEED, TeamActivityImg],
+  [LandingPageWidgetKeys.YOURS_AND_FOLLOWED, YoursAndFollowedImg],
+  // Context Center, likewise: the landing card sits on the Knowledge Center key.
+  [LandingPageWidgetKeys.KNOWLEDGE_CENTER, ContextCenterImg],
+  [LandingPageWidgetKeys.CURATED_ASSETS, CuratedAssetsImg],
+  [LandingPageWidgetKeys.DATA_QUALITY, DataQualityImg],
+  [LandingPageWidgetKeys.DOMAINS, DomainsImg],
+  [LandingPageWidgetKeys.DATA_PRODUCTS, DataProductsImg],
+  [LandingPageWidgetKeys.KPI, KpisImg],
+  // A detail-page key, not a landing one; kept for the callers that share this
+  // table rather than because the landing picker can reach it.
+  [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE, KnowledgeCenterWidgetImg],
+];
 
-      return KPIImg;
-    }
-    case LandingPageWidgetKeys.TOTAL_DATA_ASSETS: {
-      if (size === WidgetWidths.medium) {
-        return TotalAssetsMediumImg;
-      }
+/**
+ * The keys this table covers.
+ *
+ * Exported because the images themselves are not assertable: jest maps every
+ * PNG import to `''`, so a test cannot tell "no entry" from "entry whose
+ * module stubbed to empty". The keys are what a widget added without a preview
+ * would actually be missing from.
+ */
+export const MY_DATA_WIDGET_IMAGE_KEYS: readonly string[] =
+  WIDGET_IMAGE_BY_KEY.map(([widgetKey]) => widgetKey);
 
-      return TotalAssetsImg;
-    }
-    case LandingPageWidgetKeys.FOLLOWING: {
-      return FollowingImg;
-    }
-    case LandingPageWidgetKeys.CURATED_ASSETS: {
-      return CuratedAssetsImg;
-    }
-    case LandingPageWidgetKeys.MY_TASK: {
-      return MyTaskImg;
-    }
-    case LandingPageWidgetKeys.DOMAINS: {
-      return DomainsImg;
-    }
-    case LandingPageWidgetKeys.KNOWLEDGE_CENTER:
-    case DetailPageWidgetKeys.KNOWLEDGE_ARTICLE: {
-      return KnowledgeCenterWidgetImg;
-    }
-    default: {
-      return '';
-    }
-  }
+export const getMyDataWidgetImageFromKey = (widgetKey: string): string => {
+  const match = WIDGET_IMAGE_BY_KEY.find(([key]) => key === widgetKey);
+
+  return match ? match[1] : '';
 };

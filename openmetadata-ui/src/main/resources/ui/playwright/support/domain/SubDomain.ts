@@ -12,6 +12,13 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  deleteFixtureEntity,
+  okJson,
+  quoteFqnSegment,
+  requireEntityIdentity,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { Domain } from './Domain';
 
@@ -22,7 +29,7 @@ type UserTeamRef = {
   id?: string;
 };
 
-type ResponseDataType = {
+type SubDomainData = {
   name: string;
   displayName: string;
   description: string;
@@ -34,9 +41,14 @@ type ResponseDataType = {
   parent?: string;
 };
 
+type ResponseDataType = SubDomainData & {
+  id: string;
+  fullyQualifiedName: string;
+};
+
 export class SubDomain {
   id: string;
-  data: ResponseDataType;
+  data: SubDomainData;
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
@@ -51,7 +63,9 @@ export class SubDomain {
       domainType: 'Aggregate',
       // eslint-disable-next-line no-useless-escape
       fullyQualifiedName: `\"PW%Subdomain.${this.id}\"`,
-      parent: domain.responseData.fullyQualifiedName ?? domain.data.name,
+      parent:
+        domain.responseData.fullyQualifiedName ??
+        quoteFqnSegment(domain.data.name),
     };
   }
 
@@ -59,7 +73,10 @@ export class SubDomain {
     const response = await apiContext.post('/api/v1/domains', {
       data: this.data,
     });
-    const data = await response.json();
+    const data = requireEntityIdentity(
+      await okJson<SubDomainData>(response, 'SubDomain.create'),
+      'SubDomain.create'
+    );
     this.responseData = data;
 
     return data;
@@ -70,7 +87,8 @@ export class SubDomain {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/domains/name/${encodeURIComponent(
         this.responseData?.fullyQualifiedName ?? this.data.name
       )}?recursive=true&hardDelete=true`
@@ -86,17 +104,18 @@ export class SubDomain {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/domains/${this.responseData?.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/domains/${this.responseData?.id}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
-
-    this.responseData = await response.json();
+    this.responseData = requireEntityIdentity(
+      await okJson<SubDomainData>(response, 'SubDomain.patch'),
+      'SubDomain.patch'
+    );
 
     return {
       entity: this.responseData,

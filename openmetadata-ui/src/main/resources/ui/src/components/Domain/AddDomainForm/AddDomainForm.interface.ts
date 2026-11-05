@@ -45,7 +45,7 @@ export interface DomainFormValues {
   color: string;
   iconURL: string;
   coverImage: CoverImageFileValue | null;
-  tags: DomainFormSelectItem[];
+  tags: TagLabel[];
   glossaryTerms: TagLabel[];
   owners: DomainFormSelectItem[];
   experts: DomainFormSelectItem[];

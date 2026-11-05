@@ -11,13 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  EmptyPlaceholder,
-  Typography as CoreTypography,
-} from '@openmetadata/ui-core-components';
-import { Code01 } from '@untitledui/icons';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Code01 } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
+import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   LogViewerModalProps,
   LogViewerStatusTone,
@@ -46,13 +43,12 @@ const getPipelineExtraInfo = (
     case PipelineType.DataInsight:
       return (
         <>
-          <CoreTypography
-            className="w-max-500 tw:text-secondary"
-            size="text-xs">
+          <Typography className="w-max-500 tw:text-secondary" size="text-xs">
             <Transi18next
               i18nKey="message.data-insight-pipeline-description"
               renderElement={
                 <a
+                  aria-label={t('label.documentation')}
                   href={DATA_INSIGHTS_PIPELINE_DOCS}
                   rel="noreferrer"
                   style={{ color: theme.primaryColor }}
@@ -63,19 +59,18 @@ const getPipelineExtraInfo = (
                 link: t('label.data-insight-ingestion'),
               }}
             />
-          </CoreTypography>
+          </Typography>
         </>
       );
     case PipelineType.ElasticSearchReindex:
       return (
         <>
-          <CoreTypography
-            className="w-max-500 tw:text-secondary"
-            size="text-xs">
+          <Typography className="w-max-500 tw:text-secondary" size="text-xs">
             <Transi18next
               i18nKey="message.elastic-search-re-index-pipeline-description"
               renderElement={
                 <a
+                  aria-label={t('label.documentation')}
                   href={ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS}
                   rel="noreferrer"
                   style={{ color: theme.primaryColor }}
@@ -86,12 +81,12 @@ const getPipelineExtraInfo = (
                 link: t('label.search-index-ingestion'),
               }}
             />
-          </CoreTypography>
+          </Typography>
         </>
       );
     default:
       return (
-        <CoreTypography className="w-max-500 tw:text-secondary" size="text-xs">
+        <Typography className="w-max-500 tw:text-secondary" size="text-xs">
           <Transi18next
             i18nKey={
               isPlatFormDisabled
@@ -100,6 +95,7 @@ const getPipelineExtraInfo = (
             }
             renderElement={
               <a
+                aria-label={t('label.documentation')}
                 href={
                   isPlatFormDisabled
                     ? INGESTION_FRAMEWORK_DEPLOYMENT_DOCS
@@ -120,7 +116,7 @@ const getPipelineExtraInfo = (
               ),
             }}
           />
-        </CoreTypography>
+        </Typography>
       );
   }
 };
@@ -134,7 +130,7 @@ export const getErrorPlaceHolder = (
 ) => {
   if (ingestionDataLength === 0) {
     return (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         className={className}
         description={getPipelineExtraInfo(
           isPlatFormDisabled,
@@ -143,7 +139,6 @@ export const getErrorPlaceHolder = (
         )}
         icon={<Code01 className="tw:text-fg-brand-primary" />}
         title={t('message.no-agents-set-up-yet') as string}
-        variant="blank"
       />
     );
   }
@@ -187,12 +182,12 @@ export const getSuccessMessage = (
       });
 
   return (
-    <Typography.Text>
-      <Typography.Text className="font-medium break-word">{`"${ingestionName}"`}</Typography.Text>
-      <Typography.Text>
+    <Typography>
+      <Typography className="font-medium break-word">{`"${ingestionName}"`}</Typography>
+      <Typography>
         {status === FormSubmitType.ADD ? createMessage : updateMessage}
-      </Typography.Text>
-    </Typography.Text>
+      </Typography>
+    </Typography>
   );
 };
 

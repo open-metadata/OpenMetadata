@@ -19,6 +19,7 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface MigrationDAO {
   @ConnectionAwareSqlQuery(
@@ -73,7 +74,7 @@ public interface MigrationDAO {
       @Bind("version") String version,
       @Bind("migrationFileName") String migrationFileName,
       @Bind("checksum") String checksum,
-      @Bind("metrics") String metrics);
+      @BindJson("metrics") String metrics);
 
   @ConnectionAwareSqlUpdate(
       value =
@@ -106,11 +107,12 @@ public interface MigrationDAO {
       connectionType = POSTGRES)
   List<String> getServerMigrationSQLWithVersion(@Bind("version") String version);
 
+  /** Returns the version that last executed the statement with this checksum, or null if none. */
   @ConnectionAwareSqlQuery(
-      value = "SELECT sqlStatement FROM SERVER_MIGRATION_SQL_LOGS where checksum = :checksum",
+      value = "SELECT version FROM SERVER_MIGRATION_SQL_LOGS where checksum = :checksum",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
-      value = "SELECT sqlStatement FROM SERVER_MIGRATION_SQL_LOGS where checksum = :checksum",
+      value = "SELECT version FROM SERVER_MIGRATION_SQL_LOGS where checksum = :checksum",
       connectionType = POSTGRES)
   String checkIfQueryPreviouslyRan(@Bind("checksum") String checksum);
 

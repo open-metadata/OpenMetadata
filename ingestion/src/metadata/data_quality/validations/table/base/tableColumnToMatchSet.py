@@ -16,9 +16,9 @@ Validator for table column to match set test case
 import collections
 import traceback
 from abc import abstractmethod
-from typing import List  # noqa: UP035
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.utils import get_bool_test_case_param
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -67,11 +67,9 @@ class BaseTableColumnToMatchSetValidator(BaseTestValidator):
 
         expected_names = [item.strip() for item in expected_names.split(",")] if expected_names else []
 
-        ordered = self.get_test_case_param_value(
+        ordered = get_bool_test_case_param(
             self.test_case.parameterValues,  # type: ignore
             "ordered",
-            bool,
-            default=False,
         )
 
         if ordered:
@@ -95,5 +93,5 @@ class BaseTableColumnToMatchSetValidator(BaseTestValidator):
         )
 
     @abstractmethod
-    def _run_results(self) -> List[str]:  # noqa: UP006
+    def _run_results(self) -> list[str]:
         raise NotImplementedError

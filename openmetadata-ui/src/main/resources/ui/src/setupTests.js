@@ -90,6 +90,42 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
 }));
 
 /**
+ * DOMRect polyfill — jsdom does not expose the constructor, but browser code
+ * (e.g. Tippy.js fallbacks) uses `new DOMRect()` at runtime.
+ */
+if (typeof global.DOMRect === 'undefined') {
+  global.DOMRect = class DOMRect {
+    constructor(x = 0, y = 0, width = 0, height = 0) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+      this.top = y;
+      this.right = x + width;
+      this.bottom = y + height;
+      this.left = x;
+    }
+
+    toJSON() {
+      return {
+        x: this.x,
+        y: this.y,
+        width: this.width,
+        height: this.height,
+        top: this.top,
+        right: this.right,
+        bottom: this.bottom,
+        left: this.left,
+      };
+    }
+
+    static fromRect(other) {
+      return new DOMRect(other?.x, other?.y, other?.width, other?.height);
+    }
+  };
+}
+
+/**
  * Minimal DataTransfer polyfill — jsdom does not implement it, and the core
  * FileUploadDropZone builds a FileList via `new DataTransfer()` when forwarding
  * the selected files to its onDrop handlers.
@@ -104,6 +140,37 @@ if (typeof global.DataTransfer === 'undefined') {
       };
       this.files = files;
     }
+  };
+}
+
+/**
+ * Blob#text polyfill — jsdom 20's Blob does not implement `text()` (or
+ * `arrayBuffer()`), so any code reading Blob content via `content.text()`
+ * (e.g. FilePreviewer's TextRenderer/MarkdownRenderer) hangs in tests.
+ * FileReader.readAsText is implemented, so wrap it in a promise.
+ */
+if (typeof Blob !== 'undefined' && typeof Blob.prototype.text !== 'function') {
+  Blob.prototype.text = function text() {
+    return new Promise((resolve, reject) => {
+      const reader = new window.FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(this);
+    });
+  };
+}
+
+if (
+  typeof Blob !== 'undefined' &&
+  typeof Blob.prototype.arrayBuffer !== 'function'
+) {
+  Blob.prototype.arrayBuffer = function arrayBuffer() {
+    return new Promise((resolve, reject) => {
+      const reader = new window.FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(this);
+    });
   };
 }
 

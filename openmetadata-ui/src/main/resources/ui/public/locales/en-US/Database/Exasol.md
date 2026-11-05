@@ -6,6 +6,8 @@ In this section, we provide guides and references for using the Exasol connector
 
 * Exasol >= 7.1
 
+You can find further information on the Exasol connector in the <a href="https://docs.open-metadata.org/connectors/database/exasol" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section

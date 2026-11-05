@@ -6,7 +6,8 @@ import type {
   TdHTMLAttributes,
   ThHTMLAttributes,
 } from 'react';
-import { createContext, isValidElement, useContext } from 'react';
+import { createContext, forwardRef, isValidElement, useContext } from 'react';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import {
   ArrowDown,
   ChevronSelectorVertical,
@@ -14,7 +15,7 @@ import {
   Edit01,
   HelpCircle,
   Trash01,
-} from '@untitledui/icons';
+} from '../../../icons';
 import type {
   CellProps as AriaCellProps,
   ColumnProps as AriaColumnProps,
@@ -23,10 +24,10 @@ import type {
   TableProps as AriaTableProps,
 } from 'react-aria-components';
 import {
+  Checkbox as AriaCheckbox,
   Cell as AriaCell,
   Collection as AriaCollection,
   Column as AriaColumn,
-  Group as AriaGroup,
   Row as AriaRow,
   Table as AriaTable,
   TableBody as AriaTableBody,
@@ -35,50 +36,166 @@ import {
 } from 'react-aria-components';
 import { Badge } from '@/components/base/badges/badges';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
+import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
-import { cx } from '@/utils/cx';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
+import { cx, sortCx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 
-export const TableRowActionsDropdown = () => (
-  <Dropdown.Root>
-    <Dropdown.DotsButton />
+export const TableRowActionsDropdown = () => {
+  const { t } = useCoreTranslation();
 
-    <Dropdown.Popover className="tw:w-min">
-      <Dropdown.Menu>
-        <Dropdown.Item icon={Edit01}>
-          <span className="tw:pr-4">Edit</span>
-        </Dropdown.Item>
-        <Dropdown.Item icon={Copy01}>
-          <span className="tw:pr-4">Copy link</span>
-        </Dropdown.Item>
-        <Dropdown.Item icon={Trash01}>
-          <span className="tw:pr-4">Delete</span>
-        </Dropdown.Item>
-      </Dropdown.Menu>
-    </Dropdown.Popover>
-  </Dropdown.Root>
-);
+  return (
+    <Dropdown.Root>
+      <Dropdown.DotsButton />
 
+      <Dropdown.Popover className="tw:w-min">
+        <Dropdown.Menu>
+          <Dropdown.Item icon={Edit01}>
+            <span className="tw:pr-4">{t('label.edit', 'Edit')}</span>
+          </Dropdown.Item>
+          <Dropdown.Item icon={Copy01}>
+            <span className="tw:pr-4">{t('label.copy-link', 'Copy link')}</span>
+          </Dropdown.Item>
+          <Dropdown.Item icon={Trash01}>
+            <span className="tw:pr-4">{t('label.delete', 'Delete')}</span>
+          </Dropdown.Item>
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
+/**
+ * `compact` matches the density of the AntD tables this component replaces —
+ * entity pages show 20+ rows at a time and the `sm`/`md` heights push a third of
+ * them below the fold. See docs/antd-migration/table.md.
+ */
+type TableSize = 'compact' | 'sm' | 'md';
+
+const DEFAULT_TABLE_SIZE: TableSize = 'md';
+
+/**
+ * Every size-dependent class in one place, keyed by size rather than derived
+ * through a chain of ternaries at each use. Adding `lg` is then a matter of one
+ * more entry here — with the compiler naming any slot left unfilled — instead of
+ * hunting down each `size === …` and guessing which branch the new size wants.
+ * Same shape as `input.tsx`'s `sizes` map.
+ */
+/**
+ * Kept out of `TABLE_SIZES`: `sortCx` widens its values to `string`, which would
+ * lose the literal union the control's own prop expects.
+ */
+const SELECTION_CONTROL_SIZE: Record<TableSize, 'sm' | 'md'> = {
+  compact: 'sm',
+  sm: 'sm',
+  md: 'md',
+};
+
+interface TableSizeStyles {
+  cardHeader: string;
+  cardTitle: string;
+  headerHeight: string;
+  headerSelectionColumn: string;
+  headPadding: string;
+  rowHeight: string;
+  rowSelectionCell: string;
+  cellPadding: string;
+}
+
+const TABLE_SIZES: Record<TableSize, TableSizeStyles> = sortCx({
+  compact: {
+    cardHeader: 'tw:py-5 tw:md:px-6',
+    cardTitle: 'tw:text-lg',
+    headerHeight: 'tw:h-8',
+    headerSelectionColumn: 'tw:w-9 tw:md:pl-5',
+    headPadding: 'tw:px-4',
+    rowHeight: 'tw:h-10',
+    rowSelectionCell: 'tw:md:pl-5',
+    cellPadding: 'tw:px-4 tw:py-2',
+  },
+  sm: {
+    cardHeader: 'tw:py-4 tw:md:px-5',
+    cardTitle: 'tw:text-md',
+    headerHeight: 'tw:h-9',
+    headerSelectionColumn: 'tw:w-9 tw:md:pl-5',
+    headPadding: 'tw:px-6',
+    rowHeight: 'tw:h-14',
+    rowSelectionCell: 'tw:md:pl-5',
+    cellPadding: 'tw:px-5 tw:py-3',
+  },
+  md: {
+    cardHeader: 'tw:py-5 tw:md:px-6',
+    cardTitle: 'tw:text-lg',
+    headerHeight: 'tw:h-11',
+    headerSelectionColumn: 'tw:w-11 tw:md:pl-6',
+    headPadding: 'tw:px-6',
+    rowHeight: 'tw:h-18',
+    rowSelectionCell: 'tw:md:pl-6',
+    cellPadding: 'tw:px-6 tw:py-4',
+  },
+});
+
+/**
+ * Defaults to `null` rather than a filled-in object: a non-null default would
+ * make `useContext` always return a size, and an explicit `size` prop could
+ * never win over it.
+ */
 const TableContext = createContext<{
-  size: 'sm' | 'md';
+  size: TableSize;
   stickyHeader: boolean;
-}>({
-  size: 'md',
-  stickyHeader: false,
+} | null>(null);
+
+export type TableCardVariant = 'default' | 'muted';
+
+/**
+ * Row surface of a muted table, shared by every muted table container so a fix
+ * lands once (ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step). Only
+ * the outermost table is repainted; tables nested in an expanded row keep theirs.
+ * The default `bg-secondary` hover is the muted row's own step, hence the
+ * translucent one, painted on the cells only so it never stacks with a row
+ * tint. Clamped markdown fades into `--markdown-clamp-fade-color`,
+ * which the unlayered tbody LESS default pins to bg-surface (hence the `!`).
+ */
+export const MUTED_TABLE_SURFACE_CLASSES = [
+  'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
+  'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover',
+  'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!',
+  'tw:dark:[&_tbody:not(table_table_tbody)>tr:hover]:[--markdown-clamp-fade-color:color-mix(in_srgb,var(--tw-color-bg-secondary),white_6%)]!',
+].join(' ');
+
+// An 8%-white muted edge lands on the modal's own colour, so the frame (header
+// top included) takes the header divider's solid border-primary in dark.
+const TABLE_CARD_VARIANTS: Record<TableCardVariant, string> = sortCx({
+  default: 'tw:bg-surface tw:after:outline-subtle',
+  muted: cx(
+    'tw:bg-primary_alt tw:after:outline-secondary tw:dark:after:outline-primary',
+    MUTED_TABLE_SURFACE_CLASSES
+  ),
 });
 
 const TableCardRoot = ({
   children,
   className,
   size = 'md',
+  variant = 'default',
   ...props
-}: HTMLAttributes<HTMLDivElement> & { size?: 'sm' | 'md' }) => {
+}: HTMLAttributes<HTMLDivElement> & {
+  size?: TableSize;
+  variant?: TableCardVariant;
+}) => {
   return (
     <TableContext.Provider value={{ size, stickyHeader: false }}>
       <div
         {...props}
         className={cx(
-          'tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:shadow-xs tw:outline-1 tw:outline-secondary',
+          // The edge is an overlay above the content: an inset outline on the
+          // card itself is painted over by a `stickyHeader` thead (sticky,
+          // z-10, opaque), so the frame vanished along the header. `isolate`
+          // keeps the overlay's z-index inside the card.
+          'tw:relative tw:isolate tw:overflow-hidden tw:rounded-xl tw:shadow-card tw:after:z-20',
+          TABLE_CARD_VARIANTS[variant],
+          borderAfter,
           className
         )}>
         {children}
@@ -107,13 +224,13 @@ const TableCardHeader = ({
   contentTrailing,
   className,
 }: TableCardHeaderProps) => {
-  const { size } = useContext(TableContext);
+  const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
 
   return (
     <div
       className={cx(
-        'tw:relative tw:flex tw:flex-col tw:items-start tw:gap-4 tw:border-b tw:border-secondary tw:bg-primary tw:px-4 tw:md:flex-row',
-        size === 'sm' ? 'tw:py-4 tw:md:px-5' : 'tw:py-5 tw:md:px-6',
+        'tw:relative tw:flex tw:flex-col tw:items-start tw:gap-4 tw:border-b tw:border-subtle tw:bg-surface tw:px-4 tw:md:flex-row',
+        TABLE_SIZES[size].cardHeader,
         className
       )}>
       <div className="tw:flex tw:flex-1 tw:flex-col tw:gap-0.5">
@@ -121,7 +238,7 @@ const TableCardHeader = ({
           <h2
             className={cx(
               'tw:font-semibold tw:text-primary',
-              size === 'sm' ? 'tw:text-md' : 'tw:text-lg'
+              TABLE_SIZES[size].cardTitle
             )}>
             {title}
           </h2>
@@ -147,28 +264,48 @@ const TableCardHeader = ({
 interface TableRootProps
   extends AriaTableProps,
     Omit<ComponentPropsWithRef<'table'>, 'className' | 'slot' | 'style'> {
-  size?: 'sm' | 'md';
+  size?: TableSize;
   stickyHeader?: boolean;
   containerStyle?: React.CSSProperties;
+  containerClassName?: string;
+  /**
+   * `muted` frames the table's own container on the muted step, for a table
+   * that cannot sit in a `TableCard` (whose overflow-hidden stops a
+   * `stickyHeader` sticking).
+   */
+  variant?: TableCardVariant;
 }
 
 const TableRoot = ({
   className,
-  size = 'md',
+  size,
   stickyHeader = false,
   containerStyle,
+  containerClassName,
+  variant = 'default',
   ...props
 }: TableRootProps) => {
   const context = useContext(TableContext);
+  // An explicit prop wins; otherwise inherit an enclosing TableCard's size.
+  const resolvedSize = size ?? context?.size ?? DEFAULT_TABLE_SIZE;
 
   return (
-    <TableContext.Provider
-      value={{ size: context?.size ?? size, stickyHeader }}>
-      <div className="tw:overflow-x-auto" style={containerStyle}>
+    <TableContext.Provider value={{ size: resolvedSize, stickyHeader }}>
+      <div
+        className={cx(
+          'tw:overflow-x-auto',
+          variant === 'muted' &&
+            cx(
+              'tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt',
+              MUTED_TABLE_SURFACE_CLASSES
+            ),
+          containerClassName
+        )}
+        style={containerStyle}>
         <AriaTable
           className={(state) =>
             cx(
-              'tw:w-full tw:overflow-x-hidden',
+              'tw:w-full tw:overflow-x-hidden tw:dark:bg-surface',
               typeof className === 'function' ? className(state) : className
             )
           }
@@ -196,7 +333,10 @@ const TableHeader = <T extends object>({
   className,
   ...props
 }: TableHeaderProps<T>) => {
-  const { size, stickyHeader } = useContext(TableContext);
+  const { size, stickyHeader } = useContext(TableContext) ?? {
+    size: DEFAULT_TABLE_SIZE,
+    stickyHeader: false,
+  };
   const { selectionBehavior, selectionMode } = useTableOptions();
 
   return (
@@ -206,11 +346,14 @@ const TableHeader = <T extends object>({
         cx(
           'tw:bg-secondary',
           stickyHeader ? 'tw:sticky tw:top-0 tw:z-10' : 'tw:relative',
-          size === 'sm' ? 'tw:h-9' : 'tw:h-11',
+          TABLE_SIZES[size].headerHeight,
 
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
           bordered &&
             'tw:[&>tr>th]:after:pointer-events-none tw:[&>tr>th]:after:absolute tw:[&>tr>th]:after:inset-x-0 tw:[&>tr>th]:after:bottom-0 tw:[&>tr>th]:after:h-px tw:[&>tr>th]:after:bg-border-secondary tw:[&>tr>th]:focus-visible:after:bg-transparent',
+          // Dark: the 8% white divider resolves to the body-row surface under the darker
+          // header band, so the edge vanishes; border-primary keeps it visible.
+          bordered && 'tw:dark:[&>tr>th]:after:bg-border-primary',
 
           typeof className === 'function' ? className(state) : className
         )
@@ -219,11 +362,11 @@ const TableHeader = <T extends object>({
         <AriaColumn
           className={cx(
             'tw:relative tw:py-2 tw:pr-0 tw:pl-4',
-            size === 'sm' ? 'tw:w-9 tw:md:pl-5' : 'tw:w-11 tw:md:pl-6'
+            TABLE_SIZES[size].headerSelectionColumn
           )}>
           {selectionMode === 'multiple' && (
             <div className="tw:flex tw:items-start">
-              <Checkbox size={size} slot="selection" />
+              <Checkbox size={SELECTION_CONTROL_SIZE[size]} slot="selection" />
             </div>
           )}
         </AriaColumn>
@@ -239,20 +382,30 @@ interface TableHeadProps
   extends AriaColumnProps,
     Omit<
       ThHTMLAttributes<HTMLTableCellElement>,
-      'children' | 'className' | 'style' | 'id'
+      'children' | 'className' | 'style' | 'id' | 'align'
     > {
   label?: string;
   tooltip?: string;
+  /** Aligns the header content, e.g. `center` over a column of centred icons. @default 'start' */
+  align?: 'start' | 'center' | 'end';
 }
+
+const HEAD_ALIGN_CLASS = {
+  start: '',
+  center: 'tw:justify-center',
+  end: 'tw:justify-end',
+};
 
 const TableHead = ({
   className,
   tooltip,
   label,
+  align = 'start',
   children,
   ...props
 }: TableHeadProps) => {
   const { selectionBehavior } = useTableOptions();
+  const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
 
   return (
     <AriaColumn
@@ -263,14 +416,22 @@ const TableHead = ({
           // box-shadow). `outline-hidden` is gone — it would suppress this indicator.
           // `ring-offset-bg-primary` is dropped: it set an offset *colour* while
           // --tw-ring-offset-width defaults to 0px, so it never rendered.
-          'tw:relative tw:p-0 tw:px-6 tw:py-2 tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-focus-ring',
+          'tw:relative tw:p-0 tw:py-2 tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-focus-ring',
+          TABLE_SIZES[size].headPadding,
           selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
           state.allowsSorting && 'tw:cursor-pointer',
           typeof className === 'function' ? className(state) : className
         )
       }>
       {(state) => (
-        <AriaGroup className="tw:flex tw:items-center tw:gap-1">
+        // Layout only — a real Group (role="group") here makes Chromium
+        // compute an EMPTY accessible name for the columnheader, breaking
+        // every getByRole('columnheader', { name }) locator.
+        <div
+          className={cx(
+            'tw:flex tw:items-center tw:gap-1',
+            HEAD_ALIGN_CLASS[align]
+          )}>
           <div className="tw:flex tw:items-center tw:gap-1">
             {label && (
               <span className="tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-quaternary">
@@ -281,10 +442,11 @@ const TableHead = ({
           </div>
 
           {tooltip && (
-            <Tooltip placement="top" title={tooltip}>
-              <TooltipTrigger className="tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover">
-                <HelpCircle className="tw:size-4" />
-              </TooltipTrigger>
+            <Tooltip
+              placement="top"
+              title={tooltip}
+              triggerClassName="tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover">
+              <HelpCircle className="tw:size-4" />
             </Tooltip>
           )}
 
@@ -303,7 +465,7 @@ const TableHead = ({
                 strokeWidth={3}
               />
             ))}
-        </AriaGroup>
+        </div>
       )}
     </AriaColumn>
   );
@@ -317,6 +479,15 @@ interface TableRowProps<T extends object>
       'children' | 'className' | 'onClick' | 'slot' | 'style' | 'id'
     > {
   highlightSelectedRow?: boolean;
+  /**
+   * Hides the per-row selection cell that `selectionBehavior="toggle"`
+   * otherwise injects. Use for full-width synthetic rows (e.g. section
+   * group headers) whose single child cell spans every column — including
+   * the selection column — via `colSpan`. Without this the row would emit
+   * both the selection cell and the spanning cell, and react-aria's
+   * `TableCollection` throws `Cell count must match column count`.
+   */
+  hideSelectionCell?: boolean;
 }
 
 const TableRow = <T extends object>({
@@ -324,34 +495,81 @@ const TableRow = <T extends object>({
   children,
   className,
   highlightSelectedRow = true,
+  hideSelectionCell = false,
   ...props
 }: TableRowProps<T>) => {
-  const { size } = useContext(TableContext);
-  const { selectionBehavior } = useTableOptions();
+  const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
+  const { selectionBehavior, selectionMode } = useTableOptions();
+  const { t } = useCoreTranslation();
 
   return (
     <AriaRow
       {...props}
       className={(state) =>
         cx(
-          'tw:relative tw:outline-focus-ring tw:transition-colors tw:after:pointer-events-none tw:hover:bg-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
-          size === 'sm' ? 'tw:h-14' : 'tw:h-18',
-          highlightSelectedRow && 'tw:selected:bg-secondary',
+          // No `after:` utilities on the row itself: the variant injects
+          // `content: ''`, and a content box inside a table-row is wrapped in
+          // an anonymous table cell — a phantom column that Chrome 151's
+          // fixed-layout algorithm counts when splitting leftover width, so
+          // every table came up one column-share short of its own right edge.
+          'tw:relative tw:outline-focus-ring tw:transition-colors tw:[&:hover]:bg-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+          TABLE_SIZES[size].rowHeight,
+          props.onAction && 'tw:cursor-pointer',
+          highlightSelectedRow &&
+            'tw:selected:bg-secondary tw:dark:selected:bg-primary_hover',
+
+          // Clamped markdown fades into this colour; in dark it has to follow the
+          // row to bg-secondary or it paints a surface-coloured band. Light keeps
+          // the tbody default. Real :hover — rows without an action never get
+          // react-aria's data-hovered.
+          'tw:dark:[&:hover]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]',
+          highlightSelectedRow &&
+            'tw:dark:selected:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]',
 
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
-          'tw:[&>td]:after:absolute tw:[&>td]:after:inset-x-0 tw:[&>td]:after:bottom-0 tw:[&>td]:after:h-px tw:[&>td]:after:w-full tw:[&>td]:after:bg-border-secondary tw:last:[&>td]:after:hidden tw:[&>td]:focus-visible:after:opacity-0 tw:focus-visible:[&>td]:after:opacity-0',
+          'tw:[&>td]:after:pointer-events-none tw:[&>td]:after:absolute tw:[&>td]:after:inset-x-0 tw:[&>td]:after:bottom-0 tw:[&>td]:after:h-px tw:[&>td]:after:w-full tw:[&>td]:after:bg-border-secondary tw:last:[&>td]:after:hidden tw:[&>td]:focus-visible:after:opacity-0 tw:focus-visible:[&>td]:after:opacity-0',
 
           typeof className === 'function' ? className(state) : className
         )
       }>
-      {selectionBehavior === 'toggle' && (
+      {selectionBehavior === 'toggle' && !hideSelectionCell && (
         <AriaCell
           className={cx(
             'tw:relative tw:py-2 tw:pr-0 tw:pl-4',
-            size === 'sm' ? 'tw:md:pl-5' : 'tw:md:pl-6'
+            TABLE_SIZES[size].rowSelectionCell
           )}>
           <div className="tw:flex tw:items-end">
-            <Checkbox size={size} slot="selection" />
+            {selectionMode === 'single' ? (
+              // A single-selection table reads as a radio group: picking a row
+              // clears the previous pick. React Aria still wires the control
+              // through the `selection` slot, so the visual is swapped rather
+              // than the behaviour.
+              //
+              // Known limitation: the `selection` slot only accepts a
+              // checkbox, so this announces as "checkbox" while looking like a
+              // radio. ARIA does not allow role="radio" on an
+              // input[type=checkbox], and React Aria has no radio-based table
+              // selection, so the honest options are a checkbox that announces
+              // wrongly or re-implementing selection, focus and keyboard
+              // handling outside the table's own state. The label at least says
+              // only one row can be picked, so the announcement is not
+              // misleading about the affordance.
+              <AriaCheckbox
+                aria-label={t('label.select-only-one-row', 'Select one row')}
+                className="tw:flex tw:items-center tw:outline-hidden"
+                slot="selection">
+                {({ isSelected, isDisabled, isFocusVisible }) => (
+                  <RadioButtonBase
+                    isDisabled={isDisabled}
+                    isFocusVisible={isFocusVisible}
+                    isSelected={isSelected}
+                    size={SELECTION_CONTROL_SIZE[size]}
+                  />
+                )}
+              </AriaCheckbox>
+            ) : (
+              <Checkbox size={SELECTION_CONTROL_SIZE[size]} slot="selection" />
+            )}
           </div>
         </AriaCell>
       )}
@@ -371,28 +589,30 @@ interface TableCellProps
   ref?: Ref<HTMLTableCellElement>;
 }
 
-const TableCell = ({ className, children, ...props }: TableCellProps) => {
-  const { size } = useContext(TableContext);
-  const { selectionBehavior } = useTableOptions();
+const TableCell = forwardRef<HTMLTableCellElement, Omit<TableCellProps, 'ref'>>(
+  function TableCell({ className, children, ...props }, ref) {
+    const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
+    const { selectionBehavior } = useTableOptions();
 
-  return (
-    <AriaCell
-      {...props}
-      className={(state) =>
-        cx(
-          'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
-          size === 'sm' && 'tw:px-5 tw:py-3',
-          size === 'md' && 'tw:px-6 tw:py-4',
+    return (
+      <AriaCell
+        {...props}
+        className={(state) =>
+          cx(
+            'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+            TABLE_SIZES[size].cellPadding,
 
-          selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
+            selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
 
-          typeof className === 'function' ? className(state) : className
-        )
-      }>
-      {children}
-    </AriaCell>
-  );
-};
+            typeof className === 'function' ? className(state) : className
+          )
+        }
+        ref={ref}>
+        {children}
+      </AriaCell>
+    );
+  }
+);
 TableCell.displayName = 'TableCell';
 
 const TableCard = {

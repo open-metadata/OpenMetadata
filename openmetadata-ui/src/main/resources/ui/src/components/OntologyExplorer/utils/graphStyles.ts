@@ -10,18 +10,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Group, Image as GImage, Rect as GRect, Text as GText } from '@antv/g';
+import type { DisplayObject, IAnimation } from '@antv/g';
+import {
+  Circle as GCircle,
+  Group,
+  Image as GImage,
+  Line as GLine,
+  Rect as GRect,
+  Text as GText,
+} from '@antv/g';
 import {
   Circle,
   ExtensionCategory,
   Line,
   LineStyleProps,
+  Quadratic,
+  QuadraticStyleProps,
+  Rect as RectNode,
   RectCombo,
   RectComboStyleProps,
+  RectStyleProps,
   register,
 } from '@antv/g6';
+import { RelationshipType } from '../../../generated/entity/data/relationshipType';
+import { resolveCssColor } from '../../../utils/common/cssColor.utils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import {
   COLOR_META_BY_HEX,
+  COMBO_COLOR_FALLBACK,
   COMBO_FILL_DEFAULT,
   COMBO_HEADER_HEIGHT,
   COMBO_INTERIOR_PADDING_SIDES,
@@ -57,6 +73,7 @@ import {
   DATA_MODE_TERM_HALO_LINE_WIDTH,
   DATA_MODE_TERM_HALO_SHADOW_BLUR,
   DATA_MODE_TERM_HALO_SHADOW_COLOR,
+  DATA_MODE_TERM_HALO_STROKE,
   DATA_MODE_TERM_HALO_STROKE_OPACITY,
   DATA_MODE_TERM_LABEL_BG_RADIUS,
   DATA_MODE_TERM_LABEL_FONT_WEIGHT,
@@ -80,11 +97,19 @@ import {
   EDGE_LABEL_FONT_WEIGHT,
   EDGE_LABEL_LETTER_SPACING,
   LABEL_TEXT_ALIGN_LEFT,
+  METRIC_NODE_FILL,
+  METRIC_NODE_FILL_FALLBACK,
+  METRIC_NODE_LINE_DASH,
+  METRIC_NODE_MUTED_COLOR,
+  METRIC_NODE_MUTED_COLOR_FALLBACK,
+  METRIC_NODE_STROKE,
+  METRIC_NODE_STROKE_FALLBACK,
   NODE_BORDER_COLOR,
   NODE_BORDER_RADIUS,
   NODE_FILL_DEFAULT,
   NODE_LABEL_FILL,
   NODE_LABEL_FILL_FALLBACK,
+  NODE_LABEL_FILL_INVERSE,
   NODE_LABEL_FONT_SIZE,
   NODE_LABEL_FONT_WEIGHT,
   NODE_LABEL_PADDING,
@@ -93,11 +118,27 @@ import {
   NODE_SHADOW_COLOR,
   NODE_SHADOW_COLOR_FALLBACK,
   NODE_SHADOW_OFFSET_Y,
+  PROPOSED_NODE_FILL,
+  PROPOSED_NODE_FILL_FALLBACK,
+  PROPOSED_NODE_LABEL_COLOR,
+  PROPOSED_NODE_LABEL_COLOR_FALLBACK,
+  PROPOSED_NODE_LINE_DASH,
+  PROPOSED_NODE_SELECTED_STROKE,
+  PROPOSED_NODE_SELECTED_STROKE_FALLBACK,
+  PROPOSED_NODE_STROKE,
+  PROPOSED_NODE_STROKE_FALLBACK,
   RELATION_META,
+  STUDIO_METRIC_NODE_KIND,
   TERM_LABEL_BG_PADDING,
 } from '../OntologyExplorer.constants';
+import { ASK_COLLATE_SPARKLE_SRC } from './askCollateSparkle';
 import { computeCardinalityLabelAttrs } from './cardinalityLabelUtils';
 import './ontologyComboAwarePolylineEdge';
+import { getRelationshipColor } from './relationshipTypeUtils';
+import {
+  getStudioEditPortCircleStyle,
+  getStudioEditPortPlusLineStyles,
+} from './studioEditPortStyles';
 import {
   getCanvasContext,
   measureTextWidth,
@@ -105,6 +146,87 @@ import {
 } from './textMeasure';
 
 export const CARDINALITY_AWARE_LINE_EDGE_TYPE = 'cardinality-aware-line';
+export const CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE =
+  'cardinality-aware-quadratic';
+
+type CardinalityEndpoint = [number, number];
+
+const DASH_FLOW_KEYFRAMES = [{ lineDashOffset: 0 }, { lineDashOffset: -8 }];
+const DASH_FLOW_DURATION_MS = 800;
+// Keyed by element, so a re-render never stacks a second animation.
+const dashFlows = new WeakMap<object, IAnimation>();
+
+const prefersReducedMotion = (): boolean =>
+  typeof window !== 'undefined' &&
+  Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+
+/** Marches an AI proposal's dashed outline so it reads as not yet real. */
+function syncDashFlow(
+  element: object,
+  shape: DisplayObject | undefined,
+  isOn: boolean
+): void {
+  const current = dashFlows.get(element);
+  if (isOn && !current && shape && !prefersReducedMotion()) {
+    const animation = shape.animate(DASH_FLOW_KEYFRAMES, {
+      duration: DASH_FLOW_DURATION_MS,
+      iterations: Infinity,
+    });
+    if (animation) {
+      dashFlows.set(element, animation);
+    }
+  } else if (!isOn && current) {
+    current.cancel();
+    dashFlows.delete(element);
+  }
+}
+
+const SPARKLE_SIZE = 12;
+// Left padding that leaves room for the sparkle inside a proposed edge's pill.
+const PROPOSED_EDGE_LABEL_PADDING = [2, 8, 2, 22];
+
+/**
+ * Draws the AI sparkle inside a proposed edge's label pill, left of its text.
+ * It is a shape of its own, so it takes the label's opacity to dim with it.
+ */
+export function drawProposalSparkle(
+  attributes: Record<string, unknown>,
+  labelShape: DisplayObject | undefined,
+  upsertImage: (imageAttributes: Record<string, unknown> | false) => void
+) {
+  const bounds =
+    attributes.studioDashFlow === true && attributes.label !== false
+      ? labelShape?.getLocalBounds()
+      : undefined;
+  upsertImage(
+    bounds && bounds.max[0] > bounds.min[0]
+      ? {
+          x: bounds.min[0] + 7,
+          y: (bounds.min[1] + bounds.max[1]) / 2 - SPARKLE_SIZE / 2,
+          width: SPARKLE_SIZE,
+          height: SPARKLE_SIZE,
+          opacity: attributes.labelOpacity ?? 1,
+          src: ASK_COLLATE_SPARKLE_SRC,
+        }
+      : false
+  );
+}
+
+function drawCardinalityLabels(
+  attributes: Record<string, unknown>,
+  endpoints: [CardinalityEndpoint, CardinalityEndpoint],
+  upsertLabel: (
+    key: string,
+    labelAttributes: ReturnType<typeof computeCardinalityLabelAttrs>
+  ) => void
+) {
+  (['start', 'end'] as const).forEach((end) => {
+    upsertLabel(
+      `cardinality-${end}`,
+      computeCardinalityLabelAttrs(attributes, endpoints, end)
+    );
+  });
+}
 
 class CardinalityAwareLine extends Line {
   override render(
@@ -112,22 +234,51 @@ class CardinalityAwareLine extends Line {
     container: Group
   ): void {
     super.render(attributes, container);
-    this.drawCardinalityLabel(attributes, container, 'start');
-    this.drawCardinalityLabel(attributes, container, 'end');
+    syncDashFlow(
+      this,
+      this.getShape('key'),
+      (attributes as Record<string, unknown>).studioDashFlow === true
+    );
+    drawProposalSparkle(
+      attributes as Record<string, unknown>,
+      this.getShape('label'),
+      (imageAttributes) =>
+        this.upsert('proposal-sparkle', GImage, imageAttributes, container)
+    );
+    const [start, end] = this.getEndpoints(attributes);
+    drawCardinalityLabels(
+      attributes as Record<string, unknown>,
+      [start as CardinalityEndpoint, end as CardinalityEndpoint],
+      (key, labelAttributes) =>
+        this.upsert(key, GText, labelAttributes, container)
+    );
   }
+}
 
-  private drawCardinalityLabel(
-    attributes: Required<LineStyleProps>,
-    container: Group,
-    end: 'start' | 'end'
+class CardinalityAwareQuadratic extends Quadratic {
+  override render(
+    attributes: Required<QuadraticStyleProps>,
+    container: Group
   ): void {
+    super.render(attributes, container);
+    syncDashFlow(
+      this,
+      this.getShape('key'),
+      (attributes as Record<string, unknown>).studioDashFlow === true
+    );
+    drawProposalSparkle(
+      attributes as Record<string, unknown>,
+      this.getShape('label'),
+      (imageAttributes) =>
+        this.upsert('proposal-sparkle', GImage, imageAttributes, container)
+    );
     const endpoints = this.getEndpoints(attributes);
-    const attrs = computeCardinalityLabelAttrs(
+    drawCardinalityLabels(
       attributes as Record<string, unknown>,
       [endpoints[0] as [number, number], endpoints[1] as [number, number]],
-      end
+      (key, labelAttributes) =>
+        this.upsert(key, GText, labelAttributes, container)
     );
-    this.upsert(`cardinality-${end}`, GText, attrs, container);
   }
 }
 register(
@@ -135,79 +286,316 @@ register(
   CARDINALITY_AWARE_LINE_EDGE_TYPE,
   CardinalityAwareLine
 );
+register(
+  ExtensionCategory.EDGE,
+  CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE,
+  CardinalityAwareQuadratic
+);
 
-const cssColorCache = new Map<string, string>();
 const COMBO_LABEL_CHAR_WIDTH = 7;
 const COMBO_LABEL_MEASURE_FONT = `${COMBO_LABEL_FONT_WEIGHT} ${COMBO_LABEL_FONT_SIZE}px sans-serif`;
 
-function parseVarName(cssVar: string): string {
-  const inner = cssVar.slice(4, -1).trim();
-  const firstComma = inner.indexOf(',');
+export const getCanvasColor = resolveCssColor;
 
-  return (firstComma > 0 ? inner.slice(0, firstComma) : inner).trim();
+export const STUDIO_EDIT_PORT_KEY = 'ontology-edit';
+export const STUDIO_EDIT_PORT_CLASS_NAME = `port-${STUDIO_EDIT_PORT_KEY}`;
+
+export interface StudioMetricNodeStyle {
+  fill: string;
+  lineDash: number[];
+  stroke: string;
+  studioEditMode: false;
+  studioMutedColor: string;
+  studioNodeKind: typeof STUDIO_METRIC_NODE_KIND;
 }
 
-function isColorLike(val: string): boolean {
-  return (
-    val.length > 0 &&
-    (val.startsWith('rgb') || val.startsWith('#') || val.startsWith('hsl'))
-  );
+// Metrics have no typed relationships to author, so they get no edit handle.
+export function buildStudioMetricNodeStyle(
+  getColor: (cssVar: string, fallback: string) => string
+): StudioMetricNodeStyle {
+  return {
+    fill: getColor(METRIC_NODE_FILL, METRIC_NODE_FILL_FALLBACK),
+    lineDash: METRIC_NODE_LINE_DASH,
+    stroke: getColor(METRIC_NODE_STROKE, METRIC_NODE_STROKE_FALLBACK),
+    studioEditMode: false,
+    studioMutedColor: getColor(
+      METRIC_NODE_MUTED_COLOR,
+      METRIC_NODE_MUTED_COLOR_FALLBACK
+    ),
+    studioNodeKind: STUDIO_METRIC_NODE_KIND,
+  };
 }
 
-/**
- * Resolves a color for Canvas/WebGL (G6): pass-through hex/rgb strings, or resolve `var(--token)`
- * to a concrete `rgb(...)` / `rgba(...)` value. G6 cannot paint raw `var()` in canvas backends.
- *
- * `:root` getPropertyValue often returns another `var()`, `oklch()`, etc., which fails `isColorLike`,
- * so we probe with a temporary element first (browser computes to rgb).
- */
-export function getCanvasColor(cssVar: string, fallbackHex: string): string {
-  if (typeof document === 'undefined') {
-    return fallbackHex;
-  }
+const STUDIO_TAG_FONT_SIZE = 10;
+const PROPOSED_EDGE_LABEL_FONT_SIZE = 12;
+const STUDIO_TAG_FONT = `500 ${STUDIO_TAG_FONT_SIZE}px Inter`;
+const STUDIO_LABEL_FONT = `${NODE_LABEL_FONT_WEIGHT} ${NODE_LABEL_FONT_SIZE}px Inter`;
 
-  if (!cssVar.startsWith('var(')) {
-    return cssVar;
-  }
+export const STUDIO_PROPOSED_NODE_KIND = 'proposed';
 
-  const cached = cssColorCache.get(cssVar);
-  if (cached) {
-    return cached;
-  }
+export interface StudioProposedNodeStyle {
+  fill: string;
+  lineDash: number[];
+  stroke: string;
+  studioAccentColor: string;
+  studioEditMode: false;
+  studioMutedColor: string;
+  studioDashFlow: boolean;
+  studioNodeKind: typeof STUDIO_PROPOSED_NODE_KIND;
+  studioTagText: string;
+}
 
-  try {
-    const tempEl = document.createElement('div');
-    tempEl.style.color = cssVar;
-    tempEl.style.display = 'none';
-    document.body.appendChild(tempEl);
-    const fromCascade = getComputedStyle(tempEl).color;
-    document.body.removeChild(tempEl);
+// A proposal is not a concept yet, so it gets no edit handle to relate it from.
+export function buildStudioProposedNodeStyle(
+  getColor: (cssVar: string, fallback: string) => string,
+  isSelected: boolean
+): StudioProposedNodeStyle {
+  return {
+    fill: getColor(PROPOSED_NODE_FILL, PROPOSED_NODE_FILL_FALLBACK),
+    lineDash: isSelected ? [] : PROPOSED_NODE_LINE_DASH,
+    stroke: isSelected
+      ? getColor(
+          PROPOSED_NODE_SELECTED_STROKE,
+          PROPOSED_NODE_SELECTED_STROKE_FALLBACK
+        )
+      : getColor(PROPOSED_NODE_STROKE, PROPOSED_NODE_STROKE_FALLBACK),
+    studioAccentColor: PROPOSED_NODE_SELECTED_STROKE,
+    studioEditMode: false,
+    studioMutedColor: getColor(
+      PROPOSED_NODE_LABEL_COLOR,
+      PROPOSED_NODE_LABEL_COLOR_FALLBACK
+    ),
+    studioDashFlow: !isSelected,
+    studioNodeKind: STUDIO_PROPOSED_NODE_KIND,
+    studioTagText: i18n.t('label.new').toLocaleUpperCase(),
+  };
+}
 
-    if (
-      fromCascade &&
-      fromCascade !== 'rgba(0, 0, 0, 0)' &&
-      isColorLike(fromCascade)
-    ) {
-      cssColorCache.set(cssVar, fromCascade);
+/** A proposed relationship: dashed purple line with a "✦ type ?" pill. */
+export function buildStudioProposedEdgeStyle(
+  getColor: (cssVar: string, fallback: string) => string,
+  labelText: string | undefined
+): Record<string, unknown> {
+  const purple = getColor(PROPOSED_NODE_STROKE, PROPOSED_NODE_STROKE_FALLBACK);
 
-      return fromCascade;
+  return {
+    stroke: purple,
+    lineDash: PROPOSED_NODE_LINE_DASH,
+    lineWidth: 1.3,
+    endArrow: false,
+    startArrow: false,
+    studioDashFlow: true,
+    ...(labelText && {
+      labelText: `${labelText} ?`,
+      labelPadding: PROPOSED_EDGE_LABEL_PADDING,
+      labelFill: getColor(
+        PROPOSED_NODE_LABEL_COLOR,
+        PROPOSED_NODE_LABEL_COLOR_FALLBACK
+      ),
+      labelBackgroundFill: getColor(
+        PROPOSED_NODE_FILL,
+        PROPOSED_NODE_FILL_FALLBACK
+      ),
+      labelBackgroundStroke: purple,
+      labelBackgroundLineDash: [3, 3],
+      labelBackgroundLineWidth: 1,
+      labelBackgroundRadius: 999,
+      labelBackgroundShadowBlur: 0,
+      labelFontSize: PROPOSED_EDGE_LABEL_FONT_SIZE,
+      labelFontWeight: 500,
+    }),
+  };
+}
+
+// Bar-chart glyph drawn in place of the accent dot: [x offset, bar height].
+const METRIC_GLYPH_BARS: ReadonlyArray<[number, number]> = [
+  [-3.5, 4],
+  [0, 7],
+  [3.5, 10],
+];
+const METRIC_GLYPH_BASELINE_OFFSET = 5;
+
+class StudioTermNode extends RectNode {
+  override render(
+    attributes: Required<RectStyleProps>,
+    container: Group
+  ): void {
+    super.render({ ...attributes, label: false }, container);
+    const attrs = attributes as Record<string, unknown>;
+    const keyShape = this.getShape('key');
+    syncDashFlow(this, keyShape, attrs.studioDashFlow === true);
+    const bounds = keyShape?.getLocalBounds();
+    if (!bounds) {
+      return;
     }
 
-    const varName = parseVarName(cssVar);
-    const rootVal = getComputedStyle(document.documentElement)
-      .getPropertyValue(varName)
-      .trim();
-    if (rootVal && isColorLike(rootVal)) {
-      cssColorCache.set(cssVar, rootVal);
+    const centerY = (bounds.min[1] + bounds.max[1]) / 2;
+    const labelX = bounds.min[0] + 26;
+    const mutedColor =
+      typeof attrs.studioMutedColor === 'string'
+        ? attrs.studioMutedColor
+        : undefined;
 
-      return rootVal;
+    this.renderMarker(
+      attrs,
+      [bounds.min[0] + 15.5, centerY],
+      mutedColor,
+      container
+    );
+    this.renderLabel(
+      attrs,
+      [labelX, bounds.max[0], centerY],
+      mutedColor,
+      container
+    );
+    const plusLineStyles = getStudioEditPortPlusLineStyles(
+      bounds.max[0],
+      centerY
+    );
+    this.upsert(
+      'studio-edit-port-circle',
+      GCircle,
+      attrs.studioEditMode === true
+        ? getStudioEditPortCircleStyle(bounds.max[0], centerY)
+        : false,
+      container
+    );
+    const editPortCircle = this.getShape('studio-edit-port-circle');
+    if (editPortCircle) {
+      editPortCircle.className = STUDIO_EDIT_PORT_CLASS_NAME;
     }
-  } catch {
-    // Ignore
+    this.upsert(
+      'studio-edit-port-plus-horizontal',
+      GLine,
+      attrs.studioEditMode === true ? plusLineStyles[0] : false,
+      container
+    );
+    this.upsert(
+      'studio-edit-port-plus-vertical',
+      GLine,
+      attrs.studioEditMode === true ? plusLineStyles[1] : false,
+      container
+    );
   }
 
-  return fallbackHex;
+  // A proposal's NEW tag sits at the right edge, so its label is cut short of it.
+  private renderLabel(
+    attrs: Record<string, unknown>,
+    [labelX, rightX, centerY]: [number, number, number],
+    mutedColor: string | undefined,
+    container: Group
+  ): void {
+    const label = String(attrs.studioLabelText ?? '');
+    const tagText =
+      typeof attrs.studioTagText === 'string' ? attrs.studioTagText : '';
+    const tagWidth = tagText
+      ? measureTextWidth(tagText, STUDIO_TAG_FONT, 7) + 8
+      : 0;
+
+    this.upsert(
+      'studio-tag',
+      GText,
+      tagText
+        ? {
+            x: rightX - 10,
+            y: centerY,
+            text: tagText,
+            fill: mutedColor,
+            fontFamily: 'Inter',
+            fontSize: STUDIO_TAG_FONT_SIZE,
+            fontWeight: 500,
+            letterSpacing: 0.2,
+            textAlign: 'right',
+            textBaseline: 'middle',
+          }
+        : false,
+      container
+    );
+    this.upsert(
+      'studio-label',
+      GText,
+      {
+        x: labelX,
+        y: centerY,
+        text: tagText
+          ? truncateToFit(
+              label,
+              rightX - labelX - tagWidth - 10,
+              STUDIO_LABEL_FONT,
+              7
+            )
+          : label,
+        fill:
+          mutedColor ??
+          getCanvasColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
+        fontFamily: 'Inter',
+        fontSize: NODE_LABEL_FONT_SIZE,
+        fontWeight: NODE_LABEL_FONT_WEIGHT,
+        textAlign: 'left',
+        textBaseline: 'middle',
+      },
+      container
+    );
+  }
+
+  // A metric shows a bar-chart glyph where a concept shows its accent dot.
+  private renderMarker(
+    attrs: Record<string, unknown>,
+    [centerX, centerY]: [number, number],
+    mutedColor: string | undefined,
+    container: Group
+  ): void {
+    const isMetric = attrs.studioNodeKind === STUDIO_METRIC_NODE_KIND;
+    const isProposed = attrs.studioNodeKind === STUDIO_PROPOSED_NODE_KIND;
+    const accentColor =
+      typeof attrs.studioAccentColor === 'string'
+        ? getCanvasColor(attrs.studioAccentColor, '#84CAFF')
+        : '#84CAFF';
+    const baselineY = centerY + METRIC_GLYPH_BASELINE_OFFSET;
+
+    this.upsert(
+      'studio-dot',
+      GCircle,
+      isMetric || isProposed
+        ? false
+        : { cx: centerX, cy: centerY, r: 3.5, fill: accentColor },
+      container
+    );
+    this.upsert(
+      'studio-sparkle',
+      GImage,
+      isProposed
+        ? {
+            x: centerX - SPARKLE_SIZE / 2,
+            y: centerY - SPARKLE_SIZE / 2,
+            width: SPARKLE_SIZE,
+            height: SPARKLE_SIZE,
+            src: ASK_COLLATE_SPARKLE_SRC,
+          }
+        : false,
+      container
+    );
+    METRIC_GLYPH_BARS.forEach(([offsetX, height], index) => {
+      this.upsert(
+        `studio-metric-bar-${index}`,
+        GLine,
+        isMetric
+          ? {
+              x1: centerX + offsetX,
+              y1: baselineY,
+              x2: centerX + offsetX,
+              y2: baselineY - height,
+              stroke: mutedColor,
+              lineWidth: 2,
+              lineCap: 'round',
+            }
+          : false,
+        container
+      );
+    });
+  }
 }
+register(ExtensionCategory.NODE, 'studio-term', StudioTermNode);
 
 const GLOSSARY_HEADER_MIX_ACCENT = 0.11;
 
@@ -238,9 +626,12 @@ function parseColorToRgbTriplet(val: string): [number, number, number] | null {
 function mixAccentLikeScale50(rgb: [number, number, number]): string {
   const t = GLOSSARY_HEADER_MIX_ACCENT;
   const clamp = (n: number) => Math.min(255, Math.max(0, n));
-  const r = clamp(Math.round(rgb[0] * t + 255 * (1 - t)));
-  const g = clamp(Math.round(rgb[1] * t + 255 * (1 - t)));
-  const b = clamp(Math.round(rgb[2] * t + 255 * (1 - t)));
+  const surface = parseColorToRgbTriplet(
+    getCanvasColor(NODE_FILL_DEFAULT, '#ffffff')
+  ) ?? [255, 255, 255];
+  const r = clamp(Math.round(rgb[0] * t + surface[0] * (1 - t)));
+  const g = clamp(Math.round(rgb[1] * t + surface[1] * (1 - t)));
+  const b = clamp(Math.round(rgb[2] * t + surface[2] * (1 - t)));
   const x = (n: number) => n.toString(16).padStart(2, '0');
 
   return `#${x(r)}${x(g)}${x(b)}`;
@@ -248,10 +639,10 @@ function mixAccentLikeScale50(rgb: [number, number, number]): string {
 
 /**
  * Glossary combo header: light "50" wash matching the glossary accent (title + border stroke).
- * For `var(--color-*-scale)` strokes, resolves `var(--color-*-50)`. For hex palette strokes, blends toward white.
+ * Token strokes use the palette’s 50 shade. Stored custom colors blend toward the active surface.
  */
 export function glossaryComboHeaderFill(stroke: string): string {
-  const blendTowardWhite = (): string => {
+  const blendTowardSurface = (): string => {
     const resolved = stroke.startsWith('var(')
       ? getCanvasColor(stroke, '#94a3b8')
       : stroke;
@@ -261,13 +652,13 @@ export function glossaryComboHeaderFill(stroke: string): string {
   };
 
   if (stroke.startsWith('var(')) {
-    const m = stroke.match(/^var\((--color-[a-z0-9-]+)-\d{2,3}\)$/i);
+    const m = /^var\((--tw-color-[a-z0-9-]+)-\d{2,3}\)$/i.exec(stroke);
     if (m) {
-      return getCanvasColor(`var(${m[1]}-50)`, blendTowardWhite());
+      return getCanvasColor(`var(${m[1]}-50)`, blendTowardSurface());
     }
   }
 
-  return blendTowardWhite();
+  return blendTowardSurface();
 }
 
 export const LABEL_PLACEMENT_BOTTOM = 'bottom';
@@ -439,65 +830,213 @@ const EDGE_LABEL_OFFSET_Y = 0;
 const EDGE_LABEL_BADGE_PADDING: [number, number, number, number] = [4, 8, 4, 8];
 const EDGE_LABEL_BADGE_RADIUS = 6;
 const EDGE_LABEL_BADGE_FONT_WEIGHT = 700;
+const STUDIO_EDGE_LABEL_PADDING: [number, number, number, number] = [
+  2, 7, 2, 7,
+];
+const STUDIO_EDGE_BORDER_BY_COLOR: Record<string, string> = {
+  // Built-in foregrounds use utility-700; their badge border uses the same palette's utility-200.
+  ...Object.fromEntries(
+    Object.values(COLOR_META_BY_HEX).map(({ color }) => [
+      color,
+      color.replace('-700)', '-200)'),
+    ])
+  ),
+  '#079455': 'var(--tw-color-utility-success-200)',
+  '#0e9384': 'var(--tw-color-utility-teal-200)',
+  '#1570ef': 'var(--tw-color-utility-brand-200)',
+  '#3538cd': 'var(--tw-color-utility-indigo-200)',
+  '#5925dc': 'var(--tw-color-utility-violet-200)',
+  '#6172f3': 'var(--tw-color-utility-indigo-200)',
+  '#717680': 'var(--tw-color-utility-gray-200)',
+  '#7a5af8': 'var(--tw-color-utility-purple-200)',
+  '#c11574': 'var(--tw-color-utility-pink-200)',
+  '#dc6803': 'var(--tw-color-utility-warning-200)',
+  '#e31b54': 'var(--tw-color-utility-rose-200)',
+};
 
 export function getEffectiveRelationColor(
   relationType: string,
-  customRelation: { isSystemDefined?: boolean; color?: string } | undefined
+  relationshipType: RelationshipType | undefined
 ): string | undefined {
-  if (!customRelation) {
-    return RELATION_META[relationType]?.color;
+  const configuredColor = relationshipType
+    ? getRelationshipColor(relationshipType)
+    : undefined;
+  const effectiveColor = relationshipType?.systemDefined
+    ? RELATION_META[relationType]?.color ?? configuredColor
+    : configuredColor ?? RELATION_META[relationType]?.color;
+
+  return effectiveColor;
+}
+
+type RelationMeta = { color: string; background: string; labelKey: string };
+
+const getBuiltInMeta = (
+  relationType?: string
+): RelationMeta | null | undefined =>
+  relationType != null
+    ? RELATION_META[relationType] ?? RELATION_META.default
+    : null;
+
+const getEffectiveMeta = (
+  effectiveColor: string | undefined,
+  builtInMeta: RelationMeta | null | undefined
+): RelationMeta | null | undefined =>
+  effectiveColor
+    ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? builtInMeta
+    : builtInMeta;
+
+const getStudioBorderColor = (
+  relationColor: string | undefined
+): string | undefined =>
+  relationColor
+    ? STUDIO_EDGE_BORDER_BY_COLOR[relationColor.toLowerCase()]
+    : undefined;
+
+let flattenContext: CanvasRenderingContext2D | null | undefined;
+
+// Dark-mode `utility-*-50` badge tokens are translucent, which lets edges strike
+// through the label; composite them over the node surface so the badge is opaque.
+const flattenOntoSurface = (
+  color: string,
+  getColor: (cssVar: string, fallback: string) => string
+): string => {
+  if (
+    /^(#[0-9a-f]{6}$|rgb\()/i.test(color) ||
+    typeof document === 'undefined'
+  ) {
+    return color;
   }
-  if (customRelation.isSystemDefined) {
-    return RELATION_META[relationType]?.color ?? customRelation.color;
+  flattenContext ??= document
+    .createElement('canvas')
+    .getContext('2d', { willReadFrequently: true });
+  if (!flattenContext) {
+    return color;
+  }
+  flattenContext.fillStyle = getColor(NODE_FILL_DEFAULT, '#ffffff');
+  flattenContext.fillRect(0, 0, 1, 1);
+  flattenContext.fillStyle = color;
+  flattenContext.fillRect(0, 0, 1, 1);
+  const [r, g, b] = flattenContext.getImageData(0, 0, 1, 1).data;
+
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
+const getEdgeLabelBackgroundFill = (
+  studioMode: boolean,
+  meta: RelationMeta | null | undefined,
+  getColor: (cssVar: string, fallback: string) => string
+): string => {
+  if (studioMode) {
+    return getColor(EDGE_LABEL_BG_FILL, '#FFFFFF');
   }
 
-  return customRelation.color ?? RELATION_META[relationType]?.color;
-}
+  return meta
+    ? flattenOntoSurface(getColor(meta.background, '#fafafa'), getColor)
+    : getColor(EDGE_LABEL_BG_FILL, '#EFF1F8');
+};
+
+const getEdgeLabelBackgroundStroke = (
+  studioMode: boolean,
+  meta: RelationMeta | null | undefined,
+  studioBorderColor: string | undefined,
+  getColor: (cssVar: string, fallback: string) => string
+): string => {
+  if (studioMode) {
+    return getColor(
+      studioBorderColor ?? 'var(--tw-color-border-primary)',
+      '#E9EAEB'
+    );
+  }
+
+  return meta ? 'none' : getColor(EDGE_LABEL_BG_STROKE, '#FFF');
+};
+
+const getEdgeLabelBackgroundLineWidth = (
+  studioMode: boolean,
+  meta: RelationMeta | null | undefined
+): number => {
+  if (studioMode) {
+    return 1;
+  }
+
+  return meta ? 0 : 1;
+};
+
+const getEdgeLabelBackgroundRadius = (
+  studioMode: boolean,
+  meta: RelationMeta | null | undefined
+): number => {
+  if (studioMode) {
+    return 9999;
+  }
+
+  return meta ? EDGE_LABEL_BADGE_RADIUS : EDGE_LABEL_BG_RADIUS;
+};
+
+const getEdgeLabelBackgroundShadowColor = (
+  meta: RelationMeta | null | undefined,
+  getColor: (cssVar: string, fallback: string) => string
+): string =>
+  meta ? 'transparent' : getColor(EDGE_LABEL_BG_SHADOW_COLOR, '#EBEDF5');
+
+const getEdgeLabelFill = (
+  meta: RelationMeta | null | undefined,
+  getColor: (cssVar: string, fallback: string) => string
+): string =>
+  meta ? getColor(meta.color, '#717680') : getColor(EDGE_LABEL_FILL, '#8C93AE');
+
+const getEdgeLabelFontWeight = (
+  studioMode: boolean,
+  meta: RelationMeta | null | undefined
+): number => {
+  if (studioMode) {
+    return EDGE_LABEL_FONT_WEIGHT;
+  }
+
+  return meta ? EDGE_LABEL_BADGE_FONT_WEIGHT : EDGE_LABEL_FONT_WEIGHT;
+};
 
 export function getEdgeRelationLabelStyle(
   labelText: string,
   relationType?: string,
-  effectiveColor?: string
+  effectiveColor?: string,
+  studioMode = false,
+  getColor: (cssVar: string, fallback: string) => string = getCanvasColor
 ): Record<string, unknown> {
-  const builtInMeta =
-    relationType != null
-      ? RELATION_META[relationType] ?? RELATION_META.default
-      : null;
-  const meta = effectiveColor
-    ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? builtInMeta
-    : builtInMeta;
+  const builtInMeta = getBuiltInMeta(relationType);
+  const meta = getEffectiveMeta(effectiveColor, builtInMeta);
 
-  const edgeLabelPadding = EDGE_LABEL_BADGE_PADDING;
+  const edgeLabelPadding = studioMode
+    ? STUDIO_EDGE_LABEL_PADDING
+    : EDGE_LABEL_BADGE_PADDING;
+  const relationColor = effectiveColor ?? meta?.color;
+  const studioBorderColor = getStudioBorderColor(relationColor);
 
   return {
     labelText,
     labelPosition: 'center',
     labelBackground: true,
     labelBackgroundOpacity: 1,
-    labelBackgroundFill: meta
-      ? getCanvasColor(meta.background, '#fafafa')
-      : getCanvasColor(EDGE_LABEL_BG_FILL, '#EFF1F8'),
-    labelBackgroundStroke: meta
-      ? 'none'
-      : getCanvasColor(EDGE_LABEL_BG_STROKE, '#FFF'),
-    labelBackgroundLineWidth: meta ? 0 : 1,
-    labelBackgroundRadius: meta
-      ? EDGE_LABEL_BADGE_RADIUS
-      : EDGE_LABEL_BG_RADIUS,
+    labelBackgroundFill: getEdgeLabelBackgroundFill(studioMode, meta, getColor),
+    labelBackgroundStroke: getEdgeLabelBackgroundStroke(
+      studioMode,
+      meta,
+      studioBorderColor,
+      getColor
+    ),
+    labelBackgroundLineWidth: getEdgeLabelBackgroundLineWidth(studioMode, meta),
+    labelBackgroundRadius: getEdgeLabelBackgroundRadius(studioMode, meta),
     labelPadding: edgeLabelPadding,
-    labelBackgroundShadowColor: meta
-      ? 'transparent'
-      : getCanvasColor(EDGE_LABEL_BG_SHADOW_COLOR, '#EBEDF5'),
+    labelBackgroundShadowColor: getEdgeLabelBackgroundShadowColor(
+      meta,
+      getColor
+    ),
     labelBackgroundShadowBlur: meta ? 0 : EDGE_LABEL_BG_SHADOW_BLUR,
     labelBackgroundShadowOffsetY: meta ? 0 : EDGE_LABEL_BG_SHADOW_OFFSET_Y,
     labelBackgroundShadowOffsetX: 0,
-    labelFill: meta
-      ? getCanvasColor(meta.color, '#717680')
-      : getCanvasColor(EDGE_LABEL_FILL, '#8C93AE'),
+    labelFill: getEdgeLabelFill(meta, getColor),
     labelFontSize: EDGE_LABEL_FONT_SIZE,
-    labelFontWeight: meta
-      ? EDGE_LABEL_BADGE_FONT_WEIGHT
-      : EDGE_LABEL_FONT_WEIGHT,
+    labelFontWeight: getEdgeLabelFontWeight(studioMode, meta),
     labelFontFamily: EDGE_LABEL_FONT_FAMILY,
     labelLetterSpacing: EDGE_LABEL_LETTER_SPACING,
     labelAutoRotate: true,
@@ -519,8 +1058,8 @@ export function buildDefaultRectNodeStyle(
 ): Record<string, unknown> {
   return {
     size,
-    fill: NODE_FILL_DEFAULT,
-    stroke: NODE_BORDER_COLOR,
+    fill: getColor(NODE_FILL_DEFAULT, '#ffffff'),
+    stroke: getColor(NODE_BORDER_COLOR, '#E9EAEB'),
     lineWidth: NODE_LINE_WIDTH,
     radius: NODE_BORDER_RADIUS,
     icon: false,
@@ -611,6 +1150,55 @@ function truncateTextWithEllipsis(
   return lo === 0 ? ellipsis : text.slice(0, lo) + ellipsis;
 }
 
+// Node style for the plain "name only" asset card, used when there is no
+// entity-type badge to lay out alongside the name.
+const buildAssetOnlyNodeStyle = (
+  getColor: (cssVar: string, fallback: string) => string,
+  label: string,
+  nameMeasureFont: string,
+  hPad: number,
+  vPad: number,
+  pad: [number, number, number, number],
+  keyShapeBase: Record<string, unknown>
+): Record<string, unknown> => {
+  const rawTextW =
+    measureCanvasTextWidthPx(label, nameMeasureFont) ??
+    Math.ceil(label.length * DATA_MODE_ASSET_LABEL_CHAR_WIDTH_EST);
+  const textW = Math.min(
+    DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX,
+    Math.max(12, rawTextW)
+  );
+  const boxW = Math.max(
+    DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH,
+    Math.min(DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX + hPad, textW + hPad)
+  );
+  const maxTextW = Math.max(12, boxW - hPad);
+  const boxH = DATA_MODE_ASSET_LABEL_FONT_SIZE + vPad + 4;
+
+  return {
+    ...keyShapeBase,
+    labelText: label,
+    labelFill: getColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
+    labelFontSize: DATA_MODE_ASSET_LABEL_FONT_SIZE,
+    labelFontWeight: DATA_MODE_ASSET_LABEL_FONT_WEIGHT,
+    labelPlacement: LABEL_PLACEMENT_BOTTOM,
+    labelOffsetY: DATA_MODE_LABEL_OFFSET_Y,
+    labelTextAlign: 'center',
+    labelWordWrap: true,
+    labelMaxWidth: maxTextW,
+    labelMaxLines: 1,
+    labelTextOverflow: '...',
+    labelBackground: true,
+    labelBackgroundFill: getColor(EDGE_LABEL_BG_STROKE, '#FFF'),
+    labelBackgroundStroke: getColor(NODE_BORDER_COLOR, '#E9EAEB'),
+    labelBackgroundLineWidth: 1,
+    labelBackgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
+    labelBackgroundWidth: boxW,
+    labelBackgroundHeight: boxH,
+    labelPadding: pad,
+  };
+};
+
 export function buildDataModeAssetNodeStyle(
   getColor: (cssVar: string, fallback: string) => string,
   label: string,
@@ -632,7 +1220,7 @@ export function buildDataModeAssetNodeStyle(
 
   const keyShapeBase = {
     size: [sz, sz],
-    fill: EDGE_LABEL_BG_STROKE,
+    fill: getColor(EDGE_LABEL_BG_STROKE, '#FFF'),
     stroke: resolvedStroke,
     lineWidth: DATA_MODE_ASSET_LINE_WIDTH,
     radius: sz / 2,
@@ -649,42 +1237,15 @@ export function buildDataModeAssetNodeStyle(
   const nameMeasureFont = `${DATA_MODE_ASSET_LABEL_FONT_WEIGHT} ${DATA_MODE_ASSET_LABEL_FONT_SIZE}px sans-serif`;
 
   if (!entityTypeText) {
-    const rawTextW =
-      measureCanvasTextWidthPx(label, nameMeasureFont) ??
-      Math.ceil(label.length * DATA_MODE_ASSET_LABEL_CHAR_WIDTH_EST);
-    const textW = Math.min(
-      DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX,
-      Math.max(12, rawTextW)
+    return buildAssetOnlyNodeStyle(
+      getColor,
+      label,
+      nameMeasureFont,
+      hPad,
+      vPad,
+      pad,
+      keyShapeBase
     );
-    const boxW = Math.max(
-      DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH,
-      Math.min(DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX + hPad, textW + hPad)
-    );
-    const maxTextW = Math.max(12, boxW - hPad);
-    const boxH = DATA_MODE_ASSET_LABEL_FONT_SIZE + vPad + 4;
-
-    return {
-      ...keyShapeBase,
-      labelText: label,
-      labelFill: getColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
-      labelFontSize: DATA_MODE_ASSET_LABEL_FONT_SIZE,
-      labelFontWeight: DATA_MODE_ASSET_LABEL_FONT_WEIGHT,
-      labelPlacement: LABEL_PLACEMENT_BOTTOM,
-      labelOffsetY: DATA_MODE_LABEL_OFFSET_Y,
-      labelTextAlign: 'center',
-      labelWordWrap: true,
-      labelMaxWidth: maxTextW,
-      labelMaxLines: 1,
-      labelTextOverflow: '...',
-      labelBackground: true,
-      labelBackgroundFill: EDGE_LABEL_BG_STROKE,
-      labelBackgroundStroke: NODE_BORDER_COLOR,
-      labelBackgroundLineWidth: 1,
-      labelBackgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
-      labelBackgroundWidth: boxW,
-      labelBackgroundHeight: boxH,
-      labelPadding: pad,
-    };
   }
 
   const entityTypeMeasureFont = `${DATA_MODE_ASSET_LABEL_FONT_WEIGHT} ${DATA_MODE_ENTITY_BADGE_FONT_SIZE}px sans-serif`;
@@ -746,8 +1307,8 @@ export function buildDataModeAssetNodeStyle(
     fontSize: DATA_MODE_ASSET_LABEL_FONT_SIZE,
     fill: 'transparent',
     background: true,
-    backgroundFill: EDGE_LABEL_BG_STROKE,
-    backgroundStroke: NODE_BORDER_COLOR,
+    backgroundFill: getColor(EDGE_LABEL_BG_STROKE, '#FFF'),
+    backgroundStroke: getColor(NODE_BORDER_COLOR, '#E9EAEB'),
     backgroundLineWidth: 1,
     backgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
     backgroundWidth: totalW,
@@ -794,8 +1355,11 @@ export function buildDataModeAssetNodeStyle(
       fontSize: DATA_MODE_ENTITY_BADGE_FONT_SIZE,
       fill: 'transparent',
       background: true,
-      backgroundFill: EDGE_LABEL_BG_STROKE,
-      backgroundStroke: DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK,
+      backgroundFill: getColor(EDGE_LABEL_BG_STROKE, '#FFF'),
+      backgroundStroke: getColor(
+        NODE_BORDER_COLOR,
+        DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK
+      ),
       backgroundLineWidth: 1,
       backgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
       backgroundWidth: entityPillDrawW,
@@ -859,8 +1423,11 @@ export function buildDataModeAssetNodeStyle(
     maxLines: 1,
     textOverflow: '...',
     background: true,
-    backgroundFill: EDGE_LABEL_BG_STROKE,
-    backgroundStroke: DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK,
+    backgroundFill: getColor(EDGE_LABEL_BG_STROKE, '#FFF'),
+    backgroundStroke: getColor(
+      NODE_BORDER_COLOR,
+      DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK
+    ),
     backgroundLineWidth: 1,
     backgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
     backgroundWidth: entityBoxW,
@@ -888,7 +1455,7 @@ export function buildDataModeTermNodeStyle(
   return {
     size: [DATA_MODE_TERM_NODE_SIZE, DATA_MODE_TERM_NODE_SIZE],
     fill: resolvedColor,
-    stroke: NODE_FILL_DEFAULT,
+    stroke: getColor(NODE_FILL_DEFAULT, '#ffffff'),
     lineWidth: DATA_MODE_TERM_NODE_STROKE_WIDTH,
     strokeOpacity: 1,
     halo: true,
@@ -896,12 +1463,15 @@ export function buildDataModeTermNodeStyle(
     haloFillOpacity: 0,
     haloLineWidth: DATA_MODE_TERM_HALO_LINE_WIDTH,
     haloShadowBlur: DATA_MODE_TERM_HALO_SHADOW_BLUR,
-    haloShadowColor: DATA_MODE_TERM_HALO_SHADOW_COLOR,
-    haloStroke: NODE_FILL_DEFAULT,
+    haloShadowColor: getColor(
+      DATA_MODE_TERM_HALO_SHADOW_COLOR,
+      'rgba(203, 213, 225, 0.35)'
+    ),
+    haloStroke: getColor(DATA_MODE_TERM_HALO_STROKE, '#e8ecf0'),
     haloStrokeOpacity: DATA_MODE_TERM_HALO_STROKE_OPACITY,
     icon: false,
     labelText: label,
-    labelFill: NODE_FILL_DEFAULT,
+    labelFill: getColor(NODE_LABEL_FILL_INVERSE, '#ffffff'),
     labelFontSize: NODE_LABEL_FONT_SIZE,
     labelFontWeight: DATA_MODE_TERM_LABEL_FONT_WEIGHT,
     labelPlacement: LABEL_PLACEMENT_BOTTOM,
@@ -909,15 +1479,21 @@ export function buildDataModeTermNodeStyle(
     labelBackground: true,
     labelBackgroundFill: resolvedColor,
     labelBackgroundOpacity: 1,
-    labelBackgroundStroke: NODE_FILL_DEFAULT,
+    labelBackgroundStroke: getColor(NODE_FILL_DEFAULT, '#ffffff'),
     labelBackgroundLineWidth: DATA_MODE_TERM_NODE_STROKE_WIDTH,
     labelBackgroundRadius: DATA_MODE_TERM_LABEL_BG_RADIUS,
     labelBackgroundShadowBlur: DATA_MODE_TERM_LABEL_SHADOW_BLUR,
-    labelBackgroundShadowColor: DATA_MODE_TERM_LABEL_SHADOW_COLOR,
+    labelBackgroundShadowColor: getColor(
+      DATA_MODE_TERM_LABEL_SHADOW_COLOR,
+      'rgba(226, 232, 240, 0.65)'
+    ),
     labelBackgroundShadowOffsetY: DATA_MODE_TERM_LABEL_SHADOW_OFFSET_Y,
     labelPadding: TERM_LABEL_BG_PADDING,
     shadowBlur: DATA_MODE_TERM_NODE_SHADOW_BLUR,
-    shadowColor: DATA_MODE_TERM_NODE_SHADOW_COLOR,
+    shadowColor: getColor(
+      DATA_MODE_TERM_NODE_SHADOW_COLOR,
+      'rgba(241, 245, 249, 0.92)'
+    ),
     shadowOffsetY: DATA_MODE_TERM_NODE_SHADOW_OFFSET_Y,
     ...(pos && { x: pos.x, y: pos.y }),
   };
@@ -926,7 +1502,8 @@ export function buildDataModeTermNodeStyle(
 export function buildComboStyle(
   labelText: string,
   color: string,
-  extraVerticalPadding = 0
+  extraVerticalPadding = 0,
+  getColor: (cssVar: string, fallback: string) => string = getCanvasColor
 ): Record<string, unknown> {
   const labelPx = measureTextWidth(
     labelText,
@@ -943,8 +1520,8 @@ export function buildComboStyle(
     extraVerticalPadding * 2;
 
   return {
-    fill: COMBO_FILL_DEFAULT,
-    stroke: color,
+    fill: getColor(COMBO_FILL_DEFAULT, '#ffffff'),
+    stroke: getColor(color, COMBO_COLOR_FALLBACK),
     lineWidth: COMBO_LINE_WIDTH,
     radius: COMBO_RADIUS,
     padding: [
@@ -956,7 +1533,7 @@ export function buildComboStyle(
     minHeight,
     label: true,
     labelText,
-    labelFill: color,
+    labelFill: getColor(color, COMBO_COLOR_FALLBACK),
     labelFontSize: COMBO_LABEL_FONT_SIZE,
     labelFontWeight: COMBO_LABEL_FONT_WEIGHT,
     labelPlacement: LABEL_PLACEMENT_TOP_LEFT,

@@ -13,10 +13,9 @@
 
 import { get } from 'lodash';
 import { lazy } from 'react';
-import withSuspenseFallback, {
-  TAB_CONTENT_FALLBACK,
-} from '../components/AppRouter/withSuspenseFallback';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import PermissionPlaceholder from '../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import type { Topic } from '../generated/entity/data/topic';
@@ -26,12 +25,6 @@ import type { Field } from '../generated/type/schema';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
 import type { TopicDetailPageTabProps } from './TopicClassBase';
-
-const ErrorPlaceHolder = withSuspenseFallback(
-  lazy(
-    () => import('../components/common/ErrorWithPlaceholder/ErrorPlaceHolder')
-  )
-);
 
 const TabsLabel = withSuspenseFallback(
   lazy(() => import('../components/common/TabsLabel/TabsLabel.component'))
@@ -62,7 +55,7 @@ const ContractTab = withSuspenseFallback(
 );
 const TopicSchemaFields = withSuspenseFallback(
   lazy(() => import('../components/Topic/TopicSchema/TopicSchema')),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 export const getTopicDetailsPageTabs = ({
@@ -113,14 +106,15 @@ export const getTopicDetailsPageTabs = ({
       children: viewSampleDataPermission ? (
         sampleDataTab
       ) : (
-        <div className="border-default border-radius-sm p-y-lg">
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={i18n.t('label.view-entity', {
-              entity: i18n.t('label.sample-data'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
+        <div className="border-default border-radius-sm p-y-lg tw:relative tw:min-h-60 tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <PermissionPlaceholder
+              data-testid="permission-error-placeholder"
+              permissionValue={i18n.t('label.view-entity', {
+                entity: i18n.t('label.sample-data'),
+              })}
+            />
+          </div>
         </div>
       ),
     },

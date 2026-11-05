@@ -14,6 +14,7 @@ import type { FC, ReactNode } from 'react';
 import { useRef } from 'react';
 import type { PopoverProps } from 'react-aria-components';
 import { Popover } from 'react-aria-components';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { useActiveFieldDoc } from './field-doc-context';
 
@@ -40,7 +41,11 @@ export interface FieldDocPopoverProps
    * to 480.
    */
   maxHeight?: number;
+  /** `muted` sits the card on the same step as a muted Card (darker in dark mode). */
+  variant?: FieldDocPopoverVariant;
 }
+
+export type FieldDocPopoverVariant = 'default' | 'muted';
 
 const defaultRenderDoc = (doc: string): ReactNode => (
   <p className="tw:whitespace-pre-wrap tw:text-sm tw:text-secondary">{doc}</p>
@@ -63,8 +68,10 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
   // in the spread and clobber the default.
   offset = 16,
   maxHeight = 480,
+  variant = 'default',
   ...popoverProps
 }) => {
+  const { t } = useCoreTranslation();
   const { entry, name } = useActiveFieldDoc();
   const anchorRef = useRef<HTMLElement | null>(null);
   // Re-find the anchor by field name on every render so positioning survives
@@ -85,7 +92,8 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
       isNonModal
       isOpen
       className={cx(
-        'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg',
+        'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:shadow-lg',
+        variant === 'muted' ? 'tw:bg-primary_alt' : 'tw:bg-overlay-surface',
         className
       )}
       placement="right top"
@@ -100,7 +108,7 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
       {/* A plain container, not a Dialog — the doc popover must never take
           focus, or it would steal it from the field being edited. */}
       <div
-        aria-label="Field documentation"
+        aria-label={t('label.field-documentation', 'Field documentation')}
         className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
         role="note">
         {header != null && <div className="tw:px-4 tw:pt-4">{header}</div>}

@@ -49,7 +49,11 @@
 }
 
 .task-form-settings-sidebar-card {
-  background: linear-gradient(180deg, var(--om-legacy-color-f8faff) 0%, var(--om-legacy-color-f1f5ff) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--om-legacy-color-f8faff) 0%,
+    var(--om-legacy-color-f1f5ff) 100%
+  );
 }
 
 .task-form-settings-schema-list {
@@ -70,7 +74,9 @@
   gap: var(--om-space-4);
   padding: var(--om-space-16);
   text-align: left;
-  transition: border-color var(--om-duration-200) ease, box-shadow var(--om-duration-200) ease, transform var(--om-duration-200) ease;
+  transition: border-color var(--om-duration-200) ease,
+    box-shadow var(--om-duration-200) ease,
+    transform var(--om-duration-200) ease;
 
   &:hover {
     border-color: var(--om-legacy-color-5b8def);
@@ -81,7 +87,8 @@
 
 .task-form-settings-schema-item--active {
   border-color: var(--om-legacy-color-2563eb);
-  box-shadow: inset 3px 0 0 var(--om-legacy-color-2563eb), 0 14px 32px var(--om-legacy-color-37-99-235-0-12);
+  box-shadow: inset 3px 0 0 var(--om-legacy-color-2563eb),
+    0 14px 32px var(--om-legacy-color-37-99-235-0-12);
 }
 
 .task-form-settings-schema-item__title {
@@ -96,11 +103,6 @@
   font-size: var(--om-font-size-13);
 }
 
-.task-form-settings-sidebar-action {
-  border-radius: var(--om-radius-14);
-  height: 44px;
-}
-
 .task-form-settings-main {
   display: grid;
   gap: var(--om-space-24);
@@ -108,7 +110,11 @@
 
 .task-form-settings-hero {
   align-items: start;
-  background: linear-gradient(135deg, var(--om-legacy-color-f8faff) 0%, var(--om-color-indigo-50) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--om-legacy-color-f8faff) 0%,
+    var(--om-color-indigo-50) 100%
+  );
   border: 1px solid var(--om-legacy-color-dbe4ff);
   border-radius: var(--om-radius-3xl);
   display: flex;
@@ -130,12 +136,12 @@
   text-transform: uppercase;
 }
 
-.task-form-settings-hero__title.ant-typography {
+.task-form-settings-hero__title {
   color: var(--om-legacy-color-102a72);
   margin-bottom: 0;
 }
 
-.task-form-settings-hero__description.ant-typography {
+.task-form-settings-hero__description {
   color: var(--om-legacy-color-52607a);
   font-size: var(--om-font-size-md);
   margin-bottom: 0;
@@ -163,7 +169,11 @@
 }
 
 .task-form-settings-card--sidebar {
-  background: linear-gradient(180deg, var(--om-legacy-color-fbfcff) 0%, var(--om-legacy-color-f4f7ff) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--om-legacy-color-fbfcff) 0%,
+    var(--om-legacy-color-f4f7ff) 100%
+  );
 }
 
 .task-form-settings-card__stack {
@@ -178,16 +188,11 @@
 }
 
 .task-form-settings-form-grid__span-2 {
-  grid-column: 1 / -1;
+  grid-column: ~'1 / -1'; // escaped: LESS would evaluate 1 / -1 as -1
 }
 
 .task-form-settings-workspace {
   overflow: hidden;
-}
-
-.task-form-settings-primary-tabs > .ant-tabs-nav,
-.task-form-settings-secondary-tabs > .ant-tabs-nav {
-  margin-bottom: var(--om-space-24);
 }
 
 .task-form-settings-designer-pane,
@@ -283,12 +288,6 @@
 .task-form-builder-section__preview {
   position: sticky;
   top: 24px;
-}
-
-.task-form-builder-section__preview .ant-card {
-  border: 1px dashed var(--om-legacy-color-c9d7ff);
-  border-radius: var(--om-radius-18);
-  box-shadow: none;
 }
 
 @media (max-width: 1440px) {

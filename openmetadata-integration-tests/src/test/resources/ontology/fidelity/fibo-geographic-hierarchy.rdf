@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Adapted from EDM Council FIBO — geographic and jurisdictional modules
+  Source: https://github.com/edmcouncil/fibo
+  Copyright (c) 2016-2025 EDM Council, Inc.
+  Copyright (c) 2016-2025 Object Management Group, Inc.
+  Licensed under the MIT License — https://opensource.org/licenses/MIT
+-->
+<rdf:RDF
+    xml:base="http://example.org/ontology/fibo-geographic-hierarchy/"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+    xmlns:ont="http://example.org/ontology/fibo-geographic-hierarchy/">
+
+  <owl:Ontology rdf:about="">
+    <rdfs:label>FIBO Geographic Hierarchy</rdfs:label>
+    <rdfs:comment>Regions, countries, and jurisdictions with disaster-zone flags for climate risk analysis. Adapted from EDM Council FIBO. Source: https://github.com/edmcouncil/fibo — MIT License.</rdfs:comment>
+  </owl:Ontology>
+
+  <!-- Entity Types -->
+  <owl:Class rdf:about="Region">
+    <rdfs:label>Region</rdfs:label>
+    <rdfs:comment>Continental or geographic region grouping for macroeconomic analysis.</rdfs:comment>
+    <ont:icon>🌍</ont:icon>
+    <ont:color>#107C10</ont:color>
+  </owl:Class>
+
+  <owl:Class rdf:about="Country">
+    <rdfs:label>Country</rdfs:label>
+    <rdfs:comment>Nation-state with economic zone, currency, and regulatory framework attributes.</rdfs:comment>
+    <ont:icon>🏳️</ont:icon>
+    <ont:color>#008272</ont:color>
+  </owl:Class>
+
+  <owl:Class rdf:about="Jurisdiction">
+    <rdfs:label>Jurisdiction</rdfs:label>
+    <rdfs:comment>Subnational jurisdiction with disaster-zone flags for hurricane, flood, earthquake, and wildfire risk.</rdfs:comment>
+    <ont:icon>📍</ont:icon>
+    <ont:color>#00B294</ont:color>
+  </owl:Class>
+
+  <!-- Region Properties -->
+  <owl:DatatypeProperty rdf:about="regionCode">
+    <rdfs:label>regionCode</rdfs:label>
+    <rdfs:domain rdf:resource="Region"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <ont:propertyType>string</ont:propertyType>
+    <ont:isIdentifier rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</ont:isIdentifier>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="regionName">
+    <rdfs:label>regionName</rdfs:label>
+    <rdfs:domain rdf:resource="Region"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <ont:propertyType>string</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="regionDescription">
+    <rdfs:label>description</rdfs:label>
+    <rdfs:domain rdf:resource="Region"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <ont:propertyType>string</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="disasterProfile">
+    <rdfs:label>disasterProfile</rdfs:label>
+    <rdfs:domain rdf:resource="Region"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <ont:propertyType>string</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <!-- Country Properties -->
+  <owl:DatatypeProperty rdf:about="countryCode">
+    <rdfs:label>countryCode</rdfs:label>
+    <rdfs:domain rdf:resource="Country"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <ont:propertyType>string</ont:propertyType>
+    <ont:isIdentifier rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</ont:isIdentifier>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="countryName">
+    <rdfs:label>countryName</rdfs:label>
+    <rdfs:domain rdf:resource="Country"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <ont:propertyType>string</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="economicZone">
+    <rdfs:label>economicZone</rdfs:label>
+    <rdfs:domain rdf:resource="Country"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <ont:propertyType>string</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="currency">
+    <rdfs:label>currency</rdfs:label>
+    <rdfs:domain rdf:resource="Country"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <ont:propertyType>string</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="regulatoryFramework">
+    <rdfs:label>regulatoryFramework</rdfs:label>
+    <rdfs:domain rdf:resource="Country"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <ont:propertyType>string</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <!-- Jurisdiction Properties -->
+  <owl:DatatypeProperty rdf:about="jurisdictionCode">
+    <rdfs:label>code</rdfs:label>
+    <rdfs:domain rdf:resource="Jurisdiction"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <ont:propertyType>string</ont:propertyType>
+    <ont:isIdentifier rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</ont:isIdentifier>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="jurisdictionName">
+    <rdfs:label>name</rdfs:label>
+    <rdfs:domain rdf:resource="Jurisdiction"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <ont:propertyType>string</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="hurricaneZone">
+    <rdfs:label>hurricaneZone</rdfs:label>
+    <rdfs:domain rdf:resource="Jurisdiction"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+    <ont:propertyType>boolean</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="floodZone">
+    <rdfs:label>floodZone</rdfs:label>
+    <rdfs:domain rdf:resource="Jurisdiction"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+    <ont:propertyType>boolean</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="earthquakeZone">
+    <rdfs:label>earthquakeZone</rdfs:label>
+    <rdfs:domain rdf:resource="Jurisdiction"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+    <ont:propertyType>boolean</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="wildfireZone">
+    <rdfs:label>wildfireZone</rdfs:label>
+    <rdfs:domain rdf:resource="Jurisdiction"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+    <ont:propertyType>boolean</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="coastal">
+    <rdfs:label>coastal</rdfs:label>
+    <rdfs:domain rdf:resource="Jurisdiction"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+    <ont:propertyType>boolean</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="latitude">
+    <rdfs:label>latitude</rdfs:label>
+    <rdfs:domain rdf:resource="Jurisdiction"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <ont:propertyType>decimal</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <owl:DatatypeProperty rdf:about="longitude">
+    <rdfs:label>longitude</rdfs:label>
+    <rdfs:domain rdf:resource="Jurisdiction"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <ont:propertyType>decimal</ont:propertyType>
+  </owl:DatatypeProperty>
+
+  <!-- Relationships -->
+  <owl:ObjectProperty rdf:about="inCountry">
+    <rdfs:label>inCountry</rdfs:label>
+    <rdfs:domain rdf:resource="Jurisdiction"/>
+    <rdfs:range rdf:resource="Country"/>
+    <rdfs:comment>Links a jurisdiction to the country it belongs to.</rdfs:comment>
+    <ont:cardinality>many-to-one</ont:cardinality>
+    <ont:fromEntityId>Jurisdiction</ont:fromEntityId>
+    <ont:toEntityId>Country</ont:toEntityId>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="inRegion">
+    <rdfs:label>inRegion</rdfs:label>
+    <rdfs:domain rdf:resource="Jurisdiction"/>
+    <rdfs:range rdf:resource="Region"/>
+    <rdfs:comment>Links a jurisdiction to its geographic region.</rdfs:comment>
+    <ont:cardinality>many-to-one</ont:cardinality>
+    <ont:fromEntityId>Jurisdiction</ont:fromEntityId>
+    <ont:toEntityId>Region</ont:toEntityId>
+  </owl:ObjectProperty>
+
+</rdf:RDF>

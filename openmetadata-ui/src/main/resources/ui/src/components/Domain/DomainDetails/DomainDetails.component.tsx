@@ -10,11 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { DownOutlined } from '@ant-design/icons';
-import { Avatar, Box } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tabs, Tooltip, Typography } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import {
+  Avatar,
+  Box,
+  Button,
+  ButtonUtility,
+  Dropdown,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import {
+  Announcement02,
+  ChevronDown,
+  Collapse,
+  Edit01,
+  Expand,
+  Trash01,
+  Version,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, toString } from 'lodash';
@@ -22,18 +34,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
+import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../../components/Entity/Voting/Voting.component';
-import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import { AssetsTabRef } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ERROR_MESSAGE, ROUTES } from '../../../constants/constants';
@@ -41,22 +47,21 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import { VotingDataProps } from '../../../interface/entity/vote.interface';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
   AnnouncementEntity,
@@ -73,6 +78,7 @@ import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
@@ -84,6 +90,7 @@ import {
 } from '../../../utils/DomainFilterUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import {
@@ -98,10 +105,6 @@ import {
 import Fqn from '../../../utils/Fqn';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-} from '../../../utils/PermissionsUtils';
-import {
   getDomainDetailsPath,
   getDomainPath,
   getDomainVersionsPath,
@@ -114,19 +117,25 @@ import {
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { useFormDrawerWithHook } from '../../common/atoms/drawer';
+import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
+import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
-import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import { DEFAULT_DOMAIN_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
+import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -151,6 +160,7 @@ const DomainDetails = ({
   domainFqnOverride,
   onNavigate,
   refreshDomains,
+  onRefresh,
   isTreeView = false,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
@@ -159,7 +169,12 @@ const DomainDetails = ({
   const fromMarketplace =
     (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
     false;
-  const { getEntityPermission, permissions } = usePermissionProvider();
+  // `permissions` here is the resource-level UIPermission map from the app-wide
+  // PermissionProvider context — kept only for the `permissions.dataProduct.Create` check
+  // below (whether the current user may create ANY DataProduct at all, unrelated to this
+  // domain's own entity permissions). Per the Task 8 brief's "Create flows" carve-out,
+  // resource-level create checks via usePermissionProvider().permissions stay unchanged.
+  const { permissions } = usePermissionProvider();
   const routeParams = useParams<{
     fqn?: string;
     tab?: string;
@@ -183,18 +198,40 @@ const DomainDetails = ({
       (routeParams.fqn ? getDecodedFqn(routeParams.fqn) : ''),
     [domainFqnOverride, domain.fullyQualifiedName, routeParams.fqn]
   );
-  const activeTab = useMemo(
-    () => activeTabOverride ?? routeParams.tab ?? EntityTabs.DOCUMENTATION,
-    [activeTabOverride, routeParams.tab]
-  ) as EntityTabs;
   const { version } = routeParams;
   const { currentUser } = useApplicationStore();
 
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
-  const [domainPermission, setDomainPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
+
+  // Single useEntityPermissions call, by id — mirrors MlModelDetail.component.tsx (Task 7C):
+  // no genuine ordering cycle here, `domain` (and therefore `domain.id`) is already available
+  // on first render via props. No `deleted` option: the generated `Domain` type carries no
+  // top-level `deleted` field (confirmed via generated/entity/domains/domain.ts — domains
+  // aren't soft-deletable), and the old component never referenced one either, so there is
+  // nothing to gate edit flags on. `domainPermission` keeps its original name (aliased from
+  // the hook's `permissions`) purely to minimize the diff against the rest of this file, which
+  // still consumes it as a raw OperationPermission (passed through GenericProvider unchanged,
+  // and read locally by domainClassBase.getDomainDetailPageTabs — out of this batch's scope).
+  const {
+    permissions: domainPermission,
+    error: domainPermissionError,
+    canEditAll: editAllPermission,
+    canEditDisplayName: editDisplayNamePermission,
+    canCreate: createPermission,
+    canDelete: deletePermission,
+  } = useEntityPermissions(ResourceEntity.DOMAIN, { id: domain.id });
+
+  useEffect(() => {
+    if (domainPermissionError) {
+      // Preserved verbatim: the old fetchDomainPermission catch called
+      // showErrorToast(error as AxiosError) with no message/entity interpolation — the same
+      // distinctive bare-error-object shape documented for APICollectionPage.tsx (Task 7C,
+      // File 3), not the majority `server.fetch-entity-permissions-error` pattern.
+      showErrorToast(domainPermissionError as AxiosError);
+    }
+  }, [domainPermissionError]);
+
   // Sub-domain drawer implementation
   const subDomainForm = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
@@ -222,13 +259,18 @@ const DomainDetails = ({
   );
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] =
-    useState<AnnouncementEntity>();
+  const [activeAnnouncements, setActiveAnnouncements] = useState<
+    AnnouncementEntity[]
+  >([]);
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
   const urlEncodedFqn = getEncodedFqn(domain.fullyQualifiedName ?? '');
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
+  // Explicit selection (tree-view override or URL); undefined on the landing URL.
+  const selectedTab = (activeTabOverride ?? routeParams.tab) as
+    | EntityTabs
+    | undefined;
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
 
@@ -325,6 +367,7 @@ const DomainDetails = ({
       // refresh domain count when assets tab is selected
       fetchDomainAssets();
     }
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- derived below from `tabs`
     if (activeKey !== activeTab) {
       if (onActiveTabChange) {
         onActiveTabChange(activeKey as EntityTabs);
@@ -516,11 +559,7 @@ const DomainDetails = ({
       const announcements = await getActiveAnnouncements(
         getEntityFeedLink(EntityType.DOMAIN, domain.fullyQualifiedName ?? '')
       );
-      if (isEmpty(announcements.data)) {
-        setActiveAnnouncement(undefined);
-      } else {
-        setActiveAnnouncement(announcements.data[0]);
-      }
+      setActiveAnnouncements(announcements.data ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -642,13 +681,6 @@ const DomainDetails = ({
     loading: isSubDomainLoading,
   });
 
-  const editDisplayNamePermission = useMemo(() => {
-    return getPrioritizedEditPermission(
-      domainPermission,
-      Operation.EditDisplayName
-    );
-  }, [domainPermission]);
-
   const voteStatus = useMemo(
     () => getEntityVoteStatus(currentUser?.id ?? '', domain.votes),
     [domain.votes, currentUser?.id]
@@ -661,8 +693,10 @@ const DomainDetails = ({
     [onUpdateVote, domain.id]
   );
 
-  const addButtonContent = [
-    ...(domainPermission.Create
+  // Wrapped in an IIFE so the permission-driven ternaries are scoped to
+  // their own function for cyclomatic-complexity purposes.
+  const addButtonContent = (() => [
+    ...(createPermission
       ? [
           {
             label: t('label.asset-plural'),
@@ -685,7 +719,7 @@ const DomainDetails = ({
           },
         ]
       : []),
-  ];
+  ])();
 
   const addSubDomain = useCallback(
     async (formData: CreateDomain) => {
@@ -730,18 +764,6 @@ const DomainDetails = ({
     navigate(path);
   };
 
-  const fetchDomainPermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.DOMAIN,
-        domain.id
-      );
-      setDomainPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const onAddDataProduct = useCallback(() => {
     openDataProductDrawer();
   }, [openDataProductDrawer]);
@@ -764,6 +786,7 @@ const DomainDetails = ({
         const newFqn = domain.parent
           ? `${domain.parent.fullyQualifiedName}.${newName.trim()}`
           : newName.trim();
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- derived below from `tabs`
         navigate(getDomainDetailsPath(newFqn, activeTab));
       }
     } catch {
@@ -793,14 +816,16 @@ const DomainDetails = ({
     []
   );
 
-  const manageButtonContent: ItemType[] = [
-    ...(domainPermission?.EditAll
+  // Wrapped in an IIFE so the permission-driven ternaries are scoped to
+  // their own function for cyclomatic-complexity purposes.
+  const manageButtonContent: ManageMenuItem[] = (() => [
+    ...(editAllPermission
       ? ([
           {
             label: (
               <ManageButtonItemLabel
                 description={t('message.announcement-action-description')}
-                icon={IconAnnouncementsBlack}
+                icon={Announcement02}
                 id="announcement-button"
                 name={t('label.announcement-plural')}
               />
@@ -812,7 +837,7 @@ const DomainDetails = ({
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ] as ManageMenuItem[])
       : []),
     ...(editDisplayNamePermission
       ? ([
@@ -822,7 +847,7 @@ const DomainDetails = ({
                 description={t('message.rename-entity', {
                   entity: t('label.domain'),
                 })}
-                icon={EditIcon}
+                icon={Edit01}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -834,9 +859,9 @@ const DomainDetails = ({
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ] as ManageMenuItem[])
       : []),
-    ...(domainPermission?.EditAll
+    ...(editAllPermission
       ? ([
           {
             label: (
@@ -856,9 +881,9 @@ const DomainDetails = ({
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ] as ManageMenuItem[])
       : []),
-    ...(domainPermission.Delete
+    ...(deletePermission
       ? ([
           {
             label: (
@@ -869,7 +894,7 @@ const DomainDetails = ({
                     entityType: t('label.domain'),
                   }
                 )}
-                icon={DeleteIcon}
+                icon={Trash01}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -881,9 +906,9 @@ const DomainDetails = ({
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ] as ManageMenuItem[])
       : []),
-  ];
+  ])();
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
@@ -895,7 +920,7 @@ const DomainDetails = ({
       subDomainsCount,
       dataProductsCount,
       assetCount,
-      activeTab,
+      activeTab: selectedTab,
       onAddDataProduct,
       queryFilter,
       assetTabRef,
@@ -907,6 +932,7 @@ const DomainDetails = ({
       handleAssetSave: () => {
         fetchDomainAssets();
         assetTabRef.current?.refreshAssets();
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- derived below from `tabs`
         activeTab !== EntityTabs.ASSETS && handleTabChange(EntityTabs.ASSETS);
       },
       setShowAddSubDomainModal: openSubDomainDrawer,
@@ -916,6 +942,7 @@ const DomainDetails = ({
       labelMap: tabLabelMap,
       feedCount,
       onFeedUpdate: getEntityFeedCount,
+      onUpdateEntityDetails: onRefresh,
     });
 
     return getDetailsTabWithNewLabel(
@@ -930,7 +957,7 @@ const DomainDetails = ({
     handleAssetClick,
     assetCount,
     dataProductsCount,
-    activeTab,
+    selectedTab,
     subDomainsCount,
     queryFilter,
     customizedPage?.tabs,
@@ -938,10 +965,17 @@ const DomainDetails = ({
     openAssetDrawer,
     fetchDomainAssets,
     handleTabChange,
+    onRefresh,
   ]);
 
+  // Resolve to the first rendered tab when the selection is absent/not rendered.
+  const activeTab = getRenderedActiveTab(
+    tabs,
+    selectedTab,
+    EntityTabs.DOCUMENTATION
+  );
+
   useEffect(() => {
-    fetchDomainPermission();
     fetchDomainAssets();
     fetchDataProducts();
     fetchTaskCounts();
@@ -970,11 +1004,21 @@ const DomainDetails = ({
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Domain),
     [tabs[0], activeTab]
   );
+
+  // A domain's lifecycle stage reads next to its name, as a data product's does.
+  const statusBadge =
+    entityUtilClassBase.shouldShowEntityStatus(EntityType.DOMAIN) &&
+    domain.entityStatus ? (
+      <EntityStatusBadge showDivider={false} status={domain.entityStatus} />
+    ) : null;
+
   if (isLoading) {
     return <Loader />;
   }
 
-  const content = (
+  // Wrapped in an IIFE so the conditional rendering below is scoped to its
+  // own function for cyclomatic-complexity purposes.
+  const content = (() => (
     <>
       <Box
         className="domain-details tw:gap-1.5"
@@ -987,14 +1031,13 @@ const DomainDetails = ({
           />
         )}
         <Box
-          align="start"
+          align="center"
           className="entity-header tw:mx-5 tw:gap-y-3"
           justify="between"
           wrap="wrap">
-          <div className="tw:max-w-full tw:lg:max-w-[60%]">
+          <div className="tw:min-w-0 tw:max-w-full tw:lg:max-w-[60%]">
             <EntityHeader
               breadcrumb={[]}
-              displayNameClassName="entity-header-title-wrap"
               entityData={{ ...domain, displayName, name }}
               entityType={EntityType.DOMAIN}
               entityUrl={`${globalThis.location.origin}/domain/${urlEncodedFqn}`}
@@ -1002,115 +1045,114 @@ const DomainDetails = ({
               icon={iconData}
               isFollowing={isFollowing}
               isFollowingLoading={isFollowingLoading}
-              nameClassName="entity-header-title-wrap"
               serviceName=""
               suffix={
-                !isTreeView && (
-                  <LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />
-                )
+                <>
+                  {statusBadge}
+                  {!isTreeView && (
+                    <LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />
+                  )}
+                </>
               }
               titleColor={domain.style?.color}
             />
           </div>
-          <Box
-            align="center"
-            className="domain-header-action-container tw:pb-1 tw:shrink-0 tw:max-w-full"
-            gap={3}
-            justify="end"
-            wrap="wrap">
-            {!isVersionsView && addButtonContent.length > 0 && (
-              <Dropdown
-                data-testid="domain-details-add-button-menu"
-                menu={{
-                  items: addButtonContent,
-                }}
-                placement="bottomRight"
-                trigger={['click']}>
-                <Button data-testid="domain-details-add-button" type="primary">
-                  <Space>
-                    {t('label.add')}
-                    <DownOutlined />
-                  </Space>
-                </Button>
-              </Dropdown>
-            )}
-
-            <ButtonGroup className="spaced" size="small">
-              {onUpdateVote && (
-                <Voting
-                  voteStatus={voteStatus}
-                  votes={domain.votes}
-                  onUpdateVote={handleVoteChange}
-                />
-              )}
-
-              {domain?.version && (
-                <Tooltip
-                  title={t(
-                    `label.${
-                      isVersionsView
-                        ? 'exit-version-history'
-                        : 'version-plural-history'
-                    }`
-                  )}>
-                  <Button
-                    className={classNames('', {
-                      'text-primary border-primary': version,
-                    })}
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={handleVersionClick}>
-                    <Typography.Text
-                      className={classNames('', {
-                        'text-primary': version,
-                      })}>
-                      {toString(domain.version)}
-                    </Typography.Text>
-                  </Button>
-                </Tooltip>
-              )}
-
-              {!isVersionsView && manageButtonContent.length > 0 && (
-                <Dropdown
-                  align={{ targetOffset: [-12, 0] }}
-                  className="m-l-xs"
-                  menu={{
-                    items: manageButtonContent,
-                  }}
-                  open={showActions}
-                  overlayClassName="domain-manage-dropdown-list-container"
-                  overlayStyle={{ width: '350px' }}
-                  placement="bottomRight"
-                  trigger={['click']}
-                  onOpenChange={setShowActions}>
-                  <Tooltip
-                    placement="topRight"
-                    title={t('label.manage-entity', {
-                      entity: t('label.domain'),
-                    })}>
+          {
+            // Wrapped in an IIFE so the conditional rendering below is scoped
+            // to its own function for cyclomatic-complexity purposes.
+            (() => (
+              <Box
+                align="center"
+                className="domain-header-action-container tw:pb-1 tw:shrink-0 tw:max-w-full"
+                gap={3}
+                justify="end"
+                wrap="wrap">
+                {!isVersionsView && addButtonContent.length > 0 && (
+                  <Dropdown.Root>
                     <Button
-                      className="domain-manage-dropdown-button tw-px-1.5"
-                      data-testid="manage-button"
-                      icon={
-                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                      }
-                      onClick={() => setShowActions(true)}
+                      data-testid="domain-details-add-button"
+                      iconTrailing={ChevronDown}
+                      size="sm">
+                      {t('label.add')}
+                    </Button>
+                    <Dropdown.Popover className="tw:w-auto">
+                      <Dropdown.Menu
+                        aria-label={t('label.add')}
+                        data-testid="domain-details-add-button-menu"
+                        selectionMode="none">
+                        {addButtonContent.map((item) => (
+                          <Dropdown.Item
+                            id={item.key}
+                            key={item.key}
+                            onAction={item.onClick}>
+                            {item.label}
+                          </Dropdown.Item>
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown.Root>
+                )}
+
+                {!isVersionsView && (
+                  <ChangeRequestsIndicator
+                    entityId={domain.id}
+                    entityType={EntityType.DOMAIN}
+                  />
+                )}
+
+                <Box align="center" gap={4}>
+                  {onUpdateVote && (
+                    <Voting
+                      voteStatus={voteStatus}
+                      votes={domain.votes}
+                      onUpdateVote={handleVoteChange}
                     />
-                  </Tooltip>
-                </Dropdown>
-              )}
-            </ButtonGroup>
-            {activeAnnouncement && (
-              <AnnouncementCard
-                announcement={activeAnnouncement}
-                onClick={handleOpenAnnouncementDrawer}
-              />
-            )}
-          </Box>
+                  )}
+
+                  {domain?.version && (
+                    <StatItem
+                      count={toString(domain.version)}
+                      icon={Version}
+                      isActive={Boolean(version)}
+                      testId="version-button"
+                      tooltip={t(
+                        `label.${
+                          isVersionsView
+                            ? 'exit-version-history'
+                            : 'version-plural-history'
+                        }`
+                      )}
+                      onClick={handleVersionClick}
+                    />
+                  )}
+
+                  {!isVersionsView && manageButtonContent.length > 0 && (
+                    <ManageMenu
+                      isOpen={showActions}
+                      items={manageButtonContent}
+                      label={t('label.manage-entity', {
+                        entity: t('label.domain'),
+                      })}
+                      triggerClassName="m-l-xs"
+                      onOpenChange={setShowActions}
+                    />
+                  )}
+                </Box>
+              </Box>
+            ))()
+          }
         </Box>
+
+        <AnnouncementsWidgetV3Body
+          announcements={activeAnnouncements}
+          className="tw:mx-5 tw:mt-3"
+          testId="entity-header-announcements"
+          onItemClick={handleOpenAnnouncementDrawer}
+        />
 
         <GenericProvider<Domain>
           newTagsUI
+          activeTab={activeTab}
           customizedPage={customizedPage}
           data={domain}
           isTabExpanded={isTabExpanded}
@@ -1121,24 +1163,41 @@ const DomainDetails = ({
           <div className="domain-details-page-tabs tw:w-full">
             <div className={isTreeView ? 'tw:p-0' : 'tw:p-5'}>
               <Tabs
-                destroyInactiveTabPane
-                activeKey={activeTab}
-                className="tabs-new"
+                className="tw:gap-3"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
-                }
-                onChange={handleTabChange}
-              />
+                selectedKey={getRenderedActiveTab(tabs, activeTab)}
+                onSelectionChange={(key) => handleTabChange(String(key))}>
+                <Tabs.List
+                  actions={
+                    isExpandViewSupported && (
+                      <ButtonUtility
+                        data-testid="tab-expand-button"
+                        icon={isTabExpanded ? Collapse : Expand}
+                        size="lg"
+                        tooltip={
+                          isTabExpanded
+                            ? t('label.collapse')
+                            : t('label.expand')
+                        }
+                        onClick={toggleTabExpanded}
+                      />
+                    )
+                  }
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
             </div>
           </div>
         </GenericProvider>
@@ -1182,7 +1241,8 @@ const DomainDetails = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <StyleModal
+      <IconColorModal
+        defaultIcon={DEFAULT_DOMAIN_ICON}
         open={isStyleEditing}
         style={domain.style}
         onCancel={() => setIsStyleEditing(false)}
@@ -1191,14 +1251,14 @@ const DomainDetails = ({
       {subDomainDrawer}
 
       <AnnouncementDrawer
-        createPermission={domainPermission?.EditAll}
+        createPermission={editAllPermission}
         entityFQN={domain.fullyQualifiedName ?? ''}
         entityType={EntityType.DOMAIN}
         open={isAnnouncementDrawerOpen}
         onClose={handleCloseAnnouncementDrawer}
       />
     </>
-  );
+  ))();
 
   return (
     <>

@@ -13,7 +13,9 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -45,12 +47,15 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
+import org.openmetadata.service.util.RestUtil;
 
 /**
  * Regression tests for stale {@code testCaseResolutionStatus} incident state.
@@ -59,6 +64,10 @@ import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
  * missing made {@code GET /dataQuality/testCases/testCaseIncidentStatus/stateId/{stateId}} fail with
  * {@code EntityRelationshipNotFoundException}, and deleting the rows left both the relationship and
  * the stale {@code incidentId} on the test case behind.
+ *
+ * <p>The by-id sibling has the same exposure from the other direction: an id with no row at all —
+ * from a stale {@code incidentId}, or from a caller passing a stateId where a record id belongs —
+ * must answer 404 rather than dereferencing a null record into a 500.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -112,6 +121,8 @@ public class StaleIncidentStatusIT {
                 null,
                 RequestOptions.builder().build());
 
+    assertEquals(0, historyPage(stateId, "1", null).get("data").size());
+    assertEquals(null, resolutionStatusRepository().getLatestRecordForStateId(stateId));
     JsonNode data = readData(response);
     assertEquals(
         0,
@@ -151,6 +162,90 @@ public class StaleIncidentStatusIT {
   }
 
   @Test
+  void historyLimitAndCursorKeepOlderEventsReachable(TestNamespace ns) throws Exception {
+    TestCase testCase = createTestCase(createTable(ns, "paged"), "pagedCase_" + ns.uniqueShortId());
+    TestCaseResolutionStatus first = createIncidentRecord(testCase);
+    UUID stateId = first.getStateId();
+    long timestamp = first.getTimestamp() + 1000;
+    UUID middle = new UUID(stateId.getMostSignificantBits(), 2);
+    UUID newest = new UUID(stateId.getMostSignificantBits(), 3);
+    insertHistoryRecord(testCase, first, middle, timestamp, true);
+    insertHistoryRecord(testCase, first, newest, timestamp, true);
+    // The newest stored event is orphaned; it must not hide the newest valid event.
+    insertHistoryRecord(testCase, first, UUID.randomUUID(), timestamp + 1, false);
+
+    JsonNode page = historyPage(stateId, "2", null);
+    assertEquals(2, page.get("data").size());
+    assertEquals(newest.toString(), page.get("data").get(0).get("id").asText());
+    assertEquals(middle.toString(), page.get("data").get(1).get("id").asText());
+    String after = page.get("paging").get("after").asText();
+    assertEquals(timestamp + "|" + middle, RestUtil.decodeCursor(after));
+    JsonNode older = historyPage(stateId, "2", after);
+    assertEquals(1, older.get("data").size());
+    assertEquals(first.getId().toString(), older.get("data").get(0).get("id").asText());
+    assertTrue(
+        older.get("paging").path("after").isNull()
+            || older.get("paging").path("after").isMissingNode());
+    assertEquals(3, historyPage(stateId, null, null).get("data").size());
+    assertEquals(newest, resolutionStatusRepository().getLatestRecordForStateId(stateId).getId());
+    assertEquals(
+        newest.toString(), historyPage(stateId, "1", null).get("data").get(0).get("id").asText());
+    assertEquals(0, historyPage(UUID.randomUUID(), "1", null).get("data").size());
+    for (String invalid : List.of("0", "-1", "1000001")) {
+      assertThrows(OpenMetadataException.class, () -> historyPage(stateId, invalid, null));
+    }
+    assertThrows(OpenMetadataException.class, () -> historyPage(stateId, "2", "invalid"));
+    assertThrows(OpenMetadataException.class, () -> historyPage(stateId, null, after));
+  }
+
+  private JsonNode historyPage(UUID stateId, String limit, String after) throws Exception {
+    RequestOptions.Builder options = RequestOptions.builder();
+    if (limit != null) {
+      options.queryParam("limit", limit);
+    }
+    if (after != null) {
+      options.queryParam("after", after);
+    }
+    return MAPPER.readTree(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/testCaseIncidentStatus/stateId/" + stateId,
+                null,
+                options.build()));
+  }
+
+  private void insertHistoryRecord(
+      TestCase testCase,
+      TestCaseResolutionStatus template,
+      UUID id,
+      long timestamp,
+      boolean healthy) {
+    TestCaseResolutionStatus record =
+        JsonUtils.readValue(JsonUtils.pojoToJson(template), TestCaseResolutionStatus.class)
+            .withId(id)
+            .withTimestamp(timestamp)
+            .withTestCaseReference(null);
+    Entity.getCollectionDAO()
+        .testCaseResolutionStatusTimeSeriesDao()
+        .insert(
+            testCase.getFullyQualifiedName(),
+            Entity.TEST_CASE_RESOLUTION_STATUS,
+            JsonUtils.pojoToJson(record));
+    if (healthy) {
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              testCase.getId(),
+              id,
+              Entity.TEST_CASE,
+              Entity.TEST_CASE_RESOLUTION_STATUS,
+              Relationship.PARENT_OF.ordinal());
+    }
+  }
+
+  @Test
   void softDeleteLeavesRowAndRelationshipIntact(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns, "softDel");
@@ -179,6 +274,85 @@ public class StaleIncidentStatusIT {
     resolutionStatusRepository().deleteById(UUID.randomUUID(), true);
   }
 
+  @Test
+  void byIdEndpointReturnsNotFoundForUnknownId() {
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().testCaseResolutionStatuses().get(UUID.randomUUID()));
+    assertEquals(
+        404, error.getStatusCode(), "an id with no row must be a 404, not a NullPointerException");
+  }
+
+  /**
+   * The production trigger: {@code TestCase.incidentId} carries the incident's stateId, so a client
+   * that feeds it to the by-id endpoint always misses the record table.
+   */
+  @Test
+  void byIdEndpointReturnsNotFoundForStateId(TestNamespace ns) throws Exception {
+    Table table = createTable(ns, "byIdState");
+    TestCase testCase = createTestCase(table, "byIdStateCase_" + ns.uniqueShortId());
+    TestCaseResolutionStatus incident = createIncidentRecord(testCase);
+
+    assertNotEquals(
+        incident.getId(), incident.getStateId(), "stateId and record id must be distinct ids");
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().testCaseResolutionStatuses().get(incident.getStateId()));
+    assertEquals(404, error.getStatusCode(), "a stateId is not a record id, so it must 404");
+  }
+
+  /** The not-found guard must not swallow a record that does exist. */
+  @Test
+  void byIdEndpointReturnsHealthyRecord(TestNamespace ns) throws Exception {
+    Table table = createTable(ns, "byIdOk");
+    TestCase testCase = createTestCase(table, "byIdOkCase_" + ns.uniqueShortId());
+    TestCaseResolutionStatus incident = createIncidentRecord(testCase);
+
+    TestCaseResolutionStatus fetched =
+        SdkClients.adminClient().testCaseResolutionStatuses().get(incident.getId());
+
+    assertEquals(incident.getId(), fetched.getId());
+    assertNotNull(fetched.getTestCaseReference(), "testCaseReference must be resolved");
+    assertEquals(testCase.getId(), fetched.getTestCaseReference().getId());
+  }
+
+  /**
+   * The write path shares the same guard, and regressing it would 500 rather than 404 exactly as the
+   * read path did. The record is resolved before the patch is applied, so an empty patch is enough.
+   */
+  @Test
+  void patchByIdReturnsNotFoundForUnknownId() {
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .testCaseResolutionStatuses()
+                    .patch(UUID.randomUUID(), MAPPER.createArrayNode()));
+    assertEquals(
+        404, error.getStatusCode(), "an id with no row must be a 404, not a NullPointerException");
+  }
+
+  @Test
+  void patchByIdReturnsNotFoundForStateId(TestNamespace ns) throws Exception {
+    Table table = createTable(ns, "patchState");
+    TestCase testCase = createTestCase(table, "patchStateCase_" + ns.uniqueShortId());
+    TestCaseResolutionStatus incident = createIncidentRecord(testCase);
+
+    assertNotEquals(
+        incident.getId(), incident.getStateId(), "stateId and record id must be distinct ids");
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .testCaseResolutionStatuses()
+                    .patch(incident.getStateId(), MAPPER.createArrayNode()));
+    assertEquals(404, error.getStatusCode(), "a stateId is not a record id, so it must 404");
+  }
+
   private JsonNode readData(String response) throws Exception {
     assertNotNull(response, "endpoint must not fail");
     JsonNode data = MAPPER.readTree(response).get("data");
@@ -188,6 +362,11 @@ public class StaleIncidentStatusIT {
 
   /** Creates a real incident by ingesting a failing result, and returns its stateId. */
   private UUID createIncident(TestCase testCase) {
+    return createIncidentRecord(testCase).getStateId();
+  }
+
+  /** Creates a real incident by ingesting a failing result, and returns the opened record. */
+  private TestCaseResolutionStatus createIncidentRecord(TestCase testCase) {
     OpenMetadataClient client = SdkClients.adminClient();
     CreateTestCaseResult result =
         new CreateTestCaseResult()
@@ -199,8 +378,9 @@ public class StaleIncidentStatusIT {
     TestCaseResolutionStatus latest =
         resolutionStatusRepository().getLatestRecord(testCase.getFullyQualifiedName());
     assertNotNull(latest, "a failing result should have opened an incident");
+    assertNotNull(latest.getId());
     assertNotNull(latest.getStateId());
-    return latest.getStateId();
+    return latest;
   }
 
   /** Simulates the production corruption: rows survive but lose their parentOf relationship. */
@@ -246,18 +426,13 @@ public class StaleIncidentStatusIT {
 
   private TestCase createTestCase(Table table, String name) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    String testDefFqn =
-        client
-            .testDefinitions()
-            .list(new ListParams().withLimit(1))
-            .getData()
-            .get(0)
-            .getFullyQualifiedName();
+    // A definition that supports the BIGINT `id` column: the server rejects a column type the
+    // definition does not list, and the first definition the listing returns need not list it.
     CreateTestCase createTestCase =
         new CreateTestCase()
             .withName(name)
             .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
-            .withTestDefinition(testDefFqn);
+            .withTestDefinition("columnValuesToBeNotNull");
     return client.testCases().create(createTestCase);
   }
 

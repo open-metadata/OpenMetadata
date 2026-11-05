@@ -64,8 +64,8 @@ describe('tagFormFields', () => {
     });
 
     it('should forward disabled prop', () => {
-      expect(getNameField(true, mockT).props?.disabled).toBe(true);
-      expect(getNameField(false, mockT).props?.disabled).toBe(false);
+      expect(getNameField(true, mockT).props?.isDisabled).toBe(true);
+      expect(getNameField(false, mockT).props?.isDisabled).toBe(false);
     });
   });
 

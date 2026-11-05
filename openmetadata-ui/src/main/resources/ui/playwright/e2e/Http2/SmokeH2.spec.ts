@@ -25,7 +25,8 @@
  * a CDP session (Playwright's request/response API doesn't surface the wire
  * protocol directly).
  */
-import { CDPSession, expect, test } from '@playwright/test';
+import { CDPSession } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 
 type ResponseRecord = {
   url: string;
@@ -60,7 +61,7 @@ test('serves JS assets over HTTP/2 with brotli encoding', async ({ page }) => {
     });
   });
 
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('domcontentloaded');
 
   await expect(() => expect(responses.length).toBeGreaterThan(0)).toPass({

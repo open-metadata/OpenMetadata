@@ -36,6 +36,7 @@ import type {
 import type { MetadataService } from '../generated/entity/services/metadataService';
 import type { EntityReference } from '../generated/entity/type';
 import type { TestCaseParameterValue } from '../generated/tests/testCase';
+import { Status as EntityStatus } from '../generated/type/status';
 import type { TagLabel } from '../generated/type/tagLabel';
 import type { EntityDiffProps } from '../interface/EntityVersion.interface';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
@@ -177,6 +178,31 @@ export const getGlossaryTermApprovalText = (fieldsChanged: FieldChange[]) => {
   return approvalText;
 };
 
+const ENTITY_STATUS_FIELD = 'entityStatus';
+
+const ENTITY_STATUS_LABEL_KEYS: Record<EntityStatus, string> = {
+  [EntityStatus.Approved]: 'label.approved',
+  [EntityStatus.Archived]: 'label.archived',
+  [EntityStatus.Deprecated]: 'label.deprecated',
+  [EntityStatus.Draft]: 'label.draft',
+  [EntityStatus.InReview]: 'label.in-review',
+  [EntityStatus.Rejected]: 'label.rejected',
+  [EntityStatus.Unprocessed]: 'label.unprocessed',
+};
+
+/** A lifecycle status change, read as the status the asset moved to rather than the field's name. */
+export const getEntityStatusChangeText = (fieldsChanged: FieldChange[]) => {
+  const change = fieldsChanged.find(
+    (field) => field.name === ENTITY_STATUS_FIELD
+  );
+  const labelKey =
+    ENTITY_STATUS_LABEL_KEYS[change?.newValue as EntityStatus] ?? '';
+
+  return labelKey
+    ? t('message.status-changed-to', { status: t(labelKey) })
+    : '';
+};
+
 export const getSummaryText = ({
   isPrefix,
   fieldsChanged,
@@ -191,9 +217,12 @@ export const getSummaryText = ({
   isGlossaryTerm?: boolean;
 }) => {
   const prefix = isPrefix ? `+ ${actionType}` : '';
-  const filteredFieldsChanged = isGlossaryTerm
-    ? fieldsChanged.filter((field) => field.name !== 'status')
-    : fieldsChanged;
+  const entityStatusText = getEntityStatusChangeText(fieldsChanged);
+  const filteredFieldsChanged = fieldsChanged.filter(
+    (field) =>
+      !(isGlossaryTerm && field.name === 'status') &&
+      !(entityStatusText && field.name === ENTITY_STATUS_FIELD)
+  );
 
   let summaryText = '';
 
@@ -216,7 +245,7 @@ export const getSummaryText = ({
     ? getGlossaryTermApprovalText(fieldsChanged)
     : '';
 
-  return `${glossaryTermApprovalText} ${summaryText}`;
+  return `${glossaryTermApprovalText}${entityStatusText} ${summaryText}`;
 };
 
 export const isMajorVersion = (version1: string, version2: string) => {
@@ -477,6 +506,10 @@ export const getDomainDiff = (
   };
 };
 
+// Same label the entity header shows: a custom tier's FQN segment is a slug (`pw-tier-…`).
+const getTierLabel = (tier?: Pick<TagLabel, 'tagFQN' | 'displayName'>) =>
+  tier?.displayName || (tier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? '');
+
 export const getCommonExtraInfoForVersionDetails = (
   changeDescription: ChangeDescription,
   owners?: EntityReference[],
@@ -506,11 +539,11 @@ export const getCommonExtraInfoForVersionDetails = (
 
   if (!isUndefined(newTier) || !isUndefined(oldTier)) {
     tierDisplayName = getDiffValue(
-      oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? '',
-      newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? ''
+      getTierLabel(oldTier),
+      getTierLabel(newTier)
     );
   } else if (tier?.tagFQN) {
-    tierDisplayName = tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
+    tierDisplayName = getTierLabel(tier);
   }
 
   const extraInfo = {
@@ -544,6 +577,26 @@ export function getNewColumnFromColDiff<
   });
 }
 
+function formatAddedColumnData<A extends TableColumn | ContainerColumn>(
+  arr: Array<A>,
+  col: A,
+  updateAll?: boolean
+) {
+  arr?.forEach((i) => {
+    if (isEqual(i.name, col.name) || updateAll) {
+      i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
+      i.description = getTextDiff('', i.description ?? '');
+      i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
+      i.name = getTextDiff('', i.name);
+      if (!isEmpty(i.children)) {
+        formatAddedColumnData(i?.children as Array<A>, col, true);
+      }
+    } else {
+      formatAddedColumnData(i?.children as Array<A>, col);
+    }
+  });
+}
+
 function createAddedColumnsDiff<A extends TableColumn | ContainerColumn>(
   columnsDiff: EntityDiffProps,
   colList: A[] = []
@@ -552,22 +605,7 @@ function createAddedColumnsDiff<A extends TableColumn | ContainerColumn>(
     const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
 
     newCol.forEach((col) => {
-      const formatColumnData = (arr: Array<A>, updateAll?: boolean) => {
-        arr?.forEach((i) => {
-          if (isEqual(i.name, col.name) || updateAll) {
-            i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getTextDiff('', i.description ?? '');
-            i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
-            i.name = getTextDiff('', i.name);
-            if (!isEmpty(i.children)) {
-              formatColumnData(i?.children as Array<A>, true);
-            }
-          } else {
-            formatColumnData(i?.children as Array<A>);
-          }
-        });
-      };
-      formatColumnData(colList);
+      formatAddedColumnData(colList, col);
     });
   } catch (err) {
     // eslint-disable-next-line no-console

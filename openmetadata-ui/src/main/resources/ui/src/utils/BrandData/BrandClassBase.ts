@@ -10,11 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import WelcomeScreenSrc from '../../assets/img/welcome-screen.png';
+import UpgradeScreenDarkSrc from '../../assets/img/upgrade-screen-dark.svg';
+import UpgradeScreenLightSrc from '../../assets/img/upgrade-screen-light.svg';
+import WelcomeScreenDarkSrc from '../../assets/img/welcome-screen-dark.svg';
+import WelcomeScreenLightSrc from '../../assets/img/welcome-screen-light.svg';
 import MonogramSrc, {
   ReactComponent as Monogram,
 } from '../../assets/svg/logo-monogram.svg';
 import LogoSrc, { ReactComponent as Logo } from '../../assets/svg/logo.svg';
+import { Theme } from '../../context/UntitledUIThemeProvider/theme-provider.interface';
+import { t } from '../i18next/LocalUtil';
+
+/**
+ * Core palette shades (`--tw-color-<shade>`) for the welcome screen's glow and
+ * primary button.
+ */
+export interface WelcomeTheme {
+  glow: string;
+  button: string;
+  buttonHover: string;
+}
 
 class BrandClassBase {
   public getMonogram() {
@@ -23,6 +38,25 @@ class BrandClassBase {
 
   public getLogo() {
     return { src: LogoSrc, svg: Logo };
+  }
+
+  /**
+   * Brand logo for the expanded app-mode (AI) sidebar header. Defaults
+   * to the standard wordmark; a downstream build (e.g. Collate) overrides this
+   * to show its sidebar-specific full logo without affecting the NavBar/login
+   * brand from `getLogo()`.
+   */
+  public getSidebarLogo() {
+    return this.getLogo();
+  }
+
+  /**
+   * Compact brand mark for the collapsed app-mode (AI) sidebar rail.
+   * Defaults to the standard monogram; overridable per build independently of
+   * `getMonogram()`.
+   */
+  public getSidebarMonogram() {
+    return this.getMonogram();
   }
 
   public getReleaseLink(version: string) {
@@ -36,8 +70,29 @@ class BrandClassBase {
     return 'https://blog.open-metadata.org/announcing-openmetadata-1-13-123d66609468';
   }
 
-  public getWelcomeScreenImg() {
-    return WelcomeScreenSrc;
+  public getWelcomeScreenImg(theme: Theme) {
+    return theme === 'dark' ? WelcomeScreenDarkSrc : WelcomeScreenLightSrc;
+  }
+
+  public getUpgradeScreenImg(theme: Theme) {
+    return theme === 'dark' ? UpgradeScreenDarkSrc : UpgradeScreenLightSrc;
+  }
+
+  /**
+   * The welcome screen's fixed colours from its Figma mock. It shows the
+   * product's own style and deliberately ignores a custom theme.
+   */
+  public getWelcomeTheme(): WelcomeTheme {
+    return {
+      glow: 'purple-500',
+      button: 'purple-600',
+      buttonHover: 'purple-700',
+    };
+  }
+
+  /** Product name in the welcome screen's "Your {{platform}} is ready". */
+  public getPlatformName() {
+    return t('label.context-platform');
   }
 }
 

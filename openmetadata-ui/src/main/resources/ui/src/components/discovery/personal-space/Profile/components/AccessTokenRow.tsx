@@ -1,0 +1,484 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  BadgeWithDot,
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  ConfirmPopover,
+  FeaturedIcon,
+  Select,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Copy01,
+  Eye,
+  EyeOff,
+  Key01,
+  Plus,
+  RefreshCcw02,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
+import React, {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { Key } from 'react-aria-components';
+import { useTranslation } from 'react-i18next';
+import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
+import { PersonalAccessToken } from '../../../../../generated/auth/personalAccessToken';
+import { JWTTokenExpiry } from '../../../../../generated/entity/teams/user';
+import APIClient from '../../../../../rest/axiosClient';
+import {
+  getUserAccessToken,
+  updateUserAccessToken,
+} from '../../../../../rest/userAPI';
+import { getTokenExpiry } from '../../../../../utils/BotsUtils';
+import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../utils/ToastUtils';
+
+const AI_PROFILE_TOKEN_NAME = 'ai-profile-token';
+
+const AccessTokenLoadingSkeleton = () => (
+  <Card
+    className="ai-profile-page__edit-card tw:w-full"
+    data-testid="access-token-row"
+    variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+      <Skeleton height={16} variant="text" width="60%" />
+      <Skeleton height={44} variant="rounded" width="100%" />
+      <Box justify="end">
+        <Skeleton height={36} variant="rounded" width={120} />
+      </Box>
+    </Card.Content>
+  </Card>
+);
+
+const TokenLimitHint = ({
+  t,
+}: {
+  t: ReturnType<typeof useTranslation>['t'];
+}) => (
+  <Typography
+    className="tw:text-tertiary"
+    data-testid="token-limit-reached"
+    size="text-sm">
+    {t('message.access-token-limit-reached')}
+  </Typography>
+);
+
+const AccessTokenEmptyState = ({
+  t,
+  expiryOptions,
+  expiry,
+  setExpiry,
+  isLoading,
+  isLimitReached,
+  handleGenerate,
+}: {
+  t: ReturnType<typeof useTranslation>['t'];
+  expiryOptions: { id: JWTTokenExpiry; label: string }[];
+  expiry: JWTTokenExpiry;
+  setExpiry: Dispatch<SetStateAction<JWTTokenExpiry>>;
+  isLoading: boolean;
+  isLimitReached: boolean;
+  handleGenerate: () => void;
+}) => (
+  <Card
+    className="ai-profile-page__edit-card tw:w-full"
+    data-testid="access-token-row"
+    size="lg"
+    variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:text-center">
+      <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
+      <Typography className="tw:text-primary" weight="semibold">
+        {t('message.no-access-token-title')}
+      </Typography>
+      <Typography
+        className="tw:max-w-md tw:text-tertiary"
+        size="text-sm"
+        weight="regular">
+        {t('message.no-access-token-subtitle')}
+      </Typography>
+      <Box align="center" className="tw:mt-3" direction="row" gap={3}>
+        <Box align="center" direction="row" gap={2}>
+          <Typography
+            className="tw:whitespace-nowrap tw:text-tertiary"
+            size="text-sm"
+            weight="regular">
+            {`${t('label.expires-in')}:`}
+          </Typography>
+          <Select
+            aria-label={t('label.token-expiration')}
+            className="tw:min-w-28"
+            data-testid="token-expiry-select"
+            items={expiryOptions}
+            selectedKey={expiry}
+            size="sm"
+            onSelectionChange={(key: Key | null) =>
+              key && setExpiry(key as JWTTokenExpiry)
+            }>
+            {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+          </Select>
+        </Box>
+        <Button
+          color="primary"
+          data-testid="generate-token"
+          iconLeading={Plus}
+          isDisabled={isLimitReached}
+          isLoading={isLoading}
+          size="sm"
+          onClick={handleGenerate}>
+          {t('label.generate-token')}
+        </Button>
+      </Box>
+      {isLimitReached && <TokenLimitHint t={t} />}
+    </Card.Content>
+  </Card>
+);
+
+const AccessTokenDetails = ({
+  t,
+  token,
+  isTokenExpired,
+  statusLabel,
+  expiryDate,
+  reveal,
+  setReveal,
+  canReveal,
+  handleCopy,
+  isLoading,
+  isLimitReached,
+  handleRegenerate,
+  handleRevoke,
+}: {
+  t: ReturnType<typeof useTranslation>['t'];
+  token: PersonalAccessToken;
+  isTokenExpired: boolean;
+  statusLabel: string;
+  expiryDate: string | number | undefined;
+  reveal: boolean;
+  setReveal: Dispatch<SetStateAction<boolean>>;
+  canReveal: boolean;
+  handleCopy: () => void;
+  isLoading: boolean;
+  isLimitReached: boolean;
+  handleRegenerate: () => void;
+  handleRevoke: () => Promise<boolean>;
+}) => (
+  <Card
+    className="tw:flex tw:flex-col ai-profile-page__edit-card tw:w-full"
+    data-testid="access-token-row"
+    variant="muted">
+    <Box
+      align="center"
+      className="tw:justify-between tw:border-b tw:border-secondary tw:px-4 tw:py-3.5"
+      gap={3}>
+      <Box align="center" gap={2}>
+        <FeaturedIcon color="brand" icon={Key01} size="md" theme="light" />
+        <Box direction="col">
+          <Typography className="tw:text-primary" weight="semibold">
+            {t('label.collate-api-token')}
+          </Typography>
+          <Typography className="tw:text-tertiary" size="text-xs">
+            {statusLabel}
+          </Typography>
+        </Box>
+      </Box>
+      <BadgeWithDot
+        color={isTokenExpired ? 'error' : 'success'}
+        data-testid="token-status"
+        size="sm"
+        type="pill-color">
+        {statusLabel}
+      </BadgeWithDot>
+    </Box>
+    <Box className="tw:px-4 tw:py-4" direction="col" gap={3}>
+      <Box direction="col" gap={1}>
+        <Typography className="tw:text-tertiary" size="text-xs" weight="medium">
+          {t('label.token')}
+        </Typography>
+        <Box align="center" gap={2}>
+          <Box
+            align="center"
+            className="tw:h-9 tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-utility-gray-50 tw:px-3.5">
+            <span
+              className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-text-secondary tw:bg-utility-gray-50"
+              data-testid="token-value">
+              {reveal && token.jwtToken
+                ? token.jwtToken
+                : '************************************************************'}
+            </span>
+          </Box>
+          <ButtonUtility
+            data-testid="reveal-token"
+            icon={reveal ? Eye : EyeOff}
+            isDisabled={!canReveal}
+            size="lg"
+            tooltip={t('label.show')}
+            onClick={() => setReveal(!reveal)}
+          />
+          <Button
+            color="secondary"
+            data-testid="copy-token"
+            iconLeading={Copy01}
+            isDisabled={!canReveal}
+            size="sm"
+            onClick={handleCopy}>
+            {t('label.copy')}
+          </Button>
+        </Box>
+      </Box>
+
+      {expiryDate && (
+        <Typography
+          className="tw:text-tertiary"
+          data-testid="token-expiry"
+          size="text-sm">
+          {isTokenExpired
+            ? t('message.token-expired-on', { date: expiryDate })
+            : t('message.token-expires-on', { date: expiryDate })}
+        </Typography>
+      )}
+    </Box>
+    <Box
+      align="center"
+      className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
+      gap={2}>
+      <Button
+        color="secondary"
+        data-testid="regenerate-token"
+        iconLeading={RefreshCcw02}
+        isDisabled={isLimitReached}
+        isLoading={isLoading}
+        size="sm"
+        onClick={handleRegenerate}>
+        {t('label.regenerate')}
+      </Button>
+      <ConfirmPopover
+        confirmText={t('label.revoke')}
+        data-testid="revoke-token-popover"
+        description={t('message.are-you-sure-to-revoke-access-personal-access')}
+        title={t('message.are-you-sure')}
+        onConfirm={handleRevoke}>
+        <Button
+          color="secondary-destructive"
+          data-testid="revoke-token"
+          iconLeading={Trash01}
+          isLoading={isLoading}
+          size="sm">
+          {t('label.revoke')}
+        </Button>
+      </ConfirmPopover>
+      {isLimitReached && <TokenLimitHint t={t} />}
+    </Box>
+  </Card>
+);
+
+const AccessTokenRow: React.FC = () => {
+  const { t } = useTranslation();
+  const [token, setToken] = useState<PersonalAccessToken | undefined>();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+  const [reveal, setReveal] = useState(false);
+  const [expiry, setExpiry] = useState<JWTTokenExpiry>(JWTTokenExpiry.OneHour);
+  const { getResourceLimit } = useLimitStore();
+  // Legacy parity: the user limit can switch off personal access tokens.
+  const [isLimitReached, setIsLimitReached] = useState(false);
+
+  useEffect(() => {
+    getResourceLimit('user', false)
+      .then((limit) =>
+        setIsLimitReached(
+          Boolean(
+            limit?.configuredLimit?.disabledFields?.includes(
+              'personalAccessToken'
+            )
+          )
+        )
+      )
+      .catch(() => setIsLimitReached(false));
+  }, [getResourceLimit]);
+
+  const expiryOptions = useMemo(
+    () => [
+      { id: JWTTokenExpiry.OneHour, label: `1 ${t('label.hour')}` },
+      { id: JWTTokenExpiry.The1, label: `1 ${t('label.day')}` },
+      { id: JWTTokenExpiry.The7, label: `7 ${t('label.day-plural')}` },
+      { id: JWTTokenExpiry.The30, label: `30 ${t('label.day-plural')}` },
+      { id: JWTTokenExpiry.The60, label: `60 ${t('label.day-plural')}` },
+      { id: JWTTokenExpiry.The90, label: `90 ${t('label.day-plural')}` },
+    ],
+    [t]
+  );
+
+  const fetchToken = useCallback(async () => {
+    setIsFetching(true);
+    try {
+      const res = await getUserAccessToken();
+      setToken(
+        res?.find(
+          (pat: PersonalAccessToken) => pat.tokenName === AI_PROFILE_TOKEN_NAME
+        )
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsFetching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchToken();
+  }, [fetchToken]);
+
+  const generateToken = async () => {
+    const res = await updateUserAccessToken({
+      JWTTokenExpiry: expiry,
+      tokenName: AI_PROFILE_TOKEN_NAME,
+    });
+    setToken(res);
+  };
+
+  // Revoke by id only — never removeAll (would wipe every PAT the user owns).
+  const revokeToken = async (tokenId: string) =>
+    APIClient.put('/users/security/token/revoke', { tokenIds: [tokenId] });
+
+  const handleGenerate = async () => {
+    setIsLoading(true);
+    try {
+      await generateToken();
+      showSuccessToast(t('label.token-generated-successfully'));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (!token?.token) {
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // The endpoint returns the existing token for a name that still has one,
+      // so revoke first, then issue the replacement.
+      await revokeToken(token.token);
+      await generateToken();
+      showSuccessToast(t('label.token-generated-successfully'));
+    } catch (error) {
+      // The old token may already be revoked; clear it so the user gets the
+      // generate form to retry instead of a dead token.
+      setToken(undefined);
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!token?.token) {
+      return false;
+    }
+    setIsLoading(true);
+    try {
+      await revokeToken(token.token);
+      setToken(undefined);
+
+      return true;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!token?.jwtToken) {
+      return;
+    }
+    if (!navigator.clipboard?.writeText) {
+      showErrorToast(t('message.clipboard-not-available') as string);
+
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(token.jwtToken);
+      showSuccessToast(t('label.copied'));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  if (isFetching) {
+    return <AccessTokenLoadingSkeleton />;
+  }
+
+  if (!token) {
+    return (
+      <AccessTokenEmptyState
+        expiry={expiry}
+        expiryOptions={expiryOptions}
+        handleGenerate={handleGenerate}
+        isLimitReached={isLimitReached}
+        isLoading={isLoading}
+        setExpiry={setExpiry}
+        t={t}
+      />
+    );
+  }
+
+  const isTokenExpired = token.expiryDate
+    ? getTokenExpiry(token.expiryDate).isTokenExpired
+    : false;
+  const statusLabel = isTokenExpired ? t('label.expired') : t('label.active');
+  const canReveal = Boolean(token.jwtToken);
+
+  const expiryDate =
+    token.expiryDate &&
+    formatDateTimeLong(token.expiryDate, 'MMM dd, yyyy, hh:mm a');
+
+  return (
+    <AccessTokenDetails
+      canReveal={canReveal}
+      expiryDate={expiryDate}
+      handleCopy={handleCopy}
+      handleRegenerate={handleRegenerate}
+      handleRevoke={handleRevoke}
+      isLimitReached={isLimitReached}
+      isLoading={isLoading}
+      isTokenExpired={isTokenExpired}
+      reveal={reveal}
+      setReveal={setReveal}
+      statusLabel={statusLabel}
+      t={t}
+      token={token}
+    />
+  );
+};
+
+export default AccessTokenRow;

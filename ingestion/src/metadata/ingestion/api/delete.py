@@ -13,7 +13,8 @@ Delete methods
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional, Set, Type  # noqa: UP035
+from collections.abc import Iterable
+from dataclasses import dataclass
 
 from metadata.config.settings import ingestion_settings
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -23,27 +24,90 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, T
+from metadata.utils.fqn import quote_name
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+SERVICE_SCOPE_KEY = "service"
+
+
+@dataclass
+class SourceListing:
+    """
+    What a connector listed for one entity type in this run.
+
+    An empty seen-set is ambiguous: the source may hold nothing, or its listing may have failed and
+    come back empty, so the server deletes nothing for it. A connector that can tell the two apart
+    marks the listing complete once every fetch behind it succeeded, and failed when any did not.
+    See ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing.
+    """
+
+    listed: int = 0
+    filtered: int = 0
+    is_complete: bool = False
+    has_failed: bool = False
+
+    def count_listed(self) -> None:
+        self.listed += 1
+
+    def count_filtered(self) -> None:
+        self.filtered += 1
+
+    def mark_complete(self) -> None:
+        self.is_complete = True
+
+    def mark_failed(self) -> None:
+        self.has_failed = True
+
+    @property
+    def confirms_nothing_to_ingest(self) -> bool:
+        return self.is_complete and not self.has_failed and self.filtered == self.listed
 
 
 def _default_dispatch_async() -> bool:
     return ingestion_settings.delete_async
 
 
+def _scope_params_as_fqn(params: dict[str, str] | None) -> dict[str, str] | None:
+    """
+    Return ``params`` with the service scope expressed as an FQN instead of a raw name.
+
+    ``deleteStale`` resolves the scope against the stored FQN, which for a service is its quoted
+    name - so a service whose name needs quoting (in practice, one containing a dot) never
+    resolves and nothing is ever deleted. The legacy fallback still needs the raw name, since
+    ``?service=`` matches a service by name, so the original dict is left untouched.
+
+    Only the service scope is converted: every other scope key already arrives as a full FQN, and
+    quoting a multi-part FQN would break it. Quoting is idempotent, so a caller that already
+    passes an FQN is unaffected. Key order is preserved because the scope is read from the first
+    entry.
+    """
+    if not params or SERVICE_SCOPE_KEY not in params:
+        return params
+    service = params[SERVICE_SCOPE_KEY]
+    try:
+        return {**params, SERVICE_SCOPE_KEY: quote_name(service)}
+    except ValueError:
+        logger.warning("Cannot build the FQN of service '%s'; sending the delete scope unchanged", service)
+        return params
+
+
 def delete_entity_from_source(
     metadata: OpenMetadata,
-    entity_type: Type[T],  # noqa: UP006
-    entity_source_state: Set[str],  # noqa: UP006
+    entity_type: type[T],
+    entity_source_state: set[str],
     recursive: bool = True,
-    params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
-    dispatch_async: Optional[bool] = None,  # noqa: UP045
+    params: dict[str, str] | None = None,
+    dispatch_async: bool | None = None,
+    source_listing: SourceListing | None = None,
 ) -> Iterable[Either[DeleteEntity]]:
     """
     Soft-delete the entities of ``entity_type`` within ``params`` scope that were not seen in
     this run. The server owns the detection: the connector sends the set of FQNs it produced
     (``entity_source_state``) and the server soft-deletes the in-scope entities not in that set.
+    An empty ``entity_source_state`` deletes nothing unless ``source_listing`` confirms there was
+    nothing to ingest.
 
     Whether stale deletion runs at all is decided by the caller (the ``markDeleted*`` source
     config gate); this function only performs it.
@@ -55,13 +119,23 @@ def delete_entity_from_source(
     :param entity_type: Pydantic Entity model
     :param entity_source_state: FQNs of the entities produced by the connector this run
     :param recursive: When True, the soft-delete cascades to child entities
-    :param params: single-key scope dict, e.g. {"database": fqn} / {"databaseSchema": fqn}
+    :param params: single-key scope dict, e.g. {"database": fqn} / {"databaseSchema": fqn}. A
+        {"service": name} scope may be passed as the raw service name; it is converted to the
+        service FQN for the server call — see :func:`_scope_params_as_fqn`.
     :param dispatch_async: For the legacy fallback path, route the sink delete through the
         server-side async endpoint (returns 202 + jobId, runs cascade on the server's
         executor) so ingestion does not block on large hierarchies — see issue #4003. The
         server-side bulk deleteStale path is already async by design and ignores this flag.
+    :param source_listing: What the connector listed for ``entity_type`` this run, see
+        :class:`SourceListing`.
     """
     use_async = dispatch_async if dispatch_async is not None else _default_dispatch_async()
+    allow_empty_seen = source_listing is not None and source_listing.confirms_nothing_to_ingest
+    if allow_empty_seen and not entity_source_state:
+        logger.info(
+            "The source confirmed there is no %s to ingest; marking every one in scope as deleted",
+            entity_type.__name__,
+        )
     # Flush the sink buffer so the scope entity and the entities seen this run are committed
     # before the server resolves the scope and computes what is stale.
     barrier = Barrier(reason=f"flush_before_delete_stale:{entity_type.__name__}")
@@ -69,9 +143,10 @@ def delete_entity_from_source(
     try:
         result = metadata.delete_stale_entities(
             entity=entity_type,
-            scope_params=params,
+            scope_params=_scope_params_as_fqn(params),
             live_fqns=entity_source_state,
             recursive=recursive,
+            allow_empty_seen=allow_empty_seen,
         )
         if result is not None:
             # The server soft-deleted the stale entities; nothing to push through the sink.
@@ -97,10 +172,10 @@ def delete_entity_from_source(
 
 def _delete_stale_entities_legacy(
     metadata: OpenMetadata,
-    entity_type: Type[T],  # noqa: UP006
-    entity_source_state: Set[str],  # noqa: UP006
+    entity_type: type[T],
+    entity_source_state: set[str],
     recursive: bool,
-    params: Optional[Dict[str, str]],  # noqa: UP006, UP045
+    params: dict[str, str] | None,
     dispatch_async: bool,
 ) -> Iterable[Either[DeleteEntity]]:
     """Legacy client-side stale detection: paginate the scope and diff FQNs locally."""
@@ -119,10 +194,10 @@ def _delete_stale_entities_legacy(
 
 def delete_entity_by_name(
     metadata: OpenMetadata,
-    entity_type: Type[T],  # noqa: UP006
-    entity_names: List[str],  # noqa: UP006
+    entity_type: type[T],
+    entity_names: list[str],
     recursive: bool = True,
-    dispatch_async: Optional[bool] = None,  # noqa: UP045
+    dispatch_async: bool | None = None,
 ) -> Iterable[Either[DeleteEntity]]:
     """
     Method to delete the entities contained on a given list

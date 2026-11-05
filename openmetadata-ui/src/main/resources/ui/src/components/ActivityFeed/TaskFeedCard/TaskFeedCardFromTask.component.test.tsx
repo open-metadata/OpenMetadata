@@ -10,29 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/*
- *  Copyright 2024 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-import { act, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import {
+  resolveTask,
   Task,
   TaskCategory,
   TaskEntityStatus,
   TaskEntityType,
   TaskPriority,
+  TaskResolutionType,
 } from '../../../rest/tasksAPI';
 import EntityLink from '../../../utils/EntityLink';
+import {
+  isDescriptionTaskType,
+  isRecognizerFeedbackTask,
+  isTagsTaskType,
+} from '../../../utils/TaskActionUtils';
+import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import TaskFeedCardFromTask from './TaskFeedCardFromTask.component';
 
 const MOCK_TASK: Task = {
@@ -123,8 +125,9 @@ jest.mock('../../../pages/TasksPage/shared/DescriptionTaskFromTask', () => {
   return jest.fn().mockImplementation(() => <p>DescriptionTaskFromTask</p>);
 });
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(<p>OwnerLabel</p>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('../../../components/common/PopOverCard/EntityPopOverCard', () => {
@@ -181,6 +184,9 @@ describe('TaskFeedCardFromTask', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (EntityLink.getTableColumnName as jest.Mock).mockReturnValue('shop_id');
+    (isTagsTaskType as jest.Mock).mockReturnValue(true);
+    (isDescriptionTaskType as jest.Mock).mockReturnValue(false);
+    (isRecognizerFeedbackTask as jest.Mock).mockReturnValue(false);
   });
 
   it('should display the numeric task id like main UI', async () => {
@@ -208,5 +214,247 @@ describe('TaskFeedCardFromTask', () => {
     expect(EntityLink.getTableColumnName).toHaveBeenCalledWith(
       '<#E::table::sample_data.ecommerce_db.shopify."dim.shop"::columns::shop_id::tags>'
     );
+  });
+
+  it('renders the creator, timestamp, and tag task content', async () => {
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={MOCK_TASK} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.getByTestId('task-created-by')).toHaveTextContent(
+      'Admin User'
+    );
+    expect(screen.getByTestId('timestamp')).toHaveTextContent('2 hours ago');
+    expect(screen.getByText('TagsTaskFromTask')).toBeInTheDocument();
+  });
+
+  it('renders description task content for description updates', async () => {
+    (isTagsTaskType as jest.Mock).mockReturnValue(false);
+    (isDescriptionTaskType as jest.Mock).mockReturnValue(true);
+
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={MOCK_TASK} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.getByText('DescriptionTaskFromTask')).toBeInTheDocument();
+    expect(screen.queryByText('TagsTaskFromTask')).not.toBeInTheDocument();
+  });
+
+  it('renders the reply count from normalized task comments', async () => {
+    const taskWithComments: Task = {
+      ...MOCK_TASK,
+      comments: [
+        {
+          id: 'comment-id-1',
+          message: 'A task reply',
+          createdAt: 1701686127534,
+          author: MOCK_TASK.createdBy,
+        },
+      ],
+      commentCount: 1,
+    };
+
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={taskWithComments} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.getByTestId('replies-count')).toBeInTheDocument();
+  });
+
+  it('opens the task replies from the keyboard when there are no comments', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const showTaskDrawer = jest.fn();
+    (useActivityFeedProvider as jest.Mock).mockReturnValue({
+      setActiveTask: jest.fn(),
+      showTaskDrawer,
+    });
+
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={MOCK_TASK} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const replyButton = screen.getByRole('button', { name: 'label.reply' });
+
+    expect(screen.queryByTestId('replies-count')).not.toBeInTheDocument();
+
+    replyButton.focus();
+    await user.keyboard('{Enter}');
+
+    expect(showTaskDrawer).toHaveBeenCalledWith(MOCK_TASK);
+  });
+
+  it('opens the task replies and lets the click select the card', async () => {
+    const showTaskDrawer = jest.fn();
+    const onTaskClick = jest.fn();
+    (useActivityFeedProvider as jest.Mock).mockReturnValue({
+      setActiveTask: jest.fn(),
+      showTaskDrawer,
+    });
+
+    await act(async () => {
+      render(
+        <TaskFeedCardFromTask task={MOCK_TASK} onTaskClick={onTaskClick} />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reply' }));
+
+    expect(showTaskDrawer).toHaveBeenCalledWith(MOCK_TASK);
+    expect(onTaskClick).toHaveBeenCalledWith(MOCK_TASK);
+  });
+
+  it('approves and rejects an assigned task through the Task V2 API', async () => {
+    const assignedTask: Task = {
+      ...MOCK_TASK,
+      assignees: [
+        {
+          id: 'current-user-id',
+          type: 'user',
+          name: 'current-user',
+        },
+      ],
+    };
+
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={assignedTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    fireEvent.click(screen.getByTestId('approve-button'));
+    await waitFor(() =>
+      expect(resolveTask).toHaveBeenCalledWith(
+        assignedTask.id,
+        expect.objectContaining({
+          resolutionType: TaskResolutionType.Approved,
+        })
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('reject-button'));
+    await waitFor(() =>
+      expect(resolveTask).toHaveBeenCalledWith(
+        assignedTask.id,
+        expect.objectContaining({
+          resolutionType: TaskResolutionType.Rejected,
+        })
+      )
+    );
+  });
+
+  it('does not render approval actions for an empty suggestion', async () => {
+    const taskWithEmptySuggestion: Task = {
+      ...MOCK_TASK,
+      assignees: [
+        {
+          id: 'current-user-id',
+          type: 'user',
+          name: 'current-user',
+        },
+      ],
+      payload: {
+        ...MOCK_TASK.payload,
+        suggestedValue: '',
+      },
+    };
+
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={taskWithEmptySuggestion} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
+  });
+
+  const ontologyReview: Task = {
+    ...MOCK_TASK,
+    type: TaskEntityType.RequestApproval,
+    category: TaskCategory.Approval,
+    about: { id: 'release-id', type: 'ontologyRelease' },
+    assignees: [{ id: 'current-user-id', type: 'user', name: 'current-user' }],
+    payload: { proposedChanges: { description: 'Captured definition' } },
+  };
+
+  it.each([
+    { availableTransitions: [] },
+    {
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          targetStageId: 'approved',
+          targetTaskStatus: TaskEntityStatus.Approved,
+        },
+      ],
+    },
+    {
+      availableTransitions: [
+        {
+          id: 'reject',
+          label: 'Reject',
+          requiresComment: true,
+          targetStageId: 'rejected',
+          targetTaskStatus: TaskEntityStatus.Rejected,
+        },
+      ],
+    },
+  ])(
+    'requires opening a release review even when a quick transition is available',
+    async ({ availableTransitions }) => {
+      (isTagsTaskType as jest.Mock).mockReturnValue(false);
+      await act(async () => {
+        render(
+          <TaskFeedCardFromTask
+            task={{ ...ontologyReview, availableTransitions }}
+          />,
+          {
+            wrapper: MemoryRouter,
+          }
+        );
+      });
+
+      expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
+    }
+  );
+
+  it('preserves quick actions for non-ontology approval tasks', async () => {
+    await act(async () => {
+      render(
+        <TaskFeedCardFromTask
+          task={{
+            ...ontologyReview,
+            about: { id: 'glossary-id', type: 'glossary' },
+            payload: MOCK_TASK.payload,
+            availableTransitions: [
+              {
+                id: 'reject',
+                label: 'Reject',
+                requiresComment: true,
+                targetStageId: 'rejected',
+                targetTaskStatus: TaskEntityStatus.Rejected,
+              },
+            ],
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(screen.getByTestId('approve-button')).toBeInTheDocument();
+    expect(screen.getByTestId('reject-button')).toBeInTheDocument();
   });
 });

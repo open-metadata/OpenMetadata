@@ -12,15 +12,11 @@
  */
 
 import { get, omit, pick } from 'lodash';
-import type {
-  ColumnLevelLineageNode,
-  EdgeDetails,
-  LineageNodeType,
-  NodeData,
-} from '../../components/Lineage/Lineage.interface';
+import type { ColumnLevelLineageNode } from '../../components/Lineage/Lineage.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import type { Column } from '../../generated/entity/data/table';
 import type { TagLabel } from '../../generated/type/tagLabel';
+import type { EdgeDetails, NodeData } from '../../interface/lineage.interface';
 import type { TableSearchSource } from '../../interface/search.interface';
 import type { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 
@@ -47,62 +43,97 @@ const buildColumnTagMap = <T>(
   return map;
 };
 
+type PickedEntityFields = Pick<
+  TableSearchSource,
+  'tags' | 'tier' | 'domains' | 'description' | 'owners' | 'id'
+>;
+
+const buildColumnLevelNodesForColumns = (
+  node: EdgeDetails,
+  nodeDepth: number,
+  picked: PickedEntityFields,
+  columnTagMap: Map<string, TagLabel[]>,
+  direction: LineageDirection
+): ColumnLevelLineageNode[] => {
+  const columnLevelNodes: ColumnLevelLineageNode[] = [];
+
+  for (const col of node.columns ?? []) {
+    for (const fromCol of col.fromColumns || []) {
+      const columnFqn =
+        direction === LineageDirection.Downstream ? col.toColumn : fromCol;
+      const columnTags = columnFqn ? columnTagMap.get(columnFqn) ?? [] : [];
+
+      columnLevelNodes.push({
+        ...omit(node, 'columns'),
+        fromColumn: fromCol,
+        toColumn: col.toColumn,
+        docId: fromCol + '->' + col.toColumn,
+        nodeDepth,
+        ...picked,
+        tags: columnTags,
+      } as ColumnLevelLineageNode);
+    }
+  }
+
+  return columnLevelNodes;
+};
+
+const buildColumnLevelNodesForEdge = (
+  node: EdgeDetails,
+  nodes: Record<string, NodeData>,
+  entityKey: 'fromEntity' | 'toEntity',
+  direction: LineageDirection
+): ColumnLevelLineageNode[] => {
+  if ((node.columns?.length ?? 0) === 0) {
+    return [];
+  }
+
+  const entityData = get(
+    nodes[node[entityKey].fullyQualifiedName ?? ''],
+    'entity'
+  );
+  const nodeDepth = get(
+    nodes[node[entityKey].fullyQualifiedName ?? ''],
+    'nodeDepth',
+    0
+  );
+
+  if (!entityData) {
+    return [];
+  }
+
+  const picked = pick<NodeData['entity']>(
+    entityData,
+    'owners',
+    'tier',
+    'tags',
+    'domains',
+    'description'
+  ) as PickedEntityFields;
+
+  const columnTagMap = buildColumnTagMap(entityData);
+
+  return buildColumnLevelNodesForColumns(
+    node,
+    nodeDepth,
+    picked,
+    columnTagMap,
+    direction
+  );
+};
+
 export const prepareColumnLevelNodesFromEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeType>,
+  nodes: Record<string, NodeData>,
   direction: LineageDirection = LineageDirection.Downstream
 ) => {
   const entityKey =
     direction === LineageDirection.Upstream ? 'fromEntity' : 'toEntity';
 
   return edges.reduce((acc: ColumnLevelLineageNode[], node: EdgeDetails) => {
-    if ((node.columns?.length ?? 0) > 0) {
-      const entityData = get(
-        nodes[node[entityKey].fullyQualifiedName ?? ''],
-        'entity'
-      );
-      const nodeDepth = get(
-        nodes[node[entityKey].fullyQualifiedName ?? ''],
-        'nodeDepth',
-        0
-      );
-
-      if (!entityData) {
-        return acc;
-      }
-
-      const picked = pick<NodeData['entity']>(
-        entityData,
-        'owners',
-        'tier',
-        'tags',
-        'domains',
-        'description'
-      ) as Pick<
-        TableSearchSource,
-        'tags' | 'tier' | 'domains' | 'description' | 'owners' | 'id'
-      >;
-
-      const columnTagMap = buildColumnTagMap(entityData);
-
-      for (const col of node.columns ?? []) {
-        for (const fromCol of col.fromColumns || []) {
-          const columnFqn =
-            direction === LineageDirection.Downstream ? col.toColumn : fromCol;
-          const columnTags = columnFqn ? columnTagMap.get(columnFqn) ?? [] : [];
-
-          acc.push({
-            ...omit(node, 'columns'),
-            fromColumn: fromCol,
-            toColumn: col.toColumn,
-            docId: fromCol + '->' + col.toColumn,
-            nodeDepth,
-            ...picked,
-            tags: columnTags,
-          } as ColumnLevelLineageNode);
-        }
-      }
-    }
+    acc.push(
+      ...buildColumnLevelNodesForEdge(node, nodes, entityKey, direction)
+    );
 
     return acc;
   }, []);
@@ -110,7 +141,7 @@ export const prepareColumnLevelNodesFromEdges = (
 
 export const prepareDownstreamColumnLevelNodesFromDownstreamEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeType>
+  nodes: Record<string, NodeData>
 ) => {
   return prepareColumnLevelNodesFromEdges(
     edges,
@@ -121,7 +152,7 @@ export const prepareDownstreamColumnLevelNodesFromDownstreamEdges = (
 
 export const prepareUpstreamColumnLevelNodesFromUpstreamEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeType>
+  nodes: Record<string, NodeData>
 ) => {
   return prepareColumnLevelNodesFromEdges(
     edges,

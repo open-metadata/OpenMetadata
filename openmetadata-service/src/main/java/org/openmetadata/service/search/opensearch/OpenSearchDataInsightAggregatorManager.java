@@ -9,8 +9,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.text.WordUtils;
@@ -39,6 +41,8 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.QueryCostRecordsAggregator;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.FieldValue;
@@ -55,15 +59,33 @@ import os.org.opensearch.client.opensearch.indices.GetMappingResponse;
 public class OpenSearchDataInsightAggregatorManager implements DataInsightAggregatorClient {
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
+  private final RBACConditionEvaluator rbacConditionEvaluator;
 
   public OpenSearchDataInsightAggregatorManager(OpenSearchClient client) {
+    this(client, null);
+  }
+
+  public OpenSearchDataInsightAggregatorManager(
+      OpenSearchClient client, RBACConditionEvaluator rbacConditionEvaluator) {
     this.client = client;
     this.isClientAvailable = client != null;
+    this.rbacConditionEvaluator = rbacConditionEvaluator;
   }
 
   @Override
   public DataInsightCustomChartResultList buildDIChart(
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
+      throws IOException {
+    return buildDIChart(diChart, start, end, live, null);
+  }
+
+  @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      boolean live,
+      SubjectContext caller)
       throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot build DI chart.");
@@ -78,6 +100,22 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
           new HashMap<>();
       SearchRequest searchRequest =
           aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder, live);
+      if (live) {
+        // A live chart aggregates the entity documents behind the search aliases.
+        SearchRequest unrestricted = searchRequest;
+        Query restricted =
+            OpenSearchRbacQueries.withAccessPolicies(
+                unrestricted.query(), caller, rbacConditionEvaluator);
+        if (restricted != unrestricted.query()) {
+          searchRequest =
+              SearchRequest.of(
+                  b ->
+                      b.index(unrestricted.index())
+                          .size(unrestricted.size())
+                          .aggregations(unrestricted.aggregations())
+                          .query(restricted));
+        }
+      }
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> searchResponse;
       try {
@@ -197,11 +235,36 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
     return processor.process(dataInsightChartType);
   }
 
-  private void getFieldNames(
+  /**
+   * Collects the leaf field names of one entity type's index mapping into {@code fields}.
+   *
+   * <p>The seen-set is seeded from {@code fields} rather than built fresh, because a datastream
+   * resolves to backing indices and this runs once per index: a per-call set would stop
+   * deduplicating across them. Seeding costs one pass over the accumulated list per call, where
+   * scanning it per field cost a pass per leaf.
+   */
+  static void getFieldNames(
       Map<String, Property> properties,
       String parent,
       List<Map<String, String>> fields,
       String entityType) {
+    Set<String> seen = new HashSet<>();
+    for (Map<String, String> field : fields) {
+      seen.add(seenKey(field.get("entityType"), field.get("name")));
+    }
+    collectFieldNames(properties, parent, fields, entityType, seen);
+  }
+
+  private static String seenKey(String entityType, String name) {
+    return entityType + ' ' + name;
+  }
+
+  private static void collectFieldNames(
+      Map<String, Property> properties,
+      String parent,
+      List<Map<String, String>> fields,
+      String entityType,
+      Set<String> seen) {
 
     if (properties == null) return;
 
@@ -229,8 +292,11 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
       final String finalFieldName = adjustedFieldName;
 
       if (!"object".equals(type) && !"nested".equals(type)) {
-        // Deduplicate
-        if (fields.stream().noneMatch(f -> f.get("name").equals(finalFieldName))) {
+        // Deduplicate per entity type, not globally. A global dedup credits a shared field name
+        // to whichever type is iterated first, and the iteration source is a Set.of whose order is
+        // salted per JVM start: a type whose every field name was already claimed contributes
+        // nothing, and which types those are changes on restart.
+        if (seen.add(seenKey(entityType, finalFieldName))) {
           Map<String, String> fieldMap = new HashMap<>();
           fieldMap.put("name", finalFieldName);
           fieldMap.put("displayName", displayName);
@@ -240,11 +306,12 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
         }
       }
 
-      // Recurse into nested/object fields
+      // Recurse into object fields only. A `nested` mapping stores its children as separate hidden
+      // Lucene documents, so neither a terms aggregation nor the root-level query_string a chart
+      // formula's q= compiles to can reach them: every descendant of a nested field is unusable in
+      // a custom chart and must not be advertised.
       if (property.isObject() && property.object().properties() != null) {
-        getFieldNames(property.object().properties(), baseFieldName, fields, entityType);
-      } else if (property.isNested() && property.nested().properties() != null) {
-        getFieldNames(property.nested().properties(), baseFieldName, fields, entityType);
+        collectFieldNames(property.object().properties(), baseFieldName, fields, entityType, seen);
       }
     }
   }

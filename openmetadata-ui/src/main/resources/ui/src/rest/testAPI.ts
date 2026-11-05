@@ -13,13 +13,16 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
+import { DataQualityDimensions } from '../enums/DataQuality.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import {
   BundleSuiteBulkAddRequestClass,
+  Filter as BundleSuiteBulkAddFilter,
   Mode as BundleSuiteBulkAddMode,
 } from '../generated/api/tests/bundleSuiteBulkAddRequest';
+import type { BundleSuiteBulkRemoveRequest } from '../generated/api/tests/bundleSuiteBulkRemoveRequest';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
@@ -34,7 +37,6 @@ import {
   TestCaseStatus,
 } from '../generated/tests/testCase';
 import {
-  DataQualityDimensions,
   EntityType,
   TestDefinition,
   TestPlatform,
@@ -44,9 +46,9 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
+import { CSVImportAsyncResponse } from '../interface/entity/csv.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export type ListTestSuitePrams = ListParams & {
   testSuiteType?: TestSuiteType;
@@ -71,7 +73,10 @@ export type ListTestCaseParams = ListParams & {
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
 };
-export type ListTestCaseParamsBySearch = ListTestCaseParams & {
+export type ListTestCaseParamsBySearch = Omit<
+  ListTestCaseParams,
+  'testCaseStatus'
+> & {
   q?: string;
   sortType?: SORT_ORDER;
   sortField?: string;
@@ -86,7 +91,30 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   dataQualityDimension?: string;
   followedBy?: string;
   dataProductFqn?: string;
+  includePermissions?: boolean;
+  testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
+
+/**
+ * The test case list filters that `/name/{name}/export` and `/exportAsync`
+ * accept, so an export selects the rows the user filtered the list to.
+ */
+export type TestCaseExportFilters = Pick<
+  ListTestCaseParamsBySearch,
+  | 'testCaseStatus'
+  | 'testCaseType'
+  | 'entityLink'
+  | 'tags'
+  | 'tier'
+  | 'owner'
+  | 'q'
+  | 'testPlatforms'
+  | 'dataQualityDimension'
+  | 'serviceName'
+  | 'dataProductFqn'
+  | 'startTimestamp'
+  | 'endTimestamp'
+>;
 
 export type ListTestDefinitionsParams = ListParams & {
   entityType?: EntityType;
@@ -94,6 +122,11 @@ export type ListTestDefinitionsParams = ListParams & {
   supportedDataType?: string;
   enabled?: boolean;
   supportedService?: string;
+  /** Free-text match against the test definition name and display name. */
+  q?: string;
+  /** One of `displayName`, `entityType`, `testPlatforms`. */
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 };
 
 export type ListTestCaseResultsParams = Omit<
@@ -144,12 +177,24 @@ const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
 export const getListTestCaseBySearch = async (
-  params?: ListTestCaseParamsBySearch
+  params?: ListTestCaseParamsBySearch,
+  config?: { signal?: AbortSignal }
 ) => {
+  // The search endpoint accepts comma-separated statuses, while Axios' default
+  // array format uses brackets that the JAX-RS query parameter does not bind.
+  const serializedParams = Array.isArray(params?.testCaseStatus)
+    ? {
+        ...params,
+        testCaseStatus: params.testCaseStatus.length
+          ? params.testCaseStatus.join(',')
+          : undefined,
+      }
+    : params;
   const response = await APIClient.get<PagingResponse<TestCase[]>>(
     `${testCaseUrl}/search/list`,
     {
-      params,
+      params: serializedParams,
+      ...(config?.signal && { signal: config.signal }),
     }
   );
 
@@ -173,7 +218,7 @@ export const getListTestCaseResults = async (
 
 export const getTestCaseByFqn = async (
   fqn: string,
-  params?: { fields?: string[] }
+  params?: { fields?: string[]; include?: Include }
 ) => {
   const response = await APIClient.get<TestCase>(
     `/dataQuality/testCases/name/${getEncodedFqn(fqn)}`,
@@ -184,6 +229,16 @@ export const getTestCaseByFqn = async (
 
   return response.data;
 };
+
+export const restoreTestCase = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<TestCase>
+  >(`${testCaseUrl}/restore`, { id });
+
+  return response.data;
+};
+
 export const createTestCase = async (data: CreateTestCase) => {
   const response = await APIClient.post<
     CreateTestCase,
@@ -222,10 +277,18 @@ export const addTestCaseToLogicalTestSuite = async (
   return response.data;
 };
 
+export type AddTestCaseListFilter = Omit<
+  BundleSuiteBulkAddFilter,
+  'excludeIds'
+>;
+
 export type AddTestCaseListSubmitPayload = {
   selectAll: boolean;
   includeIds: string[];
   excludeIds: string[];
+  // Active search/filter carried with a `selectAll` request so the backend
+  // resolves "all" to the filtered subset shown in the UI, not every test case.
+  filter?: AddTestCaseListFilter;
 };
 
 export const addTestCasesToLogicalTestSuiteBulk = async (
@@ -238,7 +301,7 @@ export const addTestCasesToLogicalTestSuiteBulk = async (
       ? BundleSuiteBulkAddMode.All
       : BundleSuiteBulkAddMode.IDS,
     selection: payload.selectAll
-      ? { filter: { excludeIds: payload.excludeIds } }
+      ? { filter: { excludeIds: payload.excludeIds, ...payload.filter } }
       : { ids: payload.includeIds },
   };
   const response = await APIClient.put<
@@ -257,6 +320,19 @@ export const removeTestCaseFromTestSuite = async (
     AddTestCaseToLogicalTestSuiteType,
     AxiosResponse<TestCase>
   >(`${testCaseUrl}/logicalTestCases/${testSuiteId}/${testCaseId}`);
+
+  return response.data;
+};
+
+export const removeTestCasesFromTestSuiteBulk = async (
+  testSuiteId: string,
+  testCaseIds: string[]
+): Promise<TestSuite> => {
+  const request: BundleSuiteBulkRemoveRequest = { testSuiteId, testCaseIds };
+  const response = await APIClient.post<
+    BundleSuiteBulkRemoveRequest,
+    AxiosResponse<TestSuite>
+  >(`${testCaseUrl}/logicalTestCases/bulk/remove`, request);
 
   return response.data;
 };
@@ -409,7 +485,8 @@ export const createExecutableTestSuite = async (data: CreateTestSuite) => {
 
 export const getTestSuiteByName = async (
   name: string,
-  params?: ListTestCaseParams
+  params?: ListTestCaseParams,
+  config?: { signal?: AbortSignal }
 ) => {
   const response = await APIClient.get<TestSuite>(
     `${testSuiteUrl}/name/${getEncodedFqn(name)}`,
@@ -423,6 +500,7 @@ export const getTestSuiteByName = async (
         includeRelations:
           params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
       },
+      ...(config?.signal && { signal: config.signal }),
     }
   );
 
@@ -489,7 +567,7 @@ export const listTestCases = async (params: ListTestCasesParams) => {
 
 export const exportTestCasesInCSV = async (
   name: string,
-  params?: { recursive?: boolean }
+  params?: { recursive?: boolean } & TestCaseExportFilters
 ): Promise<CSVImportAsyncResponse> => {
   const response = await APIClient.get(
     `/dataQuality/testCases/name/${getEncodedFqn(name)}/exportAsync`,

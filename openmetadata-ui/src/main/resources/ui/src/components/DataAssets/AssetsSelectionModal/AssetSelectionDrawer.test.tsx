@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { AssetSelectionDrawer } from './AssetSelectionDrawer';
+import AssetSelectionFooter from './AssetSelectionFooter';
 import { useAssetSelectionState } from './useAssetSelectionState';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -50,7 +51,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       }) => (
         <div data-testid={testId}>
           {children}
-          <button data-testid="drawer-close-icon" onClick={onClose} />
+          <button
+            aria-label="drawer-close-icon"
+            data-testid="drawer-close-icon"
+            onClick={onClose}
+          />
         </div>
       ),
       Content: ({ children }: { children: React.ReactNode }) => (
@@ -103,6 +108,7 @@ const baseState = {
   dryRunWarnings: undefined,
   exportJob: undefined,
   selectedItems: new Map(),
+  activeEntity: { id: 'entity-1' },
   isLoading: false,
   isSaveLoading: false,
   assetJobResponse: undefined,
@@ -316,5 +322,25 @@ describe('AssetSelectionDrawer', () => {
     );
 
     expect(screen.getByTestId('content-body')).toBeInTheDocument();
+  });
+
+  it('should keep save disabled until the target entity has loaded', () => {
+    (useAssetSelectionState as jest.Mock).mockReturnValue({
+      ...baseState,
+      activeEntity: undefined,
+    });
+
+    render(
+      <AssetSelectionDrawer
+        open
+        entityFqn="glossary.term"
+        onCancel={mockOnCancel}
+      />
+    );
+
+    expect(AssetSelectionFooter).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isLoading: true }),
+      expect.anything()
+    );
   });
 });

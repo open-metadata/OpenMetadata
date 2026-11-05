@@ -18,7 +18,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/table';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
@@ -62,7 +64,9 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   })),
 }));
 
-jest.mock('../../common/Table/Table', () => {
+const mockTableColumns = jest.fn();
+
+jest.mock('../../common/Table/TableV2', () => {
   return function MockTable({
     columns,
     dataSource,
@@ -70,7 +74,20 @@ jest.mock('../../common/Table/Table', () => {
     rowSelection,
     rowKey,
     pagination,
-  }: any) {
+  }: {
+    columns?: unknown[];
+    dataSource?: Array<{
+      name: string;
+      fullyQualifiedName: string;
+      [key: string]: unknown;
+    }>;
+    loading?: boolean;
+    rowSelection?: { onChange?: (keys: string[]) => void };
+    rowKey: string;
+    pagination?: unknown;
+  }) {
+    mockTableColumns(columns);
+
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
@@ -78,8 +95,10 @@ jest.mock('../../common/Table/Table', () => {
         <div>Data Source Length: {dataSource?.length || 0}</div>
         <div>Columns: {columns?.length || 0}</div>
         <div>Pagination: {pagination ? 'enabled' : 'disabled'}</div>
-        {dataSource?.map((item: any) => (
-          <div data-testid={`table-row-${item.name}`} key={item[rowKey]}>
+        {dataSource?.map((item) => (
+          <div
+            data-testid={`table-row-${item.name}`}
+            key={String(item[rowKey])}>
             <span>{item.name}</span>
             <button
               data-testid={`select-row-${item.name}`}
@@ -89,20 +108,6 @@ jest.mock('../../common/Table/Table', () => {
               Select {item.name}
             </button>
           </div>
-        ))}
-      </div>
-    );
-  };
-});
-
-jest.mock('../../Database/TableTags/TableTags.component', () => {
-  return function MockTableTags({ tags }: any) {
-    return (
-      <div data-testid="table-tags">
-        {tags?.map((tag: any) => (
-          <span data-testid={`tag-${tag.tagFQN}`} key={tag.tagFQN}>
-            {tag.tagFQN}
-          </span>
         ))}
       </div>
     );
@@ -130,30 +135,30 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-const mockColumns: Column[] = [
+const mockColumns = [
   {
     name: 'id',
-    dataType: 'BIGINT' as any,
+    dataType: 'BIGINT',
     description: 'Primary key',
-    tags: [{ tagFQN: 'PII.Sensitive' }] as any,
-    constraint: 'PRIMARY_KEY' as any,
+    tags: [{ tagFQN: 'PII.Sensitive' }],
+    constraint: 'PRIMARY_KEY',
     fullyQualifiedName: 'service.database.schema.table.id',
   },
   {
     name: 'name',
-    dataType: 'VARCHAR' as any,
+    dataType: 'VARCHAR',
     description: 'User name',
-    tags: [{ tagFQN: 'PersonalData.Personal' }] as any,
+    tags: [{ tagFQN: 'PersonalData.Personal' }],
     fullyQualifiedName: 'service.database.schema.table.name',
   },
   {
     name: 'email',
-    dataType: 'VARCHAR' as any,
+    dataType: 'VARCHAR',
     description: 'User email',
-    tags: [] as any,
+    tags: [],
     fullyQualifiedName: 'service.database.schema.table.email',
   },
-] as any;
+] as unknown as Column[];
 
 const mockOnChange = jest.fn();
 const mockOnNext = jest.fn();
@@ -206,6 +211,34 @@ describe('ContractSchemaFormTab', () => {
 
       expect(screen.getByText('Next')).toBeInTheDocument();
       expect(screen.getByText('Previous')).toBeInTheDocument();
+    });
+  });
+
+  describe('Tags column', () => {
+    it('should show one tag and fold the rest into a +N count', () => {
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
+
+      const columns = mockTableColumns.mock.calls[0][0] as Array<{
+        key: string;
+        render: (tags: unknown[]) => JSX.Element;
+      }>;
+      const tagsColumn = columns.find((column) => column.key === 'tags');
+      const tags = ['PII.Sensitive', 'PII.Email', 'Tier.Tier1'].map(
+        (tagFQN) => ({
+          tagFQN,
+          name: tagFQN.split('.')[1],
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        })
+      );
+
+      render(<MemoryRouter>{tagsColumn?.render(tags)}</MemoryRouter>);
+
+      expect(screen.getAllByTestId(/^tag-/)).toHaveLength(1);
+      expect(screen.getByTestId('plus-more-count')).toHaveTextContent(
+        '+2 more'
+      );
     });
   });
 

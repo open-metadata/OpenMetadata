@@ -5,10 +5,10 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.timestampToString;
-import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource.COLLECTION_PATH;
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
+import static org.openmetadata.service.util.DateStrings.getDateStringEpochMilli;
 import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
@@ -46,6 +46,7 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -90,10 +91,17 @@ import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.config.source.ConfigSources;
+import org.openmetadata.service.config.source.ConfigTemplateKind;
+import org.openmetadata.service.config.source.DeploymentConfig;
+import org.openmetadata.service.config.source.RawConfigCapture;
+import org.openmetadata.service.config.source.SettingsSourceService;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -112,6 +120,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -139,6 +148,9 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.session.JdbcSessionStore;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.dbtune.AutoTuner;
 import org.openmetadata.service.util.dbtune.DbTuneDiagnosis;
 import org.openmetadata.service.util.dbtune.DbTuneReport;
@@ -169,6 +181,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private static final String CATALOG_VERSION_RESOURCE = "/catalog/VERSION";
   private static final String UNKNOWN_VERSION = "unknown";
   private static final String DEFAULT_VERSION = "1.8.0-SNAPSHOT";
+  private static final Duration DEPLOY_CONNECT_TIMEOUT = Duration.ofSeconds(30);
+  private static final Duration MIN_DEPLOY_CHUNK_TIMEOUT = Duration.ofMinutes(2);
+  private static final String STATUS_FAILED = "FAILED";
+  private static final String STATUS_SKIPPED_DELETED_SERVICE = "SKIPPED - service is soft-deleted";
+  private static final int STATUS_COLUMN_INDEX = 3;
 
   private OpenMetadataApplicationConfig config;
   private Jdbi jdbi;
@@ -477,6 +494,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
               required = true)
           String openMetadataUrl) {
     try {
+      OpenMetadataBaseUrlValidator.validateUrl(openMetadataUrl);
       URI uri = URI.create(openMetadataUrl);
       parseConfig();
       Settings updatedSettings =
@@ -847,7 +865,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       initializeCollectionRegistry();
       WorkflowHandler.initialize(config);
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
 
@@ -880,7 +898,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       parseConfig();
       initializeCollectionRegistry();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
       if (deleteApplication(appRepository, appName)) {
@@ -925,7 +943,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       initializeCollectionRegistry();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!SecurityConfigurationManager.isNativePasswordProvider(authProvider)) {
@@ -970,26 +988,29 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void initializeSecurityConfig() {
-    try {
-      var authConfig =
-          Entity.getSystemRepository()
-              .getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
-      if (authConfig != null) {
-        SecurityConfigurationManager.getInstance()
-            .setCurrentAuthConfig(
-                JsonUtils.convertValue(
-                    authConfig.getConfigValue(),
-                    org.openmetadata.schema.api.security.AuthenticationConfiguration.class));
-      } else if (config.getAuthenticationConfiguration() != null) {
-        SecurityConfigurationManager.getInstance()
-            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
-      }
-    } catch (Exception e) {
-      if (config.getAuthenticationConfiguration() != null) {
-        SecurityConfigurationManager.getInstance()
-            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
-      }
-    }
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    manager.setCurrentAuthConfig(
+        effectiveSetting(
+            SettingsType.AUTHENTICATION_CONFIGURATION,
+            AuthenticationConfiguration.class,
+            config.getAuthenticationConfiguration()));
+    manager.setCurrentAuthzConfig(
+        effectiveSetting(
+            SettingsType.AUTHORIZER_CONFIGURATION,
+            AuthorizerConfiguration.class,
+            config.getAuthorizerConfiguration()));
+  }
+
+  /**
+   * The stored value of a setting, or this process's deployment value when nothing is stored. In
+   * ENV mode the server writes its deployment value into the row at every start, so the row is the
+   * server's view even when this job lacks the server's environment.
+   */
+  private <T> T effectiveSetting(SettingsType type, Class<T> valueClass, T deploymentValue) {
+    Settings stored = Entity.getSystemRepository().getConfigWithKey(type.value());
+    return stored == null
+        ? deploymentValue
+        : JsonUtils.convertValue(stored.getConfigValue(), valueClass);
   }
 
   private boolean isAppInstalled(AppRepository appRepository, String appName) {
@@ -1017,8 +1038,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
-            config.getJwtTokenConfiguration());
+            SecurityConfigurationManager.getCurrentAuthConfig(), config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
     AppMarketPlaceRepository appMarketRepository =
@@ -1085,8 +1105,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } catch (Exception e) {
         LOG.warn("Error checking migration tables: {}", e.getMessage());
       }
-      jdbi.open().getConnection();
-      return 0;
+      boolean connectionValid = jdbi.withHandle(handle -> handle.getConnection().isValid(5));
+      return connectionValid ? 0 : 1;
     } catch (Exception e) {
       LOG.error("Failed to check connection due to ", e);
       return 1;
@@ -1140,7 +1160,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       CollectionRegistry.initialize();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
 
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
@@ -1169,10 +1189,118 @@ public class OpenMetadataOperations implements Callable<Integer> {
       String inputPwd = new String(password);
       updateUserWithHashedPwd(updatedUser, inputPwd);
       UserUtil.addOrUpdateUser(updatedUser);
+      userRepository.endSignIns(updatedUser, databaseSessionService());
       LOG.info("Password updated successfully.");
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to reset user password.", e);
+      return 1;
+    }
+  }
+
+  /** Sessions kept in Redis are out of this command's reach; the server's own sweep ends them. */
+  private SessionService databaseSessionService() {
+    CacheConfig cacheConfig = config.getCacheConfig();
+    if (cacheConfig != null && cacheConfig.provider == CacheConfig.Provider.redis) {
+      LOG.warn("Sessions are stored in Redis, so the user's live sessions end when they expire.");
+      return null;
+    }
+    return new SessionService(
+        SecurityConfigurationManager.getCurrentAuthConfig(), new JdbcSessionStore());
+  }
+
+  @Command(
+      name = "change-email",
+      description =
+          "Change a user's email address. Email is the identity key for email-first SSO, so this "
+              + "is how an administrator repairs a synthesized address, follows a real-world "
+              + "address change, or releases an address that was reassigned to someone else.")
+  public Integer changeUserEmail(
+      @Option(
+              names = {"-e", "--email"},
+              description = "Current email address of the user.",
+              required = true)
+          String currentEmail,
+      @Option(
+              names = {"-n", "--new-email"},
+              description = "New email address to set.",
+              required = true)
+          String newEmail,
+      @Option(
+              names = {"--clear-identity-binding"},
+              description =
+                  "Also clear the recorded identity-provider subject, so the next login re-binds. "
+                      + "Needed when the address was reassigned or the provider reissued subjects.",
+              defaultValue = "false")
+          boolean clearIdentityBinding) {
+    try {
+      parseConfig();
+      CollectionRegistry.initialize();
+      SettingsCache.initializeWithoutDeploymentSettings(config);
+      initializeSecurityConfig();
+      initOrganization();
+
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      User updated = userRepository.changeEmail(currentEmail, newEmail, clearIdentityBinding);
+
+      LOG.info(
+          "Changed email for user {} from {} to {}{}",
+          updated.getName(),
+          currentEmail,
+          updated.getEmail(),
+          clearIdentityBinding ? " and cleared the identity-provider binding" : "");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to change the user email.", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "list-synthesized-emails",
+      description =
+          "List users whose email was synthesized as username@principalDomain by the legacy "
+              + "identity flow rather than supplied by the identity provider. These are the "
+              + "accounts that will not match a real address once email-first login is enabled.")
+  public Integer listSynthesizedEmails(
+      @Option(
+              names = {"-d", "--domain"},
+              description =
+                  "Domain to treat as synthesized. Defaults to the configured principalDomain.")
+          String domain) {
+    try {
+      parseConfig();
+      CollectionRegistry.initialize();
+      SettingsCache.initializeWithoutDeploymentSettings(config);
+      initializeSecurityConfig();
+      initOrganization();
+
+      String syntheticDomain =
+          nullOrEmpty(domain)
+              ? SecurityConfigurationManager.getCurrentAuthzConfig().getPrincipalDomain()
+              : domain;
+      if (nullOrEmpty(syntheticDomain)) {
+        LOG.error("No domain supplied and no principalDomain is configured.");
+        return 1;
+      }
+
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      AtomicInteger count = new AtomicInteger();
+      userRepository.forEachUserInEmailDomain(
+          syntheticDomain,
+          user -> {
+            LOG.info("  {}\t{}", user.name(), user.email());
+            count.incrementAndGet();
+          });
+
+      LOG.info(
+          "{} user(s) hold an email in the synthesized domain {}", count.get(), syntheticDomain);
+      if (count.get() > 0) {
+        LOG.info("Repair each with: change-email -e <current> -n <real address>");
+      }
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to list synthesized emails.", e);
       return 1;
     }
   }
@@ -1196,6 +1324,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       searchRepository.updateIndexes();
       LOG.info("Update Index Templates.");
       searchRepository.createOrUpdateIndexTemplates();
+      detachOrphanedIndexes();
       printChangeLog();
       // update entities secrets if required
       new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
@@ -1204,6 +1333,24 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
       return 1;
+    }
+  }
+
+  /**
+   * An upgrade that renames or drops an entity type leaves its index attached to the parent aliases
+   * the old release gave it, so {@code index=all} keeps querying it with this release's clauses.
+   * SearchIndexApp sweeps this on every reindex, but an upgrade is not obliged to reindex —
+   * {@code executeSearchReindexApp} returns before launching the app when no mapping changed — so
+   * migrate does it too. This is the ops CLI, not server start, so it costs no boot time.
+   */
+  private void detachOrphanedIndexes() {
+    try {
+      int detached = new OrphanedIndexCleaner().detachOrphanedIndexesFromAliases(searchRepository);
+      if (detached > 0) {
+        LOG.info("Detached {} orphaned index-to-alias links", detached);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to detach orphaned indexes from aliases: {}", e.getMessage());
     }
   }
 
@@ -1526,9 +1673,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
           autoTune);
       parseConfig();
       CollectionRegistry.initialize();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       ApplicationHandler.initialize(config);
+      SeedDataGate.getInstance().forceSeedData();
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
@@ -1623,6 +1771,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.initialize();
       var omConfig = OpenMetadataApplicationConfigHolder.getInstance();
       ApplicationHandler.initialize(omConfig);
+      SeedDataGate.getInstance().forceSeedData();
       CollectionRegistry.getInstance()
           .loadSeedData(Entity.getJdbi(), omConfig, null, null, null, true);
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
@@ -1689,7 +1838,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           producerExecutor.submit(
               () -> {
                 try {
-                  org.openmetadata.schema.utils.ResultList<? extends EntityInterface> batch =
+                  org.openmetadata.schema.utils.ResultList<? extends EntityInterface<?>> batch =
                       source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
                   if (batch != null && batch.getData() != null && !batch.getData().isEmpty()) {
                     taskQueue.put(new ReembedTask(entityType, batch));
@@ -1748,7 +1897,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private record ReembedTask(
       String entityType,
-      org.openmetadata.schema.utils.ResultList<? extends EntityInterface> batch) {}
+      org.openmetadata.schema.utils.ResultList<? extends EntityInterface<?>> batch) {}
 
   private java.util.concurrent.CountDownLatch startReembedConsumers(
       int consumerThreads,
@@ -1798,7 +1947,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           LOG.warn("No index mapping found for entity type: {}, skipping batch", entityType);
           continue;
         }
-        for (EntityInterface entity : task.batch().getData()) {
+        for (EntityInterface<?> entity : task.batch().getData()) {
           try {
             vecService.updateEntityEmbeddings(entity, entityIndexName);
             processedCounts
@@ -2001,7 +2150,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().deleteOnDemandJob(app);
-    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+    AppScheduler.getInstance()
+        .triggerOnDemandApplication(app, JsonUtils.getMap(config), ADMIN_USER_NAME);
 
     int result = waitAndReturnReindexingAppStatus(app, currentTime, progressMonitor);
 
@@ -2167,9 +2317,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
           endDate);
       parseConfig();
       CollectionRegistry.initialize();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       ApplicationHandler.initialize(config);
+      SeedDataGate.getInstance().forceSeedData();
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
@@ -2212,7 +2363,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().deleteOnDemandJob(app);
-    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+    AppScheduler.getInstance()
+        .triggerOnDemandApplication(app, JsonUtils.getMap(config), ADMIN_USER_NAME);
     return waitAndReturnReindexingAppStatus(app, currentTime);
   }
 
@@ -2370,7 +2522,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       // Trigger Application
       long currentTime = System.currentTimeMillis();
-      AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+      AppScheduler.getInstance()
+          .triggerOnDemandApplication(app, JsonUtils.getMap(config), ADMIN_USER_NAME);
 
       // Wait for completion and return status
       return waitAndReturnReindexingAppStatus(app, currentTime, null);
@@ -2384,40 +2537,72 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   @Command(name = "deploy-pipelines", description = "Deploy all the service pipelines.")
-  public Integer deployPipelines() {
+  public Integer deployPipelines(
+      @Option(
+              names = {"--chunk-size"},
+              defaultValue = "20",
+              description =
+                  "Number of pipelines sent to the bulk deploy endpoint per request. The server "
+                      + "deploys them sequentially, so a larger chunk needs a proportionally "
+                      + "longer deadline.")
+          int chunkSize,
+      @Option(
+              names = {"--seconds-per-pipeline"},
+              defaultValue = "30",
+              description =
+                  "Deploy deadline budgeted for each pipeline in a chunk. The request timeout is "
+                      + "this value multiplied by the chunk size.")
+          int secondsPerPipeline) {
+    int exitCode = 1;
     try {
       LOG.info("Deploying Pipelines via API");
-      parseConfig();
-      IngestionPipelineRepository pipelineRepository =
-          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-      List<IngestionPipeline> pipelines =
-          pipelineRepository.listAll(
-              new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
-              new ListFilter(Include.NON_DELETED));
-      LOG.debug("Pipelines size {}", pipelines.size());
-      List<String> columns = Arrays.asList("Name", "Type", "Service Name", "Status");
-      List<List<String>> pipelineStatuses = new ArrayList<>();
-
-      if (!pipelines.isEmpty()) {
-        deployPipelinesViaAPI(pipelines, pipelineStatuses);
+      if (isValidDeployOptions(chunkSize, secondsPerPipeline)) {
+        parseConfig();
+        exitCode = runPipelineDeployment(chunkSize, secondsPerPipeline);
       }
-
-      printToAsciiTable(columns, pipelineStatuses, "No Pipelines Found");
-
-      // Check if any pipeline deployments failed by examining the status column
-      boolean hasFailures =
-          pipelineStatuses.stream().anyMatch(status -> status.get(3).startsWith("FAILED"));
-
-      if (hasFailures) {
-        LOG.error("Some pipeline deployments failed. Check the table above for details.");
-        return 1;
-      }
-
-      return 0;
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
-      return 1;
     }
+    return exitCode;
+  }
+
+  static boolean isValidDeployOptions(final int chunkSize, final int secondsPerPipeline) {
+    boolean valid = true;
+    if (chunkSize < 1) {
+      LOG.error("--chunk-size must be at least 1, got {}", chunkSize);
+      valid = false;
+    }
+    if (secondsPerPipeline < 1) {
+      LOG.error("--seconds-per-pipeline must be at least 1, got {}", secondsPerPipeline);
+      valid = false;
+    }
+    return valid;
+  }
+
+  private int runPipelineDeployment(final int chunkSize, final int secondsPerPipeline) {
+    final IngestionPipelineRepository pipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    final List<IngestionPipeline> pipelines =
+        pipelineRepository.listAll(
+            new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
+            new ListFilter(Include.NON_DELETED));
+    LOG.debug("Pipelines size {}", pipelines.size());
+    final List<List<String>> pipelineStatuses = new ArrayList<>();
+    final List<IngestionPipeline> deployable =
+        skipPipelinesOfDeletedServices(pipelines, pipelineStatuses);
+    if (!deployable.isEmpty()) {
+      deployPipelinesViaAPI(deployable, pipelineStatuses, chunkSize, secondsPerPipeline);
+    }
+    printToAsciiTable(
+        Arrays.asList("Name", "Type", "Service Name", "Status"),
+        pipelineStatuses,
+        "No Pipelines Found");
+    int exitCode = 0;
+    if (hasDeployFailures(pipelineStatuses)) {
+      LOG.error("Some pipeline deployments failed. Check the table above for details.");
+      exitCode = 1;
+    }
+    return exitCode;
   }
 
   @Command(
@@ -2620,44 +2805,78 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Removing security configuration from database...");
       parseConfig();
 
-      SystemRepository systemRepository = Entity.getSystemRepository();
-
-      // Remove authentication configuration
-      try {
-        Settings authenticationSettings =
-            systemRepository.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
-        if (authenticationSettings != null) {
-          systemRepository.deleteSettings(SettingsType.AUTHENTICATION_CONFIGURATION);
-          LOG.info("Removed authenticationConfiguration from database.");
-        } else {
-          LOG.info("No authenticationConfiguration found in database.");
-        }
-      } catch (Exception e) {
-        LOG.debug("Failed to remove authenticationConfiguration: {}", e.getMessage());
-      }
-
-      // Remove authorizer configuration
-      try {
-        Settings authorizerSettings =
-            systemRepository.getConfigWithKey(SettingsType.AUTHORIZER_CONFIGURATION.value());
-        if (authorizerSettings != null) {
-          systemRepository.deleteSettings(SettingsType.AUTHORIZER_CONFIGURATION);
-          LOG.info("Removed authorizerConfiguration from database.");
-        } else {
-          LOG.info("No authorizerConfiguration found in database.");
-        }
-      } catch (Exception e) {
-        LOG.debug("Failed to remove authorizerConfiguration: {}", e.getMessage());
-      }
+      removeStoredSetting(collectionDAO.systemDAO(), SettingsType.AUTHENTICATION_CONFIGURATION);
+      removeStoredSetting(collectionDAO.systemDAO(), SettingsType.AUTHORIZER_CONFIGURATION);
 
       LOG.info("Security configuration removal completed.");
       LOG.info(
-          "Note: You will need to restart the OpenMetadata service for changes to take effect.");
+          "Restart the OpenMetadata servers. On start they store the security configuration "
+              + "from their configuration file and environment again.");
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to remove security configuration due to ", e);
       return 1;
     }
+  }
+
+  @Command(
+      name = "adopt-deployment-config",
+      description =
+          "Replace stored values of a setting with the values from the configuration file and "
+              + "environment of this process. Run it where the server's environment is available, "
+              + "for example inside a server pod. Running servers apply the change without a "
+              + "restart.")
+  public Integer adoptDeploymentConfig(
+      @Option(
+              names = {"--type"},
+              required = true,
+              description = "Setting to change, for example authenticationConfiguration.")
+          String configType,
+      @Option(
+              names = {"--path"},
+              description =
+                  "JSON pointer of a field to take from the deployment configuration, for example "
+                      + "/maxActiveSessionsPerUser. Repeat for several. Without it, every field "
+                      + "the stored setting overrides is taken.")
+          List<String> paths) {
+    try {
+      parseConfig();
+      List<String> adopted =
+          adoptDeploymentSetting(
+              collectionDAO.systemDAO(), Entity.getSystemRepository(), configType, paths);
+      if (adopted.isEmpty()) {
+        LOG.info("{} has no stored value to replace; nothing was changed.", configType);
+      } else {
+        LOG.info(
+            "Took {} of {} from the deployment configuration. Running servers apply it within "
+                + "their settings watch interval.",
+            adopted,
+            configType);
+      }
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to adopt the deployment configuration due to ", e);
+      return 1;
+    }
+  }
+
+  /**
+   * Running servers are not refreshed from here: they pick the stored change up through their
+   * settings watch.
+   */
+  static List<String> adoptDeploymentSetting(
+      SystemDAO dao, SystemRepository repository, String configType, List<String> paths) {
+    return new SettingsSourceService(dao, repository, settingsType -> {})
+        .adopt(SettingsType.fromValue(configType), paths);
+  }
+
+  /** Deletes by key, so a stored value that no longer parses can be removed too. */
+  static boolean removeStoredSetting(SystemDAO dao, SettingsType type) {
+    boolean existed = dao.getConfigJsonWithKey(type.value()) != null;
+    dao.delete(type.value());
+    LOG.info(
+        existed ? "Removed {} from the database." : "No {} found in the database.", type.value());
+    return existed;
   }
 
   @Command(
@@ -2827,12 +3046,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       parseConfig();
       initializeCollectionRegistry();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
 
       JWTTokenGenerator.getInstance()
           .init(
-              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              SecurityConfigurationManager.getCurrentAuthConfig(),
               config.getJwtTokenConfiguration());
 
       initOrganization();
@@ -2924,7 +3143,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       parseConfig();
       initializeCollectionRegistry();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       WorkflowHandler.initialize(config);
 
@@ -2948,7 +3167,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private void analyzeEntityTable(String entity) {
     try {
-      EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entity);
+      EntityRepository<? extends EntityInterface<?>> repository =
+          Entity.getEntityRepository(entity);
       LOG.info("Analyzing table for [{}] Entity", entity);
       repository.getDao().analyzeTable();
     } catch (EntityNotFoundException e) {
@@ -2957,7 +3177,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void deployPipelinesViaAPI(
-      List<IngestionPipeline> pipelines, List<List<String>> pipelineStatuses) {
+      List<IngestionPipeline> pipelines,
+      List<List<String>> pipelineStatuses,
+      int chunkSize,
+      int secondsPerPipeline) {
     try {
       // Get ingestion-bot JWT token
       String jwtToken = getIngestionBotToken();
@@ -2972,14 +3195,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       LOG.info("Deploying pipelines to server URL: {}", serverUrl);
 
-      // Create HTTP client
-      HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
+      HttpClient client = HttpClient.newBuilder().connectTimeout(DEPLOY_CONNECT_TIMEOUT).build();
+      Duration chunkTimeout = deployChunkTimeout(chunkSize, secondsPerPipeline);
+      DeployRequest deployRequest = new DeployRequest(client, jwtToken, serverUrl, chunkTimeout);
 
-      // Process pipelines in chunks of 20
-      int chunkSize = 20;
       int totalPipelines = pipelines.size();
       LOG.info(
-          "Deploying {} pipelines via bulk API calls in chunks of {}", totalPipelines, chunkSize);
+          "Deploying {} pipelines via bulk API calls in chunks of {} with a {}s deadline per chunk",
+          totalPipelines,
+          chunkSize,
+          chunkTimeout.toSeconds());
 
       List<List<IngestionPipeline>> pipelineChunks = chunkList(pipelines, chunkSize);
 
@@ -2992,7 +3217,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             chunkIndex * chunkSize + 1,
             Math.min((chunkIndex + 1) * chunkSize, totalPipelines));
 
-        deployPipelineChunk(client, jwtToken, serverUrl, chunk, pipelineStatuses);
+        deployPipelineChunk(deployRequest, chunk, pipelineStatuses);
       }
 
       LOG.info("Completed bulk deployment of {} pipelines", totalPipelines);
@@ -3011,11 +3236,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void deployPipelineChunk(
-      HttpClient client,
-      String jwtToken,
-      String serverUrl,
+      DeployRequest deployRequest,
       List<IngestionPipeline> pipelineChunk,
       List<List<String>> pipelineStatuses) {
+    final String serverUrl = deployRequest.serverUrl();
     try {
       // Collect pipeline IDs for this chunk
       List<UUID> pipelineIds =
@@ -3031,13 +3255,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
       HttpRequest request =
           HttpRequest.newBuilder()
               .uri(URI.create(normalizedServerUrl + COLLECTION_PATH + "bulk/deploy"))
-              .header("Authorization", "Bearer " + jwtToken)
+              .header("Authorization", "Bearer " + deployRequest.jwtToken())
               .header("Content-Type", "application/json")
               .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-              .timeout(Duration.ofMinutes(2))
+              .timeout(deployRequest.chunkTimeout())
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response =
+          deployRequest.client().send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
         LOG.debug("Chunk deployment completed successfully");
@@ -3070,7 +3295,56 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  /**
+   * The bulk deploy endpoint registers each pipeline in a chunk sequentially, so the request
+   * deadline has to grow with the chunk size. A fixed deadline silently becomes too short as a
+   * catalog grows, and reports a timeout on deployments that are still progressing server side.
+   */
+  static Duration deployChunkTimeout(final int chunkSize, final int secondsPerPipeline) {
+    final Duration budgeted = Duration.ofSeconds((long) chunkSize * secondsPerPipeline);
+    Duration timeout = MIN_DEPLOY_CHUNK_TIMEOUT;
+    if (budgeted.compareTo(MIN_DEPLOY_CHUNK_TIMEOUT) > 0) {
+      timeout = budgeted;
+    }
+    return timeout;
+  }
+
+  // Report pipelines of soft-deleted services as skipped rather than failing the whole run
+  static List<IngestionPipeline> skipPipelinesOfDeletedServices(
+      final List<IngestionPipeline> pipelines, final List<List<String>> pipelineStatuses) {
+    final var byServiceDeleted =
+        pipelines.stream()
+            .collect(Collectors.partitioningBy(OpenMetadataOperations::isServiceDeleted));
+    byServiceDeleted
+        .get(true)
+        .forEach(
+            pipeline ->
+                pipelineStatuses.add(
+                    Arrays.asList(
+                        pipeline.getName(),
+                        pipeline.getPipelineType().value(),
+                        pipeline.getService().getName(),
+                        STATUS_SKIPPED_DELETED_SERVICE)));
+    return byServiceDeleted.get(false);
+  }
+
+  private static boolean isServiceDeleted(final IngestionPipeline pipeline) {
+    return pipeline.getService() instanceof EntityReference service
+        && Boolean.TRUE.equals(service.getDeleted());
+  }
+
+  static boolean hasDeployFailures(final List<List<String>> pipelineStatuses) {
+    return pipelineStatuses.stream()
+        .anyMatch(status -> status.get(STATUS_COLUMN_INDEX).startsWith(STATUS_FAILED));
+  }
+
+  private record DeployRequest(
+      HttpClient client, String jwtToken, String serverUrl, Duration chunkTimeout) {}
+
   private <T> List<List<T>> chunkList(List<T> list, int chunkSize) {
+    if (chunkSize < 1) {
+      throw new IllegalArgumentException("chunkSize must be at least 1, got " + chunkSize);
+    }
     List<List<T>> chunks = new ArrayList<>();
     for (int i = 0; i < list.size(); i += chunkSize) {
       int end = Math.min(list.size(), i + chunkSize);
@@ -3214,7 +3488,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     config =
         factory.build(
             new SubstitutingSourceProvider(
-                new FileConfigurationSourceProvider(),
+                new RawConfigCapture(
+                    new FileConfigurationSourceProvider(), ConfigTemplateKind.SERVER),
                 new EnvironmentVariableSubstitutor(false, true)),
             configFilePath);
     IndexMappingLoader.init(config.getElasticSearchConfiguration());
@@ -3248,6 +3523,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setCollectionDAO(collectionDAO);
     Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(collectionDAO));
     Entity.setSystemRepository(new SystemRepository());
+    ConfigSources.installLazily(() -> DeploymentConfig.capture(config));
+    ConfigSources.loadPersistedModes(collectionDAO.systemDAO());
 
     searchRepository =
         SearchRepositoryFactory.createSearchRepository(

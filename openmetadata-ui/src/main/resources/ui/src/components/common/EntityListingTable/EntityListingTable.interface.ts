@@ -31,4 +31,5 @@ export interface EntityListingTableProps<
   onEntityClick?: (entity: T) => void;
   ariaLabel: string;
   emptyMessage?: string;
+  containerClassName?: string;
 }

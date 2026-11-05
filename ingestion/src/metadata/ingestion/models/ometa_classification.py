@@ -12,8 +12,6 @@
 Custom wrapper for Tag and Classification
 """
 
-from typing import Optional
-
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.classification.createClassification import (
@@ -24,6 +22,6 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 
 
 class OMetaTagAndClassification(BaseModel):
-    fqn: Optional[FullyQualifiedEntityName] = None  # noqa: UP045
+    fqn: FullyQualifiedEntityName | None = None
     classification_request: CreateClassificationRequest
     tag_request: CreateTagRequest

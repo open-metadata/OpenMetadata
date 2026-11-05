@@ -17,16 +17,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import io.modelcontextprotocol.spec.McpSchema;
+import jakarta.ws.rs.core.Response;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
+import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
  * Direct coverage for {@link DefaultToolContext}'s Phase 3 outcome construction. The recorder side
@@ -93,6 +98,38 @@ class DefaultToolContextTest {
   }
 
   @Test
+  void classifyGraphReadsThatShouldBeRetriedAsRateLimited() {
+    assertThat(
+            DefaultToolContext.classifyException(
+                new RdfRetryLaterException("PROJECTION_NOT_READY: rebuilding", null)))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.RATE_LIMIT);
+    assertThat(
+            DefaultToolContext.classifyException(
+                new SparqlQueryExecutionGuard.QueryCapacityException("concurrency limit reached")))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.RATE_LIMIT);
+    assertThat(DefaultToolContext.resolveStatusCode(new RdfRetryLaterException("not ready", null)))
+        .isEqualTo(429);
+  }
+
+  @Test
+  void aDegradedProjectionIsADeploymentStateNotARetryableFault() {
+    final RdfProjectionDegradedException degraded =
+        new RdfProjectionDegradedException("PROJECTION_NOT_READY: degraded", null);
+
+    assertThat(DefaultToolContext.classifyException(degraded))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+    assertThat(DefaultToolContext.resolveStatusCode(degraded)).isEqualTo(400);
+  }
+
+  @Test
+  void classifyGraphQueryTimeoutAsTimeout() {
+    assertThat(
+            DefaultToolContext.classifyException(
+                new RdfQueryTimeoutException("EXECUTION_TIMEOUT: too slow", null)))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.TIMEOUT);
+  }
+
+  @Test
   void classifyFallsBackToInternalForUnknownException() {
     assertThat(DefaultToolContext.classifyException(new RuntimeException("kaboom")))
         .isEqualTo(McpToolCallUsage.ErrorCategory.INTERNAL);
@@ -124,6 +161,25 @@ class DefaultToolContextTest {
         .isEqualTo(404);
   }
 
+  /** The engine's 400 for a malformed queryFilter is the caller's mistake, not a backend fault. */
+  @Test
+  void searchExceptionCarryingA400IsTheCallersMistake() {
+    SearchException badFilter =
+        SearchException.withStatus(
+            Response.Status.BAD_REQUEST,
+            "Search failed due to Request failed: [parsing_exception] [range] query does not"
+                + " support [bad]");
+
+    assertThat(DefaultToolContext.resolveStatusCode(badFilter)).isEqualTo(400);
+    assertThat(DefaultToolContext.classifyException(badFilter))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+    // A carried 500 is a constructor default, so the keyword table still decides: a timeout is 504.
+    assertThat(
+            DefaultToolContext.resolveStatusCode(
+                new SearchException("Search failed due to request timed out")))
+        .isEqualTo(504);
+  }
+
   @Test
   void resolveStatusCodeMapsValidationTo400() {
     assertThat(DefaultToolContext.resolveStatusCode(new IllegalArgumentException("bad arg")))
@@ -139,6 +195,31 @@ class DefaultToolContextTest {
     assertThat(
             DefaultToolContext.classifyException(new IllegalArgumentException("field not found")))
         .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+  }
+
+  @Test
+  void unknownEntityFieldIsAClientErrorNotAServerFault() {
+    // JsonUtils.applyPatch rejects a renamed/misspelled field as IllegalArgumentException so a
+    // patch naming e.g. "status" instead of "entityStatus" is a 400 the model can retry, and never
+    // reaches ERROR-level logging where it would page an operator.
+    Exception unknownField =
+        new IllegalArgumentException(
+            "Invalid field 'status' for GlossaryTerm. Did you mean 'entityStatus'? "
+                + "Valid fields are: certification, deleted, entityStatus");
+    assertThat(DefaultToolContext.resolveStatusCode(unknownField)).isEqualTo(400);
+    assertThat(DefaultToolContext.classifyException(unknownField))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+    assertThat(DefaultToolContext.isServerFault(400)).isFalse();
+  }
+
+  @Test
+  void onlyServerFaultsLogAtErrorLevel() {
+    assertThat(DefaultToolContext.isServerFault(400)).isFalse();
+    assertThat(DefaultToolContext.isServerFault(403)).isFalse();
+    assertThat(DefaultToolContext.isServerFault(404)).isFalse();
+    assertThat(DefaultToolContext.isServerFault(429)).isFalse();
+    assertThat(DefaultToolContext.isServerFault(500)).isTrue();
+    assertThat(DefaultToolContext.isServerFault(504)).isTrue();
   }
 
   @Test
@@ -210,6 +291,25 @@ class DefaultToolContextTest {
         .contains("\"tool\":\"get_entity_details\"")
         .contains("\"maxResponseChars\":" + McpResponseTrim.MAX_RESPONSE_CHARS)
         .doesNotContain("zzzz");
+  }
+
+  @Test
+  void serializeWithinBudgetUsesTheCapSetOnTheMcpServer() {
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    MCPConfiguration previous = SecurityConfigurationManager.getCurrentMcpConfig();
+    manager.setCurrentMcpConfig(new MCPConfiguration().withMaxResponseChars(20_000));
+    try {
+      String serialized =
+          DefaultToolContext.serializeWithinBudget(
+              Map.of("blob", "z".repeat(30_000)), "get_entity_details");
+
+      assertThat(serialized)
+          .contains("\"truncated\":true")
+          .contains("\"maxResponseChars\":20000")
+          .doesNotContain("zzzz");
+    } finally {
+      manager.setCurrentMcpConfig(previous);
+    }
   }
 
   @Test

@@ -37,7 +37,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.models import SampleConfig
-from metadata.sampler.pandas.burstiq.sampler import _PAGE_SIZE, BurstIQSampler
+from metadata.sampler.pandas.burstiq.sampler import (
+    _MAX_PROFILE_ROWS,
+    _PAGE_SIZE,
+    BurstIQSampler,
+)
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -138,6 +142,11 @@ class TestBurstIQSamplerRawDataset:
 
         mock_client.get_chain_metrics.assert_not_called()
         assert sum(len(df) for df in dfs) == 10
+
+    def test_no_sample_caps_at_max_profile_rows(self, sampler):
+        sampler.sample_config = SampleConfig()
+
+        assert sampler._compute_total_limit("TestChain") == _MAX_PROFILE_ROWS
 
     def test_empty_chain_yields_single_empty_dataframe(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
@@ -261,6 +270,22 @@ class TestBurstIQSamplerFetchSampleData:
             result = sampler.fetch_sample_data(cols)
 
         assert len(result.rows) == 2
+
+    def test_missing_cells_become_none_not_nan(self, sampler):
+        # BurstIQ gaps arrive as NaN; they must serialize as null, not "nan".
+        df = pd.DataFrame({"score": [1.0, None], "age": [None, 20]})
+        cols = [
+            SQALikeColumn(name="score", type=DataType.DOUBLE),
+            SQALikeColumn(name="age", type=DataType.INT),
+        ]
+        with self._patch_raw(sampler, df):
+            result = sampler.fetch_sample_data(cols)
+
+        assert result.rows[0][1] is None
+        assert result.rows[1][0] is None
+        flat = [cell for row in result.rows for cell in row]
+        assert not any(isinstance(c, float) and math.isnan(c) for c in flat)
+        assert "nan" not in [str(c).lower() for c in flat]
 
 
 class TestBurstIQSamplerCastDataframe:

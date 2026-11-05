@@ -11,20 +11,13 @@
  *  limitations under the License.
  */
 
-import { RightOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from 'antd';
-import type { ReactNode } from 'react';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import ReactDOM from 'react-dom';
-import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
-import { ReactComponent as UpdatedIcon } from '../assets/svg/updated-icon.svg';
 import type { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
 import { EntityUrlMapType, ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { OwnerType } from '../enums/user.enum';
-import { ActivityEventType } from '../generated/entity/activity/activityEvent';
-import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
 import type { User } from '../generated/entity/teams/user';
 import { searchQuery } from '../rest/searchAPI';
 import { getRandomColor } from './ColorUtils';
@@ -33,7 +26,7 @@ import { getEntityPlaceHolder } from './EntityDisplayPureUtils';
 import { getEntityName } from './EntityNameUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { buildMentionLink } from './FeedUtilsPure';
-import { t, Transi18next } from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -44,6 +37,10 @@ export async function suggestions(
   searchTerm: string,
   mentionChar: string
 ): Promise<MentionSuggestionsItem[]> {
+  // Alphabetical ordering can fill the first page with weaker fuzzy matches.
+  const sortField = searchTerm?.trim() ? '_score' : 'displayName.keyword';
+  const sortOrder = sortField === '_score' ? 'desc' : 'asc';
+
   if (mentionChar === '@') {
     let atValues = [];
 
@@ -52,8 +49,8 @@ export async function suggestions(
       pageNumber: 1,
       pageSize: 5,
       queryFilter: getTermQuery({ isBot: 'false' }),
-      sortField: 'displayName.keyword',
-      sortOrder: 'asc',
+      sortField,
+      sortOrder,
       searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
     });
     const hits = data.hits.hits;
@@ -88,8 +85,8 @@ export async function suggestions(
       query: searchTerm ?? '',
       pageNumber: 1,
       pageSize: 5,
-      sortField: 'displayName.keyword',
-      sortOrder: 'asc',
+      sortField,
+      sortOrder,
       searchIndex: SearchIndex.DATA_ASSET,
     });
     const hits = data.hits.hits;
@@ -176,13 +173,16 @@ export const getEntityFieldDisplay = (entityField: string) => {
     const entityFields = entityField.split(ENTITY_LINK_SEPARATOR);
     const separator = (
       <span className="p-x-xss">
-        <RightOutlined className="text-xs m-t-xss cursor-default text-grey-muted align-middle " />
+        <ChevronRight
+          className="tw:mt-1 tw:cursor-default tw:text-quaternary tw:align-middle tw:shrink-0"
+          size={14}
+        />
       </span>
     );
 
     return entityFields.map((field, i) => {
       return (
-        <span key={`field-${i}`}>
+        <span key={`field-${field}`}>
           {t(`label.${field}`, { defaultValue: field })}
           {i < entityFields.length - 1 ? separator : null}
         </span>
@@ -191,272 +191,4 @@ export const getEntityFieldDisplay = (entityField: string) => {
   }
 
   return null;
-};
-
-export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
-  let icon;
-
-  switch (fieldOperation) {
-    case FieldOperation.Added:
-      icon = AddIcon;
-
-      break;
-    case FieldOperation.Deleted:
-      icon = UpdatedIcon;
-
-      break;
-  }
-
-  return (
-    icon && (
-      <Icon component={icon} height={16} name={fieldOperation} width={16} />
-    )
-  );
-};
-
-const getActionLabelFromCardStyle = (
-  cardStyle?: CardStyle,
-  isApplication?: boolean
-) => {
-  let action: ReactNode = isApplication
-    ? t('label.installed-lowercase')
-    : t('label.added-lowercase');
-
-  if (cardStyle === CardStyle.EntityDeleted) {
-    action = (
-      <Typography.Text className="text-danger">
-        {isApplication
-          ? t('label.uninstalled-lowercase')
-          : t('label.deleted-lowercase')}
-      </Typography.Text>
-    );
-  } else if (cardStyle === CardStyle.EntitySoftDeleted) {
-    action = t('label.soft-deleted-lowercase');
-  }
-
-  return action;
-};
-
-export const getFeedHeaderTextFromCardStyle = (
-  fieldOperation?: FieldOperation,
-  cardStyle?: CardStyle,
-  fieldName?: string,
-  entityType?: EntityType
-) => {
-  if (fieldName === 'assets') {
-    return (
-      <Transi18next
-        i18nKey="message.feed-asset-action-header"
-        renderElement={<Typography.Text className="font-bold" />}
-        values={{
-          action: getActionLabelFromCardStyle(cardStyle),
-        }}
-      />
-    );
-  }
-  switch (cardStyle) {
-    case CardStyle.CustomProperties:
-      return (
-        <Transi18next
-          i18nKey="message.feed-custom-property-header"
-          renderElement={<Typography.Text className="font-bold" />}
-        />
-      );
-    case CardStyle.TestCaseResult:
-      return (
-        <Transi18next
-          i18nKey="message.feed-test-case-header"
-          renderElement={<Typography.Text className="font-bold" />}
-        />
-      );
-    case CardStyle.Description:
-    case CardStyle.Tags:
-    case CardStyle.Owner:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t(
-              `label.${cardStyle === CardStyle.Tags ? 'tag-plural' : cardStyle}`
-            ),
-            action: t(
-              `label.${fieldOperation ?? FieldOperation.Updated}-lowercase`
-            ),
-          }}
-        />
-      );
-
-    case CardStyle.EntityCreated:
-    case CardStyle.EntityDeleted:
-    case CardStyle.EntitySoftDeleted:
-      if (entityType === EntityType.APPLICATION) {
-        return (
-          <Typography.Text>
-            {getActionLabelFromCardStyle(cardStyle, true)}{' '}
-            {t('label.app-lowercase')}
-          </Typography.Text>
-        );
-      }
-
-      return getActionLabelFromCardStyle(cardStyle);
-
-    case CardStyle.Default:
-    default:
-      return t('label.posted-on-lowercase');
-  }
-};
-
-export const getActivityEventHeaderText = (
-  eventType?: ActivityEventType,
-  fieldName?: string,
-  _entityType?: EntityType
-): ReactNode => {
-  if (!eventType) {
-    return t('label.posted-on-lowercase');
-  }
-
-  switch (eventType) {
-    case ActivityEventType.EntityCreated:
-      return (
-        <Typography.Text className="font-bold">
-          {t('label.created-lowercase')}
-        </Typography.Text>
-      );
-    case ActivityEventType.EntityDeleted:
-    case ActivityEventType.EntitySoftDeleted:
-      return (
-        <Typography.Text className="font-bold">
-          {t('label.deleted-lowercase')}
-        </Typography.Text>
-      );
-    case ActivityEventType.EntityRestored:
-      return (
-        <Typography.Text className="font-bold">
-          {t('label.restored-lowercase')}
-        </Typography.Text>
-      );
-    case ActivityEventType.DescriptionUpdated:
-    case ActivityEventType.ColumnDescriptionUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t('label.description'),
-            action: t('label.updated-lowercase'),
-          }}
-        />
-      );
-    case ActivityEventType.TagsUpdated:
-    case ActivityEventType.ColumnTagsUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t('label.tag-plural'),
-            action: t('label.added-lowercase'),
-          }}
-        />
-      );
-    case ActivityEventType.OwnerUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t('label.owner'),
-            action: t('label.updated-lowercase'),
-          }}
-        />
-      );
-    case ActivityEventType.DomainUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t('label.domain'),
-            action: t('label.updated-lowercase'),
-          }}
-        />
-      );
-    case ActivityEventType.TierUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t('label.tier'),
-            action: t('label.updated-lowercase'),
-          }}
-        />
-      );
-    case ActivityEventType.CustomPropertyUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-custom-property-header"
-          renderElement={<Typography.Text className="font-bold" />}
-        />
-      );
-    case ActivityEventType.TestCaseStatusChanged:
-      return (
-        <Transi18next
-          i18nKey="message.feed-test-case-header"
-          renderElement={<Typography.Text className="font-bold" />}
-        />
-      );
-    case ActivityEventType.PipelineStatusChanged:
-      return (
-        <Typography.Text className="font-bold">
-          {t('label.pipeline-status-changed')}
-        </Typography.Text>
-      );
-    case ActivityEventType.EntityUpdated:
-    default:
-      if (fieldName) {
-        return (
-          <Typography.Text className="font-bold">
-            {t('label.updated-field-for-lowercase', { field: fieldName })}
-          </Typography.Text>
-        );
-      }
-
-      return (
-        <Typography.Text className="font-bold">
-          {t('label.updated-lowercase')}
-        </Typography.Text>
-      );
-  }
 };

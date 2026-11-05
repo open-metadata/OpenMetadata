@@ -17,7 +17,9 @@ import {
   createContext,
   MutableRefObject,
   ReactNode,
+  useCallback,
   useContext,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -51,6 +53,17 @@ interface EntityAttachmentProps {
   allowFileUpload?: boolean;
 }
 
+const findTempNodePosition = (view: EditorView, file: File): number => {
+  let tempNodePos = -1;
+  view.state.doc.descendants((node, pos) => {
+    if (node.attrs.isUploading && node.attrs.tempFile === file) {
+      tempNodePos = pos;
+    }
+  });
+
+  return tempNodePos;
+};
+
 const EntityAttachmentContext = createContext<EntityAttachmentType>(
   {} as EntityAttachmentType
 );
@@ -64,85 +77,141 @@ export const EntityAttachmentProvider = ({
   allowFileUpload = false,
 }: EntityAttachmentProps) => {
   const { t } = useTranslation();
-  const { onImageUpload = noop, allowImageUpload = false } =
-    imageClassBase.getBlockEditorAttachmentProps(entityType) ?? {};
+  const { onImageUpload, allowImageUpload } = useMemo(() => {
+    const props =
+      imageClassBase.getBlockEditorAttachmentProps(entityType) ?? {};
+
+    return {
+      onImageUpload: props.onImageUpload ?? noop,
+      allowImageUpload: props.allowImageUpload ?? false,
+    };
+  }, [entityType]);
   const [errorMessage, setErrorMessage] = useState<string>();
   const isPopoverOpenRef = useRef<boolean>(false);
 
-  const handleErrorMessage = (error?: string) => {
+  const handleErrorMessage = useCallback((error?: string) => {
     setErrorMessage(error);
-  };
+  }, []);
 
-  const setPopoverOpen = (open: boolean) => {
+  const setPopoverOpen = useCallback((open: boolean) => {
     isPopoverOpenRef.current = open;
-  };
+  }, []);
 
-  // Handle file upload logic
-  const handleFileUpload = async (
-    file: File,
-    view: EditorView,
-    pos: number,
-    showInlineAlert?: boolean
-  ) => {
-    if (!onImageUpload) {
-      return;
-    }
+  const handleUploadError = useCallback(
+    (
+      view: EditorView,
+      file: File,
+      error: unknown,
+      showInlineAlert?: boolean
+    ) => {
+      const errorMessage = (error as AxiosError<{ message: string }>).response
+        ?.data?.message;
 
-    const fileType = file.type;
-    const isImage = fileType.startsWith(FileType.IMAGE);
-
-    if (isImage && !allowImageUpload) {
-      return;
-    }
-
-    if (!isImage && !allowFileUpload) {
-      showInlineAlert
-        ? setErrorMessage(t('message.only-image-files-supported'))
-        : showErrorToast(t('message.only-image-files-supported'));
-
-      return;
-    }
-
-    try {
-      // Get the current state
-      const { state } = view;
-      const { tr } = state;
-
-      // Create the temporary node
-      const tempNode = state.schema.nodes.fileAttachment.create({
-        url: '',
-        fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type,
-        isUploading: true,
-        uploadProgress: 0,
-        tempFile: file,
-        isImage,
-        alt: file.name,
-      });
-
-      // Create and dispatch the transaction for the temporary node
-      const tempTr = tr.insert(pos, tempNode);
-      view.dispatch(tempTr);
-
-      // Start the upload using the existing onImageUpload function
-      const url = await onImageUpload(file, entityType, entityFqn);
-
-      // Get the current state after upload
+      // Get the current state for error handling
       const currentState = view.state;
       const currentTr = currentState.tr;
 
-      // Find the position of the temporary node
-      let tempNodePos = -1;
-      currentState.doc.descendants((node, pos) => {
-        if (node.attrs.isUploading && node.attrs.tempFile === file) {
-          tempNodePos = pos;
-        }
-      });
+      const tempNodePos = findTempNodePosition(view, file);
 
-      // If we can't find the temporary node, it might have been removed
-      // In this case, we'll insert the final node at the original position
-      if (tempNodePos === -1) {
+      if (tempNodePos !== -1) {
+        // Remove the temporary node on error
+        currentTr.delete(tempNodePos, tempNodePos + 1);
+        view.dispatch(currentTr);
+      }
+
+      const hasErrorMessage =
+        !isUndefined(errorMessage) && isString(errorMessage);
+      const inlineErrorMessage = hasErrorMessage
+        ? errorMessage
+        : t('label.failed-to-upload-file');
+
+      showInlineAlert
+        ? setErrorMessage(inlineErrorMessage)
+        : showErrorToast(error as AxiosError, t('label.failed-to-upload-file'));
+    },
+    [t]
+  );
+
+  // Handle file upload logic
+  const handleFileUpload = useCallback(
+    async (
+      file: File,
+      view: EditorView,
+      pos: number,
+      showInlineAlert?: boolean
+    ) => {
+      if (!onImageUpload) {
+        return;
+      }
+
+      const fileType = file.type;
+      const isImage = fileType.startsWith(FileType.IMAGE);
+
+      if (isImage && !allowImageUpload) {
+        return;
+      }
+
+      if (!isImage && !allowFileUpload) {
+        showInlineAlert
+          ? setErrorMessage(t('message.only-image-files-supported'))
+          : showErrorToast(t('message.only-image-files-supported'));
+
+        return;
+      }
+
+      try {
+        // Get the current state
+        const { state } = view;
+        const { tr } = state;
+
+        // Create the temporary node
+        const tempNode = state.schema.nodes.fileAttachment.create({
+          url: '',
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+          isUploading: true,
+          uploadProgress: 0,
+          tempFile: file,
+          isImage,
+          alt: file.name,
+        });
+
+        // Create and dispatch the transaction for the temporary node
+        const tempTr = tr.insert(pos, tempNode);
+        view.dispatch(tempTr);
+
+        // Start the upload using the existing onImageUpload function
+        const url = await onImageUpload(file, entityType, entityFqn);
+
+        // Get the current state after upload
+        const currentState = view.state;
+        const currentTr = currentState.tr;
+
+        // Find the position of the temporary node
+        const tempNodePos = findTempNodePosition(view, file);
+
+        // If we can't find the temporary node, it might have been removed
+        // In this case, we'll insert the final node at the original position
+        if (tempNodePos === -1) {
+          const finalNode = currentState.schema.nodes.fileAttachment.create({
+            url,
+            fileName: file.name,
+            fileSize: file.size,
+            mimeType: file.type,
+            isUploading: false,
+            uploadProgress: 100,
+            isImage,
+            alt: file.name,
+          });
+
+          currentTr.insert(pos, finalNode);
+          view.dispatch(currentTr);
+
+          return;
+        }
+
+        // Create the final node
         const finalNode = currentState.schema.nodes.fileAttachment.create({
           url,
           fileName: file.name,
@@ -154,70 +223,47 @@ export const EntityAttachmentProvider = ({
           alt: file.name,
         });
 
-        currentTr.insert(pos, finalNode);
+        // Replace the temporary node with the final node at the correct position
+        currentTr.replaceWith(tempNodePos, tempNodePos + 1, finalNode);
         view.dispatch(currentTr);
-
-        return;
+      } catch (error) {
+        handleUploadError(view, file, error, showInlineAlert);
       }
+    },
+    [
+      onImageUpload,
+      allowImageUpload,
+      allowFileUpload,
+      entityType,
+      entityFqn,
+      t,
+      handleUploadError,
+    ]
+  );
 
-      // Create the final node
-      const finalNode = currentState.schema.nodes.fileAttachment.create({
-        url,
-        fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type,
-        isUploading: false,
-        uploadProgress: 100,
-        isImage,
-        alt: file.name,
-      });
-
-      // Replace the temporary node with the final node at the correct position
-      currentTr.replaceWith(tempNodePos, tempNodePos + 1, finalNode);
-      view.dispatch(currentTr);
-    } catch (error) {
-      const errorMessage = (error as AxiosError<{ message: string }>).response
-        ?.data?.message;
-
-      // Get the current state for error handling
-      const currentState = view.state;
-      const currentTr = currentState.tr;
-
-      // Find the position of the temporary node
-      let tempNodePos = -1;
-      currentState.doc.descendants((node, pos) => {
-        if (node.attrs.isUploading && node.attrs.tempFile === file) {
-          tempNodePos = pos;
-        }
-      });
-
-      if (tempNodePos !== -1) {
-        // Remove the temporary node on error
-        currentTr.delete(tempNodePos, tempNodePos + 1);
-        view.dispatch(currentTr);
-      }
-
-      showInlineAlert
-        ? setErrorMessage(
-            !isUndefined(errorMessage) && isString(errorMessage)
-              ? errorMessage
-              : t('label.failed-to-upload-file')
-          )
-        : showErrorToast(error as AxiosError, t('label.failed-to-upload-file'));
-    }
-  };
-
-  const value: EntityAttachmentType = {
-    entityType,
-    entityFqn,
-    handleFileUpload,
-    errorMessage,
-    handleErrorMessage,
-    allowImageUpload,
-    allowFileUpload,
-    isPopoverOpenRef,
-    setPopoverOpen,
-  };
+  const value: EntityAttachmentType = useMemo(
+    () => ({
+      entityType,
+      entityFqn,
+      handleFileUpload,
+      errorMessage,
+      handleErrorMessage,
+      allowImageUpload,
+      allowFileUpload,
+      isPopoverOpenRef,
+      setPopoverOpen,
+    }),
+    [
+      entityType,
+      entityFqn,
+      handleFileUpload,
+      errorMessage,
+      handleErrorMessage,
+      allowImageUpload,
+      allowFileUpload,
+      setPopoverOpen,
+    ]
+  );
 
   return (
     <EntityAttachmentContext.Provider value={value}>

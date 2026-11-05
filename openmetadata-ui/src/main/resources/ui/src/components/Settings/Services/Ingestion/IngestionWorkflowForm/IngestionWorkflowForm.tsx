@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { Button, Space } from 'antd';
 import classNames from 'classnames';
-import { isUndefined, omit, omitBy } from 'lodash';
+import { capitalize, cloneDeep, isUndefined, omit, omitBy } from 'lodash';
 import {
   forwardRef,
   lazy,
   Suspense,
+  useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -27,6 +29,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA,
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
@@ -40,9 +43,15 @@ import {
   IngestionWorkflowFormHandle,
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
+import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
-import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import {
+  getSchemaByWorkflowType,
+  validateOwnerConfigMaps,
+} from '../../../../../utils/IngestionWorkflowUtils';
+import { formatAdditionalProperties } from '../../../../../utils/JSONSchemaFormUtils';
+import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
 import CoreSelectWidget from '../../../../common/FormBuilderV1/widgets/CoreSelectWidget';
@@ -121,6 +130,45 @@ const ProfileSampleConfigField = lazy(
   () => import('./ProfileSampleConfigField')
 );
 
+const classificationLanguageEnumNames = (
+  (
+    databaseAutoClassificationJson as {
+      properties?: { classificationLanguage?: { enum?: string[] } };
+    }
+  ).properties?.classificationLanguage?.enum ?? []
+).map((v) => capitalize(v));
+
+/**
+ * These two fields first render *after* mount — they live inside the collapsed "Filter patterns"
+ * section, whose children are unmounted until it is expanded. Without their own boundary they
+ * suspend the form-wide one below, which swaps the entire form for a loader; the scroll container
+ * then collapses, the browser clamps scrollTop to 0, and the form repaints at the top. Wrapping
+ * localises the suspension so expanding a section keeps the scroll position.
+ *
+ * Wrapped at module scope, not inside the `useMemo` registries: `withSuspenseFallback` returns a
+ * new component per call, so wrapping per render would remount the field on every re-render.
+ * The remaining lazy fields/templates all render at initial mount, where a form-wide loader is
+ * the correct behaviour, so they are deliberately left alone.
+ */
+const SuspendedFilterPatternField = withSuspenseFallback(FilterPatternField);
+const SuspendedProfileSampleConfigField = withSuspenseFallback(
+  ProfileSampleConfigField
+);
+
+/**
+ * Rendered as a sibling of the RJSF form inside the Suspense boundary, so its
+ * effect can only run once every lazy template above has resolved and the form
+ * ref is attached. Consumers use this to gate an external submit button that
+ * would otherwise silently no-op against a null form ref.
+ */
+const FormReadyNotifier = ({ onReady }: Readonly<{ onReady?: () => void }>) => {
+  useEffect(() => {
+    onReady?.();
+  }, [onReady]);
+
+  return null;
+};
+
 const IngestionWorkflowForm = forwardRef<
   IngestionWorkflowFormHandle,
   IngestionWorkflowFormProps
@@ -133,11 +181,11 @@ const IngestionWorkflowForm = forwardRef<
     hideFooter = false,
     serviceCategory,
     workflowData,
-    operationType,
     onCancel,
     onFocus,
     onSubmit,
     onChange,
+    onReady,
     serviceData,
   }: Readonly<IngestionWorkflowFormProps>,
   ref
@@ -147,11 +195,19 @@ const IngestionWorkflowForm = forwardRef<
     useState<IngestionWorkflowData>(workflowData);
   const { t } = useTranslation();
 
-  const schema = useMemo(
-    () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
+  const schema = useMemo(() => {
+    const workflowSchema = getSchemaByWorkflowType(
+      pipeLineType,
+      serviceCategory
+    );
 
-    [pipeLineType, serviceCategory]
-  );
+    return serviceData?.serviceType === 'BigQuery'
+      ? workflowSchema
+      : {
+          ...workflowSchema,
+          properties: omit(workflowSchema.properties, ['shardedTables']),
+        };
+  }, [pipeLineType, serviceCategory, serviceData?.serviceType]);
 
   const validator = useMemo(
     () => customizeValidator<IngestionWorkflowData>(),
@@ -165,6 +221,9 @@ const IngestionWorkflowForm = forwardRef<
 
   const isIncrementalExtractionSupported =
     serviceData?.connection?.config?.supportsIncrementalMetadataExtraction;
+
+  const isAutoPartitionDetectionSupported =
+    serviceData?.connection?.config?.supportsAutoPartitionDetection;
 
   const uiSchema = useMemo(() => {
     let commonSchema: UiSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
@@ -188,11 +247,38 @@ const IngestionWorkflowForm = forwardRef<
         profileSampleConfig: {
           'ui:field': 'ProfileSampleConfigField',
         },
+        ...(!isAutoPartitionDetectionSupported &&
+          EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA),
+      };
+    }
+
+    if (pipeLineType === PipelineType.AutoClassification) {
+      commonSchema = {
+        ...commonSchema,
+        'ui:options': { compactAdvancedSection: true },
+        classificationLanguage: {
+          'ui:enumNames': classificationLanguageEnumNames,
+        },
+      };
+    }
+
+    // RJSF falls back to its own submit button whenever the form has no
+    // children, which would leave a stray "Submit" next to the wizard footer.
+    if (hideFooter) {
+      commonSchema = {
+        ...commonSchema,
+        'ui:submitButtonOptions': { norender: true },
       };
     }
 
     return commonSchema;
-  }, [pipeLineType, operationType]);
+  }, [
+    hideFooter,
+    isAutoPartitionDetectionSupported,
+    isElasticSearchPipeline,
+    isIncrementalExtractionSupported,
+    pipeLineType,
+  ]);
 
   const handleOnChange = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
@@ -230,7 +316,7 @@ const IngestionWorkflowForm = forwardRef<
       AnyOfField: CoreOneOfField,
       ArrayField: WorkflowArrayFieldTemplate,
       BooleanField: BooleanFieldTemplate,
-      FilterPatternField,
+      FilterPatternField: SuspendedFilterPatternField,
       OneOfField: CoreOneOfField,
     };
 
@@ -244,7 +330,7 @@ const IngestionWorkflowForm = forwardRef<
     }
 
     if (pipeLineType === PipelineType.Profiler) {
-      fields['ProfileSampleConfigField'] = ProfileSampleConfigField;
+      fields['ProfileSampleConfigField'] = SuspendedProfileSampleConfigField;
     }
 
     return fields;
@@ -277,9 +363,22 @@ const IngestionWorkflowForm = forwardRef<
     []
   );
 
+  /**
+   * Workflow markdown only documents a subset of the pipeline fields, so the docs
+   * panel needs the focused field's own schema title/description to fall back on.
+   * Custom fields (arrays, toggles) emit focus through formContext.handleFocus
+   * rather than RJSF's form-level onFocus, so both paths get the enriched handler.
+   */
+  const handleFieldFocus = useCallback(
+    (id: string) => {
+      onFocus(id, getFieldSchemaForId(schema as Record<string, unknown>, id));
+    },
+    [onFocus, schema]
+  );
+
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
-      let formData = { ...e.formData };
+      let formData = formatAdditionalProperties(cloneDeep(e.formData));
       if (isElasticSearchPipeline) {
         formData = {
           ...omit(formData, [
@@ -308,13 +407,20 @@ const IngestionWorkflowForm = forwardRef<
   };
 
   return (
-    <Suspense fallback={<Loader />}>
+    <Suspense
+      fallback={
+        <div data-testid="ingestion-workflow-form-loader">
+          <Loader />
+        </div>
+      }>
+      <FormReadyNotifier onReady={onReady} />
       <Form
         focusOnFirstError
         noHtml5Validate
         className={classNames('rjsf no-header', className)}
+        customValidate={validateOwnerConfigMaps}
         fields={customFields}
-        formContext={{ handleFocus: onFocus }}
+        formContext={{ handleFocus: handleFieldFocus }}
         formData={internalData}
         idSeparator="/"
         ref={formRef}
@@ -332,21 +438,26 @@ const IngestionWorkflowForm = forwardRef<
         validator={validator}
         widgets={widgets}
         onChange={handleOnChange}
-        onFocus={onFocus}
+        onFocus={handleFieldFocus}
         onSubmit={handleSubmit}>
         {/* When hideFooter is true, the parent card renders the footer to span full width
          * and keep the card's bottom border-radius visible during scroll. */}
         {!hideFooter && (
           <div className="d-flex w-full justify-end">
-            <Space>
-              <Button type="link" onClick={onCancel}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <Button color="secondary" onClick={onCancel}>
                 {cancelText ?? t('label.cancel')}
               </Button>
 
-              <Button data-testid="submit-btn" htmlType="submit" type="primary">
+              <Button color="primary" data-testid="submit-btn" type="submit">
                 {okText ?? t('label.save')}
               </Button>
-            </Space>
+            </Box>
           </div>
         )}
       </Form>

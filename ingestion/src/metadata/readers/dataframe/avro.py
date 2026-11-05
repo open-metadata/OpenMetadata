@@ -14,8 +14,8 @@ Avro DataFrame reader - streams records in batches to avoid OOM
 """
 
 import traceback
+from collections.abc import Iterator
 from functools import singledispatchmethod
-from typing import Iterator, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
@@ -34,6 +34,7 @@ from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import return_azure_storage_options
+from metadata.readers.file.gcs import get_gcsfs_auth_options
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import ingestion_logger
@@ -64,8 +65,8 @@ class AvroDataFrameReader(DataFrameReader):
         Stream Avro records in batches from a file-like object.
         Uses fastavro for streaming support.
         """
-        import fastavro  # noqa: PLC0415
-        from pandas import DataFrame  # noqa: PLC0415
+        import fastavro
+        from pandas import DataFrame
 
         batch = []
         for record in fastavro.reader(file_obj):
@@ -77,13 +78,13 @@ class AvroDataFrameReader(DataFrameReader):
             yield DataFrame.from_records(batch)
 
     @staticmethod
-    def _get_avro_columns(file_obj) -> Optional[List[Column]]:  # noqa: UP006, UP045
+    def _get_avro_columns(file_obj) -> list[Column] | None:
         """Extract columns from Avro schema without reading all records."""
-        import json  # noqa: PLC0415
+        import json
 
-        import fastavro  # noqa: PLC0415
+        import fastavro
 
-        from metadata.parsers.avro_parser import parse_avro_schema  # noqa: PLC0415
+        from metadata.parsers.avro_parser import parse_avro_schema
 
         try:
             reader = fastavro.reader(file_obj)
@@ -128,9 +129,9 @@ class AvroDataFrameReader(DataFrameReader):
     @_read_avro_dispatch.register
     def _(self, _: GCSConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """Stream Avro from GCS without loading entire file into memory."""
-        from gcsfs import GCSFileSystem  # noqa: PLC0415
+        from gcsfs import GCSFileSystem
 
-        gcs = GCSFileSystem()
+        gcs = GCSFileSystem(**get_gcsfs_auth_options(self.client))
         file_path = f"gs://{bucket_name}/{key}"
 
         with gcs.open(file_path, "rb") as f:
@@ -145,7 +146,7 @@ class AvroDataFrameReader(DataFrameReader):
     @_read_avro_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """Stream Avro from Azure without loading entire file into memory."""
-        from adlfs import AzureBlobFileSystem  # noqa: PLC0415
+        from adlfs import AzureBlobFileSystem
 
         storage_options = return_azure_storage_options(self.config_source)
         adlfs_fs = AzureBlobFileSystem(

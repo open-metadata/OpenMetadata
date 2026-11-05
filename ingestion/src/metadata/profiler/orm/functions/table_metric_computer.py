@@ -17,8 +17,9 @@ Run profiler metrics on the table
 import traceback
 from abc import ABC, abstractmethod
 from collections import namedtuple
+from collections.abc import Callable, Sequence
 from datetime import datetime as _datetime
-from typing import Callable, List, Optional, Tuple, Type  # noqa: UP035
+from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -32,7 +33,7 @@ from sqlalchemy import (
 )
 from sqlalchemy import text as sa_text
 from sqlalchemy.exc import ProgrammingError
-from sqlalchemy.sql.expression import ColumnOperators, and_, cte
+from sqlalchemy.sql.expression import ColumnElement, ColumnOperators, and_, cte
 from sqlalchemy.types import String
 
 from metadata.generated.schema.entity.data.table import Table as OMTable
@@ -43,6 +44,13 @@ from metadata.generated.schema.entity.services.connections.database.timescaleCon
 from metadata.ingestion.source.database.timescale.queries import (
     TIMESCALE_GET_APPROXIMATE_METRICS,
     TIMESCALE_IS_HYPERTABLE,
+)
+from metadata.profiler.constants import (
+    COLUMN_COUNT,
+    COLUMN_NAMES,
+    CREATE_DATETIME,
+    ROW_COUNT,
+    SIZE_IN_BYTES,
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
@@ -59,19 +67,36 @@ from metadata.utils.logger import profiler_interface_registry_logger
 logger = profiler_interface_registry_logger()
 
 
-COLUMN_COUNT = "columnCount"
-COLUMN_NAMES = "columnNames"
-ROW_COUNT = "rowCount"
-SIZE_IN_BYTES = "sizeInBytes"
-CREATE_DATETIME = "createDateTime"
-
 ERROR_MSG = "Schema/Table name not found in table args. Falling back to default computation"
+
+
+def _qualified_identifier(*names: str) -> str:
+    """Quote untrusted name parts for Hive or Databricks.
+
+    Both delimit with backticks and unescape a doubled one; a backslash is a
+    literal, so doubling the backtick is enough. Impala is different -- see
+    ``_impala_qualified_identifier``.
+    """
+    return ".".join(f"`{name.replace('`', '``')}`" for name in names)
+
+
+def _impala_qualified_identifier(*names: str) -> str:
+    """Quote untrusted name parts for Impala.
+
+    Impala's lexer (``QuotedIdentifier = `(\\.|[^`])*` ``) treats a backslash as
+    an escape and cannot represent a literal backtick, so a name holding either
+    cannot be safely quoted and is rejected rather than quoted.
+    """
+    for name in names:
+        if "`" in name or "\\" in name:
+            raise ValueError(f"Unsupported Impala identifier: {name!r}")
+    return ".".join(f"`{name}`" for name in names)
 
 
 class AbstractTableMetricComputer(ABC):
     """Base table computer"""
 
-    def __init__(self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable):  # noqa: UP006
+    def __init__(self, runner: QueryRunner, metrics: list[Metrics], conn_config, entity: OMTable):
         """Instantiate base table computer"""
         self._runner = runner
         self._metrics = metrics
@@ -134,7 +159,7 @@ class AbstractTableMetricComputer(ABC):
             return Table(table, MetaData(), schema=schema)
         return Table(table, MetaData())
 
-    def _get_col_names_and_count(self) -> Tuple[str, int]:  # noqa: UP006
+    def _get_col_names_and_count(self) -> tuple[str, int]:
         """get column names and count from table
 
         Args:
@@ -149,9 +174,9 @@ class AbstractTableMetricComputer(ABC):
 
     def _build_query(
         self,
-        columns: List[Column],  # noqa: UP006
+        columns: Sequence[ColumnElement[Any]],
         table: Table,
-        where_clause: Optional[List[ColumnOperators]] = None,  # noqa: UP006, UP045
+        where_clause: list[ColumnOperators] | None = None,
     ):
         query = select(*columns).select_from(table)
         if where_clause:
@@ -369,7 +394,7 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
     """MySQL Table Metric Computer"""
 
     @inject
-    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):  # noqa: UP006
+    def compute(self, metrics: Inject[type[MetricRegistry]] = None):
         """compute table metrics for mysql"""
 
         if metrics is None:
@@ -830,7 +855,7 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
     convert to a namedtuple so the date can be patched before returning.
     """
 
-    def _parse_created_datetime(self, value) -> Optional[_datetime]:  # noqa: UP045
+    def _parse_created_datetime(self, value) -> _datetime | None:
         for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y"):
             try:
                 return _datetime.strptime(str(value), fmt)
@@ -845,8 +870,8 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         These FunctionElement subclasses have @compiles(Dialects.Informix) overrides
         that set literal_binds=True, inlining values directly into SQL.
         """
-        from metadata.profiler.metrics.static.column_count import ColumnCountFn  # noqa: PLC0415
-        from metadata.profiler.metrics.static.column_names import ColunNameFn  # noqa: PLC0415
+        from metadata.profiler.metrics.static.column_count import ColumnCountFn
+        from metadata.profiler.metrics.static.column_names import ColunNameFn
 
         col_names = ColunNameFn(literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)).label(
             COLUMN_NAMES
@@ -965,32 +990,64 @@ class TeradataTableMetricComputer(BaseTableMetricComputer):
     """Teradata Table Metric Computer"""
 
     def compute(self):
-        """Compute table metrics for Teradata using DBC.TableSizeV.
+        """Compute table metrics for Teradata.
 
-        TableSizeV may return one row per AMP, so we SUM the values
-        to get the total row count and size.
+        DBC.TableSizeV is a space view with no RowCount column (selecting one
+        raises Teradata error 5628). The approximate row count comes from the
+        table's most recently collected statistics in DBC.TableStatsV; tables
+        without any collected statistics fall back to COUNT(*).
         """
-        columns = [
-            func.sum(Column("CurrentPerm")).label(SIZE_IN_BYTES),
-            func.sum(Column("RowCount")).cast(BigInteger).label(ROW_COUNT),
-            *self._get_col_names_and_count(),
-        ]
-        where_clause = [
+        Result = namedtuple("Result", [ROW_COUNT, SIZE_IN_BYTES, COLUMN_COUNT, COLUMN_NAMES])
+        stats_table = self._build_table("TableStatsV", "DBC")
+        filters = [
+            # Deliberately no IndexNumber filter: statistics not collected
+            # on an index carry a NULL IndexNumber, so restricting to
+            # index/table-level entries would push tables whose only
+            # collected stats are column stats into the COUNT(*) fallback.
             func.trim(Column("DatabaseName")) == self.schema_name,
             func.trim(Column("TableName")) == self.table_name,
         ]
-        query = self._build_query(
-            columns,
-            self._build_table("TableSizeV", "DBC"),
-            where_clause,
+        # TableStatsV keeps one entry per collected statistics definition, so
+        # a definition collected once against a larger table and never
+        # re-collected retains its stale count. Restricting to the latest
+        # collection timestamp reads the freshest estimate; a plain MAX would
+        # report the stale one. Older entries are excluded, and if no entry
+        # carries a timestamp at all nothing matches and the COUNT(*)
+        # fallback applies — correct, albeit slower.
+        latest_ts_subquery = (
+            select(func.max(Column("LastCollectTimeStamp"))).select_from(stats_table).where(*filters).scalar_subquery()
         )
-
-        res = self.runner._session.execute(query).first()
-        if not res:
-            return None
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        stats_query = self._build_query(
+            [func.max(Column("RowCount")).cast(BigInteger).label(ROW_COUNT)],
+            stats_table,
+            [*filters, Column("LastCollectTimeStamp") == latest_ts_subquery],
+        )
+        stats_res = self.runner._session.execute(stats_query).first()
+        if (
+            not stats_res
+            or stats_res.rowCount is None
+            or (stats_res.rowCount == 0 and self._entity.tableType == TableType.View)
+        ):
+            # no collected statistics: fall back to COUNT(*)
             return super().compute()
-        return res
+
+        size_query = self._build_query(
+            [func.sum(Column("CurrentPerm")).label(SIZE_IN_BYTES)],
+            self._build_table("TableSizeV", "DBC"),
+            [
+                func.trim(Column("DatabaseName")) == self.schema_name,
+                func.trim(Column("TableName")) == self.table_name,
+            ],
+        )
+        size_res = self.runner._session.execute(size_query).first()
+        size_in_bytes = size_res.sizeInBytes if size_res else None
+
+        return Result(
+            rowCount=stats_res.rowCount,
+            sizeInBytes=size_in_bytes,
+            columnNames=",".join(inspect(self.runner.raw_dataset).c.keys()),
+            columnCount=len(inspect(self.runner.raw_dataset).c),
+        )
 
 
 class _StatsBasedTableMetricComputer(BaseTableMetricComputer):
@@ -1013,7 +1070,9 @@ class TrinoTableMetricComputer(_StatsBasedTableMetricComputer):
     def compute(self):
         """Extract row_count from SHOW STATS FOR. The summary row
         (where column_name IS NULL) contains the table-level row_count."""
-        query = sa_text(f'SHOW STATS FOR "{self.schema_name}"."{self.table_name}"')
+        # Schema and table names come from the source system, so they are untrusted.
+        quote = self.runner._session.get_bind().dialect.identifier_preparer.quote_identifier
+        query = sa_text(f"SHOW STATS FOR {quote(self.schema_name)}.{quote(self.table_name)}")
         rows = self.runner._session.execute(query)
         for row in rows:
             row_dict = row._asdict()
@@ -1031,7 +1090,7 @@ class HiveTableMetricComputer(_StatsBasedTableMetricComputer):
         """Parse numRows from DESCRIBE FORMATTED output.
         Hive returns 3-column rows: (col_name, data_type, comment).
         After ANALYZE, a row with data_type='numRows' contains the count in comment."""
-        query = sa_text(f"DESCRIBE FORMATTED `{self.schema_name}`.`{self.table_name}`")
+        query = sa_text(f"DESCRIBE FORMATTED {_qualified_identifier(self.schema_name, self.table_name)}")
         rows = self.runner._session.execute(query).fetchall()
         for row in rows:
             try:
@@ -1051,7 +1110,7 @@ class ImpalaTableMetricComputer(_StatsBasedTableMetricComputer):
 
     def compute(self):
         """Sum #Rows across partitions from SHOW TABLE STATS."""
-        query = sa_text(f"SHOW TABLE STATS `{self.schema_name}`.`{self.table_name}`")
+        query = sa_text(f"SHOW TABLE STATS {_impala_qualified_identifier(self.schema_name, self.table_name)}")
         rows = self.runner._session.execute(query).fetchall()
         total_rows = 0
         for row in rows:
@@ -1069,7 +1128,9 @@ class DatabricksTableMetricComputer(_StatsBasedTableMetricComputer):
 
     def compute(self):
         """Extract numRecords from DESCRIBE DETAIL."""
-        query = sa_text(f"DESCRIBE DETAIL `{self.schema_name}`.`{self.table_name}`")
+        if self._entity.tableType in (TableType.View, TableType.MaterializedView):
+            return super().compute()
+        query = sa_text(f"DESCRIBE DETAIL {_qualified_identifier(self.schema_name, self.table_name)}")
         result = self.runner._session.execute(query).first()
         if result:
             row_dict = result._asdict()
@@ -1086,7 +1147,7 @@ class TableMetricComputer:
         self,
         dialect: str,
         runner: QueryRunner,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         conn_config,
         entity: OMTable,
     ):

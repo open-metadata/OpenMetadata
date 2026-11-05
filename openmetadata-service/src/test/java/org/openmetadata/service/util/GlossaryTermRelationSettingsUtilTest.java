@@ -51,8 +51,36 @@ class GlossaryTermRelationSettingsUtilTest {
 
     GlossaryTermRelationSettingsUtil.normalize(relationType);
 
+    assertNull(relationType.getSourceMax());
+    assertEquals(1, relationType.getTargetMax());
+  }
+
+  @Test
+  void normalizeAppliesManyToOnePresetCardinalityLimits() {
+    GlossaryTermRelationType relationType =
+        relationType("belongsTo")
+            .withCardinality(RelationCardinality.MANY_TO_ONE)
+            .withSourceMax(9)
+            .withTargetMax(9);
+
+    GlossaryTermRelationSettingsUtil.normalize(relationType);
+
     assertEquals(1, relationType.getSourceMax());
     assertNull(relationType.getTargetMax());
+  }
+
+  @Test
+  void normalizeDerivesDirectionalCardinalityFromLimits() {
+    GlossaryTermRelationType oneToMany =
+        relationType("contains").withSourceMax(null).withTargetMax(1);
+    GlossaryTermRelationType manyToOne =
+        relationType("belongsTo").withSourceMax(1).withTargetMax(null);
+
+    GlossaryTermRelationSettingsUtil.normalize(oneToMany);
+    GlossaryTermRelationSettingsUtil.normalize(manyToOne);
+
+    assertEquals(RelationCardinality.ONE_TO_MANY, oneToMany.getCardinality());
+    assertEquals(RelationCardinality.MANY_TO_ONE, manyToOne.getCardinality());
   }
 
   @Test
@@ -91,6 +119,109 @@ class GlossaryTermRelationSettingsUtilTest {
         () ->
             GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(
                 current, updated));
+  }
+
+  @Test
+  void validateSystemDefinedRelationTypesRejectsFieldModification() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(relationType("partOf").withIsSystemDefined(true).withIsTransitive(false)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(relationType("partOf").withIsSystemDefined(true).withIsTransitive(true)));
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () ->
+                GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(
+                    current, updated));
+
+    assertEquals("Cannot modify system-defined relation types: partOf", exception.getMessage());
+  }
+
+  @Test
+  void validateSystemDefinedRelationTypesRejectsNewSystemDefinedType() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(List.of(relationType("partOf").withIsSystemDefined(true)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(
+                    relationType("partOf").withIsSystemDefined(true),
+                    relationType("fakeSys").withIsSystemDefined(true)));
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () ->
+                GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(
+                    current, updated));
+
+    assertEquals(
+        "Cannot create or promote system-defined relation types: fakeSys", exception.getMessage());
+  }
+
+  @Test
+  void validateSystemDefinedRelationTypesRejectsPromotionOfCustomType() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(
+                    relationType("partOf").withIsSystemDefined(true),
+                    relationType("dependsOn").withIsSystemDefined(false)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(
+                    relationType("partOf").withIsSystemDefined(true),
+                    relationType("dependsOn").withIsSystemDefined(true)));
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () ->
+                GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(
+                    current, updated));
+
+    assertEquals(
+        "Cannot create or promote system-defined relation types: dependsOn",
+        exception.getMessage());
+  }
+
+  @Test
+  void validateSystemDefinedRelationTypesAllowsCustomTypeModification() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(
+                    relationType("dependsOn").withIsSystemDefined(false).withIsTransitive(false)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(
+                    relationType("dependsOn").withIsSystemDefined(false).withIsTransitive(true)));
+
+    // Custom (non system-defined) relation types remain fully editable.
+    GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(current, updated);
+  }
+
+  @Test
+  void validateSystemDefinedRelationTypesAllowsUnchangedSystemType() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(relationType("partOf").withIsSystemDefined(true).withIsTransitive(false)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(relationType("partOf").withIsSystemDefined(true).withIsTransitive(false)));
+
+    // Re-saving system-defined types unchanged (e.g. alongside a new custom type) must be allowed.
+    GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(current, updated);
   }
 
   private GlossaryTermRelationType relationType(String name) {

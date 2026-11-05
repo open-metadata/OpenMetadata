@@ -11,11 +11,26 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 import { SOCKET_EVENTS } from '../../constants/constants';
-import { exportAuditLogs, getAuditLogs } from '../../rest/auditLogAPI';
+import { User } from '../../generated/entity/teams/user';
+import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import {
+  exportAuditLogs,
+  getAuditLogExportJob,
+  getAuditLogExportResult,
+  getAuditLogs,
+} from '../../rest/auditLogAPI';
 import {
   AuditLogEntry,
   AuditLogListResponse,
@@ -60,16 +75,44 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <div data-testid={testId}>{children}</div>
     )),
+  DateRangePicker: jest
+    .fn()
+    .mockImplementation(({ onChange, onApply, 'data-testid': testId }) => {
+      const day = {
+        toDate: () => new Date(0),
+        add: () => ({ toDate: () => new Date(86_400_000) }),
+      };
+
+      return (
+        <>
+          <button
+            data-testid={testId}
+            type="button"
+            onClick={() => onChange({ start: day, end: day })}>
+            range
+          </button>
+          <button
+            data-testid={`${testId}-apply`}
+            type="button"
+            onClick={() => onApply?.()}>
+            apply
+          </button>
+        </>
+      );
+    }),
   Input: jest
     .fn()
     .mockImplementation(({ value, onChange, inputDataTestId, placeholder }) => (
       <input
+        aria-label="Search"
         data-testid={inputDataTestId}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
       />
     )),
+  SimpleModal: jest.requireActual('@openmetadata/ui-core-components')
+    .SimpleModal,
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
@@ -126,8 +169,12 @@ const mockSocket = {
 jest.mock('../../rest/auditLogAPI', () => ({
   getAuditLogs: jest.fn(),
   exportAuditLogs: jest.fn(),
+  getAuditLogExportJob: jest.fn(),
+  getAuditLogExportResult: jest.fn(),
 }));
 
+// The real range picker cannot be driven from jsdom, so expose a button that
+// hands the page a valid range and lets the export flow run end to end.
 jest.mock('../../components/PageHeader/PageHeader.component', () =>
   jest.fn().mockReturnValue(<div data-testid="page-header">Page Header</div>)
 );
@@ -155,6 +202,7 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
           {onShowSizeChange && (
             <div
               data-testid="page-size-selection-dropdown"
+              role="presentation"
               onClick={() => {
                 // Simulate opening dropdown and selecting 50
                 // In a real Antd dropdown, this would be a separate click
@@ -182,8 +230,9 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
     ));
 });
 
-jest.mock('../../components/AuditLog', () => ({
-  AuditLogFilters: jest.fn().mockImplementation(({ onFiltersChange }) => (
+jest.mock('../../components/AuditLog/AuditLogFilters.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ onFiltersChange }) => (
     <div data-testid="audit-log-filters">
       <button
         data-testid="apply-filter"
@@ -202,7 +251,11 @@ jest.mock('../../components/AuditLog', () => ({
       </button>
     </div>
   )),
-  AuditLogList: jest
+}));
+
+jest.mock('../../components/AuditLog/AuditLogList.component', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(({ isLoading, logs }) => (
       <div data-testid="audit-log-list">
@@ -266,6 +319,8 @@ jest.mock('../../components/common/Banner/Banner', () =>
 
 const mockGetAuditLogs = getAuditLogs as jest.Mock;
 const mockExportAuditLogs = exportAuditLogs as jest.Mock;
+const mockGetAuditLogExportJob = getAuditLogExportJob as jest.Mock;
+const mockGetAuditLogExportResult = getAuditLogExportResult as jest.Mock;
 const mockShowErrorToast = showErrorToast as jest.Mock;
 
 describe('AuditLogsPage', () => {
@@ -284,6 +339,32 @@ describe('AuditLogsPage', () => {
       );
 
       await waitFor(() => expect(mockGetAuditLogs).toHaveBeenCalledTimes(1));
+    });
+
+    it('starts from the page size the user last picked', async () => {
+      // Real stores: a signed-in user whose saved list size is 50, not the page's old fixed 25.
+      const previousUser = useApplicationStore.getState().currentUser;
+      useApplicationStore.setState({
+        currentUser: { ...previousUser, name: 'audit-user' } as User,
+      });
+      usePersistentStorage
+        .getState()
+        .setUserPreference('audit-user', { globalPageSize: 50 });
+
+      render(
+        <MemoryRouter>
+          <AuditLogsPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() =>
+        expect(mockGetAuditLogs).toHaveBeenCalledWith(
+          expect.objectContaining({ limit: 50 })
+        )
+      );
+
+      usePersistentStorage.getState().clearUserPreference('audit-user');
+      useApplicationStore.setState({ currentUser: previousUser });
     });
 
     it('displays loading state initially', async () => {
@@ -657,11 +738,11 @@ describe('AuditLogsPage', () => {
         expect(screen.getByText('label.export-entity')).toBeInTheDocument();
       });
 
-      // Find the primary button in modal footer (Export button)
-      const modalFooter = document.querySelector('.ant-modal-footer');
-      const okButton = modalFooter?.querySelector('button.ant-btn-primary');
-
-      expect(okButton).toBeDisabled();
+      expect(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: 'label.export',
+        })
+      ).toBeDisabled();
     });
 
     it('shows error toast when export fails', async () => {
@@ -743,6 +824,66 @@ describe('AuditLogsPage', () => {
         SOCKET_EVENTS.CSV_EXPORT_CHANNEL,
         expect.any(Function)
       );
+    });
+
+    // The completion event only reaches sockets held by the server that ran the
+    // job, so on a multi-server deployment the modal must finish without one.
+    it('completes the export by polling when no websocket event arrives', async () => {
+      // Reset, not clear: clearAllMocks keeps queued mockRejectedValueOnce entries,
+      // and an earlier test leaves one behind.
+      mockExportAuditLogs.mockReset();
+      mockExportAuditLogs.mockResolvedValue({
+        jobId: '42',
+        message: 'Export queued.',
+      });
+      mockGetAuditLogExportJob
+        .mockResolvedValueOnce({ jobId: '42', status: 'RUNNING' })
+        .mockResolvedValue({ jobId: '42', status: 'COMPLETED' });
+      mockGetAuditLogExportResult.mockResolvedValue('[{"id":"1"}]');
+
+      render(
+        <MemoryRouter>
+          <AuditLogsPage />
+        </MemoryRouter>
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('export-audit-logs-button'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('export-date-range-picker'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('export-date-range-picker-apply'));
+      });
+      await act(async () => {
+        fireEvent.click(
+          within(screen.getByRole('dialog')).getByRole('button', {
+            name: 'label.export',
+          })
+        );
+      });
+
+      expect(mockExportAuditLogs).toHaveBeenCalled();
+
+      // The export request resolves on a microtask; flush it so the job id lands
+      // in state and the polling effect can schedule.
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      // The job is now in flight, and no socket message is ever delivered here.
+      expect(screen.getByTestId('banner')).toBeInTheDocument();
+      expect(mockGetAuditLogExportResult).not.toHaveBeenCalled();
+
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+      });
+
+      expect(mockGetAuditLogExportResult).toHaveBeenCalledWith('42');
     });
 
     it('handles IN_PROGRESS status from WebSocket', async () => {

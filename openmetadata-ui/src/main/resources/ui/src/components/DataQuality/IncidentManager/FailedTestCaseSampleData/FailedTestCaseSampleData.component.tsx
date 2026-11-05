@@ -11,24 +11,31 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import {
+  Box,
+  Button,
+  Table,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../../enums/Axios.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   TableData,
+  TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
@@ -59,12 +66,24 @@ const DIFF_TYPE_VALUES = {
 
 type SampleDataColumn = {
   id: string;
+  name: string;
   label: string;
 };
 
 type LocalSampleData = {
   columns: SampleDataColumn[];
   rows: Record<string, SampleDataType>[];
+};
+
+const isFailedRowsSampleExpected = (testCaseResult?: TestCaseResult) => {
+  switch (testCaseResult?.testCaseStatus) {
+    case TestCaseStatus.Failed:
+      return true;
+    case TestCaseStatus.Success:
+      return (testCaseResult.failedRows ?? 0) > 0;
+    default:
+      return false;
+  }
 };
 
 const FailedTestCaseSampleData = ({
@@ -86,6 +105,11 @@ const FailedTestCaseSampleData = ({
         ? getColumnNameFromEntityLink(testCaseData?.entityLink)
         : undefined,
     [testCaseData]
+  );
+
+  const diffColumnId = useMemo(
+    () => sampleData?.columns.find((col) => col.name === DIFF_TYPE)?.id,
+    [sampleData]
   );
 
   const hasViewSampleDataPermission = useMemo(() => {
@@ -110,14 +134,14 @@ const FailedTestCaseSampleData = ({
     setIsDeleteModalOpen((prev) => !prev);
   };
 
-  const manageButtonContent: ItemType[] = [
+  const manageButtonContent: ManageMenuItem[] = [
     {
       label: (
         <ManageButtonItemLabel
           description={t('message.delete-entity-type-action-description', {
             entityType: t('label.sample-data'),
           })}
-          icon={IconDelete}
+          icon={Trash01}
           id="delete-button"
           name={t('label.delete')}
         />
@@ -132,17 +156,20 @@ const FailedTestCaseSampleData = ({
   ];
 
   const getSampleDataWithType = (tableData: TableData): LocalSampleData => {
+    // Sample columns come from a query projection, so names can repeat; the Table
+    // collection requires unique column ids.
     const columns: SampleDataColumn[] = (tableData?.columns ?? []).map(
-      (column) => ({
-        id: column,
+      (column, index) => ({
+        id: `${index}-${column}`,
+        name: column,
         label: column === DIFF_TYPE ? '' : column,
       })
     );
 
     const rows = (tableData?.rows ?? []).map((item, index) => {
       const dataObject: Record<string, SampleDataType> = {};
-      (tableData?.columns ?? []).forEach((col, colIndex) => {
-        dataObject[col] = item[colIndex];
+      columns.forEach((col, colIndex) => {
+        dataObject[col.id] = item[colIndex];
       });
       dataObject[ROW_KEY] = index;
 
@@ -153,10 +180,11 @@ const FailedTestCaseSampleData = ({
   };
 
   // `isStale` guards against a late response overwriting state after the test
-  // case has changed (e.g. status moved away from Failed) while the request was
+  // case or result has changed while the request was
   // in flight — otherwise the resolved response would restore stale rows.
   const fetchFailedTestCaseSampleData = async (isStale?: () => boolean) => {
     if (testCaseData?.id) {
+      setSampleData(undefined);
       setIsLoading(true);
       try {
         const response = await getTestCaseFailedSampleData(testCaseData.id);
@@ -167,8 +195,8 @@ const FailedTestCaseSampleData = ({
         if (!isStale?.()) {
           setSampleData(undefined);
           // A 404 is the backend's expected "no failed-rows sample stored"
-          // response (samples exist only for failing test cases with row-count
-          // computation enabled) — treat it as an empty state, not an error.
+          // response (sampling may be disabled or may have failed) — treat it
+          // as an empty state, not an error.
           // Any other status (e.g. 403/500) is a real failure worth surfacing.
           if (
             (error as AxiosError)?.response?.status !== ClientErrors.NOT_FOUND
@@ -177,11 +205,11 @@ const FailedTestCaseSampleData = ({
           }
         }
       } finally {
-        setIsLoading(false);
+        if (!isStale?.()) {
+          setIsLoading(false);
+        }
       }
     }
-
-    return;
   };
 
   const handleDeleteSampleData = async () => {
@@ -202,24 +230,23 @@ const FailedTestCaseSampleData = ({
         setIsDeleting(false);
       }
     }
-
-    return;
   };
 
-  // Failed-rows samples are only ever stored for a failing test case, so the
-  // fetch is pointless (and guaranteed to 404) for any other status. Gating
-  // here avoids the request entirely for passing/aborted/queued test cases.
-  const isTestCaseFailed =
-    testCaseData?.testCaseResult?.testCaseStatus === TestCaseStatus.Failed;
+  // Failed-rows samples are only stored for a run that found failed rows: a
+  // failing run, or a passing run that stayed within its failure threshold.
+  // Any other result is guaranteed to 404, so skip the request entirely.
+  // See ADR:2026-10-09-failed-rows-sample-follows-failed-rows-not-status.
+  const hasFailedRows = isFailedRowsSampleExpected(
+    testCaseData?.testCaseResult
+  );
 
   useEffect(() => {
     let cancelled = false;
-    if (hasViewSampleDataPermission && isTestCaseFailed) {
+    if (hasViewSampleDataPermission && hasFailedRows) {
       fetchFailedTestCaseSampleData(() => cancelled);
     } else {
       // Clear any previously loaded sample so it doesn't linger when the test
-      // case is no longer failing (e.g. a status change on the mounted page),
-      // and reset loading so a non-failed test case shows its empty state
+      // case no longer has failed rows, and reset loading so it shows its empty state
       // immediately instead of waiting on any in-flight request.
       setSampleData(undefined);
       setIsLoading(false);
@@ -228,7 +255,20 @@ const FailedTestCaseSampleData = ({
     return () => {
       cancelled = true;
     };
-  }, [testCaseData?.id, hasViewSampleDataPermission, isTestCaseFailed]);
+    // `testCaseResult.timestamp` is the run-identity signal: it changes on
+    // every run completion, so a re-run that stays `Failed` with the same id
+    // triggers a refetch instead of showing the previous run's rows. It is a
+    // primitive (required on every TestCaseResult), so unrelated `testCaseData`
+    // object replacements (e.g. owner/tag edits carrying the same result
+    // reference) do not spuriously refetch.
+  }, [
+    testCaseData?.id,
+    testCaseData?.testCaseResult?.timestamp,
+    testCaseData?.testCaseResult?.testCaseStatus,
+    testCaseData?.testCaseResult?.failedRows,
+    hasViewSampleDataPermission,
+    hasFailedRows,
+  ]);
 
   if (!hasViewSampleDataPermission) {
     return <></>;
@@ -244,49 +284,47 @@ const FailedTestCaseSampleData = ({
 
   return (
     <div className="w-full">
-      <Space className="m-b-md justify-between w-full">
-        <Typography className="right-panel-label" size="text-sm">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal m-b-md justify-between w-full"
+        gap={2}
+        itemClassName="layout-space-item">
+        {/* not-prose: Typography wraps a heading in .prose, whose h2 style
+            (24px, margins) would otherwise outrank the size classes. */}
+        <Typography
+          as="h2"
+          className="not-prose tw:m-0 tw:text-primary"
+          size="text-md"
+          weight="bold">
           {t('label.sample-data')}
         </Typography>
-        <div className="d-flex gap-4">
+        <Box gap={4}>
           {testCaseData?.inspectionQuery && !isVersionPage && (
-            <Link
-              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+            <Button
+              color="primary"
+              data-testid="explore-with-query"
+              href={observabilityRouterClassBase.getTestCaseDetailPagePath(
                 testCaseData?.fullyQualifiedName ?? '',
                 TestCasePageTabs.SQL_QUERY
-              )}>
-              <Button data-testid="explore-with-query" type="primary">
-                {t('label.explore-with-query')}
-              </Button>
-            </Link>
+              )}
+              size="md">
+              {t('label.explore-with-query')}
+            </Button>
           )}
           {hasEditPermission && (
-            <Dropdown
-              menu={{
-                items: manageButtonContent,
-              }}
-              open={showActions}
-              overlayClassName="manage-dropdown-list-container"
-              overlayStyle={{ width: '350px' }}
-              placement="bottomRight"
-              trigger={['click']}
-              onOpenChange={setShowActions}>
-              <Tooltip
-                placement="topLeft"
-                title={t('label.manage-entity', {
-                  entity: t('label.sample-data'),
-                })}>
-                <Button
-                  className="flex-center px-1.5"
-                  data-testid="sample-data-manage-button"
-                  onClick={() => setShowActions(true)}>
-                  <IconDropdown className="anticon self-center " />
-                </Button>
-              </Tooltip>
-            </Dropdown>
+            <ManageMenu
+              data-testid="sample-data-manage-button"
+              isOpen={showActions}
+              items={manageButtonContent}
+              label={t('label.manage-entity', {
+                entity: t('label.sample-data'),
+              })}
+              onOpenChange={setShowActions}
+            />
           )}
-        </div>
-      </Space>
+        </Box>
+      </Box>
       <div className="tw:overflow-x-auto tw:border tw:border-border-secondary tw:rounded-[10px]">
         <Table
           aria-label={t('label.sample-data')}
@@ -296,7 +334,7 @@ const FailedTestCaseSampleData = ({
             {(col) => (
               <Table.Head
                 className={classNames('tw:px-2 tw:py-2', {
-                  'tw:min-w-52.5': col.id !== DIFF_TYPE,
+                  'tw:min-w-52.5': col.name !== DIFF_TYPE,
                 })}
                 id={col.id}
                 key={col.id}
@@ -306,21 +344,21 @@ const FailedTestCaseSampleData = ({
           </Table.Header>
           <Table.Body items={sampleData.rows}>
             {(record) => {
-              const diffType = record[DIFF_TYPE];
+              const diffType = record[diffColumnId ?? DIFF_TYPE];
 
               return (
                 <Table.Row
                   className={classNames({
                     'tw:bg-success-primary': diffType === DIFF_TYPE_VALUES.ADD,
-                    'tw:bg-gray-50': diffType === DIFF_TYPE_VALUES.NOT_EQUAL,
+                    'tw:bg-secondary': diffType === DIFF_TYPE_VALUES.NOT_EQUAL,
                     'tw:bg-error-primary': diffType === DIFF_TYPE_VALUES.REMOVE,
                   })}
                   columns={sampleData.columns}
                   id={record[ROW_KEY] as number}
                   key={record[ROW_KEY] as number}>
                   {(col) => {
-                    const isDiffCol = col.id === DIFF_TYPE;
-                    const isFailedCol = col.id === columnName;
+                    const isDiffCol = col.name === DIFF_TYPE;
+                    const isFailedCol = col.name === columnName;
 
                     return (
                       <Table.Cell
@@ -336,7 +374,7 @@ const FailedTestCaseSampleData = ({
                             className={classNames({
                               'tw:text-success-primary':
                                 diffType === DIFF_TYPE_VALUES.ADD,
-                              'tw:text-gray-500':
+                              'tw:text-tertiary':
                                 diffType === DIFF_TYPE_VALUES.NOT_EQUAL,
                               'tw:text-error-primary':
                                 diffType === DIFF_TYPE_VALUES.REMOVE,

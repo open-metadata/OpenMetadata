@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { test } from '@playwright/test';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
+import { ApiServiceClass } from '../../../support/entity/service/ApiServiceClass';
+import { test } from '../../../support/fixtures/base';
 import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -20,5 +21,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 registerFilterSeparationSuite({
   suiteName: 'ApiEndpoint',
   reindexEntityType: 'apiEndpoint',
-  entityFactory: () => new ApiEndpointClass(),
+  // The service facet only isolates this entity if it owns its service.
+  entityFactory: () => new ApiEndpointClass({ service: new ApiServiceClass() }),
 });

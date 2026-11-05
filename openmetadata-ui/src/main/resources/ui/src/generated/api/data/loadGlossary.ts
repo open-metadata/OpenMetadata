@@ -408,11 +408,11 @@ export interface CreateGlossaryTermRequest {
 }
 
 /**
- * Mapping to an external concept (e.g., SKOS concept IRI).
+ * Mapping from an ontology term to an external concept.
  */
 export interface ConceptMapping {
     /**
-     * External concept IRI to map this glossary term to.
+     * External concept IRI to map this ontology term to.
      */
     conceptIri: string;
     /**

@@ -276,12 +276,6 @@ public class ReindexingMetrics {
     pendingBulkRequests.decrementAndGet();
   }
 
-  // --- Backpressure ---
-
-  public void recordBackpressureEvent() {
-    backpressureEvents.increment();
-  }
-
   // --- Promotion metrics (dynamic tags) ---
 
   public void recordPromotionSuccess(String entityType) {
@@ -322,17 +316,5 @@ public class ReindexingMetrics {
                     .tag("transition", t)
                     .register(meterRegistry))
         .increment();
-  }
-
-  // --- Vector timeouts ---
-
-  public void recordVectorTimeout(int pendingCount) {
-    vectorTimeouts.increment();
-  }
-
-  // --- Queue fill ratio ---
-
-  public void updateQueueFillRatio(int percent) {
-    queueFillRatio.set(percent);
   }
 }

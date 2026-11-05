@@ -23,6 +23,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { getMarketplaceSidebarConfig } from '../../constants/CustomSidebar.constants';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { isNewLayoutRoute } from '../../utils/LayoutUtils';
+import { getSidebarPathname } from '../../utils/LeftSidebarUtils';
 import BrandImage from '../common/BrandImage/BrandImage';
 import './app-sidebar.less';
 
@@ -51,7 +52,7 @@ const EXPANDED_WIDTH = 197;
 
 const Sidebar = ({ className }: SidebarProps) => {
   const { t } = useTranslation();
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const {
     preferences: { isSidebarCollapsed: collapsed },
   } = useCurrentUserPreferences();
@@ -63,8 +64,8 @@ const Sidebar = ({ className }: SidebarProps) => {
     [config]
   );
   const activeUrl = useMemo(
-    () => getActiveUrl(pathname, allItems),
-    [pathname, allItems]
+    () => getActiveUrl(getSidebarPathname(pathname, state), allItems),
+    [pathname, state, allItems]
   );
 
   if (!isNewLayoutRoute(pathname)) {

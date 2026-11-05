@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
@@ -43,7 +43,11 @@ test.beforeAll(async ({ browser }) => {
 test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await tag.delete(apiContext);
-  await classification.delete(apiContext);
+  // System classifications cannot be deleted or downgraded. Disable this
+  // mutable fixture until the shard's isolated database is discarded.
+  await classification.patch(apiContext, [
+    { op: 'add', path: '/disabled', value: true },
+  ]);
   await afterAction();
 });
 

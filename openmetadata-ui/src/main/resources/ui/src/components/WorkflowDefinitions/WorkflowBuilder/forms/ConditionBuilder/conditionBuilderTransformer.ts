@@ -96,6 +96,29 @@ export function rulesToRows(
   return rows;
 }
 
+function resolveConditionBuilderRules(
+  rules: ConditionRulesMap | undefined,
+  legacyInclude: ConditionRulesMap | undefined
+): ConditionRulesMap | null {
+  if (
+    rules &&
+    typeof rules === 'object' &&
+    !Array.isArray(rules) &&
+    Object.keys(rules).length > 0
+  ) {
+    return rules;
+  }
+  if (
+    legacyInclude &&
+    typeof legacyInclude === 'object' &&
+    !Array.isArray(legacyInclude)
+  ) {
+    return legacyInclude;
+  }
+
+  return null;
+}
+
 /**
  * Parse payload into rows and condition. Supports config.rules (object) and config.include (legacy).
  */
@@ -107,25 +130,9 @@ export function parseConditionBuilderPayload(
   }
   const { config } = payload;
   const condition = config.condition ?? 'OR';
-  const rules = config.rules;
   const legacyInclude = (config as { include?: ConditionRulesMap }).include;
 
-  let rulesObj: ConditionRulesMap | null = null;
-  if (
-    rules &&
-    typeof rules === 'object' &&
-    !Array.isArray(rules) &&
-    Object.keys(rules).length > 0
-  ) {
-    rulesObj = rules;
-  } else if (
-    legacyInclude &&
-    typeof legacyInclude === 'object' &&
-    !Array.isArray(legacyInclude)
-  ) {
-    rulesObj = legacyInclude;
-  }
-
+  const rulesObj = resolveConditionBuilderRules(config.rules, legacyInclude);
   const rows = rulesObj ? rulesToRows(rulesObj) : [];
 
   return { rows, condition };

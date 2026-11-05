@@ -17,20 +17,20 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.type.Relationship.OWNS;
-import static org.openmetadata.service.Entity.CONTAINER;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Suppliers;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -41,15 +41,18 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
+import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
@@ -72,25 +75,23 @@ import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TableObservabilityData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.EntityExtensionTimeSeriesDAO.PipelineStatusFilter;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -127,60 +128,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setFullyQualifiedName(
         FullyQualifiedName.add(pipeline.getService().getFullyQualifiedName(), pipeline.getName()));
     setTaskFQN(pipeline.getFullyQualifiedName(), pipeline.getTasks());
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals(TASKS_FIELD)) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new TaskDescriptionWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new TaskTagWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  static class TaskDescriptionWorkflow extends DescriptionTaskWorkflow {
-    private final Task task;
-
-    TaskDescriptionWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      Pipeline pipeline =
-          Entity.getEntity(CONTAINER, threadContext.getAboutEntity().getId(), "tasks", ALL);
-      threadContext.setAboutEntity(pipeline);
-      task = findTask(pipeline.getTasks(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      task.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class TaskTagWorkflow extends TagTaskWorkflow {
-    private final Task task;
-
-    TaskTagWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      Pipeline pipeline =
-          Entity.getEntity(CONTAINER, threadContext.getAboutEntity().getId(), "tasks,tags", ALL);
-      threadContext.setAboutEntity(pipeline);
-      task = findTask(pipeline.getTasks(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      task.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
   }
 
   @Override
@@ -328,15 +275,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setService(getContainer(pipeline.getId()));
 
     // validate all the Tasks
-    for (Status taskStatus : pipelineStatus.getTaskStatus()) {
-      validateTask(pipeline, taskStatus.getName());
+    validateTasks(pipeline, List.of(pipelineStatus));
+
+    StatusChange statusChange =
+        resolveStatusChange(pipeline.getFullyQualifiedName(), pipelineStatus);
+    if (statusChange.outcome() == StatusOutcome.UNCHANGED) {
+      // A re-sent identical status writes nothing: every ES call here forces a segment refresh, and
+      // ENTITY_NO_CHANGE keeps ChangeEventHandler from emitting an event the alert would fire on.
+      return new RestUtil.PutResponse<>(
+          Response.Status.OK, pipeline.withPipelineStatus(pipelineStatus), ENTITY_NO_CHANGE);
     }
 
-    // Pipeline status is from the pipeline execution. There is no gurantee that it is unique as it
-    // is unrelated to workflow execution. We should bring back the old behavior for this one.
-    String storedPipelineStatus =
-        getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
-    if (storedPipelineStatus != null) {
+    if (statusChange.outcome() == StatusOutcome.UPDATED) {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .update(
@@ -352,21 +302,15 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           JsonUtils.pojoToJson(pipelineStatus));
     }
 
-    ChangeDescription change =
-        addPipelineStatusChangeDescription(
-            pipeline.getVersion(), pipelineStatus, storedPipelineStatus);
-    pipeline.setPipelineStatus(pipelineStatus);
-    pipeline.setChangeDescription(change);
-    pipeline.setIncrementalChangeDescription(change);
+    applyStatusChange(pipeline, pipelineStatus, statusChange.previous());
 
-    // Store PROV-O execution details in RDF
-    if (RdfUpdater.isEnabled()) {
-      storePipelineExecutionInRdf(pipeline, pipelineStatus);
-    }
+    // PROV-O execution details reach RDF through the durable live-write queue.
+    RdfUpdater.recordPipelineExecution(pipeline.getId(), pipelineStatus.getTimestamp());
 
     // Index pipeline execution in Elasticsearch for analytics
     try {
-      indexPipelineExecutionInES(pipeline, pipelineStatus);
+      indexPipelineExecutionInES(
+          PipelineExecutionIndex.withAccessFields(pipeline.getEntityReference()), pipelineStatus);
     } catch (Exception e) {
       LOG.error("Failed to index pipeline execution in Elasticsearch", e);
       // Don't fail the entire operation if ES indexing fails
@@ -386,58 +330,181 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   public RestUtil.PutResponse<?> addBulkPipelineStatus(
-      String fqn, List<PipelineStatus> pipelineStatuses) {
+      String fqn, List<PipelineStatus> pipelineStatuses, String updatedBy) {
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
 
-    if (pipelineStatuses == null || pipelineStatuses.isEmpty()) {
+    // Postgres ON CONFLICT rejects duplicate keys within one statement, so collapse them first.
+    List<PipelineStatus> incoming = dedupeByTimestamp(pipelineStatuses);
+    if (incoming.isEmpty()) {
       return new RestUtil.PutResponse<>(Response.Status.OK, pipeline, ENTITY_NO_CHANGE);
     }
+    validateTasks(pipeline, incoming);
 
-    Set<String> validatedTasks = new HashSet<>();
-    for (PipelineStatus pipelineStatus : pipelineStatuses) {
-      for (Status taskStatus : listOrEmpty(pipelineStatus.getTaskStatus())) {
-        if (validatedTasks.add(taskStatus.getName())) {
-          validateTask(pipeline, taskStatus.getName());
+    Map<Long, PipelineStatus> stored = loadStoredStatuses(pipeline, incoming);
+    List<PipelineStatus> written = new ArrayList<>();
+    List<String> changeEvents = new ArrayList<>();
+
+    // incoming is ordered oldest first, so change events are emitted chronologically.
+    for (PipelineStatus status : incoming) {
+      StatusChange statusChange = resolveStatusChange(stored.get(status.getTimestamp()), status);
+      if (statusChange.outcome() == StatusOutcome.UNCHANGED) {
+        continue;
+      }
+      written.add(status);
+      buildStatusChangeEvent(pipeline, status, statusChange.previous(), updatedBy)
+          .ifPresent(changeEvents::add);
+    }
+
+    PipelineStatus latestStatus = incoming.getLast();
+    boolean latestChanged =
+        !written.isEmpty() && written.getLast().getTimestamp().equals(latestStatus.getTimestamp());
+
+    if (!written.isEmpty()) {
+      bulkUpsertPipelineStatuses(pipeline.getFullyQualifiedName(), written);
+      searchRepository.bulkIndexPipelineExecutions(pipeline, written);
+      written.forEach(
+          status -> RdfUpdater.recordPipelineExecution(pipeline.getId(), status.getTimestamp()));
+    }
+
+    if (latestChanged) {
+      applyStatusChange(pipeline, latestStatus, stored.get(latestStatus.getTimestamp()));
+      refreshPipelineIndexes(pipeline);
+    }
+
+    // This endpoint emits one change event per status, which the response filter cannot do, so the
+    // repository owns emission and ENTITY_NO_CHANGE stops the filter adding a duplicate.
+    insertChangeEventsInChunks(changeEvents);
+
+    return new RestUtil.PutResponse<>(
+        Response.Status.OK, pipeline.withPipelineStatus(latestStatus), ENTITY_NO_CHANGE);
+  }
+
+  private static List<PipelineStatus> dedupeByTimestamp(List<PipelineStatus> pipelineStatuses) {
+    Map<Long, PipelineStatus> byTimestamp = new LinkedHashMap<>();
+    for (PipelineStatus status : listOrEmpty(pipelineStatuses)) {
+      byTimestamp.put(status.getTimestamp(), status);
+    }
+    return byTimestamp.values().stream()
+        .sorted(Comparator.comparing(PipelineStatus::getTimestamp))
+        .toList();
+  }
+
+  static void validateTasks(Pipeline pipeline, List<PipelineStatus> statuses) {
+    Set<String> taskNames = new HashSet<>();
+    for (Task task : listOrEmpty(pipeline.getTasks())) {
+      taskNames.add(task.getName());
+    }
+    for (PipelineStatus status : statuses) {
+      for (Status taskStatus : listOrEmpty(status.getTaskStatus())) {
+        if (!taskNames.contains(taskStatus.getName())) {
+          throw new IllegalArgumentException("Invalid task name " + taskStatus.getName());
         }
       }
     }
+  }
 
-    PipelineStatus latestStatus = null;
-    for (PipelineStatus pipelineStatus : pipelineStatuses) {
-      if (latestStatus == null || pipelineStatus.getTimestamp() > latestStatus.getTimestamp()) {
-        latestStatus = pipelineStatus;
-      }
+  private Map<Long, PipelineStatus> loadStoredStatuses(
+      Pipeline pipeline, List<PipelineStatus> incoming) {
+    long from = incoming.getFirst().getTimestamp();
+    long to = incoming.getLast().getTimestamp();
+    Map<Long, PipelineStatus> stored = new HashMap<>();
+    for (String json :
+        getResultsFromAndToTimestamps(
+            pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, from, to)) {
+      PipelineStatus status = JsonUtils.readValue(json, PipelineStatus.class);
+      stored.put(status.getTimestamp(), status);
     }
+    return stored;
+  }
 
-    bulkUpsertPipelineStatuses(pipeline.getFullyQualifiedName(), pipelineStatuses);
+  private Optional<String> buildStatusChangeEvent(
+      Pipeline pipeline, PipelineStatus status, PipelineStatus previous, String updatedBy) {
+    Pipeline snapshot = JsonUtils.deepCopy(pipeline, Pipeline.class);
+    applyStatusChange(snapshot, status, previous);
+    // Wall-clock, not status.getTimestamp(): /v1/events filters on ChangeEvent.timestamp.
+    snapshot.setUpdatedAt(System.currentTimeMillis());
+    return buildChangeEventJsonForBulkOperation(snapshot, ENTITY_UPDATED, updatedBy);
+  }
 
-    searchRepository.bulkIndexPipelineExecutions(pipeline, pipelineStatuses);
-
-    if (RdfUpdater.isEnabled() && latestStatus != null) {
-      storePipelineExecutionInRdf(pipeline, latestStatus);
+  private void insertChangeEventsInChunks(List<String> changeEvents) {
+    for (int i = 0; i < changeEvents.size(); i += CHANGE_EVENT_CHUNK_SIZE) {
+      insertChangeEventsBatch(
+          changeEvents.subList(i, Math.min(i + CHANGE_EVENT_CHUNK_SIZE, changeEvents.size())));
     }
+  }
 
-    pipeline.setPipelineStatus(latestStatus);
-    ChangeDescription change =
-        addPipelineStatusChangeDescription(pipeline.getVersion(), latestStatus, null);
-    pipeline.setChangeDescription(change);
-    pipeline.setIncrementalChangeDescription(change);
-
+  private void refreshPipelineIndexes(Pipeline pipeline) {
     try {
       searchRepository.updateEntityIndex(pipeline);
+      searchRepository
+          .getSearchClient()
+          .reindexAcrossIndices(
+              "upstreamLineage.pipeline.fullyQualifiedName", pipeline.getEntityReference());
     } catch (Exception e) {
       LOG.error("Failed to update pipeline entity index in Elasticsearch", e);
     }
+  }
 
-    return new RestUtil.PutResponse<>(
-        Response.Status.OK,
-        pipeline.withPipelineStatus(latestStatus).withUpdatedAt(System.currentTimeMillis()),
-        ENTITY_UPDATED);
+  enum StatusOutcome {
+    UNCHANGED,
+    CREATED,
+    UPDATED
+  }
+
+  record StatusChange(StatusOutcome outcome, PipelineStatus previous) {}
+
+  private static final int CHANGE_EVENT_CHUNK_SIZE = 100;
+
+  private static final Comparator<Status> BY_TASK_NAME =
+      Comparator.comparing(Status::getName, Comparator.nullsFirst(String::compareTo));
+
+  private StatusChange resolveStatusChange(String pipelineFqn, PipelineStatus incoming) {
+    String storedJson =
+        getExtensionAtTimestamp(pipelineFqn, PIPELINE_STATUS_EXTENSION, incoming.getTimestamp());
+    return resolveStatusChange(
+        storedJson == null ? null : JsonUtils.readValue(storedJson, PipelineStatus.class),
+        incoming);
+  }
+
+  private StatusChange resolveStatusChange(PipelineStatus stored, PipelineStatus incoming) {
+    if (stored == null) {
+      return new StatusChange(StatusOutcome.CREATED, null);
+    }
+    return new StatusChange(
+        isSameStatus(stored, incoming) ? StatusOutcome.UNCHANGED : StatusOutcome.UPDATED, stored);
+  }
+
+  static boolean isSameStatus(PipelineStatus stored, PipelineStatus incoming) {
+    return canonicalize(stored).equals(canonicalize(incoming));
+  }
+
+  // Round-trips through JSON so an explicit null collapses onto the schema default, and orders
+  // taskStatus by name because connectors do not guarantee a stable order across ingestions.
+  private static PipelineStatus canonicalize(PipelineStatus status) {
+    PipelineStatus copy = JsonUtils.readValue(JsonUtils.pojoToJson(status), PipelineStatus.class);
+    if (copy.getTaskStatus() != null) {
+      copy.setTaskStatus(copy.getTaskStatus().stream().sorted(BY_TASK_NAME).toList());
+    }
+    return copy;
+  }
+
+  /**
+   * Records {@code status} as the pipeline's only change. Search indexing reads this to update just
+   * {@code pipelineStatus}; without it the whole document is rebuilt from this entity, which status
+   * writes load without owners, domains, tags or certification.
+   */
+  private void applyStatusChange(
+      Pipeline pipeline, PipelineStatus status, PipelineStatus previous) {
+    ChangeDescription change =
+        addPipelineStatusChangeDescription(pipeline.getVersion(), status, previous);
+    pipeline.setPipelineStatus(status);
+    pipeline.setChangeDescription(change);
+    pipeline.setIncrementalChangeDescription(change);
   }
 
   private ChangeDescription addPipelineStatusChangeDescription(
-      Double version, Object newValue, Object oldValue) {
+      Double version, PipelineStatus newValue, PipelineStatus oldValue) {
     FieldChange fieldChange =
         new FieldChange().withName("pipelineStatus").withNewValue(newValue).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
@@ -460,15 +527,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               + "ON CONFLICT (entityFQNHash, extension, timestamp) DO UPDATE SET json = EXCLUDED.json";
     }
     Entity.getJdbi()
-        .useHandle(
+        .useTransaction(
             handle -> {
-              var batch = handle.prepareBatch(sql);
+              PreparedBatch batch = handle.prepareBatch(sql);
               for (PipelineStatus pipelineStatus : pipelineStatuses) {
                 batch
                     .bind("entityFQNHash", entityFQNHash)
                     .bind("extension", PIPELINE_STATUS_EXTENSION)
                     .bind("jsonSchema", "pipelineStatus")
-                    .bind("json", JsonUtils.pojoToJson(pipelineStatus))
+                    .bind(
+                        "json",
+                        JsonStorageUtils.sanitizeNulCharacters(
+                            JsonUtils.pojoToJson(pipelineStatus)))
                     .add();
               }
               batch.execute();
@@ -489,7 +559,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     String docId = PipelineExecutionIndex.getDocumentId(pipeline, pipelineStatus);
     String docJson = JsonUtils.pojoToJson(doc);
     String indexName =
-        Entity.getSearchRepository().getIndexOrAliasName("pipeline_status_search_index");
+        searchRepository.routeToStagedIfActive(
+            searchRepository.getIndexOrAliasName("pipeline_status_search_index"));
 
     searchRepository.getSearchClient().createEntity(indexName, docId, docJson);
 
@@ -555,6 +626,19 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String search,
       Long minDuration,
       Long maxDuration) {
+    if (limit != null && limit > 0) {
+      var filter =
+          PipelineStatusFilter.fromRequest(
+              starTs,
+              endTs,
+              status,
+              search,
+              minDuration,
+              maxDuration,
+              before == null ? null : Long.valueOf(RestUtil.decodeCursor(before)),
+              before == null && after != null ? Long.valueOf(RestUtil.decodeCursor(after)) : null);
+      return getPipelineStatusPage(fqn, filter, limit);
+    }
     List<PipelineStatus> pipelineStatuses;
     pipelineStatuses =
         JsonUtils.readObjects(
@@ -646,35 +730,28 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               .collect(java.util.stream.Collectors.toList());
     }
 
-    // Apply limit only if provided
-    List<PipelineStatus> paginatedResults;
-    if (limit != null && limit > 0 && pipelineStatuses.size() > limit) {
-      paginatedResults = pipelineStatuses.subList(0, limit);
-    } else {
-      paginatedResults = pipelineStatuses;
-    }
-
     // Build cursors for pagination - only when limit is provided
     String beforeCursor = null;
     String afterCursor = null;
 
-    // Only generate cursors if pagination is active (limit was provided)
-    if (limit != null && !paginatedResults.isEmpty()) {
-      beforeCursor = String.valueOf(paginatedResults.get(0).getTimestamp());
-      afterCursor =
-          String.valueOf(paginatedResults.get(paginatedResults.size() - 1).getTimestamp());
+    if (limit != null && !pipelineStatuses.isEmpty()) {
+      beforeCursor = String.valueOf(pipelineStatuses.getFirst().getTimestamp());
+      afterCursor = String.valueOf(pipelineStatuses.getLast().getTimestamp());
     }
 
-    return new ResultList<>(paginatedResults, beforeCursor, afterCursor, total);
+    return new ResultList<>(pipelineStatuses, beforeCursor, afterCursor, total);
   }
 
-  // Validate if a given task exists in the pipeline
-  private void validateTask(Pipeline pipeline, String taskName) {
-    boolean validTask =
-        pipeline.getTasks().stream().anyMatch(task -> task.getName().equals(taskName));
-    if (!validTask) {
-      throw new IllegalArgumentException("Invalid task name " + taskName);
-    }
+  private ResultList<PipelineStatus> getPipelineStatusPage(
+      String fqn, PipelineStatusFilter filter, int limit) {
+    var timeSeriesDAO = daoCollection.entityExtensionTimeSeriesDao();
+    int total = timeSeriesDAO.countPipelineStatuses(fqn, filter);
+    List<PipelineStatus> page = timeSeriesDAO.listPipelineStatuses(fqn, filter, limit);
+    return new ResultList<>(
+        page,
+        page.isEmpty() ? null : page.getFirst().getTimestamp().toString(),
+        page.isEmpty() ? null : page.getLast().getTimestamp().toString(),
+        total);
   }
 
   @Override
@@ -818,7 +895,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Pipeline entity, String fields) {
+  public EntityInterface<?> getParentEntity(Pipeline entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -831,7 +908,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     for (Task task : listOrEmpty(entity.getTasks())) {
       validateTags(task.getTags());
       task.setTags(addDerivedTags(task.getTags()));
-      checkMutuallyExclusive(task.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(task.getTags());
     }
   }
 
@@ -898,11 +975,16 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public EntityRepository<Pipeline>.EntityUpdater getUpdater(
       Pipeline original, Pipeline updated, Operation operation, ChangeSource changeSource) {
-    return new PipelineUpdater(original, updated, operation);
+    return new PipelineUpdater(original, updated, operation, changeSource);
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,tasks");
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Pipeline pipeline = (Pipeline) entity;
     EntityUtil.mergeTags(allTags, pipeline.getTags());
@@ -994,8 +1076,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class PipelineUpdater extends EntityUpdater {
-    public PipelineUpdater(Pipeline original, Pipeline updated, Operation operation) {
-      super(original, updated, operation);
+    public PipelineUpdater(
+        Pipeline original, Pipeline updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction
@@ -1054,11 +1137,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           continue;
         }
         updateTaskDescription(storedTask, updatedTask);
-        updateTags(
-            storedTask.getFullyQualifiedName(),
-            EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
-            storedTask.getTags(),
-            updatedTask.getTags());
+        updateTaskDisplayName(storedTask, updatedTask);
+        updatedTask.setTags(
+            updateTags(
+                storedTask.getFullyQualifiedName(),
+                EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
+                storedTask.getTags(),
+                updatedTask.getTags()));
       }
 
       boolean removedTasks = updatedTasks.size() < origTasks.size();
@@ -1074,6 +1159,24 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               deleteTaskOwnerRelationship(d);
             });
       }
+    }
+
+    /**
+     * Records a task display-name change so it survives the update. Without this the new value is
+     * applied in memory, produces no FieldChange, and is dropped before the entity is stored.
+     * Mirrors TopicRepository.updateFieldDisplayName, including its bot guard: sibling repositories
+     * with inline children (topic, searchIndex, apiEndpoint schema fields) all record display-name
+     * changes, and pipeline tasks were the one collection that did not.
+     */
+    private void updateTaskDisplayName(Task origTask, Task updatedTask) {
+      if (operation.isPut() && !nullOrEmpty(origTask.getDisplayName()) && updatedByBot()) {
+        updatedTask.setDisplayName(origTask.getDisplayName());
+        return;
+      }
+      recordChange(
+          EntityUtil.getFieldName(TASKS_FIELD, origTask.getName(), FIELD_DISPLAY_NAME),
+          origTask.getDisplayName(),
+          updatedTask.getDisplayName());
     }
 
     private void updateTaskDescription(Task origTask, Task updatedTask) {
@@ -1105,181 +1208,190 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                     CatalogExceptionMessage.invalidFieldName("task", taskName)));
   }
 
-  private void storePipelineExecutionInRdf(Pipeline pipeline, PipelineStatus pipelineStatus) {
-    try {
-      RdfRepository rdfRepository = RdfRepository.getInstance();
+  /**
+   * Writes the PROV-O triples of one pipeline run. Only the durable live-write queue calls it: the
+   * queue retries a failure, so nothing is caught here, and a run deleted meanwhile has nothing to
+   * write.
+   */
+  public void writePipelineExecutionToRdf(
+      final RdfRepository rdfRepository, final UUID pipelineId, final long timestamp) {
+    final Pipeline pipeline = Entity.getEntityOrNull(Entity.PIPELINE, pipelineId, "", Include.ALL);
+    final String stored =
+        pipeline == null
+            ? null
+            : getExtensionAtTimestamp(
+                pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, timestamp);
+    if (stored != null) {
+      rdfRepository.executeSparqlUpdate(
+          executionSparql(pipeline, JsonUtils.readValue(stored, PipelineStatus.class)));
+    }
+  }
 
-      // Create unique execution URI
-      String executionUri =
-          String.format(
-              "https://open-metadata.org/execution/%s/%d",
-              pipeline.getId(), pipelineStatus.getTimestamp());
-      String pipelineUri = "https://open-metadata.org/entity/pipeline/" + pipeline.getId();
+  private String executionSparql(final Pipeline pipeline, final PipelineStatus pipelineStatus) {
+    // Create unique execution URI
+    String executionUri =
+        String.format(
+            "https://open-metadata.org/execution/%s/%d",
+            pipeline.getId(), pipelineStatus.getTimestamp());
+    String pipelineUri = "https://open-metadata.org/entity/pipeline/" + pipeline.getId();
 
-      StringBuilder sparql = new StringBuilder();
-      sparql.append("PREFIX prov: <http://www.w3.org/ns/prov#>\n");
-      sparql.append("PREFIX om: <https://open-metadata.org/ontology/>\n");
-      sparql.append("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n");
-      sparql.append("INSERT DATA {\n");
+    StringBuilder sparql = new StringBuilder();
+    sparql.append("PREFIX prov: <http://www.w3.org/ns/prov#>\n");
+    sparql.append("PREFIX om: <https://open-metadata.org/ontology/>\n");
+    sparql.append("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n");
+    sparql.append("INSERT DATA {\n");
 
-      // Basic execution info
+    // Basic execution info
+    sparql.append(String.format("  <%s> a om:PipelineExecution, prov:Activity ;\n", executionUri));
+    sparql.append(String.format("    prov:wasAssociatedWith <%s> ;\n", pipelineUri));
+    sparql.append(
+        String.format(
+            "    prov:startedAtTime \"%s\"^^xsd:dateTime ;\n",
+            formatTimestamp(pipelineStatus.getTimestamp())));
+
+    // Add end time if available
+    if (pipelineStatus.getEndTime() != null) {
       sparql.append(
-          String.format("  <%s> a om:PipelineExecution, prov:Activity ;\n", executionUri));
-      sparql.append(String.format("    prov:wasAssociatedWith <%s> ;\n", pipelineUri));
-      sparql.append(
           String.format(
-              "    prov:startedAtTime \"%s\"^^xsd:dateTime ;\n",
-              formatTimestamp(pipelineStatus.getTimestamp())));
+              "    prov:endedAtTime \"%s\"^^xsd:dateTime ;\n",
+              formatTimestamp(pipelineStatus.getEndTime())));
+    }
 
-      // Add end time if available
-      if (pipelineStatus.getEndTime() != null) {
+    sparql.append(
+        String.format("    om:executionStatus \"%s\" ;\n", pipelineStatus.getExecutionStatus()));
+
+    // Add execution ID if available
+    if (pipelineStatus.getExecutionId() != null) {
+      sparql.append(
+          String.format("    om:executionId \"%s\" ;\n", pipelineStatus.getExecutionId()));
+    }
+
+    // Add executed by if available
+    if (pipelineStatus.getExecutedBy() != null) {
+      String agentUri =
+          "https://open-metadata.org/entity/"
+              + pipelineStatus.getExecutedBy().getType()
+              + "/"
+              + pipelineStatus.getExecutedBy().getId();
+      sparql.append(String.format("    prov:wasAssociatedWith <%s> ;\n", agentUri));
+    }
+
+    // Add inputs (prov:used)
+    if (pipelineStatus.getInputs() != null) {
+      for (var input : pipelineStatus.getInputs()) {
+        if (input.getDatasetFQN() != null) {
+          try {
+            EntityReference dataset =
+                Entity.getEntityReferenceByName(
+                    Entity.TABLE, input.getDatasetFQN(), Include.NON_DELETED);
+            String datasetUri = "https://open-metadata.org/entity/table/" + dataset.getId();
+            sparql.append(String.format("    prov:used <%s> ;\n", datasetUri));
+
+            if (input.getRowCount() != null) {
+              sparql.append(
+                  String.format(
+                      "    om:inputRowCount_%s %d ;\n", dataset.getId(), input.getRowCount()));
+            }
+          } catch (Exception e) {
+            // Dataset not found, skip
+          }
+        }
+      }
+    }
+
+    // Add outputs (prov:generated)
+    if (pipelineStatus.getOutputs() != null) {
+      for (var output : pipelineStatus.getOutputs()) {
+        if (output.getDatasetFQN() != null) {
+          try {
+            EntityReference dataset =
+                Entity.getEntityReferenceByName(
+                    Entity.TABLE, output.getDatasetFQN(), Include.NON_DELETED);
+            String datasetUri = "https://open-metadata.org/entity/table/" + dataset.getId();
+            sparql.append(String.format("    prov:generated <%s> ;\n", datasetUri));
+
+            if (output.getRowCount() != null) {
+              sparql.append(
+                  String.format(
+                      "    om:outputRowCount_%s %d ;\n", dataset.getId(), output.getRowCount()));
+            }
+          } catch (Exception e) {
+            // Dataset not found, skip
+          }
+        }
+      }
+    }
+
+    // Add metrics
+    if (pipelineStatus.getMetrics() != null) {
+      if (pipelineStatus.getMetrics().getTotalRowsProcessed() != null) {
         sparql.append(
             String.format(
-                "    prov:endedAtTime \"%s\"^^xsd:dateTime ;\n",
-                formatTimestamp(pipelineStatus.getEndTime())));
+                "    om:rowsProcessed %d ;\n",
+                pipelineStatus.getMetrics().getTotalRowsProcessed()));
       }
-
-      sparql.append(
-          String.format("    om:executionStatus \"%s\" ;\n", pipelineStatus.getExecutionStatus()));
-
-      // Add execution ID if available
-      if (pipelineStatus.getExecutionId() != null) {
+      if (pipelineStatus.getMetrics().getTotalBytesProcessed() != null) {
         sparql.append(
-            String.format("    om:executionId \"%s\" ;\n", pipelineStatus.getExecutionId()));
+            String.format(
+                "    om:bytesProcessed %d ;\n",
+                pipelineStatus.getMetrics().getTotalBytesProcessed()));
       }
-
-      // Add executed by if available
-      if (pipelineStatus.getExecutedBy() != null) {
-        String agentUri =
-            "https://open-metadata.org/entity/"
-                + pipelineStatus.getExecutedBy().getType()
-                + "/"
-                + pipelineStatus.getExecutedBy().getId();
-        sparql.append(String.format("    prov:wasAssociatedWith <%s> ;\n", agentUri));
-      }
-
-      // Add inputs (prov:used)
-      if (pipelineStatus.getInputs() != null) {
-        for (var input : pipelineStatus.getInputs()) {
-          if (input.getDatasetFQN() != null) {
-            try {
-              EntityReference dataset =
-                  Entity.getEntityReferenceByName(
-                      Entity.TABLE, input.getDatasetFQN(), Include.NON_DELETED);
-              String datasetUri = "https://open-metadata.org/entity/table/" + dataset.getId();
-              sparql.append(String.format("    prov:used <%s> ;\n", datasetUri));
-
-              if (input.getRowCount() != null) {
-                sparql.append(
-                    String.format(
-                        "    om:inputRowCount_%s %d ;\n", dataset.getId(), input.getRowCount()));
-              }
-            } catch (Exception e) {
-              // Dataset not found, skip
-            }
-          }
-        }
-      }
-
-      // Add outputs (prov:generated)
-      if (pipelineStatus.getOutputs() != null) {
-        for (var output : pipelineStatus.getOutputs()) {
-          if (output.getDatasetFQN() != null) {
-            try {
-              EntityReference dataset =
-                  Entity.getEntityReferenceByName(
-                      Entity.TABLE, output.getDatasetFQN(), Include.NON_DELETED);
-              String datasetUri = "https://open-metadata.org/entity/table/" + dataset.getId();
-              sparql.append(String.format("    prov:generated <%s> ;\n", datasetUri));
-
-              if (output.getRowCount() != null) {
-                sparql.append(
-                    String.format(
-                        "    om:outputRowCount_%s %d ;\n", dataset.getId(), output.getRowCount()));
-              }
-            } catch (Exception e) {
-              // Dataset not found, skip
-            }
-          }
-        }
-      }
-
-      // Add metrics
-      if (pipelineStatus.getMetrics() != null) {
-        if (pipelineStatus.getMetrics().getTotalRowsProcessed() != null) {
-          sparql.append(
-              String.format(
-                  "    om:rowsProcessed %d ;\n",
-                  pipelineStatus.getMetrics().getTotalRowsProcessed()));
-        }
-        if (pipelineStatus.getMetrics().getTotalBytesProcessed() != null) {
-          sparql.append(
-              String.format(
-                  "    om:bytesProcessed %d ;\n",
-                  pipelineStatus.getMetrics().getTotalBytesProcessed()));
-        }
-      }
-
-      // Add parameters as JSON
-      if (pipelineStatus.getParameters() != null) {
-        String paramsJson =
-            JsonUtils.pojoToJson(pipelineStatus.getParameters()).replace("\"", "\\\"");
-        sparql.append(String.format("    om:parameters \"%s\" ;\n", paramsJson));
-      }
-
-      // Close the execution entity
-      sparql.setLength(sparql.length() - 2); // Remove last semicolon and newline
-      sparql.append(" .\n");
-
-      // Add task executions
-      if (pipelineStatus.getTaskStatus() != null) {
-        for (Status taskStatus : pipelineStatus.getTaskStatus()) {
-          String taskUri =
-              executionUri + "/task/" + taskStatus.getName().replaceAll("[^a-zA-Z0-9]", "_");
-          sparql.append(String.format("\n  <%s> a om:Transformation, prov:Activity ;\n", taskUri));
-          sparql.append(String.format("    prov:wasInformedBy <%s> ;\n", executionUri));
-          sparql.append(String.format("    om:taskName \"%s\" ;\n", taskStatus.getName()));
-          sparql.append(
-              String.format("    om:executionStatus \"%s\" ;\n", taskStatus.getExecutionStatus()));
-
-          if (taskStatus.getStartTime() != null) {
-            sparql.append(
-                String.format(
-                    "    prov:startedAtTime \"%s\"^^xsd:dateTime ;\n",
-                    formatTimestamp(taskStatus.getStartTime())));
-          }
-
-          if (taskStatus.getEndTime() != null) {
-            sparql.append(
-                String.format(
-                    "    prov:endedAtTime \"%s\"^^xsd:dateTime ;\n",
-                    formatTimestamp(taskStatus.getEndTime())));
-          }
-
-          if (taskStatus.getTransformationType() != null) {
-            sparql.append(
-                String.format(
-                    "    om:transformationType \"%s\" ;\n", taskStatus.getTransformationType()));
-          }
-
-          if (taskStatus.getTransformationLogic() != null) {
-            String logic = taskStatus.getTransformationLogic().replace("\"", "\\\"");
-            sparql.append(String.format("    om:transformationLogic \"%s\" ;\n", logic));
-          }
-
-          sparql.setLength(sparql.length() - 2);
-          sparql.append(" .\n");
-        }
-      }
-
-      sparql.append("}");
-
-      // Execute the SPARQL update
-      rdfRepository.executeSparqlUpdate(sparql.toString());
-
-    } catch (Exception e) {
-      LOG.error("Failed to store pipeline execution in RDF", e);
     }
+
+    // Add parameters as JSON
+    if (pipelineStatus.getParameters() != null) {
+      String paramsJson =
+          JsonUtils.pojoToJson(pipelineStatus.getParameters()).replace("\"", "\\\"");
+      sparql.append(String.format("    om:parameters \"%s\" ;\n", paramsJson));
+    }
+
+    // Close the execution entity
+    sparql.setLength(sparql.length() - 2); // Remove last semicolon and newline
+    sparql.append(" .\n");
+
+    // Add task executions
+    if (pipelineStatus.getTaskStatus() != null) {
+      for (Status taskStatus : pipelineStatus.getTaskStatus()) {
+        String taskUri =
+            executionUri + "/task/" + taskStatus.getName().replaceAll("[^a-zA-Z0-9]", "_");
+        sparql.append(String.format("\n  <%s> a om:Transformation, prov:Activity ;\n", taskUri));
+        sparql.append(String.format("    prov:wasInformedBy <%s> ;\n", executionUri));
+        sparql.append(String.format("    om:taskName \"%s\" ;\n", taskStatus.getName()));
+        sparql.append(
+            String.format("    om:executionStatus \"%s\" ;\n", taskStatus.getExecutionStatus()));
+
+        if (taskStatus.getStartTime() != null) {
+          sparql.append(
+              String.format(
+                  "    prov:startedAtTime \"%s\"^^xsd:dateTime ;\n",
+                  formatTimestamp(taskStatus.getStartTime())));
+        }
+
+        if (taskStatus.getEndTime() != null) {
+          sparql.append(
+              String.format(
+                  "    prov:endedAtTime \"%s\"^^xsd:dateTime ;\n",
+                  formatTimestamp(taskStatus.getEndTime())));
+        }
+
+        if (taskStatus.getTransformationType() != null) {
+          sparql.append(
+              String.format(
+                  "    om:transformationType \"%s\" ;\n", taskStatus.getTransformationType()));
+        }
+
+        if (taskStatus.getTransformationLogic() != null) {
+          String logic = taskStatus.getTransformationLogic().replace("\"", "\\\"");
+          sparql.append(String.format("    om:transformationLogic \"%s\" ;\n", logic));
+        }
+
+        sparql.setLength(sparql.length() - 2);
+        sparql.append(" .\n");
+      }
+    }
+
+    sparql.append("}");
+    return sparql.toString();
   }
 
   /**
@@ -1328,6 +1440,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Query entity_extension table for pipeline observability data
     // The extension key pattern is: table.pipelineObservability.{pipelineFqn}
     String extensionKey = "table.pipelineObservability." + pipelineFqn;
+    Supplier<Double> averageRuntime = Suppliers.memoize(() -> calculateAverageRuntime(pipelineFqn));
 
     List<TableObservabilityData> tableObservabilityList = new ArrayList<>();
 
@@ -1369,9 +1482,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
               // Calculate and set average runtime
               if (observability.getPipeline() != null) {
-                Double avgRuntime =
-                    calculateAverageRuntime(observability.getPipeline().getFullyQualifiedName());
-                observability.setAverageRunTime(avgRuntime);
+                observability.setAverageRunTime(averageRuntime.get());
               }
 
               // Apply filters
@@ -1585,14 +1696,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Build filter strings for database query
     String serviceFilterSql = buildServiceFilter(service);
 
-    // Build database-specific serviceType filters
-    String mysqlServiceTypeFilter =
-        serviceType != null
-            ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + serviceType + "'"
-            : "";
-    String postgresServiceTypeFilter =
-        serviceType != null ? "AND pe.json->>'serviceType' = '" + serviceType + "'" : "";
-
     String domainFilterSql =
         domainId != null
             ? "AND pe.id IN (SELECT toId FROM entity_relationship WHERE fromId = '"
@@ -1609,9 +1712,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Build tier filter using tag_usage table (works on both MySQL and PostgreSQL)
     String tierFilterSql =
         tier != null
-            ? "AND EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = pe.fqnHash AND tu.tagFQN = '"
-                + tier.replace("'", "''")
-                + "')"
+            ? "AND EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = pe.fqnHash AND tu.tagFQN = :psTier)"
             : "";
 
     // Parse timestamp filters
@@ -1654,10 +1755,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       if (endTs != null) {
         mysqlStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
       }
-      mysqlStatusFilter +=
-          "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
-              + statusFilter.replace("'", "''")
-              + "'";
+      mysqlStatusFilter += "ORDER BY eets_filter.timestamp DESC LIMIT 1) = :psStatus";
     } else if (statusFilter != null) {
       // Case 2: Status only = check overall latest status
       mysqlStatusFilter =
@@ -1665,9 +1763,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               + "FROM entity_extension_time_series eets_filter "
               + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
               + "  AND eets_filter.extension = 'pipeline.pipelineStatus' "
-              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
-              + statusFilter.replace("'", "''")
-              + "'";
+              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = :psStatus";
     } else if (startTs != null || endTs != null) {
       // Case 3: Timestamps only = check if pipeline ran in time range
       mysqlStatusFilter =
@@ -1698,10 +1794,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       if (endTs != null) {
         postgresStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
       }
-      postgresStatusFilter +=
-          "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
-              + statusFilter.replace("'", "''")
-              + "'";
+      postgresStatusFilter += "ORDER BY eets_filter.timestamp DESC LIMIT 1) = :psStatus";
     } else if (statusFilter != null) {
       // Case 2: Status only = check overall latest status
       postgresStatusFilter =
@@ -1709,9 +1802,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               + "FROM entity_extension_time_series eets_filter "
               + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
               + "  AND eets_filter.extension = 'pipeline.pipelineStatus' "
-              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
-              + statusFilter.replace("'", "''")
-              + "'";
+              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = :psStatus";
     } else if (startTs != null || endTs != null) {
       // Case 3: Timestamps only = check if pipeline ran in time range
       postgresStatusFilter =
@@ -1728,13 +1819,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     // Call database-level filtered query
-    List<CollectionDAO.PipelineSummaryRow> rows =
+    List<SharedRowMappers.PipelineSummaryRow> rows =
         daoCollection
             .entityExtensionTimeSeriesDao()
             .listPipelineSummariesFiltered(
                 serviceFilterSql,
-                mysqlServiceTypeFilter,
-                postgresServiceTypeFilter,
+                serviceType,
                 domainFilterSql,
                 ownerFilterSql,
                 tierFilterSql,
@@ -1742,7 +1832,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 postgresStatusFilter,
                 searchFilter,
                 limit,
-                offset);
+                offset,
+                service,
+                statusFilter,
+                tier);
 
     // Get total count for pagination
     int total =
@@ -1750,18 +1843,20 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             .entityExtensionTimeSeriesDao()
             .countPipelineSummariesFiltered(
                 serviceFilterSql,
-                mysqlServiceTypeFilter,
-                postgresServiceTypeFilter,
+                serviceType,
                 domainFilterSql,
                 ownerFilterSql,
                 tierFilterSql,
                 mysqlStatusFilter,
                 postgresStatusFilter,
-                searchFilter);
+                searchFilter,
+                service,
+                statusFilter,
+                tier);
 
     // Convert rows to Pipeline objects and build summaries
     List<PipelineSummary> summaries = new ArrayList<>();
-    for (CollectionDAO.PipelineSummaryRow row : rows) {
+    for (SharedRowMappers.PipelineSummaryRow row : rows) {
       try {
         // Parse pipeline JSON
         Pipeline pipeline = JsonUtils.readValue(row.getJson(), Pipeline.class);
@@ -1975,7 +2070,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String startTsFilter = buildStartTsFilter(startTs);
       String endTsFilter = buildEndTsFilter(endTs);
 
-      CollectionDAO.PipelineMetricsRow metricsRow =
+      SharedRowMappers.PipelineMetricsRow metricsRow =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getPipelineMetricsData(
@@ -1987,8 +2082,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   ownerFilter,
                   tierFilter,
                   startTsFilter,
-                  endTsFilter);
-      List<CollectionDAO.ServiceBreakdownRow> serviceRows =
+                  endTsFilter,
+                  service,
+                  serviceType,
+                  status,
+                  tier);
+      List<SharedRowMappers.ServiceBreakdownRow> serviceRows =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getServiceBreakdown(
@@ -2000,7 +2099,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   ownerFilter,
                   tierFilter,
                   startTsFilter,
-                  endTsFilter);
+                  endTsFilter,
+                  service,
+                  serviceType,
+                  status,
+                  tier);
 
       PipelineMetrics metrics = new PipelineMetrics();
       metrics.setDataAvailable(true);
@@ -2015,7 +2118,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
       List<ServiceBreakdown> breakdowns = new ArrayList<>();
       metrics.setServiceCount(serviceRows.size());
-      for (CollectionDAO.ServiceBreakdownRow row : serviceRows) {
+      for (SharedRowMappers.ServiceBreakdownRow row : serviceRows) {
         ServiceBreakdown breakdown = new ServiceBreakdown();
         breakdown.setServiceType(row.getServiceType());
         breakdown.setCount(row.getPipelineCount());
@@ -2107,7 +2210,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String ownerFilter = buildOwnerFilter(owner);
       String tierFilter = buildTierFilter(tier);
 
-      List<CollectionDAO.ExecutionTrendRow> rows =
+      List<SharedRowMappers.ExecutionTrendRow> rows =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getExecutionTrendData(
@@ -2120,12 +2223,16 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   postgresStatusFilter,
                   domainFilter,
                   ownerFilter,
-                  tierFilter);
+                  tierFilter,
+                  service,
+                  serviceType,
+                  status,
+                  tier);
 
       Map<String, PipelineExecutionTrend> trendMap = new HashMap<>();
       int totalSuccess = 0, totalFailed = 0, totalExecutions = 0;
 
-      for (CollectionDAO.ExecutionTrendRow row : rows) {
+      for (SharedRowMappers.ExecutionTrendRow row : rows) {
         PipelineExecutionTrend trend =
             trendMap.computeIfAbsent(
                 row.getDateKey(),
@@ -2275,7 +2382,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String ownerFilter = buildOwnerFilter(owner);
       String tierFilter = buildTierFilter(tier);
 
-      List<CollectionDAO.RuntimeTrendRow> rows =
+      List<SharedRowMappers.RuntimeTrendRow> rows =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getRuntimeTrendData(
@@ -2288,10 +2395,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   postgresStatusFilter,
                   domainFilter,
                   ownerFilter,
-                  tierFilter);
+                  tierFilter,
+                  service,
+                  serviceType,
+                  status,
+                  tier);
 
       List<PipelineRuntimeTrend> trends = new ArrayList<>();
-      for (CollectionDAO.RuntimeTrendRow row : rows) {
+      for (SharedRowMappers.RuntimeTrendRow row : rows) {
         PipelineRuntimeTrend trend = new PipelineRuntimeTrend();
         trend.setDate(row.getDateKey());
         trend.setTimestamp(row.getFirstTimestamp());
@@ -2341,7 +2452,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Get all pipelines
     ListFilter filter = new ListFilter(NON_DELETED);
-    List<Pipeline> pipelines = listAll(new Fields(Set.of("service")), filter);
+    List<Pipeline> pipelines =
+        listAll(getFields("service," + PipelineExecutionIndex.ACCESS_FIELDS), filter);
 
     int totalIndexed = 0;
     int totalFailed = 0;
@@ -2394,9 +2506,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private String buildServiceTypeFilter(String serviceType) {
     if (serviceType != null && !serviceType.isEmpty()) {
-      String safeServiceType = serviceType.replace("'", "''");
-      String filter =
-          "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + safeServiceType + "'";
+      String filter = "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = :psServiceType";
       LOG.debug("buildServiceTypeFilter: input='{}', filter='{}'", serviceType, filter);
       return filter;
     }
@@ -2406,18 +2516,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private String buildMysqlStatusFilter(String status) {
     if (status != null && !status.isEmpty()) {
-      String safeStatus = status.replace("'", "''");
-      return "AND eets.json IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = '"
-          + safeStatus
-          + "'";
+      return "AND eets.json IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = :psStatus";
     }
     return "";
   }
 
   private String buildPostgresStatusFilter(String status) {
     if (status != null && !status.isEmpty()) {
-      String safeStatus = status.replace("'", "''");
-      return "AND eets.json IS NOT NULL AND eets.json->>'executionStatus' = '" + safeStatus + "'";
+      return "AND eets.json IS NOT NULL AND eets.json->>'executionStatus' = :psStatus";
     }
     return "";
   }
@@ -2499,28 +2605,22 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private String buildTierFilter(String tier) {
     if (tier != null && !tier.isEmpty()) {
-      String safeTier = tier.replace("'", "''");
       return "AND EXISTS (SELECT 1 FROM tag_usage tu "
           + "WHERE tu.targetFQNHash = pe.fqnHash "
-          + "AND tu.tagFQN = '"
-          + safeTier
-          + "')";
+          + "AND tu.tagFQN = :psTier)";
     }
     return "";
   }
 
   private String buildServiceFilter(String service) {
     if (service != null && !service.isEmpty()) {
-      String safeService = service.replace("'", "''");
       return "AND EXISTS (SELECT 1 FROM entity_relationship er "
           + "JOIN pipeline_service_entity pse ON er.fromId = pse.id "
           + "WHERE er.toId = pe.id "
           + "AND er.fromEntity = 'pipelineService' "
           + "AND er.toEntity = 'pipeline' "
           + "AND er.relation = 0 "
-          + "AND pse.name = '"
-          + safeService
-          + "')";
+          + "AND pse.name = :psService)";
     }
     LOG.debug("buildServiceFilter: returning empty filter (service was null or empty)");
     return "";

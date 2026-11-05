@@ -11,19 +11,27 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
+import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthContext';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselLayout';
-import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
-import { passwordRegex } from '../../constants/regex.constants';
+import { ROUTES } from '../../constants/constants';
+import { EMAIL_REG_EX, passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import './../LoginPage/login.style.less';
 
 interface SignUpFormData {
   firstName: string;
@@ -39,8 +47,15 @@ const BasicSignUp = () => {
   const { handleRegister } = useBasicAuth();
   const navigate = useNavigate();
 
-  const [form] = Form.useForm();
-  const password = Form.useWatch('password', form);
+  const form = useForm<SignUpFormData>({
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
 
   const brandName = t('label.brand-name');
 
@@ -56,11 +71,8 @@ const BasicSignUp = () => {
     if (data.confirmPassword) {
       delete data['confirmPassword'];
     }
-
-    const request = data;
-
-    if (request) {
-      handleRegister(request);
+    if (data) {
+      handleRegister(data);
     }
   };
 
@@ -68,139 +80,168 @@ const BasicSignUp = () => {
     navigate(ROUTES.SIGNIN);
   };
 
+  const firstNameField: FieldProp = {
+    name: 'firstName',
+    type: FieldTypes.TEXT,
+    label: t('label.first-name'),
+    id: 'root/firstName',
+    placeholder: t('label.enter-entity', {
+      entity: t('label.first-name-lowercase'),
+    }),
+    required: true,
+    rules: {
+      required: t('message.field-text-is-required', {
+        fieldText: t('label.first-name'),
+      }),
+    },
+    props: { 'data-testid': 'firstName', size: 'md' },
+  };
+
+  const lastNameField: FieldProp = {
+    name: 'lastName',
+    type: FieldTypes.TEXT,
+    label: t('label.last-name'),
+    id: 'root/lastName',
+    placeholder: t('label.enter-entity', {
+      entity: t('label.last-name-lowercase'),
+    }),
+    required: true,
+    rules: {
+      required: t('message.field-text-is-required', {
+        fieldText: t('label.last-name'),
+      }),
+    },
+    props: { 'data-testid': 'lastName', size: 'md' },
+  };
+
+  const emailField: FieldProp = {
+    name: 'email',
+    type: FieldTypes.TEXT,
+    label: t('label.email'),
+    id: 'root/email',
+    placeholder: t('label.enter-entity', {
+      entity: t('label.email-lowercase'),
+    }),
+    required: true,
+    rules: {
+      required: t('message.field-text-is-required', {
+        fieldText: t('label.email'),
+      }),
+      pattern: {
+        value: EMAIL_REG_EX,
+        message: t('message.field-text-is-invalid', {
+          fieldText: t('label.email'),
+        }),
+      },
+    },
+    props: { 'data-testid': 'email', size: 'md' },
+  };
+
+  const passwordField: FieldProp = {
+    name: 'password',
+    type: FieldTypes.PASSWORD,
+    label: t('label.password'),
+    id: 'root/password',
+    placeholder: t('label.enter-entity', {
+      entity: t('label.password-lowercase'),
+    }),
+    required: true,
+    rules: {
+      required: t('message.field-text-is-required', {
+        fieldText: t('label.password'),
+      }),
+      pattern: {
+        value: passwordRegex,
+        message: t('message.password-error-message'),
+      },
+    },
+    props: { 'data-testid': 'password', size: 'md' },
+  };
+
+  const confirmPasswordField: FieldProp = {
+    name: 'confirmPassword',
+    type: FieldTypes.PASSWORD,
+    label: t('label.password-type', { type: t('label.confirm') }),
+    id: 'root/confirmPassword',
+    placeholder: t('label.confirm-password'),
+    required: true,
+    rules: {
+      validate: (value: string) => {
+        const password = form.getValues('password');
+        if (isEmpty(password)) {
+          return t('label.please-password-type-first');
+        }
+        if (value !== password) {
+          return t('label.password-not-match');
+        }
+
+        return true;
+      },
+      deps: ['password'],
+    },
+    props: { 'data-testid': 'confirmPassword', size: 'md' },
+  };
+
   return (
     <CarouselLayout
       carouselClassName="signup-page"
       pageTitle={t('label.sign-up')}>
       <div
-        className="login-form-container signup-page"
+        className="tw:m-auto tw:flex tw:w-full tw:max-w-[520px] tw:flex-col tw:justify-center tw:px-6 tw:py-10"
         data-testid="signin-page">
-        <div className="login-box">
-          <BrandImage isMonoGram height="auto" width={50} />
-          <Typography.Title className="header-text display-sm" level={3}>
-            {t('label.welcome-to')} {brandName}
-          </Typography.Title>
+        <Card className="tw:w-full tw:shadow-xl" variant="elevated">
+          <Card.Content className="tw:flex tw:flex-col tw:items-center tw:gap-6 tw:p-10">
+            <BrandImage isMonoGram height="auto" width={50} />
+            <Typography
+              as="h1"
+              className="tw:whitespace-nowrap tw:text-center"
+              size="display-sm"
+              weight="semibold">
+              {t('label.welcome-to')} {brandName}
+            </Typography>
 
-          {isAuthProviderBasic ? (
-            <div className="login-form">
-              <Form
-                autoComplete="off"
-                form={form}
-                layout="vertical"
-                validateMessages={VALIDATION_MESSAGES}
-                onFinish={handleSubmit}>
-                <Form.Item
-                  label={t('label.first-name')}
-                  name="firstName"
-                  rules={[{ whitespace: true, required: true }]}>
-                  <Input
-                    autoFocus
-                    className="input-field"
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.first-name-lowercase'),
-                    })}
+            {isAuthProviderBasic ? (
+              <div className="tw:flex tw:w-full tw:flex-col tw:gap-6">
+                <HookForm
+                  className="tw:flex tw:flex-col tw:gap-5"
+                  form={form}
+                  onSubmit={form.handleSubmit(handleSubmit)}>
+                  <FormFields
+                    fields={[
+                      firstNameField,
+                      lastNameField,
+                      emailField,
+                      passwordField,
+                      confirmPasswordField,
+                    ]}
                   />
-                </Form.Item>
-                <Form.Item
-                  label={t('label.last-name')}
-                  name="lastName"
-                  rules={[{ whitespace: true, required: true }]}>
-                  <Input
-                    className="input-field"
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.last-name-lowercase'),
-                    })}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={t('label.email')}
-                  name="email"
-                  rules={[{ type: 'email', required: true }]}>
-                  <Input
-                    className="input-field"
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.email-lowercase'),
-                    })}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={t('label.password')}
-                  name="password"
-                  rules={[
-                    {
-                      required: true,
-                    },
-                    {
-                      pattern: passwordRegex,
-                      message: t('message.password-error-message'),
-                    },
-                  ]}>
-                  <Input.Password
-                    autoComplete="off"
-                    className="input-field"
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.password-lowercase'),
-                    })}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={t('label.password-type', {
-                    type: t('label.confirm'),
-                  })}
-                  name="confirmPassword"
-                  rules={[
-                    {
-                      validator: (_, value) => {
-                        if (isEmpty(password)) {
-                          return Promise.reject({
-                            message: t('label.please-password-type-first'),
-                          });
-                        }
-                        if (value !== password) {
-                          return Promise.reject({
-                            message: t('label.password-not-match'),
-                          });
-                        }
 
-                        return Promise.resolve();
-                      },
-                    },
-                  ]}>
-                  <Input.Password
-                    autoComplete="off"
-                    className="input-field"
-                    placeholder={t('label.confirm-password')}
-                  />
-                </Form.Item>
-
-                <Button
-                  block
-                  className="login-btn"
-                  htmlType="submit"
-                  size="large"
-                  type="primary">
-                  {t('label.create-entity', {
-                    entity: t('label.account'),
-                  })}
-                </Button>
-
-                <div className="mt-4 d-flex flex-center signup-text">
-                  <Typography.Text>
-                    {t('message.already-a-user')}
-                  </Typography.Text>
                   <Button
-                    ghost
-                    className="link-btn"
+                    className="tw:w-full tw:justify-center"
+                    color="primary"
+                    data-testid="create-account"
+                    size="lg"
+                    type="submit">
+                    {t('label.create-entity', { entity: t('label.account') })}
+                  </Button>
+                </HookForm>
+
+                <div className="tw:flex tw:items-center tw:justify-center tw:gap-1">
+                  <Typography color="secondary" size="text-sm">
+                    {t('message.already-a-user')}
+                  </Typography>
+                  <Button
+                    color="link-color"
                     data-testid="login"
-                    type="link"
-                    onClick={handleLogin}>
+                    size="sm"
+                    onPress={handleLogin}>
                     {t('label.login')}
                   </Button>
                 </div>
-              </Form>
-            </div>
-          ) : null}
-        </div>
+              </div>
+            ) : null}
+          </Card.Content>
+        </Card>
       </div>
     </CarouselLayout>
   );

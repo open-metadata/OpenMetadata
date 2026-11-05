@@ -11,21 +11,28 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Grid,
+  Toggle,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Bot, ProviderType } from '../../../../generated/entity/bot';
@@ -38,22 +45,24 @@ import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../utils/EntitySearchUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  stringToHTML,
-} from '../../../../utils/StringUtils';
+import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
-import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../PageHeader/PageHeader.component';
@@ -175,7 +184,8 @@ const BotListV1 = ({
               'name.keyword',
               'displayName.keyword',
               'fullyQualifiedName.keyword',
-              'email.keyword',
+              // Search refuses queries on email fields from anyone but admins.
+              ...(isAdminUser ? ['email.keyword'] : []),
             ].map((field) => ({
               wildcard: {
                 [field]: { value: wildcardPattern, case_insensitive: true },
@@ -283,11 +293,11 @@ const BotListV1 = ({
 
           return (
             <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
-              <Typography.Text
-                className="text-ellipsis bot-link"
-                ellipsis={{ tooltip: true }}>
-                {stringToHTML(highlightSearchText(name, searchTerm))}
-              </Typography.Text>
+              <Typography
+                className="text-ellipsis bot-link tw:text-primary"
+                ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
+                {renderHighlightedText(highlightSearchText(name, searchTerm))}
+              </Typography>
             </Link>
           );
         },
@@ -312,29 +322,24 @@ const BotListV1 = ({
         width: 90,
         render: (_, record) => {
           const isSystemBot = record.provider === ProviderType.System;
-          const title = isSystemBot
-            ? t('message.ingestion-bot-cant-be-deleted')
-            : isAdminUser
-            ? t('label.delete')
-            : t('message.admin-only-action');
+          let title = t('message.admin-only-action');
+          if (isSystemBot) {
+            title = t('message.ingestion-bot-cant-be-deleted');
+          } else if (isAdminUser) {
+            title = t('label.delete');
+          }
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
-            <Tooltip placement="topRight" title={title}>
-              <Button
-                data-testid={`bot-delete-${record.name}`}
-                disabled={isDisabled}
-                icon={
-                  <Icon
-                    className="align-middle"
-                    component={IconDelete}
-                    style={{ fontSize: '16px' }}
-                  />
-                }
-                type="text"
-                onClick={() => setSelectedUser(record)}
-              />
-            </Tooltip>
+            <ButtonUtility
+              data-testid={`bot-delete-${record.name}`}
+              icon={Trash01}
+              isDisabled={isDisabled}
+              size="lg"
+              tooltip={title}
+              tooltipPlacement="top right"
+              onClick={() => setSelectedUser(record)}
+            />
           );
         },
       },
@@ -367,8 +372,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
-    await getResourceLimit('bot', true, true);
-    await reloadBotMap();
+    await Promise.all([getResourceLimit('bot', true, true), reloadBotMap()]);
     fetchBots(showDeleted);
   }, [selectedUser, reloadBotMap]);
 
@@ -432,75 +436,87 @@ const BotListV1 = ({
   const addBotLabel = t('label.add-entity', { entity: t('label.bot') });
 
   return handleErrorPlaceholder ? (
-    <Row>
-      <Col className="w-full d-flex justify-end">
-        <Space align="end" size={5}>
-          <Switch
-            checked={showDeleted}
-            id="switch-deleted"
-            size="small"
-            onClick={handleShowDeletedBots}
-          />
-          <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
-        </Space>
-      </Col>
-      <Col className="w-full">
-        <ErrorPlaceHolder
-          className="mt-24"
-          doc={BOTS_DOCS}
-          heading={t('label.bot')}
-          permission={isAdminUser}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.bot'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-          onClick={handleAddBotClick}
+    <Box className="layout-row" wrap="wrap">
+      <Box className="layout-column w-full d-flex justify-end">
+        <Toggle
+          id="switch-deleted"
+          isSelected={showDeleted}
+          label={t('label.show-deleted')}
+          size="sm"
+          onChange={handleShowDeletedBots}
         />
-      </Col>
-    </Row>
+      </Box>
+      <Box className="layout-column tw:block w-full">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <CreatePlaceholder
+            data-testid={`create-error-placeholder-${t('label.bot')}`}
+            doc={BOTS_DOCS}
+            heading={t('label.bot')}
+            permission={isAdminUser}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.bot'),
+            })}
+            onCreate={handleAddBotClick}
+          />
+        </div>
+      </Box>
+    </Box>
   ) : (
-    <Row gutter={[0, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(0, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbs} />
-      </Col>
+      </Grid.Item>
 
-      <Col span={12}>
+      <Grid.Item className="layout-column" span={12}>
         <PageHeader
           data={{
             header: t(PAGE_HEADERS.BOTS.header),
             subHeader: t(PAGE_HEADERS.BOTS.subHeader),
           }}
         />
-      </Col>
+      </Grid.Item>
 
-      <Col span={12}>
-        <Space align="center" className="w-full justify-end" size={16}>
-          <Space align="end" size={5}>
-            <Switch
-              checked={showDeleted}
-              data-testid="switch-deleted"
-              id="switch-deleted"
-              onClick={handleShowDeletedBots}
-            />
-            <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
-          </Space>
+      <Grid.Item className="layout-column" span={12}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-end"
+          gap={4}
+          itemClassName="layout-space-item">
+          <Toggle
+            data-testid="switch-deleted"
+            id="switch-deleted"
+            isSelected={showDeleted}
+            label={t('label.show-deleted')}
+            size="sm"
+            onChange={handleShowDeletedBots}
+          />
 
           <Tooltip
-            placement="topLeft"
-            title={!isAdminUser && t('message.admin-only-action')}>
+            arrow
+            excludeTriggerFromTabOrder
+            isDisabled={isAdminUser}
+            placement="top left"
+            title={t('message.admin-only-action')}
+            triggerClassName={classNames('tw:inline-flex', {
+              'tw:cursor-not-allowed tw:*:pointer-events-none': !isAdminUser,
+            })}>
             <LimitWrapper resource="bot">
               <Button
+                color="primary"
                 data-testid="add-bot"
-                disabled={!isAdminUser}
-                type="primary"
-                onClick={handleAddBotClick}>
+                isDisabled={!isAdminUser}
+                size="sm"
+                onPress={handleAddBotClick}>
                 {addBotLabel}
               </Button>
             </LimitWrapper>
           </Tooltip>
-        </Space>
-      </Col>
-      <Col span={8}>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={8}>
         <Searchbar
           removeMargin
           placeholder={`${t('label.search-for-type', {
@@ -509,8 +525,8 @@ const BotListV1 = ({
           typingInterval={500}
           onSearch={handleSearch}
         />
-      </Col>
-      <Col className="bot-list-v1-container" span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column bot-list-v1-container" span={24}>
         <Table
           columns={columns}
           customPaginationProps={{
@@ -525,13 +541,17 @@ const BotListV1 = ({
           dataSource={searchedData}
           loading={loading}
           locale={{
-            emptyText: <FilterTablePlaceHolder />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowKey="name"
           size="small"
         />
-      </Col>
+      </Grid.Item>
 
       <DeleteEntityModal
         afterDeleteAction={handleDeleteAction}
@@ -544,7 +564,7 @@ const BotListV1 = ({
           setSelectedUser(undefined);
         }}
       />
-    </Row>
+    </Grid>
   );
 };
 

@@ -15,9 +15,6 @@ import os
 import pkgutil
 import subprocess
 import sys
-import threading
-
-from pydantic import ConfigDict
 
 import metadata.generated.schema as generated_schema
 from metadata.ingestion.models.custom_pydantic import BaseModel
@@ -78,6 +75,67 @@ source = Source.model_validate(
 )
 dumped = source.model_dump()
 assert dumped["serviceConnection"]["config"]["account"] == "account"
+print("OK")
+"""
+
+_CONCURRENT_REBUILD_PROBE = """
+import sys
+import threading
+import time
+import warnings
+
+from pydantic import ConfigDict
+
+from metadata.ingestion.models.custom_pydantic import BaseModel
+
+warnings.filterwarnings("ignore")
+thread_count = 8
+wait_seconds = 10
+expected = {"value": "ok"}
+original_interval = sys.getswitchinterval()
+sys.setswitchinterval(1e-6)
+try:
+    for round_number in range(200):
+        class DeferredModel(BaseModel):
+            model_config = ConfigDict(defer_build=True)
+
+            value: str
+
+        assert DeferredModel.__pydantic_complete__ is False
+        start_gate = threading.Barrier(thread_count + 1, timeout=wait_seconds)
+        results = [None] * thread_count
+        failures = []
+
+        def validate(worker_number):
+            try:
+                start_gate.wait()
+                results[worker_number] = DeferredModel.model_validate(expected).model_dump()
+            except Exception as exc:
+                failures.append(f"worker {worker_number}: {exc!r}")
+
+        workers = [
+            threading.Thread(target=validate, args=(worker_number,), daemon=True)
+            for worker_number in range(thread_count)
+        ]
+        for worker in workers:
+            worker.start()
+        try:
+            start_gate.wait()
+        except threading.BrokenBarrierError as exc:
+            failures.append(f"main thread: {exc!r}")
+
+        deadline = time.monotonic() + wait_seconds
+        for worker in workers:
+            worker.join(timeout=max(0, deadline - time.monotonic()))
+
+        stuck_workers = [worker.name for worker in workers if worker.is_alive()]
+        assert not stuck_workers, f"round {round_number}: workers did not finish: {stuck_workers}"
+        assert not failures, f"round {round_number}: concurrent rebuild failed: {failures[:3]}"
+        assert results == [expected] * thread_count
+        assert DeferredModel.__pydantic_complete__ is True
+finally:
+    sys.setswitchinterval(original_interval)
+
 print("OK")
 """
 
@@ -153,54 +211,20 @@ def test_deferred_nested_models_are_serializable():
     assert result.stdout.strip().endswith("OK")
 
 
-def _make_deferred_family():
-    """Return (Parent, Nested) deferred models; Nested is only ever built via Parent's schema."""
-
-    class Nested(BaseModel):
-        model_config = ConfigDict(defer_build=True)
-
-        account: str | None = None
-
-    class Parent(BaseModel):
-        model_config = ConfigDict(defer_build=True)
-
-        nested: Nested | None = None
-
-    return Parent, Nested
-
-
 def test_concurrent_first_instantiation_is_safe():
     """Threads racing a deferred model's first build never observe a half-rebuilt class."""
-    # Covers both rebuild routes at once: the parent is validated directly, so pydantic repairs it
-    # through MockValSer.attempt_rebuild, while the nested class is only ever reached via
-    # model_post_init. The delete-then-rebuild window is a handful of bytecodes, so force frequent
-    # switches instead of relying on the default 5ms interval.
-    original_interval = sys.getswitchinterval()
-    sys.setswitchinterval(1e-6)
-    failures = []
-    try:
-        for _ in range(200):
-            parent_model, nested_model = _make_deferred_family()
-            assert parent_model.__pydantic_complete__ is False
-            assert nested_model.__pydantic_complete__ is False
-            barrier = threading.Barrier(8)
-
-            def work(parent: type = parent_model, gate: threading.Barrier = barrier):
-                try:
-                    gate.wait()
-                    parent.model_validate({"nested": {"account": "acct"}}).model_dump()
-                except Exception as exc:
-                    failures.append(repr(exc))
-
-            threads = [threading.Thread(target=work) for _ in range(8)]
-            for thread in threads:
-                thread.start()
-            for thread in threads:
-                thread.join()
-    finally:
-        sys.setswitchinterval(original_interval)
-
-    assert not failures, f"concurrent first instantiation failed {len(failures)}x: {failures[:3]}"
+    # Keep the forced scheduler pressure from racing Python 3.10's coverage thread hook.
+    env = {key: value for key, value in os.environ.items() if not key.startswith(("COV_CORE_", "COVERAGE_"))}
+    result = subprocess.run(
+        [sys.executable, "-c", _CONCURRENT_REBUILD_PROBE],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+        timeout=60,
+    )
+    assert result.returncode == 0, f"concurrent rebuild probe failed:\n{result.stdout}\n{result.stderr}"
+    assert result.stdout.strip().endswith("OK")
 
 
 def test_defer_build_env_var_disables_it():

@@ -15,10 +15,12 @@ import { uuid } from '../utils/common';
 
 export const ALERT_DESCRIPTION = 'This is alert description';
 export const ALERT_UPDATED_DESCRIPTION = 'New alert description';
+// What the API returns for a destination endpoint, header or credential it keeps secret.
+export const ALERT_MASKED_SECRET = '*********';
 export const TEST_SUITE_NAME = `0-pw-test-suite-${uuid()}`;
 export const TEST_CASE_NAME = `0-pw-test-case-${uuid()}`;
 
-export const INGESTION_PIPELINE_NAME = `0-playwright-ingestion-pipeline-${uuid()}`;
+export const WEBHOOK_DELIVERY_COLUMN_NAME = 'webhook_delivery_field';
 
 export const ALERT_WITH_PERMISSION_POLICY_NAME = `alert-policy-${uuid()}`;
 export const ALERT_WITH_PERMISSION_ROLE_NAME = `alert-role-${uuid()}`;

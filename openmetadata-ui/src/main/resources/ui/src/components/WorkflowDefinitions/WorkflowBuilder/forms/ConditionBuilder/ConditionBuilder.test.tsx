@@ -73,6 +73,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (v: string) => void;
   }) => (
     <input
+      aria-label="Value"
       data-testid={props['data-testid']}
       disabled={props.isDisabled}
       value={props.value ?? ''}
@@ -87,6 +88,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (checked: boolean) => void;
   }) => (
     <input
+      aria-label="Toggle"
       checked={props.isSelected ?? false}
       data-testid={props['data-testid'] ?? 'toggle'}
       disabled={props.isDisabled}
@@ -135,7 +137,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }
   );
 
-  return { Autocomplete, Button, Card, Input, Select, Toggle };
+  const ButtonUtility = (props: {
+    onClick?: () => void;
+    isDisabled?: boolean;
+    tooltip?: string;
+    'data-testid'?: string;
+  }) => (
+    <button
+      aria-label={props.tooltip}
+      data-testid={props['data-testid']}
+      disabled={props.isDisabled}
+      onClick={props.onClick}
+    />
+  );
+
+  return { Autocomplete, Button, ButtonUtility, Card, Input, Select, Toggle };
 });
 
 jest.mock('react-i18next', () => ({

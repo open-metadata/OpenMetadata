@@ -38,8 +38,8 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.BulkColumnUpdatePreview;
 import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
@@ -48,14 +48,18 @@ import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.jdbi3.ColumnRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.ColumnAggregator;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.CSVImportResponse;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -108,11 +112,21 @@ public class ColumnResource {
           @PathParam("fqn")
           String fqn,
       @Parameter(
-              description = "Entity type of the parent entity (table or dashboardDataModel)",
+              description = "Entity type of the parent entity",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"table", "dashboardDataModel"}),
+                      allowableValues = {
+                        "table",
+                        "dashboardDataModel",
+                        "topic",
+                        "container",
+                        "mlmodel",
+                        "pipeline",
+                        "searchIndex",
+                        "apiEndpoint",
+                        "worksheet"
+                      }),
               example = "table",
               required = true)
           @QueryParam("entityType")
@@ -130,9 +144,9 @@ public class ColumnResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    Column column =
-        repository.getColumnByFQN(securityContext, fqn, entityType, fieldsParam, include);
-    return Response.ok(column).build();
+    FieldInterface child =
+        repository.getChildByFQN(securityContext, fqn, entityType, fieldsParam, include);
+    return Response.ok(child).build();
   }
 
   @PUT
@@ -142,8 +156,17 @@ public class ColumnResource {
       summary = "Update a column by fully qualified name",
       description =
           "Update column metadata such as display name, description, tags, glossary terms, "
-              + "and other properties. This API works for columns in both tables and dashboard data models. "
+              + "and other properties. This API works for the inline children of every supported entity "
+              + "type: table and dashboardDataModel columns, topic and apiEndpoint schema fields, "
+              + "container data-model columns, mlmodel features, pipeline tasks, searchIndex fields and "
+              + "worksheet columns. "
               + "The column is identified by its fully qualified name and the parent entity type is specified. "
+              + "\n\nPer-type support:"
+              + "\n• description, displayName and tags apply to every type, except displayName on mlmodel"
+              + " features, which have no such property (400)"
+              + "\n• constraint and removeConstraint apply to table columns, are ignored for"
+              + " dashboardDataModel, and are rejected for every other type (400)"
+              + "\n• extension applies to table and dashboardDataModel columns only (400 elsewhere)"
               + "\n\nTag Management Examples:"
               + "\n• Add tags: {\"tags\": [{\"tagFQN\": \"PersonalData.PII\", \"source\": \"Classification\"}]}"
               + "\n• Remove specific tag: {\"tags\": []} (specify only tags you want to keep)"
@@ -174,16 +197,32 @@ public class ColumnResource {
           @PathParam("fqn")
           String fqn,
       @Parameter(
-              description = "Entity type of the parent entity (table or dashboardDataModel)",
+              description = "Entity type of the parent entity",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"table", "dashboardDataModel"}),
+                      allowableValues = {
+                        "table",
+                        "dashboardDataModel",
+                        "topic",
+                        "container",
+                        "mlmodel",
+                        "pipeline",
+                        "searchIndex",
+                        "apiEndpoint",
+                        "worksheet"
+                      }),
               example = "table",
               required = true)
           @QueryParam("entityType")
           @NotNull
           String entityType,
+      @Parameter(
+              description =
+                  "Provenance of this change (Manual, Propagated, Automated, Derived, Ingested, Suggested)",
+              schema = @Schema(type = "string"))
+          @QueryParam("changeSource")
+          String changeSourceParam,
       @RequestBody(
               description = "Column update payload",
               content =
@@ -193,10 +232,13 @@ public class ColumnResource {
           @Valid
           UpdateColumn updateColumn) {
 
-    Column updatedColumn =
-        repository.updateColumnByFQN(uriInfo, securityContext, fqn, entityType, updateColumn);
+    ChangeSource changeSource =
+        changeSourceParam == null ? null : ChangeSource.fromValue(changeSourceParam);
+    FieldInterface updatedChild =
+        repository.updateChildByFQN(
+            uriInfo, securityContext, fqn, entityType, updateColumn, changeSource);
 
-    return Response.ok(updatedColumn).build();
+    return Response.ok(updatedChild).build();
   }
 
   @GET
@@ -206,9 +248,11 @@ public class ColumnResource {
       summary = "Search and group columns by name",
       description =
           "Search for columns across different entity types and group them by exact column name match. "
-              + "This endpoint helps identify unique column names and their occurrences across tables, "
-              + "dashboard data models, containers, and search indexes. Supports filtering by entity type, "
-              + "service, database, schema, and domain.",
+              + "This endpoint helps identify unique column names and their occurrences across tables "
+              + "and dashboard data models. Supports filtering by entity type, "
+              + "service, database, schema, and domain. "
+              + "Other inline-child entity types are reachable through /v1/columns/name/{fqn} and the "
+              + "per-entity paginated /columns endpoints, not through this search.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -319,13 +363,15 @@ public class ColumnResource {
           boolean hasMissingMetadata,
       @Parameter(
               description =
-                  "Filter by metadata status: MISSING (no description AND no tags), "
+                  "Filter by aggregate metadata status of a column across all its occurrences: "
+                      + "MISSING (no description AND no tags), "
                       + "INCOMPLETE (has description OR tags, but not both), "
-                      + "COMPLETE (has both description AND tags)",
+                      + "COMPLETE (has both description AND tags), "
+                      + "INCONSISTENT (occurrences disagree on description/tags)",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"MISSING", "INCOMPLETE", "COMPLETE"}))
+                      allowableValues = {"MISSING", "INCOMPLETE", "COMPLETE", "INCONSISTENT"}))
           @QueryParam("metadataStatus")
           String metadataStatus,
       @Parameter(
@@ -356,7 +402,7 @@ public class ColumnResource {
     }
     request.setDatabaseName(databaseName);
     request.setSchemaName(schemaName);
-    request.setDomainId(domainId);
+    request.setDomainId(domainId == null ? navbarDomainIds(securityContext) : domainId);
     request.setHasConflicts(hasConflicts);
     request.setHasMissingMetadata(hasMissingMetadata);
     request.setMetadataStatus(metadataStatus);
@@ -370,6 +416,14 @@ public class ColumnResource {
     ColumnGridResponse response = repository.getColumnGridPaginated(securityContext, request);
 
     return Response.ok(response).build();
+  }
+
+  // The grid is a search aggregation, so the navbar domain pick is applied here (e.g. a bulk edit
+  // of
+  // a column picked from the grid then only reaches the picked domain's tables).
+  private static String navbarDomainIds(SecurityContext securityContext) {
+    List<String> ids = EntityUtil.navbarDomainIds(securityContext, Entity.TABLE);
+    return ids.isEmpty() ? null : String.join(",", ids);
   }
 
   @POST
@@ -548,37 +602,43 @@ public class ColumnResource {
       @Parameter(description = "Filter by domain ID") @QueryParam("domainId") String domainId,
       String csv) {
 
+    // Refuse oversized payloads before queueing; the repository re-validates inside the job.
+    CsvAsyncJobManager.validateImportPayload(csv);
+
     String jobId = UUID.randomUUID().toString();
     CSVImportResponse responseEntity =
         new CSVImportResponse(jobId, "CSV column import is in progress.");
     Response response =
         Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            WebsocketNotificationHandler.sendBulkAssetsOperationStartedNotification(
-                jobId, securityContext);
-            CsvImportResult result =
-                repository.importColumnsCSV(
-                    uriInfo,
-                    securityContext,
-                    csv,
-                    false,
-                    entityTypes,
-                    serviceName,
-                    databaseName,
-                    schemaName,
-                    domainId);
-            WebsocketNotificationHandler.sendCsvImportCompleteNotification(
-                jobId, securityContext, result);
-          } catch (Exception e) {
-            LOG.error("Encountered Exception while importing CSV for columns.", e);
-            WebsocketNotificationHandler.sendBulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
-          }
-        });
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.CSV_IMPORT,
+            jobId,
+            () -> {
+              try {
+                WebsocketNotificationHandler.sendBulkAssetsOperationStartedNotification(
+                    jobId, securityContext);
+                CsvImportResult result =
+                    repository.importColumnsCSV(
+                        uriInfo,
+                        securityContext,
+                        csv,
+                        false,
+                        entityTypes,
+                        serviceName,
+                        databaseName,
+                        schemaName,
+                        domainId,
+                        Integer.MAX_VALUE);
+                WebsocketNotificationHandler.sendCsvImportCompleteNotification(
+                    jobId, securityContext, result);
+              } catch (Exception e) {
+                LOG.error("Encountered Exception while importing CSV for columns.", e);
+                WebsocketNotificationHandler.sendBulkAssetsOperationFailedNotification(
+                    jobId, securityContext, e.getMessage());
+              }
+            });
 
     return response;
   }
@@ -621,32 +681,35 @@ public class ColumnResource {
     Response response =
         Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            WebsocketNotificationHandler.sendBulkAssetsOperationStartedNotification(
-                jobId, securityContext);
-            BulkOperationResult result =
-                repository.bulkUpdateColumns(
-                    uriInfo,
-                    securityContext,
-                    request,
-                    (processed, total) ->
-                        WebsocketNotificationHandler.sendBulkAssetsOperationProgressNotification(
-                            jobId,
-                            securityContext,
-                            processed,
-                            total,
-                            "Bulk column update is in progress."));
-            WebsocketNotificationHandler.sendBulkAssetsOperationCompleteNotification(
-                jobId, securityContext, result);
-          } catch (Exception e) {
-            LOG.error("Encountered Exception while bulk updating columns.", e);
-            WebsocketNotificationHandler.sendBulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
-          }
-        });
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.BULK_ASSET_OPERATION,
+            jobId,
+            () -> {
+              try {
+                WebsocketNotificationHandler.sendBulkAssetsOperationStartedNotification(
+                    jobId, securityContext);
+                BulkOperationResult result =
+                    repository.bulkUpdateColumns(
+                        uriInfo,
+                        securityContext,
+                        request,
+                        (processed, total) ->
+                            WebsocketNotificationHandler
+                                .sendBulkAssetsOperationProgressNotification(
+                                    jobId,
+                                    securityContext,
+                                    processed,
+                                    total,
+                                    "Bulk column update is in progress."));
+                WebsocketNotificationHandler.sendBulkAssetsOperationCompleteNotification(
+                    jobId, securityContext, result);
+              } catch (Exception e) {
+                LOG.error("Encountered Exception while bulk updating columns.", e);
+                WebsocketNotificationHandler.sendBulkAssetsOperationFailedNotification(
+                    jobId, securityContext, e.getMessage());
+              }
+            });
 
     return response;
   }

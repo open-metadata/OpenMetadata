@@ -16,8 +16,6 @@ To be used by OpenMetadata class
 
 from __future__ import annotations
 
-from typing import List, Optional  # noqa: UP035
-
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType  # noqa: TC001
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType  # noqa: TC001
 from metadata.generated.schema.analytics.webAnalyticEventData import (
@@ -64,7 +62,7 @@ class DataInsightMixin:
     def add_web_analytic_events(
         self,
         event_data: WebAnalyticEventData,
-    ) -> List[WebAnalyticEventData]:  # noqa: UP006
+    ) -> list[WebAnalyticEventData]:
         """Get web analytic event"""
 
         resp = self.client.put("/analytics/web/events/collect", event_data.model_dump_json())
@@ -98,7 +96,7 @@ class DataInsightMixin:
         end_ts: int,
         data_insight_chart_nane: str,
         data_report_index: str,
-        params: Optional[dict] = None,  # noqa: UP045
+        params: dict | None = None,
     ) -> DataInsightChartResult:
         """_summary_
 
@@ -153,7 +151,7 @@ class DataInsightMixin:
 
     def get_web_analytic_events(
         self, event_type: WebAnalyticEventType, start_ts: int, end_ts: int
-    ) -> List[WebAnalyticEventData]:  # noqa: UP006
+    ) -> list[WebAnalyticEventData]:
         """Get web analytic event"""
 
         event_type_value = event_type.value

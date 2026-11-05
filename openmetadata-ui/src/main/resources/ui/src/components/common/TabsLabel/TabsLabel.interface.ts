@@ -18,10 +18,11 @@ export interface TabProps {
   key: EntityTabs;
   children?: JSX.Element;
   isHidden?: boolean;
+  forceRender?: boolean;
 }
 
 export interface TabsLabelProps {
-  name: string;
+  name: React.ReactNode;
   id: string;
   count?: number;
   isActive?: boolean;

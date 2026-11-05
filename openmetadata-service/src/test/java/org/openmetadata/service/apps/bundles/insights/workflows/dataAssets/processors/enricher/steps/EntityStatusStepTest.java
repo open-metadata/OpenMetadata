@@ -51,23 +51,21 @@ class EntityStatusStepTest {
     assertEquals("Unprocessed", snapshot.get("entityStatus"));
   }
 
-  private Map<String, Object> run(EntityInterface entity) {
+  private Map<String, Object> run(EntityInterface<?> entity) {
     Map<String, Object> entityMap = new HashMap<>();
     EnrichmentTarget target =
         new EnrichmentTarget(
             entity,
             entityMap,
             Map.of(),
-            0L,
-            0L,
             new EnrichmentContext("table", List.of(), 0L, 0L),
             VersionShape.LATEST_HYDRATED);
     step.apply(target);
     return entityMap;
   }
 
-  private static EntityInterface entityWithStatus(EntityStatus status) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private static EntityInterface<?> entityWithStatus(EntityStatus status) {
+    EntityInterface<EntityStatus> entity = mock(EntityInterface.class);
     when(entity.getEntityStatus()).thenReturn(status);
     return entity;
   }

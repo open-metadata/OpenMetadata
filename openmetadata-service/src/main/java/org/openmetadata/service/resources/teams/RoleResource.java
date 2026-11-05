@@ -62,8 +62,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.security.IdentityEndpoint;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Path("/v1/roles")
 @Tag(
@@ -104,6 +104,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     List<Role> roles = repository.getEntitiesFromSeedData();
     for (Role role : roles) {
       role.setFullyQualifiedName(role.getName());
@@ -223,19 +226,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    RestUtil.validateCursors(before, after);
-    Fields fields = getFields(fieldsParam);
-    ListFilter filter = new ListFilter(include);
-
-    ResultList<Role> roles;
-    if (before != null) { // Reverse paging
-      roles =
-          repository.listBefore(
-              uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
-    } else { // Forward paging or first page
-      roles = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, roles);
+    // Authorized and row-checked like every other entity listing.
+    return listInternal(
+        uriInfo, securityContext, fieldsParam, new ListFilter(include), limitParam, before, after);
   }
 
   @GET
@@ -375,6 +368,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @POST
+  @IdentityEndpoint
   @Operation(
       operationId = "createRole",
       summary = "Create a role",
@@ -398,6 +392,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @PUT
+  @IdentityEndpoint
   @Operation(
       operationId = "createOrUpdateRole",
       summary = "Update role",
@@ -421,6 +416,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @PATCH
+  @IdentityEndpoint
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
@@ -449,6 +445,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @PATCH
+  @IdentityEndpoint
   @Path("/name/{fqn}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
@@ -478,6 +475,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @DELETE
+  @IdentityEndpoint
   @Path("/{id}")
   @Operation(
       operationId = "deleteRole",
@@ -502,6 +500,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @DELETE
+  @IdentityEndpoint
   @Path("/async/{id}")
   @Operation(
       operationId = "deleteRoleAsync",
@@ -526,6 +525,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @DELETE
+  @IdentityEndpoint
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteRoleByName",
@@ -549,6 +549,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @PUT
+  @IdentityEndpoint
   @Path("/restore")
   @Operation(
       operationId = "restore",

@@ -11,7 +11,6 @@
 """Entity Utilities"""
 
 from enum import Enum
-from typing import Type  # noqa: UP035
 
 from metadata.generated.schema.entity.services.apiService import (
     ApiService,
@@ -84,7 +83,7 @@ SERVICE_TYPE_MAP = {
 }
 
 
-def service_class(service_type) -> Type:  # noqa: UP006
+def service_class(service_type) -> type:
     """Get the service class based on the service type
 
     Args:

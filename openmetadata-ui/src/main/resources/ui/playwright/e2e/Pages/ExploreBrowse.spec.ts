@@ -10,27 +10,54 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { expect, test } from '../../support/fixtures/base';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   expandDatabaseInExploreTree,
   expandSchemaInExploreTree,
   expandServiceInExploreTree,
 } from '../../utils/explore';
+import { isAggregationResponse } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const table = new TableClass();
-const dashboard = new DashboardClass();
+// Explore tree's service bucket is capped at 166 and sorted alphabetically
+// (ElasticSearchAggregationManager orders by _key ASC), so a name starting with
+// a digit guarantees these services land within that bucket regardless of how
+// many other `pw-*` services have accumulated.
+const table = new TableClass({
+  service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
+});
+const dashboard = new DashboardClass({
+  service: new DashboardServiceClass(`0-pw-dashboard-service-${uuid()}`),
+});
 
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.
 const expandTreeNode = async (page: Page, titleTestId: string) => {
+  const row = page
+    .getByTestId('explore-tree')
+    .getByRole('row')
+    .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) });
+
+  const isExpanded = async () =>
+    (await row.getAttribute('aria-expanded')) === 'true';
+
+  if (await isExpanded()) {
+    return;
+  }
+
   // Set up response listener BEFORE clicking. After #29642, ExploreTree skips
   // setIsLoading on browse selections, so loader-based waiting is unreliable.
   // Response-based waiting (the same pattern used in expandServiceInExploreTree
@@ -38,26 +65,32 @@ const expandTreeNode = async (page: Page, titleTestId: string) => {
   // we interact with them.
   // ServiceType nodes drill down through POST /search/aggregate (service.style
   // top hits for custom icons); every other level still uses GET /search/query.
-  const res = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query?') ||
-      (response.url().endsWith('/api/v1/search/aggregate') &&
-        response.request().method() === 'POST')
-  );
-  await page
-    .locator('.ant-tree-treenode')
-    .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
-    .locator('.ant-tree-switcher svg')
-    .first()
-    .click();
+  // A node only fetches its children the first time it opens though, so a caller
+  // re-expanding a node the tree already holds gets no request at all — hence the
+  // bound and the tolerance for it never arriving. Left unbounded this waits the
+  // full 30s default, which is enough to exhaust a caller's whole retry budget.
+  const res = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query?') ||
+        isAggregationResponse(response, {
+          field: 'service.displayName.keyword',
+          value: null,
+        }),
+      { timeout: 15_000 }
+    )
+    .catch(() => undefined);
+
+  await row.getByTestId('tree-expand-btn').click({ timeout: 10_000 });
   await res;
+  await expect(row).toHaveAttribute('aria-expanded', 'true');
   await waitForAllLoadersToDisappear(page);
 };
 
 const rootTreeNode = (page: Page, titleTestId: string) =>
   page
     .getByTestId(`explore-tree-title-${titleTestId}`)
-    .locator('xpath=ancestor::*[contains(@class, "ant-tree-treenode")]');
+    .locator('xpath=ancestor::*[@role="row"]');
 
 const goToExplore = async (page: Page) => {
   await redirectToHomePage(page);
@@ -81,7 +114,7 @@ const selectDataAssetType = async (page: Page, optionKey: string) => {
   const applyRes = page.waitForResponse(
     '/api/v1/search/query?*index=dataAsset*'
   );
-  await page.getByTestId(`${optionKey}-checkbox`).check();
+  await page.getByTestId('drop-down-menu').getByTestId(optionKey).click();
   await applyRes;
   await page.keyboard.press('Escape');
   await waitForAllLoadersToDisappear(page);
@@ -203,7 +236,7 @@ test.describe(
       expect(filteredCount).toBeLessThan(unfilteredCount);
     });
 
-    test('result-card breadcrumb collapses a deep path and expands on click', async ({
+    test('every result-card breadcrumb links to its hierarchy destination', async ({
       page,
     }) => {
       test.slow();
@@ -216,18 +249,61 @@ test.describe(
       await searchRes;
       await waitForAllLoadersToDisappear(page);
 
-      // The middle crumbs are collapsed into a clickable "…" menu — the trail
+      const card = page.getByTestId(
+        `table-data-card_${table.entityResponseData.fullyQualifiedName}`
+      );
+      const breadcrumb = card.getByRole('list', { name: 'Breadcrumb' });
+      const serviceLink = breadcrumb.getByRole('link', {
+        name: table.serviceResponseData.name,
+      });
+      const schemaLink = breadcrumb.getByRole('link', {
+        name: table.schemaResponseData.name,
+      });
+
+      await expect(serviceLink).toHaveAttribute(
+        'href',
+        `/service/databaseServices/${getEncodedFqn(
+          table.serviceResponseData.name
+        )}`
+      );
+      await expect(schemaLink).toHaveAttribute(
+        'href',
+        `/databaseSchema/${getEncodedFqn(
+          table.schemaResponseData.fullyQualifiedName
+        )}`
+      );
+
+      // The middle crumb is collapsed into a clickable "…" menu — the trail
       // stays compact (first / … / last) instead of spanning the whole card.
-      const collapseButton = page
-        .getByRole('button', { name: 'Show hidden breadcrumbs' })
-        .first();
+      const collapseButton = breadcrumb.getByRole('button', {
+        name: 'Show hidden breadcrumbs',
+      });
       await expect(collapseButton).toBeVisible();
 
-      // Clicking the "…" reveals the hidden middle crumbs.
       await collapseButton.click();
-      await expect(
-        page.getByRole('menu', { name: 'Hidden breadcrumbs' })
-      ).toBeVisible();
+      const hiddenBreadcrumbs = page.getByRole('menu', {
+        name: 'Hidden breadcrumbs',
+      });
+      const databaseLink = hiddenBreadcrumbs.getByRole('menuitemradio', {
+        name: table.databaseResponseData.name,
+      });
+
+      await expect(databaseLink).toHaveAttribute(
+        'href',
+        `/database/${getEncodedFqn(
+          table.databaseResponseData.fullyQualifiedName
+        )}`
+      );
+
+      await page.keyboard.press('Escape');
+      await schemaLink.click();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/databaseSchema/${getEncodedFqn(
+            table.schemaResponseData.fullyQualifiedName
+          )}$`
+        )
+      );
     });
 
     test('browsing the tree stacks removable QUERY chips and filters results', async ({
@@ -267,19 +343,13 @@ test.describe(
           `explore-tree-title-${table.service.serviceType.toLowerCase()}`
         );
 
-        // The browse rebuild collapses the tree and can detach the row
-        // mid-click; retry expand → click until the chip confirms the select.
-        await expect(async () => {
-          if (!(await serviceTitle.isVisible())) {
-            await expandTreeNode(page, 'Databases');
-          }
-          await serviceTitle.click();
-          await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible(
-            {
-              timeout: 5000,
-            }
-          );
-        }).toPass({ timeout: 60000 });
+        await waitForAllLoadersToDisappear(page);
+        if (!(await serviceTitle.isVisible())) {
+          await expandTreeNode(page, 'Databases');
+        }
+        await expect(serviceTitle).toBeVisible();
+        await serviceTitle.click();
+        await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
 
         await waitForAllLoadersToDisappear(page);
 
@@ -287,11 +357,13 @@ test.describe(
         await expect(page.getByTestId('clear-all-chips')).toBeVisible();
         await expect(page.getByTestId('clear-filters')).toHaveCount(0);
 
-        await expect(rootTreeNode(page, 'Databases')).not.toHaveClass(
-          /ant-tree-treenode-disabled/
+        await expect(rootTreeNode(page, 'Databases')).not.toHaveAttribute(
+          'aria-disabled',
+          'true'
         );
-        await expect(rootTreeNode(page, 'Dashboards')).toHaveClass(
-          /ant-tree-treenode-disabled/
+        await expect(rootTreeNode(page, 'Dashboards')).toHaveAttribute(
+          'aria-disabled',
+          'true'
         );
         expect(page.url()).toContain('browsePath');
       });
@@ -307,8 +379,9 @@ test.describe(
         await expect(
           page.getByTestId('browse-chip-serviceType')
         ).not.toBeVisible();
-        await expect(rootTreeNode(page, 'Dashboards')).not.toHaveClass(
-          /ant-tree-treenode-disabled/
+        await expect(rootTreeNode(page, 'Dashboards')).not.toHaveAttribute(
+          'aria-disabled',
+          'true'
         );
       });
     });
@@ -366,8 +439,9 @@ test.describe(
       });
 
       await test.step('the selected schema stays highlighted', async () => {
-        await expect(rootTreeNode(page, schemaName)).toHaveClass(
-          /ant-tree-treenode-selected/
+        await expect(rootTreeNode(page, schemaName)).toHaveAttribute(
+          'aria-selected',
+          'true'
         );
       });
     });
@@ -394,11 +468,13 @@ test.describe(
       await browseRes;
       await waitForAllLoadersToDisappear(page);
 
-      await expect(rootTreeNode(page, 'table')).toHaveClass(
-        /ant-tree-treenode-selected/
+      await expect(rootTreeNode(page, 'table')).toHaveAttribute(
+        'aria-selected',
+        'true'
       );
-      await expect(rootTreeNode(page, schemaName)).not.toHaveClass(
-        /ant-tree-treenode-selected/
+      await expect(rootTreeNode(page, schemaName)).not.toHaveAttribute(
+        'aria-selected',
+        'true'
       );
     });
   }
@@ -413,10 +489,12 @@ test.describe(
         page.getByTestId('explore-tree-title-Governance')
       ).toBeVisible();
       await page
-        .locator('.ant-tree-treenode', {
+        .getByTestId('explore-tree')
+        .getByRole('row')
+        .filter({
           has: page.getByTestId('explore-tree-title-Governance'),
         })
-        .locator('.ant-tree-switcher')
+        .getByTestId('tree-expand-btn')
         .click();
     };
 

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { DashboardDataModelClass } from '../../../support/entity/DashboardDataModelClass';
 import { MlModelClass } from '../../../support/entity/MlModelClass';
 import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 

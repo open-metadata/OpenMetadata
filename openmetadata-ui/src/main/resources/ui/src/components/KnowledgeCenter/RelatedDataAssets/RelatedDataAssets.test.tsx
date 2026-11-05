@@ -31,12 +31,9 @@ jest.mock('utils/EntityNameUtils', () => ({
     .fn()
     .mockImplementation((entity) => entity.displayName || entity.name),
 }));
-jest.mock('utils/TableUtils', () => ({
+jest.mock('utils/EntityIconUtils', () => ({
   getEntityIcon: jest.fn(),
 }));
-
-jest.mock('pages/TasksPage/shared/DescriptionTaskNew');
-jest.mock('pages/TasksPage/shared/DescriptionTask');
 
 describe('RelatedDataAssets', () => {
   it('should render', () => {

@@ -52,6 +52,14 @@ jest.mock('../../common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>Description</div>)
 );
 
+jest.mock('../../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue({
+    customizedPage: null,
+    navigation: null,
+    isLoading: false,
+  }),
+}));
+
 const mockProps = {
   glossary: mockedGlossaries[0],
   glossaryTerms: [],

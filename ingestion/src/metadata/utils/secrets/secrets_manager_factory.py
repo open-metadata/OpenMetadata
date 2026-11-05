@@ -13,8 +13,6 @@
 Secrets manager factory module
 """
 
-from typing import Optional
-
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
 )
@@ -40,8 +38,8 @@ class SecretsManagerFactory(metaclass=Singleton):
 
     def __init__(
         self,
-        secrets_manager_provider: Optional[SecretsManagerProvider] = None,  # noqa: UP045
-        secrets_manager_loader: Optional[SecretsManagerClientLoader] = None,  # noqa: UP045
+        secrets_manager_provider: SecretsManagerProvider | None = None,
+        secrets_manager_loader: SecretsManagerClientLoader | None = None,
     ):
         """Here the concrete class object is no passed to avoid the creation of circular dependencies
 
@@ -58,11 +56,11 @@ class SecretsManagerFactory(metaclass=Singleton):
         )
 
     @property
-    def secrets_manager_provider(self) -> Optional[SecretsManagerProvider]:  # noqa: UP045
+    def secrets_manager_provider(self) -> SecretsManagerProvider | None:
         return self._secrets_manager_provider
 
     @property
-    def secrets_manager_loader(self) -> Optional[SecretsManagerClientLoader]:  # noqa: UP045
+    def secrets_manager_loader(self) -> SecretsManagerClientLoader | None:
         return self._secrets_manager_loader
 
     def _get_secrets_manager(

@@ -311,19 +311,17 @@ describe('applyProgressToAgent', () => {
     expect(result.finishedAt).toBe('just now');
   });
 
-  it('marks the agent failed with failStep on ERROR', () => {
+  it('marks the agent failed on ERROR', () => {
     const agent: Agent = { ...baseAgent, status: 'running', pct: 55, eta: 30 };
     const result = applyProgressToAgent(
       agent,
       buildUpdate({
         updateType: ProgressUpdateType.Error,
-        stepName: 'Source',
       })
     );
 
     expect(result.status).toBe('failed');
     expect(result.eta).toBeNull();
-    expect(result.failStep).toBe('Source');
     expect(result.pct).toBe(55);
   });
 
@@ -349,7 +347,6 @@ describe('resetAgentProgress', () => {
       target: 500,
       eta: 12,
       finishedAt: '1m ago',
-      failStep: 'Sink',
     };
 
     expect(resetAgentProgress(agent)).toEqual({
@@ -359,7 +356,6 @@ describe('resetAgentProgress', () => {
       target: 0,
       eta: null,
       finishedAt: undefined,
-      failStep: undefined,
     });
   });
 });

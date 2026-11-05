@@ -14,13 +14,16 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import List, Type, cast  # noqa: UP035
+from typing import Any, cast
 
 from sqlalchemy import Column, inspect
+from sqlalchemy.sql.type_api import TypeEngine
 
-from metadata.generated.schema.entity.data.table import SystemProfile
+from metadata.generated.schema.entity.data.table import SystemProfile, TableType
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
+from metadata.ingestion.ometa.utils import model_str
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -48,13 +51,19 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
 
     def _compute_system_metrics(
         self,
-        metrics: Type[System],  # noqa: UP006
+        metrics: type[System],
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:  # noqa: UP006
-        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
-        self.system_metrics_class = cast(Type[BigQuerySystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
+    ) -> list[SystemProfile]:
+        if self.table_entity.tableType == TableType.Sharded:
+            self.status.warning(
+                model_str(self.table_entity.fullyQualifiedName),
+                "System metrics are not supported for sharded tables yet",
+            )
+            return []
+        logger.debug("Computing %s metric for %s", metrics.name(), runner.table_name)
+        self.system_metrics_class = cast(type[BigQuerySystemMetricsComputer], self.system_metrics_class)  # noqa: TC006
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,
@@ -63,17 +72,25 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
         )
         return instance.get_system_metrics()
 
-    def _get_struct_columns(self, columns: dict, parent: str):
+    def _get_struct_columns(
+        self,
+        columns: Iterable[tuple[str, TypeEngine[Any]]],
+        parent: str,
+    ):
         """"""
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
+        from sqlalchemy_bigquery import STRUCT
 
         columns_list = []
         for key, value in columns:
             if not isinstance(value, STRUCT):
                 col = Column(f"{parent}.{key}", value)
                 # pylint: disable=protected-access
-                col._set_parent(self.table.__table__)
+                col._set_parent(
+                    self.table.__table__,
+                    all_names={c.name: c for c in self.table.__table__.columns},
+                    allow_replacements=True,
+                )
                 # pylint: enable=protected-access
                 columns_list.append(col)
             else:
@@ -84,7 +101,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
     def get_columns(self) -> Column:
         """Get columns from table"""
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
+        from sqlalchemy_bigquery import STRUCT
 
         columns = []
         for column in inspect(self.table).c:

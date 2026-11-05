@@ -14,7 +14,8 @@ Entity Fetcher Strategy
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, Iterator, List, Optional, cast  # noqa: UP035
+from collections.abc import Iterable, Iterator
+from typing import cast
 
 from pydantic import BaseModel
 
@@ -35,6 +36,10 @@ from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.entity_interface import EntityInterfaceWithTags
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import ManualProgress
+from metadata.profiler.metrics.system.system import (
+    DEFAULT_SYSTEM_METRICS_BATCH_SIZE,
+    TABLE_BATCH_WINDOW,
+)
 from metadata.profiler.source.fetcher.config import EntityFilterConfigInterface
 from metadata.profiler.source.fetcher.profiler_source_factory import (
     profiler_source_factory,
@@ -42,10 +47,9 @@ from metadata.profiler.source.fetcher.profiler_source_factory import (
 from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils.db_utils import Table
 from metadata.utils.filters import (
+    _filter_server_compatible,
     filter_by_classifications,
     filter_by_container,
-    filter_by_schema,
-    filter_by_table,
     filter_by_topic,
     validate_regex,
 )
@@ -63,15 +67,15 @@ class RegexFilter(BaseModel):
     mode: str
 
 
-def _combine_patterns(patterns: List[str]) -> str:  # noqa: UP006
+def _combine_patterns(patterns: list[str]) -> str:
     if len(patterns) == 1:
         return patterns[0]
     return "|".join(f"({p})" for p in patterns)
 
 
 def _build_regex_from_filter(
-    filter_pattern: Optional[FilterPattern],  # noqa: UP045
-) -> Optional[RegexFilter]:  # noqa: UP045
+    filter_pattern: FilterPattern | None,
+) -> RegexFilter | None:
     """Build a RegexFilter from a FilterPattern for server-side filtering.
 
     When both includes and excludes are set, includes take precedence.
@@ -95,7 +99,7 @@ class FetcherStrategy(ABC):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
         progress: ManualProgress,
     ) -> None:
@@ -145,7 +149,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
         progress: ManualProgress,
     ) -> None:
@@ -155,8 +159,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         self.table_filter_pattern = _build_regex_from_filter(self.source_config.tableFilterPattern)
         self.source_config = cast(EntityFilterConfigInterface, self.source_config)  # Satisfy typechecker  # noqa: TC006
 
-    def _build_database_params(self) -> Dict[str, str]:  # noqa: UP006
-        params: Dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore  # noqa: UP006
+    def _build_database_params(self) -> dict[str, str]:
+        params: dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore
         db_filter = self.database_filter_pattern
         if db_filter:
             params["databaseRegex"] = db_filter.regex
@@ -201,8 +205,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
             )
 
-    def _build_table_params(self, database: Database) -> Dict[str, str]:  # noqa: UP006
-        params: Dict[str, str] = {  # noqa: UP006
+    def _build_table_params(self, database: Database) -> dict[str, str]:
+        params: dict[str, str] = {
             "service": self.config.source.serviceName,  # type: ignore
             "database": database.fullyQualifiedName.root,  # type: ignore
         }
@@ -214,7 +218,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
         )
 
-        regex_mode: Optional[str] = None  # noqa: UP045
+        regex_mode: str | None = None
         if schema_filter and (not conflicting_modes or schema_filter.mode == "include"):
             params["databaseSchemaRegex"] = schema_filter.regex
             regex_mode = schema_filter.mode
@@ -236,8 +240,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         return schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
 
     def _filter_deferred_excludes(self, table: Table) -> bool:
-        """Apply exclude filters that were deferred to client-side
-        because schema and table filters use conflicting modes."""
+        """Apply conflicting-mode excludes with the listing API's substring semantics."""
         schema_filter = self.schema_filter_pattern
         table_filter = self.table_filter_pattern
 
@@ -248,7 +251,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 if self.source_config.useFqnForFiltering
                 else table.databaseSchema.name
             )
-            if schema_name and filter_by_schema(exclude_only, schema_name):
+            if schema_name and _filter_server_compatible(exclude_only, schema_name):
                 self.status.filter(
                     schema_name,
                     f"Schema pattern not allowed for schema {schema_name}",
@@ -260,7 +263,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             table_name = table.name.root
             if table.fullyQualifiedName and self.source_config.useFqnForFiltering:
                 table_name = table.fullyQualifiedName.root
-            if filter_by_table(exclude_only, table_name):
+            if _filter_server_compatible(exclude_only, table_name):
                 self.status.filter(
                     table_name,
                     f"Table pattern not allowed for table {table_name}",
@@ -303,6 +306,31 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         else:
             self.progress.mark_reconcilable(Table.__name__)
 
+    def _batched(self, tables: Iterable[Table]) -> Iterator[list[Table]]:
+        """Group tables so system metrics can read the DML history of a whole batch in
+        one scan. Only one batch of entities is buffered at a time."""
+        # A connection-level setting, so only the connectors that batch their system
+        # metrics (e.g. Snowflake) expose it; the others are grouped with the default.
+        service_connection = self.config.source.serviceConnection
+        batch_size = (
+            getattr(service_connection.root.config, "systemMetricsBatchSize", None) if service_connection else None
+        ) or DEFAULT_SYSTEM_METRICS_BATCH_SIZE
+        batch: list[Table] = []
+        try:
+            for table in tables:
+                batch.append(table)
+                if len(batch) == batch_size:
+                    yield batch
+                    batch = []
+        except Exception:
+            # Tables listed before a paging failure are still profiled, as when they
+            # were handed over one at a time.
+            if batch:
+                yield batch
+            raise
+        if batch:
+            yield batch
+
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
         """Fetch database entity"""
         for database in self._get_database_entities():
@@ -318,16 +346,23 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                     self.global_profiler_config,
                 )
 
-                for table in self._get_table_entities(database):
-                    observed += 1
-                    self.progress.track_asset(Table.__name__)
-                    yield Either(
-                        left=None,
-                        right=ProfilerSourceAndEntity(
-                            profiler_source=profiler_source,
-                            entity=table,
-                        ),
+                for batch in self._batched(self._get_table_entities(database)):
+                    registered_batch = TABLE_BATCH_WINDOW.register(
+                        [table.fullyQualifiedName.root for table in batch if table.fullyQualifiedName]
                     )
+                    try:
+                        for table in batch:
+                            observed += 1
+                            self.progress.track_asset(Table.__name__)
+                            yield Either(
+                                left=None,
+                                right=ProfilerSourceAndEntity(
+                                    profiler_source=profiler_source,
+                                    entity=table,
+                                ),
+                            )
+                    finally:
+                        TABLE_BATCH_WINDOW.discard(registered_batch)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -348,7 +383,7 @@ class StorageFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
         progress: ManualProgress,
     ) -> None:
@@ -481,7 +516,7 @@ class MessagingFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
         progress: ManualProgress,
     ) -> None:

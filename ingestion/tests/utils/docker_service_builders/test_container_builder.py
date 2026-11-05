@@ -10,8 +10,6 @@
 #  limitations under the License.
 """test container builder class"""
 
-from typing import List  # noqa: UP035
-
 from .abstract_test_container import AbstractTestContainer  # noqa: TC001, TID252
 from .database_container.mysql_test_container import MySQLTestContainer  # noqa: TID252
 from .database_container.postgres_test_container import PostgresTestContainer  # noqa: TID252
@@ -19,7 +17,7 @@ from .database_container.postgres_test_container import PostgresTestContainer  #
 
 class ContainerBuilder:
     def __init__(self) -> None:
-        self.containers: List[AbstractTestContainer] = []  # noqa: UP006
+        self.containers: list[AbstractTestContainer] = []
 
     def run_mysql_container(self):
         """build mysql container"""

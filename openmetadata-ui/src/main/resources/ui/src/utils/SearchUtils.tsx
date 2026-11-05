@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { SearchOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { Link } from 'react-router-dom';
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {
@@ -25,145 +25,125 @@ import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
+import { getServiceLogoThemeClass } from './ServiceIconUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
+type SearchIndexGroupConfig = {
+  labelKey: string;
+  entityType?: EntityType;
+};
+
+const SEARCH_INDEX_GROUP_CONFIG: Record<string, SearchIndexGroupConfig> = {
+  [SearchIndex.TOPIC]: {
+    labelKey: 'label.topic-plural',
+    entityType: EntityType.TOPIC,
+  },
+  [SearchIndex.DATABASE]: {
+    labelKey: 'label.database-plural',
+    entityType: EntityType.DATABASE,
+  },
+  [SearchIndex.DATABASE_SCHEMA]: {
+    labelKey: 'label.database-schema-plural',
+    entityType: EntityType.DATABASE_SCHEMA,
+  },
+  [SearchIndex.DASHBOARD]: {
+    labelKey: 'label.dashboard-plural',
+    entityType: EntityType.DASHBOARD,
+  },
+  [SearchIndex.PIPELINE]: {
+    labelKey: 'label.pipeline-plural',
+    entityType: EntityType.PIPELINE,
+  },
+  [SearchIndex.MLMODEL]: {
+    labelKey: 'label.ml-model-plural',
+    entityType: EntityType.MLMODEL,
+  },
+  [SearchIndex.GLOSSARY_TERM]: {
+    labelKey: 'label.glossary-term-plural',
+    entityType: EntityType.GLOSSARY_TERM,
+  },
+  [SearchIndex.TAG]: {
+    labelKey: 'label.tag-plural',
+    entityType: EntityType.TAG,
+  },
+  [SearchIndex.CONTAINER]: {
+    labelKey: 'label.container-plural',
+    entityType: EntityType.CONTAINER,
+  },
+  [SearchIndex.STORED_PROCEDURE]: {
+    labelKey: 'label.stored-procedure-plural',
+    entityType: EntityType.STORED_PROCEDURE,
+  },
+  [SearchIndex.DASHBOARD_DATA_MODEL]: {
+    labelKey: 'label.data-model-plural',
+    entityType: EntityType.DASHBOARD_DATA_MODEL,
+  },
+  [SearchIndex.SEARCH_INDEX]: {
+    labelKey: 'label.search-index-plural',
+  },
+  [SearchIndex.DATA_PRODUCT]: {
+    labelKey: 'label.data-product-plural',
+    entityType: EntityType.DATA_PRODUCT,
+  },
+  [SearchIndex.CHART]: {
+    labelKey: 'label.chart-plural',
+    entityType: EntityType.CHART,
+  },
+  [SearchIndex.API_COLLECTION]: {
+    labelKey: 'label.api-collection-plural',
+    entityType: EntityType.API_COLLECTION,
+  },
+  [SearchIndex.API_ENDPOINT]: {
+    labelKey: 'label.api-endpoint-plural',
+    entityType: EntityType.API_ENDPOINT,
+  },
+  [SearchIndex.METRIC]: {
+    labelKey: 'label.metric-plural',
+    entityType: EntityType.METRIC,
+  },
+  [SearchIndex.DIRECTORY]: {
+    labelKey: 'label.directory-plural',
+    entityType: EntityType.DIRECTORY,
+  },
+  [SearchIndex.FILE]: {
+    labelKey: 'label.file-plural',
+    entityType: EntityType.FILE,
+  },
+  [SearchIndex.SPREADSHEET]: {
+    labelKey: 'label.spreadsheet-plural',
+    entityType: EntityType.SPREADSHEET,
+  },
+  [SearchIndex.WORKSHEET]: {
+    labelKey: 'label.worksheet-plural',
+    entityType: EntityType.WORKSHEET,
+  },
+  [SearchIndex.COLUMN]: {
+    labelKey: 'label.column-plural',
+    entityType: EntityType.TABLE_COLUMN,
+  },
+  [SearchIndex.KNOWLEDGE_PAGE_INDEX]: {
+    labelKey: 'label.context-center',
+    entityType: EntityType.KNOWLEDGE_CENTER,
+  },
+};
+
 export const getGroupLabel = (index: string) => {
-  let label = '';
+  const config = SEARCH_INDEX_GROUP_CONFIG[index];
+
+  let label: string;
   let GroupIcon;
-  switch (index) {
-    case SearchIndex.TOPIC:
-      label = i18n.t('label.topic-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.TOPIC].icon;
 
-      break;
-    case SearchIndex.DATABASE:
-      label = i18n.t('label.database-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DATABASE].icon;
+  if (config) {
+    label = i18n.t(config.labelKey);
+    GroupIcon = config.entityType
+      ? ENTITY_ICON_MAPPER[config.entityType].icon
+      : Search;
+  } else {
+    const { label: indexLabel, GroupIcon: IndexIcon } =
+      searchClassBase.getIndexGroupLabel(index);
 
-      break;
-    case SearchIndex.DATABASE_SCHEMA:
-      label = i18n.t('label.database-schema-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DATABASE_SCHEMA].icon;
-
-      break;
-    case SearchIndex.DASHBOARD:
-      label = i18n.t('label.dashboard-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DASHBOARD].icon;
-
-      break;
-    case SearchIndex.PIPELINE:
-      label = i18n.t('label.pipeline-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.PIPELINE].icon;
-
-      break;
-    case SearchIndex.MLMODEL:
-      label = i18n.t('label.ml-model-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.MLMODEL].icon;
-
-      break;
-    case SearchIndex.GLOSSARY_TERM:
-      label = i18n.t('label.glossary-term-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.GLOSSARY_TERM].icon;
-
-      break;
-    case SearchIndex.TAG:
-      label = i18n.t('label.tag-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.TAG].icon;
-
-      break;
-    case SearchIndex.CONTAINER:
-      label = i18n.t('label.container-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.CONTAINER].icon;
-
-      break;
-
-    case SearchIndex.STORED_PROCEDURE:
-      label = i18n.t('label.stored-procedure-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.STORED_PROCEDURE].icon;
-
-      break;
-
-    case SearchIndex.DASHBOARD_DATA_MODEL:
-      label = i18n.t('label.data-model-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DASHBOARD_DATA_MODEL].icon;
-
-      break;
-
-    case SearchIndex.SEARCH_INDEX:
-      label = i18n.t('label.search-index-plural');
-      GroupIcon = SearchOutlined;
-
-      break;
-
-    case SearchIndex.DATA_PRODUCT:
-      label = i18n.t('label.data-product-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DATA_PRODUCT].icon;
-
-      break;
-
-    case SearchIndex.CHART:
-      label = i18n.t('label.chart-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.CHART].icon;
-
-      break;
-    case SearchIndex.API_COLLECTION:
-      label = i18n.t('label.api-collection-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.API_COLLECTION].icon;
-
-      break;
-
-    case SearchIndex.API_ENDPOINT:
-      label = i18n.t('label.api-endpoint-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.API_ENDPOINT].icon;
-
-      break;
-    case SearchIndex.METRIC:
-      label = i18n.t('label.metric-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.METRIC].icon;
-
-      break;
-    case SearchIndex.DIRECTORY:
-      label = i18n.t('label.directory-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DIRECTORY].icon;
-
-      break;
-    case SearchIndex.FILE:
-      label = i18n.t('label.file-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.FILE].icon;
-
-      break;
-    case SearchIndex.SPREADSHEET:
-      label = i18n.t('label.spreadsheet-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.SPREADSHEET].icon;
-
-      break;
-    case SearchIndex.WORKSHEET:
-      label = i18n.t('label.worksheet-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.WORKSHEET].icon;
-
-      break;
-
-    case SearchIndex.COLUMN:
-      label = i18n.t('label.column-plural');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.TABLE_COLUMN].icon;
-
-      break;
-
-    case SearchIndex.KNOWLEDGE_PAGE_INDEX:
-      label = i18n.t('label.context-center');
-      GroupIcon = ENTITY_ICON_MAPPER[EntityType.KNOWLEDGE_CENTER].icon;
-
-      break;
-
-    default: {
-      const { label: indexLabel, GroupIcon: IndexIcon } =
-        searchClassBase.getIndexGroupLabel(index);
-
-      label = indexLabel;
-      GroupIcon = IndexIcon;
-
-      break;
-    }
+    label = indexLabel;
+    GroupIcon = IndexIcon;
   }
 
   const groupLabel = (
@@ -191,34 +171,32 @@ export const getSuggestionElement = (
   const fqn = `(${entitySource.fullyQualifiedName ?? ''})`;
 
   return (
-    <Button
-      block
-      className="text-left truncate p-y-0 p-x-lg"
+    <div
+      className="tw:flex tw:items-center tw:gap-2 tw:px-6 tw:py-1.5 tw:hover:bg-primary_hover"
       data-testid={dataTestId}
-      icon={
-        <img
-          alt={serviceType}
-          className="m-r-sm"
-          height="16px"
-          src={serviceUtilClassBase.getServiceTypeLogo(suggestion)}
-          width="16px"
-        />
-      }
-      key={fqdn}
-      type="text">
+      key={fqdn}>
+      <img
+        alt={serviceType}
+        className={getServiceLogoThemeClass(serviceType)}
+        height="16px"
+        src={serviceUtilClassBase.getServiceTypeLogo(suggestion)}
+        width="16px"
+      />
       <Link
-        className="text-sm no-underline"
+        className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-sm tw:no-underline"
         data-testid="data-name"
         id={fqdn.replaceAll('.', '')}
         target={searchClassBase.getSearchEntityLinkTarget(entitySource)}
         to={entityLink}
         onClick={onClickHandler}>
         {displayText}
-        <Typography.Text className="m-l-xs text-xs" type="secondary">
+        <Typography
+          className="tw:wrap-break-word tw:ml-1 tw:text-xs"
+          color="secondary">
           {fqn}
-        </Typography.Text>
+        </Typography>
       </Link>
-    </Button>
+    </div>
   );
 };
 

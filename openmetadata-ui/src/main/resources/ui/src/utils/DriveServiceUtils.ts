@@ -14,6 +14,7 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { DriveServiceType } from '../generated/entity/services/driveService';
+import { loadConnectionSchema } from './loadConnectionSchema';
 
 type SchemaModule =
   | { default: Record<string, unknown> }
@@ -22,15 +23,11 @@ type SchemaLoader = () => Promise<SchemaModule>;
 
 const driveSchemaLoaders: Partial<Record<DriveServiceType, SchemaLoader>> = {
   [DriveServiceType.CustomDrive]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/drive/customDriveConnection.json'
-    ),
+    loadConnectionSchema('connections/drive/customDriveConnection.json'),
   [DriveServiceType.GoogleDrive]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/drive/googleDriveConnection.json'
-    ),
+    loadConnectionSchema('connections/drive/googleDriveConnection.json'),
   [DriveServiceType.SFTP]: () =>
-    import('../jsons/connectionSchemas/connections/drive/sftpConnection.json'),
+    loadConnectionSchema('connections/drive/sftpConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

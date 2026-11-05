@@ -15,12 +15,15 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_FIELD;
 import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_ORDER;
+import static org.openmetadata.service.search.SearchConstants.GLOSSARY_ASSET_SORT_FIELD;
+import static org.openmetadata.service.search.SearchConstants.GLOSSARY_ASSET_SORT_ORDER;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public interface InheritedFieldEntitySearch {
 
@@ -32,6 +35,22 @@ public interface InheritedFieldEntitySearch {
   Map<String, Integer> getAggregatedCountsByField(String fieldPath, String queryFilter);
 
   Map<String, Integer> getAggregatedCountsByField(String fieldPath, String queryFilter, int size);
+
+  /** As above, counting only the documents {@code caller}'s search access policies allow. */
+  default Map<String, Integer> getAggregatedCountsByField(
+      String fieldPath, String queryFilter, int size, SubjectContext caller) {
+    return getAggregatedCountsByField(fieldPath, queryFilter, size);
+  }
+
+  List<GlossaryTermAssetBucket> getAssetBucketsForTerms(
+      List<String> termFullyQualifiedNames, int assetPreviewSize, SubjectContext subjectContext);
+
+  record GlossaryTermAssetBucket(
+      String termFullyQualifiedName, int assetCount, List<EntityReference> assets) {
+    public GlossaryTermAssetBucket {
+      assets = List.copyOf(assets);
+    }
+  }
 
   enum QueryFilterType {
     DOMAIN_ASSETS,
@@ -53,6 +72,7 @@ public interface InheritedFieldEntitySearch {
     private final QueryFilterType filterType;
     private final String sortField;
     private final String sortOrder;
+    private final SubjectContext subjectContext;
 
     private InheritedFieldQuery(Builder builder) {
       this.fieldPath = builder.fieldPath;
@@ -66,6 +86,34 @@ public interface InheritedFieldEntitySearch {
       this.filterType = builder.filterType;
       this.sortField = builder.sortField;
       this.sortOrder = builder.sortOrder;
+      this.subjectContext = null;
+    }
+
+    private InheritedFieldQuery(InheritedFieldQuery query, SubjectContext subjectContext) {
+      this.fieldPath = query.fieldPath;
+      this.fieldValue = query.fieldValue;
+      this.fieldValues = query.fieldValues;
+      this.supportsHierarchy = query.supportsHierarchy;
+      this.entityTypeFilter = query.entityTypeFilter;
+      this.from = query.from;
+      this.size = query.size;
+      this.includeDeleted = query.includeDeleted;
+      this.filterType = query.filterType;
+      this.sortField = query.sortField;
+      this.sortOrder = query.sortOrder;
+      this.subjectContext = subjectContext;
+    }
+
+    /**
+     * The same query answered for {@code caller}: the search applies the caller's access policies,
+     * so an asset the caller may not view is left out. A null caller searches unfiltered.
+     */
+    public InheritedFieldQuery forCaller(SubjectContext caller) {
+      return new InheritedFieldQuery(this, caller);
+    }
+
+    public SubjectContext getSubjectContext() {
+      return subjectContext;
     }
 
     public String getFieldPath() {
@@ -241,6 +289,8 @@ public interface InheritedFieldEntitySearch {
           .includeDeleted(true)
           .from(offset)
           .size(limit)
+          .sortField(GLOSSARY_ASSET_SORT_FIELD)
+          .sortOrder(GLOSSARY_ASSET_SORT_ORDER)
           .build();
     }
 

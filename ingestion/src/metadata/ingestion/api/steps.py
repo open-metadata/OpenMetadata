@@ -13,7 +13,8 @@ Abstract definition of each step
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
 from metadata.ingestion import diagnostics
 from metadata.ingestion.api.models import Entity
@@ -53,7 +54,7 @@ class Source(IterStep, ABC):
     def name(self) -> str:
         return "Source"
 
-    def run(self) -> Iterable[Optional[Entity]]:  # noqa: UP045
+    def run(self) -> Iterable[Entity | None]:
         with diagnostics.operation("source.iter"):
             yield from super().run()
 
@@ -65,7 +66,7 @@ class Sink(ReturnStep, ABC):
     def name(self) -> str:
         return "Sink"
 
-    def run(self, record: Entity) -> Optional[Entity]:  # noqa: UP045
+    def run(self, record: Entity) -> Entity | None:
         with diagnostics.operation("sink.write", entity=get_log_name(record)):
             return super().run(record)
 
@@ -77,7 +78,7 @@ class Processor(ReturnStep, ABC):
     def name(self) -> str:
         return "Processor"
 
-    def run(self, record: Entity) -> Optional[Entity]:  # noqa: UP045
+    def run(self, record: Entity) -> Entity | None:
         with diagnostics.operation("processor.run", entity=get_log_name(record)):
             return super().run(record)
 

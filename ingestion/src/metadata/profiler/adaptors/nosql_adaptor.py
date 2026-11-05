@@ -13,7 +13,6 @@ NoSQL adaptor for the NoSQL profiler.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Union  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -30,18 +29,18 @@ class NoSQLAdaptor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def scan(self, table: Table, columns: List[Column], limit: int) -> List[Dict[str, any]]:  # noqa: UP006
+    def scan(self, table: Table, columns: list[Column], limit: int) -> list[dict[str, any]]:
         pass
 
-    def query(self, table: Table, columns: List[Column], query: any, limit: int) -> List[Dict[str, any]]:  # noqa: UP006
+    def query(self, table: Table, columns: list[Column], query: any, limit: int) -> list[dict[str, any]]:
         raise NotImplementedError
 
     def get_aggregates(
         self,
         table: Table,
         column: SQALikeColumn,
-        aggregate_functions: List[any],  # noqa: UP006
-    ) -> Dict[str, Union[int, float]]:  # noqa: UP006, UP007
+        aggregate_functions: list[any],
+    ) -> dict[str, int | float]:
         raise NotImplementedError
 
     def sum(  # pylint: disable=unused-argument

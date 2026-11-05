@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
-import type { RuleObject } from 'antd/lib/form';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isEmpty, isEqual, isUndefined, map, omitBy, startCase } from 'lodash';
-import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import {
-  DESTINATION_DROPDOWN_TABS,
-  DESTINATION_SOURCE_ITEMS,
-  EXTERNAL_CATEGORY_OPTIONS,
-} from '../../constants/Alerts.constants';
+  isBoolean,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  map,
+  omitBy,
+  startCase,
+} from 'lodash';
+import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
+import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { MASKED_PASSWORD_VALUE } from '../../constants/Secrets.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
@@ -32,58 +37,31 @@ import {
   Destination,
   SubscriptionCategory,
   SubscriptionType,
+  Type,
   type Webhook,
 } from '../../generated/events/eventSubscription';
 import type { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { ModifiedWebhookConfig } from '../AlertsClassBase.interface';
 import { t } from '../i18next/LocalUtil';
 
 export const getFunctionDisplayName = (func: string): string => {
-  switch (func) {
-    case 'matchAnyEntityFqn':
-      return t('label.fqn-uppercase');
-    case 'matchAnyOwnerName':
-      return t('label.owner-plural');
-    case 'matchAnyEventType':
-      return t('label.event-type');
-    case 'matchTestResult':
-      return t('label.test-entity', {
-        entity: t('label.result-plural'),
-      });
-    case 'matchUpdatedBy':
-      return t('label.updated-by');
-    case 'matchAnyFieldChange':
-      return t('label.field-change');
-    case 'matchPipelineState':
-      return t('label.pipeline-state');
-    case 'matchIngestionPipelineState':
-      return t('label.pipeline-state');
-    case 'matchAnySource':
-      return t('label.source-match');
-    case 'matchAnyEntityId':
-      return t('label.entity-id-match');
-    default:
-      return '';
-  }
-};
-
-/**
- *
- * @param name Field name used to identify which field has error
- * @param minLengthRequired how many item should be there in the list
- * @returns If validation failed throws an error else resolve
- */
-export const listLengthValidator =
-  <T>(name: string, minLengthRequired = 1) =>
-  async (_: RuleObject, list: T[]) => {
-    if (!list || list.length < minLengthRequired) {
-      throw new Error(
-        t('message.length-validator-error', {
-          length: minLengthRequired,
-          field: name,
-        })
-      );
-    }
+  const displayNameByFunction: Record<string, string> = {
+    matchAnyEntityFqn: t('label.fqn-uppercase'),
+    matchAnyOwnerName: t('label.owner-plural'),
+    matchAnyEventType: t('label.event-type'),
+    matchTestResult: t('label.test-entity', {
+      entity: t('label.result-plural'),
+    }),
+    matchUpdatedBy: t('label.updated-by'),
+    matchAnyFieldChange: t('label.field-change'),
+    matchPipelineState: t('label.pipeline-state'),
+    matchIngestionPipelineState: t('label.pipeline-state'),
+    matchAnySource: t('label.source-match'),
+    matchAnyEntityId: t('label.entity-id-match'),
   };
+
+  return displayNameByFunction[func] ?? '';
+};
 
 export const getAlertActionTypeDisplayName = (
   alertActionType: SubscriptionType
@@ -119,6 +97,13 @@ export const getDisplayNameForEntities = (entity: string) => {
 
 export const getSelectOptionsFromEnum = (type: { [s: number]: string }) =>
   map(type, (value) => ({
+    label: startCase(value),
+    value,
+  }));
+
+// Same shape as getSelectOptionsFromEnum, for values a resource declares at runtime
+export const getSelectOptionsFromValues = (values: string[]) =>
+  values.map((value) => ({
     label: startCase(value),
     value,
   }));
@@ -202,17 +187,42 @@ export const getConfigQueryParamsArrayFromObject = (
       }));
 
 /**
- * @description Normalizes destination config for comparison by converting headers and queryParams to array format
+ * @description Pairs each tested destination with the status returned for it. The API redacts
+ * destination configs from its response, since they carry credentials, so the config has to come
+ * from the destinations that were submitted. Results are matched positionally: the API returns one
+ * entry per requested destination, in request order.
  */
-export const normalizeDestinationConfig = (config?: Destination['config']) =>
-  omitBy(
+export const getDestinationsWithTestStatus = <T extends Destination>(
+  testedDestinations: T[],
+  testResults: Destination[]
+): T[] =>
+  testedDestinations.map((destination, index) => ({
+    ...destination,
+    statusDetails: testResults[index]?.statusDetails,
+  }));
+
+/**
+ * @description Normalizes API objects and form arrays to the same destination config shape for comparison.
+ */
+export const normalizeDestinationConfig = (
+  config?: Destination['config'] | ModifiedDestination['config']
+) => {
+  const headers = Array.isArray(config?.headers)
+    ? config.headers
+    : getConfigHeaderArrayFromObject(config?.headers);
+  const queryParams = Array.isArray(config?.queryParams)
+    ? config.queryParams
+    : getConfigQueryParamsArrayFromObject(config?.queryParams);
+
+  return omitBy(
     {
       ...config,
-      headers: getConfigHeaderArrayFromObject(config?.headers),
-      queryParams: getConfigQueryParamsArrayFromObject(config?.queryParams),
+      headers: isEmpty(headers) ? undefined : headers,
+      queryParams: isEmpty(queryParams) ? undefined : queryParams,
     },
     isUndefined
   );
+};
 
 export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]
@@ -243,51 +253,6 @@ export const getFormattedDestinations = (
   });
 
   return formattedDestinations;
-};
-
-// Destination category exclusions by entity type
-const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
-  // Default: exclude Assignees and Mentions for all non-thread entities
-  __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
-  // Thread-specific exclusions
-  task: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-  ],
-  conversation: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-    SubscriptionCategory.Assignees,
-  ],
-  announcement: [SubscriptionCategory.Assignees],
-};
-
-export const getFilteredDestinationOptions = (
-  key: keyof typeof DESTINATION_SOURCE_ITEMS,
-  selectedSource: string
-) => {
-  const options = DESTINATION_SOURCE_ITEMS[key];
-  const isExternalDestination = !isEqual(
-    key,
-    DESTINATION_DROPDOWN_TABS.internal
-  );
-
-  if (isExternalDestination) {
-    return options;
-  }
-
-  const excludedCategories =
-    DESTINATION_CATEGORY_EXCLUDES[selectedSource] ||
-    DESTINATION_CATEGORY_EXCLUDES.__default__;
-
-  return options.filter(
-    (option) =>
-      !excludedCategories.includes(option.value as SubscriptionCategory)
-  );
 };
 
 export const getAlertEventsFilterLabels = (status: AlertRecentEventFilters) => {
@@ -334,21 +299,43 @@ export const getChangeEventDataFromTypedEvent = (
   changeEventData: ChangeEvent;
   changeEventDataToDisplay: AlertEventDetailsToDisplay;
 } => {
-  let changeEventData = typedEvent.data[0];
+  const outer = typedEvent.data[0];
+
+  if (!outer) {
+    // Status is part of the id so a failed and a successful unreadable row
+    // sharing a timestamp still get distinct React keys.
+    const fallbackId = `unreadable-${typedEvent.status}-${typedEvent.timestamp}`;
+
+    return {
+      changeEventData: {
+        id: fallbackId,
+        timestamp: typedEvent.timestamp,
+      },
+      changeEventDataToDisplay: {
+        eventType: undefined,
+        entityId: undefined,
+        userName: undefined,
+        previousVersion: undefined,
+        currentVersion: undefined,
+        reason: undefined,
+        source: undefined,
+        failingSubscriptionId: undefined,
+      },
+    };
+  }
+
+  let changeEventData: ChangeEvent = outer;
 
   // If the event is failed, the changeEventData object is nested inside the changeEventData object.
-  if (
-    typedEvent.status === Status.Failed &&
-    !isUndefined(changeEventData.changeEvent)
-  ) {
-    changeEventData = changeEventData.changeEvent;
+  if (typedEvent.status === Status.Failed && !isUndefined(outer.changeEvent)) {
+    changeEventData = outer.changeEvent;
   }
 
   const { eventType, entityId, userName, previousVersion, currentVersion } =
     changeEventData;
 
   // Extracting the reason, source, and failingSubscriptionId from the failed changeEventData object.
-  const { reason, source, failingSubscriptionId } = typedEvent.data[0];
+  const { reason, source, failingSubscriptionId } = outer;
 
   return {
     changeEventData,
@@ -400,6 +387,15 @@ export const getDiagnosticItems = (
   },
 ];
 
+/** Formats a diagnostic value for display: Yes/No for flags, a placeholder when unset. */
+export const formatDiagnosticValue = (value?: number | boolean) => {
+  if (isBoolean(value)) {
+    return t(value ? 'label.yes' : 'label.no');
+  }
+
+  return isUndefined(value) ? NO_DATA_PLACEHOLDER : String(value);
+};
+
 export const getRandomizedAlertName = () => {
   return `${OPEN_METADATA}_alert_${cryptoRandomString({
     length: 9,
@@ -408,100 +404,100 @@ export const getRandomizedAlertName = () => {
 };
 
 export const getMessageFromArgumentName = (argumentName: string) => {
-  switch (argumentName) {
-    case 'fqnList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.fqn-uppercase'),
-        }),
-      });
-    case 'domainList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.domain'),
-        }),
-      });
-    case 'tableNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.table'),
-          }),
-        }),
-      });
-    case 'entityNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.entity'),
-          }),
-        }),
-      });
-    case 'ownerNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.owner-plural'),
-          }),
-        }),
-      });
-    case 'updateByUserList':
-    case 'userList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.user'),
-          }),
-        }),
-      });
-    case 'eventTypeList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.event'),
-          }),
-        }),
-      });
-    case 'entityIdList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-id', {
-            entity: t('label.data-asset'),
-          }),
-        }),
-      });
-    case 'pipelineStateList':
-    case 'ingestionPipelineStateList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.pipeline-state'),
-        }),
-      });
-    case 'testStatusList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-suite-status'),
-        }),
-      });
-    case 'testResultList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-case-result'),
-        }),
-      });
-    case 'contractStatusList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.data-contract-status'),
-        }),
-      });
-    case 'testSuiteList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-suite'),
-        }),
-      });
-    default:
-      return '';
+  const requiredList = (entity: string) =>
+    t('message.field-text-is-required', {
+      fieldText: t('label.entity-list', { entity }),
+    });
+  const namedEntity = (entity: string) => t('label.entity-name', { entity });
+
+  const fieldTextEntityByArgument: Record<string, string> = {
+    fqnList: t('label.fqn-uppercase'),
+    domainList: t('label.domain'),
+    tableNameList: namedEntity(t('label.table')),
+    entityNameList: namedEntity(t('label.entity')),
+    ownerNameList: namedEntity(t('label.owner-plural')),
+    updateByUserList: namedEntity(t('label.user')),
+    userList: namedEntity(t('label.user')),
+    eventTypeList: namedEntity(t('label.event')),
+    entityIdList: t('label.entity-id', { entity: t('label.data-asset') }),
+    pipelineStateList: t('label.pipeline-state'),
+    ingestionPipelineStateList: t('label.pipeline-state'),
+    testStatusList: t('label.test-suite-status'),
+    testResultList: t('label.test-case-result'),
+    contractStatusList: t('label.data-contract-status'),
+    testSuiteList: t('label.test-suite'),
+  };
+
+  const entity = fieldTextEntityByArgument[argumentName];
+
+  return entity ? requiredList(entity) : '';
+};
+
+/**
+ * An event count as the alert page shows it: with a trailing "+" when the server evaluated only
+ * the first unread events, so the real count is at least this one.
+ */
+export const formatEventCount = (
+  count: number | undefined,
+  isLowerBound?: boolean
+): string => `${count ?? 0}${isLowerBound ? '+' : ''}`;
+
+const SECRET_AUTH_FIELDS = ['secretKey', 'clientId', 'clientSecret'];
+
+const withoutMask = (value: unknown) =>
+  value === MASKED_PASSWORD_VALUE ? '' : value;
+
+/**
+ * The webhook settings with every secret that still shows the mask emptied. A destination whose
+ * URL or token URL changes sends its secrets somewhere new, so each one must be entered again;
+ * the form then asks for every emptied field before it saves.
+ */
+export const clearMaskedSecrets = (
+  config?: ModifiedWebhookConfig
+): ModifiedWebhookConfig | undefined => {
+  if (!config) {
+    return config;
   }
+  const authType = (config.authType ?? {}) as Record<string, unknown>;
+  const clearedAuth = Object.fromEntries(
+    SECRET_AUTH_FIELDS.filter((key) => key in authType).map((key) => [
+      key,
+      withoutMask(authType[key]),
+    ])
+  );
+
+  return {
+    ...config,
+    ...(config.endpoint !== undefined && {
+      endpoint: withoutMask(config.endpoint) as string,
+    }),
+    ...(config.headers && {
+      headers: config.headers.map((header) => ({
+        ...header,
+        value: withoutMask(header.value) as string,
+      })),
+    }),
+    ...(config.authType && {
+      authType: { ...config.authType, ...clearedAuth },
+    }),
+  };
+};
+
+/**
+ * The webhook settings once the authentication type changes. Only the new type is kept, so no
+ * credential of the old type is stored beside it. OAuth2 alone sends through a token URL, so
+ * leaving or choosing it changes where the secrets go, and every hidden value is asked for again.
+ */
+export const withAuthType = (
+  config: ModifiedWebhookConfig | undefined,
+  type: Type
+): ModifiedWebhookConfig => {
+  const previousType = (config?.authType as { type?: Type } | undefined)?.type;
+  if (previousType === type) {
+    return config ?? {};
+  }
+  const switched = { ...config, authType: { type } };
+  const changesTokenUrl = previousType === Type.Oauth2 || type === Type.Oauth2;
+
+  return changesTokenUrl ? clearMaskedSecrets(switched) ?? switched : switched;
 };

@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   SERVICE_CREATOR_RULES,
   SERVICE_VIEWER_RULES,
 } from '../../constant/permission';
+import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -30,6 +32,7 @@ import {
 } from '../../utils/common';
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 import {
   advanceToServiceConnectionStep,
   getAgentCard,
@@ -57,7 +60,10 @@ const pipelineEditPolicy = new PolicyClass();
 const pipelineEditRole = new RolesClass();
 const pipelineEditUser = new UserClass();
 
-let ingestionPipelineName = '';
+// Separate pipelines: triggering one changes its overflow menu (re-deploy -> kill)
+// while it runs, which must not leak into the EditAll test running in parallel.
+let triggerPipelineName = '';
+let editPipelineName = '';
 
 const test = base.extend<{
   serviceOwnerPage: Page;
@@ -67,31 +73,31 @@ const test = base.extend<{
 }>({
   serviceOwnerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await serviceOwnerUser.login(page);
+    await serviceOwnerUser.signIn(page);
     await use(page);
     await page.close();
   },
   anotherUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await anotherUser.login(page);
+    await anotherUser.signIn(page);
     await use(page);
     await page.close();
   },
   pipelineTriggerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await pipelineTriggerUser.login(page);
+    await pipelineTriggerUser.signIn(page);
     await use(page);
     await page.close();
   },
   pipelineEditPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await pipelineEditUser.login(page);
+    await pipelineEditUser.signIn(page);
     await use(page);
     await page.close();
   },
 });
 
-const visitAgentCard = async (page: Page) => {
+const visitAgentCard = async (page: Page, pipelineName: string) => {
   await redirectToHomePage(page);
   await adminOwnedService.visitEntityPage(page);
 
@@ -102,28 +108,29 @@ const visitAgentCard = async (page: Page) => {
     await metadataSubTab.click();
   }
 
-  const agentCard = getAgentCard(page, ingestionPipelineName);
+  const agentCard = getAgentCard(page, pipelineName);
 
   await agentCard.waitFor();
 
   return agentCard;
 };
 
-const openPipelineActions = async (page: Page) => {
-  const actionButton = (await visitAgentCard(page)).getByTestId('more-actions');
-
+const openPipelineActions = async (page: Page, pipelineName: string) => {
+  const actionButton = (await visitAgentCard(page, pipelineName)).getByTestId(
+    'more-actions'
+  );
   await actionButton.waitFor();
-  await actionButton.click();
 
-  await page.getByTestId('actions-dropdown').waitFor();
+  const actionsDropdown = page.getByTestId('actions-dropdown');
+
+  await actionButton.click();
+  await expect(actionsDropdown.getByTestId('re-deploy-button')).toBeVisible();
 };
 
 test.describe(
   'Service Creation with isOwner() Permissions',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   () => {
-    test.slow();
-
     test.beforeAll('Setup prerequisites', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -259,34 +266,40 @@ test.describe(
         ],
       });
 
-      ingestionPipelineName = `pw-ingestion-perm-${uuid()}`;
-      const createPipelineResponse = await apiContext.post(
-        '/api/v1/services/ingestionPipelines',
-        {
-          data: {
-            airflowConfig: {},
-            loggerLevel: 'INFO',
-            name: ingestionPipelineName,
-            pipelineType: 'metadata',
-            service: {
-              id: adminServiceResponse.id,
-              type: 'databaseService',
-            },
-            sourceConfig: {
-              config: {
-                type: 'DatabaseMetadata',
+      const createPipeline = async (name: string) => {
+        const createPipelineResponse = await apiContext.post(
+          '/api/v1/services/ingestionPipelines',
+          {
+            data: {
+              airflowConfig: {},
+              loggerLevel: 'INFO',
+              name,
+              pipelineType: 'metadata',
+              service: {
+                id: adminServiceResponse.id,
+                type: 'databaseService',
+              },
+              sourceConfig: {
+                config: {
+                  type: 'DatabaseMetadata',
+                },
               },
             },
-          },
-        }
-      );
+          }
+        );
 
-      expect(createPipelineResponse.status()).toBe(201);
+        expect(createPipelineResponse.status()).toBe(201);
 
-      const createdPipeline = await createPipelineResponse.json();
-      await apiContext.post(
-        `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
-      );
+        const createdPipeline = await createPipelineResponse.json();
+        await apiContext.post(
+          `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
+        );
+      };
+
+      triggerPipelineName = `pw-ingestion-trigger-${uuid()}`;
+      editPipelineName = `pw-ingestion-edit-${uuid()}`;
+      await createPipeline(triggerPipelineName);
+      await createPipeline(editPipelineName);
 
       await afterAction();
     });
@@ -329,6 +342,7 @@ test.describe(
       await advanceToServiceConnectionStep(page);
 
       await page.locator('#root\\/username').fill('test_user');
+      await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
       await page.locator('#root\\/authType\\/password').fill('test_password');
       await page.locator('#root\\/hostPort').fill('localhost:3306');
 
@@ -589,7 +603,7 @@ test.describe(
     test('User with Trigger permission can run an ingestion pipeline without EditAll', async ({
       pipelineTriggerPage: page,
     }) => {
-      let agentCard = await visitAgentCard(page);
+      let agentCard = await visitAgentCard(page, triggerPipelineName);
 
       await expect(agentCard.getByTestId('run-agent-button')).toBeVisible();
 
@@ -612,45 +626,33 @@ test.describe(
 
       await expect(actionsDropdown).toBeHidden();
 
-      // The pipeline deployed in beforeAll may still be registering in
-      // Airflow, so retry the trigger until it succeeds instead of a fixed sleep.
-      await expect
-        .poll(
-          async () => {
-            const triggerResponse = page.waitForResponse(
-              (response) =>
-                response
-                  .url()
-                  .includes('/api/v1/services/ingestionPipelines/trigger/') &&
-                response.request().method() === 'POST'
-            );
-
-            await agentCard.getByTestId('run-agent-button').click();
-
-            const response = await triggerResponse;
-
-            if (response.status() !== 200) {
-              agentCard = await visitAgentCard(page);
-            }
-
-            return response.status();
-          },
-          { intervals: [3_000], timeout: 90_000 }
-        )
-        .toBe(200);
+      const triggerResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/services/ingestionPipelines/trigger/') &&
+          response.request().method() === 'POST'
+      );
+      await agentCard.getByTestId('run-agent-button').click();
+      const response = await triggerResponse;
+      expect(response.status(), 'The first pipeline trigger must succeed').toBe(
+        200
+      );
     });
 
     test('User with EditAll but not Trigger cannot run a pipeline', async ({
       pipelineEditPage: page,
     }) => {
-      await openPipelineActions(page);
+      await openPipelineActions(page, editPipelineName);
 
-      await expect(page.getByTestId('edit-button')).toBeVisible();
-      await expect(page.getByTestId('re-deploy-button')).toBeVisible();
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeVisible();
       await expect(
-        getAgentCard(page, ingestionPipelineName).getByTestId(
-          'run-agent-button'
-        )
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeVisible();
+      await expect(
+        getAgentCard(page, editPipelineName).getByTestId('run-agent-button')
       ).toBeHidden();
     });
   }

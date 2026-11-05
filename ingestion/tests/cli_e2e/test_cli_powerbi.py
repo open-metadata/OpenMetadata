@@ -14,7 +14,6 @@ Test PowerBI connector with CLI
 """
 
 from pathlib import Path
-from typing import List  # noqa: UP035
 
 import pytest
 
@@ -32,22 +31,22 @@ class PowerBICliTest(CliCommonDashboard.TestSuite):
     def get_connector_name() -> str:
         return "powerbi"
 
-    def get_includes_dashboards(self) -> List[str]:  # noqa: UP006
+    def get_includes_dashboards(self) -> list[str]:
         return [".*Supplier.*", ".*Lineage.*"]
 
-    def get_excludes_dashboards(self) -> List[str]:  # noqa: UP006
+    def get_excludes_dashboards(self) -> list[str]:
         return ["Customer Profitability Sample"]
 
-    def get_includes_charts(self) -> List[str]:  # noqa: UP006
+    def get_includes_charts(self) -> list[str]:
         return ["Total Defect Quantity", "lineagetest", "lineagetest2work"]
 
-    def get_excludes_charts(self) -> List[str]:  # noqa: UP006
+    def get_excludes_charts(self) -> list[str]:
         return ["Total Rejected Defect Quantity"]
 
-    def get_includes_datamodels(self) -> List[str]:  # noqa: UP006
+    def get_includes_datamodels(self) -> list[str]:
         return []
 
-    def get_excludes_datamodels(self) -> List[str]:  # noqa: UP006
+    def get_excludes_datamodels(self) -> list[str]:
         return []
 
     def expected_datamodels(self) -> int:

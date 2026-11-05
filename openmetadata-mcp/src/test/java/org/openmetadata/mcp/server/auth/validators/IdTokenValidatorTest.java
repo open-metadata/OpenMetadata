@@ -6,6 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
@@ -16,8 +20,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.UUID;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,7 +35,9 @@ import org.openmetadata.mcp.server.auth.validators.IdTokenValidator.IdTokenValid
  */
 public class IdTokenValidatorTest {
 
-  private MockWebServer jwksServer;
+  private final AtomicInteger jwksRequests = new AtomicInteger();
+  private HttpServer jwksServer;
+  private String jwksUrl;
   private IdTokenValidator validator;
   private RSAPublicKey publicKey;
   private RSAPrivateKey privateKey;
@@ -51,21 +57,31 @@ public class IdTokenValidatorTest {
     expectedIssuer = "https://accounts.test.com";
     expectedAudience = "test-client-id";
 
-    jwksServer = new MockWebServer();
-    jwksServer.start();
-
-    String jwksJson = createJwksResponse(publicKey, keyId);
-    jwksServer.enqueue(
-        new MockResponse().setBody(jwksJson).setHeader("Content-Type", "application/json"));
-
-    String jwksUrl = jwksServer.url("/jwks").toString();
+    startJwksServer();
     validator = new IdTokenValidator(List.of(jwksUrl), expectedIssuer, expectedAudience);
   }
 
+  private void startJwksServer() throws IOException {
+    jwksServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    final byte[] body = createJwksResponse(publicKey, keyId).getBytes(StandardCharsets.UTF_8);
+    jwksServer.createContext(
+        "/jwks",
+        exchange -> {
+          jwksRequests.incrementAndGet();
+          try (exchange) {
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+          }
+        });
+    jwksServer.start();
+    jwksUrl = "http://127.0.0.1:" + jwksServer.getAddress().getPort() + "/jwks";
+  }
+
   @AfterEach
-  void tearDown() throws Exception {
+  void tearDown() {
     if (jwksServer != null) {
-      jwksServer.shutdown();
+      jwksServer.stop(0);
     }
   }
 
@@ -176,18 +192,29 @@ public class IdTokenValidatorTest {
   @Test
   void testValidateAndDecode_NoAudienceValidationWhenNull() throws Exception {
     IdTokenValidator validatorNoAudience =
-        new IdTokenValidator(List.of(jwksServer.url("/jwks").toString()), expectedIssuer, null);
-
-    jwksServer.enqueue(
-        new MockResponse()
-            .setBody(createJwksResponse(publicKey, keyId))
-            .setHeader("Content-Type", "application/json"));
+        new IdTokenValidator(List.of(jwksUrl), expectedIssuer, null);
 
     String tokenWithDifferentAudience =
         createValidIdToken(expectedIssuer, "any-audience", "test@example.com");
 
     JWTClaimsSet claims = validatorNoAudience.validateAndDecode(tokenWithDifferentAudience);
     assertThat(claims).isNotNull();
+  }
+
+  @Test
+  void madeUpKeyIdsCannotFetchTheKeySetBeyondItsBudget() {
+    long started = System.nanoTime();
+
+    for (int attempt = 0; attempt < 15; attempt++) {
+      String token = createIdTokenNamingKey("made-up-" + attempt);
+      assertThatThrownBy(() -> validator.validateAndDecode(token))
+          .isInstanceOf(IdTokenValidationException.class)
+          .hasMessageContaining("Failed to fetch public key");
+    }
+
+    // The default budget: a burst of 10 fetches, then one every 6 seconds.
+    long refills = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - started) / 6;
+    assertThat(jwksRequests.get()).isLessThanOrEqualTo(10 + (int) refills);
   }
 
   private String createValidIdToken(String issuer, String audience, String email) {
@@ -221,6 +248,18 @@ public class IdTokenValidatorTest {
         .withExpiresAt(new Date(expiresAt))
         .withKeyId(keyId)
         .sign(algorithm);
+  }
+
+  private String createIdTokenNamingKey(String namedKeyId) {
+    return JWT.create()
+        .withIssuer(expectedIssuer)
+        .withAudience(expectedAudience)
+        .withSubject("test-user-123")
+        .withClaim("email", "test@example.com")
+        .withIssuedAt(new Date(System.currentTimeMillis()))
+        .withExpiresAt(new Date(System.currentTimeMillis() + 3600000))
+        .withKeyId(namedKeyId)
+        .sign(Algorithm.RSA256(null, privateKey));
   }
 
   private String createIdTokenWithoutKid(String issuer, String audience, String email) {

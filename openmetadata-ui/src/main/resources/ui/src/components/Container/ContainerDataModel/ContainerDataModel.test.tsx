@@ -173,14 +173,6 @@ jest.mock('../../Database/TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="error-placeholder">ErrorPlaceHolder</div>
-    ))
-);
-
 jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest
     .fn()
@@ -321,7 +313,9 @@ describe('ContainerDataModel', () => {
     });
 
     expect(mockWriteText).toHaveBeenCalledWith(
-      expect.stringContaining(props.dataModel.columns[0].fullyQualifiedName!)
+      expect.stringContaining(
+        props.dataModel.columns[0].fullyQualifiedName as string
+      )
     );
   });
 });

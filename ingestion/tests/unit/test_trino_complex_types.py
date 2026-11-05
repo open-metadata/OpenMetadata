@@ -9,11 +9,16 @@ from metadata.ingestion.source.database.trino.metadata import (
 RAW_ARRAY_DATA_TYPES = [
     "array(string)",
     "array(row(check_datatype array(string)))",
+    # Real `SHOW COLUMNS` output, captured from Trino 483
+    "array(row(integer, decimal(2,1)))",
+    'array(row("a" bigint))',
 ]
 
 EXPECTED_ARRAY_DATA_TYPES = [
     "array<string>",
     "array<struct<check_datatype:array<string>>>",
+    "array<struct<field1:integer,field2:decimal(2,1)>>",
+    "array<struct<a:bigint>>",
 ]
 
 RAW_ROW_DATA_TYPES = [
@@ -23,6 +28,19 @@ RAW_ROW_DATA_TYPES = [
     "row(bigquerytestdatatype51 array(row(bigquery_test_datatype_511 array(string))))",
     "row(record_1 row(record_2 row(record_3 row(record_4 string))))",
     "row(splash row(color varchar, icon varchar, custom_story_board varchar, custom_android_splash varchar), android row(firebase_app_id varchar, google_services_json varchar, whitelisted_audience varchar, android_client_id varchar, build_preview row(download_url varchar, app_version varchar)), name varchar, app_icon varchar, url_scheme varchar, universal_link varchar, universal_links array(varchar), ios row(ios_client_id varchar))",
+    # Real `SHOW COLUMNS` output, captured from Trino 483: field names arrive
+    # quoted, and may be absent entirely.
+    'row("a" bigint, "b" varchar)',
+    "row(integer, varchar(1))",
+    'row(bigint, "b" bigint)',
+    "row(timestamp(3) with time zone)",
+    "row(interval day to second)",
+    'row("MyField" bigint)',
+    'row("we""ird" bigint)',
+    'row("my col" bigint)',
+    'row("outer" row("inner" bigint))',
+    'row("m" map(bigint, bigint))',
+    "row(row(integer, varchar(1)))",
 ]
 
 EXPECTED_ROW_DATA_TYPES = [
@@ -32,6 +50,17 @@ EXPECTED_ROW_DATA_TYPES = [
     "struct<bigquerytestdatatype51:array<struct<bigquery_test_datatype_511:array<string>>>>",
     "struct<record_1:struct<record_2:struct<record_3:struct<record_4:string>>>>",
     "struct<splash:struct<color:varchar,icon:varchar,custom_story_board:varchar,custom_android_splash:varchar>,android:struct<firebase_app_id:varchar,google_services_json:varchar,whitelisted_audience:varchar,android_client_id:varchar,build_preview:struct<download_url:varchar,app_version:varchar>>,name:varchar,app_icon:varchar,url_scheme:varchar,universal_link:varchar,universal_links:array<varchar>,ios:struct<ios_client_id:varchar>>",
+    "struct<a:bigint,b:varchar>",
+    "struct<field1:integer,field2:varchar(1)>",
+    "struct<field1:bigint,b:bigint>",
+    "struct<field1:timestamp(3) with time zone>",
+    "struct<field1:interval day to second>",
+    "struct<MyField:bigint>",
+    'struct<we"ird:bigint>',
+    "struct<my col:bigint>",
+    "struct<outer:struct<inner:bigint>>",
+    "struct<m:map(bigint, bigint)>",
+    "struct<field1:struct<field1:integer,field2:varchar(1)>>",
 ]
 
 # Test cases for dataLength conversion - only for types that should have dataLength

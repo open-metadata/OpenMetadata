@@ -88,10 +88,6 @@ export interface AppMarketPlaceDefinition {
      */
     enabled?: boolean;
     /**
-     * Event subscriptions that will be created when the application is installed.
-     */
-    eventSubscriptions?: CreateEventSubscription[];
-    /**
      * Features of the Application.
      */
     features?: string;
@@ -185,9 +181,6 @@ export interface AppMarketPlaceDefinition {
  * This schema defines the type of application.
  */
 export enum AgentType {
-    CollateAI = "CollateAI",
-    CollateAIQualityAgent = "CollateAIQualityAgent",
-    CollateAITierAgent = "CollateAITierAgent",
     Metadata = "Metadata",
 }
 
@@ -198,14 +191,16 @@ export enum AgentType {
  *
  * This schema defines the Slack App Information
  *
- * Configuration for the Collate AI Quality Agent.
- *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
  * Search Indexing App.
  *
  * Cache Warmup Application Configuration.
+ *
+ * RDF indexing application configuration.
+ *
+ * Scheduled RDF inference materialization configuration.
  *
  * Configuration for the AutoPilot Application.
  */
@@ -218,8 +213,6 @@ export interface CollateAIAppConfig {
     filter?: string;
     /**
      * Patch the description if it is empty, instead of raising a suggestion
-     *
-     * Patch the tier if it is empty, instead of raising a suggestion
      */
     patchIfEmpty?: boolean;
     /**
@@ -255,13 +248,7 @@ export interface CollateAIAppConfig {
     /**
      * User Token
      */
-    userToken?: string;
-    /**
-     * Whether the suggested tests should be active or not upon suggestion
-     *
-     * Whether the AutoPilot Workflow should be active or not.
-     */
-    active?:                boolean;
+    userToken?:             string;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
@@ -269,6 +256,8 @@ export interface CollateAIAppConfig {
      * Maximum number of events sent in a batch (Default 100).
      *
      * Number of entities to process in each batch.
+     *
+     * Maximum number of entities processed in a batch.
      */
     batchSize?:           number;
     moduleConfiguration?: ModuleConfiguration;
@@ -300,6 +289,8 @@ export interface CollateAIAppConfig {
      * List of Entities to Reindex
      *
      * List of entity types to warm up in cache. Use 'all' to warm up all entity types.
+     *
+     * List of entities that you need to reindex. Leave empty to index all supported entities.
      */
     entities?: string[];
     /**
@@ -342,6 +333,9 @@ export interface CollateAIAppConfig {
     payLoadSize?: number;
     /**
      * Number of threads to use for reindexing
+     *
+     * Number of threads loading entities to index. Writes always go through one writer, because
+     * Fuseki accepts one write transaction at a time.
      */
     producerThreads?: number;
     /**
@@ -371,6 +365,8 @@ export interface CollateAIAppConfig {
     enableDistributedClaim?: boolean;
     /**
      * Force cache warmup even if another instance is detected (use with caution).
+     *
+     * Recompute every rule even when no rule is dirty.
      */
     force?: boolean;
     /**
@@ -384,6 +380,39 @@ export interface CollateAIAppConfig {
      * warmup, so enable it only when first-read relationship latency matters.
      */
     warmRelationships?: boolean;
+    /**
+     * Build the rebuild into an idle dataset and switch to it only after the run succeeds, so
+     * queries keep seeing the previous graph instead of a partially-rebuilt one. Requires
+     * roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.
+     */
+    blueGreenRebuild?: boolean;
+    /**
+     * Fraction of records that must index successfully before a blue/green rebuild is allowed
+     * to become the served dataset. Below this the previous dataset keeps serving and the run
+     * is marked failed.
+     */
+    minSuccessRatio?: number;
+    /**
+     * Recreate the RDF store before indexing.
+     */
+    recreateIndex?: boolean;
+    /**
+     * Maximum failed per-source writes during isolation of a failed RDF relationship batch.
+     * Once this limit is reached, remaining sources are recorded as failures. Successful writes
+     * do not consume the budget; zero disables per-source isolation. This is separate from HTTP
+     * request retries.
+     */
+    relationshipIsolationMaxFailures?: number;
+    /**
+     * Optional rule that must exist. The run still computes every rule, because rules read each
+     * other's conclusions.
+     */
+    ruleName?: string;
+    /**
+     * Enter the retention period for comments on Activity Events in days. Use 0 to retain
+     * activity comments forever.
+     */
+    activityCommentsRetentionPeriod?: number;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
@@ -399,6 +428,12 @@ export interface CollateAIAppConfig {
      */
     changeEventRetentionPeriod?: number;
     /**
+     * Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed
+     * by the extension's name. OpenMetadata never reads these values; it hands them to the
+     * registered DataRetentionExtension, which decides what a missing key means.
+     */
+    extensions?: any;
+    /**
      * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
      * months).
      */
@@ -408,6 +443,22 @@ export interface CollateAIAppConfig {
      * two months).
      */
     testCaseResultsRetentionPeriod?: number;
+    /**
+     * Enter the retention period in days for the run history of governance workflows. A
+     * finished run older than this is deleted with its stages, but the latest run of each
+     * workflow for every entity is always kept. Use 0 to retain the history forever.
+     */
+    workflowInstanceRetentionPeriod?: number;
+    /**
+     * Enter the retention period in days for automation Workflows: the short-lived records left
+     * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
+     * forever.
+     */
+    workflowRetentionPeriod?: number;
+    /**
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?: boolean;
     /**
      * Service Entity Link for which to trigger the application.
      */
@@ -657,9 +708,6 @@ export interface Action {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Optional custom notification template for this subscription. When not set, system default
- * template will be used. Only USER templates can be assigned.
  */
 export interface EntityReference {
     /**
@@ -778,9 +826,6 @@ export enum MetadataAttribute {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Optional custom notification template for this subscription. When not set, system default
- * template will be used. Only USER templates can be assigned.
  */
 export interface TagLabel {
     /**
@@ -1352,6 +1397,7 @@ export interface Resource {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }
@@ -1366,10 +1412,9 @@ export enum Type {
     Automator = "Automator",
     CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
-    CollateAIQualityAgent = "CollateAIQualityAgent",
-    CollateAITierAgent = "CollateAITierAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
+    RDFIndexing = "RdfIndexing",
     SearchIndexing = "SearchIndexing",
 }
 
@@ -1444,469 +1489,6 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
-}
-
-/**
- * This defines schema for sending alerts for OpenMetadata
- */
-export interface CreateEventSubscription {
-    /**
-     * Type of Alert
-     */
-    alertType: AlertType;
-    /**
-     * Maximum number of events sent in a batch (Default 10).
-     */
-    batchSize?: number;
-    /**
-     * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
-     */
-    className?: string;
-    config?:    { [key: string]: any };
-    /**
-     * A short description of the Alert, comprehensible to regular users.
-     */
-    description?: string;
-    /**
-     * Subscription Config.
-     */
-    destinations?: Destination[];
-    /**
-     * Display name for this Alert.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified names of the domains the Event Subscription belongs to.
-     */
-    domains?: string[];
-    /**
-     * Is the alert enabled.
-     */
-    enabled?: boolean;
-    /**
-     * Input for the Filters.
-     */
-    input?: AlertFilteringInput;
-    /**
-     * Name that uniquely identifies this Alert.
-     */
-    name: string;
-    /**
-     * Optional custom notification template for this subscription. When not set, system default
-     * template will be used. Only USER templates can be assigned.
-     */
-    notificationTemplate?: EntityReference;
-    /**
-     * Owners of this Alert.
-     */
-    owners?: EntityReference[];
-    /**
-     * Poll Interval in seconds.
-     */
-    pollInterval?: number;
-    provider?:     ProviderType;
-    /**
-     * Defines a list of resources that triggers the Event Subscription, Eg All, User, Teams etc.
-     */
-    resources?: string[];
-    /**
-     * Number of times to retry callback on failure. (Default 3).
-     */
-    retries?: number;
-    trigger?: Trigger;
-}
-
-/**
- * Type of Alert
- *
- * Type of Alerts supported.
- */
-export enum AlertType {
-    ActivityFeed = "ActivityFeed",
-    Custom = "Custom",
-    GovernanceWorkflowChangeEvent = "GovernanceWorkflowChangeEvent",
-    Notification = "Notification",
-    Observability = "Observability",
-}
-
-/**
- * Subscription which has a type and the config.
- */
-export interface Destination {
-    category: SubscriptionCategory;
-    config?:  Webhook;
-    /**
-     * Maximum depth for downstream stakeholder notification traversal. If null, traverses
-     * without depth limit (with cycle protection).
-     */
-    downstreamDepth?: number | null;
-    /**
-     * Is the subscription enabled.
-     */
-    enabled?: boolean;
-    /**
-     * Unique identifier that identifies this Event Subscription.
-     */
-    id?: string;
-    /**
-     * Enable notification of downstream entity stakeholders. When true, notifications will
-     * traverse lineage to include stakeholders of entities that consume data from the affected
-     * entity.
-     */
-    notifyDownstream?: boolean;
-    /**
-     * Read timeout in seconds. (Default 12s).
-     */
-    readTimeout?:   number;
-    statusDetails?: TionStatus;
-    /**
-     * Connection timeout in seconds. (Default 10s).
-     */
-    timeout?: number;
-    type:     SubscriptionType;
-}
-
-/**
- * Subscription Endpoint Type.
- */
-export enum SubscriptionCategory {
-    Admins = "Admins",
-    Assignees = "Assignees",
-    External = "External",
-    Followers = "Followers",
-    Mentions = "Mentions",
-    Owners = "Owners",
-    Teams = "Teams",
-    Users = "Users",
-}
-
-/**
- * This schema defines webhook for receiving events from OpenMetadata.
- *
- * This schema defines email config for receiving events from OpenMetadata.
- *
- * A generic map that can be deserialized later.
- */
-export interface Webhook {
-    /**
-     * Authentication configuration for the webhook. If not specified, the webhook will be sent
-     * without authentication.
-     */
-    authType?: AuthenticationConfigurationType;
-    /**
-     * Endpoint to receive the webhook events over POST requests.
-     */
-    endpoint?: string;
-    /**
-     * Custom headers to be sent with the webhook request.
-     */
-    headers?: { [key: string]: any };
-    /**
-     * HTTP operation to send the webhook request. Supports POST or PUT.
-     */
-    httpMethod?: HTTPMethod;
-    /**
-     * Query parameters to be added to the webhook request URL.
-     */
-    queryParams?: { [key: string]: any };
-    /**
-     * List of receivers to send mail to
-     */
-    receivers?: string[];
-    /**
-     * Send the Event to Admins
-     *
-     * Send the Mails to Admins
-     */
-    sendToAdmins?: boolean;
-    /**
-     * Send the Event to Followers
-     *
-     * Send the Mails to Followers
-     */
-    sendToFollowers?: boolean;
-    /**
-     * Send the Event to Owners
-     *
-     * Send the Mails to Owners
-     */
-    sendToOwners?: boolean;
-    [property: string]: any;
-}
-
-/**
- * Authentication configuration for the webhook. If not specified, the webhook will be sent
- * without authentication.
- *
- * No authentication.
- *
- * Bearer token authentication for webhook endpoints.
- *
- * OAuth2 Client Credentials configuration for webhook authentication.
- */
-export interface AuthenticationConfigurationType {
-    /**
-     * Authentication type discriminator.
-     */
-    type: AuthenticationConfigurationTypeType;
-    /**
-     * Secret key used for computing HMAC SHA256 signature of webhook payload, sent in the
-     * X-OM-Signature header.
-     */
-    secretKey?: string;
-    /**
-     * OAuth2 client identifier. Stored encrypted via Fernet.
-     */
-    clientId?: string;
-    /**
-     * OAuth2 client secret. Stored encrypted via Fernet.
-     */
-    clientSecret?: string;
-    /**
-     * Optional OAuth2 scopes to request (space-separated).
-     */
-    scope?: string;
-    /**
-     * Token endpoint URL to obtain access tokens.
-     */
-    tokenUrl?: string;
-}
-
-/**
- * Authentication type discriminator.
- */
-export enum AuthenticationConfigurationTypeType {
-    Bearer = "bearer",
-    None = "none",
-    Oauth2 = "oauth2",
-}
-
-/**
- * HTTP operation to send the webhook request. Supports POST or PUT.
- */
-export enum HTTPMethod {
-    Post = "POST",
-    Put = "PUT",
-}
-
-/**
- * Current status of the subscription, including details on the last successful and failed
- * attempts, and retry information.
- *
- * Detailed status of the destination during a test operation, including HTTP response
- * information.
- */
-export interface TionStatus {
-    /**
-     * Timestamp of the last failed callback in UNIX UTC epoch time in milliseconds.
-     */
-    lastFailedAt?: number;
-    /**
-     * Detailed reason for the last failure received during callback.
-     */
-    lastFailedReason?: string;
-    /**
-     * HTTP status code received during the last failed callback attempt.
-     */
-    lastFailedStatusCode?: number;
-    /**
-     * Timestamp of the last successful callback in UNIX UTC epoch time in milliseconds.
-     */
-    lastSuccessfulAt?: number;
-    /**
-     * Timestamp for the next retry attempt in UNIX epoch time in milliseconds. Only valid if
-     * `status` is `awaitingRetry`.
-     */
-    nextAttempt?: number;
-    /**
-     * Status is `disabled` when the event subscription was created with `enabled` set to false
-     * and it never started publishing events. Status is `active` when the event subscription is
-     * functioning normally and a 200 OK response was received for the callback notification.
-     * Status is `failed` when a bad callback URL, connection failures, or `1xx` or `3xx`
-     * response was received for the callback notification. Status is `awaitingRetry` when the
-     * previous attempt at callback timed out or received a `4xx` or `5xx` response. Status is
-     * `retryLimitReached` after all retries fail.
-     *
-     * Overall test status, indicating if the test operation succeeded or failed.
-     */
-    status?: Status;
-    /**
-     * Current timestamp of this status in UNIX epoch time in milliseconds.
-     *
-     * Timestamp when the response was received, in UNIX epoch time milliseconds.
-     */
-    timestamp?: number;
-    /**
-     * Body of the HTTP response, if any, returned by the server.
-     */
-    entity?: string;
-    /**
-     * HTTP headers returned in the response as a map of header names to values.
-     */
-    headers?: any;
-    /**
-     * URL location if the response indicates a redirect or newly created resource.
-     */
-    location?: string;
-    /**
-     * Media type of the response entity, if specified (e.g., application/json).
-     */
-    mediaType?: string;
-    /**
-     * Detailed reason for failure if the test did not succeed.
-     */
-    reason?: string;
-    /**
-     * HTTP status code of the response (e.g., 200 for OK, 404 for Not Found).
-     */
-    statusCode?: number;
-    /**
-     * HTTP status reason phrase associated with the status code (e.g., 'Not Found').
-     */
-    statusInfo?: string;
-}
-
-/**
- * Status is `disabled` when the event subscription was created with `enabled` set to false
- * and it never started publishing events. Status is `active` when the event subscription is
- * functioning normally and a 200 OK response was received for the callback notification.
- * Status is `failed` when a bad callback URL, connection failures, or `1xx` or `3xx`
- * response was received for the callback notification. Status is `awaitingRetry` when the
- * previous attempt at callback timed out or received a `4xx` or `5xx` response. Status is
- * `retryLimitReached` after all retries fail.
- *
- * Overall test status, indicating if the test operation succeeded or failed.
- */
-export enum Status {
-    Active = "active",
-    AwaitingRetry = "awaitingRetry",
-    Disabled = "disabled",
-    Failed = "failed",
-    RetryLimitReached = "retryLimitReached",
-    StatusFailed = "Failed",
-    Success = "Success",
-}
-
-/**
- * Subscription Endpoint Type.
- */
-export enum SubscriptionType {
-    ActivityFeed = "ActivityFeed",
-    Email = "Email",
-    GChat = "GChat",
-    GovernanceWorkflowChangeEvent = "GovernanceWorkflowChangeEvent",
-    MSTeams = "MsTeams",
-    Slack = "Slack",
-    Webhook = "Webhook",
-}
-
-/**
- * Input for the Filters.
- *
- * Observability of the event subscription.
- */
-export interface AlertFilteringInput {
-    /**
-     * List of filters for the event subscription.
-     */
-    actions?: ArgumentsInput[];
-    /**
-     * List of filters for the event subscription.
-     */
-    filters?: ArgumentsInput[];
-}
-
-/**
- * Observability Filters for Event Subscription.
- */
-export interface ArgumentsInput {
-    /**
-     * Arguments List
-     */
-    arguments?: Argument[];
-    effect?:    Effect;
-    /**
-     * Name of the filter
-     */
-    name?: string;
-    /**
-     * Prefix Condition for the filter.
-     */
-    prefixCondition?: PrefixCondition;
-}
-
-/**
- * Argument for the filter.
- */
-export interface Argument {
-    /**
-     * Value of the Argument
-     */
-    input?: string[];
-    /**
-     * Name of the Argument
-     */
-    name?: string;
-}
-
-export enum Effect {
-    Exclude = "exclude",
-    Include = "include",
-}
-
-/**
- * Prefix Condition for the filter.
- *
- * Prefix Condition to be applied to the Condition.
- */
-export enum PrefixCondition {
-    And = "AND",
-    Or = "OR",
-}
-
-/**
- * Type of provider of an entity. Some entities are provided by the `system`. Some are
- * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled. Some apps such as AutoPilot create entities with
- * `automation` provider type. These entities can be deleted by the user.
- */
-export enum ProviderType {
-    Automation = "automation",
-    System = "system",
-    User = "user",
-}
-
-/**
- * Trigger Configuration for Alerts.
- */
-export interface Trigger {
-    /**
-     * Cron Expression in case of Custom scheduled Trigger
-     */
-    cronExpression?: string;
-    /**
-     * Schedule Info
-     */
-    scheduleInfo?: ScheduleInfo;
-    triggerType:   TriggerType;
-}
-
-/**
- * Schedule Info
- */
-export enum ScheduleInfo {
-    Custom = "Custom",
-    Daily = "Daily",
-    Monthly = "Monthly",
-    Weekly = "Weekly",
-}
-
-/**
- * Trigger Configuration for Alerts.
- */
-export enum TriggerType {
-    RealTime = "RealTime",
-    Scheduled = "Scheduled",
 }
 
 /**

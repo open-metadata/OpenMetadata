@@ -14,6 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { mockIngestionWorkFlow } from '../../../../mocks/Ingestion.mock';
 import { mockAddIngestionButtonProps } from '../../../../mocks/IngestionListTable.mock';
 import AddIngestionButton from './AddIngestionButton.component';
@@ -30,7 +31,42 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
+jest.mock(
+  '../../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+    })),
+  })
+);
+
 describe('AddIngestionButton', () => {
+  beforeEach(() => {
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+    }));
+  });
+
+  it('should be disabled when the pipeline service is unreachable', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: false,
+      isFetchingStatus: false,
+    }));
+
+    await act(async () => {
+      render(<AddIngestionButton {...mockAddIngestionButtonProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    fireEvent.click(screen.getByTestId('add-new-ingestion-button'));
+
+    expect(screen.getByTestId('add-new-ingestion-button')).toBeDisabled();
+    expect(screen.queryByTestId('agent-item-metadata')).toBeNull();
+  });
+
   it('should not redirect to metadata ingestion page when no ingestion is present', async () => {
     await act(async () => {
       render(<AddIngestionButton {...mockAddIngestionButtonProps} />, {

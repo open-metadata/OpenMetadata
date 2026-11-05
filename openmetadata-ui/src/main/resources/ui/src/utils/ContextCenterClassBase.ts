@@ -22,6 +22,7 @@ import {
 } from '../constants/constants';
 import { EntityTabs } from '../enums/entity.enum';
 import { ContextMemory } from '../generated/entity/context/contextMemory';
+import { getEncodedFqn } from './StringUtils';
 
 export interface MemoryMetadataItem {
   key: string;
@@ -57,6 +58,16 @@ class ContextCenterClassBase {
     return '';
   }
 
+  // Classic pages paint the canvas themselves. In AI mode the page sits in the
+  // shell's content card, so it stays transparent and the card's surface shows,
+  // as on every other AI-mode page. Subclasses extend the root through
+  // getContainerClassName() without having to repeat this.
+  public getPageContainerClassName(isAiMode = false): string {
+    return `${
+      isAiMode ? '' : 'tw:bg-canvas'
+    } ${this.getContainerClassName()}`.trim();
+  }
+
   public getHomePath(): string {
     return ROUTES.HOME;
   }
@@ -75,6 +86,17 @@ class ContextCenterClassBase {
 
   public getMemoriesListPath(): string {
     return ROUTES.CONTEXT_CENTER_MEMORIES;
+  }
+
+  public getAIContextListPath(): string {
+    return ROUTES.CONTEXT_CENTER_AI_CONTEXT;
+  }
+
+  public getAIContextPath(personaFqn: string): string {
+    return ROUTES.CONTEXT_CENTER_AI_CONTEXT_DETAIL.replace(
+      PLACEHOLDER_ROUTE_FQN,
+      getEncodedFqn(personaFqn)
+    );
   }
 
   public getArticlePath(
@@ -107,6 +129,10 @@ class ContextCenterClassBase {
 
   public getMemoryMetadataList(_memory: ContextMemory): MemoryMetadataItem[] {
     return [];
+  }
+
+  public getMemoryPromptTranslationKey(): string {
+    return 'message.what-should-ai-remember';
   }
 
   public getContextCenterRootBreadcrumb(

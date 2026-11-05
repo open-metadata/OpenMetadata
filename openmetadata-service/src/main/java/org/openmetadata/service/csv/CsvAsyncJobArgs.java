@@ -17,6 +17,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import org.openmetadata.schema.api.lineage.LineageDirection;
 
 @Getter
 @Setter
@@ -31,8 +32,14 @@ public class CsvAsyncJobArgs {
   private String csv;
   private String versioningEntityType;
   // Present when the job exports search results instead of a single entity
-  // tree; the handler streams matching documents straight into the spool file.
+  // tree; the handler streams matching documents straight into the buffer.
   private SearchExportArgs searchExport;
+  // Present when the job exports a lineage graph.
+  private LineageExportArgs lineageExport;
+  // Present when the job exports audit log events as JSON.
+  private AuditExportArgs auditExport;
+  // Present when a test case export is narrowed by list filters or paginated.
+  private TestCaseExportArgs testCaseExport;
 
   @Getter
   @Setter
@@ -48,5 +55,83 @@ public class CsvAsyncJobArgs {
     private String sortOrder;
     private Integer size;
     private Integer from;
+  }
+
+  /**
+   * Filters for a lineage graph export. {@code byEntityCount} selects between the depth-bounded
+   * traversal and the entity-count-bounded one; each ignores the other's fields.
+   */
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @Accessors(chain = true)
+  public static class LineageExportArgs {
+    private Boolean byEntityCount;
+    private String fqn;
+    private String entityType;
+    private String queryFilter;
+    private Boolean deleted;
+    private Long startTime;
+    private Long endTime;
+    // Depth-bounded traversal
+    private Integer upstreamDepth;
+    private Integer downstreamDepth;
+    // Entity-count-bounded traversal
+    private LineageDirection direction;
+    private Integer from;
+    private Integer size;
+    private Integer nodeDepth;
+    private Integer maxDepth;
+    private String includeSourceFields;
+    // The bot that asked on the user's behalf, if any: policies that only hold for impersonated
+    // requests must still hold for the export, which runs after the request is gone.
+    private String impersonatedBy;
+  }
+
+  /** Filters for an audit-log export. The payload is JSON, not CSV. */
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @Accessors(chain = true)
+  public static class AuditExportArgs {
+    private String userName;
+    private String actorType;
+    private String serviceName;
+    private String entityType;
+    private String eventType;
+    private Long startTs;
+    private Long endTs;
+    private String searchTerm;
+    private Integer limit;
+    // Decided when the export is requested, as the job runs without the requester; an export
+    // queued without it masks user emails.
+    private Boolean readsUserEmails;
+  }
+
+  /**
+   * Filters and page for a test case export, already validated and resolved by the resource
+   * (statuses normalized, entity link reduced to its FQN, owner name resolved to ids) so the sync
+   * and async endpoints hand the repository the same input.
+   */
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @Accessors(chain = true)
+  public static class TestCaseExportArgs {
+    private String testCaseStatus;
+    private String testCaseType;
+    private String entityFQN;
+    private String tags;
+    private String tier;
+    private String ownerIds;
+    private String q;
+    private String testPlatforms;
+    private String dataQualityDimension;
+    private String serviceName;
+    private String dataProductFqn;
+    private Long startTimestamp;
+    private Long endTimestamp;
+    private Integer limit;
+    private Integer offset;
   }
 }

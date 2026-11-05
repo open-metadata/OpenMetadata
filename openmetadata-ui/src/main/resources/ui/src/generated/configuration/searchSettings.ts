@@ -68,6 +68,13 @@ export interface AllowedFieldField {
      */
     description: string;
     /**
+     * Whether this field may be enabled for search highlighting. Server-derived from the index
+     * mapping, not configured: false when the field is mapped flattened/flat_object (no
+     * analyzer, fails the highlight phase) or enabled:false (not indexed, can never match). The
+     * UI only offers the highlight toggle where this is true. Defaults to false.
+     */
+    highlight?: boolean;
+    /**
      * Field name that can be used in searchFields
      */
     name: string;
@@ -364,6 +371,7 @@ export enum StageMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
+    Prefix = "prefix",
     Standard = "standard",
     TokenCoverage = "tokenCoverage",
 }
@@ -422,6 +430,12 @@ export interface GlobalSettings {
      * Flag to enable or disable RBAC Search Configuration globally.
      */
     enableAccessControl?: boolean;
+    /**
+     * Index table columns as standalone search documents in the column search index. Disabling
+     * it stops column indexing and deletes the column search index; enabling it creates the
+     * index again, and a reindex of tables fills it.
+     */
+    enableColumnIndexing?: boolean;
     /**
      * Optional list of numeric field-based boosts applied globally.
      */

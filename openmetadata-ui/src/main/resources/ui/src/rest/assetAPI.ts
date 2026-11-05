@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 import axios, { AxiosError, AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { FOLDER_PAGE_SIZE } from '../constants/ContextCenter.constants';
 import { Asset, AssetType } from '../generated/attachments/asset';
 import { ContextFile } from '../generated/entity/data/contextFile';
 import { Folder } from '../generated/entity/data/folder';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
+import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export interface CreateFolderRequest {
   name: string;
@@ -109,7 +111,10 @@ export const deleteFolder = async (
   });
 };
 
-type ListContextFilesParams = ListParams & { folderId?: string };
+type ListContextFilesParams = ListParams & {
+  folderId?: string;
+  assetId?: string;
+};
 
 export const listContextFiles = async (params: ListContextFilesParams = {}) => {
   const response = await APIClient.get<PagingResponse<ContextFile[]>>(
@@ -127,11 +132,28 @@ export const listContextFiles = async (params: ListContextFilesParams = {}) => {
   return response.data;
 };
 
-export const getContextFileById = async (id: string): Promise<ContextFile> => {
+export const getContextFileById = async (
+  id: string,
+  include?: Include
+): Promise<ContextFile> => {
   const response = await APIClient.get<ContextFile>(
     `/contextCenter/drive/files/${id}`,
-    { params: { fields: 'folder,memoryCount' } }
+    { params: { fields: 'folder,memoryCount', include } }
   );
+
+  return response.data;
+};
+
+export const updateContextFile = async (
+  id: string,
+  patch: Operation[]
+): Promise<ContextFile> => {
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<ContextFile>
+  >(`/contextCenter/drive/files/${id}`, patch, {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  });
 
   return response.data;
 };
@@ -166,13 +188,18 @@ export const moveFileToRoot = async (driveFileId: string): Promise<void> => {
 
 export const uploadDriveFile = async (
   file: File,
-  folderFqn?: string
+  folderFqn?: string,
+  domainFqn?: string
 ): Promise<ContextFile> => {
   const formData = new FormData();
   formData.append('file', file);
 
   if (folderFqn) {
     formData.append('folder', folderFqn);
+  }
+
+  if (domainFqn) {
+    formData.append('domain', domainFqn);
   }
 
   const response = await APIClient.post<FormData, AxiosResponse<ContextFile>>(
@@ -259,13 +286,20 @@ export const restoreDriveFile = async (id: string): Promise<ContextFile> => {
   return response.data;
 };
 
-export const downloadDriveFile = async (id: string): Promise<Blob> => {
-  const response = await APIClient.get<Blob>(
-    `/contextCenter/drive/files/${id}/download`,
-    { params: { redirect: true }, responseType: 'blob' }
-  );
+export const downloadDriveFile = async (
+  id: string,
+  signal?: AbortSignal
+): Promise<Blob> => {
+  try {
+    const response = await APIClient.get<Blob>(
+      `/contextCenter/drive/files/${id}/download`,
+      { params: { redirect: false }, responseType: 'blob', signal }
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    return normalizeBlobError(error);
+  }
 };
 
 export const downloadDriveFiles = async (ids: string[]): Promise<Blob> => {

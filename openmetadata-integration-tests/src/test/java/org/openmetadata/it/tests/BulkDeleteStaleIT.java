@@ -37,7 +37,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 
 /**
- * Integration tests for the scope-level stale-deletion endpoint ({@code PUT
+ * Integration tests for the scope-level stale-deletion endpoint ({@code DELETE
  * /v1/tables/deleteStale}).
  *
  * <p>The connector finishes ingesting a scope and sends the set of FQNs it saw. The server
@@ -158,6 +158,50 @@ public class BulkDeleteStaleIT {
   }
 
   @Test
+  void test_emptySeenFqns_withAllowFlag_deletesWholeScope(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<String> tableFqns = createTables(ns, schemaFqn, 3);
+
+    BulkOperationResult result =
+        BulkApi.deleteStale(
+            "tables",
+            new BulkDeleteStaleRequest()
+                .withScopeFqn(schemaFqn)
+                .withScopeEntityType("databaseSchema")
+                .withSeenFqns(new ArrayList<>())
+                .withAllowEmptySeenFqns(true));
+
+    assertEquals(
+        Set.copyOf(tableFqns),
+        deletedFqns(result),
+        "a confirmed-empty listing marks every table in the scope stale");
+    for (String fqn : tableFqns) {
+      assertTrue(isDeleted(fqn), "table " + fqn + " must be soft-deleted");
+    }
+  }
+
+  @Test
+  void test_allowFlag_withSeenFqns_deletesOnlyUnseen(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<String> tableFqns = createTables(ns, schemaFqn, 3);
+
+    BulkOperationResult result =
+        BulkApi.deleteStale(
+            "tables",
+            new BulkDeleteStaleRequest()
+                .withScopeFqn(schemaFqn)
+                .withScopeEntityType("databaseSchema")
+                .withSeenFqns(tableFqns.subList(0, 1))
+                .withAllowEmptySeenFqns(true));
+
+    assertEquals(
+        Set.copyOf(tableFqns.subList(1, 3)),
+        deletedFqns(result),
+        "the flag must not widen deletion when the connector saw entities");
+    assertFalse(isDeleted(tableFqns.getFirst()), "the seen table must remain live");
+  }
+
+  @Test
   void test_databaseScope_spansAllSchemas(TestNamespace ns) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schemaA = DatabaseSchemaTestFactory.createSimple(ns, service);
@@ -268,6 +312,35 @@ public class BulkDeleteStaleIT {
             SdkClients.getAdminToken());
 
     assertEquals(400, response.statusCode(), "blank scopeEntityType must be rejected");
+  }
+
+  @Test
+  void test_absentBody_returns400() throws Exception {
+    // A proxy that drops the body from a DELETE. Jackson cannot map a zero-length entity, so
+    // JsonMappingExceptionMapper already answers 400 here -- this pins that it stays a client
+    // error rather than degrading into an empty seen-set or a 500.
+    HttpResponse<String> response =
+        BulkApi.deleteStaleRaw(
+            "tables", HttpRequest.BodyPublishers.noBody(), SdkClients.getAdminToken());
+
+    assertEquals(400, response.statusCode(), "a deleteStale with no body must be rejected");
+  }
+
+  @Test
+  void test_nullBody_returns400FromNotNull() throws Exception {
+    // The other shape of a dropped body: valid JSON that binds the parameter to null. Jackson
+    // maps it cleanly, so nothing rejects it before the resource -- without @NotNull on the
+    // parameter this reaches the repository and NPEs into a 500. Asserting on the constraint
+    // message keeps this test honest: a plain 400 assertion would pass on the unfixed code too.
+    HttpResponse<String> response =
+        BulkApi.deleteStaleRaw(
+            "tables", HttpRequest.BodyPublishers.ofString("null"), SdkClients.getAdminToken());
+
+    assertEquals(400, response.statusCode(), "a deleteStale with a null body must be rejected");
+    assertTrue(
+        response.body().contains("must not be null"),
+        "the 400 must come from the @NotNull on the body parameter, not a parse failure: "
+            + response.body());
   }
 
   @Test

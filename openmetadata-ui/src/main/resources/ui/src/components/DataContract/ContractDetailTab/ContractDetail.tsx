@@ -19,37 +19,32 @@ import {
   Card,
   Divider,
   Dropdown,
-  Tooltip,
-  TooltipTrigger,
+  Owner,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
+  DataContract as DataContractIcon,
   Download02,
-  Flag04,
+  Edit01,
   PlayCircle,
   Plus,
   Trash01,
   Upload01,
-} from '@untitledui/icons';
-import type { RadioChangeEvent } from 'antd';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import approvedIcon from '../../../assets/img/approved.png';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.svg';
-import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as ImportIconContract } from '../../../assets/svg/import-icon.svg';
-
 import {
   ContractImportFormat,
   DataContractMode,
   DATA_CONTRACT_ACTION_DROPDOWN_KEY,
 } from '../../../constants/DataContract.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
@@ -67,18 +62,18 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityStatusBadgeConfig } from '../../../utils/EntityStatusUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import AlertBar from '../../AlertBar/AlertBar';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
 import ContractSchemaTable from '../ContractSchemaTable/ContractSchemaTable.component';
 import ContractSemantics from '../ContractSemantics/ContractSemantics.component';
 import ContractSLA from '../ContractSLACard/ContractSLA.component';
+import ContractStatusAlert from '../ContractStatusAlert/ContractStatusAlert';
 import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
 import ContractYaml from '../ContractYaml/ContractYaml.component';
 import './contract-detail.less';
@@ -288,9 +283,23 @@ const ContractDetail: React.FC<{
     ]
   );
 
-  const handleModeChange = useCallback((e: RadioChangeEvent) => {
-    setMode(e.target.value);
+  const handleModeChange = useCallback((nextMode: DataContractMode) => {
+    setMode(nextMode);
   }, []);
+
+  const statusBadge = useMemo(() => {
+    const { color, icon } = getEntityStatusBadgeConfig(contract?.entityStatus);
+
+    return (
+      <BadgeWithIcon
+        color={color}
+        iconLeading={icon}
+        size="sm"
+        type="pill-color">
+        {contract?.entityStatus ?? t('label.approved')}
+      </BadgeWithIcon>
+    );
+  }, [contract?.entityStatus, t]);
 
   const renderDataContractHeader = useMemo(() => {
     if (!contract) {
@@ -326,23 +335,13 @@ const ContractDetail: React.FC<{
               </div>
               {(contract as ContractWithInheritance & { inherited?: boolean })
                 .inherited && (
-                <Tooltip
-                  title={t('label.inherited-entity', {
+                <ButtonUtility
+                  className="inherit-icon"
+                  icon={InheritIcon}
+                  tooltip={t('label.inherited-entity', {
                     entity: t('label.contract'),
-                  })}>
-                  <TooltipTrigger>
-                    <ButtonUtility
-                      color="tertiary"
-                      icon={
-                        <InheritIcon
-                          className="inherit-icon cursor-pointer"
-                          width={16}
-                        />
-                      }
-                      size="sm"
-                    />
-                  </TooltipTrigger>
-                </Tooltip>
+                  })}
+                />
               )}
             </Box>
             <Box align="center" gap={3}>
@@ -353,10 +352,12 @@ const ContractDetail: React.FC<{
 
               <Dropdown.Root>
                 <ButtonUtility
-                  className="contract-action-button"
-                  color="tertiary"
                   data-testid="manage-contract-actions"
-                  icon={<SettingIcon height={20} width={20} />}
+                  icon={SettingIcon}
+                  size="lg"
+                  tooltip={t('label.manage-entity', {
+                    entity: t('label.contract'),
+                  })}
                 />
 
                 <Dropdown.Popover placement="bottom right">
@@ -370,7 +371,7 @@ const ContractDetail: React.FC<{
                           data-testid="contract-edit-button"
                           id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.EDIT}>
                           <Box align="center" gap={2}>
-                            <EditIcon
+                            <Edit01
                               aria-hidden="true"
                               className="tw:size-4.5 tw:shrink-0 tw:text-fg-quaternary"
                             />
@@ -452,7 +453,7 @@ const ContractDetail: React.FC<{
                     {`${t('label.created-by')} : `}
                   </Typography>
 
-                  <OwnerLabel
+                  <Owner
                     owners={[
                       { name: contract.createdBy, type: 'user', id: '' },
                     ]}
@@ -505,13 +506,7 @@ const ContractDetail: React.FC<{
                 {`${t('label.status')} : `}
               </Typography>
 
-              <BadgeWithIcon
-                color="success"
-                iconLeading={Flag04}
-                size="sm"
-                type="pill-color">
-                {contract.entityStatus ?? t('label.approved')}
-              </BadgeWithIcon>
+              {statusBadge}
             </Box>
 
             <Divider
@@ -524,11 +519,11 @@ const ContractDetail: React.FC<{
                 {`${t('label.owner-plural')} : `}
               </Typography>
 
-              <OwnerLabel
+              <Owner
                 avatarSize={24}
                 isCompactView={false}
                 maxVisibleOwners={5}
-                owners={contract.owners}
+                owners={contract.owners ?? []}
                 showLabel={false}
               />
             </Box>
@@ -545,6 +540,7 @@ const ContractDetail: React.FC<{
     hasEditPermission,
     isInheritedContract,
     handleContractAction,
+    statusBadge,
     t,
   ]);
 
@@ -557,15 +553,13 @@ const ContractDetail: React.FC<{
   if (!contract) {
     if (!hasEditPermission) {
       return (
-        <ErrorPlaceHolder
-          icon={
-            <EmptyContractIcon className="empty-contract-icon" height={140} />
-          }
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}>
-          <Typography as="p" className="m-t-md w-80 tw:text-secondary">
-            {t('message.no-contract-description')}
-          </Typography>
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-90 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={t('message.no-contract-description')}
+            icon={DataContractIcon}
+          />
+        </div>
       );
     }
 
@@ -581,75 +575,144 @@ const ContractDetail: React.FC<{
           onClose={handleImportModalClose}
           onSuccess={handleImportSuccess}
         />
-        <ErrorPlaceHolder
-          icon={
-            <EmptyContractIcon className="empty-contract-icon" height={140} />
-          }
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}>
-          <div className="tw:my-4">
-            <Typography as="p" className="w-80 tw:text-gray-500 tw:text-center">
-              {t('message.create-contract-description')}
-            </Typography>
-          </div>
-
-          <Dropdown.Root>
-            <Button
-              className="tw:mt-2"
-              color="primary"
-              data-testid="add-contract-button"
-              iconTrailing={ChevronDown}
-              size="sm">
-              {t('label.add-entity', { entity: t('label.contract') })}
-            </Button>
-            <Dropdown.Popover>
-              <Dropdown.Menu
-                data-testid="add-contract-menu"
-                onAction={(key) => handleAddContractAction(String(key))}>
-                <Dropdown.Item
-                  data-testid="create-contract-button"
-                  icon={Plus}
-                  id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE}
-                  label={t('label.create-contract-with-ui')}
-                />
-                <Dropdown.Item
-                  data-testid="import-openmetadata-contract-button"
-                  id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA}>
-                  <Box align="center" gap={2}>
-                    <ImportIconContract
-                      aria-hidden="true"
-                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
-                    />
-                    <Typography
-                      ellipsis
-                      className="tw:grow tw:text-gray-700"
-                      size="text-sm">
-                      {t('label.import-om')}
-                    </Typography>
-                  </Box>
-                </Dropdown.Item>
-                <Dropdown.Item
-                  data-testid="import-odcs-contract-button"
-                  id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS}>
-                  <Box align="center" gap={2}>
-                    <ImportIconContract
-                      aria-hidden="true"
-                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
-                    />
-                    <Typography
-                      ellipsis
-                      className="tw:grow tw:text-gray-700"
-                      size="text-sm">
-                      {t('label.import-odcs')}
-                    </Typography>
-                  </Box>
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown.Root>
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-90 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={t('message.create-contract-description')}
+            footer={
+              <>
+                <Dropdown.Root>
+                  <Button
+                    color="primary"
+                    data-testid="add-contract-button"
+                    iconTrailing={ChevronDown}
+                    size="sm">
+                    {t('label.add-entity', { entity: t('label.contract') })}
+                  </Button>
+                  <Dropdown.Popover>
+                    <Dropdown.Menu
+                      data-testid="add-contract-menu"
+                      onAction={(key) => handleAddContractAction(String(key))}>
+                      <Dropdown.Item
+                        data-testid="create-contract-button"
+                        icon={Plus}
+                        id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE}
+                        label={t('label.create-contract-with-ui')}
+                      />
+                      <Dropdown.Item
+                        data-testid="import-openmetadata-contract-button"
+                        id={
+                          DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA
+                        }>
+                        <Box align="center" gap={2}>
+                          <ImportIconContract
+                            aria-hidden="true"
+                            className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          />
+                          <Typography
+                            ellipsis
+                            className="tw:grow tw:text-gray-700"
+                            size="text-sm">
+                            {t('label.import-om')}
+                          </Typography>
+                        </Box>
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        data-testid="import-odcs-contract-button"
+                        id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS}>
+                        <Box align="center" gap={2}>
+                          <ImportIconContract
+                            aria-hidden="true"
+                            className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          />
+                          <Typography
+                            ellipsis
+                            className="tw:grow tw:text-gray-700"
+                            size="text-sm">
+                            {t('label.import-odcs')}
+                          </Typography>
+                        </Box>
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown.Root>
+              </>
+            }
+            icon={DataContractIcon}
+          />
+        </div>
       </>
     );
   }
+
+  const renderDescriptionSection = (contractData: DataContract) =>
+    !isDescriptionContentEmpty(contractData.description ?? '') && (
+      <div className="contract-card-items">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.description')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <RichTextEditorPreviewerV1
+          enableSeeMoreVariant
+          markdown={contractData.description ?? ''}
+        />
+      </div>
+    );
+
+  const renderSchemaSection = () =>
+    !isEmpty(schemaDetail) && (
+      <div className="contract-card-items" data-testid="schema-table-card">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.schema')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <ContractSchemaTable
+          contractStatus={constraintStatus['schema']}
+          latestSchemaValidationResult={latestContractResults?.schemaValidation}
+          schemaDetail={schemaDetail}
+        />
+      </div>
+    );
+
+  const renderSemanticsSection = (contractData: DataContract) =>
+    contractData?.semantics &&
+    contractData?.semantics.length > 0 && (
+      <div className="contract-card-items" data-testid="semantics-card">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.semantic-plural')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <ContractSemantics
+          contractStatus={constraintStatus['semantic']}
+          latestContractResults={latestContractResults}
+          semantics={contractData?.semantics}
+        />
+      </div>
+    );
+
+  const renderExecutionHistorySection = (contractData: DataContract) =>
+    contractData.id &&
+    contractData.latestResult?.resultId && (
+      <div className="contract-card-items" data-testid="schema-table-card">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.execution-history')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <ContractExecutionChart contract={contractData} />
+      </div>
+    );
 
   return (
     <>
@@ -672,30 +735,13 @@ const ContractDetail: React.FC<{
             <div className="contract-detail-container">
               {showContractStatusAlert && (
                 <div className="contract-card-items">
-                  <AlertBar
-                    defaultExpand
-                    className="h-full"
+                  <ContractStatusAlert
                     message={latestContractResults?.result ?? ''}
-                    type="error"
                   />
                 </div>
               )}
 
-              {!isDescriptionContentEmpty(contract.description ?? '') && (
-                <div className="contract-card-items">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.description')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <RichTextEditorPreviewerV1
-                    enableSeeMoreVariant
-                    markdown={contract.description ?? ''}
-                  />
-                </div>
-              )}
+              {renderDescriptionSection(contract)}
 
               {(() => {
                 const contractWithInheritance =
@@ -713,23 +759,13 @@ const ContractDetail: React.FC<{
                 }
 
                 const inheritedIcon = isInherited ? (
-                  <Tooltip
-                    title={t('label.inherited-entity', {
+                  <ButtonUtility
+                    className="inherit-icon"
+                    icon={InheritIcon}
+                    tooltip={t('label.inherited-entity', {
                       entity: t('label.terms-of-service'),
-                    })}>
-                    <TooltipTrigger>
-                      <ButtonUtility
-                        color="tertiary"
-                        icon={
-                          <InheritIcon
-                            className="inherit-icon cursor-pointer"
-                            width={16}
-                          />
-                        }
-                        size="sm"
-                      />
-                    </TooltipTrigger>
-                  </Tooltip>
+                    })}
+                  />
                 ) : null;
 
                 return (
@@ -752,49 +788,24 @@ const ContractDetail: React.FC<{
                 );
               })()}
 
-              <ContractSLA contract={contract} />
+              <ContractSLA
+                contract={contract}
+                contractStatus={constraintStatus['sla']}
+                latestContractResults={latestContractResults}
+              />
 
-              {!isEmpty(schemaDetail) && (
-                <div
-                  className="contract-card-items"
-                  data-testid="schema-table-card">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.schema')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <ContractSchemaTable
-                    contractStatus={constraintStatus['schema']}
-                    latestSchemaValidationResult={
-                      latestContractResults?.schemaValidation
-                    }
-                    schemaDetail={schemaDetail}
-                  />
-                </div>
-              )}
+              {renderSchemaSection()}
 
               {!isEmpty(contract.security) &&
                 (() => {
                   const inheritedIcon = contract.security?.inherited ? (
-                    <Tooltip
-                      title={t('label.inherited-entity', {
+                    <ButtonUtility
+                      className="inherit-icon"
+                      icon={InheritIcon}
+                      tooltip={t('label.inherited-entity', {
                         entity: t('label.security'),
-                      })}>
-                      <TooltipTrigger>
-                        <ButtonUtility
-                          color="tertiary"
-                          icon={
-                            <InheritIcon
-                              className="inherit-icon cursor-pointer"
-                              width={16}
-                            />
-                          }
-                          size="sm"
-                        />
-                      </TooltipTrigger>
-                    </Tooltip>
+                      })}
+                    />
                   ) : null;
 
                   return (
@@ -818,24 +829,7 @@ const ContractDetail: React.FC<{
                   );
                 })()}
 
-              {contract?.semantics && contract?.semantics.length > 0 && (
-                <div
-                  className="contract-card-items"
-                  data-testid="semantics-card">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.semantic-plural')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <ContractSemantics
-                    contractStatus={constraintStatus['semantic']}
-                    latestContractResults={latestContractResults}
-                    semantics={contract?.semantics}
-                  />
-                </div>
-              )}
+              {renderSemanticsSection(contract)}
 
               {contract?.testSuite?.id && (
                 <div
@@ -855,20 +849,7 @@ const ContractDetail: React.FC<{
                 </div>
               )}
 
-              {contract.id && contract.latestResult?.resultId && (
-                <div
-                  className="contract-card-items"
-                  data-testid="schema-table-card">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.execution-history')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <ContractExecutionChart contract={contract} />
-                </div>
-              )}
+              {renderExecutionHistorySection(contract)}
             </div>
           )}
         </Card.Content>

@@ -4,7 +4,6 @@ pip install confluent_kafka pandas requests avro-python3
 
 import json
 import os
-from typing import Dict, List  # noqa: UP035
 
 import pandas as pd
 import requests
@@ -40,7 +39,10 @@ class SchemaRegistry:
     def get_avro_serializer(self, schema: str) -> AvroSerializer:
         schema_registry_conf = {"url": self.url}
         schema_registry_client = SchemaRegistryClient(schema_registry_conf)
-        return AvroSerializer(schema_registry_client, schema_str=schema)
+        # confluent_kafka.schema_registry.avro stacks `import *` from _async, _sync and
+        # common, so a type checker binds AvroSerializer to the wrong class; at runtime
+        # _sync wins and takes these arguments.
+        return AvroSerializer(schema_registry_client, schema_str=schema)  # pyright: ignore[reportCallIssue]
 
 
 def delivery_report(err, msg):
@@ -59,12 +61,12 @@ def sanitize_name(name):
 
 def generate_avro_schema(df: pd.DataFrame, topic: str) -> str:
     """Generate an Avro schema from a pandas DataFrame"""
-    fields: List[Dict[str, str]] = []  # noqa: UP006
+    fields: list[dict[str, str]] = []
     for column in df.columns:
         fields.append(  # noqa: PERF401
             {"name": sanitize_name(column), "type": "string"}
         )  # Assuming all columns are of type string
-    schema_dict: Dict[str, any] = {  # noqa: UP006
+    schema_dict: dict[str, any] = {
         "namespace": "example.avro",
         "type": "record",
         "name": sanitize_name(topic),

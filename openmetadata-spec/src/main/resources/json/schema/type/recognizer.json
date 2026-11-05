@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/recognizer.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Recognizer",
   "description": "Configuration for automatic entity recognition and classification, supporting both pattern-based and context-aware detection methods.",
   "type": "object",

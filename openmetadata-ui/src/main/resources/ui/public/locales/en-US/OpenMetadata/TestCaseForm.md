@@ -92,6 +92,14 @@ Common test types include:
 $$
 
 $$section
+### Data Quality Dimension $(id="dataQualityDimension")
+
+The data quality dimension this test case is categorized under. Test cases are grouped and reported by dimension in the data quality dashboard.
+
+It defaults to the dimension of the selected test type, and you can pick another one from the list. Dimensions are managed in **Settings > Preferences > Data Quality**, where you can add custom ones — for example `Timeliness`, `Traceability` or `Availability` — on top of the ones shipped with OpenMetadata.
+$$
+
+$$section
 ### Name $(id="name")
 
 Provide a unique name for your test case. The name should be descriptive and follow these guidelines:
@@ -217,6 +225,8 @@ Tests are categorized into seven data quality dimensions:
 - **Uniqueness**: Tests for duplicate detection and uniqueness constraints
 - **Integrity**: Tests for referential integrity and structural consistency
 - **SQL**: Custom SQL-based validation tests
+
+Dimensions are entities in their own right. Each test case inherits the dimension of its test definition and can point at any other dimension instead, including the custom ones created in **Settings > Preferences > Data Quality**.
 
 ## Test Platforms
 
@@ -374,7 +384,10 @@ $$section
 
 **Description**: Tests that values in a column are not null. Empty strings don't count as null - values must be explicitly null.
 
-**Parameters**: None
+**Parameters**:
+- **Failure Threshold** (NUMBER, Optional) - How many failures to tolerate before the test is marked as failed (default is 0)
+- **Threshold Unit** (STRING, Optional) - How to read the threshold: `ABSOLUTE` (a raw count of failures) or `PERCENTAGE` (a share of the evaluated rows)
+- **Dimension Failure Policy** (STRING, Optional) - How dimensional results roll up: `OVERALL_ONLY` (only the overall result counts) or `ANY_DIMENSION` (one failing dimension fails the test)
 
 **Supported Data Types**: All data types supported
 
@@ -394,7 +407,10 @@ $$section
 
 **Description**: Tests that all values in a column are unique (no duplicates).
 
-**Parameters**: None
+**Parameters**:
+- **Failure Threshold** (NUMBER, Optional) - How many failures to tolerate before the test is marked as failed (default is 0)
+- **Threshold Unit** (STRING, Optional) - How to read the threshold: `ABSOLUTE` (a raw count of failures) or `PERCENTAGE` (a share of the evaluated rows)
+- **Dimension Failure Policy** (STRING, Optional) - How dimensional results roll up: `OVERALL_ONLY` (only the overall result counts) or `ANY_DIMENSION` (one failing dimension fails the test)
 
 **Supported Data Types**: All data types supported
 
@@ -522,11 +538,13 @@ $$section
 
 **Dimension**: Validity  
 
-**Description**: Tests that all values in a column are members of a specified set of allowed values.
+**Description**: Checks column values against a specified set. The result depends on the **Match enum** setting.
 
 **Parameters**:
-- **Allowed Values** (ARRAY, Required) - List of acceptable values for this column. Any value not in this list will cause the test to fail
-- **Match enum** (BOOLEAN, Optional) - When enabled, validates each value independently against the allowed set
+- **Allowed Values** (ARRAY, Required) - Values used for the comparison. Neither mode requires every allowed value to occur in the column
+- **Match enum** (BOOLEAN, Optional) - When enabled, every observed value must belong to the allowed set. When disabled or omitted, the test passes if at least one allowed value occurs, even if other values are outside the set
+
+For example, with allowed values `['AA', 'BB', 'CC']`, a column containing `['AA', 'DD']` passes when **Match enum** is disabled and fails when it is enabled. A column containing only `['DD']` fails in either mode.
 
 **Supported Data Types**: NUMBER, INT, FLOAT, DOUBLE, DECIMAL, TINYINT, SMALLINT, BIGINT, BYTEINT, BYTES, STRING, MEDIUMTEXT, TEXT, CHAR, VARCHAR, BOOLEAN
 
@@ -789,6 +807,7 @@ $$section
 - **Use Columns** (ARRAY, Optional) - Specific columns to compare. If not specified, all columns except key columns will be compared
 - **SQL Where Clause** (STRING, Optional) - Condition to filter which rows to include in the comparison (e.g., 'status = "active"')
 - **Case sensitive columns** (BOOLEAN, Optional) - When enabled, column name comparison is case-sensitive (e.g., 'Name' ≠ 'name')
+- **Parallel queries per database** (NUMBER, Optional) - How many queries the comparison may run at once against each database (default is 1). Both databases are always queried at the same time; a higher value compares large tables faster, but adds load to both databases and holds more rows in memory
 
 **Key Features**:
 - Automatically resolves key columns from primary key or unique constraints if not specified

@@ -15,7 +15,6 @@ Kinesis Models
 # Disable pylint to conform to Kinesis API returns
 # We want to convert to the pydantic models in 1 go
 from enum import Enum
-from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict
 
@@ -33,7 +32,7 @@ class KinesisStreamModel(BaseModel):
     Model for Kinesis streams
     """
 
-    StreamNames: List[str]  # noqa: UP006
+    StreamNames: list[str]
     HasMoreStreams: bool
 
 
@@ -42,7 +41,7 @@ class KinesisSummaryAttributes(BaseModel):
     Model for Kinesis Summary Attributes
     """
 
-    RetentionPeriodHours: Optional[float] = 0  # noqa: UP045
+    RetentionPeriodHours: float | None = 0
 
 
 class KinesisSummaryModel(BaseModel):
@@ -58,8 +57,8 @@ class KinesisTopicMetadataModel(BaseModel):
     Model for Kinesis Topic Metadata
     """
 
-    summary: Optional[KinesisSummaryModel]  # noqa: UP045
-    partitions: Optional[List[str]]  # noqa: UP006, UP045
+    summary: KinesisSummaryModel | None
+    partitions: list[str] | None
 
 
 class KinesisArgs(BaseModel):
@@ -95,8 +94,8 @@ class KinesisPartitions(BaseModel):
     Model for Kinesis Partitions
     """
 
-    Shards: Optional[List[KinesisShards]]  # noqa: UP006, UP045
-    NextToken: Optional[str]  # noqa: UP045
+    Shards: list[KinesisShards] | None
+    NextToken: str | None
 
 
 class KinesisShardIterator(BaseModel):
@@ -104,7 +103,7 @@ class KinesisShardIterator(BaseModel):
     Model for Kinesis Shard Iterator
     """
 
-    ShardIterator: Optional[str]  # noqa: UP045
+    ShardIterator: str | None
 
 
 class KinesisData(BaseModel):
@@ -112,7 +111,7 @@ class KinesisData(BaseModel):
     Model for Kinesis Sample Data
     """
 
-    Data: Optional[bytes]  # noqa: UP045
+    Data: bytes | None
 
 
 class KinesisRecords(BaseModel):
@@ -120,4 +119,4 @@ class KinesisRecords(BaseModel):
     Model for Kinesis Records
     """
 
-    Records: Optional[List[KinesisData]]  # noqa: UP006, UP045
+    Records: list[KinesisData] | None

@@ -14,22 +14,3 @@
 @import '../variables.less';
 @switch-bg-color-primary: var(--om-legacy-color-107-114-128-0-15);
 @switch-border-color: var(--om-legacy-color-6b7280);
-
-.ant-switch {
-  box-sizing: content-box;
-  background-image: none;
-  background-color: @switch-bg-color-primary;
-  border: 1.5px solid @switch-border-color;
-}
-
-.ant-switch-handle::before {
-  background-color: @switch-border-color;
-}
-
-.ant-switch-checked {
-  background: var(--tw-color-bg-primary);
-  border-color: @primary-color;
-  .ant-switch-handle::before {
-    background-color: @primary-color;
-  }
-}

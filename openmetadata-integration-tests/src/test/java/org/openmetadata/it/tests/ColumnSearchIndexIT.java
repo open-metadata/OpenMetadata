@@ -80,6 +80,66 @@ public class ColumnSearchIndexIT {
     }
 
     @Test
+    @DisplayName("FQN search on tableColumn matches only that column, not its siblings")
+    void testColumnFqnSearchIsPrecise(TestNamespace ns) {
+      OpenMetadataClient client = SdkClients.adminClient();
+      Table table = createTableWithColumns(ns, "col_fqn_precise");
+      String userIdFqn =
+          table.getColumns().stream()
+              .filter(c -> c.getName().equals(ns.prefix("user_id")))
+              .findFirst()
+              .orElseThrow()
+              .getFullyQualifiedName();
+
+      // Searching a column's full FQN must return only that column, mirroring the Explore Columns
+      // tab count-vs-results property that #31106 was written to defend (the "count 1 vs results
+      // 7381" bug). The generic q= path multi-matches over name.ngram / displayName.ngram — under
+      // parallel test load the shared RUN_ID/classId prefix on sibling columns from other methods
+      // in this nested class trips the 2<70% minimum-should-match threshold and the total flaps
+      // between 1 and N (21 observed = 7 methods x 3 columns for the class). Send the exact FQN
+      // through a structured queryFilter term on fqnParts (a keyword array holding every sub-path
+      // of the FQN — see SearchIndex.getFQNParts) so the assertion is deterministic across
+      // execution order.
+      // Matches the LineageBrokenReferenceIT#assertEntitySearchable shape: outer {"query": ...}
+      // wrapper + shorthand term. EsUtils.parseJsonQuery unwraps the outer "query" before handing
+      // the inner clause to the ES/OS client. fqnParts is stored {"type":"keyword"} with no
+      // normalizer, so the term value must match the FQN case-sensitively — which it does since
+      // the value comes from Column#getFullyQualifiedName() produced during table create.
+      String fqnPartsTermFilter =
+          "{\"query\":{\"term\":{\"fqnParts\":\""
+              + userIdFqn.replace("\\", "\\\\").replace("\"", "\\\"")
+              + "\"}}}";
+      Awaitility.await("precise FQN column search")
+          .pollInterval(POLL_INTERVAL)
+          .atMost(POLL_AT_MOST)
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                String response =
+                    client
+                        .search()
+                        .query("*")
+                        .index(COLUMN_SEARCH_INDEX)
+                        .queryFilter(fqnPartsTermFilter)
+                        .size(50)
+                        .deleted(false)
+                        .execute();
+                JsonNode root = OBJECT_MAPPER.readTree(response);
+                int total = root.path("hits").path("total").path("value").asInt();
+                assertEquals(1, total, "FQN search should match one column, response: " + response);
+                assertEquals(
+                    userIdFqn,
+                    root.path("hits")
+                        .path("hits")
+                        .get(0)
+                        .path("_source")
+                        .path("fullyQualifiedName")
+                        .asText(),
+                    "The single hit should be the searched column");
+              });
+    }
+
+    @Test
     @DisplayName("Should return columns with parent table reference")
     void testColumnHasTableReference(TestNamespace ns) {
       OpenMetadataClient client = SdkClients.adminClient();

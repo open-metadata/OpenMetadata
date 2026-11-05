@@ -66,8 +66,11 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -84,7 +87,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
   public static final Set<String> EXCLUDED_ENTITIES = Set.of(USER, BOT, TEST_SUITE, TEST_CASE);
   public static final String COLLECTION_PATH = "v1/contextCenter/pages";
   public static final String FIELDS =
-      "owners,tags,followers,votes,page,parent,childrenCount,relatedEntities,relatedArticles,attachments,domains,dataProducts";
+      "owners,tags,followers,votes,page,parent,childrenCount,relatedEntities,relatedArticles,attachments,domains,dataProducts,extension";
   private final KnowledgePageMapper mapper = new KnowledgePageMapper();
 
   public KnowledgePageResource(Authorizer authorizer, Limits limits) {
@@ -179,11 +182,11 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
           @DefaultValue("non-deleted")
           Include include,
       @Parameter(
-              description = "Field to sort by. Supported: name, createdAt, updatedAt.",
+              description = "Field to sort by. Supported: name, displayName, createdAt, updatedAt.",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"name", "createdAt", "updatedAt"}))
+                      allowableValues = {"name", "displayName", "createdAt", "updatedAt"}))
           @QueryParam("sortBy")
           String sortBy,
       @Parameter(
@@ -307,9 +310,12 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
   private static String resolveSortField(String sortBy) {
     return switch (sortBy) {
       case "name" -> "name.keyword";
+      case "displayName" -> "displayName.keyword";
       case "createdAt", "updatedAt" -> "updatedAt";
       default -> throw new IllegalArgumentException(
-          "Unsupported sortBy value '" + sortBy + "'. Allowed: name, createdAt, updatedAt.");
+          "Unsupported sortBy value '"
+              + sortBy
+              + "'. Allowed: name, displayName, createdAt, updatedAt.");
     };
   }
 
@@ -358,10 +364,13 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
           @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam) {
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
     DaoListFilter filter = new DaoListFilter(Include.NON_DELETED);
     if (knowledgePageType != null) {
       filter.addQueryParam("pageType", knowledgePageType.value());
     }
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
     return new ResultList<>(repository.listHierarchy(filter, limitParam));
   }
 
@@ -398,13 +407,40 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               description =
                   "FQN of the active page to show the active page correctly in  the hierarchy , while showing other root nodes at level 1.")
           @QueryParam("activeFqn")
-          String activeFqn) {
+          String activeFqn,
+      @Parameter(
+              description = "Field to sort by. Supported: name, updatedAt.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "updatedAt"}))
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported: asc, desc. Defaults to desc.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          String sortOrder) {
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
+    SearchSortFilter sortFilter = buildHierarchySortFilter(sortBy, sortOrder);
+    SubjectContext caller = DefaultAuthorizer.getSubjectContext(securityContext);
     if (!CommonUtil.nullOrEmpty(activeFqn)) {
       return repository.getHierarchyWithSearchForActivePage(
-          activeFqn, knowledgePageType, offset, limit);
+          activeFqn, knowledgePageType, sortFilter, offset, limit, caller);
     } else {
-      return repository.getHierarchyWithSearch(parent, knowledgePageType, offset, limit);
+      return repository.getHierarchyWithSearch(
+          parent, knowledgePageType, sortFilter, offset, limit, caller);
     }
+  }
+
+  private static SearchSortFilter buildHierarchySortFilter(String sortBy, String sortOrder) {
+    String effectiveSortBy = CommonUtil.nullOrEmpty(sortBy) ? "updatedAt" : sortBy;
+    return new SearchSortFilter(
+        resolveSortField(effectiveSortBy), resolveSortOrder(sortOrder), null, null);
   }
 
   @GET
@@ -660,9 +696,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @PUT
@@ -687,9 +721,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
       @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -718,9 +750,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, userId);
   }
 
   @PUT

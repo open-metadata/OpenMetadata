@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Code01 } from '@untitledui/icons';
+import { Code01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,33 +39,44 @@ import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
 import AddIngestionButton from '../../Settings/Services/Ingestion/AddIngestionButton.component';
 import '../agents-preview.css';
-import { Agent } from '../AgentsPage.interface';
+import { Agent, RenderRunAction } from '../AgentsPage.interface';
 import { useAgentActions } from '../hooks/useAgentActions';
 import { useAgentLogs } from '../hooks/useAgentLogs';
 import { useAgentPermissions } from '../hooks/useAgentPermissions';
 import AgentGroup from './AgentGroup.component';
 import RunHistoryDrawer from './RunHistoryDrawer.component';
 
+const AGENTS_EMPTY_CARD_CLASS =
+  'tw:bg-primary tw:border tw:border-secondary tw:rounded-xl';
+
 interface MetadataAgentsViewProps {
   addAgentSlot?: ReactNode;
   agents: Agent[];
   ingestionPipelineList: IngestionPipeline[];
+  /** First load of the pipeline fetch — before it lands, an empty list means "not known yet". */
+  isLoading?: boolean;
   serviceCategory: ServiceCategory;
   serviceDetails: ServicesType;
   serviceName: string;
   showAddAgent: boolean;
+  /** True while the agents list is being refetched, so the refresh control can show it. */
+  isRefreshing?: boolean;
   onRefresh: () => void;
+  renderRunAction?: RenderRunAction;
 }
 
 const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   addAgentSlot: addAgentSlotProp,
   agents,
   ingestionPipelineList,
+  isLoading,
+  isRefreshing,
   serviceCategory,
   serviceDetails,
   serviceName,
   showAddAgent,
   onRefresh,
+  renderRunAction,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -101,11 +112,19 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     [agents, runsFor]
   );
 
-  const { rawText, isLoading: isLogsLoading } = useAgentLogs(
+  const {
+    rawText,
+    isLoading: isLogsLoading,
+    isLive: isLogsRunLive,
+    streamHealth,
+    streamTruncated,
+    streamError,
+  } = useAgentLogs(
     logsFor?.fqn ?? '',
     logsFor?.pipelineType ?? PipelineType.Metadata,
     Boolean(logsFor),
-    isLogsAgentActive
+    isLogsAgentActive,
+    liveLogsAgent?.currentRunId
   );
 
   const onLogs = useCallback((agent: Agent) => setLogsFor(agent), []);
@@ -189,6 +208,8 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     }
   }, [logsFor, rawText]);
 
+  // The pipeline fetch now runs regardless of the airflow status, so an empty list here really
+  // does mean "none exist". The unreachable case is carried by `AirflowMessageBanner` instead.
   const emptyPlaceholder = useMemo(
     () =>
       getErrorPlaceHolder(
@@ -196,7 +217,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         platform === DISABLED,
         theme,
         undefined,
-        'tw:bg-primary tw:border tw:border-secondary tw:rounded-xl'
+        AGENTS_EMPTY_CARD_CLASS
       ),
     [agents.length, platform, theme]
   );
@@ -247,9 +268,12 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         descKey="message.metadata-agents-description"
         emptyPlaceholder={emptyPlaceholder}
         icon={<Code01 size={18} />}
+        isLoading={isLoading}
+        isRefreshing={isRefreshing}
         titleKey="label.metadata-agent-plural"
         onAction={onAction}
         onLogs={onLogs}
+        onRefresh={onRefresh}
         onRun={onRun}
         onRunDetails={onRunDetails}
       />
@@ -259,6 +283,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           agent={liveRunsAgent}
           initialRunId={runsFor.runId}
           permissions={agentPermissions?.[liveRunsAgent.fqn]}
+          renderRunAction={renderRunAction}
           onClose={() => setRunsFor(null)}
           onOpenLogs={(agent) => {
             setLogsFor(agent);
@@ -272,9 +297,12 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           lastRun={logsFor.finishedAt}
           loading={isLogsLoading}
           logs={rawText}
-          mode={isLogsAgentActive ? 'stream' : 'static'}
+          mode={isLogsRunLive ? 'stream' : 'static'}
           runId={getEntityName(logsFor)}
           status={getLogViewerStatusFromAgentStatus(logsFor.status)}
+          streamError={streamError}
+          streamHealth={streamHealth}
+          streamTruncated={streamTruncated}
           title={`${logsFor.name} · ${t('label.log-plural')}`}
           totalLines={rawText.split('\n').length}
           onClose={() => setLogsFor(null)}
@@ -290,7 +318,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
             entityType: deleteTarget.name,
           })}
           onCancel={() => setDeleteTarget(null)}
-          onDelete={() => void confirmDelete()}
+          onDelete={() => confirmDelete()}
         />
       )}
     </div>

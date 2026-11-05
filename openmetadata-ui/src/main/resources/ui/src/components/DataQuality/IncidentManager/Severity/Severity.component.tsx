@@ -11,30 +11,29 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { startCase, toLower } from 'lodash';
+import { toLower } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import '../incident-manager.style.less';
 import InlineSeverity from './InlineSeverity.component';
 import { SeverityProps } from './Severity.interface';
+import { getSeverityLabel } from './Severity.utils';
 import SeverityModal from './SeverityModal.component';
 
 const Severity = ({
   severity,
   onSubmit,
   hasPermission,
-  newLook = false,
   headerName,
   isInline = false,
 }: SeverityProps) => {
@@ -52,11 +51,20 @@ const Severity = ({
   const onCancel = useCallback(() => setIsEditSeverity(false), []);
 
   const handleSubmit = useCallback(
-    async (data: Severities) => {
+    async (data?: Severities) => {
       await onSubmit?.(data);
       onCancel();
     },
     [onSubmit]
+  );
+
+  const canEditSeverity = onSubmit && hasEditPermission;
+  const severityModal = isEditSeverity && (
+    <SeverityModal
+      initialSeverity={severity}
+      onCancel={onCancel}
+      onSubmit={handleSubmit}
+    />
   );
 
   if (isInline) {
@@ -80,13 +88,11 @@ const Severity = ({
             weight="medium">
             {headerName}
           </Typography>
-          {onSubmit && hasEditPermission && (
-            <EditIconButton
+          {canEditSeverity && (
+            <ButtonUtility
               data-testid="edit-severity-icon"
-              icon={<EditIcon width="12px" />}
-              newLook={newLook}
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.severity'),
               })}
               onClick={onEditSeverity}
@@ -97,20 +103,14 @@ const Severity = ({
           {severity ? (
             <AppBadge
               className={classNames('severity', toLower(severity))}
-              label={startCase(severity)}
+              label={getSeverityLabel(severity, t)}
             />
           ) : (
             NO_DATA_PLACEHOLDER
           )}
         </div>
 
-        {isEditSeverity && (
-          <SeverityModal
-            initialSeverity={severity}
-            onCancel={onCancel}
-            onSubmit={handleSubmit}
-          />
-        )}
+        {severityModal}
       </div>
     );
   }
@@ -121,19 +121,17 @@ const Severity = ({
         {severity ? (
           <AppBadge
             className={classNames('severity', toLower(severity))}
-            label={startCase(severity)}
+            label={getSeverityLabel(severity, t)}
           />
         ) : (
           NO_DATA_PLACEHOLDER
         )}
-        {onSubmit && hasEditPermission && (
-          <EditIconButton
-            newLook
-            className="flex-center"
+        {canEditSeverity && (
+          <ButtonUtility
             data-testid="edit-severity-icon"
-            disabled={!hasEditPermission}
-            size="small"
-            title={t('label.edit-entity', {
+            icon={Edit01}
+            isDisabled={!hasEditPermission}
+            tooltip={t('label.edit-entity', {
               entity: t('label.severity'),
             })}
             onClick={onEditSeverity}
@@ -141,13 +139,7 @@ const Severity = ({
         )}
       </div>
 
-      {isEditSeverity && (
-        <SeverityModal
-          initialSeverity={severity}
-          onCancel={onCancel}
-          onSubmit={handleSubmit}
-        />
-      )}
+      {severityModal}
     </>
   );
 };

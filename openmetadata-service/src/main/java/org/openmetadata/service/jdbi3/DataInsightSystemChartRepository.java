@@ -9,10 +9,14 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,14 +24,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.glassfish.jersey.message.internal.OutboundJaxrsResponse;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.dataInsight.custom.DataAssetType;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -38,6 +45,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.datainsight.system.DataInsightSystemChartResource;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
 import org.openmetadata.service.util.EntityUtil;
@@ -49,7 +58,6 @@ import org.slf4j.LoggerFactory;
 public class DataInsightSystemChartRepository extends EntityRepository<DataInsightCustomChart> {
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartRepository.class);
 
-  private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   public static final String TIMESTAMP_FIELD = "@timestamp";
 
   // Streaming constants
@@ -61,29 +69,57 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   private ScheduledExecutorService scheduler;
   private final Map<String, StreamingSession> activeSessions;
 
+  /**
+   * Every entity type reachable under {@link #DI_SEARCH_INDEX}, i.e. the ones DataInsightsApp
+   * ingests plus the ones aliased in from a live index. Derived from {@link DataAssetType} so this
+   * set cannot drift from the types Data Insights actually covers; it is used only to enumerate
+   * index names when building the custom-chart field catalog.
+   *
+   * <p>Iteration order is the enum's declaration order. The catalog appends records per type as it
+   * walks this set, so a salted order would vary the record order per JVM start and any consumer
+   * that resolves a duplicated field name by taking the first record would resolve it differently
+   * after a restart.
+   */
   public static final Set<String> dataAssetTypes =
-      Set.of(
-          "table",
-          "storedProcedure",
-          "databaseSchema",
-          "database",
-          "chart",
-          "dashboard",
-          "dashboardDataModel",
-          "pipeline",
-          "topic",
-          "container",
-          "searchIndex",
-          "mlmodel",
-          "dataProduct",
-          "glossaryTerm",
-          "tag",
-          "testCaseResult",
-          "testCaseResolutionStatus");
+      Collections.unmodifiableSet(
+          Arrays.stream(DataAssetType.values())
+              .map(DataAssetType::value)
+              .collect(Collectors.<String, LinkedHashSet<String>>toCollection(LinkedHashSet::new)));
 
   public static final String DI_SEARCH_INDEX_PREFIX = "di-data-assets";
 
   public static final String DI_SEARCH_INDEX = "di-data-assets-*";
+
+  /**
+   * Entity types written to the Data Insights indices that are governance artifacts rather than data
+   * assets, and so are left out of every "data assets" total.
+   */
+  public static final List<String> NON_DATA_ASSET_ENTITY_TYPES =
+      List.of("tag", "glossaryTerm", "dataProduct");
+
+  /**
+   * Restricts a Data Insights chart to data-asset documents.
+   *
+   * <p>The {@code di-data-assets-*} pattern also resolves the data-quality aliases, whose documents
+   * are time series ({@code EntityTimeSeriesInterface}) rather than entities and therefore carry no
+   * {@code entityType}. Requiring that field to exist is what keeps them out of totals: a list of
+   * {@code must_not} term clauses cannot, because a document missing the field satisfies all of
+   * them. Breakdown charts grouped on {@code entityType.keyword} drop those documents already, so
+   * both sides must agree here or the summary card outruns the breakdown it sits above (#31478).
+   */
+  public static final String DATA_ASSET_FILTER = buildDataAssetFilter();
+
+  private static String buildDataAssetFilter() {
+    String exclusions =
+        NON_DATA_ASSET_ENTITY_TYPES.stream()
+            .map(
+                entityType ->
+                    String.format("{\"term\":{\"entityType.keyword\":\"%s\"}}", entityType))
+            .collect(Collectors.joining(","));
+    return String.format(
+        "{\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"entityType\"}}],\"must_not\":[%s]}}}",
+        exclusions);
+  }
 
   private static final Set IGNORE_OTHER_SERVICE_CHARTS =
       Set.of(
@@ -200,8 +236,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         || !SERVICE_TYPES_WITH_AUTOMATIONS.contains(serviceType)) {
       return List.of();
     }
-    EntityInterface service =
-        (EntityInterface) Entity.getEntityByName(serviceType, serviceName, "", Include.NON_DELETED);
+    EntityInterface<?> service =
+        (EntityInterface<?>)
+            Entity.getEntityByName(serviceType, serviceName, "", Include.NON_DELETED);
     return Entity.getEntityRepository(serviceType)
         .findTo(service.getId(), serviceType, Relationship.CONTAINS, AI_AUTOMATION);
   }
@@ -296,7 +333,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           for (int from = 0; from < maxResults; from += pageSize) {
             var response =
                 searchClient.searchByField(
-                    "service.name.keyword", serviceName, INGESTION_PIPELINE, false, from, pageSize);
+                    "service.name.keyword",
+                    serviceName,
+                    INGESTION_PIPELINE,
+                    false,
+                    from,
+                    pageSize,
+                    null);
 
             if (response == null || response.getStatus() != 200) {
               break;
@@ -442,7 +485,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     // No relationships to store beyond what is stored in the super class
   }
 
-  static String combineFilters(String existingFilter, String userFilter) {
+  public static String combineFilters(String existingFilter, String userFilter) {
     if (existingFilter == null || existingFilter.isEmpty() || existingFilter.equals("{}")) {
       return userFilter;
     }
@@ -479,9 +522,23 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     }
   }
 
+  /**
+   * A chart preview for {@code caller}. {@code filter} is the caller's own; {@code scope}, the
+   * navbar domain pick, is added to it.
+   */
   public DataInsightCustomChartResultList getPreviewData(
-      DataInsightCustomChart chart, long startTimestamp, long endTimestamp, String filter)
+      DataInsightCustomChart chart,
+      long startTimestamp,
+      long endTimestamp,
+      String filter,
+      String scope,
+      SubjectContext caller)
       throws IOException {
+    // A preview reads the Data Insights snapshots, which search access policies do not cover.
+    if (scopesSnapshotsUnderAccessControl(filter, caller)) {
+      return new DataInsightCustomChartResultList();
+    }
+    filter = combineFilters(filter, scope);
     if (chart.getChartDetails() != null && filter != null) {
       HashMap chartDetails = (LinkedHashMap<String, Object>) chart.getChartDetails();
       if (chartDetails.get("metrics") != null) {
@@ -495,11 +552,45 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     return getPreviewData(chart, startTimestamp, endTimestamp);
   }
 
-  public DataInsightCustomChartResultList getPreviewData(
-      DataInsightCustomChart chart, long startTimestamp, long endTimestamp) throws IOException {
-    return searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
+  private static boolean underSearchAccessControl(SubjectContext caller) {
+    return caller != null && !caller.isAdmin() && SearchUtils.isAccessControlEnabled();
   }
 
+  /**
+   * Snapshots are not covered by search access policies, so for a caller under them a snapshot
+   * chart scoped by their own filter comes back empty, never unscoped under a scoped label
+   * (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads).
+   */
+  private static boolean scopesSnapshotsUnderAccessControl(String filter, SubjectContext caller) {
+    return !nullOrEmpty(filter) && underSearchAccessControl(caller);
+  }
+
+  private static SubjectContext ownerSubject(StreamingSession session) {
+    try {
+      User owner = Entity.getEntity(Entity.USER, session.ownerId, "", Include.NON_DELETED);
+      return SubjectContext.getSubjectContext(owner.getName());
+    } catch (RuntimeException e) {
+      // An owner who is gone sees nothing rather than everything.
+      throw new IllegalStateException("Streaming session owner no longer exists", e);
+    }
+  }
+
+  /**
+   * Resolved per call rather than held in a static field: the search repository is not wired up
+   * when this class is loaded, so a class-initializer lookup fails with an NPE in any context that
+   * touches the class before the application is up (start-up hooks, unit tests reading {@link
+   * #DATA_ASSET_FILTER}).
+   */
+  private static SearchClient searchClient() {
+    return Entity.getSearchRepository().getSearchClient();
+  }
+
+  public DataInsightCustomChartResultList getPreviewData(
+      DataInsightCustomChart chart, long startTimestamp, long endTimestamp) throws IOException {
+    return searchClient().buildDIChart(chart, startTimestamp, endTimestamp);
+  }
+
+  /** Chart data for a system report, computed on no caller's behalf. */
   public Map<String, DataInsightCustomChartResultList> listChartData(
       String chartNames,
       long startTimestamp,
@@ -508,7 +599,29 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       boolean live,
       String serviceName)
       throws IOException {
+    return listChartData(
+        chartNames, startTimestamp, endTimestamp, filter, null, live, serviceName, null);
+  }
+
+  /**
+   * Chart data for {@code caller}. {@code filter} is the caller's own; {@code scope}, the navbar
+   * domain pick, is added to it.
+   */
+  public Map<String, DataInsightCustomChartResultList> listChartData(
+      String chartNames,
+      long startTimestamp,
+      long endTimestamp,
+      String filter,
+      String scope,
+      boolean live,
+      String serviceName,
+      SubjectContext caller)
+      throws IOException {
     HashMap<String, DataInsightCustomChartResultList> result = new HashMap<>();
+    // Live charts aggregate search documents under the caller's access policies; the snapshots
+    // behind the other charts are not covered by them.
+    boolean emptyScopedSnapshots = !live && scopesSnapshotsUnderAccessControl(filter, caller);
+    filter = combineFilters(filter, scope);
     if (chartNames == null) {
       return result;
     }
@@ -517,7 +630,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       DataInsightCustomChart chart =
           Entity.getEntityByName(DATA_INSIGHT_CUSTOM_CHART, chartName, "", Include.NON_DELETED);
 
-      if (chart != null) {
+      if (chart != null && emptyScopedSnapshots) {
+        result.put(chartName, new DataInsightCustomChartResultList());
+      } else if (chart != null) {
         if (chart.getChartDetails() != null && filter != null) {
           HashMap chartDetails = (LinkedHashMap<String, Object>) chart.getChartDetails();
           if (chartDetails.get("metrics") != null) {
@@ -533,7 +648,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           chartDetails.put("includeXAxisFiled", serviceName.toLowerCase());
         }
         DataInsightCustomChartResultList data =
-            searchClient.buildDIChart(chart, startTimestamp, endTimestamp, live);
+            searchClient().buildDIChart(chart, startTimestamp, endTimestamp, live, caller);
         result.put(chartName, data);
       }
     }
@@ -548,9 +663,11 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    * @return Active session if exists, null otherwise
    */
   private StreamingSession findActiveSession(
-      String chartNames, String serviceName, String entityLink) {
+      String chartNames, String serviceName, String entityLink, String filter, UUID userId) {
     return activeSessions.values().stream()
         .filter(session -> session.getChartNames().equals(chartNames))
+        .filter(session -> session.ownerId.equals(userId))
+        .filter(session -> Objects.equals(session.getFilter(), filter))
         .filter(
             session -> {
               // Handle null serviceName comparison
@@ -605,7 +722,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     }
 
     // Check if there's already an active streaming session for the same criteria
-    StreamingSession existingSession = findActiveSession(chartNames, serviceName, entityLink);
+    StreamingSession existingSession =
+        findActiveSession(chartNames, serviceName, entityLink, filter, userId);
     if (existingSession != null) {
       // Add this user to the existing session
       existingSession.addUser(userId);
@@ -873,8 +991,10 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
               startTime,
               endTime,
               session.getFilter(),
+              null,
               true,
-              session.getServiceName());
+              session.getServiceName(),
+              ownerSubject(session));
 
       // Fetch ingestion pipeline status for the service
       List<Map> ingestionPipelineStatus = getIngestionPipelineStatus(session.getServiceName());
@@ -1019,6 +1139,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     private final String filter;
     private final String entityLink;
     private final Set<UUID> userIds; // Multiple users can share the same session
+    // The data is computed under this user's search access policies, so only they join it.
+    private final UUID ownerId;
     private final long startTime; // Session start time
     private final long dataStartTime; // Data range start time
     private final long dataEndTime; // Data range end time
@@ -1042,6 +1164,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       this.entityLink = entityLink;
       this.userIds = ConcurrentHashMap.newKeySet(); // Thread-safe set
       this.userIds.add(userId);
+      this.ownerId = userId;
       this.startTime = System.currentTimeMillis(); // Session start time
       this.dataStartTime = dataStartTime; // Data range start time
       this.dataEndTime = dataEndTime; // Data range end time

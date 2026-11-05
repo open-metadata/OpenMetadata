@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Link } from 'react-router-dom';
 import { BasicEntityInfo } from '../../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import { ICON_DIMENSION } from '../../constants/constants';
 import { Task } from '../../generated/entity/data/pipeline';
 import {
   StoredProcedure,
@@ -31,41 +29,40 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 
-const { Text } = Typography;
-
 export const mockTextBasedSummaryTitleResponse = (
-  <Text
+  <Typography
     className="entity-title"
     data-testid="entity-title"
     ellipsis={{ tooltip: true }}>
     <span className="text-highlighter">title2</span>
-  </Text>
+  </Typography>
 );
 
 export const mockLinkBasedSummaryTitleResponse = (
   <Link
+    rel="noopener noreferrer"
     target="_blank"
     to="http://localhost:8080/taskinstance/list/?_flt_3_dag_id=dim_address_task">
     <div className="d-flex items-center">
-      <Text
+      <Typography
         className="entity-title text-link-color font-medium m-r-xss"
         data-testid="entity-title"
         ellipsis={{ tooltip: true }}>
         dim_address Task
-      </Text>
-      <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+      </Typography>
+      <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
     </div>
   </Link>
 );
 
 export const mockLinkBasedSummaryTitleDashboardResponse = (
   <Link to="/dashboard/sample_superset.10">
-    <Text
+    <Typography
       className="entity-title text-link-color font-medium m-r-xss"
       data-testid="entity-title"
       ellipsis={{ tooltip: true }}>
       deck.gl Demo
-    </Text>
+    </Typography>
   </Link>
 );
 
@@ -93,11 +90,13 @@ export const mockTagsSortAndHighlightResponse = [
 
 export const mockTagFQNsForHighlight = ['PersonalData.SpecialCategory'];
 
+// Mirrors what highlightSearchText() actually emits (`class=`, not the JSX
+// `className=`) so the string is valid HTML that DOMPurify won't strip.
 export const mockListItemNameHighlight =
-  '<span className="text-highlighter">title2</span>';
+  '<span class="text-highlighter">title2</span>';
 
 const mockListItemDescriptionHighlight =
-  'some description of <span className="text-highlighter">title2</span>';
+  'some description of <span class="text-highlighter">title2</span>';
 
 export const mockHighlights = {
   'columns.name': [mockListItemNameHighlight],
@@ -168,16 +167,17 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
     name: 'assert_table_exists',
     title: (
       <Link
+        rel="noopener noreferrer"
         target="_blank"
         to="http://localhost:8080/taskinstance/list/?_flt_3_dag_id=assert_table_exists">
         <div className="d-flex items-center">
-          <Text
+          <Typography
             className="entity-title text-link-color font-medium m-r-xss"
             data-testid="entity-title"
             ellipsis={{ tooltip: true }}>
             Assert Table Exists
-          </Text>
-          <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+          </Typography>
+          <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
         </div>
       </Link>
     ),
@@ -277,12 +277,12 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
   {
     name: 'api_client_id',
     title: (
-      <Text
+      <Typography
         className="entity-title"
         data-testid="entity-title"
         ellipsis={{ tooltip: true }}>
         api_client_id
-      </Text>
+      </Typography>
     ),
     type: DataType.Numeric,
     description:
@@ -295,12 +295,12 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
   {
     name: 'Customer',
     title: (
-      <Text
+      <Typography
         className="entity-title"
         data-testid="entity-title"
         ellipsis={{ tooltip: true }}>
         Customer
-      </Text>
+      </Typography>
     ),
     type: DataType.Varchar,
     tags: [],
@@ -312,12 +312,12 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       {
         name: 'id',
         title: (
-          <Text
+          <Typography
             className="entity-title"
             data-testid="entity-title"
             ellipsis={{ tooltip: true }}>
             id
-          </Text>
+          </Typography>
         ),
         type: DataType.Varchar,
         tags: [],
@@ -329,12 +329,12 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       {
         name: 'first_name',
         title: (
-          <Text
+          <Typography
             className="entity-title"
             data-testid="entity-title"
             ellipsis={{ tooltip: true }}>
             first_name
-          </Text>
+          </Typography>
         ),
         type: DataType.Varchar,
         tags: [],
@@ -346,12 +346,12 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       {
         name: 'last_name',
         title: (
-          <Text
+          <Typography
             className="entity-title"
             data-testid="entity-title"
             ellipsis={{ tooltip: true }}>
             last_name
-          </Text>
+          </Typography>
         ),
         type: DataType.Varchar,
         tags: [],
@@ -363,12 +363,12 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       {
         name: 'email',
         title: (
-          <Text
+          <Typography
             className="entity-title"
             data-testid="entity-title"
             ellipsis={{ tooltip: true }}>
             email
-          </Text>
+          </Typography>
         ),
         type: DataType.Varchar,
         tags: [],
@@ -390,12 +390,12 @@ export const mockInvalidDataResponse = [
     name: '',
     tags: undefined,
     title: (
-      <Text
+      <Typography
         className="entity-title"
         data-testid="entity-title"
         ellipsis={{ tooltip: true }}>
         --
-      </Text>
+      </Typography>
     ),
     type: undefined,
   },

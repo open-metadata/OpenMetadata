@@ -14,12 +14,18 @@ bigquery unit tests
 """
 
 # pylint: disable=line-too-long
+import logging
 import types
 from copy import deepcopy
-from typing import Dict  # noqa: UP035
+from types import SimpleNamespace
+from typing import ClassVar
 from unittest import TestCase
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
+import pytest
+from google.api_core.exceptions import Forbidden
+from google.cloud.bigquery.table import Table as BQTable
+from google.cloud.bigquery.table import TableListItem
 from sqlalchemy import Integer, String
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -33,6 +39,9 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableConstraint,
     TableType,
+)
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -62,6 +71,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
+from metadata.utils.lru_cache import LRUCache
 
 mock_bq_config = {
     "source": {
@@ -270,7 +280,7 @@ MOCK_COLUMN_DATA = [
     ],
 ]
 
-MOCK_PK_CONSTRAINT: Dict[str, Dict] = {  # noqa: UP006
+MOCK_PK_CONSTRAINT: dict[str, dict] = {
     "customers": dict({"constrained_columns": ("customer_id",)}),  # noqa: C418
     "orders": dict({"constrained_columns": ()}),  # noqa: C418
 }
@@ -455,6 +465,7 @@ class BigqueryUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_schema_description")
     def test_yield_database_schema(self, get_schema_description):
         get_schema_description.return_value = "Some description with it's own\nnew line"
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
         assert EXPTECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.bq_source.yield_database_schema(schema_name=MOCK_DATABASE_SCHEMA.name.root)
         ]
@@ -676,9 +687,6 @@ class BigqueryUnitTest(TestCase):
         """
         from google.auth.credentials import Credentials
 
-        from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
-            BigQueryConnection,
-        )
         from metadata.ingestion.source.database.bigquery.helper import (
             get_inspector_details,
         )
@@ -703,6 +711,37 @@ class BigqueryUnitTest(TestCase):
         result_null = get_inspector_details(database_name="test-project", service_connection=service_connection_null)
         assert "location=eu" not in str(result_null.engine.url)
         assert result_null.client._location is None
+
+    def test_clone_connection_for_project_scopes_adc_and_path_credentials(self):
+        """
+        clone_connection_for_project must override projectId to the requested
+        single project for every gcpConfig variant that accepts a multi-project
+        projectId (GcpCredentialsValues, GcpADC, GcpCredentialsPath) - not just
+        GcpCredentialsValues. Without this, a multi-project GcpADC/
+        GcpCredentialsPath connection silently re-scans whatever project
+        get_connection_url resolves its MultipleProjectId to (its first entry)
+        on every iteration, instead of actually switching projects.
+        """
+        from metadata.ingestion.source.database.bigquery.helper import (
+            clone_connection_for_project,
+        )
+
+        for gcp_config in (
+            {"type": "gcp_adc", "projectId": ["project-one", "project-two"]},
+            {"type": "gcp_credential_path", "path": "credentials.json", "projectId": ["project-one", "project-two"]},
+        ):
+            config = deepcopy(mock_bq_config["source"]["serviceConnection"]["config"])
+            config["credentials"]["gcpConfig"] = gcp_config
+            service_connection = BigQueryConnection.model_validate(config)
+
+            scoped = clone_connection_for_project("project-two", service_connection)
+
+            assert scoped.credentials.gcpConfig.projectId.root == "project-two"
+            # The original, unscoped connection is untouched.
+            assert service_connection.credentials.gcpConfig.projectId.root == [
+                "project-one",
+                "project-two",
+            ]
 
 
 class BigqueryLineageSourceTest(TestCase):
@@ -788,7 +827,7 @@ class TestBigqueryRegionAwareQueries:
         mock_dataset = Mock()
         mock_dataset.location = location
         self.bq_source.client.get_dataset.return_value = mock_dataset
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
 
     # --- get_stored_procedures ---
 
@@ -823,7 +862,7 @@ class TestBigqueryRegionAwareQueries:
     def test_get_stored_procedures_falls_back_when_location_unavailable(self):
         """When client.get_dataset raises, falls back to dataset-scoped query and returns results."""
         self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
         sp_row = {"name": "my_proc", "definition": "BEGIN END", "language": "SQL"}
         mock_engine, mock_conn = self._make_engine_mock([sp_row])
         self.bq_source.engine = mock_engine
@@ -838,7 +877,7 @@ class TestBigqueryRegionAwareQueries:
     def test_get_stored_procedures_returns_empty_when_dataset_not_found(self):
         """When both client.get_dataset and SQL execution fail, returns empty without a producer failure."""
         self.bq_source.client.get_dataset.side_effect = Exception("404 Not found")
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
         mock_engine = MagicMock()
         mock_conn = MagicMock()
         mock_conn.execute.side_effect = Exception("404 Not found in location US")
@@ -913,7 +952,7 @@ class TestBigqueryRegionAwareQueries:
     def test_prefetch_table_ddls_falls_back_when_location_unavailable(self):
         """When client.get_dataset raises, falls back to dataset-scoped query and populates cache."""
         self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
         ddl_row = Mock()
         ddl_row.table_name = "my_table"
         ddl_row.ddl = "CREATE TABLE my_table (id INT64)"
@@ -929,7 +968,7 @@ class TestBigqueryRegionAwareQueries:
     def test_prefetch_table_ddls_cache_empty_when_dataset_not_found(self):
         """When both client.get_dataset and SQL execution fail, cache stays empty and no exception propagates."""
         self.bq_source.client.get_dataset.side_effect = Exception("404 Not found")
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
         mock_engine = MagicMock()
         mock_conn = MagicMock()
         mock_conn.execute.side_effect = Exception("404 Not found in location US")
@@ -979,9 +1018,468 @@ class TestBigqueryRegionAwareQueries:
     def test_life_cycle_query_falls_back_when_location_unavailable(self):
         """When client.get_dataset raises, falls back to the dataset-scoped created-only query."""
         self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
 
         query = self.bq_source.get_life_cycle_query()
 
         assert "TABLE_STORAGE" not in query
         assert "creation_time as created_at" in query
+
+
+class _EvictedOnReadCache(LRUCache):
+    """An LRUCache whose entries vanish between the lookup and the read.
+
+    Stands in for another ingestion thread evicting the key in that window, which is not
+    reproducible deterministically with real threads.
+    """
+
+    def get(self, key):
+        raise KeyError(key)
+
+
+class TestBigqueryPerSchemaCaching:
+    """
+    The dataset/table object caches must be keyed per schema.
+
+    The databaseSchema topology node emits tags and the schema entity *before* its table
+    child node runs, so a cache that is only invalidated by the table producer hands the
+    previous dataset's description and labels to the next schema.
+    """
+
+    # dataset_id -> (description, labels)
+    DATASETS: ClassVar[dict] = {
+        "clean_identity_resolution": ("Clean Identity Resolution data", {"tier": "bronze"}),
+        "clean_mac": ("Clean MAC data", {"tier": "silver"}),
+        "clean_recon": ("Clean recon data", {"tier": "gold"}),
+    }
+
+    def setup_method(self):
+        self._patchers = [
+            patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"),
+            patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"),
+            patch(
+                "metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client",
+                return_value=Mock(),
+            ),
+        ]
+        for p in self._patchers:
+            p.start()
+
+        metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_bq_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.bq_source = BigquerySource.create(mock_bq_config["source"], metadata)
+        self.bq_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        # The table node repopulates the dataset cache after invalidating it (DDL prefetch here;
+        # the lifecycle and stored-procedure stages do the same), which is what strands the
+        # previous schema's dataset in the cache for the next schema.
+        self.bq_source.source_config.includeDDL = True
+        self.bq_source.source_config.includeTags = True
+
+        self.bq_source.client = Mock()
+        self.bq_source.client.get_dataset.side_effect = self._get_dataset
+        self.bq_source.client.list_tables.return_value = []
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = []
+        self.bq_source.engine = MagicMock()
+        self.bq_source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        self.bq_source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+    def teardown_method(self):
+        for p in self._patchers:
+            p.stop()
+
+    def _get_dataset(self, dataset_ref: str):
+        description, labels = self.DATASETS[dataset_ref.rsplit(".", maxsplit=1)[-1]]
+        return SimpleNamespace(description=description, labels=labels, location="US")
+
+    def _walk_schema_then_tables(self, schema_name: str):
+        """Mimic the topology: schema stages first, then the table node producer."""
+        self.bq_source.context.get().__dict__["database_schema"] = schema_name
+        dataset_for_tags = self.bq_source.get_dataset_obj(schema_name)
+        description = self.bq_source.get_schema_description(schema_name)
+        list(self.bq_source.query_table_names_and_types(schema_name))
+        return description, dataset_for_tags.labels
+
+    def test_each_schema_gets_its_own_description(self):
+        """Descriptions must not shift onto the following schema."""
+        ingested = {schema: self._walk_schema_then_tables(schema)[0] for schema in self.DATASETS}
+
+        assert ingested == {schema: desc for schema, (desc, _) in self.DATASETS.items()}
+
+    def test_each_schema_gets_its_own_dataset_labels(self):
+        """Dataset labels feed schema tags; a stale dataset object invents tags that do not exist."""
+        ingested = {schema: self._walk_schema_then_tables(schema)[1] for schema in self.DATASETS}
+
+        assert ingested == {schema: labels for schema, (_, labels) in self.DATASETS.items()}
+
+    def test_dataset_obj_is_fetched_once_per_schema(self):
+        """The cache must still spare repeat API calls for the same schema."""
+        for _ in range(3):
+            self.bq_source.get_dataset_obj("clean_mac")
+
+        assert self.bq_source.client.get_dataset.call_count == 1
+
+    def test_table_obj_cache_is_scoped_per_schema(self):
+        """Same-named tables in different schemas must not share a cached table object."""
+        table_objs = {}
+        for schema in ("clean_mac", "clean_recon"):
+            self.bq_source.context.get().__dict__["database_schema"] = schema
+            self.bq_source.client.get_table.return_value = SimpleNamespace(
+                labels={"schema": schema}, description=f"{schema} events"
+            )
+            table_objs[schema] = self.bq_source.get_table_obj(table_name="events")
+
+        assert table_objs["clean_mac"].labels == {"schema": "clean_mac"}
+        assert table_objs["clean_recon"].labels == {"schema": "clean_recon"}
+
+    def test_table_obj_is_fetched_once_per_table(self):
+        """The cache must still spare repeat API calls for the same schema and table."""
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        self.bq_source.client.get_table.return_value = SimpleNamespace(labels={}, description="events")
+
+        for _ in range(3):
+            self.bq_source.get_table_obj(table_name="events")
+
+        assert self.bq_source.client.get_table.call_count == 1
+
+    def test_interleaved_schemas_keep_their_own_description(self):
+        """
+        The schema node is multi-threaded, so two schemas can be in flight at once.
+        Interleaving their stages must not let one schema's dataset serve the other.
+        """
+        schemas = ["clean_mac", "clean_recon"]
+
+        for schema in schemas:
+            self.bq_source.context.get().__dict__["database_schema"] = schema
+            self.bq_source.get_dataset_obj(schema)
+
+        descriptions = {schema: self.bq_source.get_schema_description(schema) for schema in schemas}
+
+        assert descriptions == {schema: self.DATASETS[schema][0] for schema in schemas}
+
+    def test_dataset_obj_survives_entry_evicted_before_read(self):
+        """
+        LRUCache locks each operation separately, so a concurrent put that triggers
+        eviction can drop the key after we looked it up but before we read it. Reading
+        must fall back to a fetch rather than raising KeyError at the caller.
+        """
+        self.bq_source._dataset_obj_cache = _EvictedOnReadCache(capacity=8)
+        self.bq_source._dataset_obj_cache.put(f"{MOCK_DB_NAME}.clean_mac", object())
+
+        dataset_obj = self.bq_source.get_dataset_obj("clean_mac")
+
+        assert dataset_obj.description == "Clean MAC data"
+
+    def test_table_obj_survives_entry_evicted_before_read(self):
+        """Same eviction window as the dataset cache, for the table object cache."""
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        self.bq_source.client.get_table.return_value = SimpleNamespace(labels={}, description="events")
+        self.bq_source._table_obj_cache = _EvictedOnReadCache(capacity=8)
+        self.bq_source._table_obj_cache.put(f"{MOCK_DB_NAME}.clean_mac.events", object())
+
+        table_obj = self.bq_source.get_table_obj(table_name="events")
+
+        assert table_obj.description == "events"
+
+
+class TestBigqueryDeltaLakeDetection:
+    """`externalDataConfiguration.sourceFormat` is the only Delta signal BigQuery gives.
+
+    `tables.list` omits `externalDataConfiguration` entirely — confirmed against project
+    `my-gcp-project` with google-cloud-bigquery 3.42.2, where an external
+    `TableListItem` carries nothing but
+    `{"creationTime", "id", "kind", "tableReference", "type": "EXTERNAL"}` — so a Delta
+    table is indistinguishable from any other external table until `tables.get` runs.
+
+    Every payload below is a real `tables.get` response, reduced to the keys this code path
+    reads (byte counters, `etag` and `selfLink` dropped). The two Delta rows came from real
+    DELTA_LAKE external tables, so `sourceFormat == "DELTA_LAKE"` here is a live observation,
+    not a value faked from the ICEBERG payload.
+
+    Project, dataset, table and bucket names are placeholders. Everything the assertions depend
+    on -- key presence and absence, `type`, `sourceFormat`, `partitionDefinition` -- is the shape
+    the live API returned, unedited.
+
+    The two Delta payloads differ on partitioning, and that difference is the whole point: an
+    unpartitioned Delta table stays DeltaLake, while a partitioned one carries
+    `partitionDefinition.partitionedColumn` and so the shared partition rule flips its final
+    tableType to Partitioned downstream.
+    """
+
+    # Real ICEBERG external table; `partitionDefinition` is genuinely there.
+    EXTERNAL_PAYLOAD: ClassVar[dict] = {
+        "id": "my-gcp-project:test_omd.iceberg_tbl",
+        "kind": "bigquery#table",
+        "tableReference": {
+            "projectId": "my-gcp-project",
+            "datasetId": "test_omd",
+            "tableId": "iceberg_tbl",
+        },
+        "type": "EXTERNAL",
+        "externalDataConfiguration": {
+            "autodetect": True,
+            "sourceFormat": "ICEBERG",
+            "sourceUris": ["gs://test-bucket/iceberg_example.json"],
+        },
+        "partitionDefinition": {"partitionedColumn": [{"field": "event_time"}]},
+        "schema": {"fields": [{"mode": "NULLABLE", "name": "id", "type": "INTEGER"}]},
+    }
+
+    # Real native table: no `externalDataConfiguration` key at all.
+    # It must stay absent — `ExternalConfig.from_api_repr({})` raises KeyError('sourceFormat').
+    NATIVE_PAYLOAD: ClassVar[dict] = {
+        "id": "my-gcp-project:test_omd.orders",
+        "kind": "bigquery#table",
+        "tableReference": {
+            "projectId": "my-gcp-project",
+            "datasetId": "test_omd",
+            "tableId": "orders",
+        },
+        "type": "TABLE",
+        "schema": {"fields": [{"mode": "NULLABLE", "name": "order_id", "type": "INTEGER"}]},
+    }
+
+    # Real view.
+    VIEW_PAYLOAD: ClassVar[dict] = {
+        "id": "my-gcp-project:dbt_jaffle.customers_view",
+        "kind": "bigquery#table",
+        "tableReference": {
+            "projectId": "my-gcp-project",
+            "datasetId": "dbt_jaffle",
+            "tableId": "customers_view",
+        },
+        "type": "VIEW",
+        "view": {"query": "SELECT * FROM dbt_jaffle.customers LIMIT 100", "useLegacySql": False},
+    }
+
+    # Real unpartitioned DELTA_LAKE external table: no
+    # `partitionDefinition`, so it stays DeltaLake end-to-end.
+    DELTA_LAKE_PAYLOAD: ClassVar[dict] = {
+        "id": "my-gcp-project:om_delta_test.delta_unpartitioned",
+        "kind": "bigquery#table",
+        "tableReference": {
+            "projectId": "my-gcp-project",
+            "datasetId": "om_delta_test",
+            "tableId": "delta_unpartitioned",
+        },
+        "type": "EXTERNAL",
+        "externalDataConfiguration": {
+            "autodetect": True,
+            "sourceFormat": "DELTA_LAKE",
+            "sourceUris": ["gs://test-bucket/delta_unpartitioned/*"],
+        },
+        "schema": {
+            "fields": [
+                {"mode": "NULLABLE", "name": "id", "type": "INTEGER"},
+                {"mode": "NULLABLE", "name": "name", "type": "STRING"},
+                {"mode": "NULLABLE", "name": "amount", "type": "NUMERIC"},
+            ]
+        },
+    }
+
+    # Real partitioned DELTA_LAKE external table: `partitionDefinition`
+    # names `event_ts`, and hive/time/range partitioning are all absent.
+    DELTA_LAKE_PARTITIONED_PAYLOAD: ClassVar[dict] = {
+        "id": "my-gcp-project:om_delta_test.delta_partitioned",
+        "kind": "bigquery#table",
+        "tableReference": {
+            "projectId": "my-gcp-project",
+            "datasetId": "om_delta_test",
+            "tableId": "delta_partitioned",
+        },
+        "type": "EXTERNAL",
+        "externalDataConfiguration": {
+            "autodetect": True,
+            "sourceFormat": "DELTA_LAKE",
+            "sourceUris": ["gs://test-bucket/delta_partitioned/*"],
+        },
+        "partitionDefinition": {"partitionedColumn": [{"field": "event_ts"}]},
+        "schema": {
+            "fields": [
+                {"mode": "NULLABLE", "name": "event_id", "type": "INTEGER"},
+                {"mode": "NULLABLE", "name": "payload", "type": "STRING"},
+                {"mode": "NULLABLE", "name": "event_ts", "type": "DATETIME"},
+            ]
+        },
+    }
+
+    def setup_method(self):
+        self._patchers = [
+            patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.list_all_entities", return_value=[]),
+            patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"),
+            patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"),
+            patch(
+                "metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client",
+                return_value=Mock(),
+            ),
+        ]
+        for patcher in self._patchers:
+            patcher.start()
+
+        metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_bq_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.bq_source = BigquerySource.create(mock_bq_config["source"], metadata)
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__["database_schema"] = MOCK_SCHEMA_NAME
+        self.bq_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.bq_source.source_config.includeDDL = False
+        self.bq_source.client = Mock()
+
+    def teardown_method(self):
+        for patcher in self._patchers:
+            patcher.stop()
+
+    @staticmethod
+    def _list_item(table_id: str, table_type: str) -> TableListItem:
+        """`tables.list` never carries `externalDataConfiguration`; keep it that way."""
+        return TableListItem(
+            {
+                "creationTime": "1738910302030",
+                "id": f"my-gcp-project:{MOCK_SCHEMA_NAME}.{table_id}",
+                "kind": "bigquery#table",
+                "tableReference": {
+                    "projectId": "my-gcp-project",
+                    "datasetId": MOCK_SCHEMA_NAME,
+                    "tableId": table_id,
+                },
+                "type": table_type,
+            }
+        )
+
+    def _stub_client(self, tables: dict):
+        """tables: table_id -> (list-level `type`, full `tables.get` payload or an Exception)."""
+        self.bq_source.client.list_tables.return_value = [
+            self._list_item(table_id, list_type) for table_id, (list_type, _) in tables.items()
+        ]
+
+        def get_table(bq_table_fqn: str):
+            _, payload = tables[bq_table_fqn.rsplit(".", maxsplit=1)[-1].strip("`")]
+            if isinstance(payload, Exception):
+                raise payload
+            return BQTable.from_api_repr(payload)
+
+        self.bq_source.client.get_table.side_effect = get_table
+
+    def _listed_types(self):
+        """Drive the full producer path, so the tableFilterPattern runs before the narrowing."""
+        return list(self.bq_source.get_tables_name_and_type())
+
+    def _external_payload(self, source_format):
+        # The real DELTA_LAKE payload is unpartitioned; every other format reuses the real
+        # (partitioned) ICEBERG table with its sourceFormat swapped or dropped.
+        if source_format == "DELTA_LAKE":
+            return deepcopy(self.DELTA_LAKE_PAYLOAD)
+        payload = deepcopy(self.EXTERNAL_PAYLOAD)
+        if source_format is None:
+            del payload["externalDataConfiguration"]
+        else:
+            payload["externalDataConfiguration"]["sourceFormat"] = source_format
+        return payload
+
+    @pytest.mark.parametrize(
+        "source_format, expected",
+        [
+            ("DELTA_LAKE", TableType.DeltaLake),
+            ("PARQUET", TableType.External),
+            ("CSV", TableType.External),
+            # Iceberg reaches External today because `_bigquery_table_types` keys on the
+            # list-level `type` (EXTERNAL), not on the format. Delta must not change that.
+            ("ICEBERG", TableType.External),
+            # An external table whose payload has no externalDataConfiguration at all.
+            (None, TableType.External),
+        ],
+    )
+    def test_source_format_decides_the_external_table_type(self, source_format, expected):
+        self._stub_client({"delta_sales": ("EXTERNAL", self._external_payload(source_format))})
+
+        assert self._listed_types() == [("delta_sales", expected)]
+
+    def test_native_table_stays_regular_without_a_tables_get(self):
+        self._stub_client({"orders": ("TABLE", self.NATIVE_PAYLOAD)})
+
+        assert self._listed_types() == [("orders", TableType.Regular)]
+        self.bq_source.client.get_table.assert_not_called()
+
+    def test_view_stays_view_without_a_tables_get(self):
+        self._stub_client({"customers_view": ("VIEW", self.VIEW_PAYLOAD)})
+
+        assert self._listed_types() == [("customers_view", TableType.View)]
+        self.bq_source.client.get_table.assert_not_called()
+
+    def test_failed_tables_get_falls_back_to_external_and_keeps_listing(self, caplog):
+        """A 403/404/quota error on one table must not cost the rest of the dataset."""
+        self._stub_client(
+            {
+                "unreadable": ("EXTERNAL", Forbidden("Permission bigquery.tables.get denied")),
+                "delta_sales": ("EXTERNAL", self._external_payload("DELTA_LAKE")),
+            }
+        )
+
+        with caplog.at_level(logging.WARNING):
+            result = self._listed_types()
+
+        assert result == [
+            ("unreadable", TableType.External),
+            ("delta_sales", TableType.DeltaLake),
+        ]
+        warnings = [
+            record
+            for record in caplog.records
+            if record.levelno == logging.WARNING and "unreadable" in record.getMessage()
+        ]
+        assert len(warnings) == 1
+
+    def test_partitioned_delta_is_detected_as_partitioned(self):
+        """A partitioned Delta table carries `partitionDefinition.partitionedColumn`, so the
+        shared partition rule flips its final tableType to Partitioned (not DeltaLake)."""
+        self._stub_client({"delta_events": ("EXTERNAL", self.DELTA_LAKE_PARTITIONED_PAYLOAD)})
+
+        detected, partition = self.bq_source.get_table_partition_details(
+            "delta_events", MOCK_SCHEMA_NAME, inspector=None
+        )
+
+        assert detected is True
+        assert partition is not None
+        assert [column.columnName for column in partition.columns] == ["event_ts"]
+
+    def test_unpartitioned_delta_stays_delta_lake_with_no_partition(self):
+        """The unpartitioned Delta table has no `partitionDefinition`, so it keeps its
+        DeltaLake type and the partition rule never fires."""
+        self._stub_client({"delta_sales": ("EXTERNAL", self.DELTA_LAKE_PAYLOAD)})
+
+        result = self._listed_types()
+        detected, partition = self.bq_source.get_table_partition_details(
+            "delta_sales", MOCK_SCHEMA_NAME, inspector=None
+        )
+
+        assert result == [("delta_sales", TableType.DeltaLake)]
+        assert (detected, partition) == (False, None)
+
+    def test_external_table_with_missing_source_format_falls_back_to_external(self):
+        """`externalDataConfiguration` present but with no `sourceFormat` key: reading
+        `external_data_configuration` raises KeyError('sourceFormat') (ExternalConfig refuses
+        to build without it), the broad except swallows it, and the table stays External.
+
+        Distinct from the None case, which drops `externalDataConfiguration` entirely."""
+        payload = deepcopy(self.EXTERNAL_PAYLOAD)
+        del payload["externalDataConfiguration"]["sourceFormat"]
+        self._stub_client({"formatless": ("EXTERNAL", payload)})
+
+        assert self._listed_types() == [("formatless", TableType.External)]
+
+    def test_only_kept_tables_pay_a_tables_get(self):
+        """The narrowing runs after the base tableFilterPattern, so a dropped table costs no call."""
+        self._stub_client(
+            {
+                "delta_drop": ("EXTERNAL", self._external_payload("DELTA_LAKE")),
+                "delta_keep": ("EXTERNAL", self._external_payload("DELTA_LAKE")),
+            }
+        )
+        self.bq_source.source_config.tableFilterPattern = FilterPattern(excludes=["delta_drop"])
+
+        assert self._listed_types() == [("delta_keep", TableType.DeltaLake)]
+        assert self.bq_source.client.get_table.call_args_list == [call(f"{MOCK_DB_NAME}.{MOCK_SCHEMA_NAME}.delta_keep")]

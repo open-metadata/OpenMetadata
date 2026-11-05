@@ -13,8 +13,6 @@
 Test Redash connector with CLI
 """
 
-from typing import List  # noqa: UP035
-
 import pytest
 
 from .common.test_cli_dashboard import CliCommonDashboard  # noqa: TID252
@@ -25,24 +23,24 @@ class RedashCliTest(CliCommonDashboard.TestSuite):
     def get_connector_name() -> str:
         return "redash"
 
-    def get_includes_dashboards(self) -> List[str]:  # noqa: UP006
+    def get_includes_dashboards(self) -> list[str]:
         return [".*Orders.*"]
 
-    def get_excludes_dashboards(self) -> List[str]:  # noqa: UP006
+    def get_excludes_dashboards(self) -> list[str]:
         return [".*World.*"]
 
-    def get_includes_charts(self) -> List[str]:  # noqa: UP006
+    def get_includes_charts(self) -> list[str]:
         return [".*Orders.*"]
 
-    def get_excludes_charts(self) -> List[str]:  # noqa: UP006
+    def get_excludes_charts(self) -> list[str]:
         return ["World Query Data"]
 
     # Redash do not ingest datamodels
-    def get_includes_datamodels(self) -> List[str]:  # noqa: UP006
+    def get_includes_datamodels(self) -> list[str]:
         return []
 
     # Redash do not ingest datamodels
-    def get_excludes_datamodels(self) -> List[str]:  # noqa: UP006
+    def get_excludes_datamodels(self) -> list[str]:
         return []
 
     def expected_dashboards_and_charts(self) -> int:

@@ -58,11 +58,6 @@ const TestCaseResultTab = withSuspenseFallback(
 export interface TestCaseTabProps {
   /** Tags/Glossary rail visibility — consumed only by the results tab. */
   showSidePanel?: boolean;
-  /**
-   * Chrome the params edit opens in: 'drawer' (OSS incident/detail page) or
-   * 'modal' (AskCollate AI renderer). Consumed only by the results tab.
-   */
-  editVariant?: 'drawer' | 'modal';
 }
 
 export interface TestCaseTabType {
@@ -151,6 +146,7 @@ class TestCaseClassBase {
   public getFields(): string[] {
     return [
       TabSpecificField.TESTSUITE,
+      TabSpecificField.TEST_SUITES,
       TabSpecificField.TEST_CASE_RESULT,
       TabSpecificField.TEST_DEFINITION,
       TabSpecificField.OWNERS,

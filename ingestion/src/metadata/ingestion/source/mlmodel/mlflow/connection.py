@@ -13,10 +13,6 @@
 Source connection handler
 """
 
-from typing import Optional  # noqa: I001
-
-from mlflow.tracking import MlflowClient
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -30,6 +26,7 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
+from mlflow.tracking import MlflowClient
 
 
 class MlflowConnection(BaseConnection[MlflowConnectionConfig, MlflowClient]):
@@ -37,14 +34,14 @@ class MlflowConnection(BaseConnection[MlflowConnectionConfig, MlflowClient]):
         connection = self.service_connection
         return MlflowClient(
             tracking_uri=connection.trackingUri,
-            registry_uri=connection.registryUri,
+            registry_uri=connection.registryUri.get_secret_value(),
         )
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

@@ -1,13 +1,15 @@
 import { Avatar } from '@/components/base/avatar/avatar';
+import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { SelectContext } from '@/components/base/select/select';
 import type { SelectItemType } from '@/components/base/select/select';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { fontSizeClass } from '@/utils/tailwindClasses';
-import { Check } from '@untitledui/icons';
+import { Check } from '../../../icons';
 import type { ReactNode } from 'react';
-import { isValidElement, useContext } from 'react';
+import { createContext, isValidElement, useContext } from 'react';
 import type {
+  Key,
   ListBoxItemProps as AriaListBoxItemProps,
   ListBoxItemRenderProps,
 } from 'react-aria-components';
@@ -15,6 +17,13 @@ import {
   ListBoxItem as AriaListBoxItem,
   Text as AriaText,
 } from 'react-aria-components';
+
+/**
+ * Keys of the selected values when the Autocomplete lists them as checked
+ * rows (its capped mode); null when selected values leave the list instead.
+ */
+export const AutocompleteCheckedKeysContext =
+  createContext<ReadonlySet<Key> | null>(null);
 
 const sizes = {
   sm: 'tw:p-2 tw:pr-2.5',
@@ -33,9 +42,10 @@ const itemWrapperClass = (
 ) =>
   cx(
     itemWrapperBase,
-    state.isSelected && 'tw:bg-active',
+    // Selected matches the sidebar's selected nav item and wins over focus.
+    state.isSelected && 'tw:bg-brand-primary',
     state.isDisabled && 'tw:cursor-not-allowed',
-    state.isFocused && 'tw:bg-primary_hover',
+    state.isFocused && !state.isSelected && 'tw:bg-primary_hover',
     state.isFocusVisible &&
       'tw:outline-2 tw:-outline-offset-2 tw:outline-focus-ring',
     sizes[size],
@@ -44,7 +54,7 @@ const itemWrapperClass = (
 
 const checkClass = (size: 'sm' | 'md', isDisabled: boolean) =>
   cx(
-    'tw:ml-auto tw:shrink-0 tw:text-fg-brand-primary',
+    'tw:ml-auto tw:shrink-0 tw:text-fg-brand-secondary_alt',
     size === 'sm' ? 'tw:size-4 tw:stroke-[2.5px]' : 'tw:size-5',
     isDisabled && 'tw:text-fg-disabled'
   );
@@ -85,6 +95,7 @@ interface DefaultItemContentProps {
   icon: SelectItemType['icon'];
   dataTestId: string | undefined;
   stringChild: string;
+  leading: ReactNode;
 }
 
 const DefaultItemContent = ({
@@ -97,6 +108,7 @@ const DefaultItemContent = ({
   icon,
   dataTestId,
   stringChild,
+  leading,
 }: DefaultItemContentProps) => (
   <div
     className={itemWrapperClass(
@@ -108,12 +120,14 @@ const DefaultItemContent = ({
       )
     )}
     data-testid={dataTestId}>
+    {leading}
     {renderItemIcon(avatarUrl, icon, label)}
 
     <div className="tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2">
       <AriaText
         className={cx(
-          'tw:truncate tw:font-medium tw:whitespace-nowrap tw:text-primary',
+          'tw:truncate tw:font-medium tw:whitespace-nowrap',
+          state.isSelected ? 'tw:text-brand-secondary' : 'tw:text-primary',
           fontSizeClass[fontSize],
           state.isDisabled && 'tw:text-disabled'
         )}
@@ -148,6 +162,7 @@ interface CustomItemContentProps {
   size: 'sm' | 'md';
   dataTestId: string | undefined;
   children: ReactNode | ((state: ListBoxItemRenderProps) => ReactNode);
+  leading: ReactNode;
 }
 
 const CustomItemContent = ({
@@ -155,8 +170,10 @@ const CustomItemContent = ({
   size,
   dataTestId,
   children,
+  leading,
 }: CustomItemContentProps) => (
   <div className={itemWrapperClass(state, size)} data-testid={dataTestId}>
+    {leading}
     {typeof children === 'function' ? children(state) : children}
     {state.isSelected && (
       <Check
@@ -181,6 +198,7 @@ export const AutocompleteItem = ({
   ...props
 }: AutocompleteItemProps) => {
   const { size, fontSize } = useContext(SelectContext);
+  const checkedKeys = useContext(AutocompleteCheckedKeysContext);
 
   const stringChild = typeof children === 'string' ? children : '';
   const labelOrChildren = label || stringChild;
@@ -211,9 +229,20 @@ export const AutocompleteItem = ({
           typeof className === 'function' ? className(state) : className
         )
       }>
-      {(state) =>
-        hasCustomChildren ? (
-          <CustomItemContent dataTestId={dataTestId} size={size} state={state}>
+      {(state) => {
+        const leading = checkedKeys && (
+          <CheckboxBase
+            isDisabled={state.isDisabled}
+            isSelected={checkedKeys.has(id)}
+          />
+        );
+
+        return hasCustomChildren ? (
+          <CustomItemContent
+            dataTestId={dataTestId}
+            leading={leading}
+            size={size}
+            state={state}>
             {
               children as
                 | ReactNode
@@ -227,13 +256,14 @@ export const AutocompleteItem = ({
             fontSize={fontSize}
             icon={Icon}
             label={label}
+            leading={leading}
             size={size}
             state={state}
             stringChild={stringChild}
             supportingText={supportingText}
           />
-        )
-      }
+        );
+      }}
     </AriaListBoxItem>
   );
 };

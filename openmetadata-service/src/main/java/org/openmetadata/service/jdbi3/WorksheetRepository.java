@@ -45,6 +45,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.services.DriveService;
@@ -63,6 +64,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.WorksheetResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -341,6 +343,20 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     super.applyTags(worksheet);
     // Apply tags to columns
     applyColumnTags(worksheet.getColumns());
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    Worksheet worksheet = (Worksheet) entity;
+    EntityUtil.mergeTags(allTags, worksheet.getTags());
+    EntityUtil.mergeColumnTags(allTags, worksheet.getColumns());
+    return allTags;
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,columns");
   }
 
   private EntityReference getSpreadsheet(Worksheet worksheet) {

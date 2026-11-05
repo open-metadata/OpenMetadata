@@ -104,35 +104,27 @@ public class SchemaFieldExtractor {
   }
 
   public List<FieldDefinition> extractFields(Type typeEntity, String entityType) {
-    String schemaPath = determineSchemaPath(entityType);
-    String schemaUri = "classpath:///" + schemaPath;
-    SchemaClient schemaClient = new CustomSchemaClient(schemaUri);
-    Deque<Schema> processingStack = new ArrayDeque<>();
-    Set<String> processedFields = new HashSet<>();
     Map<String, FieldDefinition> fieldTypesMap =
         new LinkedHashMap<>(
             entityFieldsCache.computeIfAbsent(entityType, ignored -> new LinkedHashMap<>()));
-    addCustomProperties(
-        typeEntity, schemaUri, schemaClient, fieldTypesMap, processingStack, processedFields);
+    addCustomProperties(typeEntity, fieldTypesMap);
     return convertMapToFieldList(fieldTypesMap);
   }
 
+  /**
+   * Returns the custom properties of every entity type, and nothing else. Unlike {@link
+   * #extractFields} this is not an "every field of the entity" view, so {@link #entityFieldsCache}
+   * must not seed the result — seeding it made the endpoint return the whole JSON schema of every
+   * entity type even when no custom property was defined.
+   */
   public Map<String, List<FieldDefinition>> extractAllCustomProperties(
       UriInfo uriInfo, TypeRepository repository) {
     Map<String, List<FieldDefinition>> entityTypeToFields = new HashMap<>();
+    EntityUtil.Fields fieldsParam = new EntityUtil.Fields(Set.of("customProperties"));
     for (String entityType : entityFieldsCache.keySet()) {
-      String schemaPath = determineSchemaPath(entityType);
-      String schemaUri = "classpath:///" + schemaPath;
-      SchemaClient schemaClient = new CustomSchemaClient(schemaUri);
-      EntityUtil.Fields fieldsParam = new EntityUtil.Fields(Set.of("customProperties"));
       Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, Include.ALL, false);
-      Map<String, FieldDefinition> fieldTypesMap =
-          new LinkedHashMap<>(
-              entityFieldsCache.computeIfAbsent(entityType, ignored -> new LinkedHashMap<>()));
-      Set<String> processedFields = new HashSet<>();
-      Deque<Schema> processingStack = new ArrayDeque<>();
-      addCustomProperties(
-          typeEntity, schemaUri, schemaClient, fieldTypesMap, processingStack, processedFields);
+      Map<String, FieldDefinition> fieldTypesMap = new LinkedHashMap<>();
+      addCustomProperties(typeEntity, fieldTypesMap);
       entityTypeToFields.put(entityType, convertMapToFieldList(fieldTypesMap));
     }
 
@@ -208,6 +200,23 @@ public class SchemaFieldExtractor {
     return ENTITY_TYPE_ANNOTATION.equals(jsonSchema.optString("$comment"));
   }
 
+  /**
+   * everit-json-schema only knows meta-schemas up to draft-07, so letting it sniff `$schema` off
+   * OpenMetadata's 2020-12 schemas fails the load with "could not determine version". Pinning the
+   * draft keeps it working: this class walks a schema to list its field names and types and never
+   * validates data, and OpenMetadata's schemas use no keyword whose meaning differs between the two
+   * drafts. `resolutionScope` stays the base URI for resolving `$ref`.
+   */
+  private static SchemaLoader newSchemaLoader(
+      InputStream schemaInputStream, String schemaUri, SchemaClient schemaClient) {
+    return SchemaLoader.builder()
+        .draftV7Support()
+        .schemaJson(new JSONObject(new JSONTokener(schemaInputStream)))
+        .resolutionScope(schemaUri)
+        .schemaClient(schemaClient)
+        .build();
+  }
+
   private static Schema loadMainSchema(
       String schemaPath, String entityType, String schemaUri, SchemaClient schemaClient)
       throws SchemaProcessingException {
@@ -220,13 +229,7 @@ public class SchemaFieldExtractor {
           SchemaProcessingException.ErrorType.RESOURCE_NOT_FOUND);
     }
 
-    JSONObject rawSchema = new JSONObject(new JSONTokener(schemaInputStream));
-    SchemaLoader schemaLoader =
-        SchemaLoader.builder()
-            .schemaJson(rawSchema)
-            .resolutionScope(schemaUri)
-            .schemaClient(schemaClient)
-            .build();
+    SchemaLoader schemaLoader = newSchemaLoader(schemaInputStream, schemaUri, schemaClient);
 
     try {
       Schema schema = schemaLoader.load().build();
@@ -382,50 +385,33 @@ public class SchemaFieldExtractor {
     }
   }
 
-  private void addCustomProperties(
-      Type typeEntity,
-      String schemaUri,
-      SchemaClient schemaClient,
-      Map<String, FieldDefinition> fieldTypesMap,
-      Deque<Schema> processingStack,
-      Set<String> processedFields) {
+  private void addCustomProperties(Type typeEntity, Map<String, FieldDefinition> fieldTypesMap) {
     if (typeEntity == null || typeEntity.getCustomProperties() == null) {
       return;
     }
 
     for (CustomProperty customProperty : typeEntity.getCustomProperties()) {
       String propertyName = customProperty.getName();
-      String propertyType = customProperty.getPropertyType().getName();
-      // No parent path for custom properties
-      String displayName = customProperty.getDisplayName();
-      LOG.debug("Processing custom property '{}'", propertyName);
-
-      Object customPropertyConfigObj = customProperty.getCustomPropertyConfig();
-
-      if (isEntityReferenceList(propertyType)) {
-        String referenceType = "array<entityReference>";
-        FieldDefinition fieldDef =
-            FieldDefinition.of(propertyName, displayName, referenceType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
-        processedFields.add(propertyName);
-        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, referenceType);
-
-      } else if (isEntityReference(propertyType)) {
-        String referenceType = "entityReference";
-        FieldDefinition fieldDef =
-            FieldDefinition.of(propertyName, displayName, referenceType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
-        processedFields.add(propertyName);
-        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, referenceType);
-
-      } else {
-        FieldDefinition fieldDef =
-            FieldDefinition.of(propertyName, displayName, propertyType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
-        processedFields.add(propertyName);
-        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, propertyType);
-      }
+      String propertyType = resolveCustomPropertyType(customProperty.getPropertyType().getName());
+      FieldDefinition fieldDef =
+          FieldDefinition.of(
+              propertyName,
+              customProperty.getDisplayName(),
+              propertyType,
+              customProperty.getCustomPropertyConfig());
+      fieldTypesMap.putIfAbsent(propertyName, fieldDef);
+      LOG.debug("Added custom property '{}', Type: '{}'", propertyName, propertyType);
     }
+  }
+
+  private String resolveCustomPropertyType(String propertyType) {
+    String resolvedType = propertyType;
+    if (isEntityReferenceList(propertyType)) {
+      resolvedType = "array<entityReference>";
+    } else if (isEntityReference(propertyType)) {
+      resolvedType = "entityReference";
+    }
+    return resolvedType;
   }
 
   private List<FieldDefinition> convertMapToFieldList(Map<String, FieldDefinition> fieldTypesMap) {
@@ -470,13 +456,7 @@ public class SchemaFieldExtractor {
           SchemaProcessingException.ErrorType.RESOURCE_NOT_FOUND);
     }
 
-    JSONObject rawSchema = new JSONObject(new JSONTokener(schemaInputStream));
-    SchemaLoader schemaLoader =
-        SchemaLoader.builder()
-            .schemaJson(rawSchema)
-            .resolutionScope(schemaUri) // Base URI for resolving $ref
-            .schemaClient(schemaClient)
-            .build();
+    SchemaLoader schemaLoader = newSchemaLoader(schemaInputStream, schemaUri, schemaClient);
 
     try {
       Schema schema = schemaLoader.load().build();

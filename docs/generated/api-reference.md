@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1748 endpoints** across 73 resource packages · 1738 carry a summary.
+**1991 endpoints** across 75 resource packages · 1981 carry a summary.
 
 ## (root)
 
@@ -34,10 +34,14 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/activity/count` | Get activity event count |
 | `GET` | `/v1/activity/entity/{entityType}/name/{fqn}` | Get activity for a specific entity by fully qualified name |
 | `GET` | `/v1/activity/entity/{entityType}/{entityId}` | Get activity for a specific entity by ID |
+| `GET` | `/v1/activity/following` | Get activity feed for entities the current user follows |
+| `GET` | `/v1/activity/mentions` | Get activity whose replies mention the current user |
 | `GET` | `/v1/activity/my-feed` | Get personalized activity feed for current user |
 | `GET` | `/v1/activity/user/{userId}` | Get activity by a specific user |
 | `DELETE` | `/v1/activity/{id}/reaction/{reactionType}` | Remove a reaction from an activity event |
 | `PUT` | `/v1/activity/{id}/reaction/{reactionType}` | Add a reaction to an activity event |
+| `GET` | `/v1/activity/{id}/replies` | List replies to an activity |
+| `POST` | `/v1/activity/{id}/replies` | Reply to an activity |
 
 ## ai
 
@@ -198,7 +202,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/apiCollections` | Create or update API Collection |
 | `DELETE` | `/v1/apiCollections/async/{id}` | Asynchronously delete a API Collection by Id |
 | `PUT` | `/v1/apiCollections/bulk` | Bulk create or update API collections |
-| `PUT` | `/v1/apiCollections/deleteStale` | Delete stale apicollections within a scope |
+| `DELETE` | `/v1/apiCollections/deleteStale` | Delete stale apicollections within a scope |
 | `DELETE` | `/v1/apiCollections/name/{fqn}` | Delete a API Collection by fully qualified name |
 | `GET` | `/v1/apiCollections/name/{fqn}` | Get a APICollection by fully qualified name |
 | `PATCH` | `/v1/apiCollections/name/{fqn}` | Update a APICollection by name. |
@@ -214,10 +218,11 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/apiEndpoints` | Update API Endpoint |
 | `DELETE` | `/v1/apiEndpoints/async/{id}` | Asynchronously delete a APIEndpoint by id |
 | `PUT` | `/v1/apiEndpoints/bulk` | Bulk create or update API endpoints |
-| `PUT` | `/v1/apiEndpoints/deleteStale` | Delete stale apiendpoints within a scope |
+| `DELETE` | `/v1/apiEndpoints/deleteStale` | Delete stale apiendpoints within a scope |
 | `DELETE` | `/v1/apiEndpoints/name/{fqn}` | Delete a APIEndpoint by fully qualified name |
 | `GET` | `/v1/apiEndpoints/name/{fqn}` | Get a Endpoint by fully qualified name. |
 | `PATCH` | `/v1/apiEndpoints/name/{fqn}` | Update a APIEndpoint using name. |
+| `GET` | `/v1/apiEndpoints/name/{fqn}/columns` | Get paginated schema fields of an API endpoint by fully qualified name |
 | `PUT` | `/v1/apiEndpoints/restore` | Restore a soft deleted APIEndpoint |
 | `DELETE` | `/v1/apiEndpoints/{id}` | Delete a APIEndpoint by id |
 | `GET` | `/v1/apiEndpoints/{id}` | Get a APIEndpoint by id |
@@ -286,6 +291,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 |---|---|---|
 | `GET` | `/v1/audit/logs` | List audit log events |
 | `GET` | `/v1/audit/logs/export` | Export audit log events as JSON (async) |
+| `GET` | `/v1/audit/logs/export/{jobId}` | Get the status of an audit log export job |
 | `GET` | `/v1/audit/logs/export/{jobId}/result` | Download a completed audit log export |
 
 ## automations
@@ -334,7 +340,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/charts` | Create or update chart |
 | `DELETE` | `/v1/charts/async/{id}` | Asynchronously delete a chart by Id |
 | `PUT` | `/v1/charts/bulk` | Bulk create or update charts |
-| `PUT` | `/v1/charts/deleteStale` | Delete stale charts within a scope |
+| `DELETE` | `/v1/charts/deleteStale` | Delete stale charts within a scope |
 | `DELETE` | `/v1/charts/name/{fqn}` | Delete a chart by fully qualified name |
 | `GET` | `/v1/charts/name/{fqn}` | Get a chart by fully qualified name |
 | `PATCH` | `/v1/charts/name/{fqn}` | Update a chart by name. |
@@ -369,12 +375,14 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/contextCenter/memories` | List context memories |
 | `POST` | `/v1/contextCenter/memories` | Create a memory |
 | `PUT` | `/v1/contextCenter/memories` | Create or update a memory |
+| `GET` | `/v1/contextCenter/memories/derivations` | List the memories entities were derived from |
 | `DELETE` | `/v1/contextCenter/memories/name/{fqn}` | Delete a memory by fully qualified name |
 | `GET` | `/v1/contextCenter/memories/name/{fqn}` | Get a memory by fully qualified name |
 | `PUT` | `/v1/contextCenter/memories/restore` | Restore a soft-deleted memory |
 | `DELETE` | `/v1/contextCenter/memories/{id}` | Delete a memory by id |
 | `GET` | `/v1/contextCenter/memories/{id}` | Get a memory by id |
 | `PATCH` | `/v1/contextCenter/memories/{id}` | Update a memory |
+| `PUT` | `/v1/contextCenter/memories/{id}/outcomes` | Record a memory's outcome counters |
 | `DELETE` | `/v1/contextCenter/memories/{id}/pin` | Unpin a memory |
 | `PUT` | `/v1/contextCenter/memories/{id}/pin` | Pin a memory |
 | `GET` | `/v1/contextCenter/memories/{id}/versions` | List context memory versions |
@@ -388,6 +396,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/csvAsyncJobs` | List CSV import and export jobs |
 | `GET` | `/v1/csvAsyncJobs/{jobId}` | Get a CSV import or export job |
 | `PUT` | `/v1/csvAsyncJobs/{jobId}/cancel` | Cancel a CSV import or export job |
+| `GET` | `/v1/csvAsyncJobs/{jobId}/import-result` | Get the result of a completed import job |
 | `GET` | `/v1/csvAsyncJobs/{jobId}/result` | Download the CSV produced by a completed export job |
 
 ## dashboards
@@ -399,7 +408,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/dashboards` | Create or update a dashboard |
 | `DELETE` | `/v1/dashboards/async/{id}` | Asynchronously delete a dashboard by Id |
 | `PUT` | `/v1/dashboards/bulk` | Bulk create or update dashboards |
-| `PUT` | `/v1/dashboards/deleteStale` | Delete stale dashboards within a scope |
+| `DELETE` | `/v1/dashboards/deleteStale` | Delete stale dashboards within a scope |
 | `DELETE` | `/v1/dashboards/name/{fqn}` | Delete a dashboard by fully qualified name |
 | `GET` | `/v1/dashboards/name/{fqn}` | Get a dashboard by fully qualified name |
 | `PATCH` | `/v1/dashboards/name/{fqn}` | Update a dashboard by name. |
@@ -463,7 +472,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/databaseSchemas` | Create or update schema |
 | `DELETE` | `/v1/databaseSchemas/async/{id}` | Asynchronously delete a schema by Id |
 | `PUT` | `/v1/databaseSchemas/bulk` | Bulk create or update databaseSchemas |
-| `PUT` | `/v1/databaseSchemas/deleteStale` | Delete stale databaseschemas within a scope |
+| `DELETE` | `/v1/databaseSchemas/deleteStale` | Delete stale databaseschemas within a scope |
 | `GET` | `/v1/databaseSchemas/entityRelationship` | Search Schema Entity Relationship |
 | `DELETE` | `/v1/databaseSchemas/name/{fqn}` | Delete a schema by fully qualified name |
 | `GET` | `/v1/databaseSchemas/name/{fqn}` | Get a schema by fully qualified name |
@@ -489,7 +498,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/databases` | Create or update database |
 | `DELETE` | `/v1/databases/async/{id}` | Asynchronously delete a database by Id |
 | `PUT` | `/v1/databases/bulk` | Bulk create or update databases |
-| `PUT` | `/v1/databases/deleteStale` | Delete stale databases within a scope |
+| `DELETE` | `/v1/databases/deleteStale` | Delete stale databases within a scope |
 | `DELETE` | `/v1/databases/name/{fqn}` | Delete a database by fully qualified name |
 | `GET` | `/v1/databases/name/{fqn}` | Get a database by fully qualified name |
 | `PATCH` | `/v1/databases/name/{fqn}` | Update a database by name. |
@@ -514,7 +523,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/storedProcedures` | Create or update Stored Procedure |
 | `DELETE` | `/v1/storedProcedures/async/{id}` | Asynchronously delete a StoredProcedure by Id |
 | `PUT` | `/v1/storedProcedures/bulk` | Bulk create or update storedProcedures |
-| `PUT` | `/v1/storedProcedures/deleteStale` | Delete stale storedprocedures within a scope |
+| `DELETE` | `/v1/storedProcedures/deleteStale` | Delete stale storedprocedures within a scope |
 | `DELETE` | `/v1/storedProcedures/name/{fqn}` | Delete a schema by fully qualified name |
 | `GET` | `/v1/storedProcedures/name/{fqn}` | Get a Stored Procedure by fully qualified name |
 | `PATCH` | `/v1/storedProcedures/name/{fqn}` | Update a Stored Procedure by name. |
@@ -532,7 +541,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/tables` | Create or update a table |
 | `DELETE` | `/v1/tables/async/{id}` | Asynchronously delete a table by Id |
 | `PUT` | `/v1/tables/bulk` | Bulk create or update tables |
-| `PUT` | `/v1/tables/deleteStale` | Delete stale tables within a scope |
+| `DELETE` | `/v1/tables/deleteStale` | Delete stale tables within a scope |
 | `GET` | `/v1/tables/entityRelationship` | Search Entity Relationship |
 | `GET` | `/v1/tables/entityRelationship/{direction}` | Search entity relationship with Direction |
 | `DELETE` | `/v1/tables/name/{fqn}` | Delete a table by fully qualified name |
@@ -616,7 +625,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/dashboard/datamodels` | Create or update dashboard datamodel |
 | `DELETE` | `/v1/dashboard/datamodels/async/{id}` | Asynchronously delete a data model by `id`. |
 | `PUT` | `/v1/dashboard/datamodels/bulk` | Bulk create or update dashboardDataModels |
-| `PUT` | `/v1/dashboard/datamodels/deleteStale` | Delete stale dashboarddatamodels within a scope |
+| `DELETE` | `/v1/dashboard/datamodels/deleteStale` | Delete stale dashboarddatamodels within a scope |
 | `DELETE` | `/v1/dashboard/datamodels/name/{fqn}` | Delete a data model by fully qualified name. |
 | `GET` | `/v1/dashboard/datamodels/name/{fqn}` | Get a dashboard datamodel by fully qualified name |
 | `PATCH` | `/v1/dashboard/datamodels/name/{fqn}` | Update a dashboard datamodel by name. |
@@ -728,6 +737,19 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/v1/dataQuality/dimensions` | List data quality dimensions |
+| `POST` | `/v1/dataQuality/dimensions` | Create a data quality dimension |
+| `PUT` | `/v1/dataQuality/dimensions` | Update a data quality dimension |
+| `DELETE` | `/v1/dataQuality/dimensions/name/{name}` | Delete a data quality dimension by name |
+| `GET` | `/v1/dataQuality/dimensions/name/{name}` | Get a data quality dimension by name |
+| `PUT` | `/v1/dataQuality/dimensions/restore` | Restore a soft deleted data quality dimension |
+| `GET` | `/v1/dataQuality/dimensions/testCaseCounts` | Count the test cases attached to each dimension |
+| `GET` | `/v1/dataQuality/dimensions/testDefinitionCounts` | Count the test definitions classified under each dimension |
+| `DELETE` | `/v1/dataQuality/dimensions/{id}` | Delete a data quality dimension |
+| `GET` | `/v1/dataQuality/dimensions/{id}` | Get a data quality dimension by Id |
+| `PATCH` | `/v1/dataQuality/dimensions/{id}` | Update a data quality dimension |
+| `GET` | `/v1/dataQuality/dimensions/{id}/versions` | List data quality dimension versions |
+| `GET` | `/v1/dataQuality/dimensions/{id}/versions/{version}` | Get a version of a data quality dimension |
 | `GET` | `/v1/dataQuality/testCases` | List test cases |
 | `POST` | `/v1/dataQuality/testCases` | Create a test case |
 | `PUT` | `/v1/dataQuality/testCases` | Update test case |
@@ -737,6 +759,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/dataQuality/testCases/dimensionResults/{fqn}/dimensions` | List available dimensions for a test case |
 | `PUT` | `/v1/dataQuality/testCases/logicalTestCases` | Add test cases to a logical test suite |
 | `PUT` | `/v1/dataQuality/testCases/logicalTestCases/bulk` | Add test cases to a logical test suite |
+| `POST` | `/v1/dataQuality/testCases/logicalTestCases/bulk/remove` | Remove test cases from a logical test suite |
 | `DELETE` | `/v1/dataQuality/testCases/logicalTestCases/{testSuiteId}/{id}` | Delete a logical test case by Id from a test suite |
 | `DELETE` | `/v1/dataQuality/testCases/name/{fqn}` | Delete a test case by fully qualified name |
 | `GET` | `/v1/dataQuality/testCases/name/{fqn}` | Get a test case by fully qualified name |
@@ -748,6 +771,8 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/dataQuality/testCases/search/list` | List test cases using search service |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus` | List the test case failure statuses |
 | `POST` | `/v1/dataQuality/testCases/testCaseIncidentStatus` | Create a new test case failure status |
+| `PUT` | `/v1/dataQuality/testCases/testCaseIncidentStatus/bulk` | Bulk create test case failure statuses |
+| `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/incidentGroups` | List open incident counts grouped by a dimension |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/search/list` | List test case resolution status using search service |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/stateId/{stateId}` | Get test case failure statuses for a sequence id |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/{id}` | Get test case failure status by id |
@@ -840,6 +865,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/drives/directories` | Create or update a directory |
 | `DELETE` | `/v1/drives/directories/async/{id}` | Asynchronously delete a directory by Id |
 | `PUT` | `/v1/drives/directories/bulk` | Bulk create or update directories |
+| `DELETE` | `/v1/drives/directories/deleteStale` | Delete stale directories within a scope |
 | `GET` | `/v1/drives/directories/export` | Export directories to CSV |
 | `POST` | `/v1/drives/directories/import` | Import directory from CSV |
 | `DELETE` | `/v1/drives/directories/name/{fqn}` | Delete a directory by fully qualified name |
@@ -860,6 +886,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/drives/files` | Create or update a file |
 | `DELETE` | `/v1/drives/files/async/{id}` | Asynchronously delete a file by Id |
 | `PUT` | `/v1/drives/files/bulk` | Bulk create or update files |
+| `DELETE` | `/v1/drives/files/deleteStale` | Delete stale files within a scope |
 | `DELETE` | `/v1/drives/files/name/{fqn}` | Delete a file by fully qualified name |
 | `GET` | `/v1/drives/files/name/{fqn}` | Get a file by fully qualified name |
 | `PATCH` | `/v1/drives/files/name/{fqn}` | Update a file by name. |
@@ -881,6 +908,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/drives/spreadsheets` | Create or update a spreadsheet |
 | `DELETE` | `/v1/drives/spreadsheets/async/{id}` | Asynchronously delete a spreadsheet by Id |
 | `PUT` | `/v1/drives/spreadsheets/bulk` | Bulk create or update spreadsheets |
+| `DELETE` | `/v1/drives/spreadsheets/deleteStale` | Delete stale spreadsheets within a scope |
 | `DELETE` | `/v1/drives/spreadsheets/name/{fqn}` | Delete a spreadsheet by fully qualified name |
 | `GET` | `/v1/drives/spreadsheets/name/{fqn}` | Get a spreadsheet by fully qualified name |
 | `PATCH` | `/v1/drives/spreadsheets/name/{fqn}` | Update a spreadsheet by name. |
@@ -898,9 +926,11 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/drives/worksheets` | Create or update a worksheet |
 | `DELETE` | `/v1/drives/worksheets/async/{id}` | Asynchronously delete a worksheet by Id |
 | `PUT` | `/v1/drives/worksheets/bulk` | Bulk create or update worksheets |
+| `DELETE` | `/v1/drives/worksheets/deleteStale` | Delete stale worksheets within a scope |
 | `DELETE` | `/v1/drives/worksheets/name/{fqn}` | Delete a worksheet by fully qualified name |
 | `GET` | `/v1/drives/worksheets/name/{fqn}` | Get a worksheet by fully qualified name |
 | `PATCH` | `/v1/drives/worksheets/name/{fqn}` | Update a worksheet by name. |
+| `GET` | `/v1/drives/worksheets/name/{fqn}/columns` | Get paginated columns of a worksheet by fully qualified name |
 | `PUT` | `/v1/drives/worksheets/restore` | Restore a soft deleted worksheet by id |
 | `DELETE` | `/v1/drives/worksheets/{id}` | Delete a worksheet by Id |
 | `GET` | `/v1/drives/worksheets/{id}` | Get a worksheet by Id |
@@ -953,6 +983,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 |---|---|---|
 | `GET` | `/v1/events/subscriptions` | List all available Event Subscriptions |
 | `POST` | `/v1/events/subscriptions` | Create a new Event Subscription |
+| `POST` | `/v1/events/subscriptions` | Get what a selection of sources supports |
 | `PUT` | `/v1/events/subscriptions` | Updated an existing or create a new Event Subscription |
 | `DELETE` | `/v1/events/subscriptions/async/{id}` | Asynchronously delete an Event Subscription by Id |
 | `GET` | `/v1/events/subscriptions/history` |  |
@@ -962,6 +993,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/events/subscriptions/id/{id}/listSuccessfullySentChangeEvents` | Get successfully sent change events for an alert |
 | `GET` | `/v1/events/subscriptions/id/{subscriptionId}/diagnosticInfo` | Get event subscription diagnostic info |
 | `GET` | `/v1/events/subscriptions/id/{subscriptionId}/eventsRecord` | Get event subscription events record |
+| `GET` | `/v1/events/subscriptions/id/{subscriptionId}/scheduling` | Get how an event subscription is scheduled |
 | `GET` | `/v1/events/subscriptions/listAllFailedEvents` | Get all failed events |
 | `GET` | `/v1/events/subscriptions/name/{eventSubscriptionName}` | Get an Event Subscription by name |
 | `GET` | `/v1/events/subscriptions/name/{eventSubscriptionName}/destinations` | Get the destinations for a specific Event Subscription by its name |
@@ -997,19 +1029,19 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PATCH` | `/v1/announcements/{id}` | Update an announcement |
 | `GET` | `/v1/announcements/{id}/versions` | List announcement versions |
 | `GET` | `/v1/announcements/{id}/versions/{version}` | Get a specific version of an announcement |
-| `GET` | `/v1/feed` | List threads |
-| `POST` | `/v1/feed` | Create a thread |
-| `GET` | `/v1/feed/count` | Count of threads |
-| `GET` | `/v1/feed/tasks/{id}` | Get a task thread by task Id |
-| `PUT` | `/v1/feed/tasks/{id}/close` | Close a task |
-| `PUT` | `/v1/feed/tasks/{id}/resolve` | Resolve a task |
-| `GET` | `/v1/feed/{id}` | Get a thread by Id |
-| `PATCH` | `/v1/feed/{id}` | Update a thread by `Id`. |
-| `GET` | `/v1/feed/{id}/posts` | Get all the posts of a thread |
-| `POST` | `/v1/feed/{id}/posts` | Add post to a thread |
-| `DELETE` | `/v1/feed/{threadId}` | Delete a thread by Id |
-| `DELETE` | `/v1/feed/{threadId}/posts/{postId}` | Delete a post from its thread |
-| `PATCH` | `/v1/feed/{threadId}/posts/{postId}` | Update post of a thread by `Id`. |
+| `GET` | `/v1/conversations` | List conversations |
+| `POST` | `/v1/conversations` | Create a conversation |
+| `DELETE` | `/v1/conversations/{id}` | Delete a conversation |
+| `GET` | `/v1/conversations/{id}` | Get a conversation |
+| `PATCH` | `/v1/conversations/{id}` | Update a conversation |
+| `DELETE` | `/v1/conversations/{id}/reaction/{reactionType}` | Remove a reaction |
+| `PUT` | `/v1/conversations/{id}/reaction/{reactionType}` | React to a conversation |
+| `GET` | `/v1/conversations/{id}/replies` | List conversation replies |
+| `POST` | `/v1/conversations/{id}/replies` | Reply to a conversation |
+| `DELETE` | `/v1/conversations/{id}/replies/{replyId}` | Delete a reply |
+| `PATCH` | `/v1/conversations/{id}/replies/{replyId}` | Update a reply |
+| `DELETE` | `/v1/conversations/{id}/replies/{replyId}/reaction/{reactionType}` | Remove reply reaction |
+| `PUT` | `/v1/conversations/{id}/replies/{replyId}/reaction/{reactionType}` | React to a reply |
 | `GET` | `/v1/taskFormSchemas` | List task form schemas |
 | `POST` | `/v1/taskFormSchemas` | Create a task form schema |
 | `PUT` | `/v1/taskFormSchemas` | Create or update a task form schema |
@@ -1042,6 +1074,8 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/glossaries/{id}` | Delete a glossary by Id |
 | `GET` | `/v1/glossaries/{id}` | Get a glossary by Id |
 | `PATCH` | `/v1/glossaries/{id}` | Update a glossary |
+| `GET` | `/v1/glossaries/{id}/exportOntology` | Export a glossary as an ontology |
+| `POST` | `/v1/glossaries/{id}/sparql` | Query one glossary ontology |
 | `GET` | `/v1/glossaries/{id}/versions` | List glossary versions |
 | `GET` | `/v1/glossaries/{id}/versions/{version}` | Get a version of the glossaries |
 | `PUT` | `/v1/glossaries/{id}/vote` | Update Vote for a Entity |
@@ -1060,6 +1094,8 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/glossaryTerms/name/{fqn}/exportAsync` | Export glossary term in CSV format asynchronously |
 | `PUT` | `/v1/glossaryTerms/name/{fqn}/import` | Import glossary terms from CSV |
 | `PUT` | `/v1/glossaryTerms/name/{fqn}/importAsync` | Import glossary term from CSV asynchronously |
+| `GET` | `/v1/glossaryTerms/ontology/data` | Get a bounded page of ontology data clusters |
+| `GET` | `/v1/glossaryTerms/ontology/summary` | Get the bounded ontology health summary |
 | `GET` | `/v1/glossaryTerms/relationTypes/usage` | Get usage counts for all relation types |
 | `PUT` | `/v1/glossaryTerms/restore` | Restore a soft deleted glossary term |
 | `GET` | `/v1/glossaryTerms/search` | Search glossary terms with pagination |
@@ -1071,7 +1107,10 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/glossaryTerms/{id}/assets/remove` | Bulk Remove Glossary Term from Assets |
 | `PUT` | `/v1/glossaryTerms/{id}/moveAsync` | Move a glossary term to a new parent or glossary |
 | `POST` | `/v1/glossaryTerms/{id}/relations` | Add a typed relation to another glossary term |
+| `DELETE` | `/v1/glossaryTerms/{id}/relations/id/{relationshipId}` | Remove one glossary-term relationship by its stable ID |
+| `PUT` | `/v1/glossaryTerms/{id}/relations/id/{relationshipId}` | Update one glossary-term relationship by its stable ID |
 | `DELETE` | `/v1/glossaryTerms/{id}/relations/{toTermId}` | Remove a relation to another glossary term |
+| `PUT` | `/v1/glossaryTerms/{id}/relations/{toTermId}` | Change the type or metadata of an existing typed relation |
 | `GET` | `/v1/glossaryTerms/{id}/relationsGraph` | Get the relation graph for a glossary term |
 | `PUT` | `/v1/glossaryTerms/{id}/tags/validate` | Validate Tags Addition to Glossary Term |
 | `GET` | `/v1/glossaryTerms/{id}/versions` | List glossary term versions |
@@ -1082,6 +1121,15 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/v1/changeRequests` | List change requests for an asset or a requester |
+| `POST` | `/v1/changeRequests/preview/{entityType}/{id}` | Preview whether a PATCH would be held for approval, without saving it |
+| `GET` | `/v1/changeRequests/{id}` | Get a change request with its active revision |
+| `POST` | `/v1/changeRequests/{id}/cancel` | Cancel a pending change request (admin only) |
+| `GET` | `/v1/changeRequests/{id}/decisions` | List the review decisions recorded on a change request, oldest first |
+| `GET` | `/v1/changeRequests/{id}/events` | List the lifecycle history of a change request, in order |
+| `POST` | `/v1/changeRequests/{id}/override` | Publish a pending change request without review (admin only) |
+| `GET` | `/v1/changeRequests/{id}/revisions` | List every revision of a change request, oldest first |
+| `POST` | `/v1/changeRequests/{id}/withdraw` | Withdraw your own pending change request |
 | `GET` | `/v1/governance/intakeForms` | List IntakeForms |
 | `POST` | `/v1/governance/intakeForms` | Create a new IntakeForm |
 | `PUT` | `/v1/governance/intakeForms` | Create or update an IntakeForm |
@@ -1107,13 +1155,14 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/governance/workflowDefinitions/{id}` | Delete a Workflow Definition by Id |
 | `GET` | `/v1/governance/workflowDefinitions/{id}` | Get a Workflow Definition by Id |
 | `PATCH` | `/v1/governance/workflowDefinitions/{id}` | Update a Workflow Definition by Id |
-| `POST` | `/v1/governance/workflowDefinitions/{id}/redeploy` | Get a Workflow Definition by Id |
+| `POST` | `/v1/governance/workflowDefinitions/{id}/redeploy` | Redeploy a Workflow Definition |
 | `GET` | `/v1/governance/workflowDefinitions/{id}/versions` | List Workflow Definition versions |
 | `GET` | `/v1/governance/workflowDefinitions/{id}/versions/{version}` | Get a version of the Workflow Definition |
 | `GET` | `/v1/governance/workflowInstanceStates` | List the Workflow Instance States |
 | `GET` | `/v1/governance/workflowInstanceStates/{id}` | Get a Workflow Instance State by id |
 | `GET` | `/v1/governance/workflowInstanceStates/{workflowDefinitionName}/{workflowInstanceId}` | Get all the Workflow Instance States for a Workflow Instance id |
 | `GET` | `/v1/governance/workflowInstances` | List the Workflow Instances |
+| `POST` | `/v1/governance/workflowInstances/{id}/terminate` | Terminate a Workflow Instance |
 
 ## knowledge
 
@@ -1198,6 +1247,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/lineage/getPaginationInfo` | Get lineage pagination information |
 | `GET` | `/v1/lineage/getPlatformLineage` | Get Platform Lineage |
 | `POST` | `/v1/lineage/hydrate` | Batch-hydrate lineage nodes into full entity objects |
+| `GET` | `/v1/lineage/scene` | Get semantic lineage scene |
 | `DELETE` | `/v1/lineage/source/name/{entityType}/{entityFQN}/type/{lineageSource}` | Delete lineage edges by type and entity FQN |
 | `DELETE` | `/v1/lineage/{entityType}/{entityId}/type/{lineageSource}` | Delete a lineage edge by Type |
 | `GET` | `/v1/lineage/{entity}/name/{fqn}` | Get lineage by fully qualified name |
@@ -1224,6 +1274,20 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/v1/metricGroups` | List metric groups |
+| `POST` | `/v1/metricGroups` | Create a metric group |
+| `PUT` | `/v1/metricGroups` | Create or update a metric group |
+| `DELETE` | `/v1/metricGroups/name/{fqn}` | Delete a metric group by fully qualified name |
+| `GET` | `/v1/metricGroups/name/{fqn}` | Get a metric group by fully qualified name |
+| `PUT` | `/v1/metricGroups/restore` | Restore a soft deleted metric group |
+| `DELETE` | `/v1/metricGroups/{id}` | Delete a metric group by Id |
+| `GET` | `/v1/metricGroups/{id}` | Get a metric group by Id |
+| `PATCH` | `/v1/metricGroups/{id}` | Update a metric group |
+| `GET` | `/v1/metricGroups/{id}/metrics` | List Metrics in a Metric Group |
+| `GET` | `/v1/metricGroups/{id}/versions` | List metric group versions |
+| `GET` | `/v1/metricGroups/{id}/versions/{version}` | Get a version of the metric group |
+| `PUT` | `/v1/metricGroups/{name}/metrics/add` | Add metrics to a group |
+| `PUT` | `/v1/metricGroups/{name}/metrics/remove` | Remove metrics from a group |
 | `GET` | `/v1/metrics` | List metrics |
 | `POST` | `/v1/metrics` | Create a Metric |
 | `PUT` | `/v1/metrics` | Create or update a metric |
@@ -1231,6 +1295,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/metrics/bulk` | Bulk create or update metrics |
 | `GET` | `/v1/metrics/customUnits` | Get list of custom units of measurement |
 | `GET` | `/v1/metrics/documentation/csv` | Get CSV documentation for metric import/export |
+| `GET` | `/v1/metrics/hierarchy` | List top-level Metric hierarchy entries |
 | `DELETE` | `/v1/metrics/name/{fqn}` | Delete a Metric by fully qualified name |
 | `GET` | `/v1/metrics/name/{fqn}` | Get a Metric by fully qualified name. |
 | `PATCH` | `/v1/metrics/name/{fqn}` | Update a Metric using name. |
@@ -1242,11 +1307,16 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/metrics/{id}` | Delete a Metric by id |
 | `GET` | `/v1/metrics/{id}` | Get a metric by Id |
 | `PATCH` | `/v1/metrics/{id}` | Update a Metric |
+| `GET` | `/v1/metrics/{id}/assets` | List a metric's linked assets with their lineage direction |
 | `PUT` | `/v1/metrics/{id}/followers` | Add a follower |
 | `DELETE` | `/v1/metrics/{id}/followers/{userId}` | Remove a follower |
+| `GET` | `/v1/metrics/{id}/hierarchy` | Get the hierarchy context for one Metric |
+| `GET` | `/v1/metrics/{id}/observability` | Get a metric's health rollup |
 | `GET` | `/v1/metrics/{id}/versions` | List Metric versions |
 | `GET` | `/v1/metrics/{id}/versions/{version}` | Get a version of the Metric |
 | `PUT` | `/v1/metrics/{id}/vote` | Update Vote for a Metric |
+| `PUT` | `/v1/metrics/{name}/assets/add` | Link data assets to a metric |
+| `PUT` | `/v1/metrics/{name}/assets/remove` | Unlink data assets from a metric |
 
 ## mlmodels
 
@@ -1257,10 +1327,11 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/mlmodels` | Create or update an ML model |
 | `DELETE` | `/v1/mlmodels/async/{id}` | Asynchronously delete an ML model by Id |
 | `PUT` | `/v1/mlmodels/bulk` | Bulk create or update ML models |
-| `PUT` | `/v1/mlmodels/deleteStale` | Delete stale mlmodels within a scope |
+| `DELETE` | `/v1/mlmodels/deleteStale` | Delete stale mlmodels within a scope |
 | `DELETE` | `/v1/mlmodels/name/{fqn}` | Delete a ML model by fully qualified name |
 | `GET` | `/v1/mlmodels/name/{fqn}` | Get an ML model by fully qualified name |
 | `PATCH` | `/v1/mlmodels/name/{fqn}` | Update an ML model by name. |
+| `GET` | `/v1/mlmodels/name/{fqn}/columns` | Get paginated features of an ML model by fully qualified name |
 | `PUT` | `/v1/mlmodels/restore` | Restore a soft deleted ML model |
 | `DELETE` | `/v1/mlmodels/{id}` | Delete an ML model by Id |
 | `GET` | `/v1/mlmodels/{id}` | Get an ML model by Id |
@@ -1270,6 +1341,130 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/mlmodels/{id}/versions` | List ML model versions |
 | `GET` | `/v1/mlmodels/{id}/versions/{version}` | Get a version of the ML model |
 | `PUT` | `/v1/mlmodels/{id}/vote` | Update Vote for a Entity |
+
+## ontology
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/v1/ontologies` | List ontology definitions |
+| `POST` | `/v1/ontologies` | Create an ontology |
+| `PUT` | `/v1/ontologies` | Create or update an ontology |
+| `POST` | `/v1/ontologies/imports/detect` | Name the format of a local ontology file |
+| `POST` | `/v1/ontologies/imports/preview` | Count what a local RDF or native CSV file would import into a new ontology |
+| `DELETE` | `/v1/ontologies/name/{fqn}` | Delete an ontology definition by name |
+| `GET` | `/v1/ontologies/name/{fqn}` | Get an ontology by name |
+| `PUT` | `/v1/ontologies/restore` | Restore an ontology |
+| `GET` | `/v1/ontologies/reviews` | List the open release reviews the calling user is part of |
+| `DELETE` | `/v1/ontologies/{id}` | Delete an ontology |
+| `GET` | `/v1/ontologies/{id}` | Get an ontology |
+| `PATCH` | `/v1/ontologies/{id}` | Patch an ontology |
+| `PUT` | `/v1/ontologies/{id}/activation` | Activate an approved ontology release or roll back to an older release |
+| `GET` | `/v1/ontologies/{id}/dataGraph` | Get one page of bound concepts ranked by binding count, each with the assets the caller may view |
+| `POST` | `/v1/ontologies/{id}/dataGraph/pages` | Read a graph page with bounded topology over loaded concept prefixes |
+| `POST` | `/v1/ontologies/{id}/imports/preview` | Preview a local RDF or native CSV file as native ontology draft operations |
+| `POST` | `/v1/ontologies/{id}/library/{packId}/preview` | Preview verified library modules as native ontology draft operations |
+| `GET` | `/v1/ontologies/{id}/references` | Find working definitions that reference an exact IRI in this ontology |
+| `GET` | `/v1/ontologies/{id}/releases` | List this ontology's sealed releases, newest first |
+| `POST` | `/v1/ontologies/{id}/releases` | Capture immutable ontology release content |
+| `POST` | `/v1/ontologies/{id}/sparql` | Query the active ontology release |
+| `GET` | `/v1/ontologies/{id}/state` | Get ontology working and activation revisions |
+| `GET` | `/v1/ontologies/{id}/versions` | List ontology versions |
+| `GET` | `/v1/ontologies/{id}/versions/{version}` | Get an ontology version |
+| `GET` | `/v1/ontologies/{id}/working/diff` | Preview working ontology changes against the active release |
+| `POST` | `/v1/ontology/ai/drafts` | Generate a reviewable ontology change-set Draft |
+| `POST` | `/v1/ontology/ai/mappings/suggestions` | Propose reviewable external concept mappings |
+| `POST` | `/v1/ontology/ai/relationships/suggestions` | Propose reviewable ontology relationships |
+| `POST` | `/v1/ontology/ai/sparql` | Generate a visible read-only SPARQL query |
+| `POST` | `/v1/ontology/bulk` | Validate or create a Draft from a typed ontology bulk operation |
+| `GET` | `/v1/ontology/bulk/jobs` | List the caller's ontology bulk jobs |
+| `GET` | `/v1/ontology/bulk/jobs/{jobId}` | Get an ontology bulk job |
+| `GET` | `/v1/ontology/bulk/jobs/{jobId}/artifact` | Get the typed result artifact for a completed ontology bulk job |
+| `PUT` | `/v1/ontology/bulk/jobs/{jobId}/cancel` | Cancel an ontology bulk job |
+| `GET` | `/v1/ontology/bulk/template` | Get the ontology bulk CSV template |
+| `GET` | `/v1/ontology/impacts/glossaryTerms/{id}/delete` | Preview glossary-term deletion impact |
+| `POST` | `/v1/ontology/impacts/glossaryTerms/{id}/delete` | Delete a glossary term using a fresh impact token |
+| `GET` | `/v1/ontology/patterns` | List ontology modeling patterns |
+| `POST` | `/v1/ontology/patterns/instantiate` | Create a Draft change set from a modeling pattern |
+| `POST` | `/v1/ontology/reasoning/explanations` | Explain a scoped asserted or materialized RDF statement |
+| `GET` | `/v1/ontologyAxioms` | List ontology axioms |
+| `POST` | `/v1/ontologyAxioms` | Create an ontology axiom |
+| `PUT` | `/v1/ontologyAxioms` | Create or update an axiom |
+| `GET` | `/v1/ontologyAxioms/name/{fqn}` | Get an ontology axiom by name |
+| `PUT` | `/v1/ontologyAxioms/restore` | Restore an ontology axiom |
+| `POST` | `/v1/ontologyAxioms/validate` | Validate an OWL axiom |
+| `DELETE` | `/v1/ontologyAxioms/{id}` | Delete an ontology axiom |
+| `GET` | `/v1/ontologyAxioms/{id}` | Get an ontology axiom |
+| `PATCH` | `/v1/ontologyAxioms/{id}` | Patch an ontology axiom |
+| `GET` | `/v1/ontologyAxioms/{id}/versions` | List axiom versions |
+| `GET` | `/v1/ontologyAxioms/{id}/versions/{version}` | Get an axiom version |
+| `GET` | `/v1/ontologyChangeSets` | List ontology change sets |
+| `POST` | `/v1/ontologyChangeSets` | Create a change set |
+| `PUT` | `/v1/ontologyChangeSets/restore` | Restore a change set |
+| `DELETE` | `/v1/ontologyChangeSets/{id}` | Delete a change set |
+| `GET` | `/v1/ontologyChangeSets/{id}` | Get an ontology change set |
+| `POST` | `/v1/ontologyChangeSets/{id}/apply` | Apply active operations |
+| `POST` | `/v1/ontologyChangeSets/{id}/discard` | Discard a change set |
+| `PUT` | `/v1/ontologyChangeSets/{id}/operations` | Replace draft operations |
+| `POST` | `/v1/ontologyChangeSets/{id}/redo` | Move the draft cursor forward |
+| `POST` | `/v1/ontologyChangeSets/{id}/submit` | Submit a draft for review |
+| `POST` | `/v1/ontologyChangeSets/{id}/undo` | Move the draft cursor backward |
+| `GET` | `/v1/ontologyChangeSets/{id}/versions` | List change-set versions |
+| `GET` | `/v1/ontologyChangeSets/{id}/versions/{version}` | Get a change-set version |
+| `GET` | `/v1/ontologyConcepts` | List ontology concept definitions |
+| `POST` | `/v1/ontologyConcepts` | Create an ontology concept |
+| `PUT` | `/v1/ontologyConcepts` | Create or update an ontology concept |
+| `DELETE` | `/v1/ontologyConcepts/name/{fqn}` | Delete an ontology definition by name |
+| `GET` | `/v1/ontologyConcepts/name/{fqn}` | Get an ontology concept by name |
+| `PUT` | `/v1/ontologyConcepts/restore` | Restore an ontology concept |
+| `DELETE` | `/v1/ontologyConcepts/{id}` | Delete an ontology concept |
+| `GET` | `/v1/ontologyConcepts/{id}` | Get an ontology concept |
+| `PATCH` | `/v1/ontologyConcepts/{id}` | Patch an ontology concept |
+| `GET` | `/v1/ontologyConcepts/{id}/bindings` | Get one page of the catalog bindings of a concept the caller may view |
+| `PUT` | `/v1/ontologyConcepts/{id}/bindings` | Replace one concept catalog association |
+| `DELETE` | `/v1/ontologyConcepts/{id}/bindings/{assetType}/{assetId}` | Remove one concept catalog association |
+| `POST` | `/v1/ontologyConcepts/{id}/query` | Generate SQL over the concept's bound tables, joined along search-around hops |
+| `GET` | `/v1/ontologyConcepts/{id}/versions` | List ontology concept versions |
+| `GET` | `/v1/ontologyConcepts/{id}/versions/{version}` | Get an ontology concept version |
+| `POST` | `/v1/ontologyEditLocks/acquire` | Acquire an authoring lease |
+| `PUT` | `/v1/ontologyEditLocks/renew` | Renew an authoring lease |
+| `DELETE` | `/v1/ontologyEditLocks/{resourceType}/{resourceId}` | Release an authoring lease |
+| `GET` | `/v1/ontologyEditLocks/{resourceType}/{resourceId}` | Get the active authoring lease |
+| `GET` | `/v1/ontologyPacks` | List ontology library packs |
+| `GET` | `/v1/ontologyPacks/{packId}` | Get an ontology library pack |
+| `POST` | `/v1/ontologyPacks/{packId}/install` | Dry-run or install selected ontology pack modules |
+| `GET` | `/v1/ontologyPacks/{packId}/sample` | Preview selected library concepts |
+| `GET` | `/v1/ontologyProperties` | List ontology property definitions |
+| `POST` | `/v1/ontologyProperties` | Create an ontology property |
+| `PUT` | `/v1/ontologyProperties` | Create or update an ontology property |
+| `DELETE` | `/v1/ontologyProperties/name/{fqn}` | Delete an ontology definition by name |
+| `GET` | `/v1/ontologyProperties/name/{fqn}` | Get an ontology property by name |
+| `PUT` | `/v1/ontologyProperties/restore` | Restore an ontology property |
+| `DELETE` | `/v1/ontologyProperties/{id}` | Delete an ontology property |
+| `GET` | `/v1/ontologyProperties/{id}` | Get an ontology property |
+| `PATCH` | `/v1/ontologyProperties/{id}` | Patch an ontology property |
+| `GET` | `/v1/ontologyProperties/{id}/versions` | List ontology property versions |
+| `GET` | `/v1/ontologyProperties/{id}/versions/{version}` | Get an ontology property version |
+| `GET` | `/v1/ontologyReleases` | List sealed ontology releases |
+| `GET` | `/v1/ontologyReleases/{id}` | Get a sealed ontology release |
+| `GET` | `/v1/ontologyReleases/{id}/diff` | Compare definitions from two sealed releases |
+| `GET` | `/v1/ontologyReleases/{id}/events` | Read durable release capture and workflow decisions |
+| `GET` | `/v1/ontologyReleases/{id}/export` | Export the asserted content of a sealed ontology release |
+| `GET` | `/v1/ontologyReleases/{id}/members/{kind}` | Page through one release's immutable members |
+| `GET` | `/v1/ontologyReleases/{id}/members/{kind}/{memberId}` | Read an immutable release member |
+| `GET` | `/v1/ontologyReleases/{id}/review` | Read this release's review as the calling user sees it |
+| `GET` | `/v1/ontologyReleases/{id}/structure` | Check property declarations and axiom structure in a sealed release |
+| `GET` | `/v1/ontologyReleases/{id}/validation` | Validate a sealed ontology release |
+| `GET` | `/v1/ontologyReleases/{id}/versions/{version}` | Read the release header version submitted to an approval workflow |
+| `GET` | `/v1/relationshipTypes` | List relationship types |
+| `POST` | `/v1/relationshipTypes` | Create a relationship type |
+| `PUT` | `/v1/relationshipTypes` | Create or update a relationship type |
+| `GET` | `/v1/relationshipTypes/name/{fqn}` | Get a relationship type by name |
+| `PUT` | `/v1/relationshipTypes/restore` | Restore a relationship type |
+| `DELETE` | `/v1/relationshipTypes/{id}` | Delete a relationship type |
+| `GET` | `/v1/relationshipTypes/{id}` | Get a relationship type |
+| `PATCH` | `/v1/relationshipTypes/{id}` | Patch a relationship type |
+| `GET` | `/v1/relationshipTypes/{id}/versions` | List versions |
+| `GET` | `/v1/relationshipTypes/{id}/versions/{version}` | Get a version |
 
 ## permissions
 
@@ -1294,12 +1489,13 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/pipelines` | Create or update a pipeline |
 | `DELETE` | `/v1/pipelines/async/{id}` | Asynchronously delete a pipeline by Id |
 | `PUT` | `/v1/pipelines/bulk` | Bulk create or update pipelines |
-| `PUT` | `/v1/pipelines/deleteStale` | Delete stale pipelines within a scope |
+| `DELETE` | `/v1/pipelines/deleteStale` | Delete stale pipelines within a scope |
 | `GET` | `/v1/pipelines/executionTrend` | Get pipeline execution trend |
 | `GET` | `/v1/pipelines/metrics` | Get aggregated pipeline metrics |
 | `DELETE` | `/v1/pipelines/name/{fqn}` | Delete a pipeline by fully qualified name |
 | `GET` | `/v1/pipelines/name/{fqn}` | Get a pipeline by fully qualified name |
 | `PATCH` | `/v1/pipelines/name/{fqn}` | Update a pipeline by name. |
+| `GET` | `/v1/pipelines/name/{fqn}/columns` | Get paginated tasks of a pipeline by fully qualified name |
 | `GET` | `/v1/pipelines/name/{fqn}/observability` | Get pipeline observability data |
 | `PUT` | `/v1/pipelines/restore` | Restore a soft deleted pipeline |
 | `GET` | `/v1/pipelines/runtimeTrend` | Get pipeline runtime trend |
@@ -1371,13 +1567,41 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/v1/lod/entity/{entityType}/{id}` | Dereference an OpenMetadata entity IRI |
+| `POST` | `/v1/rdf` | Execute a permissioned read-only SPARQL SELECT for agent tools |
 | `GET` | `/v1/rdf/debug/glossary-relations` | Debug glossary term relations in RDF |
 | `GET` | `/v1/rdf/entity/{entityType}/{id}` | Get entity as RDF |
+| `GET` | `/v1/rdf/entity/{entityType}/{id}/diff` | Diff two RDF entity versions |
 | `GET` | `/v1/rdf/glossary/graph` | Get glossary term relationship graph |
 | `GET` | `/v1/rdf/glossary/{id}/export` | Export glossary as ontology |
 | `GET` | `/v1/rdf/graph/explore` | Explore entity graph |
 | `GET` | `/v1/rdf/graph/explore/export` | Export explored entity graph |
 | `GET` | `/v1/rdf/inference/lineage/{entityId}` | Get full lineage with inference |
+| `GET` | `/v1/rdf/insights/communities` | List communities discovered by the latest community-detection run |
+| `GET` | `/v1/rdf/insights/glossary-reach` | Glossary terms ranked by domain reach |
+| `GET` | `/v1/rdf/insights/important` | Rank entities by an importance score that blends usage data and lineage topology |
+| `GET` | `/v1/rdf/insights/path` | Find the shortest lineage path between two entities |
+| `GET` | `/v1/rdf/insights/recommendations` | Recommend related entities for a given seed URI |
+| `POST` | `/v1/rdf/insights/recompute-centrality` | Run weighted PageRank on the entity graph and persist scores |
+| `POST` | `/v1/rdf/insights/recompute-communities` | Run Louvain community detection and persist communities |
+| `GET` | `/v1/rdf/insights/tag-cooccurrence` | Pairs of tags applied to the same entities |
+| `GET` | `/v1/rdf/insights/tag-popularity` | Tags ranked by number of tagged entities |
+| `GET` | `/v1/rdf/ontology` | Download the OpenMetadata ontology |
+| `GET` | `/v1/rdf/ontology/extensions` | List user-authored ontology extensions |
+| `POST` | `/v1/rdf/ontology/extensions/validate` | Validate a candidate ontology extension without persisting it |
+| `DELETE` | `/v1/rdf/ontology/extensions/{name}` | Delete a custom ontology extension |
+| `GET` | `/v1/rdf/ontology/extensions/{name}` | Get a single custom ontology extension by name |
+| `PUT` | `/v1/rdf/ontology/extensions/{name}` | Create or replace a custom ontology extension |
+| `GET` | `/v1/rdf/queries/saved` | List the authenticated user's saved SPARQL queries |
+| `PUT` | `/v1/rdf/queries/saved` | Replace the authenticated user's saved SPARQL queries |
+| `GET` | `/v1/rdf/queries/templates` | List administrator-managed installation query templates |
+| `GET` | `/v1/rdf/reindex/failures` | Get RDF reindex failures |
+| `GET` | `/v1/rdf/rules` | List durable inference rules and materialization state |
+| `POST` | `/v1/rdf/rules/materialize` | Materialize inference rules to a fixed point inside Fuseki |
+| `POST` | `/v1/rdf/rules/validate` | Validate a candidate inference rule without persisting it |
+| `DELETE` | `/v1/rdf/rules/{name}` | Delete a custom inference rule and its materialized graph |
+| `GET` | `/v1/rdf/rules/{name}` | Get a single inference rule by name |
+| `PUT` | `/v1/rdf/rules/{name}` | Create or update an inference rule |
 | `GET` | `/v1/rdf/search/recommendations/{userId}` | Get personalized recommendations |
 | `GET` | `/v1/rdf/search/semantic` | Semantic search across entities |
 | `GET` | `/v1/rdf/search/similar/{entityType}/{id}` | Find similar entities |
@@ -1387,6 +1611,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `POST` | `/v1/rdf/sql/query` | Execute SQL query over RDF data |
 | `POST` | `/v1/rdf/sql/translate` | Translate SQL to SPARQL |
 | `GET` | `/v1/rdf/status` | Get RDF service status |
+| `POST` | `/v1/rdf/validate` | Run SHACL validation against the OpenMetadata knowledge graph |
 
 ## reports
 
@@ -1425,6 +1650,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/search/aggregate` | Get aggregated fields |
 | `POST` | `/v1/search/aggregate` | Get aggregated Search Request |
 | `GET` | `/v1/search/entityTypeCounts` | Get exact entity type counts |
+| `GET` | `/v1/search/entityTypes` | List the entity types that have a search index |
 | `GET` | `/v1/search/export` | Export search results as CSV (streaming) |
 | `GET` | `/v1/search/export/async` | Export search results as a background CSV job |
 | `GET` | `/v1/search/fieldQuery` | Search entities |
@@ -1451,10 +1677,11 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/searchIndexes` | Update SearchIndex |
 | `DELETE` | `/v1/searchIndexes/async/{id}` | Asynchronously delete a SearchIndex by id |
 | `PUT` | `/v1/searchIndexes/bulk` | Bulk create or update search indexes |
-| `PUT` | `/v1/searchIndexes/deleteStale` | Delete stale searchindexes within a scope |
+| `DELETE` | `/v1/searchIndexes/deleteStale` | Delete stale searchindexes within a scope |
 | `DELETE` | `/v1/searchIndexes/name/{fqn}` | Delete a SearchIndex by fully qualified name |
 | `GET` | `/v1/searchIndexes/name/{fqn}` | Get a SearchIndex by fully qualified name |
 | `PATCH` | `/v1/searchIndexes/name/{fqn}` | Update a SearchIndex using name. |
+| `GET` | `/v1/searchIndexes/name/{fqn}/columns` | Get paginated fields of a search index by fully qualified name |
 | `PUT` | `/v1/searchIndexes/restore` | Restore a soft deleted SearchIndex |
 | `DELETE` | `/v1/searchIndexes/{id}` | Delete a SearchIndex by id |
 | `GET` | `/v1/searchIndexes/{id}` | Get a SearchIndex by id |
@@ -1466,6 +1693,12 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/searchIndexes/{id}/versions` | List SearchIndex versions |
 | `GET` | `/v1/searchIndexes/{id}/versions/{version}` | Get a version of the SearchIndex |
 | `PUT` | `/v1/searchIndexes/{id}/vote` | Update Vote for a Entity |
+
+## services
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/overview` | Get service counts and one merged, name-sorted page of services |
 
 ## services/apiservices
 
@@ -1591,6 +1824,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/services/ingestionPipelines/progress/{fqn}/stream/{runId}` | Stream progress updates for a pipeline run |
 | `PUT` | `/v1/services/ingestionPipelines/progress/{fqn}/{runId}` | Update pipeline progress |
 | `PUT` | `/v1/services/ingestionPipelines/restore` | Restore a soft deleted ingestion pipeline |
+| `POST` | `/v1/services/ingestionPipelines/run` | Run the pipeline that owns an entity, scoped to that entity |
 | `GET` | `/v1/services/ingestionPipelines/status` | Check the airflow REST status |
 | `POST` | `/v1/services/ingestionPipelines/toggleIngestion/{id}` | Set an ingestion pipeline either as enabled or disabled |
 | `POST` | `/v1/services/ingestionPipelines/trigger/{id}` | Trigger an ingestion pipeline run |
@@ -1809,12 +2043,13 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/containers` | Create or update a Container |
 | `DELETE` | `/v1/containers/async/{id}` | Asynchronously delete a Container |
 | `PUT` | `/v1/containers/bulk` | Bulk create or update containers |
-| `PUT` | `/v1/containers/deleteStale` | Delete stale containers within a scope |
+| `DELETE` | `/v1/containers/deleteStale` | Delete stale containers within a scope |
 | `DELETE` | `/v1/containers/name/{fqn}` | Delete a Container by fully qualified name |
 | `GET` | `/v1/containers/name/{fqn}` | Get an Container by name |
 | `PATCH` | `/v1/containers/name/{fqn}` | Update a Container using name. |
 | `GET` | `/v1/containers/name/{fqn}/ancestors` | List ancestor containers (parent chain) |
 | `GET` | `/v1/containers/name/{fqn}/children` | List children containers |
+| `GET` | `/v1/containers/name/{fqn}/columns` | Get paginated data model columns of a container by fully qualified name |
 | `PUT` | `/v1/containers/restore` | Restore a soft deleted Container. |
 | `DELETE` | `/v1/containers/{id}` | Delete a Container |
 | `GET` | `/v1/containers/{id}` | Get an Object Store Container |
@@ -1855,6 +2090,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/system/security/config` | Get complete security configuration |
 | `PATCH` | `/v1/system/security/config` | Patch security configuration |
 | `PUT` | `/v1/system/security/config` | Update complete security configuration |
+| `POST` | `/v1/system/security/test-login/credentials` | Complete an LDAP or Basic Test Login with credentials |
+| `GET` | `/v1/system/security/test-login/result/{testSessionId}` | Get the outcome of a Test Login |
+| `POST` | `/v1/system/security/test-login/start` | Start an interactive Test Login against a candidate security configuration |
 | `POST` | `/v1/system/security/test-login/validate-token` | Validate an OIDC id_token against a candidate security configuration |
 | `POST` | `/v1/system/security/validate` | Validate security configuration |
 | `GET` | `/v1/system/services/count` | List all services counts |
@@ -1868,6 +2106,8 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/system/settings/glossaryTermRelationSettings/relationTypes/{name}` | Update a glossary term relation type |
 | `GET` | `/v1/system/settings/profilerConfiguration` | Get profiler configuration setting |
 | `PUT` | `/v1/system/settings/reset/{name}` | Reset a setting to default |
+| `GET` | `/v1/system/settings/source` | Where settings take their values from |
+| `POST` | `/v1/system/settings/source/{configType}/adopt` | Use the deployment configuration for stored settings |
 | `GET` | `/v1/system/settings/{name}` | Get a setting |
 | `PATCH` | `/v1/system/settings/{settingName}` | Patch a setting |
 | `GET` | `/v1/system/status` | Validate the OpenMetadata deployment |
@@ -1883,6 +2123,10 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PATCH` | `/v1/classifications/name/{fqn}` | Update a classification using name. |
 | `DELETE` | `/v1/classifications/name/{name}` | Delete classification by name |
 | `GET` | `/v1/classifications/name/{name}` | Get a classification by name |
+| `GET` | `/v1/classifications/name/{name}/export` | Export classification in CSV format |
+| `GET` | `/v1/classifications/name/{name}/exportAsync` | Export classification in CSV format |
+| `PUT` | `/v1/classifications/name/{name}/import` | Import tags from CSV to create, and update tags of a classification |
+| `PUT` | `/v1/classifications/name/{name}/importAsync` | Import tags of a classification in CSV format asynchronously |
 | `PUT` | `/v1/classifications/restore` | Restore a soft deleted classification |
 | `DELETE` | `/v1/classifications/{id}` | Delete classification by id |
 | `GET` | `/v1/classifications/{id}` | Get a classification by id |
@@ -1948,12 +2192,14 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/personas` | List personas |
 | `POST` | `/v1/personas` | Create a Persona |
 | `PUT` | `/v1/personas` | Update Persona |
+| `GET` | `/v1/personas/aiContext/status` | List the compiled AI context state of personas |
 | `DELETE` | `/v1/personas/async/{id}` | Asynchronously delete a Persona by id |
 | `GET` | `/v1/personas/me/context` | Get the materialized AI context for the caller's active persona |
 | `PATCH` | `/v1/personas/name/{fqn}` | Update a Persona using name. |
 | `GET` | `/v1/personas/name/{fqn}/context` | Get the materialized AI context for a persona by name |
 | `DELETE` | `/v1/personas/name/{name}` | Delete a Persona by name |
 | `GET` | `/v1/personas/name/{name}` | Get a Persona by name |
+| `GET` | `/v1/personas/search` | Search personas |
 | `DELETE` | `/v1/personas/{id}` | Delete a Persona by id |
 | `GET` | `/v1/personas/{id}` | Get a persona by id |
 | `PATCH` | `/v1/personas/{id}` | Update a Persona |
@@ -2020,7 +2266,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/users/exportAsync` | Export users in a team in CSV format |
 | `POST` | `/v1/users/generatePasswordResetLink` | Generate Password Reset Link |
 | `GET` | `/v1/users/generateRandomPwd` | Generate a random password |
-| `POST` | `/v1/users/generateToken` | Generate JWT Token for a User |
+| `POST` | `/v1/users/generateToken` | Generate JWT Token for a Bot User |
 | `PUT` | `/v1/users/generateToken/{id}` | Generate JWT Token for a Bot User |
 | `PUT` | `/v1/users/import` | Import from CSV to create, and update teams. |
 | `PUT` | `/v1/users/importAsync` | Import from CSV to create, and update teams asynchronously. |
@@ -2049,6 +2295,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/users/{id}/assets` | List assets owned by this user or their teams |
 | `GET` | `/v1/users/{id}/versions` | List user versions |
 | `GET` | `/v1/users/{id}/versions/{version}` | Get a version of the user |
+| `GET` | `/v1/users/{userId}/preferences` | Get user preferences |
+| `DELETE` | `/v1/users/{userId}/preferences/{type}` | Delete a user preference |
+| `PUT` | `/v1/users/{userId}/preferences/{type}` | Create or replace a user preference |
 
 ## testsupport
 
@@ -2072,10 +2321,11 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/topics` | Update topic |
 | `DELETE` | `/v1/topics/async/{id}` | Asynchronously delete a topic by id |
 | `PUT` | `/v1/topics/bulk` | Bulk create or update topics |
-| `PUT` | `/v1/topics/deleteStale` | Delete stale topics within a scope |
+| `DELETE` | `/v1/topics/deleteStale` | Delete stale topics within a scope |
 | `DELETE` | `/v1/topics/name/{fqn}` | Delete a topic by fully qualified name |
 | `GET` | `/v1/topics/name/{fqn}` | Get a topic by fully qualified name |
 | `PATCH` | `/v1/topics/name/{fqn}` | Update a topic using name. |
+| `GET` | `/v1/topics/name/{fqn}/columns` | Get paginated schema fields of a topic by fully qualified name |
 | `PUT` | `/v1/topics/restore` | Restore a soft deleted topic |
 | `DELETE` | `/v1/topics/{id}` | Delete a topic by id |
 | `GET` | `/v1/topics/{id}` | Get a topic by id |
@@ -2098,11 +2348,14 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/metadata/types` | Create or update a type |
 | `DELETE` | `/v1/metadata/types/async/{id}` | Asynchronously delete a type by id |
 | `GET` | `/v1/metadata/types/customProperties` |  |
+| `GET` | `/v1/metadata/types/fields/workflowTriggerFields` | Get workflow trigger fields |
 | `GET` | `/v1/metadata/types/fields/{entityType}` |  |
+| `GET` | `/v1/metadata/types/lifecycleStages` | Get entity lifecycle stages |
 | `GET` | `/v1/metadata/types/name/{entityType}/customProperties` | Get custom properties for an entity type |
 | `PATCH` | `/v1/metadata/types/name/{fqn}` | Update a type using name. |
 | `DELETE` | `/v1/metadata/types/name/{name}` | Delete a type by name |
 | `GET` | `/v1/metadata/types/name/{name}` | Get a type by name |
+| `GET` | `/v1/metadata/types/workflows/approvalEnforcedEntityTypes` | Get entity types whose edits are held for approval |
 | `DELETE` | `/v1/metadata/types/{id}` | Delete a type by id |
 | `GET` | `/v1/metadata/types/{id}` | Get a type |
 | `PATCH` | `/v1/metadata/types/{id}` | Update a type |

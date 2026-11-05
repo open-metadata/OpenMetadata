@@ -14,7 +14,7 @@ Filter information has been taken from the
 ES indexes definitions
 """
 
-from typing import Any, List, Optional, TypeVar  # noqa: UP035
+from typing import Any, TypeVar
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
@@ -43,7 +43,7 @@ class EntityLinkBuildingException(Exception):  # noqa: N818
     """
 
 
-def split(str_: str) -> List[str]:  # noqa: UP006
+def split(str_: str) -> list[str]:
     """
     Method to handle the splitting logic
     """
@@ -102,7 +102,7 @@ def get_table_or_column_fqn(entity_link: str) -> str:
     raise ValueError("Invalid entity link. {split_entity_link} does not look like a table or a column entity link")
 
 
-def get_column_name_or_none(entity_link: str) -> Optional[str]:  # noqa: UP045
+def get_column_name_or_none(entity_link: str) -> str | None:
     """It attempts to get a column from an entity link
 
     Args:
@@ -136,7 +136,7 @@ def get_entity_link(entity_type: Any, fqn: str, **kwargs) -> str:
 
 
 @get_entity_link_registry.add(Table)
-def _(fqn: str, column_name: Optional[str] = None) -> str:  # noqa: UP045
+def _(fqn: str, column_name: str | None = None) -> str:
     """From table fqn and column name get the entity_link"""
 
     if column_name:

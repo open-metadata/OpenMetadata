@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyPatternInstantiationResult.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyPatternInstantiationResult",
+  "description": "Typed result of converting an ontology pattern into a durable Draft change set.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyPatternInstantiationResult",
+  "properties": {
+    "patternType": {
+      "$ref": "ontologyPatternTemplate.json#/definitions/patternType"
+    },
+    "changeSet": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "terms": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": []
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyRelationship.json"
+      },
+      "default": []
+    }
+  },
+  "required": ["patternType", "changeSet", "terms", "relationships"],
+  "additionalProperties": false
+}

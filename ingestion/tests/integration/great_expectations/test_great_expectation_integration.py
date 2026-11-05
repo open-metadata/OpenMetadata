@@ -15,10 +15,9 @@ Validate great expectation integration
 
 import logging
 import os
-import subprocess
-import sys
 from datetime import datetime, timedelta
 from unittest import TestCase
+from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -44,7 +43,7 @@ class Base(DeclarativeBase):
 
 
 TEST_CASE_FQN = "test_sqlite.default.main.users.name.expect_column_values_to_not_be_null"
-SQLLITE_SHARD = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
+SQLLITE_SHARD = f"file:great_expectations_{uuid4().hex}?mode=memory&cache=shared&check_same_thread=False&uri=true"
 LOGGER = logging.getLogger(__name__)
 
 WORKFLOW_CONFIG = {
@@ -97,10 +96,6 @@ class Order(Base):
 class TestGreatExpectationIntegration(TestCase):
     """Test great expectation integration"""
 
-    engine = create_engine(
-        f"sqlite+pysqlite:///{SQLLITE_SHARD}",
-    )
-    session = create_and_bind_session(engine)
     server_config = OpenMetadataConnection(
         hostPort=WORKFLOW_CONFIG["openMetadataServerConfig"]["hostPort"],
         authProvider=WORKFLOW_CONFIG["openMetadataServerConfig"]["authProvider"],
@@ -108,11 +103,15 @@ class TestGreatExpectationIntegration(TestCase):
             jwtToken=WORKFLOW_CONFIG["openMetadataServerConfig"]["securityConfig"]["jwtToken"]
         ),
     )  # type: ignore
-    metadata = OpenMetadata(server_config)
 
     @classmethod
     def setUpClass(cls):
         """Set up class by ingesting metadata"""
+        cls.engine = create_engine(f"sqlite+pysqlite:///{SQLLITE_SHARD}")
+        cls.addClassCleanup(cls.engine.dispose)
+        cls.addClassCleanup(Base.metadata.drop_all, bind=cls.engine)
+        cls.session = create_and_bind_session(cls.engine)
+        cls.addClassCleanup(cls.session.close)
         gx_base_dir = os.path.join(os.path.dirname(__file__), "gx")  # noqa: PTH118, PTH120
         gx_expectations_dir = os.path.join(gx_base_dir, "expectations")  # noqa: PTH118
         gx_checkpoints_dir = os.path.join(gx_base_dir, "checkpoints")  # noqa: PTH118
@@ -126,15 +125,7 @@ class TestGreatExpectationIntegration(TestCase):
         if os.path.exists(checkpoint_file):  # noqa: PTH110
             os.remove(checkpoint_file)  # noqa: PTH107
 
-        try:
-            User.__table__.create(bind=cls.engine)
-        except Exception as exc:
-            LOGGER.warning(f"Table Already exists: {exc}")
-
-        try:
-            Order.__table__.create(bind=cls.engine)
-        except Exception as exc:
-            LOGGER.warning(f"Table Already exists: {exc}")
+        Base.metadata.create_all(bind=cls.engine)
 
         cls.session.query(Order).delete()
         cls.session.query(User).delete()
@@ -195,14 +186,18 @@ class TestGreatExpectationIntegration(TestCase):
         cls.session.add_all(orders_data)
         cls.session.commit()
 
+        cls.metadata = OpenMetadata(cls.server_config)
+        cls.addClassCleanup(cls._cleanup_service)
         ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
-        ingestion_workflow.execute()
-        ingestion_workflow.raise_from_status()
-        ingestion_workflow.print_status()
-        ingestion_workflow.stop()
+        try:
+            ingestion_workflow.execute()
+            ingestion_workflow.raise_from_status()
+            ingestion_workflow.print_status()
+        finally:
+            ingestion_workflow.stop()
 
     @classmethod
-    def tearDownClass(cls) -> None:
+    def _cleanup_service(cls) -> None:
         """
         Clean up
         """
@@ -217,25 +212,19 @@ class TestGreatExpectationIntegration(TestCase):
                 hard_delete=True,
             )
 
-        User.__table__.drop(bind=cls.engine)
-        Order.__table__.drop(bind=cls.engine)
-        cls.session.close()
-
     def test_great_expectation_integration(self):
         """
         Test great expectation integration with multi-table routing using expectation_suite_table_config_map
         Tests Issue #22929: query-based validations routing to correct tables
         """
-        self.install_gx_018x()
         import great_expectations as gx
 
-        try:
-            self.assertTrue(gx.__version__.startswith("0.18."))
-        except AssertionError as exc:
-            # module versions are cached, so we need to skip the test if the version is not 0.18.x
-            # e.g. we run the 1.x.x test before this one, 0.18.x version will be cached and used here
-            # The test will run if we run this test alone without the 1.x.x test
-            self.skipTest(f"GX version is not 0.18.x: {exc}")
+        if not gx.__version__.startswith("1."):
+            self.skipTest(f"GX 1.x.x is required, found {gx.__version__}")
+
+        from metadata.great_expectations.action import (
+            OpenMetadataValidationAction,
+        )
 
         # Verify both tables start with no test suites
         users_table = self.metadata.get_by_name(
@@ -257,29 +246,47 @@ class TestGreatExpectationIntegration(TestCase):
             os.path.dirname(os.path.abspath(__file__)),  # noqa: PTH100, PTH120
         )
         ometa_config = os.path.join(ge_folder, "gx/ometa_config")  # noqa: PTH118
-        context = gx.get_context(project_root_dir=ge_folder)
 
-        # Create query-based expectation suite for users table
+        context = gx.get_context()
+        conn_string = f"sqlite+pysqlite:///{SQLLITE_SHARD}"
+        data_source = context.data_sources.add_sqlite(
+            name="test_sqlite",
+            connection_string=conn_string,
+        )
+
+        # Create query-based validation for users table
         users_query = "SELECT id, name FROM users WHERE id > 0"
-        users_suite = context.add_expectation_suite("users_query_suite")
-        users_suite.add_expectation(
-            gx.core.ExpectationConfiguration(
-                expectation_type="expect_column_values_to_not_be_null",
-                kwargs={"column": "name"},
+        users_query_asset = data_source.add_query_asset(
+            name="users_query_asset",
+            query=users_query,
+        )
+        users_batch_def = users_query_asset.add_batch_definition_whole_table("users_batch")
+        users_suite = context.suites.add(gx.core.expectation_suite.ExpectationSuite(name="users_query_suite"))
+        users_suite.add_expectation(gx.expectations.ExpectColumnValuesToNotBeNull(column="name"))
+        users_validation_def = context.validation_definitions.add(
+            gx.core.validation_definition.ValidationDefinition(
+                name="users_validation",
+                data=users_batch_def,
+                suite=users_suite,
             )
         )
-        context.save_expectation_suite(users_suite)
 
-        # Create query-based expectation suite for orders table
+        # Create query-based validation for orders table
         orders_query = "SELECT id, amount FROM orders WHERE amount > 0"
-        orders_suite = context.add_expectation_suite("orders_query_suite")
-        orders_suite.add_expectation(
-            gx.core.ExpectationConfiguration(
-                expectation_type="expect_column_values_to_not_be_null",
-                kwargs={"column": "amount"},
+        orders_query_asset = data_source.add_query_asset(
+            name="orders_query_asset",
+            query=orders_query,
+        )
+        orders_batch_def = orders_query_asset.add_batch_definition_whole_table("orders_batch")
+        orders_suite = context.suites.add(gx.core.expectation_suite.ExpectationSuite(name="orders_query_suite"))
+        orders_suite.add_expectation(gx.expectations.ExpectColumnValuesToNotBeNull(column="amount"))
+        orders_validation_def = context.validation_definitions.add(
+            gx.core.validation_definition.ValidationDefinition(
+                name="orders_validation",
+                data=orders_batch_def,
+                suite=orders_suite,
             )
         )
-        context.save_expectation_suite(orders_suite)
 
         # Define the config map to route results to correct tables
         table_config_map = {
@@ -295,51 +302,22 @@ class TestGreatExpectationIntegration(TestCase):
             },
         }
 
-        # Create multi-table checkpoint with config map
-        checkpoint_config = {
-            "name": "multi_table_checkpoint",
-            "config_version": 1.0,
-            "class_name": "Checkpoint",
-            "validations": [
-                {
-                    "batch_request": {
-                        "datasource_name": "GEIntegrationTests",
-                        "data_connector_name": "default_runtime_data_connector_name",
-                        "data_asset_name": "users_query_asset",
-                        "runtime_parameters": {"query": users_query},
-                        "batch_identifiers": {"default_identifier_name": "users_check"},
-                    },
-                    "expectation_suite_name": "users_query_suite",
-                },
-                {
-                    "batch_request": {
-                        "datasource_name": "GEIntegrationTests",
-                        "data_connector_name": "default_runtime_data_connector_name",
-                        "data_asset_name": "orders_query_asset",
-                        "runtime_parameters": {"query": orders_query},
-                        "batch_identifiers": {"default_identifier_name": "orders_check"},
-                    },
-                    "expectation_suite_name": "orders_query_suite",
-                },
-            ],
-            "action_list": [
-                {
-                    "name": "openmetadata_action",
-                    "action": {
-                        "class_name": "OpenMetadataValidationAction",
-                        "module_name": "metadata.great_expectations.action",
-                        "database_service_name": "test_sqlite",
-                        "config_file_path": ometa_config,
-                        "database_name": "default",
-                        "schema_name": "main",
-                        "expectation_suite_table_config_map": table_config_map,
-                    },
-                }
-            ],
-        }
+        action = OpenMetadataValidationAction(
+            database_service_name="test_sqlite",
+            database_name="default",
+            schema_name="main",
+            config_file_path=ometa_config,
+            expectation_suite_table_config_map=table_config_map,
+        )
 
-        context.add_checkpoint(**checkpoint_config)
-        result = context.run_checkpoint(checkpoint_name="multi_table_checkpoint")
+        checkpoint = context.checkpoints.add(
+            gx.checkpoint.checkpoint.Checkpoint(
+                name="multi_table_checkpoint",
+                validation_definitions=[users_validation_def, orders_validation_def],
+                actions=[action],
+            )
+        )
+        result = checkpoint.run()
 
         assert result.success
 
@@ -368,7 +346,3 @@ class TestGreatExpectationIntegration(TestCase):
         )
         assert len(orders_test_suite.tests) >= 1
         assert any("amount" in str(test.fullyQualifiedName) for test in orders_test_suite.tests)
-
-    def install_gx_018x(self):
-        """Install GX 0.18.x at runtime as we support 0.18.x and 1.x.x and setup will install 1 default version"""
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "great-expectations~=0.18.0"])

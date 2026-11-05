@@ -28,6 +28,10 @@ export interface ElasticSearchConfiguration {
      */
     clusterAlias?: string;
     /**
+     * Maximum time in seconds to wait for a connection from the HTTP connection pool
+     */
+    connectionRequestTimeoutSecs: number;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs: number;
@@ -41,7 +45,9 @@ export interface ElasticSearchConfiguration {
      */
     keepAliveTimeoutSecs?: number;
     /**
-     * Maximum connections per host/route in the connection pool
+     * Maximum connections per host/route in the connection pool. Keep this below maxConnTotal
+     * for multi-host clusters so one slow host cannot consume the entire pool; single-host
+     * deployments can raise it up to maxConnTotal.
      */
     maxConnPerRoute?: number;
     /**
@@ -65,6 +71,10 @@ export interface ElasticSearchConfiguration {
      * comma-separated hosts with ports.
      */
     port?: number;
+    /**
+     * Enable gzip compression for HTTP request bodies sent to Elasticsearch.
+     */
+    requestCompressionEnabled?: boolean;
     /**
      * Http/Https connection scheme
      */
@@ -142,8 +152,8 @@ export interface NaturalLanguageSearch {
     keywordWeight?: number;
     /**
      * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
-     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
-     * cost of latency. Defaults to 2.
+     * search. num_candidates = max(k * multiplier, 100), clamped to Elasticsearch's engine
+     * maximum of 10,000. Higher values improve recall at the cost of latency. Defaults to 2.
      */
     knnNumCandidatesMultiplier?: number;
     /**
@@ -227,6 +237,7 @@ export interface HybridSearch {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }

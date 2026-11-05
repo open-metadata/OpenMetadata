@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import _ from 'lodash';
+import { toString } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -97,7 +97,7 @@ const CreateUserPage = () => {
 
           // Create a bot entity with botUser data
           await createBot({
-            botUser: _.toString(userResponse.fullyQualifiedName),
+            botUser: toString(userResponse.fullyQualifiedName),
             name: userResponse.name,
             displayName: userResponse.displayName,
             description: userResponse.description,
@@ -189,15 +189,17 @@ const CreateUserPage = () => {
       center
       pageTitle={t('label.create-entity', { entity: t('label.user') })}>
       <Card className="m-x-auto w-800">
-        <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
-        <div className="m-t-md">
-          <CreateUserComponent
-            forceBot={Boolean(bot)}
-            isLoading={isLoading}
-            onCancel={handleCancel}
-            onSave={handleAddUserSave}
-          />
-        </div>
+        <Card.Content>
+          <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
+          <div className="m-t-md">
+            <CreateUserComponent
+              forceBot={Boolean(bot)}
+              isLoading={isLoading}
+              onCancel={handleCancel}
+              onSave={handleAddUserSave}
+            />
+          </div>
+        </Card.Content>
       </Card>
     </PageLayoutV1>
   );

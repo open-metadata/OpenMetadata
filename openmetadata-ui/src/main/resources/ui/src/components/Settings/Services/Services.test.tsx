@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ColumnsType } from 'antd/lib/table';
 import React, { ReactNode } from 'react';
 import { DISABLED } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
@@ -20,8 +19,11 @@ import { useAirflowStatus } from '../../../context/AirflowStatusProvider/Airflow
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineServiceType } from '../../../generated/entity/data/pipeline';
 import LimitWrapper from '../../../hoc/LimitWrapper';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { getServices, searchService } from '../../../rest/serviceAPI';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { ListView } from '../../common/ListView/ListView.component';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import Services from './Services';
 
 let isDescription = true;
@@ -94,6 +96,10 @@ const mockGetServicesData = [
   },
 ];
 
+jest.mock('../../common/DomainFilterChip/DomainFilterChip.component', () => ({
+  DomainFilterChip: () => null,
+}));
+
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: jest.fn().mockReturnValue({
@@ -105,6 +111,13 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
       EditDisplayName: true,
       EditCustomFields: true,
     }),
+  }),
+}));
+
+jest.mock('../../../hooks/useTableFilters', () => ({
+  useTableFilters: () => ({
+    filters: {},
+    setFilters: jest.fn(),
   }),
 }));
 
@@ -142,6 +155,9 @@ jest.mock('../../../rest/serviceAPI', () => ({
 
 jest.mock('../../../utils/StringUtils', () => ({
   ...jest.requireActual('../../../utils/StringUtils'),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
@@ -168,12 +184,9 @@ jest.mock('../../../utils/ServiceUtils', () => ({
   getOptionalFields: jest.fn(),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return () => <div data-testid="error-placeholder">ErrorPlaceHolder</div>;
-});
-
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <p>OwnerLabel</p>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(<></>),
 }));
 
 jest.mock('../../../utils/TableColumn.util', () => ({
@@ -190,29 +203,50 @@ jest.mock('../../../utils/TableColumn.util', () => ({
 }));
 
 jest.mock('../../common/ListView/ListView.component', () => ({
-  ListView: jest.fn().mockImplementation(({ cardRenderer, tableProps }) => (
-    <div data-testid="mocked-list-view">
-      <div data-testid="card-renderer-container">
-        {cardRenderer({
-          ...mockService,
-          description: isDescription ? 'test description' : '',
-        })}
-      </div>
-      <div data-testid="table-props-container">
-        {tableProps.columns.map(
-          (column: ColumnsType[0], key: string) =>
-            column.render && (
-              <>
-                <div key={key}>{column.title as string}</div>
-                <div key={key}>
-                  {column.render(column.title, column, 1) as ReactNode}
-                </div>
-              </>
-            )
-        )}
-      </div>
-    </div>
-  )),
+  ListView: jest
+    .fn()
+    .mockImplementation(
+      ({
+        cardRenderer,
+        tableProps,
+        searchProps,
+        handleDeletedSwitchChange,
+      }) => (
+        <div data-testid="mocked-list-view">
+          <button
+            aria-label="trigger search"
+            data-testid="trigger-search"
+            onClick={() => searchProps.onSearch('no-such-service')}
+          />
+          <button
+            aria-label="trigger deleted switch"
+            data-testid="trigger-deleted-switch"
+            onClick={handleDeletedSwitchChange}
+          />
+          <div data-testid="empty-text-container">
+            {tableProps.locale?.emptyText}
+          </div>
+          <div data-testid="card-renderer-container">
+            {cardRenderer({
+              ...mockService,
+              description: isDescription ? 'test description' : '',
+            })}
+          </div>
+          <div data-testid="table-props-container">
+            {tableProps.columns.map((column: ColumnsType[0]) =>
+              column.render ? (
+                <React.Fragment key={column.key as string}>
+                  <div>{column.title as string}</div>
+                  <div>
+                    {column.render(column.title, column, 1) as ReactNode}
+                  </div>
+                </React.Fragment>
+              ) : null
+            )}
+          </div>
+        </div>
+      )
+    ),
 }));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
@@ -251,13 +285,6 @@ jest.mock('../../PageHeader/PageHeader.component', () =>
     ))
 );
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-
-  Tooltip: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-}));
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -276,6 +303,77 @@ jest.mock('../../../hoc/LimitWrapper', () => {
 });
 
 describe('Services', () => {
+  it('shows the pager when there are services, even a single page of them', async () => {
+    (getServices as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: mockGetServicesData, paging: { total: 1 } })
+    );
+    const pagingState = (usePaging as jest.Mock)();
+    (usePaging as jest.Mock).mockReturnValue({
+      ...pagingState,
+      showPagination: false,
+    });
+
+    await act(async () => {
+      render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
+    });
+
+    expect(ListView).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        customPaginationProps: expect.objectContaining({
+          showPagination: true,
+        }),
+      }),
+      expect.anything()
+    );
+
+    (usePaging as jest.Mock).mockReturnValue(pagingState);
+  });
+
+  it('hides the pager on an empty later page too', async () => {
+    (getServices as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: [], paging: { total: 20 } })
+    );
+    const pagingState = (usePaging as jest.Mock)();
+    (usePaging as jest.Mock).mockReturnValue({
+      ...pagingState,
+      currentPage: 2,
+    });
+
+    await act(async () => {
+      render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
+    });
+
+    expect(ListView).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        customPaginationProps: expect.objectContaining({
+          showPagination: false,
+        }),
+      }),
+      expect.anything()
+    );
+
+    (usePaging as jest.Mock).mockReturnValue(pagingState);
+  });
+
+  it('hides the pager when there are no services', async () => {
+    (getServices as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: [], paging: { total: 0 } })
+    );
+
+    await act(async () => {
+      render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
+    });
+
+    expect(ListView).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        customPaginationProps: expect.objectContaining({
+          showPagination: false,
+        }),
+      }),
+      expect.anything()
+    );
+  });
+
   it('should render Services', async () => {
     await act(async () => {
       render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
@@ -323,6 +421,105 @@ describe('Services', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith('/pipelineServices/add-service');
+  });
+
+  describe('empty placeholder', () => {
+    const emptyStateServices = [
+      {
+        name: ServiceCategory.DATABASE_SERVICES,
+        title: 'message.empty-database-services-title',
+        description: 'message.empty-database-services-description',
+        addServicePath: '/databaseServices/add-service',
+      },
+      {
+        name: ServiceCategory.API_SERVICES,
+        title: 'message.empty-api-services-title',
+        description: 'message.empty-api-services-description',
+        addServicePath: '/apiServices/add-service',
+      },
+      {
+        name: ServiceCategory.DRIVE_SERVICES,
+        title: 'message.empty-drive-services-title',
+        description: 'message.empty-drive-services-description',
+        addServicePath: '/driveServices/add-service',
+      },
+    ];
+
+    beforeEach(() => {
+      (checkPermission as jest.Mock).mockReturnValue(true);
+    });
+
+    emptyStateServices.map((service) => {
+      it(`should render the ${service.name} placeholder and route to its own add-service page`, async () => {
+        await act(async () => {
+          render(<Services serviceName={service.name} />);
+        });
+
+        expect(await screen.findByText(service.title)).toBeInTheDocument();
+        expect(screen.getByText(service.description)).toBeInTheDocument();
+
+        await act(async () => {
+          fireEvent.click(screen.getByTestId('add-placeholder-button'));
+        });
+
+        expect(mockNavigate).toHaveBeenCalledWith(service.addServicePath);
+      });
+    });
+
+    it('should hide the placeholder action without create permission', async () => {
+      (checkPermission as jest.Mock).mockReturnValue(false);
+
+      await act(async () => {
+        render(<Services serviceName={ServiceCategory.DATABASE_SERVICES} />);
+      });
+
+      expect(
+        await screen.findByText('message.empty-database-services-title')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('add-placeholder-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should keep the plain no-data placeholder in the deleted view', async () => {
+      await act(async () => {
+        render(<Services serviceName={ServiceCategory.DATABASE_SERVICES} />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger-deleted-switch'));
+      });
+
+      // "No deleted services" says nothing about whether the category has any, so inviting the user
+      // to connect their first one would be wrong.
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.empty-database-services-title')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should keep the plain no-data placeholder when a search matched nothing', async () => {
+      await act(async () => {
+        render(<Services serviceName={ServiceCategory.DATABASE_SERVICES} />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger-search'));
+      });
+
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.empty-database-services-title')
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('should render columns', async () => {

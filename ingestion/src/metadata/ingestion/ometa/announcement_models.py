@@ -15,7 +15,6 @@ Announcement models for the Python OMeta fluent client.
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional  # noqa: UP035
 
 from pydantic import ConfigDict
 
@@ -33,32 +32,32 @@ class Announcement(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: basic.Uuid
-    name: Optional[basic.EntityName] = None  # noqa: UP045
-    fullyQualifiedName: Optional[basic.FullyQualifiedEntityName] = None  # noqa: N815, UP045
-    displayName: Optional[str] = None  # noqa: N815, UP045
+    name: basic.EntityName | None = None
+    fullyQualifiedName: basic.FullyQualifiedEntityName | None = None  # noqa: N815
+    displayName: str | None = None  # noqa: N815
     description: basic.Markdown
-    entityLink: Optional[basic.EntityLink] = None  # noqa: N815, UP045
+    entityLink: basic.EntityLink | None = None  # noqa: N815
     startTime: basic.Timestamp  # noqa: N815
     endTime: basic.Timestamp  # noqa: N815
-    status: Optional[AnnouncementStatus] = None  # noqa: UP045
-    createdBy: Optional[str] = None  # noqa: N815, UP045
-    updatedBy: Optional[str] = None  # noqa: N815, UP045
-    owners: Optional[List[entityReference.EntityReference]] = None  # noqa: UP006, UP045
-    domains: Optional[List[entityReference.EntityReference]] = None  # noqa: UP006, UP045
-    createdAt: Optional[basic.Timestamp] = None  # noqa: N815, UP045
-    updatedAt: Optional[basic.Timestamp] = None  # noqa: N815, UP045
-    version: Optional[float] = None  # noqa: UP045
-    href: Optional[basic.Href] = None  # noqa: UP045
-    deleted: Optional[bool] = None  # noqa: UP045
+    status: AnnouncementStatus | None = None
+    createdBy: str | None = None  # noqa: N815
+    updatedBy: str | None = None  # noqa: N815
+    owners: list[entityReference.EntityReference] | None = None
+    domains: list[entityReference.EntityReference] | None = None
+    createdAt: basic.Timestamp | None = None  # noqa: N815
+    updatedAt: basic.Timestamp | None = None  # noqa: N815
+    version: float | None = None
+    href: basic.Href | None = None
+    deleted: bool | None = None
 
 
 class CreateAnnouncementRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: Optional[basic.EntityName] = None  # noqa: UP045
-    displayName: Optional[str] = None  # noqa: N815, UP045
+    name: basic.EntityName | None = None
+    displayName: str | None = None  # noqa: N815
     description: basic.Markdown
-    entityLink: Optional[basic.EntityLink] = None  # noqa: N815, UP045
+    entityLink: basic.EntityLink | None = None  # noqa: N815
     startTime: basic.Timestamp  # noqa: N815
     endTime: basic.Timestamp  # noqa: N815
-    owners: Optional[List[str]] = None  # noqa: UP006, UP045
+    owners: list[str] | None = None

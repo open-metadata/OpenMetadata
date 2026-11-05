@@ -13,10 +13,10 @@
 import json
 import secrets
 import traceback
+from collections.abc import Iterable
 from copy import deepcopy
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from google.cloud.exceptions import NotFound
 from google.cloud.monitoring_v3.types import TimeInterval
@@ -71,6 +71,7 @@ from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.schema_inference import InferenceReport
 
 logger = ingestion_logger()
 
@@ -94,11 +95,11 @@ class GcsSource(StorageServiceSource):
             project_id: get_reader(config_source=GCSConfig(), client=client)
             for project_id, client in self.gcs_clients.storage_client.clients.items()
         }
-        self._bucket_cache: Dict[str, Container] = {}  # noqa: UP006
-        self._unstructured_container_cache: Dict[str, Tuple[str, str]] = {}  # noqa: UP006
+        self._bucket_cache: dict[str, Container] = {}
+        self._unstructured_container_cache: dict[str, tuple[str, str]] = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GcsConnection = config.serviceConnection.root.config
         if not isinstance(connection, GcsConnection):
@@ -199,7 +200,7 @@ class GcsSource(StorageServiceSource):
         yield Either(right=container_request)
         self.register_record(container_request=container_request)
 
-    def get_size(self, bucket_name: str, project_id: str, file_path: str) -> Optional[float]:  # noqa: UP045
+    def get_size(self, bucket_name: str, project_id: str, file_path: str) -> float | None:
         """
         Method to get the size of the file
         """
@@ -214,7 +215,7 @@ class GcsSource(StorageServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
-    def is_valid_unstructured_file(self, accepted_extensions: List, key: str) -> bool:  # noqa: UP006
+    def is_valid_unstructured_file(self, accepted_extensions: list, key: str) -> bool:
         if WILD_CARD in accepted_extensions:
             return True
 
@@ -304,8 +305,11 @@ class GcsSource(StorageServiceSource):
         bucket_client = client.bucket(bucket_name)
         blob = GCSBlobAdapter(bucket_client, archive_path)
         structure_format = metadata_entry.structureFormat or ""
+        inference_report = InferenceReport()
         with open_archive_reader(blob, structure_format) as reader:
-            for entry, columns, entry_format in iter_archive_entries_with_schema(reader):
+            for entry, columns, entry_format in iter_archive_entries_with_schema(
+                reader, limits=self.inference_limits, report=inference_report
+            ):
                 yield from self._generate_inner_file_container(
                     entry=entry,
                     archive_ref=archive_ref,
@@ -314,13 +318,14 @@ class GcsSource(StorageServiceSource):
                     entry_format=entry_format,
                     bucket_response=bucket_response,
                 )
+        inference_report.emit(self.status, f"{bucket_name}/{archive_path}", self.inference_limits)
 
     def _generate_container_details(
         self,
         bucket_response: GCSBucketResponse,
         metadata_entry: MetadataEntry,
-        parent: Optional[EntityReference] = None,  # noqa: UP045
-    ) -> Optional[GCSContainerDetails]:  # noqa: UP045
+        parent: EntityReference | None = None,
+    ) -> GCSContainerDetails | None:
         bucket_name = bucket_response.name
 
         if not metadata_entry.structureFormat:
@@ -360,7 +365,7 @@ class GcsSource(StorageServiceSource):
         self,
         bucket_response: GCSBucketResponse,
         metadata_entry: MetadataEntry,
-        parent: Optional[EntityReference] = None,  # noqa: UP045
+        parent: EntityReference | None = None,
     ) -> Iterable[GCSContainerDetails]:
         try:
             prefix = self._get_sample_file_prefix(metadata_entry=metadata_entry)
@@ -381,7 +386,7 @@ class GcsSource(StorageServiceSource):
                 for key in candidate_keys:
                     metadata_entry_copy = deepcopy(metadata_entry)
                     metadata_entry_copy.dataPath = key.strip(KEY_SEPARATOR)
-                    structured_container: Optional[GCSContainerDetails] = self._generate_container_details(  # noqa: UP045
+                    structured_container: GCSContainerDetails | None = self._generate_container_details(
                         bucket_response=bucket_response,
                         metadata_entry=metadata_entry_copy,
                         parent=parent,
@@ -397,8 +402,8 @@ class GcsSource(StorageServiceSource):
     def _generate_structured_containers(
         self,
         bucket_response: GCSBucketResponse,
-        entries: List[MetadataEntry],  # noqa: UP006
-        parent: Optional[EntityReference] = None,  # noqa: UP045
+        entries: list[MetadataEntry],
+        parent: EntityReference | None = None,
     ) -> Iterable[GCSContainerDetails]:
         for metadata_entry in entries:
             logger.info(
@@ -417,11 +422,12 @@ class GcsSource(StorageServiceSource):
                     logger.debug(traceback.format_exc())
                 except Exception as exc:
                     logger.error(
-                        f"Unexpected error processing archive {metadata_entry.dataPath!r}: {exc}", exc_info=True
+                        f"Unexpected error processing archive {metadata_entry.dataPath!r}: {exc}",
+                        exc_info=True,
                     )
                 continue
             if metadata_entry.depth == 0:
-                structured_container: Optional[GCSContainerDetails] = self._generate_container_details(  # noqa: UP045
+                structured_container: GCSContainerDetails | None = self._generate_container_details(
                     bucket_response=bucket_response,
                     metadata_entry=metadata_entry,
                     parent=parent,
@@ -449,8 +455,8 @@ class GcsSource(StorageServiceSource):
                 creation_date=bucket.time_created,
             )
 
-    def fetch_buckets(self) -> List[GCSBucketResponse]:  # noqa: UP006
-        results: List[GCSBucketResponse] = []  # noqa: UP006
+    def fetch_buckets(self) -> list[GCSBucketResponse]:
+        results: list[GCSBucketResponse] = []
         try:
             if self.service_connection.bucketNames:
                 for bucket_name in self.service_connection.bucketNames:
@@ -520,7 +526,7 @@ class GcsSource(StorageServiceSource):
     def _clean_path(self, path: str) -> str:
         return path.strip(KEY_SEPARATOR)
 
-    def _get_full_path(self, bucket_name: str, prefix: str = None) -> Optional[str]:  # noqa: RUF013, UP045
+    def _get_full_path(self, bucket_name: str, prefix: str = None) -> str | None:  # noqa: RUF013
         """
         Method to get the full path of the file
         """
@@ -534,7 +540,7 @@ class GcsSource(StorageServiceSource):
 
         return full_path
 
-    def _get_sample_file_path(self, bucket: GCSBucketResponse, metadata_entry: MetadataEntry) -> Optional[str]:  # noqa: UP045
+    def _get_sample_file_path(self, bucket: GCSBucketResponse, metadata_entry: MetadataEntry) -> str | None:
         """
         Given a bucket and a metadata entry, returns the full path key to a file which can then be used to infer schema
         or None in the case of a non-structured metadata entry, or if no such keys can be found
@@ -563,7 +569,7 @@ class GcsSource(StorageServiceSource):
             logger.warning(f"Error when trying to list objects in GCS bucket {bucket.name} at prefix {prefix}")
             return None
 
-    def _get_bucket_source_url(self, bucket: GCSBucketResponse) -> Optional[str]:  # noqa: UP045
+    def _get_bucket_source_url(self, bucket: GCSBucketResponse) -> str | None:
         """
         Method to get the source url of GCS bucket
         """
@@ -574,7 +580,7 @@ class GcsSource(StorageServiceSource):
             logger.error(f"Unable to get source url: {exc}")
         return None
 
-    def _get_object_source_url(self, bucket: GCSBucketResponse, prefix: str, is_file: bool = False) -> Optional[str]:  # noqa: UP045
+    def _get_object_source_url(self, bucket: GCSBucketResponse, prefix: str, is_file: bool = False) -> str | None:
         """
         Method to get the source url of GCS object or directory
         """
@@ -597,8 +603,8 @@ class GcsSource(StorageServiceSource):
         self,
         bucket_name: str,
         project_id: str,
-        list_of_parent: List[str],  # noqa: UP006
-        parent: Optional[EntityReference] = None,  # noqa: UP045
+        list_of_parent: list[str],
+        parent: EntityReference | None = None,
     ):
         relative_path = ""  # Path relative to bucket for URLs
         sub_parent = parent
@@ -641,7 +647,7 @@ class GcsSource(StorageServiceSource):
         self,
         bucket_response: GCSBucketResponse,
         metadata_entry: MetadataEntry,
-        parent: Optional[EntityReference] = None,  # noqa: UP045
+        parent: EntityReference | None = None,
     ):
         bucket_name = bucket_response.name
         client = self.gcs_clients.storage_client.clients[bucket_response.project_id]
@@ -695,8 +701,8 @@ class GcsSource(StorageServiceSource):
     def _generate_unstructured_containers(
         self,
         bucket_response: GCSBucketResponse,
-        entries: List[MetadataEntry],  # noqa: UP006
-        parent: Optional[EntityReference] = None,  # noqa: UP045
+        entries: list[MetadataEntry],
+        parent: EntityReference | None = None,
     ) -> Iterable[GCSContainerDetails]:
         bucket_name = bucket_response.name
         for metadata_entry in entries:
@@ -733,7 +739,7 @@ class GcsSource(StorageServiceSource):
                     ),
                 )
 
-    def _load_metadata_file(self, bucket: GCSBucketResponse) -> Optional[StorageContainerConfig]:  # noqa: UP045
+    def _load_metadata_file(self, bucket: GCSBucketResponse) -> StorageContainerConfig | None:
         """
         Load the metadata template file from the root of the bucket, if it exists
         """

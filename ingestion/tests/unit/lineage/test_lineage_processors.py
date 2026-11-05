@@ -15,10 +15,11 @@ This module contains comprehensive tests for lineage processing functions
 including query, view, and stored procedure processors.
 """
 
+import inspect
 import unittest
 import uuid
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import networkx as nx
 
@@ -27,6 +28,9 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureCode,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
@@ -37,7 +41,9 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.models.topology import Queue as TopologyQueue
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.lineage_processors import (
     ProcedureAndQuery,
     QueryByProcedure,
@@ -47,7 +53,11 @@ from metadata.ingestion.source.database.lineage_processors import (
     query_lineage_processor,
     view_lineage_processor,
 )
+from metadata.ingestion.source.database.lineage_source import (
+    LineageSource as LineageSourceBase,
+)
 from metadata.ingestion.source.models import TableView
+from metadata.utils.fqn import get_query_checksum
 
 
 class TestLineageQueryIdentification(unittest.TestCase):
@@ -78,6 +88,8 @@ class TestQueryLineageProcessor(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_metadata = Mock()
+        self.mock_metadata.es_get_lineage_processed_queries = Mock(return_value={})
+        self.mock_metadata.es_get_upstream_entity_ids = Mock(return_value={})
         self.mock_queue = TopologyQueue()
         self.dialect = Dialect.MYSQL
         self.graph = nx.DiGraph()
@@ -101,9 +113,6 @@ class TestQueryLineageProcessor(unittest.TestCase):
                 query_type="SELECT",
             ),
         ]
-
-        # Mock the ES query check
-        self.mock_metadata.es_get_queries_with_lineage = Mock(return_value=set())
 
         # Mock get_lineage_by_query
         mock_lineage = Either(
@@ -140,7 +149,7 @@ class TestQueryLineageProcessor(unittest.TestCase):
             self.assertIsInstance(results[0], Either)
 
     def test_query_already_processed_check(self):
-        """Test that already processed queries are skipped"""
+        """Test that already processed queries are skipped while their edges exist"""
         query = TableQuery(
             query="INSERT INTO target SELECT * FROM source",
             databaseName="test_db",
@@ -148,9 +157,14 @@ class TestQueryLineageProcessor(unittest.TestCase):
             serviceName="test_service",
         )
 
-        # Mock that query is already processed
+        # Mock that query is already processed and the edge between its tables still exists
         with patch("metadata.utils.fqn.get_query_checksum", return_value="checksum123"):
-            self.mock_metadata.es_get_queries_with_lineage = Mock(return_value={"checksum123"})
+            self.mock_metadata.es_get_lineage_processed_queries = Mock(
+                return_value={"checksum123": {"source-id", "target-id"}}
+            )
+            self.mock_metadata.es_get_upstream_entity_ids = Mock(
+                return_value={"source-id": set(), "target-id": {"source-id"}}
+            )
 
             # Process query
             query_lineage_processor(
@@ -179,8 +193,6 @@ class TestQueryLineageProcessor(unittest.TestCase):
             serviceName="service1",
         )
 
-        self.mock_metadata.es_get_queries_with_lineage = Mock(return_value=set())
-
         with patch(
             "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query",
             return_value=[],
@@ -201,6 +213,146 @@ class TestQueryLineageProcessor(unittest.TestCase):
 
             # Verify service names were extended
             # This would be checked in the get_lineage_by_query call
+
+
+COPY_QUERY = "INSERT INTO target SELECT * FROM source"
+SOURCE_ID, OTHER_SOURCE_ID, TARGET_ID = (str(uuid.uuid4()) for _ in range(3))
+
+
+class FakeLineageCatalog:
+    """Stands in for the OpenMetadata search lookups: the queries the service already
+    processed for lineage with the tables recorded on them, and the upstream lineage
+    sources of each indexed table."""
+
+    def __init__(self, processed=None, upstreams=None):
+        self._processed = processed or {}
+        self._upstreams = upstreams or {}
+
+    def es_get_lineage_processed_queries(self, service_name, checksums):
+        return {checksum: ids for checksum, ids in self._processed.items() if checksum in checksums}
+
+    def es_get_upstream_entity_ids(self, entity, entity_ids):
+        return {table_id: self._upstreams[table_id] for table_id in entity_ids if table_id in self._upstreams}
+
+
+def _edge(from_id, to_id, source="source"):
+    return Either(
+        right=OMetaFQNLineageRequest(
+            from_entity_fqn=f"svc.db.schema.{source}",
+            from_entity_type="table",
+            to_entity_fqn="svc.db.schema.target",
+            to_entity_type="table",
+            from_entity_id=from_id,
+            to_entity_id=to_id,
+        )
+    )
+
+
+def _process_copy_query(catalog, lineage):
+    queue = TopologyQueue()
+    with patch(
+        "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query",
+        return_value=lineage,
+    ):
+        query_lineage_processor(
+            table_queries=[
+                TableQuery(query=COPY_QUERY, serviceName="test_service", databaseName="db", databaseSchema="schema")
+            ],
+            queue=queue,
+            metadata=catalog,
+            dialect=Dialect.MYSQL,
+            graph=nx.DiGraph(),
+            processCrossDatabaseLineage=False,
+            crossDatabaseServiceNames=[],
+            parsingTimeoutLimit=10,
+            serviceName="test_service",
+            parser_type=QueryParserType.Auto,
+        )
+    return [either.right for either in queue.process() if either.right is not None]
+
+
+def _linked_table_ids(records):
+    (query,) = [record for record in records if isinstance(record, CreateQueryRequest)]
+    return {model_str(ref.id) for ref in query.queryUsedIn.root}
+
+
+class TestProcessedQueryLineage:
+    """A processed query is skipped only while the edges between its tables still exist"""
+
+    def test_query_whose_edges_are_intact_is_skipped(self):
+        catalog = FakeLineageCatalog(
+            processed={get_query_checksum(COPY_QUERY): {SOURCE_ID, TARGET_ID}},
+            upstreams={SOURCE_ID: set(), TARGET_ID: {SOURCE_ID}},
+        )
+
+        assert _process_copy_query(catalog, [_edge(SOURCE_ID, TARGET_ID)]) == []
+
+    def test_query_is_reprocessed_once_a_table_it_connected_is_recreated(self):
+        recreated_source_id = str(uuid.uuid4())
+        catalog = FakeLineageCatalog(
+            processed={get_query_checksum(COPY_QUERY): {SOURCE_ID, TARGET_ID}},
+            upstreams={recreated_source_id: set(), TARGET_ID: set()},
+        )
+
+        records = _process_copy_query(catalog, [_edge(recreated_source_id, TARGET_ID)])
+
+        assert [type(record) for record in records] == [OMetaFQNLineageRequest, CreateQueryRequest]
+        assert records[1].processedLineage is True
+        assert _linked_table_ids(records) == {recreated_source_id, TARGET_ID}
+
+    def test_query_is_reprocessed_when_usage_recorded_the_recreated_table(self):
+        """Usage rewrites the recorded tables from the current relationships, so the
+        re-created table's new id is recorded and every recorded table is indexed"""
+        recreated_source_id = str(uuid.uuid4())
+        catalog = FakeLineageCatalog(
+            processed={get_query_checksum(COPY_QUERY): {recreated_source_id, TARGET_ID}},
+            upstreams={recreated_source_id: set(), TARGET_ID: {SOURCE_ID}},
+        )
+
+        records = _process_copy_query(catalog, [_edge(recreated_source_id, TARGET_ID)])
+
+        assert _linked_table_ids(records) == {recreated_source_id, TARGET_ID}
+
+    def test_query_is_reprocessed_when_one_of_its_edges_is_missing(self):
+        catalog = FakeLineageCatalog(
+            processed={get_query_checksum(COPY_QUERY): {SOURCE_ID, OTHER_SOURCE_ID, TARGET_ID}},
+            upstreams={SOURCE_ID: set(), OTHER_SOURCE_ID: set(), TARGET_ID: {SOURCE_ID}},
+        )
+
+        records = _process_copy_query(
+            catalog,
+            [_edge(SOURCE_ID, TARGET_ID), _edge(OTHER_SOURCE_ID, TARGET_ID, source="other_source")],
+        )
+
+        assert _linked_table_ids(records) == {SOURCE_ID, OTHER_SOURCE_ID, TARGET_ID}
+
+    def test_query_processed_before_its_tables_were_recorded_is_reprocessed(self):
+        catalog = FakeLineageCatalog(
+            processed={get_query_checksum(COPY_QUERY): set()},
+            upstreams={SOURCE_ID: set(), TARGET_ID: {SOURCE_ID}},
+        )
+
+        records = _process_copy_query(catalog, [_edge(SOURCE_ID, TARGET_ID)])
+
+        assert _linked_table_ids(records) == {SOURCE_ID, TARGET_ID}
+
+    def test_processed_query_is_stored_once_with_every_table_its_edges_connect(self):
+        records = _process_copy_query(
+            FakeLineageCatalog(),
+            [_edge(SOURCE_ID, TARGET_ID), _edge(OTHER_SOURCE_ID, TARGET_ID, source="other_source")],
+        )
+
+        assert [type(record) for record in records] == [
+            OMetaFQNLineageRequest,
+            OMetaFQNLineageRequest,
+            CreateQueryRequest,
+        ]
+        assert _linked_table_ids(records) == {SOURCE_ID, OTHER_SOURCE_ID, TARGET_ID}
+
+    def test_query_without_lineage_is_not_marked_processed(self):
+        failure = Either(left=StackTraceError(name="Lineage", error="Unparsable query", stackTrace=""))
+
+        assert _process_copy_query(FakeLineageCatalog(), [failure]) == []
 
 
 class TestViewLineageProcessor(unittest.TestCase):
@@ -316,6 +468,111 @@ class TestViewLineageProcessor(unittest.TestCase):
                 results = list(self.mock_queue.process())
                 self.assertGreater(len(results), 0)
                 # The OMetaLineageRequest should have override_lineage=True
+
+
+class TestViewLineageProcessorArgs(unittest.TestCase):
+    """
+    `yield_view_lineage` hands the processor a positional args tuple. Nothing else binds
+    the two together, so pin the contract: the tuple has to keep matching the processor
+    signature, extension included.
+    """
+
+    def test_args_bind_to_the_processor_signature(self):
+        source = MagicMock()
+        extension = Mock(name="view_lineage_extension")
+        source.get_view_lineage_extension.return_value = extension
+        source.generate_lineage_with_processes.return_value = []
+
+        list(LineageSourceBase.yield_view_lineage(source))
+
+        # generate_lineage_with_processes(producer_fn, processor_fn, args, ...)
+        _, processor_fn, args = source.generate_lineage_with_processes.call_args.args
+        self.assertIs(processor_fn, view_lineage_processor)
+
+        # the framework calls processor_fn(chunk, queue, *args)
+        bound = inspect.signature(view_lineage_processor).bind([], None, *args)
+        self.assertIs(bound.arguments["extension"], extension)
+
+    def test_sources_without_an_extension_pass_none(self):
+        self.assertIsNone(LineageSourceBase.get_view_lineage_extension(object()))
+
+
+class TestViewLineageOverrideScope(unittest.TestCase):
+    """
+    `overrideViewLineage` drops the existing view lineage of the entity an edge points
+    at, so it must only be honoured while the edge points at the view being processed.
+    """
+
+    VIEW_FQN = "test_service.db1.schema1.view1"
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.mock_metadata = Mock()
+        self.mock_queue = TopologyQueue()
+        self.view = TableView(
+            table_name="view1",
+            db_name="db1",
+            schema_name="schema1",
+            view_definition="CREATE MATERIALIZED VIEW schema1.view1 TO schema1.target AS SELECT * FROM schema1.table1",
+        )
+
+    def _process(self, to_entity_fqn: str, override_view_lineage: bool = True, view_fqn: str = "") -> bool:
+        """Run the processor on a single edge and return the resulting override flag"""
+        view_fqn = self.VIEW_FQN if view_fqn == "" else view_fqn
+        lineage = Either(
+            right=OMetaFQNLineageRequest(
+                from_entity_fqn="test_service.db1.schema1.table1",
+                from_entity_type="table",
+                to_entity_fqn=to_entity_fqn,
+                to_entity_type="table",
+                lineage_details=LineageDetails(source=LineageSource.ViewLineage),
+            )
+        )
+
+        with patch(  # noqa: SIM117
+            "metadata.ingestion.source.database.lineage_processors.get_view_lineage",
+            return_value=[lineage],
+        ):
+            with patch("metadata.utils.fqn.build", return_value=view_fqn):
+                view_lineage_processor(
+                    views=[self.view],
+                    queue=self.mock_queue,
+                    metadata=self.mock_metadata,
+                    service_name="test_service",
+                    connectionType="clickhouse",
+                    processCrossDatabaseLineage=False,
+                    crossDatabaseServiceNames=[],
+                    parsingTimeoutLimit=10,
+                    overrideViewLineage=override_view_lineage,
+                    parser_type=QueryParserType.Auto,
+                )
+
+        results = list(self.mock_queue.process())
+        self.assertEqual(len(results), 1)
+        return results[0].right.override_lineage
+
+    def test_edge_into_the_view_is_overridden(self):
+        """The upstream edge of the view keeps replacing the previous view lineage"""
+        self.assertTrue(self._process(to_entity_fqn=self.VIEW_FQN))
+
+    def test_edge_into_the_view_is_matched_case_insensitively(self):
+        """Entity FQNs are not necessarily cased like the ingested view name"""
+        self.assertTrue(self._process(to_entity_fqn=self.VIEW_FQN.upper()))
+
+    def test_edge_into_another_table_is_not_overridden(self):
+        """
+        A materialized view writing into its `TO` target must not drop the lineage the
+        sibling views writing into that same table created.
+        """
+        self.assertFalse(self._process(to_entity_fqn="test_service.db1.schema1.target"))
+
+    def test_override_disabled_stays_disabled(self):
+        """The flag is never turned on by the edge itself"""
+        self.assertFalse(self._process(to_entity_fqn=self.VIEW_FQN, override_view_lineage=False))
+
+    def test_a_view_without_an_fqn_keeps_the_flag(self):
+        """`fqn.build` is optional-typed: an unknown view FQN decides nothing"""
+        self.assertTrue(self._process(to_entity_fqn="test_service.db1.schema1.target", view_fqn=None))
 
 
 class TestProcedureLineageProcessor(unittest.TestCase):
@@ -508,7 +765,8 @@ class TestMemoryEfficiency(unittest.TestCase):
         ]
 
         mock_metadata = Mock()
-        mock_metadata.es_get_queries_with_lineage = Mock(return_value=set())
+        mock_metadata.es_get_lineage_processed_queries = Mock(return_value={})
+        mock_metadata.es_get_upstream_entity_ids = Mock(return_value={})
         mock_queue = TopologyQueue()
 
         with patch(

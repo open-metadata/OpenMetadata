@@ -12,6 +12,12 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type ResponseDataType = {
@@ -50,33 +56,35 @@ export class PolicyClass {
   }
 
   async create(apiContext: APIRequestContext, rules: PolicyRulesType[]) {
-    const response = await apiContext.post('/api/v1/policies', {
+    const data = await createOrFetch(apiContext, {
+      label: 'PoliciesClass.create',
+      createPath: '/api/v1/policies',
+      fqnSegments: [this.data.name],
       data: { ...this.data, rules },
     });
-    const data = await response.json();
     this.responseData = data;
 
     return data;
   }
 
   async patch(apiContext: APIRequestContext, patchData: Operation[]) {
-    const response = await apiContext.patch(
-      `/api/v1/policies/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/policies/${this.responseData.id}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
-    const data = await response.json();
+    const data = await okJson(response, 'PoliciesClass.patch');
     this.responseData = data;
 
     return data;
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/policies/${this.responseData.id}?hardDelete=true&recursive=true`
     );
 

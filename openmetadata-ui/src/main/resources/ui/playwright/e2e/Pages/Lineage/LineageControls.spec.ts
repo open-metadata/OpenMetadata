@@ -13,7 +13,6 @@
 import { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
-import { SidebarItem } from '../../../constant/sidebar';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { TableClass } from '../../../support/entity/TableClass';
@@ -25,12 +24,12 @@ import {
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-  clickLineageNode,
   connectEdgeBetweenNodesViaAPI,
+  dismissLineageMapOnboarding,
+  fitToScreen,
   performZoomOut,
   visitLineageTab,
 } from '../../../utils/lineage';
-import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
 
 const table = new TableClass();
@@ -60,11 +59,13 @@ test.beforeAll(async ({ browser }) => {
       },
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          type: 'domain',
-          id: EntityDataClass.domain1.responseData.id,
-        },
+        path: '/domains',
+        value: [
+          {
+            type: 'domain',
+            id: EntityDataClass.domain1.responseData.id,
+          },
+        ],
       },
     ],
   });
@@ -93,7 +94,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterEach(async ({ page }) => {
-  await page.goto('about:blank');
+  await page.goto('about:blank', { waitUntil: 'domcontentloaded' });
 });
 
 // ====================
@@ -124,27 +125,22 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(zoomOutBtn).toBeVisible();
   });
 
-  test('Verify fit view options menu', async ({ page }) => {
-    await page.getByTestId('fit-screen').click();
-    await expect(
-      page.getByRole('menu', { name: 'Lineage View Options' })
-    ).toBeVisible();
-
-    await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
-
+  test('Verify fit to screen brings the root node into view', async ({
+    page,
+  }) => {
     const tableFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
-    await clickLineageNode(page, tableFqn);
+    const tableNode = page.getByTestId(`lineage-node-${tableFqn}`);
+    const zoomLevel = page.getByTestId('zoom-level');
 
-    await page.getByTestId('drawer-close-icon').click();
-
-    await page.getByTestId('fit-screen').click();
-    await page.getByRole('menuitem', { name: 'Refocused to selected' }).click();
-
-    await page.getByTestId('fit-screen').click();
-    await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
+    for (let i = 0; i < 5; i++) {
+      await page.getByTestId('zoom-in').click();
+    }
+    const zoomedIn = await zoomLevel.textContent();
 
     await page.getByTestId('fit-screen').click();
-    await page.getByRole('menuitem', { name: 'Refocused to home' }).click();
+
+    await expect(zoomLevel).not.toHaveText(zoomedIn ?? '');
+    await expect(tableNode).toBeInViewport();
   });
 
   test('Verify minimap toggle functionality', async ({ page }) => {
@@ -162,12 +158,12 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // before each step has fullscreen=true
     expect(page.url()).toContain('fullscreen=true');
 
-    await page.getByTestId('exit-full-screen').click();
+    await page.getByRole('button', { name: 'Exit Full Screen' }).click();
 
-    expect(page.url()).not.toContain('fullscreen=true');
-    await page.getByTestId('full-screen').click();
+    await expect.poll(() => page.url()).not.toContain('fullscreen=true');
+    await page.getByRole('button', { name: 'Full Screen View' }).click();
 
-    expect(page.url()).toContain('fullscreen=true');
+    await expect.poll(() => page.url()).toContain('fullscreen=true');
   });
 });
 
@@ -219,19 +215,19 @@ test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test.describe('Error Handling', () => {
     test('Verify invalid entity search handling', async ({ page }) => {
-      await sidebarClick(page, SidebarItem.LINEAGE);
+      const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
+      // The retained global lineage page has no entry in the current sidebar.
+      await page.goto('/lineage');
+      expect((await sceneResponse).ok()).toBeTruthy();
+      await dismissLineageMapOnboarding(page);
 
       await waitForAllLoadersToDisappear(page);
 
       const searchSelect = page.getByTestId('search-entity-select');
       await expect(searchSelect).toBeVisible();
 
-      await searchSelect.click();
-
-      await page
-        .locator(
-          '[data-testid="search-entity-select"] .ant-select-selection-search-input'
-        )
+      await searchSelect
+        .getByRole('combobox')
         .fill('invalid_fqn_does_not_exist_12345');
 
       const noResultsText = page.getByText(/no match/i);
@@ -258,5 +254,97 @@ test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await emptyTable.delete(apiContext);
       await afterAction();
     });
+  });
+});
+
+test.describe('Node drag', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test('Verify holding a dragged node at the canvas edge auto-pans and hides only its edges', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const root = new TableClass();
+    const dragged = new TopicClass();
+    const sibling = new TableClass();
+    const getFqn = (entity: TableClass | TopicClass) =>
+      get(entity, 'entityResponseData.fullyQualifiedName', '');
+
+    try {
+      await Promise.all([
+        root.create(apiContext),
+        dragged.create(apiContext),
+        sibling.create(apiContext),
+      ]);
+      await Promise.all([
+        connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          { id: root.entityResponseData.id, type: 'table' },
+          { id: dragged.entityResponseData.id, type: 'topic' }
+        ),
+        connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          { id: root.entityResponseData.id, type: 'table' },
+          { id: sibling.entityResponseData.id, type: 'table' }
+        ),
+      ]);
+      await root.visitEntityPage(page);
+      await visitLineageTab(page);
+      await fitToScreen(page);
+
+      const draggedNode = page.getByTestId(`lineage-node-${getFqn(dragged)}`);
+      const draggedEdge = page.getByTestId(
+        `edge-${getFqn(root)}-${getFqn(dragged)}`
+      );
+      const siblingEdge = page.getByTestId(
+        `edge-${getFqn(root)}-${getFqn(sibling)}`
+      );
+      const canvas = page.locator('.react-flow__pane');
+      const viewport = page.locator('.react-flow__viewport');
+      await expect(draggedEdge).toHaveCount(1);
+      await expect(siblingEdge).toHaveCount(1);
+
+      const nodeBox = await draggedNode.boundingBox();
+      const canvasBox = await canvas.boundingBox();
+      if (!nodeBox || !canvasBox) {
+        throw new Error('Lineage node or canvas has no bounding box');
+      }
+      const getPanY = async () =>
+        Number(
+          /translate\([^,]+,\s*(-?[\d.]+)px/.exec(
+            (await viewport.getAttribute('style')) ?? ''
+          )?.[1] ?? 0
+        );
+      const startPanY = await getPanY();
+      const grabX = nodeBox.x + nodeBox.width / 2;
+
+      await page.mouse.move(grabX, nodeBox.y + 8);
+      await page.mouse.down();
+      await page.mouse.move(grabX, canvasBox.y + 4, { steps: 10 });
+
+      // Auto-pan keeps scrolling while the pointer rests at the edge; hold
+      // until it has panned far enough to have run for many frames.
+      await expect
+        .poll(async () => (await getPanY()) - startPanY, { timeout: 15_000 })
+        .toBeGreaterThan(1500);
+      // Only the dragged node's edges are hidden while it moves.
+      await expect(draggedEdge).toHaveCount(0);
+      await expect(siblingEdge).toHaveCount(1);
+      await page.mouse.up();
+
+      // A "Maximum update depth exceeded" crash unmounts the canvas.
+      await expect(canvas).toBeVisible();
+      await expect(draggedEdge).toHaveCount(1);
+      // The drop position was committed: the node stays under the pointer
+      // instead of snapping back to where the drag started.
+      await expect
+        .poll(async () => (await draggedNode.boundingBox())?.y ?? Infinity)
+        .toBeLessThan(canvasBox.y + 50);
+    } finally {
+      await Promise.all([
+        root.delete(apiContext),
+        dragged.delete(apiContext),
+        sibling.delete(apiContext),
+      ]);
+      await afterAction();
+    }
   });
 });

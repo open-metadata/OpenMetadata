@@ -12,8 +12,6 @@
 OpenMetadata package initialization.
 """
 
-from typing import Type  # noqa: UP035
-
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.registry import MetricRegistry
@@ -29,6 +27,6 @@ container = DependencyContainer()
 
 # Register the source loader
 container.register(SourceLoader, DefaultSourceLoader)
-container.register(Type[MetricRegistry], lambda: Metrics)  # noqa: UP006
-container.register(Type[ProfilerResolver], lambda: DefaultProfilerResolver)  # noqa: UP006
-container.register(Type[ProfilerProcessorConfig], lambda: ProfilerProcessorConfig)  # noqa: UP006
+container.register(type[MetricRegistry], lambda: Metrics)
+container.register(type[ProfilerResolver], lambda: DefaultProfilerResolver)
+container.register(type[ProfilerProcessorConfig], lambda: ProfilerProcessorConfig)

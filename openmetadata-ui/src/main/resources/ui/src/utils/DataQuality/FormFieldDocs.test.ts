@@ -134,6 +134,22 @@ describe('loadFormFieldDocs', () => {
     expect(docs.testType).toContain('Choose the type of test');
   });
 
+  it('reads from the given docs folder and caches each folder separately', async () => {
+    mockFetchMarkdownFile.mockResolvedValue(SAMPLE_MD);
+
+    await loadFormFieldDocs('SampleFormG', 'SSO');
+    await loadFormFieldDocs('SampleFormG');
+
+    expect(mockFetchMarkdownFile).toHaveBeenNthCalledWith(
+      1,
+      'en-US/SSO/SampleFormG.md'
+    );
+    expect(mockFetchMarkdownFile).toHaveBeenNthCalledWith(
+      2,
+      'en-US/OpenMetadata/SampleFormG.md'
+    );
+  });
+
   it('caches per form so the file is fetched at most once', async () => {
     mockFetchMarkdownFile.mockResolvedValue(SAMPLE_MD);
 
@@ -182,7 +198,7 @@ describe('loadFormFieldDocs', () => {
     // The size cap can drop an in-flight entry, after which a later call
     // re-fetches under the same key. When the original failure finally lands,
     // it must not delete that newer promise on its way out.
-    let failFirst: (error: Error) => void = () => undefined;
+    let failFirst: (error: Error) => void = (_error) => undefined;
     mockFetchMarkdownFile.mockImplementationOnce(
       () =>
         new Promise((_resolve, reject) => {

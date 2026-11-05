@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { Skeleton } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import { FixedType } from 'rc-table/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -27,16 +25,15 @@ import {
 } from '../../../../../constants/constants';
 import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import {
-  IngestionServicePermission,
-  ResourceEntity,
-} from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { IngestionServicePermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { SORT_ORDER } from '../../../../../enums/common.enum';
+import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
-import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
+import { columnSorter } from '../../../../../utils/EntitySortUtils';
 import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
   renderNameField,
@@ -52,16 +49,24 @@ import {
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import Table from '../../../../common/Table/Table';
+import { ColumnsType } from '../../../../common/Table/Table.interface';
+import Table from '../../../../common/Table/TableV2';
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
-import './ingestion-list-table.less';
 import {
   IngestionListTableProps,
   ModifiedIngestionPipeline,
 } from './IngestionListTable.interface';
 import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
+
+// Derived from the table's own prop types.
+type ColumnSortOrder = ColumnsType<IngestionPipeline>[number]['sortOrder'];
+type TableChangeHandler = NonNullable<
+  NonNullable<IngestionListTableProps['extraTableProps']>['onChange']
+>;
+
+const INGESTION_EMPTY_CARD_CLASS = 'tw:relative tw:py-8';
 
 function IngestionListTable({
   tableContainerClassName = '',
@@ -91,6 +96,8 @@ function IngestionListTable({
   customRenderNameField,
   tableClassName,
   searchText,
+  sortOrder,
+  onSortChange,
 }: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -194,12 +201,30 @@ function IngestionListTable({
     });
   }, [ingestionData]);
 
-  const { isFetchingStatus, platform } = useMemo(
+  const { isAirflowAvailable, isFetchingStatus, platform } = useMemo(
     () => airflowInformation ?? ({} as AirflowStatusContextType),
     [airflowInformation]
   );
 
   const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
+
+  // `isAirflowAvailable` is seeded false, so it only reads as "unreachable" once the status call
+  // has answered.
+  const isAirflowUnavailable = !isFetchingStatus && !isAirflowAvailable;
+
+  // The pipeline list is fetched independently of the airflow status now, so an empty table here
+  // really does mean "none exist". `AirflowMessageBanner` carries the unreachable case.
+  const defaultEmptyPlaceholder = useMemo(
+    () =>
+      getErrorPlaceHolder(
+        ingestionData.length,
+        isPlatFormDisabled,
+        theme,
+        pipelineType,
+        INGESTION_EMPTY_CARD_CLASS
+      ),
+    [ingestionData.length, isPlatFormDisabled, pipelineType, theme]
+  );
 
   const handleDeleteConfirm = useCallback(async () => {
     await handleDelete(deleteSelection.id, getEntityName(deleteSelection));
@@ -240,6 +265,7 @@ function IngestionListTable({
           ingestionPipelinePermissions={
             ingestionPipelinePermissions?.[record.name]
           }
+          isDisabled={isAirflowUnavailable}
           pipeline={record}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
@@ -249,6 +275,7 @@ function IngestionListTable({
       );
     },
     [
+      isAirflowUnavailable,
       isFetchingStatus,
       isPlatFormDisabled,
       deployIngestion,
@@ -264,6 +291,44 @@ function IngestionListTable({
     ]
   );
 
+  const isServerSorted = !isUndefined(onSortChange);
+
+  const columnSortOrder = useMemo<ColumnSortOrder>(() => {
+    let order: ColumnSortOrder = null;
+    if (sortOrder === SORT_ORDER.ASC) {
+      order = 'ascend';
+    } else if (sortOrder === SORT_ORDER.DESC) {
+      order = 'descend';
+    }
+
+    return order;
+  }, [sortOrder]);
+
+  const toSortOrder = (order?: ColumnSortOrder): SORT_ORDER | undefined => {
+    let updatedSortOrder: SORT_ORDER | undefined;
+    if (order === 'ascend') {
+      updatedSortOrder = SORT_ORDER.ASC;
+    } else if (order === 'descend') {
+      updatedSortOrder = SORT_ORDER.DESC;
+    }
+
+    return updatedSortOrder;
+  };
+
+  // AntD reports sort, filter and pagination through the same `onChange`. Only the sort action is
+  // ours; everything else stays with the caller's handler, which must still receive every action.
+  const handleTableChange = useCallback<TableChangeHandler>(
+    (pagination, filters, sorter, extra) => {
+      extraTableProps?.onChange?.(pagination, filters, sorter, extra);
+
+      if (extra.action === 'sort' && onSortChange) {
+        const order = Array.isArray(sorter) ? sorter[0]?.order : sorter.order;
+        onSortChange(toSortOrder(order));
+      }
+    },
+    [extraTableProps, onSortChange]
+  );
+
   const tableColumn: ColumnsType<IngestionPipeline> = useMemo(
     () => [
       {
@@ -271,8 +336,14 @@ function IngestionListTable({
         className: 'name-column',
         dataIndex: 'name',
         key: 'name',
-        fixed: 'left' as FixedType,
-        sorter: getColumnSorter<IngestionPipeline, 'name'>('name'),
+        fixed: 'left' as const,
+        // Sort on the same value the cell renders (getEntityName), not the raw
+        // `name`: agents created from the UI get a machine-generated name that
+        // has no relation to the label the user sees. `sorter: true` hands
+        // ordering to the server so it spans every page, not just the loaded one.
+        ...(isServerSorted
+          ? { sorter: true, sortOrder: columnSortOrder }
+          : { sorter: columnSorter }),
         render: customRenderNameField ?? renderNameField(searchText),
       },
       ...(showDescriptionCol
@@ -313,7 +384,7 @@ function IngestionListTable({
         width: 300,
         render: (_: string, record: ModifiedIngestionPipeline) => {
           return isLoading ? (
-            <Skeleton.Input active size="small" />
+            <Skeleton height={24} variant="rounded" width={120} />
           ) : (
             <IngestionStatusCount
               runId={record.runId}
@@ -360,7 +431,7 @@ function IngestionListTable({
               dataIndex: 'actions',
               key: 'actions',
               width: 240,
-              fixed: 'right' as FixedType,
+              fixed: 'right' as const,
               render: renderActionsField,
             },
           ]
@@ -376,6 +447,8 @@ function IngestionListTable({
       handlePipelineIdToFetchStatus,
       pipelineTypeColumnObj,
       isLoading,
+      isServerSorted,
+      columnSortOrder,
     ]
   );
 
@@ -400,6 +473,9 @@ function IngestionListTable({
         className={classNames('ingestion-list-table', tableContainerClassName)}
         data-testid="ingestion-table">
         <Table
+          // The 48px run-count tiles set the row height; centring every cell keeps
+          // the name, type, schedule and checkbox on the same line as them.
+          cellClassName="tw:p-2 tw:align-middle"
           columns={tableColumn}
           containerClassName={tableClassName}
           {...(!isUndefined(ingestionPagingInfo) &&
@@ -420,21 +496,14 @@ function IngestionListTable({
           dataSource={data}
           loading={isLoading}
           locale={{
-            emptyText:
-              emptyPlaceholder ??
-              getErrorPlaceHolder(
-                ingestionData.length,
-                isPlatFormDisabled,
-                theme,
-                pipelineType,
-                'tw:relative tw:py-8'
-              ),
+            emptyText: emptyPlaceholder ?? defaultEmptyPlaceholder,
           }}
           pagination={false}
           rowKey="fullyQualifiedName"
           scroll={data.length > 0 ? { x: 1300 } : undefined}
           size="small"
           {...extraTableProps}
+          onChange={handleTableChange}
         />
       </div>
 

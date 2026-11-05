@@ -91,5 +91,5 @@ export const getSuggestionTypeBasedOnData = (data: Suggestion[]) => {
     return SuggestionType.SuggestTagLabel;
   }
 
-  return;
+  return undefined;
 };

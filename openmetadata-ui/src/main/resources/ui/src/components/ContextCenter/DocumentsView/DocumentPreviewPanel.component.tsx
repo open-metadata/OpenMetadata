@@ -18,14 +18,15 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { Copy01, XClose } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
+import ExtractedMemoriesCard from '../ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import {
   DocumentPreviewPanelProps,
   MetaRowProps,
@@ -61,14 +62,14 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
     <Box
       className={
         'tw:w-100 tw:shrink-0 tw:h-full ' +
-        'tw:border tw:border-l-0 tw:border-secondary tw:bg-primary ' +
+        'tw:border tw:border-l-0 tw:border-secondary tw:bg-surface ' +
         'tw:animate-in tw:slide-in-from-right tw:duration-300 tw:rounded-tr-xl tw:rounded-br-xl'
       }
       data-testid="document-preview-panel"
       direction="col">
       <Box
         align="center"
-        className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:shrink-0"
+        className="tw:px-4 tw:h-12 tw:p-2 tw:border-b tw:border-secondary tw:shrink-0"
         gap={3}
         justify="between">
         <Box align="center" className="tw:max-w-[78%]" gap={2}>
@@ -90,14 +91,13 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           </div>
         </Box>
         <Box align="center" gap={2}>
-          <CopyLinkButton className="tw:w-8 tw:h-8" url={url}>
-            <CopyIcon aria-hidden="true" height={20} width={20} />
+          <CopyLinkButton size="lg" url={url}>
+            <Copy01 data-icon aria-hidden="true" />
           </CopyLinkButton>
           <ButtonUtility
-            color="tertiary"
             data-testid="close-preview-btn"
-            icon={<XClose height={20} width={20} />}
-            size="xs"
+            icon={XClose}
+            size="lg"
             tooltip={t('label.close')}
             onClick={onClose}
           />
@@ -105,7 +105,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
       </Box>
 
       <Box
-        className="tw:flex-1 tw:overflow-y-auto tw:p-4 tw:bg-gray-50"
+        className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:p-4 tw:bg-secondary"
         direction="col"
         gap={4}>
         <Card className="tw:p-4 tw:shrink-0">
@@ -117,6 +117,16 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               {t('label.detail-plural')}
             </Typography>
           </div>
+          <Box align="center" className="tw:py-1.5" justify="between">
+            <Typography className="tw:text-quaternary" size="text-sm">
+              {t('label.status')}
+            </Typography>
+            <DocumentStatusBadge
+              error={file.processingError}
+              stats={file.extractionStats}
+              status={file.processingStatus}
+            />
+          </Box>
           {folderName && (
             <MetaRow label={t('label.folder')} value={folderName} />
           )}
@@ -130,7 +140,25 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               value={getShortRelativeTime(file.updatedAt)}
             />
           )}
+          {file.processingError && (
+            <Box className="tw:py-1.5" direction="col" gap={1}>
+              <Typography className="tw:text-quaternary" size="text-sm">
+                {t('label.error')}
+              </Typography>
+              <Typography
+                className="tw:text-error-primary tw:break-words"
+                data-testid="processing-error"
+                size="text-sm">
+                {file.processingError}
+              </Typography>
+            </Box>
+          )}
         </Card>
+
+        <ExtractedMemoriesCard
+          sourceId={file.id}
+          titleClassName="tw:uppercase"
+        />
       </Box>
     </Box>
   );

@@ -13,8 +13,8 @@
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Topic } from '../../../generated/entity/data/topic';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface TopicDetailsProps {
   updateTopicDetailsState?: (data: DataAssetWithDomains) => void;

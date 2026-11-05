@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
@@ -53,6 +54,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testCase: mockTestCasePermission,
+      testSuite: { Create: true },
     },
   })),
 }));
@@ -120,6 +122,7 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () => ({
   default: jest.fn().mockImplementation(({ onSearch, searchValue }) => (
     <div data-testid="searchbar-component">
       <input
+        aria-label="Search"
         data-testid="search-input"
         value={searchValue}
         onChange={(e) => onSearch(e.target.value)}
@@ -139,6 +142,9 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
         onTestUpdate,
         tableHeader,
         emptyStateAction,
+        enableBulkActions,
+        hasActiveFilters,
+        deletionMode,
       }) => (
         <div data-testid="data-quality-tab">
           {tableHeader}
@@ -146,6 +152,13 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
           <span data-testid="loading-state">
             {isLoading ? 'loading' : 'loaded'}
           </span>
+          <span data-testid="bulk-actions-state">
+            {String(enableBulkActions)}
+          </span>
+          <span data-testid="active-filters-state">
+            {String(hasActiveFilters)}
+          </span>
+          <span data-testid="deletion-mode">{deletionMode}</span>
           <button
             data-testid="trigger-update"
             onClick={() =>
@@ -167,17 +180,6 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
         </div>
       )
     ),
-}));
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ type }) => (
-      <div data-testid={`error-placeholder-type-${type}`}>
-        ErrorPlaceHolder.component
-      </div>
-    )),
 }));
 
 const mockOnAddTestCase = jest.fn();
@@ -276,6 +278,7 @@ describe('TestCases component', () => {
     usePermissionProvider.mockReturnValue({
       permissions: {
         testCase: mockTestCasePermission,
+        testSuite: { Create: true },
       },
     });
   });
@@ -309,6 +312,33 @@ describe('TestCases component', () => {
       expect(await screen.findByTestId('page-header')).toBeInTheDocument();
     });
 
+    it('should treat deleted visibility as a filter and disable bulk actions', async () => {
+      render(<TestCases />);
+
+      expect(await screen.findByTestId('bulk-actions-state')).toHaveTextContent(
+        'true'
+      );
+      expect(screen.getByTestId('active-filters-state')).toHaveTextContent(
+        'false'
+      );
+      expect(screen.getByTestId('deletion-mode')).toHaveTextContent('soft');
+
+      fireEvent.click(screen.getByTestId('show-deleted'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('bulk-actions-state')).toHaveTextContent(
+          'false'
+        )
+      );
+
+      expect(screen.getByTestId('active-filters-state')).toHaveTextContent(
+        'true'
+      );
+      expect(
+        screen.queryByTestId('empty-state-action-new-test-case')
+      ).not.toBeInTheDocument();
+    });
+
     it('should render table filter when selected', async () => {
       render(<TestCases />);
 
@@ -324,6 +354,14 @@ describe('TestCases component', () => {
         await screen.findByTestId('tags-select-filter')
       ).toBeInTheDocument();
     });
+
+    it('should render an accessible status multi-select', async () => {
+      render(<TestCases />);
+
+      expect(
+        await screen.findByRole('combobox', { name: 'label.status' })
+      ).toBeInTheDocument();
+    });
   });
 
   describe('Permission Handling', () => {
@@ -337,7 +375,7 @@ describe('TestCases component', () => {
       render(<TestCases />);
 
       expect(
-        await screen.findByTestId('error-placeholder-type-PERMISSION')
+        await screen.findByTestId('permission-error-placeholder')
       ).toBeInTheDocument();
     });
 
@@ -402,7 +440,7 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockSearchQuery).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*sale*',
+            q: 'sale',
           })
         );
       });
@@ -421,6 +459,26 @@ describe('TestCases component', () => {
           })
         );
       });
+    });
+
+    it('should display and request every test case status from a multi-value URL', async () => {
+      mockLocation.search =
+        '?testCaseStatus%5B%5D=Success&testCaseStatus%5B%5D=Queued';
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            testCaseStatus: ['Success', 'Queued'],
+          })
+        );
+      });
+
+      const statusFilter = await screen.findByTestId('status-select-filter');
+
+      expect(statusFilter).toHaveTextContent('label.success');
+      expect(statusFilter).toHaveTextContent('label.queued');
     });
   });
 
@@ -446,6 +504,38 @@ describe('TestCases component', () => {
 
       expect(statusSelect).toBeInTheDocument();
     });
+
+    it('should add statuses without replacing the existing selection', async () => {
+      const { rerender } = render(<TestCases />);
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const statusInput = await screen.findByRole('combobox', {
+        name: 'label.status',
+      });
+      await user.click(statusInput);
+      await user.click(
+        await screen.findByRole('option', { name: 'label.success' })
+      );
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenLastCalledWith({
+          search: 'testCaseStatus%5B%5D=Success&currentPage=1',
+        });
+      });
+
+      mockLocation.search = '?testCaseStatus%5B%5D=Success';
+      rerender(<TestCases />);
+      await user.click(statusInput);
+      await user.click(
+        await screen.findByRole('option', { name: 'label.queued' })
+      );
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenLastCalledWith({
+          search:
+            'testCaseStatus%5B%5D=Success&testCaseStatus%5B%5D=Queued&currentPage=1',
+        });
+      });
+    });
   });
 
   describe('URL Parameter Handling', () => {
@@ -470,11 +560,46 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockGetListTestCase).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*test*',
+            q: 'test',
             testCaseStatus: 'Failed',
           })
         );
       });
+    });
+
+    it('should pass every URL filter, including redirected dates, to the list API', async () => {
+      mockLocation.search =
+        '?tableFqn=sample_service.db.schema.table' +
+        '&testPlatforms%5B%5D=dbt&testPlatforms%5B%5D=Deequ' +
+        '&testCaseType=column&testCaseStatus=Success' +
+        '&lastRunRange%5BstartTs%5D=100&lastRunRange%5BendTs%5D=200' +
+        '&lastRunRange%5Bkey%5D=customRange' +
+        '&lastRunRange%5Btitle%5D=Jul%2014%2C%202026%20-%3E%20Aug%2013%2C%202026' +
+        '&tier=Tier.Tier1&tags%5B%5D=PII.Sensitive' +
+        '&serviceName=sample_service&dataQualityDimension=NoDimension' +
+        '&dataProductFqn=Marketing';
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entityLink: '<#E::table::sample_service.db.schema.table>',
+            testPlatforms: ['dbt', 'Deequ'],
+            testCaseType: 'column',
+            testCaseStatus: 'Success',
+            startTimestamp: '100',
+            endTimestamp: '200',
+            tier: 'Tier.Tier1',
+            tags: ['PII.Sensitive'],
+            serviceName: 'sample_service',
+            dataQualityDimension: 'NoDimension',
+            dataProductFqn: 'Marketing',
+          })
+        );
+      });
+
+      expect(await screen.findByTestId('date-picker-menu')).toBeInTheDocument();
     });
 
     it('should handle empty URL params', async () => {
@@ -491,6 +616,42 @@ describe('TestCases component', () => {
           })
         );
       });
+    });
+
+    it('should land on the page from a shared URL without rewriting it', async () => {
+      mockLocation.search = '?currentPage=2&pageSize=15';
+      const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(mockGetListTestCase).toHaveBeenCalledWith(
+          expect.objectContaining({ limit: 15, offset: 15 })
+        );
+      });
+
+      expect(mockGetListTestCase).not.toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 0 })
+      );
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('should keep the shared page when the shared URL also carries a search', async () => {
+      mockLocation.search = '?searchValue=orders&currentPage=2&pageSize=15';
+      const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(mockGetListTestCase).toHaveBeenCalledWith(
+          expect.objectContaining({ q: 'orders', limit: 15, offset: 15 })
+        );
+      });
+
+      expect(mockGetListTestCase).not.toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 0 })
+      );
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
 
@@ -676,14 +837,16 @@ describe('TestCases component', () => {
       });
     });
 
-    it('should not show lastRun filter by default', async () => {
+    it('should show the lastRun filter by default, ahead of the other filters', async () => {
       render(<TestCases />);
 
-      await waitFor(() => {
-        expect(
-          screen.queryByTestId('date-picker-menu')
-        ).not.toBeInTheDocument();
-      });
+      const datePicker = await screen.findByTestId('date-picker-menu');
+      const tableFilter = await screen.findByTestId('table-select-filter');
+
+      expect(
+        datePicker.compareDocumentPosition(tableFilter) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
     });
   });
 

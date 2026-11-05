@@ -15,17 +15,27 @@ import React from 'react';
 import RichTextEditor from './RichTextEditor';
 import { EditorContentRef } from './RichTextEditor.interface';
 
-// Mock the BlockEditorUtils
-jest.mock('../../../utils/BlockEditorUtils', () => ({
-  ...jest.requireActual('../../../utils/BlockEditorUtils'),
-  setEditorContent: jest.fn((editor, content) => {
-    if (editor && editor.commands) {
-      editor.commands.setContent(content);
-    }
-  }),
-}));
+// Mock the BlockEditorUtils. BlockEditorUtils is part of an import cycle
+// (via BlockEditorExtensionsClassBase), so delegate to the actual module lazily
+// instead of spreading it while it is still initializing.
+jest.mock('../../../utils/BlockEditorUtils', () => {
+  const actual = jest.requireActual('../../../utils/BlockEditorUtils');
+
+  return {
+    formatServerContent: (...args: unknown[]) =>
+      actual.formatServerContent(...args),
+    formatValueBasedOnContent: (...args: unknown[]) =>
+      actual.formatValueBasedOnContent(...args),
+    setEditorContent: jest.fn((editor, content) => {
+      if (editor && editor.commands) {
+        editor.commands.setContent(content);
+      }
+    }),
+  };
+});
 
 interface BlockEditorMockProps {
+  menuType?: string;
   content?: string;
   onChange?: (content: string) => void;
   autoFocus?: boolean;
@@ -68,6 +78,7 @@ jest.mock('../../BlockEditor/BlockEditor', () => {
 
       return (
         <textarea
+          aria-label="Editor"
           data-testid="editor-textarea"
           ref={textareaRef}
           value={value}

@@ -103,6 +103,9 @@ public class ConfigResource {
       responseAuthConfig.setClientId(yamlConfig.getClientId());
       responseAuthConfig.setAuthority(yamlConfig.getAuthority());
       responseAuthConfig.setCallbackUrl(yamlConfig.getCallbackUrl());
+      responseAuthConfig.setResponseType(yamlConfig.getResponseType());
+      responseAuthConfig.setPublicKeyUrls(yamlConfig.getPublicKeyUrls());
+      responseAuthConfig.setTokenValidationAlgorithm(yamlConfig.getTokenValidationAlgorithm());
       if (responseAuthConfig.getProvider().equals(AuthProvider.SAML)
           && yamlConfig.getSamlConfiguration() != null) {
         // Remove Saml Fields
@@ -153,9 +156,10 @@ public class ConfigResource {
       })
   public AuthorizerConfiguration getAuthorizerConfig() {
     AuthorizerConfiguration responseAuthorizerConfig = new AuthorizerConfiguration();
-    AuthorizerConfiguration yamlConfig = openMetadataApplicationConfig.getAuthorizerConfiguration();
-    if (yamlConfig != null) {
-      responseAuthorizerConfig.setPrincipalDomain(yamlConfig.getPrincipalDomain());
+    // The configuration in effect, like /config/auth: a value saved in the UI overrides the file.
+    AuthorizerConfiguration current = SecurityConfigurationManager.getCurrentAuthzConfig();
+    if (current != null) {
+      responseAuthorizerConfig.setPrincipalDomain(current.getPrincipalDomain());
     }
     return responseAuthorizerConfig;
   }

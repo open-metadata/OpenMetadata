@@ -11,12 +11,40 @@
  *  limitations under the License.
  */
 
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { RefObject } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  EntityStatus,
+  GlossaryTerm,
+} from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { ModifiedGlossary } from '../useGlossary.store';
 
 export interface GlossaryTermTabProps {
   isGlossary: boolean;
   className?: string;
+}
+
+export interface GlossaryTermMoveConfirmationModalProps {
+  isModalOpen: boolean;
+  isTableLoading: boolean;
+  hasReviewers: boolean;
+  confirmCheckboxChecked: boolean;
+  onConfirmCheckboxChange: (checked: boolean) => void;
+  movedGlossaryTerm?: MoveGlossaryTermType;
+  activeGlossary?: ModifiedGlossary;
+  onDragConfirmationModalClose: () => void;
+  onChangeGlossaryTerm: () => void;
+  t: ReturnType<typeof useTranslation>['t'];
+}
+
+export interface GlossaryTermEmptyPlaceholderProps {
+  canCreate: boolean;
+  isGlossary: boolean;
+  glossaryTermStatus: EntityStatus | null;
+  containerRef: RefObject<HTMLDivElement>;
+  onAddGlossaryTermClick: () => void;
+  t: ReturnType<typeof useTranslation>['t'];
 }
 
 export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {

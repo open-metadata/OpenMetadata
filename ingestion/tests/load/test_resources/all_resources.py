@@ -4,7 +4,6 @@ import importlib.util
 import inspect
 import logging
 from pathlib import Path
-from typing import List  # noqa: UP035
 
 from locust import HttpUser, TaskSet, constant
 
@@ -13,7 +12,7 @@ TASKS_DIR = "tasks"
 logger = logging.getLogger(__name__)
 
 
-def get_all_tasks_set() -> List:  # noqa: UP006
+def get_all_tasks_set() -> list:
     resource_classes = []
     wd = Path(__file__).parent.joinpath(TASKS_DIR)
     for file_path in wd.glob("*.py"):

@@ -47,7 +47,10 @@ from metadata.generated.schema.metadataIngestion.storage.storageMetadataS3Config
     StorageMetadataS3Config,
 )
 from metadata.readers.file.config_source_factory import get_reader
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    get_gcp_impersonate_credentials_or_none,
+    set_google_credentials,
+)
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -110,7 +113,7 @@ def _(config: StorageMetadataS3Config) -> ManifestMetadataConfig:
 
         path = f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}" if prefix else STORAGE_METADATA_MANIFEST_FILE_NAME
 
-        from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
             AWSClient,
         )
 
@@ -162,12 +165,12 @@ def _(config: StorageMetadataGcsConfig) -> ManifestMetadataConfig:
 
         path = f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}" if prefix else STORAGE_METADATA_MANIFEST_FILE_NAME
 
-        from google.cloud.storage import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from google.cloud.storage import (  # pylint: disable=import-outside-toplevel
             Client,
         )
 
         set_google_credentials(gcp_credentials=config.securityConfig)
-        gcs_client = Client()
+        gcs_client = Client(credentials=get_gcp_impersonate_credentials_or_none(config.securityConfig))
         reader = get_reader(
             config_source=GCSConfig(securityConfig=config.securityConfig),
             client=gcs_client,

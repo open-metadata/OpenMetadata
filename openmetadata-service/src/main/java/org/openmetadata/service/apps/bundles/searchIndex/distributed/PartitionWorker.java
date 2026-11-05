@@ -28,6 +28,7 @@ import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.HeapBackpressure;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
@@ -183,6 +184,13 @@ public class PartitionWorker {
       while (currentOffset < rangeEnd
           && !stopped.get()
           && !Thread.currentThread().isInterrupted()) {
+        // Yield before pulling the next batch when the pod's heap is tight. AutoTune sizes batch
+        // and
+        // queue once at start from a fixed per-entity estimate; real entities (embeddings, wide
+        // tables) or co-tenant work can exceed it and OOM a small heap. Pausing the reader — not
+        // the
+        // writes — lets in-flight docs drain and GC reclaim, so reindex adapts to any pod size.
+        HeapBackpressure.awaitHeadroom();
         int currentBatchSize = (int) Math.min(batchSize, rangeEnd - currentOffset);
 
         try {
@@ -564,8 +572,8 @@ public class PartitionWorker {
     for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
       Object rawEntity = entityError.getEntity();
       String entityId = null;
-      if (rawEntity instanceof EntityInterface) {
-        UUID id = ((EntityInterface) rawEntity).getId();
+      if (rawEntity instanceof EntityInterface<?>) {
+        UUID id = ((EntityInterface<?>) rawEntity).getId();
         if (id != null) {
           entityId = id.toString();
         }
@@ -602,7 +610,7 @@ public class PartitionWorker {
       Object rawEntity = warning.getEntity();
       String entityId = null;
       String entityFqn = null;
-      if (rawEntity instanceof EntityInterface entity) {
+      if (rawEntity instanceof EntityInterface<?> entity) {
         UUID id = entity.getId();
         entityId = id != null ? id.toString() : null;
         entityFqn = entity.getFullyQualifiedName();
@@ -709,7 +717,7 @@ public class PartitionWorker {
     String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
     if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
-      List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
+      List<EntityInterface<?>> entities = (List<EntityInterface<?>>) resultList.getData();
       ReindexingUtil.populateDocBuildContext(contextData, normalizedEntityType, entities);
       searchIndexSink.write(entities, contextData);
     } else {

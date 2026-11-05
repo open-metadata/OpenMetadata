@@ -1,10 +1,14 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -12,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,30 +24,58 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
+import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for GitHub issue #24180 — domain isolation for multi-tenant setups.
@@ -121,6 +154,338 @@ public class DomainIsolationIT {
   }
 
   @Test
+  void test_createInAnotherDomainsSchema_isDeniedEvenNamingTheCallersDomain(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain finance = createDomain(admin, p + "_fin", cleanup);
+      Domain marketing = createDomain(admin, p + "_mkt", cleanup);
+      DatabaseSchema financeSchema = createSchemaInDomain(admin, p + "_f", finance, cleanup);
+      DatabaseSchema marketingSchema = createSchemaInDomain(admin, p + "_m", marketing, cleanup);
+      OpenMetadataClient marketer = createRestrictedUserClient(admin, p, marketing, cleanup);
+
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              marketer
+                  .tables()
+                  .create(
+                      new CreateTable()
+                          .withName(p + "_naming_own")
+                          .withDatabaseSchema(financeSchema.getFullyQualifiedName())
+                          .withColumns(List.of(COLUMN))
+                          .withDomains(List.of(marketing.getFullyQualifiedName()))));
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              marketer
+                  .tables()
+                  .create(
+                      new CreateTable()
+                          .withName(p + "_naming_foreign")
+                          .withDatabaseSchema(marketingSchema.getFullyQualifiedName())
+                          .withColumns(List.of(COLUMN))
+                          .withDomains(List.of(finance.getFullyQualifiedName()))));
+      Table own =
+          marketer
+              .tables()
+              .create(
+                  new CreateTable()
+                      .withName(p + "_own")
+                      .withDatabaseSchema(marketingSchema.getFullyQualifiedName())
+                      .withColumns(List.of(COLUMN)));
+      cleanup.push(() -> admin.tables().delete(own.getId()));
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_tagCreateInAnotherDomainsClassification_isDenied(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain finance = createDomain(admin, p + "_fin", cleanup);
+      Domain sales = createDomain(admin, p + "_sal", cleanup);
+      Classification financeLabels =
+          admin
+              .classifications()
+              .create(
+                  new CreateClassification()
+                      .withName(p + "_labels")
+                      .withDescription("Classification in another domain")
+                      .withDomains(List.of(finance.getFullyQualifiedName())));
+      cleanup.push(
+          () ->
+              admin
+                  .classifications()
+                  .delete(
+                      financeLabels.getId().toString(),
+                      Map.of("recursive", "true", "hardDelete", "true")));
+      OpenMetadataClient seller = createRestrictedUserClient(admin, p, sales, cleanup);
+
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              seller
+                  .tags()
+                  .create(
+                      new CreateTag()
+                          .withName("approved")
+                          .withDescription("Tag in another domain's classification")
+                          .withClassification(financeLabels.getFullyQualifiedName())));
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_putOnASoftDeletedTableOutsideTheCallersDomain_isDenied(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain finance = createDomain(admin, p + "_fin", cleanup);
+      Domain marketing = createDomain(admin, p + "_mkt", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table table = createTable(admin, p + "_ledger", schema, finance, cleanup);
+      admin.tables().delete(table.getId().toString());
+      OpenMetadataClient marketer = createRestrictedUserClient(admin, p, marketing, cleanup);
+
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              marketer
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.PUT,
+                      "/v1/tables",
+                      new CreateTable()
+                          .withName(table.getName())
+                          .withDatabaseSchema(schema.getFullyQualifiedName())
+                          .withColumns(List.of(COLUMN))
+                          .withDescription("Rewritten"),
+                      Table.class));
+      assertTrue(
+          admin.tables().get(table.getId().toString(), null, "deleted").getDeleted(),
+          "The table must stay soft-deleted");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_columnAndLineageHydrateOfAnotherDomainsTable_areDenied(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain finance = createDomain(admin, p + "_fin", cleanup);
+      Domain marketing = createDomain(admin, p + "_mkt", cleanup);
+      Table ledger = createTable(admin, p + "_ledger", createSchema(ns, cleanup), finance, cleanup);
+      OpenMetadataClient marketer = createRestrictedUserClient(admin, p, marketing, cleanup);
+
+      String columnPath =
+          "/v1/columns/name/"
+              + URLEncoder.encode(
+                  ledger.getFullyQualifiedName() + "." + COLUMN.getName(), StandardCharsets.UTF_8)
+              + "?entityType=table";
+      assertThrows(
+          ForbiddenException.class,
+          () -> marketer.getHttpClient().executeForString(HttpMethod.GET, columnPath, null));
+
+      HydrateLineageRequest hydrate =
+          new HydrateLineageRequest()
+              .withEntities(
+                  List.of(new EntityReference().withType(Entity.TABLE).withId(ledger.getId())));
+      JsonNode response =
+          MAPPER.readTree(
+              marketer
+                  .getHttpClient()
+                  .executeForString(HttpMethod.POST, "/v1/lineage/hydrate", hydrate));
+      assertFalse(response.path("entitiesByType").has(Entity.TABLE), response.toString());
+      assertEquals(1, response.path("droppedCount").asInt(), response.toString());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_referenceListsLeaveOutEntitiesOfAnotherDomain(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain finance = createDomain(admin, p + "_fin", cleanup);
+      Domain marketing = createDomain(admin, p + "_mkt", cleanup);
+      String ownerName = p + "_owner";
+      User owner =
+          admin
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(ownerName)
+                      .withEmail(ownerName + "@test.openmetadata.org"));
+      cleanup.push(() -> admin.users().delete(owner.getId()));
+      Table ledger = createTable(admin, p + "_ledger", createSchema(ns, cleanup), finance, cleanup);
+      admin
+          .tables()
+          .patch(
+              ledger.getId(),
+              MAPPER.readTree(
+                  "[{\"op\":\"add\",\"path\":\"/owners\",\"value\":[{\"id\":\""
+                      + owner.getId()
+                      + "\",\"type\":\"user\"}]}]"));
+      Team financeTeam =
+          admin
+              .teams()
+              .create(
+                  new CreateTeam()
+                      .withName(p + "_finteam")
+                      .withTeamType(CreateTeam.TeamType.DEPARTMENT)
+                      .withDomains(List.of(finance.getFullyQualifiedName())));
+      cleanup.push(
+          () ->
+              admin
+                  .teams()
+                  .delete(
+                      financeTeam.getId().toString(),
+                      Map.of("hardDelete", "true", "recursive", "true")));
+      OpenMetadataClient marketer = createRestrictedUserClient(admin, p, marketing, cleanup);
+
+      User seenOwner = marketer.users().getByName(ownerName, "owns");
+      assertFalse(
+          seenOwner.getOwns().stream().anyMatch(ref -> ref.getId().equals(ledger.getId())),
+          "owns must not name another domain's table");
+      Team organization = marketer.teams().getByName("Organization", "children");
+      assertFalse(
+          organization.getChildren().stream()
+              .anyMatch(ref -> ref.getId().equals(financeTeam.getId())),
+          "children must not name another domain's team");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_userDomainChange_appliesToAuthorizationImmediately(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_d1", cleanup);
+      Table table = createTable(admin, p + "_t1", createSchema(ns, cleanup), domain, cleanup);
+      Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
+      String email = p + "_late@test.openmetadata.org";
+      User user =
+          admin
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(p + "_late")
+                      .withEmail(email)
+                      .withRoles(List.of(domainOnlyRole.getId())));
+      cleanup.push(() -> admin.users().delete(user.getId()));
+      OpenMetadataClient client = SdkClients.createClient(email, email, new String[] {});
+      String tableId = table.getId().toString();
+
+      // The denied read caches the domainless user for authorization
+      assertThrows(ForbiddenException.class, () -> client.tables().get(tableId));
+
+      User withDomain = admin.users().get(user.getId().toString(), "domains");
+      withDomain.setDomains(List.of(domain.getEntityReference()));
+      admin.users().update(user.getId().toString(), withDomain);
+
+      assertEquals(tableId, client.tables().get(tableId).getId().toString());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_adminRevocation_appliesToAuthorizationImmediately(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_d1", cleanup);
+      Table table = createTable(admin, p + "_t1", createSchema(ns, cleanup), domain, cleanup);
+      Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
+      String email = p + "_exadmin@test.openmetadata.org";
+      User user =
+          admin
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(p + "_exadmin")
+                      .withEmail(email)
+                      .withIsAdmin(true)
+                      .withRoles(List.of(domainOnlyRole.getId())));
+      cleanup.push(() -> admin.users().delete(user.getId()));
+      OpenMetadataClient client = SdkClients.createClient(email, email, new String[] {});
+      String tableId = table.getId().toString();
+
+      // The admin read caches the user for authorization
+      assertEquals(tableId, client.tables().get(tableId).getId().toString());
+
+      User demoted = admin.users().get(user.getId().toString());
+      demoted.setIsAdmin(false);
+      admin.users().update(user.getId().toString(), demoted);
+
+      assertThrows(ForbiddenException.class, () -> client.tables().get(tableId));
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_teamDomainChange_appliesToMemberAuthorizationImmediately(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_d1", cleanup);
+      Table table = createTable(admin, p + "_t1", createSchema(ns, cleanup), domain, cleanup);
+      Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
+      String email = p + "_member@test.openmetadata.org";
+      User user =
+          admin
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(p + "_member")
+                      .withEmail(email)
+                      .withRoles(List.of(domainOnlyRole.getId())));
+      cleanup.push(() -> admin.users().delete(user.getId()));
+      Team team =
+          admin
+              .teams()
+              .create(
+                  new CreateTeam()
+                      .withName(p + "_team")
+                      .withTeamType(CreateTeam.TeamType.GROUP)
+                      .withUsers(List.of(user.getId())));
+      cleanup.push(() -> admin.teams().delete(team.getId()));
+      OpenMetadataClient client = SdkClients.createClient(email, email, new String[] {});
+      String tableId = table.getId().toString();
+
+      // The denied read caches the member, who has no domain yet, for authorization
+      assertThrows(ForbiddenException.class, () -> client.tables().get(tableId));
+
+      Team withDomain = admin.teams().get(team.getId().toString(), "domains");
+      withDomain.setDomains(List.of(domain.getEntityReference()));
+      admin.teams().update(team.getId().toString(), withDomain);
+
+      assertEquals(tableId, client.tables().get(tableId).getId().toString());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
   void test_lineage_userWithoutRoleSeesFullChain(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
@@ -179,6 +544,34 @@ public class DomainIsolationIT {
     }
   }
 
+  /**
+   * The asset-count map is keyed by domain FQN, so it must not name a domain the restricted user's
+   * own listing hides.
+   */
+  @Test
+  void test_domainAssetCounts_restrictedUserSeesOnlyOwnDomains(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain d1 = createDomain(admin, p + "_d1", cleanup);
+      Domain d2 = createDomain(admin, p + "_d2", cleanup);
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, p, d1, cleanup);
+
+      Set<String> restrictedKeys = countKeys(restricted, "/v1/domains/assets/counts");
+      assertTrue(restrictedKeys.contains(d1.getFullyQualifiedName()), "Own domain is counted");
+      assertFalse(restrictedKeys.contains(d2.getFullyQualifiedName()), "Foreign domain hidden");
+
+      Set<String> adminKeys = countKeys(admin, "/v1/domains/assets/counts");
+      assertTrue(
+          adminKeys.contains(d1.getFullyQualifiedName())
+              && adminKeys.contains(d2.getFullyQualifiedName()),
+          "Admin counts every domain");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
   @Test
   void test_domainSearch_restrictedUserSeesOnlyOwnDomains(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -213,10 +606,404 @@ public class DomainIsolationIT {
     }
   }
 
+  @Test
+  void test_entityTypeCounts_respectPermissionsAndCachePrincipal(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String prefix = ns.shortPrefix();
+      Domain own = createDomain(admin, prefix + "_own", cleanup);
+      createDomain(admin, prefix + "_foreign", cleanup);
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, prefix, own, cleanup);
+      boolean original = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, original));
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                for (boolean includeTopHit : List.of(false, true)) {
+                  assertEquals(2, domainCount(admin, prefix, includeTopHit));
+                  assertEquals(1, domainCount(restricted, prefix, includeTopHit));
+                  assertEquals(2, domainCount(admin, prefix, includeTopHit));
+                }
+              });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  private long domainCount(OpenMetadataClient client, String prefix, boolean includeTopHit)
+      throws Exception {
+    JsonNode results =
+        MAPPER.readTree(client.search().query(prefix + "*").index("domain").size(100).execute());
+    JsonNode counts =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/search/entityTypeCounts",
+                null,
+                JsonNode.class,
+                RequestOptions.builder()
+                    .queryParam("q", prefix + "*")
+                    .queryParam("index", "domain")
+                    .queryParam("include_top_hit", Boolean.toString(includeTopHit))
+                    .build());
+    assertEquals(results.at("/hits/total/value").asLong(), counts.at("/hits/total/value").asLong());
+    return counts.at("/hits/total/value").asLong();
+  }
+
+  @Test
+  void test_assetSearch_botIsNarrowedByItsOwnPolicy(TestNamespace ns) throws Exception {
+    // #30023: SearchUtils#shouldApplyRbacConditions skipped policy injection whenever the caller
+    // was a bot, and a skipped injection leaves the query matching everything rather than failing
+    // closed. Bot-authenticated tokens are the standard MCP wiring, so search_metadata ignored the
+    // caller's policies entirely.
+    //
+    // Neither bot here has any domain. That is deliberate: asset and domain search are both
+    // narrowed by a separate, domain-field-driven mechanism that applies even to a caller whose
+    // RBAC allow side compiles to match_all, so any domain-based assertion would pass with or
+    // without this fix.
+    //
+    // The narrowing is a DENY rather than a resource-scoped allow because OpenMetadata attaches
+    // DefaultBotRole to every bot user, and its DataConsumerPolicy grants an unconditioned ViewAll
+    // on All resources. Allow rules are OR'd, so every bot's allow side is match_all and an extra
+    // allow rule can never narrow one. Denies are AND'd as mustNot regardless of the allow side,
+    // which is also why the seeded, deny-based DomainOnlyAccessRole works where a hand-written
+    // allow-only domain role would not.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table table = createTable(admin, p + "_scoped_asset", schema, null, cleanup);
+      String tableFqn = table.getFullyQualifiedName();
+
+      Role tableDenyRole = createResourceDenyRole(admin, p, "table", cleanup);
+      OpenMetadataClient scopedBot =
+          createBotClient(admin, p + "_tabdeny", null, List.of(tableDenyRole.getId()), cleanup);
+      OpenMetadataClient unscopedBot =
+          createBotClient(admin, p + "_norole", null, List.of(), cleanup);
+
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      // Control: the table is indexed and visible to a bot whose policies do not restrict it.
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                assertTrue(
+                    tableSearchFqns(admin, p).contains(tableFqn), "Admin must see the table");
+                assertTrue(
+                    tableSearchFqns(unscopedBot, p).contains(tableFqn),
+                    "A bot with no role compiles to match_all and must see the table");
+              });
+
+      Set<String> scopedBotTables = tableSearchFqns(scopedBot, p);
+      assertFalse(
+          scopedBotTables.contains(tableFqn),
+          "A bot denied ViewAll on tables must not see them in search. Seeing it means the "
+              + "caller's policies were never compiled into the query. Saw: "
+              + scopedBotTables);
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_assetSearch_stockBotIsUnaffected(TestNamespace ns) throws Exception {
+    // The seeded bots carry an unconditioned ViewAll on All resources, which compiles to match_all,
+    // so applying their policies must not narrow anything.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain d1 = createDomain(admin, p + "_stockd1", cleanup);
+      Domain d2 = createDomain(admin, p + "_stockd2", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table t1 = createTable(admin, p + "_stock_t1", schema, d1, cleanup);
+      Table t2 = createTable(admin, p + "_stock_t2", schema, d2, cleanup);
+
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      OpenMetadataClient ingestionBot = SdkClients.ingestionBotClient();
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Set<String> botTables = tableSearchFqns(ingestionBot, p);
+                assertTrue(
+                    botTables.containsAll(
+                        List.of(t1.getFullyQualifiedName(), t2.getFullyQualifiedName())),
+                    "A stock bot keeps its full view. Saw: " + botTables);
+              });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_ingestionBot_readsDomainAssetAndService(TestNamespace ns) throws Exception {
+    // Moved from playwright Flow/IngestionBot.spec.ts, which drove the UI with the ingestion bot's
+    // token. The UI now rejects bot tokens, so the same guarantee is checked here at the API. The
+    // stored bot JWT (isBot / tokenType=BOT claims) is used rather than a minted one so the request
+    // takes the same server path as real ingestion traffic.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_ingbot", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table table = createTable(admin, p + "_ingbot_t", schema, domain, cleanup);
+
+      String serviceId = schema.getService().getId().toString();
+      DatabaseService service = admin.databaseServices().get(serviceId, "domains");
+      service.setDomains(List.of(domain.getEntityReference()));
+      admin.databaseServices().update(serviceId, service);
+
+      OpenMetadataClient ingestionBot = storedIngestionBotClient(admin);
+      String domainFqn = domain.getFullyQualifiedName();
+
+      Table botTable = ingestionBot.tables().get(table.getId().toString(), "domains");
+      assertEquals(domainFqn, botTable.getDomains().get(0).getFullyQualifiedName());
+
+      DatabaseService botService = ingestionBot.databaseServices().get(serviceId, "domains");
+      assertEquals(domainFqn, botService.getDomains().get(0).getFullyQualifiedName());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_lineage_restrictedBotSeesOnlyOwnDomainNodes(TestNamespace ns) throws Exception {
+    // Deliberately does NOT enable search access control: the lineage prune is gated on the role
+    // alone (DomainAccessFilter#shouldApply), independently of the search RBAC setting.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain d1 = createDomain(admin, p + "_lbotd1", cleanup);
+      Domain d2 = createDomain(admin, p + "_lbotd2", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+
+      Table t1 = createTable(admin, p + "_lbot_t1", schema, d1, cleanup);
+      Table t2 = createTable(admin, p + "_lbot_t2", schema, d2, cleanup);
+      addLineage(admin, t1, t2);
+
+      String t1Fqn = t1.getFullyQualifiedName();
+      String t2Fqn = t2.getFullyQualifiedName();
+      OpenMetadataClient restrictedBot = createRestrictedBotClient(admin, p, d1, cleanup);
+
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Set<String> adminNodes = nodeFqns(searchLineage(admin, t1Fqn));
+                assertTrue(
+                    adminNodes.containsAll(List.of(t1Fqn, t2Fqn)),
+                    "Admin should see the full chain first. Saw: " + adminNodes);
+              });
+
+      Set<String> botNodes = nodeFqns(searchLineage(restrictedBot, t1Fqn));
+      assertTrue(botNodes.contains(t1Fqn), "Domain-scoped bot sees its own-domain root");
+      assertFalse(
+          botNodes.contains(t2Fqn),
+          "Foreign-domain node must be pruned for a domain-scoped bot. Saw: " + botNodes);
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_domainOnlyUser_cannotChangeAdministrationResources(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_gd", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table ownTable = createTable(admin, p + "_gt", schema, domain, cleanup);
+      Table domainlessTable = createTable(admin, p + "_gnt", schema, null, cleanup);
+      Team team =
+          admin
+              .teams()
+              .create(
+                  new CreateTeam().withName(p + "_gteam").withTeamType(CreateTeam.TeamType.GROUP));
+      cleanup.push(() -> admin.teams().delete(team.getId().toString()));
+      createResourceDenyRole(admin, p, "chart", cleanup);
+      Policy policy = admin.policies().getByName(p + "_chartDenyPolicy");
+      // A policy in the user's own domain still governs users outside it
+      Policy policyInDomain =
+          admin
+              .policies()
+              .create(
+                  new CreatePolicy()
+                      .withName(p + "_domainPolicy")
+                      .withDomains(List.of(domain.getFullyQualifiedName()))
+                      .withRules(policy.getRules()));
+      cleanup.push(() -> admin.policies().delete(policyInDomain.getId()));
+      createBotClient(admin, p + "_tok", null, List.of(), cleanup);
+      User bot = admin.users().getByName(p + "_tok_bot");
+      OpenMetadataClient client = createRestrictedUserClient(admin, p, domain, cleanup);
+      // Every user may edit descriptions (DataConsumer), so change fields only EditAll covers
+      JsonNode allowRule =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/rules/0/effect\",\"value\":\"allow\"}]");
+      JsonNode rename =
+          MAPPER.readTree("[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"changed\"}]");
+
+      // Apps stay runnable as configured (e.g. AutoPilot for a service), but not reconfigurable
+      String app = "/v1/apps/name/SearchIndexingApplication";
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.getHttpClient().executeForString(HttpMethod.PATCH, app, rename));
+      JsonNode appPermissions =
+          MAPPER.readTree(
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET, "/v1/permissions/app/name/SearchIndexingApplication", null));
+      assertEquals("allow", access(appPermissions, "Trigger"));
+      assertEquals("deny", access(appPermissions, "EditAll"));
+
+      // Policies and bots in any domain, and teams in no domain: readable, not changeable
+      assertEquals(policy.getId(), client.policies().get(policy.getId().toString()).getId());
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.policies().patch(policy.getId().toString(), allowRule));
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.policies().patch(policyInDomain.getId().toString(), allowRule));
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.users().generateToken(bot.getId(), JWTTokenExpiry.OneHour));
+      assertThrows(
+          ForbiddenException.class, () -> client.teams().patch(team.getId().toString(), rename));
+
+      // Assets in the user's own domain, and assets in no domain, stay fully editable
+      Table patched = client.tables().patch(ownTable.getId().toString(), rename);
+      assertEquals("changed", patched.getDisplayName());
+      Table patchedDomainless = client.tables().patch(domainlessTable.getId().toString(), rename);
+      assertEquals("changed", patchedDomainless.getDisplayName());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  private static String access(JsonNode resourcePermission, String operation) {
+    for (JsonNode permission : resourcePermission.path("permissions")) {
+      if (operation.equals(permission.path("operation").asText())) {
+        return permission.path("access").asText();
+      }
+    }
+    return null;
+  }
+
   // Task /v1/tasks domain isolation is covered comprehensively by
   // TaskResourceIT.testDomainOnlyUserCanOnlyListTasksFromAllowedDomains (a domain-only user there
   // also carries a baseline role, which the bare DomainOnlyAccessRole strips). The UI task list is
   // additionally exercised by playwright DomainIsolation/DomainTaskIsolation.spec.ts.
+
+  @Test
+  void test_incidents_restrictedUserSeesOnlyOwnDomain(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain ownDomain = createDomain(admin, p + "_d1", cleanup);
+      Domain foreignDomain = createDomain(admin, p + "_d2", cleanup);
+      DatabaseSchema schema = createShortNamedSchema(admin, p, cleanup);
+      Table ownTable = createTable(admin, p + "_own", schema, ownDomain, cleanup);
+      Table foreignTable = createTable(admin, p + "_foreign", schema, foreignDomain, cleanup);
+
+      // Lists INT among its supported types, so it fits the INT `id` column the incidents are on.
+      String testDefinitionFqn = "columnValuesToBeNotNull";
+      String ownIncidentFqn = createIncident(admin, ownTable, p + "_own_tc", testDefinitionFqn);
+      String foreignIncidentFqn =
+          createIncident(admin, foreignTable, p + "_foreign_tc", testDefinitionFqn);
+
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, p, ownDomain, cleanup);
+
+      // Incident listing isolation is driven through search RBAC, which is gated on the global
+      // enableAccessControl setting.
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      Awaitility.await("Incident manager listing honours domain isolation")
+          .atMost(Duration.ofSeconds(90))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                for (boolean latest : new boolean[] {false, true}) {
+                  Set<String> visible = incidentTestCaseFqns(restricted, latest);
+                  assertTrue(
+                      visible.contains(ownIncidentFqn),
+                      "Own-domain incident visible (latest=" + latest + "). Saw: " + visible);
+                  assertFalse(
+                      visible.contains(foreignIncidentFqn),
+                      "Foreign-domain incident hidden (latest=" + latest + "). Saw: " + visible);
+                }
+              });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /** Creates a column-level test case on {@code table} plus an open incident for it. */
+  private String createIncident(
+      OpenMetadataClient admin, Table table, String name, String testDefinitionFqn) {
+    TestCase testCase =
+        admin
+            .testCases()
+            .create(
+                new CreateTestCase()
+                    .withName(name)
+                    .withEntityLink(
+                        "<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
+                    .withTestDefinition(testDefinitionFqn));
+    admin
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withSeverity(Severity.Severity2));
+    return testCase.getFullyQualifiedName();
+  }
+
+  /**
+   * @param latest {@code true} exercises the aggregation branch of the listing, which picks the
+   *     latest status per test case through a different server path than the plain search listing.
+   *     Both must enforce the caller's policies, otherwise {@code latest=true} is a trivial bypass.
+   */
+  private Set<String> incidentTestCaseFqns(OpenMetadataClient client, boolean latest)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/testCaseIncidentStatus/search/list",
+                null,
+                RequestOptions.builder()
+                    .queryParam("limit", "1000")
+                    .queryParam("latest", String.valueOf(latest))
+                    .build());
+    Set<String> fqns = new HashSet<>();
+    for (JsonNode incident : MAPPER.readTree(response).path("data")) {
+      JsonNode reference = incident.path("testCaseReference");
+      if (reference.hasNonNull("fullyQualifiedName")) {
+        fqns.add(reference.get("fullyQualifiedName").asText());
+      }
+    }
+    return fqns;
+  }
 
   private Domain createDomain(OpenMetadataClient admin, String name, Deque<Runnable> cleanup) {
     CreateDomain create =
@@ -227,6 +1014,61 @@ public class DomainIsolationIT {
     Domain domain = admin.domains().create(create);
     cleanup.push(() -> admin.domains().delete(domain.getId().toString()));
     return domain;
+  }
+
+  /**
+   * Creating a test case implicitly creates a test suite whose name is the table's FQN plus a
+   * suffix. {@link #createSchema} derives its service, database and schema names from the
+   * namespace, which embeds the test method name at every level, and the resulting test suite name
+   * overflows its column. Short names keep the FQN well inside the limit.
+   */
+  private DatabaseSchema createShortNamedSchema(
+      OpenMetadataClient admin, String prefix, Deque<Runnable> cleanup) {
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(prefix + "_db")
+                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    cleanup.push(
+        () ->
+            admin
+                .databases()
+                .delete(
+                    database.getId().toString(),
+                    Map.of("recursive", "true", "hardDelete", "true")));
+    return admin
+        .databaseSchemas()
+        .create(
+            new CreateDatabaseSchema()
+                .withName(prefix + "_sch")
+                .withDatabase(database.getFullyQualifiedName()));
+  }
+
+  private DatabaseSchema createSchemaInDomain(
+      OpenMetadataClient admin, String prefix, Domain domain, Deque<Runnable> cleanup) {
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(prefix + "_db")
+                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    cleanup.push(
+        () ->
+            admin
+                .databases()
+                .delete(
+                    database.getId().toString(),
+                    Map.of("recursive", "true", "hardDelete", "true")));
+    return admin
+        .databaseSchemas()
+        .create(
+            new CreateDatabaseSchema()
+                .withName(prefix + "_sch")
+                .withDatabase(database.getFullyQualifiedName())
+                .withDomains(List.of(domain.getFullyQualifiedName())));
   }
 
   private DatabaseSchema createSchema(TestNamespace ns, Deque<Runnable> cleanup) {
@@ -293,6 +1135,97 @@ public class DomainIsolationIT {
     return SdkClients.createClient(email, email, new String[] {});
   }
 
+  private OpenMetadataClient createRestrictedBotClient(
+      OpenMetadataClient admin, String prefix, Domain allowedDomain, Deque<Runnable> cleanup) {
+    Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
+    return createBotClient(
+        admin, prefix + "_restricted", allowedDomain, List.of(domainOnlyRole.getId()), cleanup);
+  }
+
+  /**
+   * Creates a bot user and a client for it. Roles are assigned directly to the bot rather than
+   * through a team, because {@code SubjectCache#loadPoliciesForUser} skips team policies for bots,
+   * so a team-inherited role would never reach the compiled search query.
+   */
+  private OpenMetadataClient createBotClient(
+      OpenMetadataClient admin,
+      String prefix,
+      Domain allowedDomain,
+      List<UUID> roleIds,
+      Deque<Runnable> cleanup) {
+    String name = prefix + "_bot";
+    String email = name + "@test.openmetadata.org";
+    CreateUser request =
+        new CreateUser()
+            .withName(name)
+            .withEmail(email)
+            .withIsBot(true)
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                    .withConfig(
+                        new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)))
+            .withDomains(
+                allowedDomain == null ? List.of() : List.of(allowedDomain.getFullyQualifiedName()))
+            .withRoles(roleIds);
+    org.openmetadata.schema.entity.teams.User bot = admin.users().create(request);
+    cleanup.push(() -> admin.users().delete(bot.getId()));
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  /** Reads the ingestion bot's stored token; generating one would rotate it under other tests. */
+  private OpenMetadataClient storedIngestionBotClient(OpenMetadataClient admin) throws Exception {
+    User botUser = admin.users().getByName("ingestion-bot");
+    JsonNode auth =
+        admin
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/users/auth-mechanism/" + botUser.getId(),
+                null,
+                JsonNode.class);
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder()
+            .serverUrl(SdkClients.baseUrl())
+            .accessToken(auth.at("/config/JWTToken").asText())
+            .build());
+  }
+
+  /**
+   * A role that denies ViewAll on one resource. A deny is used rather than a narrow allow because
+   * every bot inherits DefaultBotRole's unconditioned ViewAll, which makes its allow side match_all.
+   */
+  private Role createResourceDenyRole(
+      OpenMetadataClient admin, String prefix, String resource, Deque<Runnable> cleanup) {
+    Rule rule =
+        new Rule()
+            .withName("denyViewOneResource")
+            .withDescription("Deny viewing a single resource type")
+            .withEffect(Rule.Effect.DENY)
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withResources(List.of(resource));
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(prefix + "_" + resource + "DenyPolicy")
+                    .withDescription("Resource-deny policy for search RBAC coverage")
+                    .withRules(List.of(rule)));
+    cleanup.push(() -> admin.policies().delete(policy.getId()));
+
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(prefix + "_" + resource + "DenyRole")
+                    .withDescription("Resource-deny role for search RBAC coverage")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    cleanup.push(() -> admin.roles().delete(role.getId()));
+    return role;
+  }
+
   private OpenMetadataClient createPlainUserClient(
       OpenMetadataClient admin, String prefix, Deque<Runnable> cleanup) {
     String name = prefix + "_plain";
@@ -355,6 +1288,16 @@ public class DomainIsolationIT {
     return names;
   }
 
+  private Set<String> countKeys(OpenMetadataClient client, String path) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, path, null, RequestOptions.builder().build());
+    Set<String> keys = new HashSet<>();
+    MAPPER.readTree(response).fieldNames().forEachRemaining(keys::add);
+    return keys;
+  }
+
   private Set<String> hierarchyNames(OpenMetadataClient client) throws Exception {
     String response =
         client
@@ -372,6 +1315,24 @@ public class DomainIsolationIT {
       }
     }
     return names;
+  }
+
+  /**
+   * Asset-index search, scoped to this test's namespace. Unlike the domain index, table search is
+   * narrowed by search RBAC alone, so it is the right probe for the bot policy injection in #30023.
+   */
+  private Set<String> tableSearchFqns(OpenMetadataClient client, String prefix) throws Exception {
+    String response =
+        client.search().query(prefix + "*").index("table_search_index").size(1000).execute();
+    JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
+    Set<String> fqns = new HashSet<>();
+    for (JsonNode hit : hits) {
+      JsonNode source = hit.path("_source");
+      if (source.hasNonNull("fullyQualifiedName")) {
+        fqns.add(source.get("fullyQualifiedName").asText());
+      }
+    }
+    return fqns;
   }
 
   private Set<String> domainSearchFqns(OpenMetadataClient client) throws Exception {

@@ -17,6 +17,7 @@ import sys
 import traceback
 from pathlib import Path
 
+from metadata.cli.common import execute_workflow
 from metadata.config.common import load_config_file
 from metadata.utils.logger import cli_logger
 from metadata.workflow.application import ApplicationWorkflow
@@ -24,13 +25,14 @@ from metadata.workflow.application import ApplicationWorkflow
 logger = cli_logger()
 
 
-def run_app(config_path: Path) -> None:
+def run_app(config_path: Path, status_file: Path | None = None) -> None:
     """
     Run the application workflow from a config path
     to a JSON or YAML file
     :param config_path: Path to load JSON config
     """
 
+    config_dict = None
     try:
         config_dict = load_config_file(config_path)
         # no logging for config because apps might have custom secrets
@@ -40,7 +42,4 @@ def run_app(config_path: Path) -> None:
         logger.debug(traceback.format_exc())
         sys.exit(1)
 
-    workflow.execute()
-    workflow.stop()
-    workflow.print_status()
-    workflow.raise_from_status()
+    execute_workflow(workflow=workflow, config_dict=config_dict, status_file=status_file)

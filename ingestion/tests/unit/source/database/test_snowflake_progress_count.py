@@ -68,7 +68,6 @@ class TestSnowflakeDatabaseCount:
         source = _source(["A", "B"])
         for setup in (
             "set_inspector",
-            "set_session_query_tag",
             "set_partition_details",
             "set_schema_description_map",
             "set_database_description_map",

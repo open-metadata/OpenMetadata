@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { FC, useCallback, useMemo } from 'react';
-import { Post } from '../../../generated/entity/feed/thread';
+import { FC, useCallback } from 'react';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
+import {
+  CARD_CONTAINER_CLASS_NAME,
+  handleCardContainerKeyDown,
+} from '../ActivityFeedCardNew/ActivityFeedcardNew.utils';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import './feed-panel-body-v1.less';
 import { FeedPanelBodyPropV1 } from './FeedPanelBodyV1.interface';
@@ -26,21 +29,8 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   showThread = true,
   onFeedClick,
   isActive,
+  isThreadPanel,
 }) => {
-  const mainFeed = useMemo(
-    () =>
-      feed
-        ? ({
-            message: feed.message,
-            postTs: feed.threadTs,
-            from: feed.createdBy,
-            id: feed.id,
-            reactions: feed.reactions,
-          } as Post)
-        : undefined,
-    [feed]
-  );
-
   const handleFeedClick = useCallback(() => {
     if (feed) {
       onFeedClick?.(feed);
@@ -58,21 +48,41 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         isOpenInDrawer
         feed={feed}
         isActive={isActive}
-        post={mainFeed}
+        isThreadPanel={isThreadPanel}
         showThread={showThread}
       />
     );
   };
 
+  // The conversation drawer frames the open thread like the description
+  // drawer does, and only the thread's own controls act. Overflow stays
+  // visible: the comment editor's mention list opens below the frame.
+  if (isThreadPanel) {
+    return (
+      <Card
+        className="tw:mx-4 tw:mb-4 tw:overflow-visible"
+        data-testid="message-container">
+        {renderFeedContent()}
+      </Card>
+    );
+  }
+
   return (
-    <Button
-      block
-      className={classNames('activity-feed-card-container ', className)}
+    <Card
+      className={classNames(
+        'activity-feed-card-container',
+        'tw:cursor-pointer',
+        CARD_CONTAINER_CLASS_NAME,
+        className
+      )}
       data-testid="message-container"
-      type="text"
-      onClick={handleFeedClick}>
+      role="button"
+      tabIndex={0}
+      variant="ghost"
+      onClick={handleFeedClick}
+      onKeyDown={handleCardContainerKeyDown(handleFeedClick)}>
       {renderFeedContent()}
-    </Button>
+    </Card>
   );
 };
 

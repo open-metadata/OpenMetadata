@@ -6,8 +6,11 @@ import os
 import unittest
 from unittest.mock import patch
 
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.sdk import configure, reset
+from metadata.sdk.client import verify_ssl_mode
 from metadata.sdk.config import OpenMetadataConfig
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 
 class TestOpenMetadataConfig(unittest.TestCase):
@@ -18,7 +21,7 @@ class TestOpenMetadataConfig(unittest.TestCase):
         config = OpenMetadataConfig(server_url="http://localhost:8585/api", jwt_token="test-token")
         self.assertEqual(config.server_url, "http://localhost:8585/api")
         self.assertEqual(config.jwt_token, "test-token")
-        self.assertFalse(config.verify_ssl)
+        self.assertTrue(config.verify_ssl)
         self.assertEqual(config.client_timeout, 30)
 
     def test_config_strips_trailing_slash(self):
@@ -82,6 +85,19 @@ class TestOpenMetadataConfig(unittest.TestCase):
             self.assertEqual(config.ca_bundle, "/path/to/ca.pem")
             self.assertEqual(config.client_timeout, 60)
 
+    def test_config_from_env_verifies_ssl_by_default(self):
+        """Test from_env keeps certificate verification on unless disabled"""
+        env = {"OPENMETADATA_HOST": "https://localhost:8585/api", "OPENMETADATA_JWT_TOKEN": "token"}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertTrue(OpenMetadataConfig.from_env().verify_ssl)
+        with patch.dict(os.environ, {**env, "OPENMETADATA_VERIFY_SSL": "false"}, clear=True):
+            self.assertFalse(OpenMetadataConfig.from_env().verify_ssl)
+
+    def test_config_builder_verifies_ssl_by_default(self):
+        """Test the builder keeps certificate verification on unless disabled"""
+        config = OpenMetadataConfig.builder().server_url("https://localhost:8585/api").jwt_token("t").build()
+        self.assertTrue(config.verify_ssl)
+
     def test_config_builder(self):
         """Test config builder pattern"""
         config = (
@@ -102,6 +118,35 @@ class TestOpenMetadataConfig(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             OpenMetadataConfig.builder().jwt_token("token").build()
         self.assertIn("Server URL is required", str(context.exception))
+
+
+class TestVerifySslMode(unittest.TestCase):
+    """Test the mapping from the SDK's verify_ssl flag to the requests `verify` value"""
+
+    @staticmethod
+    def _requests_verify(config: OpenMetadataConfig):
+        return get_verify_ssl_fn(verify_ssl_mode(config))(config.to_ssl_config())
+
+    def test_verify_without_ca_bundle_checks_system_cas(self):
+        """verify_ssl=True with no CA bundle must not disable the certificate check"""
+        config = OpenMetadataConfig(server_url="https://om", jwt_token="t", verify_ssl=True)
+        self.assertEqual(verify_ssl_mode(config), VerifySSL.no_ssl)
+        # None leaves requests on its default, which verifies against the system CAs.
+        self.assertIsNone(self._requests_verify(config))
+
+    def test_verify_with_ca_bundle_uses_it(self):
+        config = OpenMetadataConfig(server_url="https://om", jwt_token="t", verify_ssl=True, ca_bundle="/ca.pem")
+        self.assertEqual(verify_ssl_mode(config), VerifySSL.validate)
+        self.assertEqual(self._requests_verify(config), "/ca.pem")
+
+    def test_explicit_opt_out_skips_the_check(self):
+        config = OpenMetadataConfig(server_url="https://om", jwt_token="t", verify_ssl=False)
+        self.assertEqual(verify_ssl_mode(config), VerifySSL.ignore)
+        self.assertIs(self._requests_verify(config), False)
+
+    def test_default_config_verifies(self):
+        config = OpenMetadataConfig(server_url="https://om", jwt_token="t")
+        self.assertIsNone(self._requests_verify(config))
 
 
 class TestConfigureFunction(unittest.TestCase):

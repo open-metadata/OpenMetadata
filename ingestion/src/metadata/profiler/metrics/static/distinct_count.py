@@ -61,7 +61,7 @@ class DistinctCount(StaticMetric):
         if dfs is None:
             return None
         # pylint: disable=import-outside-toplevel
-        from collections import Counter  # noqa: PLC0415
+        from collections import Counter
 
         try:
             counter = Counter()

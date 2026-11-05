@@ -14,12 +14,16 @@ Test Sample behavior
 """
 
 import os
+import struct
+from decimal import Decimal
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Integer, String, func
+from sqlalchemy import JSON, TEXT, Column, Integer, LargeBinary, Numeric, String, TypeDecorator, func, text
+from sqlalchemy.dialects.postgresql import psycopg2
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.types import UserDefinedType
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -27,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
@@ -34,6 +39,7 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.converter.base import build_orm_col
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
 from metadata.sampler.models import (
@@ -517,6 +523,198 @@ class SampleTest(TestCase):
         assert all(results[i] == results[0] for i in range(1, len(results))), (
             "Expected deterministic row ordering with randomizedSample=False"
         )
+
+    def test_user_query_samples_go_through_the_cell_hook(self, sampler_mock):
+        """A profile query returns raw cells, which must get the same per-column processing as a regular sample."""
+
+        class TaggingSampler(SQASampler):
+            def _process_sample_value(self, column, value):
+                return f"processed {value}" if column.name == "name" else value
+
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = TaggingSampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                config=DatabaseSamplerConfig(sample_query="SELECT id, name AS NAME, upper(name) AS shout FROM users"),
+            )
+        sample_data = sampler.fetch_sample_data()
+        assert [col.root for col in sample_data.columns] == ["id", "NAME", "shout"]
+        assert sample_data.rows
+        for row in sample_data.rows:
+            assert isinstance(row[0], int)
+            assert row[1].startswith("processed ")
+            assert not row[2].startswith("processed ")
+
+    def test_user_query_samples_convert_values_like_a_regular_sample(self, sampler_mock):
+        """A profile query returns raw driver values, which must convert through the table column types."""
+
+        class QueriedBinary(Base):
+            __tablename__ = "queried_binary"
+            id = Column(Integer, primary_key=True)
+            password_hash = Column(CustomTypes.BYTES.value)
+
+        QueriedBinary.__table__.create(bind=self.engine)
+        try:
+            self.session.add(QueriedBinary(id=1, password_hash=b"foo"))
+            self.session.commit()
+            samples = []
+            for sample_query in (None, "SELECT id, password_hash, password_hash AS raw_hash FROM queried_binary"):
+                with patch.object(SQASampler, "build_table_orm", return_value=QueriedBinary):
+                    sampler = SQASampler(
+                        service_connection_config=self.sqlite_conn,
+                        ometa_client=None,
+                        entity=None,
+                        config=DatabaseSamplerConfig(sample_query=sample_query),
+                    )
+                samples.append(sampler.fetch_sample_data().rows)
+            regular, queried = samples
+            assert regular == [[1, "foo"]]
+            assert queried == [[1, "foo", b"foo"]]
+        finally:
+            QueriedBinary.__table__.drop(bind=self.engine)
+
+    def test_user_query_keeps_values_the_column_type_cannot_convert(self, sampler_mock):
+        """A computed value named like a table column, but of another type, stays as the query returned it."""
+
+        class QueriedAmount(Base):
+            __tablename__ = "queried_amount"
+            id = Column(Integer, primary_key=True)
+            amount = Column(Numeric(10, 2))
+
+        QueriedAmount.__table__.create(bind=self.engine)
+        try:
+            self.session.add(QueriedAmount(id=1, amount=1))
+            self.session.commit()
+            with patch.object(SQASampler, "build_table_orm", return_value=QueriedAmount):
+                sampler = SQASampler(
+                    service_connection_config=self.sqlite_conn,
+                    ometa_client=None,
+                    entity=None,
+                    config=DatabaseSamplerConfig(
+                        sample_query="SELECT id, 'not a number' AS amount FROM queried_amount"
+                    ),
+                )
+            assert sampler.fetch_sample_data().rows == [[1, "not a number"]]
+        finally:
+            QueriedAmount.__table__.drop(bind=self.engine)
+
+    def test_user_query_keeps_values_whose_conversion_raises_any_error(self, sampler_mock):
+        """A processor can fail outside the usual conversion errors, as rowversion unpacking does on a short value."""
+
+        class RowVersion(TypeDecorator):
+            impl = LargeBinary
+            cache_ok = True
+
+            def process_result_value(self, value, dialect):
+                return struct.unpack("@Q", value)[0]
+
+        class QueriedVersion(Base):
+            __tablename__ = "queried_version"
+            id = Column(Integer, primary_key=True)
+            version = Column(RowVersion)
+
+        QueriedVersion.__table__.create(bind=self.engine)
+        try:
+            self.session.add(QueriedVersion(id=1, version=b"\x00" * 8))
+            self.session.commit()
+            with patch.object(SQASampler, "build_table_orm", return_value=QueriedVersion):
+                sampler = SQASampler(
+                    service_connection_config=self.sqlite_conn,
+                    ometa_client=None,
+                    entity=None,
+                    config=DatabaseSamplerConfig(
+                        sample_query="SELECT id, version, x'0102' AS VERSION FROM queried_version"
+                    ),
+                )
+            assert sampler.fetch_sample_data().rows == [[1, 0, b"\x01\x02"]]
+        finally:
+            QueriedVersion.__table__.drop(bind=self.engine)
+
+    def test_enum_samples_keep_values_the_column_type_does_not_list(self, sampler_mock):
+        """An ENUM column maps to an Enum type that lists no values, so its lookup must not reject sampled values."""
+
+        class QueriedEnum(Base):
+            __tablename__ = "queried_enum"
+            id = Column(Integer, primary_key=True)
+            kind = build_orm_col(
+                1,
+                EntityColumn(name=ColumnName("kind"), dataType=DataType.ENUM),
+                DatabaseServiceType.Mysql,
+            )
+
+        QueriedEnum.__table__.create(bind=self.engine)
+        try:
+            self.session.add(QueriedEnum(id=1, kind="gold"))
+            self.session.commit()
+            samples = []
+            for sample_query in (None, "SELECT id, upper(kind) AS kind FROM queried_enum"):
+                with patch.object(SQASampler, "build_table_orm", return_value=QueriedEnum):
+                    sampler = SQASampler(
+                        service_connection_config=self.sqlite_conn,
+                        ometa_client=None,
+                        entity=None,
+                        config=DatabaseSamplerConfig(sample_query=sample_query),
+                    )
+                samples.append(sampler.fetch_sample_data().rows)
+            assert samples == [[[1, "gold"]], [[1, "GOLD"]]]
+        finally:
+            QueriedEnum.__table__.drop(bind=self.engine)
+
+    def test_user_query_keeps_raw_values_when_the_type_has_no_processor_for_the_dialect(self, sampler_mock):
+        """A generic type can fail to build a processor for a dialect, as JSON does without a JSON deserializer."""
+
+        class NoProcessorForDialect(UserDefinedType):
+            cache_ok = True
+
+            def get_col_spec(self, **kw):
+                return "TEXT"
+
+            def result_processor(self, dialect, coltype):
+                raise AttributeError(f"{dialect.name} has no JSON deserializer")
+
+        class QueriedDocument(Base):
+            __tablename__ = "queried_document"
+            id = Column(Integer, primary_key=True)
+            doc = Column(NoProcessorForDialect)
+
+        QueriedDocument.__table__.create(bind=self.engine)
+        try:
+            self.session.execute(text("INSERT INTO queried_document (id, doc) VALUES (1, '{\"a\": 1}')"))
+            self.session.commit()
+            with patch.object(SQASampler, "build_table_orm", return_value=QueriedDocument):
+                sampler = SQASampler(
+                    service_connection_config=self.sqlite_conn,
+                    ometa_client=None,
+                    entity=None,
+                    config=DatabaseSamplerConfig(sample_query="SELECT id, doc FROM queried_document"),
+                )
+            assert sampler.fetch_sample_data().rows == [[1, '{"a": 1}']]
+        finally:
+            QueriedDocument.__table__.drop(bind=self.engine)
+
+    def test_user_query_converts_through_the_dialect_type_like_a_regular_sample(self, sampler_mock):
+        """psycopg2 decodes JSON itself, so the generic JSON processor would decode a JSON string value twice."""
+        sampler = SQASampler(
+            service_connection_config=self.sqlite_conn,
+            ometa_client=None,
+            entity=None,
+            config=DatabaseSamplerConfig(sample_query="SELECT 1"),
+        )
+        document, amount = Column("doc", JSON), Column("amount", Numeric(10, 2))
+        dialect = psycopg2.dialect()
+        jsonb_processor = sampler._result_processor(document, dialect, 3802)
+        numeric_processor = sampler._result_processor(amount, dialect, 1700)
+        assert sampler._user_query_cell(document, jsonb_processor, "123") == "123"
+        assert sampler._user_query_cell(amount, numeric_processor, Decimal("1.50")) == Decimal("1.50")
+
+    def test_user_query_matches_columns_by_exact_name_before_case(self, sampler_mock):
+        """A table can hold columns whose names differ only in case."""
+        lower, upper = Column("id", Integer), Column("ID", String)
+        assert SQASampler._matching_column("ID", {"id": lower, "ID": upper}) is upper
+        assert SQASampler._matching_column("id", {"id": lower, "ID": upper}) is lower
+        assert SQASampler._matching_column("Id", {"ID": upper}) is upper
+        assert SQASampler._matching_column("total", {"id": lower}) is None
 
     @classmethod
     def tearDownClass(cls) -> None:

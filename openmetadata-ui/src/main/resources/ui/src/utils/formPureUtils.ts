@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ErrorTransformer } from '@rjsf/utils';
+import type { RJSFValidationError } from '@rjsf/utils';
 import { compact, startCase } from 'lodash';
 import { t } from './i18next/LocalUtil';
 
-export const transformErrors: ErrorTransformer = (errors) => {
+export const transformErrors = (errors: RJSFValidationError[]) => {
   const errorRet = errors.map((error) => {
     const { property, params, name } = error;
 
@@ -42,6 +42,12 @@ export const transformErrors: ErrorTransformer = (errors) => {
             minimum: params?.limit,
           }),
         }),
+        maximum: () => ({
+          message: t('message.value-must-be-less-than-or-equal', {
+            field: fieldName,
+            maximum: params?.limit,
+          }),
+        }),
       };
 
       const errorHandler = errorMessages[name as keyof typeof errorMessages];
@@ -64,7 +70,7 @@ export const getPopupContainer = (triggerNode: HTMLElement) =>
 export interface ScrollToErrorOptions {
   /** CSS selector for the scrollable container. Defaults to '.drawer-form-content' for drawer layouts */
   scrollContainer?: string;
-  /** CSS selector for form error elements. Defaults to '.ant-form-item-has-error' */
+  /** CSS selector for form error elements. Defaults to invalid react-aria fields */
   errorSelector?: string;
   /** Offset from top in pixels for better visibility. Defaults to 100 */
   offsetTop?: number;
@@ -79,7 +85,7 @@ export const createScrollToErrorHandler = (
 ) => {
   const {
     scrollContainer = '.drawer-form-content',
-    errorSelector = '.ant-form-item-has-error',
+    errorSelector = '[aria-invalid="true"], [data-invalid="true"]',
     offsetTop = 100,
     delay = 100,
     behavior = 'smooth',
@@ -89,7 +95,9 @@ export const createScrollToErrorHandler = (
     setTimeout(() => {
       const firstError = document.querySelector(errorSelector);
       if (firstError) {
-        const scrollableContainer = document.querySelector(scrollContainer);
+        // Nearest ancestor, not the first match: drawers can nest
+        // `.drawer-form-content`, and the outer one may not scroll.
+        const scrollableContainer = firstError.closest(scrollContainer);
         if (scrollableContainer) {
           const errorRect = firstError.getBoundingClientRect();
           const containerRect = scrollableContainer.getBoundingClientRect();

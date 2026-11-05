@@ -1,0 +1,239 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { parse } from 'papaparse';
+import type { Column } from 'react-data-grid';
+import {
+  getCsvGridRowHeight,
+  getCSVStringFromColumnsAndDataSource,
+  getFailedImportRowIds,
+  neutralizeFormula,
+  normalizeCsvLineBreaks,
+  restoreFormula,
+} from './CSVPureUtils';
+
+type GridColumn = Column<Record<string, string>>;
+
+// Five short chip labels: each estimates to a 29px chip (2 chars * 6.5 + 16),
+// packed greedily with a 6px gap into (columnWidth - 36) available px.
+const FIVE_CHIP_VALUE = 'aa;bb;cc;dd;ee';
+
+const buildColumn = (partial: Partial<GridColumn>): GridColumn =>
+  ({ key: 'tags', name: 'Tags', ...partial } as GridColumn);
+
+describe('getCsvGridRowHeight columnWidth branch', () => {
+  it('uses column.width when it is a number (wide width fits all chips on one line)', () => {
+    const columns = [buildColumn({ width: 1000 })];
+
+    expect(getCsvGridRowHeight({ tags: FIVE_CHIP_VALUE }, columns)).toBe(44);
+  });
+
+  it('uses column.width when it is a number (narrow width wraps every chip)', () => {
+    const columns = [buildColumn({ width: 40 })];
+
+    // available = max(1, 40 - 36) = 4 -> each of the 5 chips wraps -> 5 lines
+    expect(getCsvGridRowHeight({ tags: FIVE_CHIP_VALUE }, columns)).toBe(
+      44 + 4 * 26
+    );
+  });
+
+  it('falls back to column.minWidth when width is not a number', () => {
+    const narrow = [buildColumn({ minWidth: 40 })];
+    const wide = [buildColumn({ minWidth: 1000 })];
+
+    // minWidth 40 -> 5 lines; minWidth 1000 -> single line (proves minWidth,
+    // not the 200px default, was used)
+    expect(getCsvGridRowHeight({ tags: FIVE_CHIP_VALUE }, narrow)).toBe(
+      44 + 4 * 26
+    );
+    expect(getCsvGridRowHeight({ tags: FIVE_CHIP_VALUE }, wide)).toBe(44);
+  });
+
+  it('falls back to the default chip column width when neither width nor minWidth is set', () => {
+    const columns = [buildColumn({})];
+
+    // default 200 -> available 164 -> four chips fit, fifth wraps -> 2 lines
+    expect(getCsvGridRowHeight({ tags: FIVE_CHIP_VALUE }, columns)).toBe(
+      44 + 26
+    );
+  });
+
+  it('returns the base height for non-chip columns and single-chip rows', () => {
+    const nonChip = [buildColumn({ key: 'description', width: 40 })];
+    const singleChip = [buildColumn({ width: 40 })];
+
+    expect(getCsvGridRowHeight({ description: FIVE_CHIP_VALUE }, nonChip)).toBe(
+      44
+    );
+    expect(getCsvGridRowHeight({ tags: 'only-one' }, singleChip)).toBe(44);
+  });
+
+  it('honours a custom base row height', () => {
+    const columns = [buildColumn({ width: 1000 })];
+
+    expect(getCsvGridRowHeight({ tags: FIVE_CHIP_VALUE }, columns, 60)).toBe(
+      60
+    );
+  });
+});
+
+describe('getFailedImportRowIds', () => {
+  const submittedCsv = [
+    'parent,name*,description',
+    ',Churn,first',
+    ',Customer,second',
+    ',Order,third',
+  ].join('\n');
+
+  it('matches failures by row values when the server writes them out of order', () => {
+    const importResultsCsv = [
+      'status,details,parent,name*,description',
+      'failure,Missing owner,,Order,third',
+      'success,Entity updated,,Churn,first',
+      'failure,"Tags a, b are mutually exclusive",,Customer,second',
+    ].join('\n');
+
+    expect(
+      [...getFailedImportRowIds({ importResultsCsv, submittedCsv })].sort()
+    ).toEqual(['1', '2']);
+  });
+
+  it('maps failures to the ids of the rows that were submitted', () => {
+    const importResultsCsv = [
+      'status,details,parent,name*,description',
+      'failure,Missing owner,,Customer,second',
+    ].join('\n');
+
+    expect([
+      ...getFailedImportRowIds({
+        importResultsCsv,
+        submittedCsv,
+        submittedRowIds: ['7', '12', '30'],
+      }),
+    ]).toEqual(['12']);
+  });
+
+  it('claims each identical failed record once', () => {
+    const duplicateCsv = ['name*,description', 'A,x', 'A,x'].join('\n');
+    const importResultsCsv = [
+      'status,details,name*,description',
+      'success,ok,A,x',
+      'failure,bad,A,x',
+    ].join('\n');
+
+    expect(
+      getFailedImportRowIds({ importResultsCsv, submittedCsv: duplicateCsv })
+        .size
+    ).toBe(1);
+  });
+
+  it('matches failed rows with formula-like cells the server echoes restored', () => {
+    const escapedCsv = ['name*,description', "A,'- bullet", "B,'-5"].join('\n');
+    const importResultsCsv = [
+      'status,details,name*,description',
+      'failure,bad,A,- bullet',
+      'success,ok,B,-5',
+    ].join('\n');
+
+    expect([
+      ...getFailedImportRowIds({ importResultsCsv, submittedCsv: escapedCsv }),
+    ]).toEqual(['0']);
+  });
+
+  it('returns no ids without a result', () => {
+    expect(getFailedImportRowIds({ submittedCsv }).size).toBe(0);
+  });
+});
+
+describe('formula escaping matches the server CSV export', () => {
+  // Same cases as EntityCsvTest: stored value -> exported cell.
+  const cases: Array<[string, string]> = [
+    ['=HYPERLINK("http://x")', `'=HYPERLINK("http://x")`],
+    ['+1', "'+1"],
+    ['- bullet', "'- bullet"],
+    ['@SUM(A1)', "'@SUM(A1)"],
+    ['\tindented', "'\tindented"],
+    ["'=already quoted", "''=already quoted"],
+    ['"local.mysql".default', '"local.mysql".default'],
+    ["'plain quote", "'plain quote"],
+    ['user:admin;team:data', 'user:admin;team:data'],
+  ];
+
+  it.each(cases)('escapes %j once and restores it', (stored, exported) => {
+    expect(neutralizeFormula(stored)).toBe(exported);
+    expect(restoreFormula(exported)).toBe(stored);
+  });
+
+  it('re-escapes grid values sent back for import', () => {
+    const csv = getCSVStringFromColumnsAndDataSource(
+      [{ key: 'name' }, { key: 'description' }],
+      [{ name: 'term', description: "'=already quoted" }]
+    );
+
+    expect(csv).toBe("name,description\nterm,''=already quoted");
+  });
+});
+
+describe('normalizeCsvLineBreaks', () => {
+  // Three exported rows end in CRLF; the two rows appended afterwards end in LF.
+  const mixedEndings =
+    'name*,entityType*\r\ncustomer_orders,table\r\norder_id,column\r\n' +
+    'order_total,column\r\nstore_footfall_daily,table\nvisitors,column\n';
+
+  const parseRows = (content: string) =>
+    parse<string[]>(content, { skipEmptyLines: true }).data;
+
+  it('keeps every row once the line breaks are normalized', () => {
+    const rows = parseRows(normalizeCsvLineBreaks(mixedEndings));
+
+    expect(rows).toHaveLength(6);
+    expect(rows.map((row) => row[0])).toEqual([
+      'name*',
+      'customer_orders',
+      'order_id',
+      'order_total',
+      'store_footfall_daily',
+      'visitors',
+    ]);
+  });
+
+  it('rewrites CRLF and lone CR as LF', () => {
+    expect(normalizeCsvLineBreaks('a\r\nb\rc\nd')).toBe('a\nb\nc\nd');
+  });
+
+  it('treats a quote inside an unquoted cell as text', () => {
+    const inches =
+      'name*,description\r\npipes,12" pipe\r\nfittings,Elbow joint\r\nvalves,3" valve\r\n';
+
+    const rows = parseRows(normalizeCsvLineBreaks(inches));
+
+    expect(rows).toEqual([
+      ['name*', 'description'],
+      ['pipes', '12" pipe'],
+      ['fittings', 'Elbow joint'],
+      ['valves', '3" valve'],
+    ]);
+  });
+
+  it('keeps line breaks inside quoted cells', () => {
+    const quoted =
+      'name*,description\r\norders,"Line one\r\nLine two ""quoted"""\r\nvisits,Daily\n';
+
+    const rows = parseRows(normalizeCsvLineBreaks(quoted));
+
+    expect(rows).toEqual([
+      ['name*', 'description'],
+      ['orders', 'Line one\r\nLine two "quoted"'],
+      ['visits', 'Daily'],
+    ]);
+  });
+});

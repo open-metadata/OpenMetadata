@@ -15,13 +15,86 @@ import {
   PipelineState,
   PipelineStatus,
 } from '../../src/generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getEncodedFqn } from '../../src/utils/StringUtils';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
-import { waitForAllLoadersToDisappear } from './entity';
+import { getCurrentMillis } from './dateTime';
+import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { waitForTaskResolveResponse } from './task';
+
+/**
+ * Seeds `count` failing test cases on `table`, each of which produces an
+ * incident, WITHOUT deploying or running an ingestion pipeline. A failed test
+ * case result is posted directly via the API, which is what actually creates an
+ * incident — the pipeline is only one way to produce that result.
+ *
+ * Use this for tests that just need incidents to exist (UI, pagination,
+ * filters). It is deterministic and takes seconds, so those tests no longer
+ * depend on Airflow or queue behaviour. Tests that verify pipeline behaviour
+ * (e.g. re-running a pipeline resolves an incident) must still use a real
+ * pipeline via triggerTestSuitePipelineAndWaitForSuccess.
+ *
+ * Returns the created test cases (in creation order).
+ */
+export const seedFailedIncidents = async (data: {
+  apiContext: APIRequestContext;
+  table: TableClass;
+  count: number;
+}): Promise<ResponseDataType[]> => {
+  const { apiContext, table, count } = data;
+  const failTimestamp = getCurrentMillis();
+  const testCases: ResponseDataType[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const testCase = await table.createTestCase(apiContext);
+    await table.addTestCaseResult(apiContext, testCase['fullyQualifiedName'], {
+      result: 'Seeded failing result to create an incident.',
+      testResultValue: [{ name: 'seeded', value: '0' }],
+      testCaseStatus: 'Failed',
+      timestamp: failTimestamp,
+    });
+    testCases.push(testCase);
+  }
+
+  // Wait until ALL seeded incidents are indexed, not just the last — Elasticsearch
+  // indexing is not ordered, so an earlier incident can still be missing when the
+  // last one is searchable, which would under-fill the list and defeat the point.
+  const seededFqns = new Set(
+    testCases.map((testCase) => testCase['fullyQualifiedName'])
+  );
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true` +
+            `&startTs=${failTimestamp - 60_000}` +
+            `&endTs=${failTimestamp + 120_000}` +
+            `&limit=${count + 50}`
+        );
+
+        if (!response.ok()) {
+          return 0;
+        }
+
+        const body = await response.json();
+        const indexedFqns = new Set(
+          (body.data ?? []).map(
+            (incident: {
+              testCaseReference?: { fullyQualifiedName?: string };
+            }) => incident.testCaseReference?.fullyQualifiedName
+          )
+        );
+
+        return [...seededFqns].filter((fqn) => indexedFqns.has(fqn)).length;
+      },
+      { timeout: 90_000, intervals: [2_000, 3_000, 5_000] }
+    )
+    .toBeGreaterThanOrEqual(count);
+
+  return testCases;
+};
 
 export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await page.goto(
@@ -31,6 +104,32 @@ export const visitProfilerTab = async (page: Page, table: TableClass) => {
   );
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByRole('tab', { name: 'Data Quality' })).toBeVisible();
+};
+
+/**
+ * Asserts a failed test case's incident sits at `status`, then opens the test
+ * case details page. Drives no transition, but leaves the page where
+ * {@link acknowledgeTask} does so callers can go on to the Incident tab.
+ */
+export const verifyIncidentStatus = async (data: {
+  testCase: string;
+  page: Page;
+  table: TableClass;
+  status: string;
+}) => {
+  const { testCase, page, table, status } = data;
+  await visitProfilerTab(page, table);
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
+
+  await expect(
+    page.locator(`[data-testid="status-badge-${testCase}"]`)
+  ).toContainText('Failed');
+
+  await expect(
+    page.locator(`[data-testid="${testCase}-status"]`)
+  ).toContainText(status);
+  await page.getByTestId(testCase).getByText(testCase).click();
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const acknowledgeTask = async (data: {
@@ -52,8 +151,11 @@ export const acknowledgeTask = async (data: {
   await page.getByTestId(testCase).getByText(testCase).click();
   await waitForAllLoadersToDisappear(page);
   await page.click('[data-testid="edit-resolution-icon"]');
-  await page.click('[data-testid="test-case-resolution-status-type"]');
-  await page.click('[title="Ack"]');
+  await page
+    .getByTestId('test-case-resolution-status-type')
+    .getByRole('button')
+    .click();
+  await page.getByRole('option', { name: 'Ack', exact: true }).click();
   const statusChangeResponse = waitForTaskResolveResponse(page);
   await page.click('#update-status-button');
   await statusChangeResponse;
@@ -79,8 +181,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
   if (testCaseName) {
     const incidentRow = page
       .locator('tr')
-      .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
-      .first();
+      .filter({ has: page.getByTestId(`test-case-${testCaseName}`) });
     const editOwnerButton = incidentRow.getByTestId('edit-owner');
 
     await expect(editOwnerButton).toBeVisible();
@@ -89,25 +190,35 @@ export const addAssigneeFromPopoverWidget = async (data: {
     await taskTabEditAssigneesButton.click();
     await waitForAllLoadersToDisappear(page);
 
-    const assigneeModal = page.locator('.ant-modal-content').last();
+    const assigneeModal = page.getByRole('dialog').last();
     const assigneeSelect = assigneeModal.getByTestId('select-assignee');
-    const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
-    const assigneeInput = assigneeSelect.locator('input').last();
+    const assigneeInput = assigneeSelect.getByRole('combobox');
     const assigneeOption = page.getByTestId(user.name).first();
     const normalizedAssigneeOption = page
       .getByTestId(user.name.toLowerCase())
       .first();
 
     await expect(assigneeModal).toBeVisible();
-    await expect(assigneeSelector).toBeVisible();
 
-    await assigneeSelector.click();
+    // Single-select core Autocomplete hides its input while an item is selected.
+    const selectedAssignee = assigneeSelect.getByTestId(
+      'autocomplete-selected-item'
+    );
+    if (await selectedAssignee.isVisible()) {
+      await selectedAssignee.getByRole('button').click();
+    }
+
+    await expect(assigneeInput).toBeVisible();
+
+    await assigneeInput.click();
     await assigneeInput.fill(user.displayName);
 
     if (await assigneeOption.isVisible().catch(() => false)) {
       await assigneeOption.click();
     } else {
-      await expect(normalizedAssigneeOption).toBeVisible({ timeout: 30_000 });
+      await expect(normalizedAssigneeOption).toBeVisible({
+        timeout: ACTION_TIMEOUT,
+      });
       await normalizedAssigneeOption.click();
     }
 
@@ -131,7 +242,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
         ? incidentAssignee
         : page.getByTestId('assignee').first()
     ).toContainText(user.displayName, {
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
 
     return;
@@ -154,24 +265,29 @@ export const addAssigneeFromPopoverWidget = async (data: {
   await searchUserResponse;
 
   const updateIncident = waitForTaskResolveResponse(page);
-  await page.click(`.ant-popover [title="${user.displayName}"]`);
-  await updateIncident;
-
   await page
-    .getByTestId('assignee')
-    .getByTestId('owner-link')
-    .first()
-    .waitFor();
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: user.displayName })
+    .click();
+  await updateIncident;
 
   const taskHeaderAssignee = page.getByTestId(
     'incident-manager-task-header-container'
   );
+  // List pages can contain several incidents, so a generic first() may assert
+  // against an unrelated unassigned row instead of the incident just updated.
+  const incidentAssignee = testCaseName
+    ? page
+        .locator('tr')
+        .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
+        .getByTestId('assignee')
+    : page.getByTestId('assignee').first();
 
   await expect(
     (await taskHeaderAssignee.isVisible().catch(() => false))
       ? taskHeaderAssignee
-      : page.getByTestId('assignee').first()
-  ).toContainText(user.displayName);
+      : incidentAssignee
+  ).toContainText(user.displayName, { timeout: ACTION_TIMEOUT });
 };
 
 export const assignIncident = async (data: {
@@ -185,9 +301,7 @@ export const assignIncident = async (data: {
   await expect
     .poll(
       async () => {
-        const incidentRow = page
-          .getByTestId(`test-case-${testCaseName}`)
-          .first();
+        const incidentRow = page.getByTestId(`test-case-${testCaseName}`);
         const incidentLink = page
           .getByRole('link', { name: testCaseName })
           .first();
@@ -254,12 +368,24 @@ const NEW_RUN_APPEARANCE_TIMEOUT = 60_000;
 const NEW_RUN_POLL_INTERVAL = 2_000;
 const TRIGGER_ATTEMPTS = 3;
 
+// Default budget the poll waits for a triggered run to reach `success`. Heavier
+// suites (many test cases) validate for longer and queue behind other pipelines
+// under load, so callers can raise it. The calling test's own timeout must
+// exceed whatever is used here, or the test dies before the poll can finish.
+const DEFAULT_PIPELINE_SUCCESS_TIMEOUT = 300_000;
+
 export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   page: Page;
   apiContext: APIRequestContext;
   pipeline: ResponseDataType;
+  successTimeout?: number;
 }) => {
-  const { page, apiContext, pipeline } = data;
+  const {
+    page,
+    apiContext,
+    pipeline,
+    successTimeout = DEFAULT_PIPELINE_SUCCESS_TIMEOUT,
+  } = data;
   const encodedPipelineFqn = encodeURIComponent(
     pipeline?.['fullyQualifiedName']
   );
@@ -370,16 +496,28 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
     latestRun.runId !== previousRun?.runId ||
     (latestRun.timestamp ?? 0) > (previousRun?.timestamp ?? 0);
 
-  // Wait for a genuinely new run to surface after a trigger. Returns false if
-  // none appears within the window, which means the trigger raced an
-  // unserialized DAG and produced an empty run that wrote no status.
+  // Wait for a genuinely new run to actually START after a trigger. Returns
+  // false if none does within the window, which means the trigger raced an
+  // unserialized DAG.
+  //
+  // The race has two shapes: the trigger produces no status at all, OR it
+  // produces a transient `queued` run that then vanishes because the empty DAG
+  // finished instantly and wrote nothing. A plain "a run exists" check is
+  // fooled by that transient `queued` and skips the re-trigger, so require the
+  // run to have LEFT the queue (running/success/…) — a real run does so within
+  // seconds, the empty-DAG run never does.
   const waitForNewRunToAppear = async () => {
     const startedAt = Date.now();
 
     while (Date.now() - startedAt < NEW_RUN_APPEARANCE_TIMEOUT) {
       const { run } = await fetchLatestPipelineStatus();
 
-      if (run && isNewRun(run)) {
+      if (
+        run &&
+        isNewRun(run) &&
+        run.pipelineState !== undefined &&
+        run.pipelineState !== PipelineState.Queued
+      ) {
         return true;
       }
 
@@ -443,7 +581,7 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
         } to be successful (run recorded before trigger: ${
           previousRun?.runId ?? 'none'
         })`,
-        timeout: 300_000,
+        timeout: successTimeout,
         intervals: [2_000, 5_000, 10_000],
       }
     )

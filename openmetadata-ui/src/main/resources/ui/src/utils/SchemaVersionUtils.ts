@@ -79,6 +79,27 @@ export function getNewSchemaFromSchemaDiff(
   });
 }
 
+function formatAddedSchemaFieldData(
+  arr: Array<Field>,
+  field: Field,
+  updateAll?: boolean
+) {
+  arr?.forEach((i) => {
+    if (isEqual(i.name, field.name) || updateAll) {
+      i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
+      i.description = getTextDiff('', i.description ?? '');
+      i.dataType = getTextDiff('', i.dataType ?? '') as DataTypeTopic;
+      i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
+      i.name = getTextDiff('', i.name);
+      if (!isEmpty(i.children)) {
+        formatAddedSchemaFieldData(i?.children as Array<Field>, field, true);
+      }
+    } else {
+      formatAddedSchemaFieldData(i?.children as Array<Field>, field);
+    }
+  });
+}
+
 export function createAddedSchemasDiff(
   schemaFieldsDiff: EntityDiffProps,
   schemaFields: Array<Field> = []
@@ -88,23 +109,7 @@ export function createAddedSchemasDiff(
   );
 
   newField.forEach((field) => {
-    const formatSchemaFieldsData = (arr: Array<Field>, updateAll?: boolean) => {
-      arr?.forEach((i) => {
-        if (isEqual(i.name, field.name) || updateAll) {
-          i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
-          i.description = getTextDiff('', i.description ?? '');
-          i.dataType = getTextDiff('', i.dataType ?? '') as DataTypeTopic;
-          i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
-          i.name = getTextDiff('', i.name);
-          if (!isEmpty(i.children)) {
-            formatSchemaFieldsData(i?.children as Array<Field>, true);
-          }
-        } else {
-          formatSchemaFieldsData(i?.children as Array<Field>);
-        }
-      });
-    };
-    formatSchemaFieldsData(schemaFields ?? []);
+    formatAddedSchemaFieldData(schemaFields ?? [], field);
   });
 }
 

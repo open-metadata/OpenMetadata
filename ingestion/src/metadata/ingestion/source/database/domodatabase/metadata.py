@@ -14,7 +14,8 @@ Domo Database source to extract metadata
 """
 
 import traceback
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -98,7 +99,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config = WorkflowSource.model_validate(config_dict)
         connection: DomoDatabaseConnection = config.serviceConnection.root.config
@@ -138,7 +139,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, str]] | None:
         schema_name = self.context.get().database_schema
         try:
             tables = list(self.domo_client.datasets.list())
@@ -173,7 +174,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 )
             )
 
-    def get_owners(self, owner: Owner) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owners(self, owner: Owner) -> EntityReferenceList | None:
         try:
             owner_details = User(**self.domo_client.users_get(owner.id))
             if owner_details.email:
@@ -182,7 +183,7 @@ class DomodatabaseSource(DatabaseServiceSource):
             logger.warning(f"Error while getting details of user {owner.name} - {exc}")
         return None
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         table_id, table_type = table_name_and_type
         try:
             table_constraints = None
@@ -225,8 +226,13 @@ class DomodatabaseSource(DatabaseServiceSource):
         Method to retrieve the column metadata from federated datasets
         """
         try:
-            # SQL query to get all columns without fetching any rows
-            sql_query = f'SELECT * FROM "{table_name}" LIMIT 1'
+            # SQL query to get all columns without fetching any rows.
+            # The dataset is addressed by `dataset_id` in the request URL, so the FROM
+            # clause is the literal `table` -- pydomo's own example is
+            # `SELECT * FROM table LIMIT 2`. Interpolating the dataset name here put a
+            # free-text label a Domo user controls into the query, where a `"` broke out
+            # of the quotes (`SELECT * FROM "a" UNION SELECT * FROM "b" LIMIT 1`).
+            sql_query = "SELECT * FROM table LIMIT 1"
             schema_columns = []
             response = self.domo_client.datasets.query(dataset_id, sql_query)
             if response:
@@ -250,6 +256,8 @@ class DomodatabaseSource(DatabaseServiceSource):
             table_object.schemas = self.get_columns_from_federated_dataset(
                 table_name=table_object.name, dataset_id=table_object.id
             )
+        if not table_object.schemas:
+            return columns
 
         for column in table_object.schemas.columns or []:
             try:
@@ -281,8 +289,8 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def get_source_url(
         self,
-        table_name: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        table_name: str | None = None,
+    ) -> str | None:
         """
         Method to get the source url for domodatabase
         """

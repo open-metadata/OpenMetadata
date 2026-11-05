@@ -12,8 +12,8 @@
  */
 
 import { isUndefined } from 'lodash';
-import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import { Votes } from '../generated/type/votes';
+import { QueryVoteType } from '../interface/entity/vote.interface';
 
 /**
  * Take entity vote and userId as input and return name for vote status type

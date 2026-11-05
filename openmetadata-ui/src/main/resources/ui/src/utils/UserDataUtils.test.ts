@@ -12,8 +12,14 @@
  */
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { User } from '../generated/entity/teams/user';
-import * as userAPI from '../rest/userAPI';
+import { updateUserDetail } from '../rest/userAPI';
 import { checkIfUpdateRequired, getUserWithImage } from './UserDataUtils';
+
+jest.mock('../rest/userAPI', () => {
+  const actual = jest.requireActual('../rest/userAPI');
+
+  return { ...actual, updateUserDetail: jest.fn(actual.updateUserDetail) };
+});
 
 describe('getUserWithImage', () => {
   it('should return the correct user based on profile and isBot status', () => {
@@ -171,9 +177,7 @@ describe('checkIfUpdateRequired', () => {
       isBot: false,
     };
     // Spy on the function within the module
-    jest
-      .spyOn(userAPI, 'updateUserDetail')
-      .mockResolvedValue(existingUserDetails);
+    (updateUserDetail as jest.Mock).mockResolvedValue(existingUserDetails);
 
     const newUser: OidcUser = {
       id_token: 'idToken',

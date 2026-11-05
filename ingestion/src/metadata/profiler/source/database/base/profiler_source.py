@@ -15,7 +15,7 @@ its interface
 """
 
 from copy import deepcopy
-from typing import Optional, Type, cast  # noqa: UP035
+from typing import cast
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
@@ -33,7 +33,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
+from metadata.profiler.api.models import (
+    ProfilerProcessorConfig,
+    TableConfig,
+    processor_config_payload,
+)
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.processor.core import Profiler
@@ -90,7 +94,7 @@ class ProfilerSource(ProfilerSourceInterface):
         database: Database,
         ometa_client: OpenMetadata,
         global_profiler_configuration: ProfilerConfiguration,
-        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,  # noqa: UP006
+        profiler_config_class: Inject[type[ProfilerProcessorConfig]] = None,
     ):
         if profiler_config_class is None:
             raise DependencyNotFoundError(
@@ -99,7 +103,7 @@ class ProfilerSource(ProfilerSourceInterface):
 
         self.config = config
         self.service_conn_config = self._copy_service_config(config, database)
-        self.profiler_config = profiler_config_class.model_validate(config.processor.model_dump().get("config"))
+        self.profiler_config = profiler_config_class.model_validate(processor_config_payload(config.processor))
         self.ometa_client = ometa_client
         self._interface_type: str = config.source.type.lower()
         self._interface = None
@@ -110,7 +114,7 @@ class ProfilerSource(ProfilerSourceInterface):
     @property
     def interface(
         self,
-    ) -> Optional[ProfilerInterface]:  # noqa: UP045
+    ) -> ProfilerInterface | None:
         """Get the interface"""
         return self._interface
 
@@ -156,14 +160,20 @@ class ProfilerSource(ProfilerSourceInterface):
             randomizedSample=self.source_config.randomizedSample if self.source_config else False,
         )
 
+    def _auto_detect_partition(self) -> bool:
+        supported = getattr(self.service_conn_config, "supportsAutoPartitionDetection", None)
+        return bool(
+            self.source_config and self.source_config.enableAutoPartitionDetection and supported and supported.root
+        )
+
     @inject
     def create_profiler_interface(
         self,
         entity: Table,
-        config: Optional[TableConfig],  # noqa: UP045
+        config: TableConfig | None,
         schema_entity: DatabaseSchema,
         database_entity: Database,
-        profiler_resolver: Inject[Type[ProfilerResolver]] = None,  # noqa: UP006
+        profiler_resolver: Inject[type[ProfilerResolver]] = None,
     ) -> ProfilerInterface:
         """Create the appropriate profiler interface based on processing engine."""
         if profiler_resolver is None:
@@ -204,7 +214,11 @@ class ProfilerSource(ProfilerSourceInterface):
                 ),
                 include_columns=get_include_columns(entity, entity_config=config) or [],
                 exclude_columns=get_exclude_columns(entity, entity_config=config) or [],
-                partition_details=get_partition_details(entity=entity, entity_config=config),
+                partition_details=get_partition_details(
+                    entity=entity,
+                    entity_config=config,
+                    auto_detect_partition=self._auto_detect_partition(),
+                ),
                 sample_query=get_sample_query(entity=entity, entity_config=config),
                 # TODO: Change this when we have the processing engine configuration implemented.
                 processing_engine=self.get_processing_engine(self.source_config),
@@ -227,7 +241,7 @@ class ProfilerSource(ProfilerSourceInterface):
         self,
         entity: Table,
         profiler_config: ProfilerProcessorConfig,
-        metrics_registry: Inject[Type[MetricRegistry]] = None,  # noqa: UP006
+        metrics_registry: Inject[type[MetricRegistry]] = None,
     ) -> Profiler:
         """
         Returns the runner for the profiler

@@ -13,7 +13,6 @@ Regex scanner for column names
 """
 
 import re
-from typing import Optional
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.pii.constants import PII
@@ -51,7 +50,7 @@ class ColumnNameScanner(BaseScanner):
         "PHONE_NUMBER": re.compile("^.*(phone).*$", re.IGNORECASE),
     }
 
-    def scan(self, data: str) -> Optional[TagAndConfidence]:  # noqa: UP045
+    def scan(self, data: str) -> TagAndConfidence | None:
         """
         Check the column name against the regex patterns and prepare the
         sensitive or non-sensitive tag

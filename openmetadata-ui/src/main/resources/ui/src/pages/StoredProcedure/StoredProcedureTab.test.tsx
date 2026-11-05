@@ -14,16 +14,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import StoredProcedureTab from './StoredProcedureTab';
 
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
-  }
-);
-
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(({ pagingHandler }) => (
-    <p data-testid="next-previous" onClick={pagingHandler}>
+    <p data-testid="next-previous" role="presentation" onClick={pagingHandler}>
       testNextPrevious
     </p>
   ));
@@ -47,7 +40,7 @@ const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
-    .mockImplementation(({ children }) => <a href="#">{children}</a>),
+    .mockImplementation(({ children }) => <a href="/">{children}</a>),
   useParams: jest.fn().mockImplementation(() => ({ fqn: 'something' })),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,

@@ -14,12 +14,16 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
+import time
 from abc import ABC, abstractmethod
-from typing import Optional, Set, Type, cast  # noqa: UP035
+from typing import cast
 
 from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator  # noqa: TC001
+from metadata.data_quality.validations.base_test_handler import (
+    BaseTestValidator,
+    elapsed_ms,
+)
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,  # noqa: TC001
 )
@@ -53,8 +57,8 @@ class TestSuiteInterface(ABC):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table,
-        validator_builder: Type[ValidatorBuilder],  # noqa: UP006
-        sample_data_config: Optional[SampleDataIngestionConfig] = None,  # noqa: UP045
+        validator_builder: type[ValidatorBuilder],
+        sample_data_config: SampleDataIngestionConfig | None = None,
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client
@@ -102,7 +106,7 @@ class TestSuiteInterface(ABC):
         return cls.runtime_params_setter_fact()
 
     @classmethod
-    def _set_runtime_params_setter_fact(cls, class_fact: Type[RuntimeParameterSetterFactory]):  # noqa: UP006
+    def _set_runtime_params_setter_fact(cls, class_fact: type[RuntimeParameterSetterFactory]):
         """Set the runtime parameter setter factory.
         Use this method to set the runtime parameter setter factory and override the default.
 
@@ -116,10 +120,10 @@ class TestSuiteInterface(ABC):
         when the global profiler configuration disables storing sample data."""
         return self.sample_data_config is None or bool(self.sample_data_config.storeSampleData)
 
-    def run_test_case(self, test_case: TestCase) -> Optional[TestCaseResultResponse]:  # noqa: UP045
+    def run_test_case(self, test_case: TestCase) -> TestCaseResultResponse | None:
         """run column data quality tests"""
         runtime_params_setter_fact: RuntimeParameterSetterFactory = self._get_runtime_params_setter_fact()  # type: ignore
-        runtime_params_setters: Set[RuntimeParameterSetter] = runtime_params_setter_fact.get_runtime_param_setters(  # noqa: UP006
+        runtime_params_setters: set[RuntimeParameterSetter] = runtime_params_setter_fact.get_runtime_param_setters(
             test_case.testDefinition.fullyQualifiedName,  # type: ignore
             self.ometa_client,
             self.service_connection_config,
@@ -140,8 +144,12 @@ class TestSuiteInterface(ABC):
         validator_builder = self._get_validator_builder(test_case, entity_type)
         validator_builder.set_runtime_params(runtime_params_setters)
         validator: BaseTestValidator = validator_builder.validator
+        # Timed here, around the whole call, so work a validator does before or after the base
+        # validation (runtime parameters, predicted values) is counted too.
+        start = time.perf_counter()
         try:
             test_result = validator.run_validation()
+            test_result.duration = elapsed_ms(start)
             response = TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)
             if self._should_collect_failed_rows_sample():
                 validator.result_with_failed_samples(response)
@@ -155,15 +163,15 @@ class TestSuiteInterface(ABC):
         except Exception as err:
             message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             logger.exception(message)
-            return TestCaseResultResponse(
-                testCase=test_case,
-                testCaseResult=validator.get_test_case_result_object(
-                    validator.execution_date,
-                    TestCaseStatus.Aborted,
-                    message,
-                    [],
-                ),
+            test_result = validator.get_test_case_result_object(
+                validator.execution_date,
+                TestCaseStatus.Aborted,
+                message,
+                [],
+                exc=err,
             )
+            test_result.duration = elapsed_ms(start)
+            return TestCaseResultResponse(testCase=test_case, testCaseResult=test_result)
 
     def _get_table_config(self):
         """Get the sampling configuration for the data quality tests"""

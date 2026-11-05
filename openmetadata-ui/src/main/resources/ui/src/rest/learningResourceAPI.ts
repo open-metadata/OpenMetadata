@@ -14,9 +14,12 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { ResourceType } from '../generated/entity/learning/learningResource';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
+
+export type LearningResourceType = `${ResourceType}`;
 
 export interface LearningResource {
   id: string;
@@ -24,7 +27,7 @@ export interface LearningResource {
   fullyQualifiedName?: string;
   displayName?: string;
   description?: string;
-  resourceType: 'Storylane' | 'Video' | 'Article';
+  resourceType: LearningResourceType;
   categories: Array<
     | 'Discovery'
     | 'Administration'
@@ -60,7 +63,7 @@ export interface CreateLearningResource {
   name: string;
   displayName?: string;
   description?: string;
-  resourceType: 'Storylane' | 'Video' | 'Article';
+  resourceType: LearningResourceType;
   categories: Array<
     | 'Discovery'
     | 'Administration'

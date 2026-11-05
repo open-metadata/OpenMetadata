@@ -12,7 +12,7 @@
  */
 
 import { Card } from '@openmetadata/ui-core-components';
-import { CheckCircle } from '@untitledui/icons';
+import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
@@ -58,7 +58,7 @@ const ScheduleSelectionCards: FC<ScheduleSelectionCardsProps> = ({
                 className={classNames(
                   'tw:flex tw:size-10 tw:items-center tw:justify-center tw:rounded-lg tw:[&_svg]:size-5',
                   isSelected
-                    ? 'tw:bg-utility-brand-50 tw:text-brand-secondary'
+                    ? 'tw:bg-utility-brand-100 tw:text-brand-secondary'
                     : 'tw:bg-secondary tw:text-fg-quaternary'
                 )}>
                 {option.icon}
@@ -78,7 +78,7 @@ const ScheduleSelectionCards: FC<ScheduleSelectionCardsProps> = ({
             </div>
 
             <div className="tw:flex tw:flex-col tw:gap-0.5">
-              <div className="tw:text-sm tw:font-semibold tw:text-primary">
+              <div className="tw:text-sm tw:font-medium tw:text-primary">
                 {option.label}
               </div>
               <div className="tw:text-sm tw:text-tertiary">

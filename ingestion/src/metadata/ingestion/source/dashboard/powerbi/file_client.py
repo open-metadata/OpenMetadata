@@ -18,8 +18,9 @@ import shutil
 import traceback
 import zipfile
 from collections import defaultdict
+from contextlib import suppress
 from functools import singledispatch
-from typing import Dict, List, Optional, Tuple  # noqa: UP035
+from pathlib import Path
 
 from metadata.clients.aws_client import AWSClient
 from metadata.clients.azure_client import AzureClient
@@ -44,14 +45,17 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
 )
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.readers.file.local import LocalReader
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    get_gcp_impersonate_credentials_or_none,
+    set_google_credentials,
+)
 from metadata.utils.logger import utils_logger
 from metadata.utils.s3_utils import list_s3_objects
 
 logger = utils_logger()
 
 
-def get_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:  # noqa: UP006, UP045
+def get_prefix_config(config) -> tuple[str | None, str | None]:
     """
     Return (bucket, prefix) tuple
     """
@@ -63,7 +67,13 @@ def get_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:  # noqa: U
     return None, None
 
 
-def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:  # noqa: UP006
+def _ensure_extract_dir(path: str | None) -> None:
+    if path is None:
+        raise PowerBIFileConfigException("PowerBI .pbit extraction directory is not configured")
+    Path(path).mkdir(parents=True, exist_ok=True)
+
+
+def get_blobs_grouped_by_dir(blobs: list[str]) -> dict[str, list[str]]:
     """
     Method to group the objs by the dir
     """
@@ -76,35 +86,52 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:  # noqa:
     return blob_grouped_by_directory
 
 
+def _safe_local_path(extract_dir: str, blob: str) -> str:
+    """Resolve the local download path for a blob and confirm it stays inside
+    ``extract_dir``.
+
+    Blob names come from the cloud storage listing and may contain ``..`` or
+    absolute-path components. Joining them naively would let a crafted object key
+    write outside the extract directory (path traversal / arbitrary file write), so
+    the resolved path is validated against the resolved extract directory.
+    """
+    base = Path(extract_dir).resolve()
+    target = (base / blob).resolve()
+    if not target.is_relative_to(base):
+        raise PowerBIFileConfigException(f"Skipping .pbit object key that escapes the extract directory: {blob}")
+    return str(target)
+
+
 def download_pbit_files(
-    blob_grouped_by_directory: Dict,  # noqa: UP006
+    blob_grouped_by_directory: dict,
     config,
     client,
-    bucket_name: Optional[str],  # noqa: UP045
+    bucket_name: str | None,
     extract_dir: str,
 ):
     """
     Method to download the files from sources
     """
-    for (
-        key,
-        blobs,
-    ) in blob_grouped_by_directory.items():
+    for blobs in blob_grouped_by_directory.values():
         kwargs = {}
         if bucket_name:
             kwargs = {"bucket_name": bucket_name}
-        try:
-            for blob in blobs:
-                if blob:
-                    reader = get_reader(config_source=config, client=client)
-                    # create the required dir before downloading
-                    os.makedirs(f"{extract_dir}/{key}", exist_ok=True)  # noqa: PTH103
-                    reader.download(path=blob, local_file_path=f"{extract_dir}/{blob}", **kwargs)
-        except PowerBIFileConfigException as exc:
-            logger.warning(exc)
+        for blob in blobs:
+            if not blob:
+                continue
+            try:
+                # validate per blob so one escaping key does not skip the rest
+                local_file_path = _safe_local_path(extract_dir, blob)
+            except PowerBIFileConfigException as exc:
+                logger.warning(exc)
+                continue
+            reader = get_reader(config_source=config, client=client)
+            # create the required dir before downloading
+            os.makedirs(os.path.dirname(local_file_path), exist_ok=True)  # noqa: PTH103, PTH120
+            reader.download(path=blob, local_file_path=local_file_path, **kwargs)
 
 
-def _get_datamodel_schema_list(path: str) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+def _get_datamodel_schema_list(path: str) -> list[DataModelSchema] | None:
     """
     Method maps the json to datamodel schema model
     """
@@ -132,7 +159,7 @@ def _get_datamodel_schema_list(path: str) -> Optional[List[DataModelSchema]]:  #
     return datamodel_schema_list
 
 
-def get_datamodel_schema_files_from_pbit(path: str) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+def get_datamodel_schema_files_from_pbit(path: str) -> list[DataModelSchema] | None:
     """
     Method to unzip the locally saved pbit files and get the schema files
     """
@@ -168,6 +195,7 @@ def get_pbit_files(config):
 @get_pbit_files.register
 def _(config: S3Config):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AWSClient(config.securityConfig).get_client(service_name="s3")
@@ -202,6 +230,7 @@ def _(config: S3Config):
 @get_pbit_files.register
 def _(config: AzureConfig):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AzureClient(config.securityConfig).create_blob_client()
@@ -231,18 +260,21 @@ def _(config: AzureConfig):
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise PowerBIFileConfigException(f"Error fetching .pbit files from Azure: {exc}")  # noqa: B904
+        raise PowerBIFileConfigException(  # noqa: B904
+            f"Error fetching .pbit files from Azure: {exc}"
+        )
 
 
 @get_pbit_files.register
 def _(config: GCSConfig):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
-        from google.cloud import storage  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
         set_google_credentials(gcp_credentials=config.securityConfig)
 
-        client = storage.Client()
+        client = storage.Client(credentials=get_gcp_impersonate_credentials_or_none(config.securityConfig))
         if not bucket_name:
             buckets = client.list_buckets()
         else:
@@ -294,7 +326,7 @@ class PowerBiFileClient:
     def __init__(self, config: PowerBIConnection):
         self.config = config
 
-    def get_data_model_schema_mappings(self) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+    def get_data_model_schema_mappings(self) -> list[DataModelSchema] | None:
         """
         Get the data model schema mappings
         """
@@ -304,4 +336,8 @@ class PowerBiFileClient:
         """
         Method to remove the files after ingestion is completed
         """
-        shutil.rmtree(self.config.pbitFilesSource.pbitFilesExtractDir)
+        source = self.config.pbitFilesSource
+        extract_dir = source.pbitFilesExtractDir if source is not None else None
+        if extract_dir is not None:
+            with suppress(FileNotFoundError):
+                shutil.rmtree(extract_dir)

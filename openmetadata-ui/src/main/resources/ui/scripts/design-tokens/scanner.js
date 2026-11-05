@@ -88,7 +88,12 @@ const DURATION_PROPS = new Set([
 ]);
 
 // Files that legitimately hold raw values (token definitions) or are vendored.
-const EXEMPT_BASENAMES = new Set(['tokens.css', 'variables.less', 'quill-emoji.css']);
+const EXEMPT_BASENAMES = new Set([
+  'tokens.css',
+  'variables.less',
+  'quill-emoji.css',
+  'legacy-base.css',
+]);
 
 function isExempt(relOrAbsPath) {
   return EXEMPT_BASENAMES.has(path.basename(relOrAbsPath));
@@ -160,6 +165,7 @@ const RGB_RE =
   /\brgba?\(\s*\d[\d.]*\s*[, ]\s*\d[\d.]*\s*[, ]\s*\d[\d.]*(?:\s*[,/]\s*\d[\d.]*%?)?\s*\)/gi;
 const NUM_UNIT_RE = /(-?\d*\.?\d+)(px|rem)\b/gi;
 const DUR_RE = /(-?\d*\.?\d+)(ms|s)\b/gi;
+const AI_TOKEN_RE = /--ai-[a-z0-9_-]+/gi;
 
 // LESS colour functions require a real colour literal as input; a hex inside
 // one must never become a var(). These spans are blanked before matching.
@@ -425,6 +431,24 @@ function processText(text, relPath) {
   const edits = [];
   const findings = [];
   let m;
+
+  // Keep the legacy audit non-blocking for this namespace while making every
+  // occurrence visible to teams migrating AI mode onto shared semantic tokens.
+  AI_TOKEN_RE.lastIndex = 0;
+  while ((m = AI_TOKEN_RE.exec(masked))) {
+    const pos = lineColAt(text, m.index);
+    findings.push({
+      file: relPath,
+      line: pos.line,
+      col: pos.col,
+      property: 'custom-property',
+      category: 'unsupported-theme-namespace',
+      severity: SEVERITY.WARNING,
+      raw: m[0],
+      suggestion: '--color-*',
+    });
+  }
+
   DECL_RE.lastIndex = 0;
   while ((m = DECL_RE.exec(masked))) {
     const prop = m[1].toLowerCase();

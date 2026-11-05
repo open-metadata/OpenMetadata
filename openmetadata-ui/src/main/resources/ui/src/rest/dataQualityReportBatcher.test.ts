@@ -48,6 +48,49 @@ describe('dataQualityReportBatcher', () => {
     expect(second).toEqual({ data: [{ b: '2' }], metadata: {} });
   });
 
+  it('should coalesce identical requests and resolve every caller', async () => {
+    mockGetDataQualityReportBatch.mockResolvedValue({
+      results: [
+        { key: '0', report: { data: [{ status: 'success' }], metadata: {} } },
+      ],
+    });
+    const params = {
+      index: 'testCase',
+      aggregationQuery: 'status',
+      q: '{"query":{"bool":{"must":[]}}}',
+    };
+
+    const [first, second] = await Promise.all([
+      batchedDataQualityReport(params),
+      batchedDataQualityReport(params),
+    ]);
+
+    expect(mockGetDataQualityReportBatch).toHaveBeenCalledWith({
+      requests: [{ ...params, key: '0' }],
+    });
+    expect(first).toEqual(second);
+  });
+
+  it('should map shuffled batch results back to the correct callers', async () => {
+    mockGetDataQualityReportBatch.mockResolvedValue({
+      results: [
+        { key: '1', report: { data: [{ value: 'second' }], metadata: {} } },
+        { key: '0', report: { data: [{ value: 'first' }], metadata: {} } },
+      ],
+    });
+
+    const [first, second] = await Promise.all([
+      batchedDataQualityReport({
+        index: 'testCase',
+        aggregationQuery: 'first',
+      }),
+      batchedDataQualityReport({ index: 'table', aggregationQuery: 'second' }),
+    ]);
+
+    expect(first.data).toEqual([{ value: 'first' }]);
+    expect(second.data).toEqual([{ value: 'second' }]);
+  });
+
   it('should reject only the failed item and resolve the rest', async () => {
     mockGetDataQualityReportBatch.mockResolvedValue({
       results: [

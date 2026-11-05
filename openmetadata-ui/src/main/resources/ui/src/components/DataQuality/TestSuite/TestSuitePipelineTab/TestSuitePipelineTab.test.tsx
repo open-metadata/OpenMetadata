@@ -10,13 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { Table } from '../../../../generated/entity/data/table';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
+import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import TestSuitePipelineTab from './TestSuitePipelineTab.component';
 
 const mockTestSuite = {
@@ -64,6 +72,12 @@ const mockPaging = {
 };
 
 jest.mock('@openmetadata/ui-core-components', () => {
+  const MockBox = ({ children }: React.PropsWithChildren) => (
+    <div>{children}</div>
+  );
+
+  const MockEmptyPlaceholder = () => <div />;
+
   const MockTable = ({
     children,
     'data-testid': testId,
@@ -117,13 +131,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
     items?: unknown[];
     children: (item: unknown) => React.ReactNode;
     renderEmptyState?: () => React.ReactNode;
-  }) => (
-    <tbody>
-      {items && items.length > 0
-        ? items.map((item) => children(item))
-        : renderEmptyState?.()}
-    </tbody>
-  );
+  }) => {
+    if (items && items.length > 0) {
+      return <tbody>{items.map((item) => children(item))}</tbody>;
+    }
+
+    return (
+      <tbody>
+        <tr>
+          <td>{renderEmptyState?.()}</td>
+        </tr>
+      </tbody>
+    );
+  };
 
   MockTable.Row = ({
     children,
@@ -152,7 +172,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <span {...props}>{children}</span>
   );
 
+  const MockSkeleton = () => (
+    <span aria-hidden="true" data-testid="table-loading-skeleton" />
+  );
+
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Typography: jest.requireActual('@openmetadata/ui-core-components')
+      .Typography,
+    Badge: jest.requireActual('@openmetadata/ui-core-components').Badge,
+    Box: MockBox,
+    Button: jest.requireActual('@openmetadata/ui-core-components').Button,
+    EmptyPlaceholder: MockEmptyPlaceholder,
+    Skeleton: MockSkeleton,
     Table: MockTable,
     TableCard: MockTableCard,
     Tooltip: MockTooltip,
@@ -186,8 +218,10 @@ jest.mock(
   })
 );
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  useNavigate: () => mockNavigate,
 }));
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -243,9 +277,45 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(() => (
-        <div data-testid="pipeline-actions">PipelineActions</div>
-      ))
+      .mockImplementation(
+        ({
+          pipeline,
+          handleEditClick,
+        }: {
+          pipeline: { fullyQualifiedName: string };
+          handleEditClick: (fqn: string) => void;
+        }) => (
+          <button
+            data-testid="pipeline-actions"
+            onClick={() => handleEditClick(pipeline.fullyQualifiedName)}>
+            PipelineActions
+          </button>
+        )
+      )
+);
+
+jest.mock(
+  '../../AddDataQualityTest/components/TestSuitePipelineFormDrawer',
+  () =>
+    jest.fn(
+      ({
+        open,
+        ingestionPipeline,
+        onClose,
+      }: {
+        open: boolean;
+        ingestionPipeline?: { fullyQualifiedName: string };
+        onClose: () => void;
+      }) => (
+        <button
+          data-open={String(open)}
+          data-pipeline={ingestionPipeline?.fullyQualifiedName ?? ''}
+          data-testid="pipeline-form-drawer"
+          onClick={onClose}>
+          close-drawer
+        </button>
+      )
+    )
 );
 
 jest.mock(
@@ -257,18 +327,13 @@ jest.mock('../../../common/DeleteModal/DeleteModal', () =>
   jest.fn().mockImplementation(() => null)
 );
 
-jest.mock(
-  '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="error-placeholder-ingestion">
-          Airflow not available
-        </div>
-      ));
-  }
-);
+jest.mock('../../../common/AirflowSetupGuide/AirflowSetupGuide', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="error-placeholder-ingestion">Airflow not available</div>
+    ));
+});
 
 describe('TestSuite Pipeline component', () => {
   beforeEach(() => {
@@ -295,6 +360,36 @@ describe('TestSuite Pipeline component', () => {
     });
   });
 
+  it('should show row skeletons while pipeline data is loading', async () => {
+    let resolvePipelines!: (value: {
+      data: IngestionPipeline[];
+      paging: typeof mockPaging;
+    }) => void;
+    (getIngestionPipelines as jest.Mock).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePipelines = resolve;
+      })
+    );
+
+    render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('pipeline-table-loading-skeletons')
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByTestId('table-loading-skeleton')).toHaveLength(5);
+
+    await act(async () => {
+      resolvePipelines({ data: [], paging: mockPaging });
+    });
+
+    expect(
+      screen.queryByTestId('pipeline-table-loading-skeletons')
+    ).not.toBeInTheDocument();
+  });
+
   it('should call getIngestionPipelines with correct paging parameters', async () => {
     const mockGetIngestionPipelines = getIngestionPipelines as jest.Mock;
     await act(async () => {
@@ -314,6 +409,32 @@ describe('TestSuite Pipeline component', () => {
     );
   });
 
+  // Ingestion pipelines page by cursor, and only a cursor pager hands the handler a cursorType.
+  it('should fetch the next cursor page when the real pager Next is pressed', async () => {
+    const { default: ActualNextPrevious } = jest.requireActual(
+      '../../../common/NextPrevious/NextPrevious'
+    );
+    const mockedNextPrevious = NextPrevious as jest.Mock;
+    const mockPager = mockedNextPrevious.getMockImplementation();
+    mockedNextPrevious.mockImplementation(ActualNextPrevious);
+
+    try {
+      await act(async () => {
+        render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('next'));
+      });
+
+      expect(getIngestionPipelines).toHaveBeenLastCalledWith(
+        expect.objectContaining({ paging: { after: 'after-id' } })
+      );
+    } finally {
+      mockedNextPrevious.mockImplementation(mockPager);
+    }
+  });
+
   it('should render pipeline rows', async () => {
     await act(async () => {
       render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
@@ -321,6 +442,32 @@ describe('TestSuite Pipeline component', () => {
 
     expect(screen.getByText('pipeline1')).toBeInTheDocument();
     expect(screen.getByText('pipeline2')).toBeInTheDocument();
+  });
+
+  it('should render pagination when there are pipelines', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    expect(screen.getByText('Next Page')).toBeInTheDocument();
+  });
+
+  it('should hide pagination when there are no pipelines, even with showPagination', async () => {
+    const pagingState = usePaging();
+    (usePaging as jest.Mock).mockReturnValue({
+      ...pagingState,
+      paging: { total: 0 },
+    });
+
+    try {
+      await act(async () => {
+        render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+      });
+
+      expect(screen.queryByText('Next Page')).not.toBeInTheDocument();
+    } finally {
+      (usePaging as jest.Mock).mockReturnValue(pagingState);
+    }
   });
 
   it('should show error placeholder when airflow is not available', async () => {
@@ -367,5 +514,115 @@ describe('TestSuite Pipeline component', () => {
     expect(screen.getByTestId('test-cases-info-tooltip-icon')).toHaveClass(
       'tw:size-3'
     );
+  });
+
+  it('should open the pipeline drawer to add a pipeline without navigating', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    const drawer = await screen.findByTestId('pipeline-form-drawer');
+
+    expect(drawer).toHaveAttribute('data-open', 'false');
+
+    fireEvent.click(screen.getByTestId('add-pipeline-button'));
+
+    expect(drawer).toHaveAttribute('data-open', 'true');
+    expect(drawer).toHaveAttribute('data-pipeline', '');
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should let the host take over Add through onAddPipeline', async () => {
+    const onAddPipeline = jest.fn();
+    await act(async () => {
+      render(
+        <TestSuitePipelineTab
+          testSuite={mockTestSuite}
+          onAddPipeline={onAddPipeline}
+        />
+      );
+    });
+
+    fireEvent.click(screen.getByTestId('add-pipeline-button'));
+
+    expect(onAddPipeline).toHaveBeenCalledTimes(1);
+    expect(await screen.findByTestId('pipeline-form-drawer')).toHaveAttribute(
+      'data-open',
+      'false'
+    );
+  });
+
+  it('should open the pipeline drawer in edit mode for the edited row', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    const [firstRowActions] = await screen.findAllByTestId('pipeline-actions');
+    fireEvent.click(firstRowActions);
+
+    const drawer = screen.getByTestId('pipeline-form-drawer');
+
+    expect(drawer).toHaveAttribute('data-open', 'true');
+    expect(drawer.getAttribute('data-pipeline')).toMatch(/^svc\.pipeline\d$/);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should report the pipeline total to the host once the list has loaded', async () => {
+    const onPipelinesChange = jest.fn();
+    await act(async () => {
+      render(
+        <TestSuitePipelineTab
+          testSuite={mockTestSuite}
+          onPipelinesChange={onPipelinesChange}
+        />
+      );
+    });
+
+    await waitFor(() => expect(onPipelinesChange).toHaveBeenCalledWith(10));
+
+    // The initial pre-load state is never reported.
+    expect(onPipelinesChange).not.toHaveBeenCalledWith(0);
+  });
+
+  it('should not report a total when the list fails to load', async () => {
+    const { getIngestionPipelines } = jest.requireMock(
+      '../../../../rest/ingestionPipelineAPI'
+    );
+    getIngestionPipelines.mockImplementationOnce(() =>
+      Promise.reject(new Error('fetch failed'))
+    );
+    const onPipelinesChange = jest.fn();
+    await act(async () => {
+      render(
+        <TestSuitePipelineTab
+          testSuite={mockTestSuite}
+          onPipelinesChange={onPipelinesChange}
+        />
+      );
+    });
+
+    expect(getIngestionPipelines).toHaveBeenCalled();
+    expect(onPipelinesChange).not.toHaveBeenCalled();
+  });
+
+  it('should keep the edited pipeline while the drawer closes, and clear it for Add', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    const [firstRowActions] = await screen.findAllByTestId('pipeline-actions');
+    fireEvent.click(firstRowActions);
+    const drawer = screen.getByTestId('pipeline-form-drawer');
+    const editedPipeline = drawer.getAttribute('data-pipeline');
+
+    fireEvent.click(drawer);
+
+    expect(drawer).toHaveAttribute('data-open', 'false');
+    expect(drawer).toHaveAttribute('data-pipeline', editedPipeline as string);
+
+    fireEvent.click(screen.getByTestId('add-pipeline-button'));
+
+    expect(drawer).toHaveAttribute('data-open', 'true');
+    expect(drawer).toHaveAttribute('data-pipeline', '');
   });
 });

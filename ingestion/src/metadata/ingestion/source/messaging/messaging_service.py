@@ -13,10 +13,10 @@ Base class for ingesting messaging services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import Annotated, Any, cast
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -38,12 +38,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import PerSourceState, TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -131,8 +130,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: MessagingConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = MessagingServiceTopology()
-    context = TopologyContextManager(topology)
-    topic_source_state: Set = set()  # noqa: RUF012, UP006
+    topic_source_state = PerSourceState(set)
 
     @retry_with_docker_host()
     def __init__(
@@ -200,7 +198,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_topic_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
+    def get_topic_list(self) -> list[Any] | None:
         """
         Get List of all topics
         """

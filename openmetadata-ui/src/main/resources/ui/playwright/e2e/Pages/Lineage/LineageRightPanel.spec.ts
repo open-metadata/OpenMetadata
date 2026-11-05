@@ -12,7 +12,6 @@
  */
 import { expect } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
-import { SidebarItem } from '../../../constant/sidebar';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { ChartClass } from '../../../support/entity/ChartClass';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
@@ -21,22 +20,18 @@ import { MetricClass } from '../../../support/entity/MetricClass';
 import { MlModelClass } from '../../../support/entity/MlModelClass';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
-import { ApiServiceClass } from '../../../support/entity/service/ApiServiceClass';
-import { DashboardServiceClass } from '../../../support/entity/service/DashboardServiceClass';
-import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
-import { MessagingServiceClass } from '../../../support/entity/service/MessagingServiceClass';
-import { MlmodelServiceClass } from '../../../support/entity/service/MlmodelServiceClass';
-import { PipelineServiceClass } from '../../../support/entity/service/PipelineServiceClass';
-import { StorageServiceClass } from '../../../support/entity/service/StorageServiceClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
 } from '../../../utils/common';
-import { clickLineageNode, visitLineageTab } from '../../../utils/lineage';
-import { waitForSearchIndexed } from '../../../utils/polling';
-import { sidebarClick } from '../../../utils/sidebar';
+import { pickEntityMatrix } from '../../../utils/entityMatrix';
+import {
+  clickLineageNode,
+  dismissLineageMapOnboarding,
+  visitLineageTab,
+} from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
 
 test.describe(
@@ -45,7 +40,7 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'default' });
 
-    const supportedEntities = [
+    const allSupportedEntities = [
       { entity: new TableClass(), type: 'table' },
       { entity: new TopicClass(), type: 'topic' },
       { entity: new DashboardClass(), type: 'dashboard' },
@@ -57,6 +52,11 @@ test.describe(
       { entity: new MetricClass(), type: 'metric' },
       { entity: new ChartClass(), type: 'chart' },
     ];
+    const supportedEntities = pickEntityMatrix(
+      __filename,
+      allSupportedEntities,
+      allSupportedEntities.filter(({ type }) => type === 'table')
+    );
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
@@ -113,148 +113,73 @@ test.describe(
   }
 );
 
-test.describe('Verify custom properties tab is NOT visible for unsupported entity types in platform lineage', () => {
-  test.describe.configure({ mode: 'default' });
+test.describe(
+  'Hierarchical lineage node details interaction',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    const table = new TableClass();
 
-  const unsupportedServices = [
-    {
-      service: new DatabaseServiceClass(),
-      type: 'databaseService',
-      searchIndex: 'database_service_search_index',
-    },
-    {
-      service: new MessagingServiceClass(),
-      type: 'messagingService',
-      searchIndex: 'messaging_service_search_index',
-    },
-    {
-      service: new DashboardServiceClass(),
-      type: 'dashboardService',
-      searchIndex: 'dashboard_service_search_index',
-    },
-    {
-      service: new PipelineServiceClass(),
-      type: 'pipelineService',
-      searchIndex: 'pipeline_service_search_index',
-    },
-    {
-      service: new MlmodelServiceClass(),
-      type: 'mlmodelService',
-      searchIndex: 'mlmodel_service_search_index',
-    },
-    {
-      service: new StorageServiceClass(),
-      type: 'storageService',
-      searchIndex: 'storage_service_search_index',
-    },
-    {
-      service: new ApiServiceClass(),
-      type: 'apiService',
-      searchIndex: 'api_service_search_index',
-    },
-  ];
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-      browser
-    );
+      await table.create(apiContext);
+      await afterAction();
+    });
 
-    const createEntityArray: Promise<unknown>[] = [];
-    for (const { service } of unsupportedServices) {
-      createEntityArray.push(service.create(apiContext));
-    }
-    await Promise.all(createEntityArray);
-    await Promise.all(
-      unsupportedServices.map(({ service, searchIndex }) =>
-        waitForSearchIndexed(
-          apiContext,
-          service.entityResponseData.fullyQualifiedName,
-          searchIndex
-        )
-      )
-    );
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
 
-    await afterAction();
-  });
+      await table.delete(apiContext);
+      await afterAction();
+    });
 
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+    });
 
-  for (const { service, type } of unsupportedServices) {
-    test(`Verify custom properties tab is NOT visible for ${type} in platform lineage`, async ({
+    test('drills into asset details from the main Lineage page instead of opening the legacy right panel', async ({
       page,
     }) => {
-      const serviceFqn = service.entity.name;
+      const tableFqn = table.entityResponseData.fullyQualifiedName;
+      const serviceFqn = table.serviceResponseData.fullyQualifiedName;
 
-      await sidebarClick(page, SidebarItem.LINEAGE);
-
-      const searchEntitySelect = page.getByTestId('search-entity-select');
-      await expect(searchEntitySelect).toBeVisible();
-      await searchEntitySelect.click();
-
-      const searchInput = page
-        .getByTestId('search-entity-select')
-        .locator('.ant-select-selection-search-input');
-
-      const searchResponse = page.waitForResponse((response) => {
-        const url = new URL(response.url());
-        const query = url.searchParams.get('q')?.replaceAll('\\', '') ?? '';
-
-        return (
-          url.pathname.endsWith('/api/v1/search/query') &&
-          response.request().method() === 'GET' &&
-          query.includes(serviceFqn)
-        );
+      // Hierarchy drilling lives on the main Lineage page, so open it at the
+      // Layer band focused on this table, as the asset tab used to.
+      const search = new URLSearchParams({
+        lineageLens: 'service',
+        lineageBand: 'LAYER',
+        lineageFocus: tableFqn,
+        lineageEntityType: 'table',
       });
-      await searchInput.fill(service.entity.name);
-
-      const searchResponseResult = await searchResponse;
-      expect(searchResponseResult.status()).toBe(200);
-
-      const nodeSuggestion = page.getByTestId(`node-suggestion-${serviceFqn}`);
-      await expect(nodeSuggestion).toBeVisible();
-
-      const lineageResponse = page.waitForResponse((response) => {
-        const url = new URL(response.url());
-
-        return (
-          url.pathname.endsWith('/api/v1/lineage/getLineage') &&
-          response.request().method() === 'GET' &&
-          url.searchParams.get('fqn') === serviceFqn
-        );
-      });
-
-      await nodeSuggestion.click();
-
-      const lineageResponseResult = await lineageResponse;
-      expect(lineageResponseResult.status()).toBe(200);
+      const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
+      await page.goto(`/lineage?${search.toString()}`);
+      expect((await sceneResponse).ok()).toBeTruthy();
+      await dismissLineageMapOnboarding(page);
 
       await expect(
-        page.getByTestId(`lineage-node-${serviceFqn}`)
+        page
+          .getByTestId('lineage-map-band-LAYER')
+          .locator('.lineage-map-rail-dot.active')
       ).toBeVisible();
 
-      await clickLineageNode(page, serviceFqn);
+      const serviceNode = page.getByTestId(`lineage-node-${serviceFqn}`);
+      await expect(serviceNode).toBeVisible();
+      await serviceNode.getByRole('button', { name: 'Zoom In' }).click();
+
+      await expect
+        .poll(() => new URL(page.url()).searchParams.get('lineageBand'))
+        .toBe('ASSET');
+      await expect(page.getByTestId('lineage-map-band-ASSET')).toBeVisible();
 
       const lineagePanel = page.getByTestId('lineage-entity-panel');
-      await expect(lineagePanel).toBeVisible();
-      await expect(lineagePanel.getByTestId('overview-tab')).toBeVisible();
-
-      const customPropertiesTab = lineagePanel.getByTestId(
-        'custom-properties-tab'
-      );
-      const customPropertiesTabByRole = lineagePanel.getByRole('menuitem', {
-        name: /custom propert/i,
-      });
-
-      await expect(customPropertiesTab).not.toBeVisible();
-      await expect(customPropertiesTabByRole).not.toBeVisible();
-
-      const closeButton = lineagePanel.getByTestId('drawer-close-icon');
-      if (await closeButton.isVisible()) {
-        await closeButton.click();
-        await expect(lineagePanel).not.toBeVisible();
-      }
+      await expect(lineagePanel).not.toBeVisible();
+      await expect(
+        lineagePanel.getByTestId('custom-properties-tab')
+      ).not.toBeVisible();
     });
   }
-});
+);

@@ -24,6 +24,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import {
   ContractExecutionStatus,
+  ContractSecurity,
   DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
@@ -43,6 +44,8 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
   Badge: jest.fn(({ children }: { children?: React.ReactNode }) => (
     <span>{children}</span>
   )),
@@ -223,6 +226,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </Tag>
     )
   ),
+  Owner: jest.fn(({ owners }: { owners?: unknown[] }) => (
+    <div data-testid="owner-label">
+      {owners?.length ? `${owners.length} owner(s)` : 'No owners'}
+    </div>
+  )),
+  toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+    .toOwnerRefs,
+  toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
 }));
 
 jest.mock('../../../rest/contractAPI', () => ({
@@ -250,34 +261,18 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: function MockOwnerLabel({ owners }: { owners: unknown[] }) {
-    return (
-      <div data-testid="owner-label">
-        {owners?.length ? `${owners.length} owner(s)` : 'No owners'}
-      </div>
-    );
-  },
-}));
-
-jest.mock('../../AlertBar/AlertBar', () => {
-  return function MockAlertBar({ message }: any) {
-    return <div data-testid="alert-bar">{message}</div>;
-  };
-});
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return function MockErrorPlaceHolder({ type, children }: any) {
-    return (
-      <div data-testid="error-placeholder" data-type={type}>
-        {children}
-      </div>
-    );
+jest.mock('../ContractStatusAlert/ContractStatusAlert', () => {
+  return function MockContractStatusAlert({ message }: { message?: string }) {
+    return <div data-testid="contract-status-alert">{message}</div>;
   };
 });
 
 jest.mock('../ContractExecutionChart/ContractExecutionChart.component', () => {
-  return function MockContractExecutionChart({ contract }: any) {
+  return function MockContractExecutionChart({
+    contract,
+  }: {
+    contract?: DataContract;
+  }) {
     return (
       <div data-testid="contract-execution-chart">
         Chart for {contract?.name}
@@ -291,7 +286,11 @@ jest.mock('../ContractQualityCard/ContractQualityCard.component', () => {
 });
 
 jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
-  return function MockContractSecurityCard({ security }: any) {
+  return function MockContractSecurityCard({
+    security,
+  }: {
+    security?: ContractSecurity;
+  }) {
     return (
       <div data-testid="contract-security-card">
         ContractSecurityCard - {security?.dataClassification}
@@ -301,14 +300,16 @@ jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
 });
 
 jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
-  return function MockContractViewSwitchTab({ handleModeChange }: any) {
+  return function MockContractViewSwitchTab({
+    handleModeChange,
+  }: {
+    handleModeChange: (mode: DataContractMode) => void;
+  }) {
     return (
       <div data-testid="contract-view-switch-tab">
         <button
           data-testid="switch-to-yaml"
-          onClick={() =>
-            handleModeChange({ target: { value: DataContractMode.YAML } })
-          }>
+          onClick={() => handleModeChange(DataContractMode.YAML)}>
           YAML
         </button>
       </div>
@@ -350,7 +351,7 @@ jest.mock('../ODCSImportModal', () => {
 });
 
 jest.mock('../ContractYaml/ContractYaml.component', () => {
-  return function MockContractYaml({ contract }: any) {
+  return function MockContractYaml({ contract }: { contract?: DataContract }) {
     return <div data-testid="contract-yaml">YAML for {contract?.name}</div>;
   };
 });
@@ -379,22 +380,6 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockImplementation(() => {
     return <div>RichTextEditorPreviewerV1</div>;
   });
-});
-
-jest.mock('../../common/Table/Table', () => {
-  return function MockTable({ dataSource, loading }: any) {
-    return (
-      <div data-testid="mock-table">
-        <div>Loading: {loading ? 'true' : 'false'}</div>
-        <div>Data Length: {dataSource?.length || 0}</div>
-        {dataSource?.map((item: any) => (
-          <div data-testid={`table-row-${item.id}`} key={item.id}>
-            {item.name}
-          </div>
-        ))}
-      </div>
-    );
-  };
 });
 
 jest.mock('react-i18next', () => ({
@@ -514,7 +499,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
     });
 
     it('should render contract details when contract is provided', async () => {
@@ -1171,7 +1160,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
     });
   });
 
@@ -1366,7 +1359,9 @@ describe('ContractDetail', () => {
           contract={{
             ...mockContract,
             latestResult: {
-              ...mockContract.latestResult!,
+              ...(mockContract.latestResult as NonNullable<
+                typeof mockContract.latestResult
+              >),
               status: ContractExecutionStatus.Failed,
             },
           }}
@@ -1379,9 +1374,9 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(await screen.findByTestId('alert-bar')).toHaveTextContent(
-        'Failure message'
-      );
+      expect(
+        await screen.findByTestId('contract-status-alert')
+      ).toHaveTextContent('Failure message');
     });
 
     it('should show alert bar when latest result has aborted status', async () => {
@@ -1396,7 +1391,9 @@ describe('ContractDetail', () => {
           contract={{
             ...mockContract,
             latestResult: {
-              ...mockContract.latestResult!,
+              ...(mockContract.latestResult as NonNullable<
+                typeof mockContract.latestResult
+              >),
               status: ContractExecutionStatus.Aborted,
             },
           }}
@@ -1409,9 +1406,9 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(await screen.findByTestId('alert-bar')).toHaveTextContent(
-        'Aborted message'
-      );
+      expect(
+        await screen.findByTestId('contract-status-alert')
+      ).toHaveTextContent('Aborted message');
     });
 
     it('should handle error when fetching latest contract results fails', async () => {
@@ -1544,7 +1541,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
       expect(
         screen.getByText('No contract has been defined for this entity.')
       ).toBeInTheDocument();

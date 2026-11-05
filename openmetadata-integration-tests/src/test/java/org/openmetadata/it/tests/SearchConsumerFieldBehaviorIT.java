@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.server.SearchTestImages;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -42,9 +43,10 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
  * <p>This is the search-side coverage the suite lacked for non-English languages — without running
  * the whole integration-test suite once per language. The container is built with the
  * language-analysis plugins ({@link SearchTestImages}), so every language indexes with its
- * <em>real</em> analyzers (jp uses {@code kuromoji_tokenizer} via analysis-kuromoji, zh uses {@code
- * ik_max_word}/{@code ik_smart} via analysis-ik). Creating the real mappings here therefore also
- * catches analyzer drift — e.g. fields referencing analyzers the mapping never defined.
+ * <em>real</em> analyzers (jp uses {@code kuromoji_tokenizer} via analysis-kuromoji, ko uses {@code
+ * nori_tokenizer} via analysis-nori, zh uses {@code ik_max_word}/{@code ik_smart} via analysis-ik).
+ * Creating the real mappings here therefore also catches analyzer drift — e.g. fields referencing
+ * analyzers the mapping never defined.
  *
  * <p>It would have caught the {@code jp/topic} mapping dropping top-level {@code domains} (the
  * domain-filter assertion returns zero hits for {@code jp}) and the jp analyzer references that made
@@ -58,6 +60,10 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
  * entityLink.nonNormalized} per-entity summary aggregation, and the dimension/platform filters — and
  * the Incident Manager resolution-status index — status type, assignee, and the {@code
  * testCase.fullyQualifiedName.keyword}/{@code testCase.entityFQN.keyword} filters.
+ *
+ * <p>Both branches of the {@code testCaseResolutionStatusDetails} oneOf are indexed as separate
+ * documents (Assigned and Resolved), because a mapping that only ever sees one branch can declare a
+ * shape the other branch can never produce and nothing notices.
  */
 @Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -93,25 +99,36 @@ class SearchConsumerFieldBehaviorIT {
   private static final String ASSIGNEE_ID = "77777777-7777-7777-7777-777777777777";
   private static final String ASSIGNEE_NAME = "john";
   private static final String STATE_ID = "88888888-8888-8888-8888-888888888888";
+  private static final String RESOLVED_ID = "99999999-9999-9999-9999-999999999999";
+  private static final String RESOLVED_STATUS_TYPE = "Resolved";
+  private static final String RESOLVED_STATE_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  private static final String RESOLVER_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+  private static final String RESOLVER_NAME = "carol";
+  private static final String FAILURE_REASON = "FalsePositive";
+  private static final String FAILURE_COMMENT_TERM = "flakyupstream";
+  private static final String FAILURE_COMMENT =
+      "closed after the " + FAILURE_COMMENT_TERM + " feed was backfilled";
 
   // Native-script sample text per language plus a token its analyzer must produce.
   // Keyword/identifier
   // fields are language-neutral and never exercise the text analyzers; this is the only check that
   // the per-language analyzers actually work — the reason the per-language mappings exist at all.
   // jp/zh require kuromoji/IK to segment CJK (the plain standard analyzer splits it into single
-  // characters, never the 2-char tokens 東京 / 销售); ru requires the Russian stemmer (продажи ->
-  // продаж); en is the latin baseline.
+  // characters, never the 2-char tokens 東京 / 销售); ko requires nori to strip the subject particle
+  // (매출이 -> 매출, the standard analyzer keeps it as one token); ru requires the Russian stemmer
+  // (продажи -> продаж); en is the latin baseline.
   private static final Map<String, String[]> LANGUAGE_SAMPLE_TEXT =
       Map.of(
           "en", new String[] {"Monthly revenue report", "revenue"},
           "ru", new String[] {"Ежемесячные продажи", "продаж"},
           "jp", new String[] {"東京タワーの売上", "東京"},
-          "zh", new String[] {"北京大学的销售报表", "销售"});
+          "zh", new String[] {"北京大学的销售报表", "销售"},
+          "ko", new String[] {"월간 매출이 증가했다", "매출"});
 
   @Container
   static OpensearchContainer<?> opensearch =
       new OpensearchContainer<>(
-              SearchTestImages.openSearchWithAnalysisPlugins("opensearchproject/opensearch:3.4.0"))
+              SearchTestImages.openSearchWithAnalysisPlugins(SearchTestImages.OPENSEARCH_IMAGE))
           .withStartupTimeout(Duration.ofMinutes(5))
           .withEnv("discovery.type", "single-node")
           .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
@@ -128,6 +145,16 @@ class SearchConsumerFieldBehaviorIT {
     ApacheHttpClient5Transport transport =
         ApacheHttpClient5TransportBuilder.builder(httpHost)
             .setMapper(new JacksonJsonpMapper())
+            .setHttpClientConfigCallback(
+                httpClientBuilder -> {
+                  // httpclient5 5.6.0 enables automatic gzip decompression by default; the
+                  // opensearch-java transport also decompresses the response body, so leaving
+                  // both on runs the second pass over already-inflated bytes and throws
+                  // "java.util.zip.ZipException: Not in GZIP format". Let opensearch-java own
+                  // decompression. Mirrors the production OpenSearchClient fix.
+                  httpClientBuilder.disableContentCompression();
+                  return httpClientBuilder;
+                })
             .build();
     openSearchClient = new OpenSearchClient(transport);
     mapper = new ObjectMapper();
@@ -142,6 +169,7 @@ class SearchConsumerFieldBehaviorIT {
           resolutionIndex(language),
           "/elasticsearch/" + language + "/test_case_resolution_status_index_mapping.json");
       indexDocument(resolutionIndex(language), RESOLUTION_ID, resolutionStatusDocument());
+      indexDocument(resolutionIndex(language), RESOLVED_ID, resolvedStatusDocument());
     }
   }
 
@@ -242,7 +270,8 @@ class SearchConsumerFieldBehaviorIT {
     assertFeatureWorksInAllLanguages(
         "Data Quality dimension filter (test list + DQ report by dimension)",
         language ->
-            hits(testCaseIndex(language), termQuery("dataQualityDimension", DQ_DIMENSION)) == 1);
+            hits(testCaseIndex(language), termQuery("dataQualityDimensionName", DQ_DIMENSION))
+                == 1);
   }
 
   @Test
@@ -275,6 +304,63 @@ class SearchConsumerFieldBehaviorIT {
   }
 
   @Test
+  void incidentResolutionCommentSearchReturnsIncidentInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Incident Manager free-text search over the resolution comment (the boost list in "
+            + "TestCaseResolutionStatusIndex.getFields(), used by "
+            + "buildTestCaseResolutionStatusSearchV2)",
+        language ->
+            hits(
+                    resolutionIndex(language),
+                    boostedMultiMatchQuery(
+                        FAILURE_COMMENT_TERM, TestCaseResolutionStatusIndex.getFields()))
+                == 1);
+  }
+
+  /**
+   * A type probe, not a product feature: nothing in the product filters on the failure reason today
+   * (the UI reads it from {@code _source}). It proves the mapping's declared {@code keyword} type is
+   * actually in effect — under dynamic mapping the field becomes analyzed {@code text} and an exact
+   * term can never match, which is the state this index was in.
+   */
+  @Test
+  void failureReasonSupportsExactMatchTermInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Exact-match term support on testCaseResolutionStatusDetails.testCaseFailureReason "
+            + "(the mapping must declare it as a keyword; left to dynamic mapping it becomes "
+            + "analyzed text and no term ever matches)",
+        language ->
+            hits(
+                    resolutionIndex(language),
+                    termQuery(
+                        "testCaseResolutionStatusDetails.testCaseFailureReason", FAILURE_REASON))
+                == 1);
+  }
+
+  @Test
+  void resolutionCommentUsesLanguageAnalyzerInAllLanguages() throws Exception {
+    List<String> broken = new ArrayList<>();
+    for (Map.Entry<String, String[]> entry : LANGUAGE_SAMPLE_TEXT.entrySet()) {
+      String language = entry.getKey();
+      List<String> tokens =
+          analyzeField(
+              resolutionIndex(language),
+              "testCaseResolutionStatusDetails.testCaseFailureComment",
+              entry.getValue()[0]);
+      if (!tokens.contains(entry.getValue()[1])) {
+        broken.add(language + " expected token '" + entry.getValue()[1] + "' but got " + tokens);
+      }
+    }
+    assertTrue(
+        broken.isEmpty(),
+        "The resolution comment must be indexed with the per-language analyzer the mapping "
+            + "declares. A comment left to dynamic mapping falls back to the standard analyzer, "
+            + "which cannot segment CJK or stem Russian — Incident Manager comment search is then "
+            + "broken in that language: "
+            + broken);
+  }
+
+  @Test
   void incidentTestCaseFqnFilterReturnsIncidentInAllLanguages() throws Exception {
     assertFeatureWorksInAllLanguages(
         "Incident Manager test-case filter (testCase.fullyQualifiedName.keyword)",
@@ -302,9 +388,12 @@ class SearchConsumerFieldBehaviorIT {
             .execute(Requests.builder().method("GET").endpoint("/_cat/plugins").build())) {
       String plugins = response.getBody().map(b -> b.bodyAsString()).orElse("");
       assertTrue(
-          plugins.contains("analysis-kuromoji") && plugins.contains("analysis-ik"),
-          "The integration-test OpenSearch image must ship analysis-kuromoji (jp) and analysis-ik "
-              + "(zh) so jp/zh mappings index with their real analyzers. Installed: "
+          plugins.contains("analysis-kuromoji")
+              && plugins.contains("analysis-ik")
+              && plugins.contains("analysis-nori"),
+          "The integration-test OpenSearch image must ship analysis-kuromoji (jp), analysis-ik "
+              + "(zh) and analysis-nori (ko) so those mappings index with their real analyzers. "
+              + "Installed: "
               + plugins);
     }
   }
@@ -501,7 +590,7 @@ class SearchConsumerFieldBehaviorIT {
             Map.entry("entityFQN", ENTITY_FQN),
             Map.entry("originEntityFQN", ENTITY_FQN),
             Map.entry("entityLink", ENTITY_LINK),
-            Map.entry("dataQualityDimension", DQ_DIMENSION),
+            Map.entry("dataQualityDimensionName", DQ_DIMENSION),
             Map.entry("testPlatforms", List.of(TEST_PLATFORM)),
             Map.entry(
                 "testSuites",
@@ -544,6 +633,41 @@ class SearchConsumerFieldBehaviorIT {
     return mapper.writeValueAsString(document);
   }
 
+  /**
+   * The Resolved branch of the {@code testCaseResolutionStatusDetails} oneOf, written flat exactly
+   * as the entity serializes (resolved.json declares testCaseFailureReason /
+   * testCaseFailureComment / resolvedBy directly and is additionalProperties=false, so no wrapper
+   * object can legally appear). Values are distinct from the Assigned document so the filters that
+   * expect a single incident still see one.
+   *
+   * <p>The denormalized {@code testCase} object that {@code
+   * TestCaseResolutionStatusIndex.setParentRelationships} always adds in production is omitted on
+   * purpose: adding it would give this document the same {@code testCase.fullyQualifiedName.keyword}
+   * / {@code testCase.entityFQN.keyword} values as the Assigned document, turning those two
+   * pre-existing single-hit assertions into two hits. {@code testCaseReference} carries the parent
+   * link instead — it is what the boosted field list actually reads.
+   */
+  private String resolvedStatusDocument() throws Exception {
+    Map<String, Object> details =
+        Map.of(
+            "testCaseFailureReason", FAILURE_REASON,
+            "testCaseFailureComment", FAILURE_COMMENT,
+            "resolvedBy", Map.of("id", RESOLVER_ID, "type", "user", "name", RESOLVER_NAME));
+    Map<String, Object> document =
+        Map.ofEntries(
+            Map.entry("id", RESOLVED_ID),
+            Map.entry("entityType", "testCaseResolutionStatus"),
+            Map.entry("testCaseResolutionStatusType", RESOLVED_STATUS_TYPE),
+            Map.entry("testCaseResolutionStatusDetails", details),
+            Map.entry(
+                "testCaseReference",
+                Map.of("id", TEST_CASE_ID, "type", "testCase", "name", "amount_not_null")),
+            Map.entry("stateId", RESOLVED_STATE_ID),
+            Map.entry("@timestamp", 1700000000000L),
+            Map.entry("timestamp", 1700000000000L));
+    return mapper.writeValueAsString(document);
+  }
+
   private Map<String, Object> tagLabel(String tagFqn) {
     return Map.of(
         "tagFQN", tagFqn,
@@ -554,6 +678,32 @@ class SearchConsumerFieldBehaviorIT {
 
   private String termQuery(String field, String value) throws Exception {
     return mapper.writeValueAsString(Map.of("query", Map.of("term", Map.of(field, value))));
+  }
+
+  /**
+   * The non-fuzzy branch of {@code SearchSourceBuilderFactory.buildSearchQueryBuilderV2} — a
+   * most_fields multi_match over the index's boosted field list. None of the resolution-status
+   * fields is a FUZZY_FIELD, so this is the whole query the Incident Manager search box issues.
+   * Fields come from production code, so repointing a boost at a path no document carries fails
+   * here.
+   */
+  private String boostedMultiMatchQuery(String query, Map<String, Float> fields) throws Exception {
+    List<String> boostedFields =
+        fields.entrySet().stream().map(field -> field.getKey() + "^" + field.getValue()).toList();
+    return mapper.writeValueAsString(
+        Map.of(
+            "query",
+            Map.of(
+                "multi_match",
+                Map.of(
+                    "query",
+                    query,
+                    "fields",
+                    boostedFields,
+                    "type",
+                    "most_fields",
+                    "operator",
+                    "and"))));
   }
 
   private String nestedTermQuery(String path, String field, String value) throws Exception {

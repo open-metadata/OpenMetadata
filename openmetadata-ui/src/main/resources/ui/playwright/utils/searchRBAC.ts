@@ -11,20 +11,11 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
-
-const closeWelcomeScreenIfVisible = async (page: Page) => {
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-};
 
 /**
  * Navigate the given (already-logged-in) user to the Explore page, search for an
@@ -37,7 +28,6 @@ export const exploreShouldShowEntity = async (
   displayName: string,
   shouldSee: boolean
 ) => {
-  await closeWelcomeScreenIfVisible(page);
   await redirectToHomePage(page);
 
   const exploreRes = page.waitForResponse('/api/v1/search/query?*');
@@ -64,7 +54,7 @@ export const exploreShouldShowEntity = async (
     });
 
   if (shouldSee) {
-    await expect(resultCard.first()).toBeVisible();
+    await expect(resultCard.filter({ visible: true })).not.toHaveCount(0);
   } else {
     // RBAC enforcement against newly-assigned user roles lags the patch
     // call by several seconds — the search-index user doc needs to update
@@ -85,7 +75,6 @@ export const exploreTreeCategories = async (
   page: Page,
   { visible, hidden }: { visible: string[]; hidden: string[] }
 ) => {
-  await closeWelcomeScreenIfVisible(page);
   await redirectToHomePage(page);
 
   const exploreRes = page.waitForResponse('/api/v1/search/query?*');
@@ -125,6 +114,13 @@ export const enableDisableSearchRBAC = async (
   }
   const initialSetting = await settingResponse.json();
 
+  // Callers re-assert this per test, so skip the write and the poll on a no-op.
+  if (
+    initialSetting.config_value?.globalSettings?.enableAccessControl === enable
+  ) {
+    return;
+  }
+
   const updatedSetting = {
     ...initialSetting,
     config_value: {
@@ -152,7 +148,9 @@ export const enableDisableSearchRBAC = async (
           '/api/v1/system/settings/searchSettings'
         );
         if (!response.ok()) {
-          return undefined;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
         const settings = await response.json();
 
@@ -160,7 +158,7 @@ export const enableDisableSearchRBAC = async (
       },
       {
         message: `Search RBAC setting did not become ${String(enable)}`,
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
       }
     )
     .toBe(enable);
@@ -169,17 +167,9 @@ export const enableDisableSearchRBAC = async (
 export const searchForEntityShouldWork = async (
   fqn: string,
   displayName: string,
-  page: Page
+  page: Page,
+  entityName: string
 ) => {
-  // Wait for welcome screen and close it if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
 
@@ -191,6 +181,12 @@ export const searchForEntityShouldWork = async (
   await page.getByTestId('searchBox').press('Enter');
   await searchResponse;
 
+  await waitForAllLoadersToDisappear(page);
+  await page
+    .getByTestId('explore-left-panel')
+    .getByRole('tab')
+    .filter({ hasText: entityName })
+    .click();
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -210,15 +206,6 @@ export const searchForEntityShouldWorkShowNoResult = async (
   displayName: string,
   page: Page
 ) => {
-  // Wait for welcome screen and close it if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
 

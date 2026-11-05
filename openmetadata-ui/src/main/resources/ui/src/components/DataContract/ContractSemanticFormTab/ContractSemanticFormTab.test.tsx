@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
+import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import '@testing-library/jest-dom';
 import {
   act,
@@ -31,13 +31,18 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
   })),
 }));
 
-jest.mock('../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1', () => {
-  return function MockQueryBuilderWidgetV1({
+jest.mock('../../common/QueryBuilder/QueryBuilder', () => {
+  return function MockQueryBuilder({
     onChange,
-    getQueryActions,
+    onActionsReady,
     value,
     readonly,
-  }: any) {
+  }: {
+    onChange?: (value: string, tree: JsonTree) => void;
+    onActionsReady?: (actions: Actions) => void;
+    value?: string;
+    readonly?: boolean;
+  }) {
     return (
       <div data-testid="query-builder-widget">
         <span>Query Builder Widget</span>
@@ -49,7 +54,7 @@ jest.mock('../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1', () => {
             onChange?.('{"and":[{"==":[{"var":"name"},"10"]}]}', {
               type: 'group',
             } as JsonTree);
-            getQueryActions?.({ addRule: jest.fn() } as unknown as Actions);
+            onActionsReady?.({ addRule: jest.fn() } as unknown as Actions);
           }}>
           Change Query
         </button>
@@ -107,7 +112,7 @@ const mockInitialValues: Partial<DataContract> = {
       enabled: true,
       jsonTree: '{"type": "group"}',
     },
-  ] as any,
+  ] as unknown as DataContract['semantics'],
 };
 
 describe('ContractSemanticFormTab', () => {
@@ -282,7 +287,7 @@ describe('ContractSemanticFormTab', () => {
   });
 
   describe('Query Builder Integration', () => {
-    it('should render QueryBuilderWidgetV1 in edit mode', async () => {
+    it('should render the query builder in edit mode', async () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
@@ -302,7 +307,7 @@ describe('ContractSemanticFormTab', () => {
       expect(screen.getByText('Readonly: false')).toBeInTheDocument();
     });
 
-    it('should render QueryBuilderWidgetV1 in readonly mode', () => {
+    it('should render the query builder in readonly mode', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
@@ -407,36 +412,46 @@ describe('ContractSemanticFormTab', () => {
       );
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-      const switchElement = document.querySelector('.ant-switch');
+      const switchElement = screen.getByRole('switch');
 
       expect(switchElement).toBeInTheDocument();
     });
   });
 
   describe('Error Handling', () => {
-    it('should handle validation errors gracefully', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
+    it('keeps an invalid rule open and shows the errors', async () => {
       render(<ContractSemanticFormTab {...commonProps} />);
 
-      const addButton = screen.getByTestId('add-semantic-button');
-
       await act(async () => {
-        fireEvent.click(addButton);
+        fireEvent.click(screen.getByTestId('save-semantic-button'));
       });
 
-      const saveButton = screen.getByTestId('save-semantic-button');
+      expect(screen.getByTestId('save-semantic-button')).toBeInTheDocument();
+      expect(await screen.findByText('Name is required')).toBeInTheDocument();
+      expect(screen.getByText('Description is required')).toBeInTheDocument();
+    });
+
+    // A failed save must keep validating: fixing a field clears its error.
+    it('clears an error once the field is fixed after a failed save', async () => {
+      render(<ContractSemanticFormTab {...commonProps} />);
 
       await act(async () => {
-        fireEvent.click(saveButton);
+        fireEvent.click(screen.getByTestId('save-semantic-button'));
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Validation failed:',
-        expect.any(Object)
+      expect(await screen.findByText('Name is required')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+          target: { value: 'Owner rule' },
+        });
+      });
+
+      await waitFor(() =>
+        expect(screen.queryByText('Name is required')).not.toBeInTheDocument()
       );
 
-      consoleSpy.mockRestore();
+      expect(screen.getByText('Description is required')).toBeInTheDocument();
     });
 
     it('should handle empty initial values', () => {
@@ -462,6 +477,214 @@ describe('ContractSemanticFormTab', () => {
       const nextButton = screen.getByRole('button', { name: 'Custom Next' });
 
       expect(nextButton).toHaveAttribute('type', 'button');
+    });
+  });
+
+  describe('Mount Emission (regression: save-gate false-enable)', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    const flushMount = () =>
+      act(async () => {
+        await Promise.resolve();
+      });
+
+    it('should not call onChange on mount when initialValues is undefined (create mode)', async () => {
+      render(<ContractSemanticFormTab {...commonProps} />);
+
+      await flushMount();
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
+
+    it('should not call onChange on mount when initialValues.semantics is empty', async () => {
+      render(
+        <ContractSemanticFormTab
+          initialValues={{ semantics: [] }}
+          {...commonProps}
+        />
+      );
+
+      await flushMount();
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
+
+    it('should not call onChange on mount when initialValues.semantics is populated (edit mode)', async () => {
+      render(
+        <ContractSemanticFormTab
+          initialValues={mockInitialValues}
+          {...commonProps}
+        />
+      );
+
+      // Wait for the seeded value to render — this guarantees the seeding
+      // effect's setFieldsValue has flushed and Form.useWatch has re-resolved,
+      // i.e. the mount emission (if present) would have already fired.
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Test Semantic')).toBeInTheDocument();
+      });
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
+
+    it('should not call onChange when re-seeding after initialValues changes without user interaction', async () => {
+      const { rerender } = render(
+        <ContractSemanticFormTab
+          initialValues={mockInitialValues}
+          {...commonProps}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Test Semantic')).toBeInTheDocument();
+      });
+
+      const updatedInitialValues: Partial<DataContract> = {
+        semantics: [
+          {
+            name: 'Updated Semantic',
+            description: 'Updated Description',
+            rule: 'another rule',
+            enabled: true,
+            jsonTree: '{"type": "group"}',
+          },
+        ] as unknown as DataContract['semantics'],
+      };
+
+      rerender(
+        <ContractSemanticFormTab
+          initialValues={updatedInitialValues}
+          {...commonProps}
+        />
+      );
+
+      // The re-seed updates the form, but should not emit onChange without
+      // user interaction.
+      await waitFor(() => {
+        expect(
+          screen.getByDisplayValue('Updated Semantic')
+        ).toBeInTheDocument();
+      });
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
+
+    it('should call onChange after the user adds a semantic rule', async () => {
+      render(<ContractSemanticFormTab {...commonProps} />);
+
+      await flushMount();
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+
+      // The add button is disabled while in the initial edit mode, so exit it.
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      });
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+
+      const addButton = screen.getByTestId('add-semantic-button');
+
+      await act(async () => {
+        fireEvent.click(addButton);
+      });
+
+      await waitFor(() => {
+        expect(mockOnChange).toHaveBeenCalledWith({
+          semantics: expect.arrayContaining([
+            expect.objectContaining({ enabled: true }),
+          ]),
+        });
+      });
+    });
+
+    it('should call onChange after the user edits a field via the form (onValuesChange)', async () => {
+      render(
+        <ContractSemanticFormTab
+          initialValues={mockInitialValues}
+          {...commonProps}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Test Semantic')).toBeInTheDocument();
+      });
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+
+      const nameInput = screen.getByDisplayValue('Test Semantic');
+
+      await act(async () => {
+        fireEvent.change(nameInput, { target: { value: 'Edited Semantic' } });
+      });
+
+      await waitFor(() => {
+        expect(mockOnChange).toHaveBeenCalledWith({
+          semantics: expect.arrayContaining([
+            expect.objectContaining({ name: 'Edited Semantic' }),
+          ]),
+        });
+      });
+    });
+
+    it('should call onChange after the user changes the query builder rule', async () => {
+      render(
+        <ContractSemanticFormTab
+          initialValues={mockInitialValues}
+          {...commonProps}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      const editButton = screen.getByTestId('edit-semantic-0');
+
+      await act(async () => {
+        fireEvent.click(editButton);
+      });
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+
+      const changeButton = screen.getByTestId('mock-query-change');
+
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
+
+      await waitFor(() => {
+        expect(mockOnChange).toHaveBeenCalledWith({
+          semantics: expect.arrayContaining([
+            expect.objectContaining({ jsonTree: expect.any(String) }),
+          ]),
+        });
+      });
+    });
+
+    it('should call onChange after the user deletes a semantic rule', async () => {
+      render(
+        <ContractSemanticFormTab
+          initialValues={mockInitialValues}
+          {...commonProps}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('delete-semantic-0')).toBeInTheDocument();
+      });
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+
+      const deleteButton = screen.getByTestId('delete-semantic-0');
+
+      await act(async () => {
+        fireEvent.click(deleteButton);
+      });
+
+      expect(mockOnChange).toHaveBeenCalledWith({ semantics: [] });
     });
   });
 });

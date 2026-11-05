@@ -12,6 +12,7 @@
  */
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
+import { Package, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -36,7 +37,8 @@ import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketp
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
-import { useFormDrawerWithHook } from '../../common/atoms/drawer';
+import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
+import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
 import Loader from '../../common/Loader/Loader';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
@@ -203,8 +205,9 @@ const MarketplaceDataProductsWidget = ({
   if (loading) {
     return (
       <div
-        className="marketplace-widget-section"
-        data-testid="marketplace-dp-widget">
+        className="marketplace-widget-section tw:bg-surface"
+        data-testid="marketplace-dp-widget"
+        data-tour-step="data-marketplace">
         <Loader size="small" />
       </div>
     );
@@ -212,8 +215,9 @@ const MarketplaceDataProductsWidget = ({
 
   return (
     <div
-      className="marketplace-widget-section"
-      data-testid="marketplace-dp-widget">
+      className="marketplace-widget-section tw:bg-surface"
+      data-testid="marketplace-dp-widget"
+      data-tour-step="data-marketplace">
       <div className="marketplace-widget-header">
         <div>
           <Typography
@@ -225,7 +229,9 @@ const MarketplaceDataProductsWidget = ({
           </Typography>
           <Typography
             as="span"
-            className="tw:text-sm tw:font-medium tw:text-text-primary">
+            className="tw:text-text-secondary"
+            size="text-sm"
+            weight="regular">
             {t('label.recently-created-entity', {
               entity: t('label.data-product-plural'),
             })}
@@ -238,8 +244,9 @@ const MarketplaceDataProductsWidget = ({
               <Button
                 color="secondary"
                 data-testid="add-data-product-btn"
+                iconLeading={Plus}
                 onPress={openDrawer}>
-                + {t('label.add-entity', { entity: t('label.data-product') })}
+                {t('label.add-entity', { entity: t('label.data-product') })}
               </Button>
             )}
             {totalCount > DISPLAY_COUNT && (
@@ -254,12 +261,28 @@ const MarketplaceDataProductsWidget = ({
         )}
       </div>
       {isEmpty(dataProducts) ? (
-        <div className="tw:flex tw:items-center tw:justify-center tw:min-h-16">
-          <Typography as="span" className="tw:text-sm tw:text-text-tertiary">
-            {t('label.no-entity', {
-              entity: t('label.data-product-plural'),
-            })}
-          </Typography>
+        <div className="tw:relative tw:flex tw:min-h-60 tw:items-center tw:justify-center">
+          <CreatePlaceholder
+            actions={
+              !isEditView && permissions.dataProduct?.Create
+                ? [
+                    {
+                      key: 'add',
+                      label: t('label.new-entity', {
+                        entity: t('label.data-product'),
+                      }),
+                      color: 'primary',
+                      iconLeading: Plus,
+                      onPress: openDrawer,
+                    },
+                  ]
+                : undefined
+            }
+            data-testid="marketplace-dp-empty-state"
+            description={t('label.no-data-products-yet-description')}
+            icon={<Package className="tw:text-fg-brand-primary" />}
+            title={t('label.no-data-products-yet')}
+          />
         </div>
       ) : (
         cardList

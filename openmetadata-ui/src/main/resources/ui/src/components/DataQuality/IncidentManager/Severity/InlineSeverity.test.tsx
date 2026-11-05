@@ -21,7 +21,7 @@ import React from 'react';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import InlineSeverity from './InlineSeverity.component';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <svg data-testid="icon-chevron-down" />,
   ChevronUp: () => <svg data-testid="icon-chevron-up" />,
 }));
@@ -86,7 +86,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div
       data-testid={`dropdown-item-${id}`}
       role="menuitem"
-      onClick={() => onAction?.(id)}>
+      tabIndex={0}
+      onClick={() => onAction?.(id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onAction?.(id);
+        }
+      }}>
       {children ?? label}
     </div>
   );
@@ -106,6 +112,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         return (
           <div data-testid="dropdown-root">
             <div
+              role="presentation"
               onClick={() => {
                 setOpen(true);
                 onOpenChange?.(true);
@@ -159,7 +166,7 @@ describe('InlineSeverity', () => {
       renderComponent(Severities.Severity1);
 
       expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 1'
+        'label.severity 1'
       );
     });
 
@@ -167,7 +174,7 @@ describe('InlineSeverity', () => {
       renderComponent(Severities.Severity2);
 
       expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 2'
+        'label.severity 2'
       );
     });
 
@@ -175,7 +182,7 @@ describe('InlineSeverity', () => {
       renderComponent(Severities.Severity3);
 
       expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 3'
+        'label.severity 3'
       );
     });
 
@@ -183,7 +190,7 @@ describe('InlineSeverity', () => {
       renderComponent(Severities.Severity4);
 
       expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 4'
+        'label.severity 4'
       );
     });
 
@@ -191,7 +198,7 @@ describe('InlineSeverity', () => {
       renderComponent(Severities.Severity5);
 
       expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 5'
+        'label.severity 5'
       );
     });
 
@@ -229,7 +236,7 @@ describe('InlineSeverity', () => {
       const { rerender } = renderComponent(Severities.Severity1);
 
       expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 1'
+        'label.severity 1'
       );
 
       rerender(
@@ -241,7 +248,7 @@ describe('InlineSeverity', () => {
       );
 
       expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 3'
+        'label.severity 3'
       );
     });
 
@@ -257,7 +264,7 @@ describe('InlineSeverity', () => {
       );
 
       expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 2'
+        'label.severity 2'
       );
     });
   });

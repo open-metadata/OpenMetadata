@@ -16,9 +16,11 @@ generate the _run based on their topology.
 import math
 import time
 import traceback
-from functools import singledispatchmethod
+from collections.abc import Callable, Generator, Iterable
+from contextlib import closing
+from functools import cached_property, singledispatchmethod
 from time import perf_counter
-from typing import Any, ClassVar, Generic, Iterable, List, Optional, TypeVar, cast  # noqa: UP035
+from typing import Any, ClassVar, Generic, TypeVar, cast, overload
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -56,6 +58,7 @@ from metadata.utils.source_hash import generate_source_hash
 logger = ingestion_logger()
 
 C = TypeVar("C", bound=BaseModel)
+T = TypeVar("T")
 
 
 class MissingExpectedEntityAckException(Exception):  # noqa: N818
@@ -65,6 +68,41 @@ class MissingExpectedEntityAckException(Exception):  # noqa: N818
     """
 
 
+class PerSourceState(Generic[T]):
+    """State declared on a source class but owned by each source instance, created on first access.
+
+    A class attribute such as ``seen: set = set()`` is one object shared by every source of that type
+    in the process, so a second source or a second run inherits the first one's state. Worker threads
+    can be the first to touch the state, so it is created with ``vars(instance).setdefault`` rather than
+    ``cached_property``, which takes no lock on Python 3.12+ and can hand two threads different objects.
+    See ADR:2026-10-30-topology-source-run-state-is-per-instance.
+    """
+
+    def __init__(self, factory: Callable[[], T]) -> None:
+        self._factory = factory
+        self._name = ""
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        self._name = name
+
+    @overload
+    def __get__(self, instance: None, owner: type | None = None) -> "PerSourceState[T]": ...
+
+    @overload
+    def __get__(self, instance: object, owner: type | None = None) -> T: ...
+
+    def __get__(self, instance: object | None, owner: type | None = None) -> "T | PerSourceState[T]":
+        if instance is None:
+            return self
+        instance_dict = vars(instance)
+        if self._name in instance_dict:
+            return instance_dict[self._name]
+        return instance_dict.setdefault(self._name, self._factory())
+
+    def __set__(self, instance: object, value: T) -> None:
+        vars(instance)[self._name] = value
+
+
 class TopologyRunnerMixin(Generic[C]):
     """
     Prepares the _run function
@@ -72,20 +110,29 @@ class TopologyRunnerMixin(Generic[C]):
     """
 
     topology: ServiceTopology
-    context: TopologyContextManager
     metadata: OpenMetadata
 
-    queue = Queue()
+    queue = PerSourceState(Queue)
 
     progress_mode: ClassVar[ProgressMode] = ProgressMode.AUTO
     """AUTO (default): the topology runner counts processed entities.
     MANUAL: the runner makes zero progress calls; the source drives
     ``progress_tracking.manual`` itself. OFF: no progress at all."""
 
+    @cached_property
+    def context(self) -> TopologyContextManager:
+        """One context per source. A class-level context is shared by every source of that type
+        in the process, so two sources overwrite each other's service, database and schema."""
+        return TopologyContextManager(self.topology)
+
     _SIDE_OUTPUT_STAGE_TYPES: ClassVar[set[str]] = {
         "OMetaTagAndClassification",
         "OMetaLifeCycleData",
         "AddLineageRequest",
+        # Metrics a table declares (semantic views/metric views) ride along on the
+        # table node; the node's entity is still the Table. dbt's dedicated metrics
+        # node types its stage as CreateMetricRequest, so it keeps its own primary.
+        "Metric",
     }
 
     @property
@@ -99,7 +146,7 @@ class TopologyRunnerMixin(Generic[C]):
         renders % and ETA. Called exactly once by the topology runner, just
         before the first non-root node is processed. Default: no totals."""
 
-    def _node_primary_stage(self, node: TopologyNode) -> Optional[NodeStage]:  # noqa: UP045
+    def _node_primary_stage(self, node: TopologyNode) -> NodeStage | None:
         """The node's primary, non-side-output stage — the stage whose entity is
         the node's real entity (Table, Database, ...). Falls back to the first
         typed stage when every stage is a side output. ``None`` only when the
@@ -113,7 +160,7 @@ class TopologyRunnerMixin(Generic[C]):
                     return stage
         return fallback
 
-    def _get_entity_type_for_node(self, node: TopologyNode) -> Optional[str]:  # noqa: UP045
+    def _get_entity_type_for_node(self, node: TopologyNode) -> str | None:
         """The primary entity type name for a topology node, used as the
         progress-tracking key. Derived from the node's primary stage."""
         stage = self._node_primary_stage(node)
@@ -228,19 +275,25 @@ class TopologyRunnerMixin(Generic[C]):
             node_progress.open(None)
 
         for node_entity in node_entities:
-            for stage in node.stages:
-                yield from self._process_stage(stage=stage, node_entity=node_entity)
+            yield from self._process_node_entity(node, node_entity, child_nodes, node_progress)
 
-            for stage in node.stages:
-                if stage.clear_context:
-                    self.context.get().clear_stage(stage=stage)
+    def _process_node_entity(
+        self, node: TopologyNode, node_entity: Any, child_nodes: list[TopologyNode], node_progress: Any
+    ) -> Generator[Entity, None, None]:
+        """Process one producer item through its stages and children."""
+        for stage in node.stages:
+            yield from self._process_stage(stage=stage, node_entity=node_entity)
 
-            node_progress.advance_leaf()
+        for stage in node.stages:
+            if stage.clear_context:
+                self.context.get().clear_stage(stage=stage)
 
-            with node_progress.enter_scope():
-                yield from self.process_nodes(child_nodes)
+        node_progress.advance_leaf()
 
-    def process_nodes(self, nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
+        with node_progress.enter_scope():
+            yield from self.process_nodes(child_nodes)
+
+    def process_nodes(self, nodes: list[TopologyNode]) -> Iterable[Entity]:
         """
         Given a list of nodes, either roots or children,
         yield from its producers and process the children.
@@ -282,8 +335,8 @@ class TopologyRunnerMixin(Generic[C]):
     def _multithread_process_entity(
         self,
         node: TopologyNode,
-        node_entities: List[Any],  # noqa: UP006
-        child_nodes: List[TopologyNode],  # noqa: UP006
+        node_entities: list[Any],
+        child_nodes: list[TopologyNode],
         parent_thread_id: int,
         node_progress,
     ):
@@ -293,34 +346,20 @@ class TopologyRunnerMixin(Generic[C]):
 
         operation_metrics = OperationMetricsState()
 
-        for node_entity in node_entities:
-            # For each stage, we get all the stage results and one by one yield them by adding them to the Queue.
-            for stage in node.stages:
-                for stage_result in self._process_stage(stage=stage, node_entity=node_entity):
-                    self.queue.put(stage_result)
+        try:
+            for node_entity in node_entities:
+                with closing(self._process_node_entity(node, node_entity, child_nodes, node_progress)) as results:
+                    for result in results:
+                        self.queue.put(result)
+        finally:
+            operation_metrics.merge_thread_metrics()
+            self.context.pop()
 
-            # After all the stages are done, we clear the context if needed.
-            for stage in node.stages:
-                if stage.clear_context:
-                    self.context.get().clear_stage(stage=stage)
-
-            node_progress.advance_leaf()
-
-            with node_progress.enter_scope():
-                for child_result in self.process_nodes(child_nodes):
-                    self.queue.put(child_result)
-
-        # Merge thread-local metrics into global state before thread exits
-        operation_metrics.merge_thread_metrics()
-
-        # Finally we pop the context and finish the thread
-        self.context.pop()
-
-    def _get_child_nodes(self, node: TopologyNode) -> List[TopologyNode]:  # noqa: UP006
+    def _get_child_nodes(self, node: TopologyNode) -> list[TopologyNode]:
         """Compute children nodes if any"""
         return [get_topology_node(child, self.topology) for child in node.children] if node.children else []
 
-    def _run_stage_processor(self, stage: NodeStage, node_entity: Any) -> Iterable[Entity]:
+    def _run_stage_processor(self, stage: NodeStage, node_entity: Any) -> Generator[Either[C], None, None]:
         """Run the stage processor"""
         try:
             stage_fn = getattr(self, stage.processor)
@@ -342,13 +381,14 @@ class TopologyRunnerMixin(Generic[C]):
         operation_metrics = OperationMetricsState()
         stage_start = perf_counter()
 
-        for entity_request in self._run_stage_processor(stage=stage, node_entity=node_entity) or []:
-            try:
-                # yield and make sure the data is updated
-                yield from self.sink_request(stage=stage, entity_request=entity_request)
-            except ValueError as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")
+        with closing(self._run_stage_processor(stage=stage, node_entity=node_entity)) as requests:
+            for entity_request in requests:
+                try:
+                    # yield and make sure the data is updated
+                    yield from self.sink_request(stage=stage, entity_request=entity_request)
+                except ValueError as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")
 
         # Track STAGE time - processing and sinking entities
         stage_time_ms = (perf_counter() - stage_start) * 1000

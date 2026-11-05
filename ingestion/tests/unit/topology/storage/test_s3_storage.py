@@ -16,11 +16,12 @@ import datetime
 import io
 import json
 import uuid
-from typing import List  # noqa: UP035
+from copy import deepcopy
 from unittest import TestCase
 from unittest.mock import patch
 
 import pandas as pd
+from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
 
 from metadata.generated.schema.entity.data.container import (
@@ -112,7 +113,7 @@ MOCK_S3_METADATA_FILE_RESPONSE = {
         }
     ]
 }
-EXPECTED_S3_BUCKETS: List[S3BucketResponse] = [  # noqa: UP006
+EXPECTED_S3_BUCKETS: list[S3BucketResponse] = [
     S3BucketResponse(
         Name="test_transactions",
         CreationDate=datetime.datetime(2000, 1, 1),
@@ -166,8 +167,12 @@ class StorageUnitTest(TestCase):
     Validate how we work with object store metadata
     """
 
+    @patch(
+        "metadata.ingestion.source.storage.storage_service.StorageServiceSource.get_manifest_file",
+        return_value=None,
+    )
     @patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection")
-    def __init__(self, method_name: str, test_connection) -> None:
+    def __init__(self, method_name: str, test_connection, _get_manifest_file) -> None:
         super().__init__(method_name)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_OBJECT_STORE_CONFIG)
@@ -220,7 +225,7 @@ class StorageUnitTest(TestCase):
         self.assertListEqual(self.object_store_source.fetch_buckets(), EXPECTED_S3_BUCKETS)
 
     def test_load_metadata_file_s3(self):
-        metadata_entry: List[MetadataEntry] = self.return_metadata_entry()  # noqa: UP006
+        metadata_entry: list[MetadataEntry] = self.return_metadata_entry()
 
         self.assertEqual(1, len(metadata_entry))
         self.assertEqual(
@@ -233,20 +238,34 @@ class StorageUnitTest(TestCase):
         )
 
     def test_no_metadata_file_returned_when_file_not_present(self):
-        with self.assertRaises(ReadException):
+        missing_file = ClientError(
+            {"Error": {"Code": "NoSuchKey", "Message": "metadata file not found"}},
+            "GetObject",
+        )
+
+        with (
+            patch.object(self.s3_reader.client, "get_object", side_effect=missing_file) as get_object,
+            self.assertRaises(ReadException) as raised,
+        ):
             self.s3_reader.read(
                 path=OPENMETADATA_TEMPLATE_FILE_NAME,
                 bucket_name="test",
                 verbose=False,
             )
 
+        self.assertIn(f"Error fetching file [{OPENMETADATA_TEMPLATE_FILE_NAME}] from S3", str(raised.exception))
+        self.assertIn("NoSuchKey", str(raised.exception))
+        get_object.assert_called_once_with(Bucket="test", Key=OPENMETADATA_TEMPLATE_FILE_NAME)
+
     def test_generate_unstructured_container(self):
         bucket_response = S3BucketResponse(Name="test_bucket", CreationDate=datetime.datetime(2000, 1, 1))
         self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
+        self.object_store_source.context.get().objectstore_service = "s3_test"
         self.assertEqual(
             S3ContainerDetails(
                 name=bucket_response.name,
                 prefix="/",
+                container_fqn="s3_test.test_bucket",
                 number_of_objects=100,
                 size=100,
                 file_formats=[],
@@ -263,7 +282,7 @@ class StorageUnitTest(TestCase):
     def test_generate_structured_container(self):
         self.object_store_source._get_sample_file_path = lambda bucket_name, metadata_entry: "transactions/file_1.csv"
         self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
-        columns: List[Column] = [  # noqa: UP006
+        columns: list[Column] = [
             Column(
                 name=ColumnName("transaction_id"),
                 dataType=DataType.INT,
@@ -278,7 +297,9 @@ class StorageUnitTest(TestCase):
             ),
         ]
         self.object_store_source.extract_column_definitions = (
-            lambda bucket_name, sample_key, config_source, client, metadata_entry, session=None: columns
+            lambda bucket_name, sample_key, config_source, client, metadata_entry, session=None, limits=None, report=None: (
+                columns
+            )
         )
 
         entity_ref = EntityReference(id=uuid.uuid4(), type="container")
@@ -407,10 +428,10 @@ class StorageUnitTest(TestCase):
             self.object_store_source._get_sample_file_prefix(metadata_entry=input_metadata),
         )
 
-    def test_get_sample_file_path_with_invalid_prefix(self):
+    def test_get_sample_file_path_returns_none_when_prefix_has_no_files(self):
         self.object_store_source._get_sample_file_prefix = lambda metadata_entry: "/transactions"
-        self.assertIsNone(
-            self.object_store_source._get_sample_file_path(
+        with patch.object(self.object_store_source.s3_client, "list_objects_v2", return_value={}) as list_objects:
+            result = self.object_store_source._get_sample_file_path(
                 bucket_name="test_bucket",
                 metadata_entry=MetadataEntry(
                     dataPath="invalid_path",
@@ -418,6 +439,11 @@ class StorageUnitTest(TestCase):
                     isPartitioned=False,
                 ),
             )
+
+        self.assertIsNone(result)
+        list_objects.assert_called_once_with(
+            Bucket="test_bucket",
+            Prefix="/transactions",
         )
 
     def test_get_sample_file_path_randomly(self):
@@ -487,3 +513,69 @@ class StorageUnitTest(TestCase):
         content = json.loads(metadata_config_response)
         container_config = StorageContainerConfig.model_validate(content)
         return container_config.entries
+
+
+class TestStorageSchemaInferenceLimits:
+    """Issue #29832: the storage pipeline bounds the children inferred from a container's sample
+    file before the container data model is built, and adds one status warning for the file.
+    """
+
+    RECORDS = (
+        {"id": 1, "payload": {"c": {"x": 1}, "a": {"x": 1}, "d": {"x": 1}, "b": {"x": 1}}},
+        {"id": 2, "payload": {"e": {"x": 2}}},
+    )
+
+    @staticmethod
+    def _source(**limits) -> S3Source:
+        config = deepcopy(MOCK_OBJECT_STORE_CONFIG)
+        config["source"]["sourceConfig"]["config"].update(limits)
+        with (
+            patch(
+                "metadata.ingestion.source.storage.storage_service.StorageServiceSource.get_manifest_file",
+                return_value=None,
+            ),
+            patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"),
+        ):
+            return S3Source.create(
+                config["source"],
+                OpenMetadataWorkflowConfig.model_validate(config).workflowConfig.openMetadataServerConfig,
+            )
+
+    def _payload(self, source: S3Source) -> Column:
+        with patch(
+            "metadata.ingestion.source.storage.storage_service.fetch_dataframe_first_chunk",
+            return_value=(iter([pd.DataFrame.from_records(self.RECORDS)]), None),
+        ):
+            columns = source._get_columns(
+                container_name="test_bucket",
+                sample_key="events/part-0.json",
+                metadata_entry=MetadataEntry(dataPath="events", structureFormat="json"),
+                config_source=None,
+                client=None,
+            )
+        return {col.name.root: col for col in columns}["payload"]
+
+    def test_configured_limits_bound_the_container_columns(self):
+        source = self._source(maxSchemaInferenceDepth=1, maxChildrenPerColumn=2)
+
+        payload = self._payload(source)
+
+        assert [(child.name.root, child.dataType, child.children) for child in payload.children] == [
+            ("a", DataType.JSON, []),
+            ("b", DataType.JSON, []),
+        ]
+        assert source.status.warnings == [
+            {
+                "test_bucket/events/part-0.json": "Schema inference limits dropped nested columns. "
+                "maxSchemaInferenceDepth=1 cut the children of 2 column(s): payload.a, payload.b. "
+                "maxChildrenPerColumn=2 cut the children of 1 column(s): payload."
+            }
+        ]
+
+    def test_unset_limits_keep_every_inferred_child(self):
+        source = self._source()
+
+        payload = self._payload(source)
+
+        assert [child.name.root for child in payload.children] == ["c", "a", "d", "b", "e"]
+        assert source.status.warnings == []

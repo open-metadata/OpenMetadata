@@ -13,7 +13,22 @@
 
 import { Input } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { getWidgetLabel } from './coreWidgetUtils';
+import { getWidgetAriaProps, getWidgetLabel } from './coreWidgetUtils';
+
+const parseNumericValue = (
+  nextValue: string,
+  schemaType: string | string[] | undefined
+): number | undefined => {
+  if (nextValue === '') {
+    return undefined;
+  }
+  const parsed =
+    schemaType === 'integer'
+      ? Number.parseInt(nextValue, 10)
+      : Number.parseFloat(nextValue);
+
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
 
 const CoreInputWidget = ({
   id,
@@ -38,21 +53,10 @@ const CoreInputWidget = ({
 
   const handleChange = (nextValue: string) => {
     if (schema.type === 'number' || schema.type === 'integer') {
-      if (nextValue === '') {
-        onChange(options.emptyValue ?? undefined);
-
-        return;
-      }
-
-      const parsedValue =
-        schema.type === 'integer'
-          ? Number.parseInt(nextValue, 10)
-          : Number.parseFloat(nextValue);
-
       onChange(
-        Number.isNaN(parsedValue)
-          ? options.emptyValue ?? undefined
-          : parsedValue
+        parseNumericValue(nextValue, schema.type) ??
+          options.emptyValue ??
+          undefined
       );
 
       return;
@@ -61,12 +65,15 @@ const CoreInputWidget = ({
     onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
   };
 
-  const description = schema.description ?? options.help;
+  const description =
+    (options.help as string | undefined) ?? schema.description;
   const hint = rawErrors?.[0] ?? description;
 
   return (
     <div>
       <Input
+        {...getWidgetAriaProps({ label, schema })}
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is driven by the JSON schema widget config
         autoFocus={autofocus}
         hint={hint}
         hintClassName="tw:text-xs"
@@ -74,10 +81,8 @@ const CoreInputWidget = ({
         isDisabled={disabled || readonly}
         isInvalid={!!rawErrors?.length}
         isRequired={required}
-        label={getWidgetLabel({ hideLabel, label })}
+        label={getWidgetLabel({ hideLabel, label, schema })}
         placeholder={placeholder}
-        // tooltip={tooltip}
-        tooltipClassName="tw:h-4"
         type={inputType}
         value={value ?? ''}
         onBlur={() => onBlur(id, value)}

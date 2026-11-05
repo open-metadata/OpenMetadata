@@ -10,6 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Column,
+  DateType,
+  ProfileSampleType as ProfileSampleTypeIcon,
+  RowCount,
+  Size,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
@@ -24,15 +31,10 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { ReactComponent as ColumnCountIcon } from '../../../../assets/svg/data-observability/column-count.svg';
-import { ReactComponent as CreatedDateIcon } from '../../../../assets/svg/data-observability/created-date.svg';
-import { ReactComponent as ProfileSampleIcon } from '../../../../assets/svg/data-observability/profile-sample.svg';
-import { ReactComponent as RowCountIcon } from '../../../../assets/svg/data-observability/row-count.svg';
-import { ReactComponent as TotalSizeIcon } from '../../../../assets/svg/data-observability/total-size.svg';
 import { DEFAULT_SORT_ORDER } from '../../../../constants/profiler.constant';
-import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
-import { Table } from '../../../../generated/entity/data/table';
+import { CustomMetric, Table } from '../../../../generated/entity/data/table';
+import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { Include } from '../../../../generated/type/include';
@@ -50,6 +52,7 @@ import {
 import type { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { aggregateTestResultsByEntity } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { bytesToSize } from '../../../../utils/StringUtils';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -70,6 +73,11 @@ const TestCaseFormDrawer = withSuspenseFallback(
       )
   )
 );
+const CustomMetricFormDrawer = withSuspenseFallback(
+  lazy(
+    () => import('../../../DataQuality/CustomMetricForm/CustomMetricFormDrawer')
+  )
+);
 
 export const TableProfilerContext =
   createContext<TableProfilerContextInterface>(
@@ -83,7 +91,6 @@ export const TableProfilerProvider = ({
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
-  const { isTourOpen, tourMockDatasetData } = useTourProvider();
   const testCasePaging = usePaging();
   const { subTab } = useParams<{ subTab: ProfilerTabPath }>();
   // profiler has its own api but sent's the data in Table type
@@ -93,28 +100,43 @@ export const TableProfilerProvider = ({
   const [isTestsLoading, setIsTestsLoading] = useState(true);
   const [isProfilerDataLoading, setIsProfilerDataLoading] = useState(true);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
+  // Left undefined when the list API doesn't return inline permissions so the
+  // DataQualityTab falls back to its own per-row permission fetch.
+  const [allTestCasesPermissions, setAllTestCasesPermissions] =
+    useState<Record<string, ResourcePermission>>();
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] = useState(false);
   const [testLevel, setTestLevel] = useState<TestLevel>();
+  const [customMetricDrawer, setCustomMetricDrawer] = useState<{
+    isColumnMetric: boolean;
+    metric?: CustomMetric;
+  }>();
   const [table, setTable] = useState<Table | undefined>(tableEntity);
   const [testCaseSummary, setTestCaseSummary] =
     useState<Record<string, TestCaseCountByStatus>>();
 
   const isTableDeleted = useMemo(() => table?.deleted, [table]);
 
-  // Get activeTab from URL path (subTab param), fallback to default based on tour state
-  const activeTab = useMemo(() => {
-    const defaultTab = isTourOpen
-      ? ProfilerTabPath.COLUMN_PROFILE
-      : ProfilerTabPath.TABLE_PROFILE;
+  // Get activeTab from URL path (subTab param), fallback to the table profile
+  const activeTab = useMemo(
+    () => subTab ?? ProfilerTabPath.TABLE_PROFILE,
+    [subTab]
+  );
 
-    return subTab ?? defaultTab;
-  }, [subTab, isTourOpen]);
-
+  // `permissions` stays raw here — TableProfilerContextInterface exposes it verbatim to
+  // consumers (context contract, kept raw per the GenericProvider precedent). `viewTest` is
+  // purely internal (never exposed via context), so it derives from named flags: hasViewAccess
+  // is a byte-for-byte match for the old raw `ViewAll || ViewBasic` (getDerivedPermissionFlags
+  // computes it from the same two raw fields, unprioritized), and since it already covers the
+  // ViewAll case, ORing in canViewTests (prioritized ViewTests-over-ViewAll) reproduces the old
+  // 3-way flat OR exactly — not an explicit-deny-wins change, because the old ViewAll term
+  // already makes the whole expression true whenever canViewTests' own ViewAll fallback would
+  // have mattered.
   const viewTest = useMemo(() => {
-    return (
-      permissions.ViewAll || permissions.ViewBasic || permissions.ViewTests
-    );
+    const { hasViewAccess, canViewTests } =
+      getDerivedPermissionFlags(permissions);
+
+    return hasViewAccess || canViewTests;
   }, [permissions]);
 
   const getProfileSampleValue = () => {
@@ -145,7 +167,7 @@ export const TableProfilerProvider = ({
         }),
         key: 'row-count',
         value: formatNumberWithComma(profile?.rowCount ?? 0),
-        icon: RowCountIcon,
+        icon: RowCount,
       },
       {
         title: t('label.column-entity', {
@@ -155,19 +177,19 @@ export const TableProfilerProvider = ({
         value: formatNumberWithComma(
           profile?.columnCount ?? tableProfiler?.columns?.length ?? 0
         ),
-        icon: ColumnCountIcon,
+        icon: Column,
       },
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,
         key: 'profile-sample-type',
         value: getProfileSampleValue(),
-        icon: ProfileSampleIcon,
+        icon: ProfileSampleTypeIcon,
       },
       {
         title: t('label.size'),
         key: 'size',
         value: bytesToSize(profile?.sizeInByte ?? 0),
-        icon: TotalSizeIcon,
+        icon: Size,
       },
       {
         title: t('label.created-date'),
@@ -182,7 +204,7 @@ export const TableProfilerProvider = ({
               new Date(profile?.timestamp)
             ).toLocaleString(DateTime.DATETIME_MED)}`
           : undefined,
-        icon: CreatedDateIcon,
+        icon: DateType,
       },
     ];
   }, [tableProfiler, t]);
@@ -220,6 +242,17 @@ export const TableProfilerProvider = ({
     setCustomMetric(customMetric);
   };
 
+  const handleOpenCustomMetricDrawer = useCallback(
+    (isColumnMetric: boolean, metric?: CustomMetric) =>
+      setCustomMetricDrawer({ isColumnMetric, metric }),
+    []
+  );
+
+  const handleCloseCustomMetricDrawer = useCallback(
+    () => setCustomMetricDrawer(undefined),
+    []
+  );
+
   const onTestCaseSubmit = (testCase: TestCase) => {
     setTable((prev) => {
       if (!prev) {
@@ -248,10 +281,12 @@ export const TableProfilerProvider = ({
     // we are decoding FQN below to avoid double encoding in the API function
     setIsProfilerDataLoading(true);
     try {
-      const profiler = await getLatestTableProfileByFqn(datasetFQN);
-      const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
-        fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
-      });
+      const [profiler, customMetricResponse] = await Promise.all([
+        getLatestTableProfileByFqn(datasetFQN),
+        getTableDetailsByFQN(datasetFQN, {
+          fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
+        }),
+      ]);
 
       setTableProfiler(profiler);
       setCustomMetric(customMetricResponse);
@@ -265,22 +300,26 @@ export const TableProfilerProvider = ({
   const fetchAllTests = async (params?: ListTestCaseParamsBySearch) => {
     setIsTestsLoading(true);
     try {
-      const { data, paging } = await getListTestCaseBySearch({
-        ...DEFAULT_SORT_ORDER,
-        ...params,
-        fields: [
-          TabSpecificField.TEST_CASE_RESULT,
-          TabSpecificField.INCIDENT_ID,
-          TabSpecificField.INCIDENT_STATUS,
-        ],
+      const { data, paging, entityPermissions } = await getListTestCaseBySearch(
+        {
+          ...DEFAULT_SORT_ORDER,
+          ...params,
+          fields: [
+            TabSpecificField.TEST_CASE_RESULT,
+            TabSpecificField.INCIDENT_ID,
+            TabSpecificField.INCIDENT_STATUS,
+          ],
 
-        entityLink: generateEntityLink(datasetFQN ?? ''),
-        includeAllTests: true,
-        limit: testCasePaging.pageSize,
-        include: isTableDeleted ? Include.Deleted : Include.NonDeleted,
-      });
+          entityLink: generateEntityLink(datasetFQN ?? ''),
+          includeAllTests: true,
+          includePermissions: true,
+          limit: testCasePaging.pageSize,
+          include: isTableDeleted ? Include.Deleted : Include.NonDeleted,
+        }
+      );
 
       setAllTestCases(data);
+      setAllTestCasesPermissions(entityPermissions);
       testCasePaging.handlePagingChange(paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -290,10 +329,9 @@ export const TableProfilerProvider = ({
   };
 
   useEffect(() => {
+    const isProfilerFetchable = !isTableDeleted && datasetFQN;
     const fetchProfiler =
-      !isTableDeleted &&
-      datasetFQN &&
-      !isTourOpen &&
+      isProfilerFetchable &&
       [ProfilerTabPath.TABLE_PROFILE, ProfilerTabPath.COLUMN_PROFILE].includes(
         activeTab
       ) &&
@@ -304,17 +342,10 @@ export const TableProfilerProvider = ({
     } else {
       setIsProfilerDataLoading(false);
     }
-    if (isTourOpen) {
-      const mock = tourMockDatasetData as { tableDetails: unknown } | undefined;
-      if (mock?.tableDetails) {
-        setTableProfiler(mock.tableDetails as Table);
-      }
-    }
-  }, [datasetFQN, isTourOpen, activeTab, tourMockDatasetData]);
+  }, [datasetFQN, activeTab]);
 
   useEffect(() => {
-    const fetchTest =
-      !isTourOpen && activeTab === ProfilerTabPath.DATA_QUALITY && viewTest;
+    const fetchTest = activeTab === ProfilerTabPath.DATA_QUALITY && viewTest;
 
     if (fetchTest) {
       fetchAllTests();
@@ -322,7 +353,7 @@ export const TableProfilerProvider = ({
       setAllTestCases([]);
       setIsTestsLoading(false);
     }
-  }, [viewTest, isTourOpen, activeTab, testCasePaging.pageSize]);
+  }, [viewTest, activeTab, testCasePaging.pageSize]);
 
   const fetchTestCaseSummary = useCallback(async () => {
     if (isUndefined(table?.testSuite?.id)) {
@@ -356,6 +387,7 @@ export const TableProfilerProvider = ({
       isProfilerDataLoading,
       tableProfiler,
       allTestCases,
+      allTestCasesPermissions,
       permissions,
       isTableDeleted,
       overallSummary,
@@ -370,12 +402,14 @@ export const TableProfilerProvider = ({
       testCaseSummary,
       onTestCaseDrawerOpen: handleOpenTestCaseDrawer,
       isTestCaseDrawerOpen,
+      onCustomMetricDrawerOpen: handleOpenCustomMetricDrawer,
     };
   }, [
     isTestsLoading,
     isProfilerDataLoading,
     tableProfiler,
     allTestCases,
+    allTestCasesPermissions,
     permissions,
     isTableDeleted,
     overallSummary,
@@ -386,27 +420,48 @@ export const TableProfilerProvider = ({
     testCaseSummary,
     isTestCaseDrawerOpen,
     handleOpenTestCaseDrawer,
+    handleOpenCustomMetricDrawer,
   ]);
 
+  const readOnlyProfilerContext = useMemo(
+    () => ({ ...tableProfilerPropsData, permissions: undefined }),
+    [tableProfilerPropsData]
+  );
+
   return (
-    <TableProfilerContext.Provider value={tableProfilerPropsData}>
-      {children}
-      {settingModalVisible && (
-        <ProfilerSettingsModal
-          columns={table?.columns ?? []}
-          tableId={table?.id ?? ''}
-          visible={settingModalVisible}
-          onVisibilityChange={handleSettingModal}
+    <>
+      <TableProfilerContext.Provider value={tableProfilerPropsData}>
+        {children}
+        {settingModalVisible && (
+          <ProfilerSettingsModal
+            columns={table?.columns ?? []}
+            tableId={table?.id ?? ''}
+            visible={settingModalVisible}
+            onVisibilityChange={handleSettingModal}
+          />
+        )}
+        <TestCaseFormDrawer
+          open={isTestCaseDrawerOpen}
+          table={table}
+          testLevel={testLevel}
+          onClose={handleCloseTestCaseDrawer}
+          onFormSubmit={onTestCaseSubmit}
         />
-      )}
-      <TestCaseFormDrawer
-        open={isTestCaseDrawerOpen}
-        table={table}
-        testLevel={testLevel}
-        onClose={handleCloseTestCaseDrawer}
-        onFormSubmit={onTestCaseSubmit}
-      />
-    </TableProfilerContext.Provider>
+      </TableProfilerContext.Provider>
+      {/* The profile preview inside the drawer reads the profiler's data but
+          gets no permissions, so its custom metric graphs offer no edit/delete
+          actions that would reopen this drawer. */}
+      <TableProfilerContext.Provider value={readOnlyProfilerContext}>
+        <CustomMetricFormDrawer
+          isColumnMetric={customMetricDrawer?.isColumnMetric ?? false}
+          metric={customMetricDrawer?.metric}
+          open={!isUndefined(customMetricDrawer)}
+          table={customMetric ?? table}
+          onClose={handleCloseCustomMetricDrawer}
+          onSuccess={handleUpdateCustomMetrics}
+        />
+      </TableProfilerContext.Provider>
+    </>
   );
 };
 

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
 import React from 'react';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
@@ -20,17 +19,21 @@ import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.
 import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import type { AgentsStatusWidgetProps } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
-import type { PlatformInsightsWidgetProps } from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget.interface';
+import type {
+  ChartData,
+  ChartSeriesData,
+  PlatformInsightsWidgetProps,
+} from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget.interface';
+import type { ServiceInsightWidgetCommonProps } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import type { TotalAssetsWidgetProps } from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget.interface';
 import type { MetadataAgentsWidgetProps } from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
 import type { ThemeConfiguration } from '../generated/configuration/uiThemePreference';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
-import { Transi18next } from './i18next/LocalUtil';
+import { t, Transi18next } from './i18next/LocalUtil';
 
 const MetadataAgentsWidgetLazy = React.lazy(
   () =>
@@ -76,126 +79,172 @@ const TotalDataAssetsWidget = withSuspenseFallback(
   TotalDataAssetsWidgetLazy
 ) as React.ComponentType<TotalAssetsWidgetProps>;
 
+type ServiceInsightsPlaceholderConfig = {
+  Icon: typeof NoDataPlaceholderIcon;
+  localizationKey: string;
+  getDocsLink: () => string;
+};
+
+const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
+  Array<SystemChartType | ServiceInsightsWidgetType>,
+  ServiceInsightsPlaceholderConfig
+][] = [
+  [
+    [
+      ServiceInsightsWidgetType.TOTAL_DATA_ASSETS,
+      SystemChartType.TotalDataAssetsLive,
+    ],
+    {
+      Icon: NoDataPlaceholderIcon,
+      localizationKey: 'message.total-data-assets-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().TOTAL_DATA_ASSETS_WIDGET_DOCS,
+    },
+  ],
+  [
+    [
+      SystemChartType.DescriptionCoverage,
+      SystemChartType.AssetsWithDescriptionLive,
+    ],
+    {
+      Icon: DescriptionPlaceholderIcon,
+      localizationKey: 'message.description-coverage-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS()
+          .DESCRIPTION_COVERAGE_WIDGET_DOCS,
+    },
+  ],
+  [
+    [SystemChartType.OwnersCoverage, SystemChartType.AssetsWithOwnerLive],
+    {
+      Icon: OwnersPlaceholderIcon,
+      localizationKey: 'message.owners-coverage-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS()
+          .OWNERSHIP_COVERAGE_WIDGET_DOCS,
+    },
+  ],
+  [
+    [SystemChartType.PIICoverage, SystemChartType.AssetsWithPIILive],
+    {
+      Icon: PiiPlaceholderIcon,
+      localizationKey: 'message.pii-coverage-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().PII_COVERAGE_WIDGET_DOCS,
+    },
+  ],
+  [
+    [SystemChartType.PIIDistribution],
+    {
+      Icon: PiiPlaceholderIcon,
+      localizationKey: 'message.pii-distribution-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().PII_DISTRIBUTION_WIDGET_DOCS,
+    },
+  ],
+  [
+    [SystemChartType.TierCoverage],
+    {
+      Icon: TierPlaceholderIcon,
+      localizationKey: 'message.tier-coverage-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().TIER_COVERAGE_WIDGET_DOCS,
+    },
+  ],
+  [
+    [SystemChartType.TierDistribution],
+    {
+      Icon: TierPlaceholderIcon,
+      localizationKey: 'message.tier-distribution-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().TIER_DISTRIBUTION_WIDGET_DOCS,
+    },
+  ],
+  [
+    [ServiceInsightsWidgetType.COLLATE_AI],
+    {
+      Icon: TablePlaceholderIcon,
+      localizationKey: 'message.collate-ai-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().COLLATE_AI_WIDGET_DOCS,
+    },
+  ],
+  [
+    [ServiceInsightsWidgetType.MOST_USED_ASSETS],
+    {
+      Icon: TablePlaceholderIcon,
+      localizationKey: 'message.most-used-assets-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().MOST_USED_ASSETS_WIDGET_DOCS,
+    },
+  ],
+  [
+    [ServiceInsightsWidgetType.MOST_EXPENSIVE_QUERIES],
+    {
+      Icon: TablePlaceholderIcon,
+      localizationKey: 'message.most-expensive-queries-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS()
+          .MOST_EXPENSIVE_QUERIES_WIDGET_DOCS,
+    },
+  ],
+];
+
+const DEFAULT_SERVICE_INSIGHTS_PLACEHOLDER_CONFIG: ServiceInsightsPlaceholderConfig =
+  {
+    Icon: NoDataPlaceholderIcon,
+    localizationKey: 'server.no-records-found',
+    getDocsLink: () => documentationLinksClassBase.getDocsBaseURL(),
+  };
+
+const getServiceInsightsPlaceholderConfig = (
+  chartType?: SystemChartType | ServiceInsightsWidgetType
+): ServiceInsightsPlaceholderConfig => {
+  const match = SERVICE_INSIGHTS_PLACEHOLDER_GROUPS.find(
+    ([types]) => !!chartType && types.includes(chartType)
+  );
+
+  return match?.[1] ?? DEFAULT_SERVICE_INSIGHTS_PLACEHOLDER_CONFIG;
+};
+
 export const getServiceInsightsWidgetPlaceholder = ({
   chartType,
   iconClassName = 'text-grey-14',
-  placeholderClassName = '',
   height = 60,
   width = 60,
   theme,
 }: {
   chartType?: SystemChartType | ServiceInsightsWidgetType;
   iconClassName?: string;
-  placeholderClassName?: string;
   height?: number;
   width?: number;
   theme: ThemeConfiguration;
 }) => {
-  let Icon = NoDataPlaceholderIcon;
-  let localizationKey = `server.no-records-found`;
-  let docsLink = documentationLinksClassBase.getDocsBaseURL();
-
-  switch (chartType) {
-    case ServiceInsightsWidgetType.TOTAL_DATA_ASSETS:
-    case SystemChartType.TotalDataAssetsLive:
-      Icon = NoDataPlaceholderIcon;
-      localizationKey = 'message.total-data-assets-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().TOTAL_DATA_ASSETS_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.DescriptionCoverage:
-    case SystemChartType.AssetsWithDescriptionLive:
-      Icon = DescriptionPlaceholderIcon;
-      localizationKey = 'message.description-coverage-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS()
-          .DESCRIPTION_COVERAGE_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.OwnersCoverage:
-    case SystemChartType.AssetsWithOwnerLive:
-      Icon = OwnersPlaceholderIcon;
-      localizationKey = 'message.owners-coverage-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS()
-          .OWNERSHIP_COVERAGE_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.PIICoverage:
-    case SystemChartType.AssetsWithPIILive:
-      Icon = PiiPlaceholderIcon;
-      localizationKey = 'message.pii-coverage-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().PII_COVERAGE_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.PIIDistribution:
-      Icon = PiiPlaceholderIcon;
-      localizationKey = 'message.pii-distribution-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().PII_DISTRIBUTION_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.TierCoverage:
-      Icon = TierPlaceholderIcon;
-      localizationKey = 'message.tier-coverage-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().TIER_COVERAGE_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.TierDistribution:
-      Icon = TierPlaceholderIcon;
-      localizationKey = 'message.tier-distribution-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().TIER_DISTRIBUTION_WIDGET_DOCS;
-
-      break;
-    case ServiceInsightsWidgetType.COLLATE_AI:
-      Icon = TablePlaceholderIcon;
-      localizationKey = 'message.collate-ai-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().COLLATE_AI_WIDGET_DOCS;
-
-      break;
-    case ServiceInsightsWidgetType.MOST_USED_ASSETS:
-      Icon = TablePlaceholderIcon;
-      localizationKey = 'message.most-used-assets-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().MOST_USED_ASSETS_WIDGET_DOCS;
-
-      break;
-    case ServiceInsightsWidgetType.MOST_EXPENSIVE_QUERIES:
-      Icon = TablePlaceholderIcon;
-      localizationKey = 'message.most-expensive-queries-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS()
-          .MOST_EXPENSIVE_QUERIES_WIDGET_DOCS;
-
-      break;
-  }
+  const { Icon, localizationKey, getDocsLink } =
+    getServiceInsightsPlaceholderConfig(chartType);
+  const docsLink = getDocsLink();
 
   return (
-    <ErrorPlaceHolder
-      className={placeholderClassName}
-      icon={<Icon className={iconClassName} height={height} width={width} />}
-      size={SIZE.MEDIUM}
-      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-      <Typography.Paragraph className="w-max-350">
-        <Transi18next
-          i18nKey={localizationKey}
-          renderElement={
-            <a
-              href={docsLink}
-              rel="noreferrer"
-              style={{ color: theme.primaryColor }}
-              target="_blank"
-              title="learn-more"
-            />
-          }
-        />
-      </Typography.Paragraph>
-    </ErrorPlaceHolder>
+    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <NoDataPlaceholder
+        data-testid="no-data-placeholder"
+        description={
+          <Transi18next
+            i18nKey={localizationKey}
+            renderElement={
+              <a
+                aria-label={t('label.learn-more')}
+                href={docsLink}
+                rel="noreferrer"
+                style={{ color: theme.primaryColor }}
+                target="_blank"
+              />
+            }
+          />
+        }
+        icon={<Icon className={iconClassName} height={height} width={width} />}
+      />
+    </div>
   );
 };
 
@@ -206,7 +255,20 @@ export const getDefaultAgentsTabWidgets = (): Record<
   MetadataAgentsWidget,
 });
 
+type OptionalInsightsWidget = React.ComponentType<
+  ServiceInsightWidgetCommonProps & {
+    chartsData: ChartData[] | ChartSeriesData[];
+    isLoading: boolean;
+  }
+>;
+
 export const getDefaultInsightsTabWidgets = (): {
+  CollateAIWidget?: OptionalInsightsWidget;
+  PIIDistributionWidget?: OptionalInsightsWidget;
+  TierDistributionWidget?: OptionalInsightsWidget;
+  MostUsedAssetsWidget?: OptionalInsightsWidget;
+  MostExpensiveQueriesWidget?: OptionalInsightsWidget;
+  DataQualityWidget?: OptionalInsightsWidget;
   AgentsStatusWidget: React.ComponentType<AgentsStatusWidgetProps>;
   PlatformInsightsWidget: React.ComponentType<PlatformInsightsWidgetProps>;
   TotalDataAssetsWidget: React.ComponentType<TotalAssetsWidgetProps>;

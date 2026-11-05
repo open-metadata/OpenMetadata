@@ -43,12 +43,12 @@ import org.mockito.quality.Strictness;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.AggregatedStatsRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.SearchIndexPartitionRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.AggregatedStatsRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.SearchIndexPartitionRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -176,6 +176,96 @@ class JobRecoveryManagerTest {
             anyLong(),
             anyLong(),
             anyString());
+  }
+
+  @Test
+  void testStartupRecovery_TerminalizesFinishedOrphanAsCompletedWithErrors() {
+    UUID jobId = UUID.randomUUID();
+
+    // A RUNNING job whose partitions all finished but whose coordinator died before promotion was
+    // confirmed. It must be terminalized as COMPLETED_WITH_ERRORS (data processed, promotion
+    // unverified), never failed as "abandoned due to server crash or shutdown".
+    SearchIndexJobRecord jobRecord = createJobRecord(jobId, IndexJobStatus.RUNNING);
+    when(jobDAO.findByStatusesWithLimit(any(), eq(10))).thenReturn(List.of(jobRecord));
+    when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
+
+    when(lockDAO.cleanupExpiredLocks(anyLong())).thenReturn(0);
+    when(lockDAO.getLockInfo(anyString())).thenReturn(null); // no live lock -> orphaned
+    when(lockDAO.tryAcquireLock(anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenReturn(true); // finalizer takes the lock
+
+    SearchIndexPartitionRecord completed =
+        createPartitionRecord(jobId, UUID.randomUUID(), PartitionStatus.COMPLETED);
+    when(partitionDAO.findByJobId(jobId.toString())).thenReturn(List.of(completed));
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new AggregatedStatsRecord(226306, 226306, 226306, 0, 1, 1, 0, 0, 0));
+
+    JobRecoveryManager.RecoveryResult result = recoveryManager.performStartupRecovery();
+
+    assertEquals(1, result.orphanedJobsFound());
+    assertEquals(0, result.jobsMarkedFailed());
+    assertEquals(1, result.jobsRecovered());
+
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.COMPLETED_WITH_ERRORS.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any());
+    verify(jobDAO, never())
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.FAILED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any());
+  }
+
+  @Test
+  void testStartupRecovery_TerminalizesOrphanedPromotingJob() {
+    UUID jobId = UUID.randomUUID();
+
+    // A job stuck in PROMOTING (its coordinator died during the promotion sweep). It finished
+    // processing, so it must be terminalized as COMPLETED_WITH_ERRORS to unblock future reindexes -
+    // never left hanging non-terminal and never failed as abandoned.
+    SearchIndexJobRecord jobRecord = createJobRecord(jobId, IndexJobStatus.PROMOTING);
+    when(jobDAO.findByStatusesWithLimit(any(), eq(10))).thenReturn(List.of(jobRecord));
+    when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
+
+    when(lockDAO.cleanupExpiredLocks(anyLong())).thenReturn(0);
+    when(lockDAO.getLockInfo(anyString())).thenReturn(null);
+    when(lockDAO.tryAcquireLock(anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenReturn(true);
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new AggregatedStatsRecord(945, 945, 945, 0, 1, 1, 0, 0, 0));
+
+    JobRecoveryManager.RecoveryResult result = recoveryManager.performStartupRecovery();
+
+    assertEquals(1, result.orphanedJobsFound());
+    assertEquals(0, result.jobsMarkedFailed());
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.COMPLETED_WITH_ERRORS.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any());
   }
 
   @Test

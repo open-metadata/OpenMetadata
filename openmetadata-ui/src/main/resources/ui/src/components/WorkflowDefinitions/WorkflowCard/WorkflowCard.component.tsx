@@ -18,20 +18,30 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
+import workflowClassBase from '../../../utils/WorkflowClassBase';
 
 interface WorkflowCardProps {
   data: SettingMenuItem;
   onClick: (key: string) => void;
   className?: string;
+  /** The workflow the card shows, handed to the footer a downstream build adds. */
+  workflow?: WorkflowDefinition;
 }
 
-const WorkflowCard = ({ data, onClick, className }: WorkflowCardProps) => {
+const WorkflowCard = ({
+  data,
+  onClick,
+  className,
+  workflow,
+}: WorkflowCardProps) => {
   const handleOnClick = useCallback(
     () => onClick(data.key),
     [onClick, data.key]
   );
+  const Footer = useMemo(() => workflowClassBase.getWorkflowCardFooter(), []);
 
   const IconComponent = data.icon;
   const titleText = data.category ?? data.label ?? '';
@@ -40,6 +50,11 @@ const WorkflowCard = ({ data, onClick, className }: WorkflowCardProps) => {
     <Card
       className={classNames(
         'tw:min-h-40 tw:flex tw:flex-col tw:p-4 tw:cursor-pointer',
+        // Hover matches the AI Automations template card / entity cards.
+        'tw:shadow-xs tw:transition-[box-shadow,transform,border-color] tw:duration-160 tw:ease-in-out',
+        'tw:hover:border-brand-300 tw:hover:shadow-lg tw:hover:-translate-y-0.5',
+        // A footer that flags the workflow (WORKFLOW_CARD_FLAG_ATTRIBUTE) turns the border red.
+        'tw:has-[[data-workflow-card-flag]]:border-error-subtle tw:has-[[data-workflow-card-flag]]:hover:border-error',
         className
       )}
       data-testid={data.key}
@@ -76,6 +91,7 @@ const WorkflowCard = ({ data, onClick, className }: WorkflowCardProps) => {
         title={data.description || undefined}>
         {data.description}
       </Typography>
+      {Footer && workflow ? <Footer workflow={workflow} /> : null}
     </Card>
   );
 };

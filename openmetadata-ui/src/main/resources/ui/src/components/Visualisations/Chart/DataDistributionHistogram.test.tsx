@@ -11,8 +11,19 @@
  *  limitations under the License.
  */
 
+import {
+  BarChart,
+  type BarChartProps,
+} from '@openmetadata/ui-core-components/charts';
 import { queryByAttribute, render, screen } from '@testing-library/react';
+import { tooltipFormatter } from '../../../utils/ChartUtils';
 import DataDistributionHistogram from './DataDistributionHistogram.component';
+
+type HistogramRow = { name?: string; frequency: number };
+const mockBarChart = BarChart as unknown as jest.Mock<
+  null,
+  [BarChartProps<HistogramRow>]
+>;
 
 const MOCK_HISTOGRAM_DATA = [
   {
@@ -95,10 +106,6 @@ const COLUMN_PROFILER = {
   median: 7344.0,
 };
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
-});
-
 describe('DataDistributionHistogram component test', () => {
   it('Component should render', async () => {
     const { container } = render(
@@ -142,6 +149,69 @@ describe('DataDistributionHistogram component test', () => {
     expect(screen.getAllByText(/Jan 20, 1970/)).toHaveLength(1);
   });
 
+  it('draws one brand-coloured frequency bar series per day, with a legend', () => {
+    mockBarChart.mockClear();
+    render(
+      <DataDistributionHistogram
+        data={{
+          firstDayData: MOCK_HISTOGRAM_DATA[1],
+          currentDayData: MOCK_HISTOGRAM_DATA[0],
+        }}
+      />
+    );
+    const calls = mockBarChart.mock.calls.map(([props]) => props);
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toEqual(
+      expect.objectContaining({
+        xKey: 'name',
+        height: 350,
+        radius: 8,
+        legend: { show: true },
+      })
+    );
+    expect(calls[0].series).toEqual([
+      {
+        key: 'frequency',
+        name: 'label.frequency',
+        status: 'info',
+        seriesOption: { barMaxWidth: 22 },
+      },
+    ]);
+    expect(calls[0].data[0]).toEqual({
+      name: '5.00 to 100.00',
+      frequency: 56,
+    });
+  });
+
+  it('shows the boundary and its frequency in the tooltip', () => {
+    mockBarChart.mockClear();
+    render(
+      <DataDistributionHistogram
+        data={{ currentDayData: MOCK_HISTOGRAM_DATA[0] }}
+      />
+    );
+    const props = mockBarChart.mock.calls[0][0];
+    const content = props.tooltip?.render?.(
+      [
+        {
+          seriesKey: 'frequency',
+          name: 'label.frequency',
+          value: 1200,
+          color: '#1',
+          dataIndex: 0,
+        },
+      ],
+      { name: '5.00 to 100.00', frequency: 1200 }
+    );
+    render(<>{content}</>);
+
+    expect(screen.getByText('5.00 to 100.00')).toBeInTheDocument();
+    expect(
+      screen.getByText(String(tooltipFormatter(1200)))
+    ).toBeInTheDocument();
+  });
+
   it('No data placeholder should render when firstDay & currentDay data is undefined', async () => {
     render(
       <DataDistributionHistogram
@@ -152,6 +222,69 @@ describe('DataDistributionHistogram component test', () => {
       />
     );
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });
+
+it.each([false, true])(
+  'keeps snapshot sources separate (sharded: %s)',
+  (isSharded) => {
+    const firstDayData = {
+      ...MOCK_HISTOGRAM_DATA[0],
+      executionSource: {
+        databaseName: 'demo_db',
+        schemaName: 'demo_schema',
+        tableName: 'events_20260101',
+      },
+    };
+    const currentDayData = {
+      ...MOCK_HISTOGRAM_DATA[0],
+      executionSource: {
+        databaseName: 'demo_db',
+        schemaName: 'demo_schema',
+        tableName: 'events_20260102',
+      },
+    };
+    const { rerender } = render(
+      <DataDistributionHistogram
+        data={{ firstDayData, currentDayData }}
+        isSharded={isSharded}
+      />
+    );
+
+    expect(
+      screen.getByText('demo_db.demo_schema.events_20260101')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('demo_db.demo_schema.events_20260102')
+    ).toBeInTheDocument();
+
+    rerender(
+      <DataDistributionHistogram
+        data={{ firstDayData: MOCK_HISTOGRAM_DATA[0], currentDayData }}
+        isSharded={isSharded}
+      />
+    );
+
+    expect(
+      screen.queryByText('demo_db.demo_schema.events_20260101')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('demo_db.demo_schema.events_20260102')
+    ).toBeInTheDocument();
+
+    if (isSharded) {
+      expect(
+        screen.getByText('message.execution-source-unavailable')
+      ).toBeInTheDocument();
+    } else {
+      expect(
+        screen.queryByText('message.execution-source-unavailable')
+      ).not.toBeInTheDocument();
+    }
+  }
+);

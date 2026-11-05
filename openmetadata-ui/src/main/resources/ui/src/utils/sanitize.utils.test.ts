@@ -87,6 +87,56 @@ describe('getSanitizeContent', () => {
     });
   });
 
+  describe('Math equations', () => {
+    it('should preserve a block-math-equation tag', () => {
+      const input =
+        '<block-math-equation math_equation="x^2"></block-math-equation>';
+      const result = getSanitizeContent(input);
+
+      expect(result).toBe(input);
+    });
+
+    it('should preserve math equations mixed with HTML content', () => {
+      const input =
+        '<p>Formula</p><block-math-equation math_equation="x^2"></block-math-equation>';
+      const result = getSanitizeContent(input);
+
+      expect(result).toContain(
+        '<block-math-equation math_equation="x^2"></block-math-equation>'
+      );
+      expect(result).toContain('<p>Formula</p>');
+    });
+
+    it('should sanitize payloads nested inside a block-math-equation tag', () => {
+      const input =
+        '<block-math-equation math_equation="x^2"><img src="x" onerror="alert(1)"></block-math-equation>';
+      const result = getSanitizeContent(input);
+
+      expect(result).not.toContain('onerror');
+      expect(result).toContain('math_equation="x^2"');
+    });
+
+    it('should sanitize event-handler attributes on the block-math-equation tag itself', () => {
+      const input =
+        '<block-math-equation math_equation="x^2" onclick="alert(1)"></block-math-equation>';
+      const result = getSanitizeContent(input);
+
+      expect(result).not.toContain('onclick');
+      expect(result).toContain('math_equation="x^2"');
+    });
+
+    it('should preserve math equations alongside entity links', () => {
+      const input =
+        '<block-math-equation math_equation="y=mx+b"></block-math-equation><#E::team::Accounting|@Accounting>';
+      const result = getSanitizeContent(input);
+
+      expect(result).toContain(
+        '<block-math-equation math_equation="y=mx+b"></block-math-equation>'
+      );
+      expect(result).toContain('<#E::team::Accounting|@Accounting>');
+    });
+  });
+
   describe('Preserve inline styling and classes', () => {
     it('should preserve span elements with class attributes', () => {
       const input =

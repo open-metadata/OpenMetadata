@@ -1,10 +1,25 @@
 version: "3.9"
+x-ontology-llm-environment: &ontology-llm-environment
+  LLM_ENABLED: ${LLM_ENABLED:-false}
+  LLM_PROVIDER: ${LLM_PROVIDER:-noop}
+  LLM_OPENAI_API_KEY: ${LLM_OPENAI_API_KEY:-""}
+  LLM_OPENAI_ENDPOINT: ${LLM_OPENAI_ENDPOINT:-""}
+  LLM_OPENAI_DEPLOYMENT: ${LLM_OPENAI_DEPLOYMENT:-""}
+  LLM_GOOGLE_API_KEY: ${LLM_GOOGLE_API_KEY:-""}
+  LLM_ANTHROPIC_API_KEY: ${LLM_ANTHROPIC_API_KEY:-""}
+  BEDROCK_AWS_IAM_AUTH_ENABLED: ${BEDROCK_AWS_IAM_AUTH_ENABLED:-true}
+  AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-""}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-""}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-""}
+  AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-""}
+
 
 # Compose override for RDF-enabled local stacks.
 # Use together with docker-compose.yml or docker-compose-postgres.yml.
 services:
   execute-migrate-all:
     environment:
+      <<: *ontology-llm-environment
       RDF_ENABLED: ${RDF_ENABLED:-true}
       RDF_STORAGE_TYPE: ${RDF_STORAGE_TYPE:-FUSEKI}
       RDF_ENDPOINT: ${RDF_ENDPOINT:-${RDF_REMOTE_ENDPOINT:-http://fuseki:3030/openmetadata}}
@@ -12,6 +27,13 @@ services:
       RDF_REMOTE_PASSWORD: ${RDF_REMOTE_PASSWORD:-admin}
       RDF_BASE_URI: ${RDF_BASE_URI:-https://open-metadata.org/}
       RDF_JSONLD_ENABLED: ${RDF_JSONLD_ENABLED:-true}
+      RDF_MATERIALIZED_INFERENCE_ENABLED: ${RDF_MATERIALIZED_INFERENCE_ENABLED:-true}
+      RDF_INFERENCE_ENABLED: ${RDF_INFERENCE_ENABLED:-true}
+      RDF_DEFAULT_INFERENCE_LEVEL: ${RDF_DEFAULT_INFERENCE_LEVEL:-CUSTOM}
+      RDF_SHACL_VALIDATION_MODE: ${RDF_SHACL_VALIDATION_MODE:-REPORT}
+      RDF_DEREFERENCEABLE_IRIS: ${RDF_DEREFERENCEABLE_IRIS:-false}
+      RDF_STRICT_OWL_PROFILE: ${RDF_STRICT_OWL_PROFILE:-true}
+      RDF_AI_ENABLED: ${RDF_AI_ENABLED:-false}
       RDF_SPARQL_ENABLED: ${RDF_SPARQL_ENABLED:-true}
       RDF_DATASET: ${RDF_DATASET:-openmetadata}
     depends_on:
@@ -20,6 +42,7 @@ services:
 
   openmetadata-server:
     environment:
+      <<: *ontology-llm-environment
       RDF_ENABLED: ${RDF_ENABLED:-true}
       RDF_STORAGE_TYPE: ${RDF_STORAGE_TYPE:-FUSEKI}
       RDF_ENDPOINT: ${RDF_ENDPOINT:-${RDF_REMOTE_ENDPOINT:-http://fuseki:3030/openmetadata}}
@@ -27,6 +50,13 @@ services:
       RDF_REMOTE_PASSWORD: ${RDF_REMOTE_PASSWORD:-admin}
       RDF_BASE_URI: ${RDF_BASE_URI:-https://open-metadata.org/}
       RDF_JSONLD_ENABLED: ${RDF_JSONLD_ENABLED:-true}
+      RDF_MATERIALIZED_INFERENCE_ENABLED: ${RDF_MATERIALIZED_INFERENCE_ENABLED:-true}
+      RDF_INFERENCE_ENABLED: ${RDF_INFERENCE_ENABLED:-true}
+      RDF_DEFAULT_INFERENCE_LEVEL: ${RDF_DEFAULT_INFERENCE_LEVEL:-CUSTOM}
+      RDF_SHACL_VALIDATION_MODE: ${RDF_SHACL_VALIDATION_MODE:-REPORT}
+      RDF_DEREFERENCEABLE_IRIS: ${RDF_DEREFERENCEABLE_IRIS:-false}
+      RDF_STRICT_OWL_PROFILE: ${RDF_STRICT_OWL_PROFILE:-true}
+      RDF_AI_ENABLED: ${RDF_AI_ENABLED:-false}
       RDF_SPARQL_ENABLED: ${RDF_SPARQL_ENABLED:-true}
       RDF_DATASET: ${RDF_DATASET:-openmetadata}
     depends_on:
@@ -34,16 +64,9 @@ services:
         condition: service_healthy
 
   fuseki:
-    # Build from the in-repo Dockerfile (Fuseki 5.6.0) instead of the
-    # unmaintained `stain/jena-fuseki` Docker Hub image, which capped at 5.1.0
-    # and never picked up the 2025 admin-side Fuseki CVE fixes (CVE-2025-49656,
-    # CVE-2025-50151 — both fixed in Jena 5.5.0). The `image:` tag below names
-    # the locally-built image so subsequent `docker compose up` runs reuse the
-    # cached build instead of rebuilding from scratch each time.
-    build:
-      context: ../rdf-store
-      dockerfile: Dockerfile
-    image: openmetadata-fuseki:5.6.0
+    # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
+    # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
+    image: openmetadata/fuseki:6.2.0-318ff87
     container_name: openmetadata-fuseki
     hostname: fuseki
     ports:
@@ -51,24 +74,21 @@ services:
     networks:
       - local_app_net
     environment:
-      # Default for local dev only — production deployments MUST override
-      # via the FUSEKI_ADMIN_PASSWORD env var (and FUSEKI_OPENMETADATA_PASSWORD)
-      # before bringing this stack up. The entrypoint envsubsts these into
-      # shiro.ini at container start so the override actually takes effect.
-      - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
-      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
-      - JVM_ARGS=${FUSEKI_JVM_ARGS:--Xmx1500m -Xms256m}
+      # The image's environment contract, set as OpenMetadata needs it: the serving dataset and
+      # its two blue/green rebuild targets, the union default graph (OpenMetadata writes every
+      # entity into a named graph), server-side deadlines below the 60 s client deadline, and the
+      # bounded Graph Store extension. docs/rdf-production-setup.md explains each one.
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      # JVM_ARGS replaces the image's FUSEKI_HEAP flags. It caps direct buffers until the pinned
+      # image applies that cap itself (open-metadata/jena#6).
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-1500m} -Xmx${FUSEKI_HEAP:-1500m} -XX:MaxDirectMemorySize=256m
     volumes:
-      # New volume name (was `fuseki-data` mounted at `/fuseki`). The in-repo
-      # Dockerfile stores TDB2 at `/fuseki-data` and the data layout differs
-      # from the old stain/jena-fuseki image — re-using the previous volume
-      # name would mount stale state at a path Fuseki no longer reads from,
-      # silently looking like an empty database. Using a fresh volume name
-      # forces operators to consciously migrate (or accept a re-index). The
-      # orphaned `fuseki-data` volume can be removed manually with
-      # `docker volume rm fuseki-data` after confirming the new stack is
-      # healthy.
-      - fuseki-tdb2-data:/fuseki-data
+      - fuseki-store:/fuseki
     deploy:
       resources:
         limits:
@@ -77,7 +97,7 @@ services:
           memory: 256m
     restart: "on-failure:3"
     healthcheck:
-      test: "curl -s -f http://localhost:3030/\\$/ping > /dev/null || exit 1"
+      test: ["CMD", "/healthcheck.sh"]
       interval: 15s
       timeout: 10s
       retries: 20
@@ -92,5 +112,8 @@ networks:
         - subnet: "172.16.239.0/24"
 
 volumes:
-  fuseki-tdb2-data:
+  # TDB2 datasets, configuration and shiro.ini of the published image live under /fuseki. Not the
+  # older `fuseki-tdb2-data` volume: it holds the retired in-repo image's /fuseki-data layout, and
+  # mounting it here would start an empty store. docs/rdf-production-setup.md has the migration.
+  fuseki-store:
     driver: local

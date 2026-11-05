@@ -13,16 +13,20 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
+import { AlertType } from '../../generated/events/eventSubscription';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { isLoginConfigurationApplicable } from '../../utils/AuthProvider.util';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -32,9 +36,9 @@ import {
 import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const AddNotificationPage = withPageSuspenseFallback(
+const AddObservabilityPage = withPageSuspenseFallback(
   React.lazy(
-    () => import('../../pages/AddNotificationPage/AddNotificationPage')
+    () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
   )
 );
 
@@ -73,6 +77,23 @@ const ColumnBulkOperations = withPageSuspenseFallback(
 const DataAssetRulesPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/Configuration/DataAssetRules/DataAssetRulesPage')
+  )
+);
+
+const DefaultAppModePage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/Settings/DefaultAppModePage/DefaultAppModePage')
+  )
+);
+
+const GlossarySettings = withPageSuspenseFallback(
+  React.lazy(() => import('../governance/glossary/GlossarySettings'))
+);
+
+const DefaultTimeFormatPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/Settings/DefaultTimeFormatPage/DefaultTimeFormatPage')
   )
 );
 
@@ -234,6 +255,12 @@ const ProfilerConfigurationPage = withPageSuspenseFallback(
   )
 );
 
+const DataQualitySettingsPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/DataQualitySettingsPage/DataQualitySettingsPage')
+  )
+);
+
 const AddRolePage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/RolesPage/AddRolePage/AddRolePage'))
 );
@@ -322,9 +349,51 @@ const NotificationAlertDetailsPage = () => (
   <AlertDetailsPage isNotificationAlert />
 );
 
+const SystemAnnouncementsPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/platform/settings/SystemAnnouncementsPage/SystemAnnouncementsPage'
+      )
+  )
+);
+
+const SystemAnnouncementFormPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/platform/settings/SystemAnnouncementFormPage/SystemAnnouncementFormPage'
+      )
+  )
+);
+
+/**
+ * The bare `/settings/services` path is served by this generic category route, so the services
+ * guard has to live inside it. Matching a literal `services` path instead looks equivalent and is
+ * not: `GlobalSettingCategoryPage` resolves its content from the `:settingCategory` route param, so
+ * a literal path leaves it undefined and the page renders empty.
+ */
+const SettingCategoryRoute = () => {
+  const { settingCategory } = useParams<{ settingCategory: string }>();
+
+  if (
+    settingCategory === GlobalSettingsMenuCategory.SERVICES &&
+    connectionsRouterClassBase.isServicesSettingsRouteDisabled()
+  ) {
+    return <Navigate replace to={ROUTES.NOT_FOUND} />;
+  }
+
+  return <GlobalSettingCategoryPage />;
+};
+
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
+  const authProvider = useApplicationStore(
+    (state) => state.authConfig?.provider
+  );
+
+  const isLoginConfigEnabled = isLoginConfigurationApplicable(authProvider);
 
   return (
     <Routes>
@@ -412,13 +481,17 @@ const SettingsRouter = () => {
 
       <Route
         element={
-          <AdminProtectedRoute hasPermission={false}>
-            <EditLoginConfiguration
-              pageTitle={t('label.edit-entity', {
-                entity: t('label.login-configuration'),
-              })}
-            />
-          </AdminProtectedRoute>
+          isLoginConfigEnabled ? (
+            <AdminProtectedRoute hasPermission={false}>
+              <EditLoginConfiguration
+                pageTitle={t('label.edit-entity', {
+                  entity: t('label.login-configuration'),
+                })}
+              />
+            </AdminProtectedRoute>
+          ) : (
+            <Navigate replace to={ROUTES.NOT_FOUND} />
+          )
         }
         path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG.replace(
           ROUTES.SETTINGS,
@@ -437,6 +510,42 @@ const SettingsRouter = () => {
           </AdminProtectedRoute>
         }
         path={ROUTES.EDIT_POLICY_RULE.replace(ROUTES.SETTINGS, '')}
+      />
+      {/* System announcements are admin-only: the server lets no one else write them. */}
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementsPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENTS.replace(ROUTES.SETTINGS, '')}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementFormPage mode="create" />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENT_ADD.replace(ROUTES.SETTINGS, '')}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementFormPage mode="edit" />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENT_EDIT.replace(ROUTES.SETTINGS, '')}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementFormPage mode="duplicate" />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENT_DUPLICATE.replace(
+          ROUTES.SETTINGS,
+          ''
+        )}
       />
       {/*  Setting routes without any category will be places here */}
       <Route
@@ -469,8 +578,9 @@ const SettingsRouter = () => {
       />
       <Route
         element={
-          <AddNotificationPage
-            pageTitle={t('label.add-entity', {
+          <AddObservabilityPage
+            alertType={AlertType.Notification}
+            pageTitle={t('label.edit-entity', {
               entity: t('label.notification-alert'),
             })}
           />
@@ -483,7 +593,8 @@ const SettingsRouter = () => {
       />
       <Route
         element={
-          <AddNotificationPage
+          <AddObservabilityPage
+            alertType={AlertType.Notification}
             pageTitle={t('label.add-entity', {
               entity: t('label.notification-alert'),
             })}
@@ -548,7 +659,7 @@ const SettingsRouter = () => {
       />
 
       <Route
-        element={<GlobalSettingCategoryPage />}
+        element={<SettingCategoryRoute />}
         path={ROUTES.SETTINGS_WITH_CATEGORY.replace(ROUTES.SETTINGS, '')}
       />
 
@@ -769,7 +880,8 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute
-            hasPermission={userPermissions.hasViewPermissions(
+            hasPermission={checkPermission(
+              Operation.AuditLogs,
               ResourceEntity.AUDIT_LOG,
               permissions
             )}>
@@ -839,18 +951,48 @@ const SettingsRouter = () => {
       />
       <Route
         element={
-          <AdminProtectedRoute hasPermission={false}>
-            <LoginConfigurationPage />
-          </AdminProtectedRoute>
+          isLoginConfigEnabled ? (
+            <AdminProtectedRoute hasPermission={false}>
+              <LoginConfigurationPage />
+            </AdminProtectedRoute>
+          ) : (
+            <Navigate replace to={ROUTES.NOT_FOUND} />
+          )
         }
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
-
       <Route
-        element={<ServicesPage />}
+        element={
+          <AdminProtectedRoute hasPermission={false}>
+            <DataQualitySettingsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.DATA_QUALITY
+        )}
+      />
+
+      {/* An app mode that replaces the service listing outright makes these two routes a second,
+          divergent way to reach it. Everything that used to link here now goes through
+          connectionsRouterClassBase.getSettingsServicesPath(), which that mode overrides — so the
+          paths are unreachable from inside the app and are treated as not found rather than
+          rendering a competing page.
+
+          Gated on isServicesSettingsRouteDisabled() and NOT on isEmbeddedMode(): the latter is
+          also true while Classic merely displays an embedded experience, which 404'd Classic's own
+          Settings > Services for the rest of the browser session. */}
+      <Route
+        element={
+          connectionsRouterClassBase.isServicesSettingsRouteDisabled() ? (
+            <Navigate replace to={ROUTES.NOT_FOUND} />
+          ) : (
+            <ServicesPage />
+          )
+        }
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.SERVICES
         ).replace(ROUTES.SETTINGS, '')}
@@ -894,6 +1036,39 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LEARNING_RESOURCES
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <DefaultAppModePage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.APP_MODE
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <GlossarySettings />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.GLOSSARY
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <DefaultTimeFormatPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.TIME_FORMAT
         )}
       />
       <Route
@@ -956,6 +1131,9 @@ const SettingsRouter = () => {
           GlobalSettingOptions.TASK_FORMS
         )}
       />
+      {/* Without this an unknown settings URL (e.g. /settings/bots/<name>; bots live at
+          /bots/<name>) matches nothing and renders an empty page. */}
+      <Route element={<Navigate replace to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>
   );
 };

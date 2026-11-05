@@ -66,7 +66,7 @@ public class WorkflowInstanceListener implements JavaDelegate {
                 STATUS_VARIABLE_KEY, WorkflowInstance.WorkflowStatus.FAILURE.value());
             errorVariables.put("error", exc.getMessage());
             errorVariables.put("errorClass", exc.getClass().getSimpleName());
-            workflowInstanceRepository.updateWorkflowInstance(
+            workflowInstanceRepository.recordProcessEnd(
                 workflowInstanceId, System.currentTimeMillis(), errorVariables);
             LOG.debug(
                 "[WORKFLOW_INSTANCE_FAILED] Workflow: {}, InstanceId: {}",
@@ -94,6 +94,19 @@ public class WorkflowInstanceListener implements JavaDelegate {
     WorkflowHandler.getInstance().updateBusinessKey(processInstanceId, workflowInstanceBusinessKey);
   }
 
+  static boolean isUuid(String value) {
+    boolean valid = false;
+    if (value != null && !value.isBlank()) {
+      try {
+        UUID.fromString(value);
+        valid = true;
+      } catch (IllegalArgumentException ignored) {
+        // fall through, valid stays false
+      }
+    }
+    return valid;
+  }
+
   private void addWorkflowInstance(
       DelegateExecution execution, WorkflowInstanceRepository workflowInstanceRepository) {
     String processKey = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
@@ -105,7 +118,12 @@ public class WorkflowInstanceListener implements JavaDelegate {
           processKey);
       return;
     }
-    updateBusinessKey(execution.getProcessInstanceId());
+    // Preserve caller-supplied businessKey when it is a valid UUID; otherwise assign a
+    // fresh WorkflowInstance UUID. Guarantees the field UUID.fromString parses below.
+    String existingBusinessKey = execution.getProcessInstanceBusinessKey();
+    if (!isUuid(existingBusinessKey)) {
+      updateBusinessKey(execution.getProcessInstanceId());
+    }
     UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
 
     workflowInstanceRepository.addNewWorkflowInstance(
@@ -138,7 +156,7 @@ public class WorkflowInstanceListener implements JavaDelegate {
 
     WorkflowInstance.WorkflowStatus status = computeFinalStatus(variables);
     variables.put(STATUS_VARIABLE_KEY, status.value());
-    workflowInstanceRepository.updateWorkflowInstance(
+    workflowInstanceRepository.recordProcessEnd(
         workflowInstanceId, System.currentTimeMillis(), variables);
     LOG.debug(
         "[WORKFLOW_INSTANCE_COMPLETED] Workflow: {}, InstanceId: {}, Status: {}",

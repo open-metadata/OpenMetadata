@@ -76,6 +76,7 @@ describe('TestCaseClassBase', () => {
   it('should return an array of fields', () => {
     const expectedFields = [
       'testSuite',
+      'testSuites',
       'testCaseResult',
       'testDefinition',
       'owners',

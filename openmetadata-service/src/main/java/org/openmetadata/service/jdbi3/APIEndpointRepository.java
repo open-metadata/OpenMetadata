@@ -25,7 +25,7 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -42,7 +42,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.type.EntityReference;
@@ -50,15 +49,9 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.apis.APIEndpointResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -69,6 +62,9 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       Set.of("requestSchema.schemaFields.description", "responseSchema.schemaFields.description");
   private static final ReadPrefetchKey PREFETCH_DEFAULT_FIELDS =
       ReadPrefetchKey.API_ENDPOINT_DEFAULT_FIELDS;
+  // A PUT loads the stored endpoint with these fields, and the bulk loader reads schema field tags
+  // only with the schemas. Without them, a re-run that sends no field tags indexes the fields bare.
+  private static final String UPDATE_FIELDS = "requestSchema,responseSchema";
 
   public APIEndpointRepository() {
     super(
@@ -77,7 +73,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         APIEndpoint.class,
         Entity.getCollectionDAO().apiEndpointDAO(),
         "",
-        "",
+        UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
     // Covered by the API service / API collection delete cascade: search docs by service.id
@@ -297,7 +293,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   @Override
   public EntityRepository<APIEndpoint>.EntityUpdater getUpdater(
       APIEndpoint original, APIEndpoint updated, Operation operation, ChangeSource changeSource) {
-    return new APIEndpointUpdater(original, updated, operation);
+    return new APIEndpointUpdater(original, updated, operation, changeSource);
   }
 
   private void setDefaultFields(APIEndpoint apiEndpoint) {
@@ -332,7 +328,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     for (Field field : fields) {
       validateTags(field.getTags());
       field.setTags(addDerivedTags(field.getTags()));
-      checkMutuallyExclusive(field.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(field.getTags());
       if (field.getChildren() != null) {
         validateSchemaFieldTags(field.getChildren());
       }
@@ -372,13 +368,14 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
-  protected void applyInheritance(APIEndpoint entity, Fields fields, EntityInterface parent) {
+  protected void applyInheritance(APIEndpoint entity, Fields fields, EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
   }
 
   @Override
-  public EntityInterface getParentEntity(APIEndpoint entity, String fields) {
+  public EntityInterface<?> getParentEntity(APIEndpoint entity, String fields) {
     return Entity.getEntity(entity.getApiCollection(), fields, Include.ALL);
   }
 
@@ -531,7 +528,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     APIEndpoint apiEndpoint = (APIEndpoint) entity;
     EntityUtil.mergeTags(allTags, apiEndpoint.getTags());
@@ -543,120 +540,22 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         apiEndpoint.getResponseSchema() != null
             ? apiEndpoint.getResponseSchema().getSchemaFields()
             : null;
-    for (Field schemaField : listOrEmpty(responseSchemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
-    for (Field schemaField : listOrEmpty(requestSchemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
+    EntityUtil.mergeFieldTags(allTags, responseSchemaFields);
+    EntityUtil.mergeFieldTags(allTags, requestSchemaFields);
     return allTags;
   }
 
   @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("responseSchema")) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new ResponseSchemaDescriptionWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new ResponseSchemaTagWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  static class ResponseSchemaDescriptionWorkflow extends DescriptionTaskWorkflow {
-    private final Field schemaField;
-
-    ResponseSchemaDescriptionWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      schemaField =
-          getResponseSchemaField(
-              (APIEndpoint) threadContext.getAboutEntity(),
-              threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      schemaField.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class ResponseSchemaTagWorkflow extends TagTaskWorkflow {
-    private final Field schemaField;
-
-    ResponseSchemaTagWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      schemaField =
-          getResponseSchemaField(
-              (APIEndpoint) threadContext.getAboutEntity(),
-              threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      schemaField.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  private static Field getResponseSchemaField(APIEndpoint apiEndpoint, String schemaName) {
-    String childrenSchemaName = "";
-    if (schemaName.contains(".")) {
-      String fieldNameWithoutQuotes = schemaName.substring(1, schemaName.length() - 1);
-      schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
-      childrenSchemaName =
-          fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
-    }
-    Field schemaField = null;
-    for (Field field : apiEndpoint.getResponseSchema().getSchemaFields()) {
-      if (field.getName().equals(schemaName)) {
-        schemaField = field;
-        break;
-      }
-    }
-    if (childrenSchemaName.isEmpty() && schemaField != null) {
-      schemaField = getChildSchemaField(schemaField.getChildren(), childrenSchemaName);
-    }
-    if (schemaField == null) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidFieldName("responseSchema", schemaName));
-    }
-    return schemaField;
-  }
-
-  private static Field getChildSchemaField(List<Field> fields, String childrenSchemaName) {
-    Field childrenSchemaField = null;
-    for (Field field : fields) {
-      if (field.getName().equals(childrenSchemaName)) {
-        childrenSchemaField = field;
-        break;
-      }
-    }
-    if (childrenSchemaField == null) {
-      for (Field field : fields) {
-        if (field.getChildren() != null) {
-          childrenSchemaField = getChildSchemaField(field.getChildren(), childrenSchemaName);
-          if (childrenSchemaField != null) {
-            break;
-          }
-        }
-      }
-    }
-    return childrenSchemaField;
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,requestSchema,responseSchema");
   }
 
   public class APIEndpointUpdater extends EntityUpdater {
     public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
 
-    public APIEndpointUpdater(APIEndpoint original, APIEndpoint updated, Operation operation) {
-      super(original, updated, operation);
+    public APIEndpointUpdater(
+        APIEndpoint original, APIEndpoint updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction
@@ -761,11 +660,12 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         updateFieldDescription(schemaFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(schemaFieldPrefix, stored, updated);
         updateFieldDisplayName(schemaFieldPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateSchemaFields(

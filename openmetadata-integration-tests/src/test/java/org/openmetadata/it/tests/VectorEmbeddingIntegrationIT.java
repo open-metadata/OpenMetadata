@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterAll;
@@ -38,6 +39,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.generic.Requests;
 import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
 import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 
@@ -69,6 +71,16 @@ class VectorEmbeddingIntegrationIT {
     ApacheHttpClient5Transport transport =
         ApacheHttpClient5TransportBuilder.builder(httpHost)
             .setMapper(new JacksonJsonpMapper())
+            .setHttpClientConfigCallback(
+                httpClientBuilder -> {
+                  // httpclient5 5.6.0 enables automatic gzip decompression by default; the
+                  // opensearch-java transport also decompresses the response body, so leaving
+                  // both on runs the second pass over already-inflated bytes and throws
+                  // "java.util.zip.ZipException: Not in GZIP format". Let opensearch-java own
+                  // decompression. Mirrors the production OpenSearchClient fix.
+                  httpClientBuilder.disableContentCompression();
+                  return httpClientBuilder;
+                })
             .build();
     openSearchClient = new OpenSearchClient(transport);
 
@@ -281,6 +293,31 @@ class VectorEmbeddingIntegrationIT {
         getSearchPipeline(OpenSearchVectorService.HYBRID_PIPELINE_NAME);
     assertNotNull(updatedPipeline, "Pipeline should still exist after update");
     assertWeightsInPipeline(updatedPipeline, 0.3, 0.7);
+  }
+
+  @Test
+  void testCheckHybridSearchPipelineNeedsNoStoredPipeline() throws Exception {
+    deleteSearchPipeline(OpenSearchVectorService.HYBRID_PIPELINE_NAME);
+
+    assertTrue(
+        vectorService.checkHybridSearchPipeline(0.6, 0.4).isEmpty(),
+        "Hybrid search runs with the inline pipeline, so the check must pass without a stored one");
+
+    Optional<String> rejected = vectorService.checkHybridSearchPipeline(0.7, 0.7);
+    assertTrue(rejected.isPresent(), "OpenSearch rejects RRF weights that do not sum to 1.0");
+    assertTrue(rejected.get().contains("sum of weights"), rejected.get());
+  }
+
+  private void deleteSearchPipeline(String pipelineName) throws Exception {
+    // A 404 only means the pipeline was never created.
+    openSearchClient
+        .generic()
+        .execute(
+            Requests.builder()
+                .method("DELETE")
+                .endpoint("/_search/pipeline/" + pipelineName)
+                .build())
+        .close();
   }
 
   @SuppressWarnings("unchecked")

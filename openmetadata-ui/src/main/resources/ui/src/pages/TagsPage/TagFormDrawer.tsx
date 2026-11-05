@@ -30,6 +30,7 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
   isTier,
   isLoading,
   permissions,
+  isParentAutoClassificationEnabled,
   tagsFormHeader,
   onClose,
   onSubmit,
@@ -51,7 +52,7 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
       className="tw:z-999"
       data-testid="tag-form-drawer"
       isOpen={open}
-      width={480}
+      width="40%"
       onOpenChange={handleOpenChange}>
       {({ close }) => (
         <>
@@ -66,6 +67,9 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
               form={form}
               initialValues={editTag}
               isEditing={!isUndefined(editTag)}
+              isParentAutoClassificationEnabled={
+                isParentAutoClassificationEnabled
+              }
               isSystemTag={editTag?.provider === ProviderType.System}
               isTier={isTier}
               key={editTag?.id ?? 'new-tag'}

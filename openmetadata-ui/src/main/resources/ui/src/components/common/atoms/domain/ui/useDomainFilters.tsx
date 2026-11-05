@@ -12,33 +12,38 @@
  */
 
 import { useMemo } from 'react';
-import { AssetsOfEntity } from '../../../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import {
-  DOMAIN_FILTERS,
-  SUB_DOMAIN_FILTERS,
-} from '../../../../../constants/Domain.constants';
+import { AssetsOfEntity } from '../../../../../enums/Assets.enum';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { Aggregations } from '../../../../../interface/search.interface';
+import domainClassBase from '../../../../../utils/Domain/DomainClassBase';
 import { ExploreQuickFilterField } from '../../../../Explore/ExplorePage.interface';
 import { useQuickFiltersWithComponent } from '../../filters/useQuickFiltersWithComponent';
 
 interface UseDomainFiltersConfig {
   isSubDomain?: boolean;
+  baseFilter?: string;
   aggregations?: Aggregations;
   parsedFilters?: ExploreQuickFilterField[];
   onFilterChange: (filters: ExploreQuickFilterField[]) => void;
 }
 
 export const useDomainFilters = (config: UseDomainFiltersConfig) => {
-  const { isSubDomain = false, parsedFilters } = config;
+  const { isSubDomain = false, baseFilter, parsedFilters } = config;
 
   const defaultFilters = useMemo(
-    () => (isSubDomain ? SUB_DOMAIN_FILTERS : DOMAIN_FILTERS),
+    () => domainClassBase.getListingFilters(isSubDomain),
     [isSubDomain]
+  );
+
+  // Keyed on the string: listings rebuild an equal filter every render.
+  const defaultQueryFilter = useMemo(
+    () => (baseFilter ? JSON.parse(baseFilter) : undefined),
+    [baseFilter]
   );
 
   const { quickFilters, selectedFilters } = useQuickFiltersWithComponent({
     defaultFilters,
+    defaultQueryFilter,
     aggregations: config.aggregations,
     parsedFilters,
     searchIndex: SearchIndex.DOMAIN,

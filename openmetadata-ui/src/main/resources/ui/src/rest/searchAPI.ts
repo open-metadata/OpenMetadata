@@ -13,18 +13,20 @@
 
 import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
+import { SKIP_DOMAIN_FILTER_HEADER } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { PreviewSearchRequest } from '../generated/api/search/previewSearchRequest';
 import {
   Aggregations,
-  KeysOfUnion,
   SearchIndexSearchSourceMapping,
+  SearchIndexValue,
   SearchRequest,
   SearchResponse,
+  SearchSourceFields,
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
 import { getQueryWithSlash } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const getSearchIndexParam: (
   si: SearchIndex | SearchIndex[] | undefined
@@ -58,36 +60,21 @@ const getSearchIndexParam: (
  */
 export const formatSearchQueryResponse = <
   SI extends SearchIndex | SearchIndex[],
-  TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+  TIncludeFields extends SearchSourceFields<SI>
 >(
-  data: SearchResponse<
-    SI extends Array<SearchIndex> ? SI[number] : SI,
-    TIncludeFields
-  >
-): SearchResponse<
-  SI extends Array<SearchIndex> ? SI[number] : SI,
-  TIncludeFields
-> => {
-  let _data = {} as SearchResponse<
-    SI extends Array<SearchIndex> ? SI[number] : SI,
-    TIncludeFields
-  >;
+  data: SearchResponse<SearchIndexValue<SI>, TIncludeFields>
+): SearchResponse<SearchIndexValue<SI>, TIncludeFields> => {
+  let _data = {} as SearchResponse<SearchIndexValue<SI>, TIncludeFields>;
 
   _data = data;
 
   /* Elasticsearch responses use 'null' for missing values, we want undefined
        omitDeep is untyped, so this will return unknown, which is not necessarily bad
        since we need to do some more transformations to the response */
-  _data = omitDeep<
-    SearchResponse<
-      SI extends Array<SearchIndex> ? SI[number] : SI,
-      TIncludeFields
-    >
-  >(_data, isNil);
+  _data = omitDeep<SearchResponse<SearchIndexValue<SI>, TIncludeFields>>(
+    _data,
+    isNil
+  );
 
   /* Elasticsearch objects use `entityType` to track their type, but the EntityReference interface uses `type`
       This copies `entityType` into `type` (if `entityType` exists) so responses implement EntityReference */
@@ -96,25 +83,24 @@ export const formatSearchQueryResponse = <
     hits: {
       ..._data.hits,
       hits: isArray(_data.hits.hits)
-        ? _data.hits.hits.map((hit) =>
-            '_source' in hit
-              ? 'entityType' in hit._source
-                ? {
-                    ...hit,
-                    _source: {
-                      ...(hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-                        ? SI[number]
-                        : SI]),
-                      type: (
-                        hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-                          ? SI[number]
-                          : SI]
-                      ).entityType,
-                    },
-                  }
-                : hit
-              : hit
-          )
+        ? _data.hits.hits.map((hit) => {
+            if (!('_source' in hit)) {
+              return hit;
+            }
+            if (!('entityType' in hit._source)) {
+              return hit;
+            }
+
+            return {
+              ...hit,
+              _source: {
+                ...(hit._source as SearchIndexSearchSourceMapping[SearchIndexValue<SI>]),
+                type: (
+                  hit._source as SearchIndexSearchSourceMapping[SearchIndexValue<SI>]
+                ).entityType,
+              },
+            };
+          })
         : [],
     },
   };
@@ -144,20 +130,11 @@ export const formatSearchQueryResponse = <
  */
 export const rawSearchQuery = <
   SI extends SearchIndex | SearchIndex[],
-  TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+  TIncludeFields extends SearchSourceFields<SI>
 >(
   req: SearchRequest<SI, TIncludeFields>
 ): Promise<
-  AxiosResponse<
-    SearchResponse<
-      SI extends Array<SearchIndex> ? SI[number] : SI,
-      TIncludeFields
-    >
-  >
+  AxiosResponse<SearchResponse<SearchIndexValue<SI>, TIncludeFields>>
 > => {
   const {
     query,
@@ -178,40 +155,38 @@ export const rawSearchQuery = <
   const includeDeletedParam =
     'includeDeleted' in req ? req.includeDeleted : false;
 
-  const apiQuery =
-    query && query !== '**'
-      ? filters
-        ? `${queryWithSlash} AND `
-        : queryWithSlash
-      : '';
+  const filteredQuery = filters ? `${queryWithSlash} AND ` : queryWithSlash;
+  const apiQuery = query && query !== '**' ? filteredQuery : '';
 
   const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
 
-  return APIClient.get<
-    SearchResponse<
-      SI extends Array<SearchIndex> ? SI[number] : SI,
-      TIncludeFields
-    >
-  >(apiUrl, {
-    params: {
-      index: getSearchIndexParam(searchIndex),
-      from: (pageNumber - 1) * pageSize,
-      size: pageSize,
-      deleted: includeDeletedParam,
-      query_filter: JSON.stringify(queryFilter),
-      post_filter: JSON.stringify(postFilter),
-      sort_field: sortField,
-      sort_order: sortOrder,
-      track_total_hits: trackTotalHits,
-      explain,
-      fetch_source: fetchSource,
-      include_source_fields: req.fetchSource ? req.includeFields : undefined,
-      exclude_source_fields: req.excludeSourceFields,
-    },
-    paramsSerializer: {
-      indexes: null,
-    },
-  });
+  return APIClient.get<SearchResponse<SearchIndexValue<SI>, TIncludeFields>>(
+    apiUrl,
+    {
+      signal: req.signal,
+      params: {
+        index: getSearchIndexParam(searchIndex),
+        from: (Math.max(1, pageNumber) - 1) * pageSize,
+        size: pageSize,
+        deleted: includeDeletedParam,
+        query_filter: JSON.stringify(queryFilter),
+        post_filter: JSON.stringify(postFilter),
+        sort_field: sortField,
+        sort_order: sortOrder,
+        track_total_hits: trackTotalHits,
+        explain,
+        fetch_source: fetchSource,
+        include_source_fields: req.fetchSource ? req.includeFields : undefined,
+        exclude_source_fields: req.excludeSourceFields,
+      },
+      paramsSerializer: {
+        indexes: null,
+      },
+      ...(req.skipDomainFilter && {
+        headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
+      }),
+    }
+  );
 };
 
 /**
@@ -222,22 +197,13 @@ export const rawSearchQuery = <
  */
 export const searchQuery = async <
   SI extends SearchIndex | SearchIndex[],
-  TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+  TIncludeFields extends SearchSourceFields<SI>
 >(
   req: SearchRequest<SI, TIncludeFields>
-): Promise<
-  SearchResponse<
-    SI extends Array<SearchIndex> ? SI[number] : SI,
-    TIncludeFields
-  >
-> => {
-  const res = await rawSearchQuery(req);
+): Promise<SearchResponse<SearchIndexValue<SI>, TIncludeFields>> => {
+  const res = await rawSearchQuery<SI, TIncludeFields>(req);
 
-  return formatSearchQueryResponse(res.data);
+  return formatSearchQueryResponse<SI, TIncludeFields>(res.data);
 };
 
 export const searchPreview = async (payload: PreviewSearchRequest) => {
@@ -249,7 +215,35 @@ export const searchPreview = async (payload: PreviewSearchRequest) => {
   return response.data;
 };
 
-export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
+export const searchEntityTypeCounts = async (
+  request: Pick<
+    SearchRequest<SearchIndex[]>,
+    'query' | 'searchIndex' | 'queryFilter' | 'postFilter' | 'includeDeleted'
+  > & { includeTopHit?: boolean }
+) => {
+  const response = await APIClient.get<SearchResponse<SearchIndex>>(
+    '/search/entityTypeCounts',
+    {
+      params: {
+        q: request.query,
+        index: request.searchIndex?.join(','),
+        query_filter: JSON.stringify(request.queryFilter),
+        post_filter: JSON.stringify(request.postFilter),
+        deleted: request.includeDeleted,
+        include_top_hit: request.includeTopHit,
+      },
+    }
+  );
+
+  return formatSearchQueryResponse(response.data);
+};
+
+export const nlqSearch = async <
+  SI extends SearchIndex,
+  TIncludeFields extends SearchSourceFields<SI>
+>(
+  payload: SearchRequest<SI, TIncludeFields>
+): Promise<SearchResponse<SearchIndexValue<SI>, TIncludeFields>> => {
   const {
     pageNumber = 1,
     pageSize = 10,
@@ -262,23 +256,22 @@ export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
   const includeDeletedParam =
     'includeDeleted' in payload ? payload.includeDeleted : false;
 
-  const response = await APIClient.get<SearchResponse<SearchIndex>>(
-    '/hybrid/nlq/search',
-    {
-      params: {
-        q: query,
-        index: searchIndex,
-        size: pageSize,
-        from: (pageNumber - 1) * pageSize,
-        deleted: includeDeletedParam,
-        sort_field: sortField,
-        sort_order: sortOrder,
-        query_filter: JSON.stringify(queryFilter),
-      },
-    }
-  );
+  const response = await APIClient.get<
+    SearchResponse<SearchIndexValue<SI>, TIncludeFields>
+  >('/hybrid/nlq/search', {
+    params: {
+      q: query,
+      index: searchIndex,
+      size: pageSize,
+      from: (Math.max(1, pageNumber) - 1) * pageSize,
+      deleted: includeDeletedParam,
+      sort_field: sortField,
+      sort_order: sortOrder,
+      query_filter: JSON.stringify(queryFilter),
+    },
+  });
 
-  return formatSearchQueryResponse(response.data);
+  return formatSearchQueryResponse<SI, TIncludeFields>(response.data);
 };
 
 export const getNLPEnabledStatus = async () => {
@@ -369,6 +362,16 @@ export interface OrphanCleanupResponse {
 export const getSearchStats = async (): Promise<SearchStatsResponse> => {
   const response: AxiosResponse<SearchStatsResponse> = await APIClient.get(
     '/search/stats'
+  );
+
+  return response.data;
+};
+
+// Entity types that have a search index in this deployment, sorted. Server-driven so the
+// entity picker also lists distribution-specific (e.g. Collate-only) entity types.
+export const getSearchEntityTypes = async (): Promise<string[]> => {
+  const response: AxiosResponse<string[]> = await APIClient.get(
+    '/search/entityTypes'
   );
 
   return response.data;

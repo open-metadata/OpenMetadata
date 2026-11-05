@@ -11,114 +11,168 @@
  *  limitations under the License.
  */
 
-import { ComponentType, FC, lazy, LazyExoticComponent } from 'react';
+import { FC, lazy } from 'react';
+import withVersionFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../components/AppRouter/withSuspenseFallback';
 import { EntityType } from '../enums/entity.enum';
 import entityUtilClassBase from './EntityUtilClassBase';
 
-type VersionComponentType = LazyExoticComponent<
-  ComponentType<Record<string, unknown>>
->;
-
 class EntityVersionClassBase {
-  protected componentMap: Partial<Record<EntityType, VersionComponentType>> = {
-    [EntityType.TABLE]: lazy(
-      () => import('../components/Database/TableVersion/TableVersion.component')
+  protected componentMap = {
+    [EntityType.TABLE]: withVersionFallback(
+      lazy(
+        () =>
+          import('../components/Database/TableVersion/TableVersion.component')
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.TOPIC]: lazy(
-      () => import('../components/Topic/TopicVersion/TopicVersion.component')
+    [EntityType.TOPIC]: withVersionFallback(
+      lazy(
+        () => import('../components/Topic/TopicVersion/TopicVersion.component')
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.DASHBOARD]: lazy(
-      () =>
-        import(
-          '../components/Dashboard/DashboardVersion/DashboardVersion.component'
-        )
+    [EntityType.DASHBOARD]: withVersionFallback(
+      lazy(
+        () =>
+          import(
+            '../components/Dashboard/DashboardVersion/DashboardVersion.component'
+          )
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.PIPELINE]: lazy(
-      () =>
-        import(
-          '../components/Pipeline/PipelineVersion/PipelineVersion.component'
-        )
+    [EntityType.PIPELINE]: withVersionFallback(
+      lazy(
+        () =>
+          import(
+            '../components/Pipeline/PipelineVersion/PipelineVersion.component'
+          )
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.MLMODEL]: lazy(
-      () =>
-        import('../components/MlModel/MlModelVersion/MlModelVersion.component')
+    [EntityType.MLMODEL]: withVersionFallback(
+      lazy(
+        () =>
+          import(
+            '../components/MlModel/MlModelVersion/MlModelVersion.component'
+          )
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.CONTAINER]: lazy(
-      () =>
-        import(
-          '../components/Container/ContainerVersion/ContainerVersion.component'
-        )
+    [EntityType.CONTAINER]: withVersionFallback(
+      lazy(
+        () =>
+          import(
+            '../components/Container/ContainerVersion/ContainerVersion.component'
+          )
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.SEARCH_INDEX]: lazy(
-      () => import('../components/SearchIndexVersion/SearchIndexVersion')
+    [EntityType.SEARCH_INDEX]: withVersionFallback(
+      lazy(() => import('../components/SearchIndexVersion/SearchIndexVersion')),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.DASHBOARD_DATA_MODEL]: lazy(
-      () =>
-        import(
-          '../components/Dashboard/DataModel/DataModelVersion/DataModelVersion.component'
-        )
+    [EntityType.DASHBOARD_DATA_MODEL]: withVersionFallback(
+      lazy(
+        () =>
+          import(
+            '../components/Dashboard/DataModel/DataModelVersion/DataModelVersion.component'
+          )
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.STORED_PROCEDURE]: lazy(
-      () =>
-        import(
-          '../components/Database/StoredProcedureVersion/StoredProcedureVersion.component'
-        )
+    [EntityType.STORED_PROCEDURE]: withVersionFallback(
+      lazy(
+        () =>
+          import(
+            '../components/Database/StoredProcedureVersion/StoredProcedureVersion.component'
+          )
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.API_ENDPOINT]: lazy(
-      () =>
-        import(
-          '../components/APIEndpoint/APIEndpointVersion/APIEndpointVersion'
-        )
+    [EntityType.API_ENDPOINT]: withVersionFallback(
+      lazy(
+        () =>
+          import(
+            '../components/APIEndpoint/APIEndpointVersion/APIEndpointVersion'
+          )
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.METRIC]: lazy(
-      () => import('../components/Metric/MetricVersion/MetricVersion')
+    [EntityType.METRIC]: withVersionFallback(
+      lazy(() => import('../components/Metric/MetricVersion/MetricVersion')),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.CHART]: lazy(
-      () => import('../components/Chart/ChartVersion/ChartVersion.component')
+    [EntityType.CHART]: withVersionFallback(
+      lazy(
+        () => import('../components/Chart/ChartVersion/ChartVersion.component')
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.DIRECTORY]: lazy(
-      () =>
-        import(
-          '../components/DriveService/Directory/DirectoryVersion/DirectoryVersion'
-        )
+    [EntityType.DIRECTORY]: withVersionFallback(
+      lazy(
+        () =>
+          import(
+            '../components/DriveService/Directory/DirectoryVersion/DirectoryVersion'
+          )
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.FILE]: lazy(
-      () => import('../components/DriveService/File/FileVersion/FileVersion')
+    [EntityType.FILE]: withVersionFallback(
+      lazy(
+        () => import('../components/DriveService/File/FileVersion/FileVersion')
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.SPREADSHEET]: lazy(
-      () =>
-        import(
-          '../components/DriveService/Spreadsheet/SpreadsheetVersion/SpreadsheetVersion'
-        )
+    [EntityType.SPREADSHEET]: withVersionFallback(
+      lazy(
+        () =>
+          import(
+            '../components/DriveService/Spreadsheet/SpreadsheetVersion/SpreadsheetVersion'
+          )
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.WORKSHEET]: lazy(
-      () =>
-        import(
-          '../components/DriveService/Worksheet/WorksheetVersion/WorksheetVersion'
-        )
+    [EntityType.WORKSHEET]: withVersionFallback(
+      lazy(
+        () =>
+          import(
+            '../components/DriveService/Worksheet/WorksheetVersion/WorksheetVersion'
+          )
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.DATABASE]: lazy(
-      () => import('../pages/DatabaseVersionPage/DatabaseVersionPage')
+    [EntityType.DATABASE]: withVersionFallback(
+      lazy(() => import('../pages/DatabaseVersionPage/DatabaseVersionPage')),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.DATABASE_SCHEMA]: lazy(
-      () =>
-        import('../pages/DatabaseSchemaVersionPage/DatabaseSchemaVersionPage')
+    [EntityType.DATABASE_SCHEMA]: withVersionFallback(
+      lazy(
+        () =>
+          import('../pages/DatabaseSchemaVersionPage/DatabaseSchemaVersionPage')
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.DATA_PRODUCT]: lazy(
-      () =>
-        import(
-          '../components/DataProducts/DataProductsPage/DataProductsPage.component'
-        )
+    [EntityType.DATA_PRODUCT]: withVersionFallback(
+      lazy(
+        () =>
+          import(
+            '../components/DataProducts/DataProductsPage/DataProductsPage.component'
+          )
+      ),
+      TAB_CONTENT_FALLBACK
     ),
-    [EntityType.API_COLLECTION]: lazy(
-      () => import('../pages/APICollectionPage/APICollectionVersionPage')
+    [EntityType.API_COLLECTION]: withVersionFallback(
+      lazy(() => import('../pages/APICollectionPage/APICollectionVersionPage')),
+      TAB_CONTENT_FALLBACK
     ),
   };
 
-  public getEntityVersionComponent(
-    entityType: string
-  ): VersionComponentType | null {
-    return this.componentMap[entityType as EntityType] ?? null;
+  public getEntityVersionComponent<
+    T extends keyof EntityVersionClassBase['componentMap']
+  >(entityType: T) {
+    return this.componentMap[entityType] ?? null;
   }
 
   public getEntityDetailComponent(entityType: string): FC | null {

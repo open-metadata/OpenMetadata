@@ -49,13 +49,14 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexStopSignal;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO;
 import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
@@ -97,6 +98,8 @@ class DistributedSearchIndexExecutorTest {
     executor = new DistributedSearchIndexExecutor(collectionDAO);
     setField("coordinator", coordinator);
     setField("recoveryManager", recoveryManager);
+    // Unit tests exercise the force-cancel logic, not the participant-drain grace timing.
+    setField("participantDrainTimeoutMs", 0L);
   }
 
   @AfterEach
@@ -316,6 +319,64 @@ class DistributedSearchIndexExecutorTest {
     assertTrue(executor.isStopped());
     verify(worker, times(1)).stop();
     verify(coordinator, times(1)).requestStop(job.getId());
+  }
+
+  /**
+   * Regression: a stop that lands while {@code createJob()} is still building partitions finds no
+   * job to stop. {@code execute()} then started the job anyway, leaving it RUNNING with none of our
+   * workers on it, so peer servers adopted it as an orphan, reindexed what the user had stopped,
+   * and the app run stayed "running" for good.
+   */
+  @Test
+  void executeEndsJobStoppedBeforeItStartedInsteadOfStartingIt() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob readyJob =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.READY).build();
+    ReindexingProgressListener listener = mock(ReindexingProgressListener.class);
+    executor.addListener(listener);
+    executor.stop();
+    setField("currentJob", readyJob);
+    when(coordinator.getJob(jobId)).thenReturn(Optional.of(readyJob));
+    when(coordinator.getJobWithAggregatedStats(jobId))
+        .thenReturn(readyJob.withStatus(IndexJobStatus.STOPPED));
+
+    DistributedSearchIndexExecutor.ExecutionResult result =
+        executor.execute(
+            mock(BulkSink.class),
+            stagedContext("table"),
+            ReindexingConfiguration.builder().entities(Set.of("table")).build());
+
+    assertEquals(IndexJobStatus.STOPPED, result.status());
+    verify(coordinator, never()).startJob(jobId);
+    verify(coordinator).requestStop(jobId);
+    verify(coordinator).releaseReindexLock(jobId);
+    verify(listener, never()).onJobStarted(any());
+  }
+
+  @Test
+  void executorCreatedForAnAlreadyStoppedRunIsStopped() {
+    ReindexStopSignal stopSignal = new ReindexStopSignal();
+    stopSignal.requestStop();
+
+    DistributedSearchIndexExecutor lateExecutor =
+        new DistributedSearchIndexExecutor(collectionDAO, 10, stopSignal);
+
+    assertTrue(lateExecutor.isStopped());
+  }
+
+  @Test
+  void stoppingTheRunStopsTheExecutorAndItsJob() throws Exception {
+    ReindexStopSignal stopSignal = new ReindexStopSignal();
+    executor = new DistributedSearchIndexExecutor(collectionDAO, 10, stopSignal);
+    setField("coordinator", coordinator);
+    SearchIndexJob job =
+        SearchIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.RUNNING).build();
+    setField("currentJob", job);
+
+    stopSignal.requestStop();
+
+    assertTrue(executor.isStopped());
+    verify(coordinator).requestStop(job.getId());
   }
 
   /**
@@ -971,6 +1032,61 @@ class DistributedSearchIndexExecutorTest {
   }
 
   @Test
+  void driveJobToTerminalStateWaitsForParticipantsInsteadOfForceCancelling() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    // A non-STOPPING job whose workers drained, but a participant's partition is still PROCESSING
+    // and the job has not reached a terminal state yet.
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
+    when(coordinator.getPartitions(jobId, PartitionStatus.PROCESSING))
+        .thenReturn(List.of(partition(jobId, "table", PartitionStatus.PROCESSING)));
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // We wait for the participant to finish so the entity is promoted with a fully-built index; the
+    // in-flight partition must NOT be force-cancelled (that would promote a partial index). The
+    // completion check still runs so the job terminalizes once the partition actually finishes.
+    verify(coordinator, never()).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
+  }
+
+  @Test
+  void driveJobToTerminalStateForceCancelsProcessingPartitionsWhenStopping() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(
+                SearchIndexJob.builder().id(jobId).status(IndexJobStatus.STOPPING).build()));
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // A user-requested stop force-cancels in-flight partitions so the job can reach STOPPED.
+    verify(coordinator).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
+  }
+
+  @Test
+  void driveJobToTerminalStateDoesNotForceCancelWhenNoProcessingPartitionsRemain()
+      throws Exception {
+    UUID jobId = UUID.randomUUID();
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
+    when(coordinator.getPartitions(jobId, PartitionStatus.PROCESSING)).thenReturn(List.of());
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // Nothing is still processing, so there is nothing to force-cancel; the completion check alone
+    // takes the job terminal.
+    verify(coordinator, never()).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
+  }
+
+  @Test
   void runWorkerLoopAggregatesPartitionResults() throws Exception {
     UUID jobId = UUID.randomUUID();
     SearchIndexJob runningJob =
@@ -1353,6 +1469,23 @@ class DistributedSearchIndexExecutorTest {
         entityType,
         List.of());
     return context;
+  }
+
+  @Test
+  void recordTerminalMetricCountsPromotingAsCompletedNotFailed() throws Exception {
+    ReindexingMetrics metrics = mock(ReindexingMetrics.class);
+    Timer.Sample sample = mock(Timer.Sample.class);
+    Class<?>[] sig = {ReindexingMetrics.class, Timer.Sample.class, IndexJobStatus.class};
+
+    // PROMOTING is the drained hand-off state execute() ends on (the strategy promotes and flips it
+    // terminal afterwards). It must record a COMPLETED run — pre-fix it fell through to
+    // recordJobFailed, misreporting every successful distributed reindex as a failure.
+    invokePrivate("recordTerminalMetric", sig, metrics, sample, IndexJobStatus.PROMOTING);
+    verify(metrics).recordJobCompleted(sample);
+    verify(metrics, never()).recordJobFailed(sample);
+
+    invokePrivate("recordTerminalMetric", sig, metrics, sample, IndexJobStatus.FAILED);
+    verify(metrics).recordJobFailed(sample);
   }
 
   private Object invokePrivate(String methodName, Class<?>[] parameterTypes, Object... args)

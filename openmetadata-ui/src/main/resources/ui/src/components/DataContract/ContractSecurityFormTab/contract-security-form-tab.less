@@ -15,7 +15,7 @@
 
 .contract-security-form {
   .contract-consumer-security-card {
-    .ant-card-body {
+    .expandable-card-body {
       padding: var(--om-space-20) 0;
 
       .contract-consumer-security-card-row {
@@ -24,29 +24,6 @@
 
       .contract-consumer-security-card-rule-container {
         padding: 0 var(--om-space-20);
-
-        .contract-consumer-security-card-rule-delete-button {
-          margin-top: var(--om-space-10);
-          border: 1px solid @grey-34;
-          border-radius: var(--om-radius-lg);
-          color: @grey-34;
-          width: 40px;
-          height: 40px;
-
-          .anticon {
-            font-size: var(--om-font-size-xs);
-          }
-        }
-      }
-
-      .add-row-filter-button {
-        span {
-          font-weight: var(--om-font-weight-semibold);
-        }
-        .anticon {
-          font-size: var(--om-font-size-sm);
-          rotate: 45deg;
-        }
       }
 
       .contract-consumer-security-card-form-actions-items {
@@ -55,58 +32,34 @@
         align-items: center;
         padding: var(--om-space-24) var(--om-space-16);
         border-top: 1px solid @grey-200;
-
-        .delete-consumer-filter-button {
-          color: @red-1;
-          span {
-            font-weight: var(--om-font-weight-semibold);
-          }
-          .anticon {
-            font-size: var(--om-font-size-sm);
-          }
-
-          &:hover {
-            color: @red-3;
-          }
-        }
       }
-    }
-  }
-
-  .add-policy-button {
-    span {
-      font-weight: var(--om-font-weight-semibold);
-    }
-    .anticon {
-      font-size: var(--om-font-size-sm);
-      rotate: 45deg;
     }
   }
 }
 
 .expanded-active-card {
-  .ant-card-head {
+  .expandable-card-header {
     display: none;
   }
 
-  .ant-card-body {
+  .expandable-card-body {
     padding: 0;
   }
 }
 
 .contract-security-form-container {
-  .ant-card.expanded {
-    .ant-card-head {
+  .expandable-card.expanded {
+    .expandable-card-header {
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
     }
   }
 
-  .ant-card.new-header-border-card.expandable-card {
+  .expandable-card {
     border: 1px solid @border-color-7;
     box-shadow: 0 1px 2px 0 @grey-27;
 
-    .ant-card-head {
+    .expandable-card-header {
       background: var(--tw-color-bg-primary);
       border-bottom: 1px solid @grey-200;
 
@@ -116,33 +69,6 @@
         justify-content: space-between;
         width: 100%;
         gap: var(--om-space-12);
-
-        .enable-form-item {
-          margin-bottom: 0;
-
-          .ant-switch {
-            margin-left: var(--om-space-2);
-            width: 44px;
-            height: 24px;
-
-            .ant-switch-handle {
-              width: 16px;
-              height: 16px;
-              top: 4px;
-              left: 4px;
-
-              &::before {
-                border-radius: var(--om-radius-20);
-              }
-            }
-          }
-
-          .ant-switch-checked {
-            .ant-switch-handle {
-              left: calc(100% - 16px - 4px);
-            }
-          }
-        }
 
         > div:first-child {
           flex: 1;
@@ -155,84 +81,20 @@
           font-weight: var(--om-font-weight-semibold);
           line-height: 32px;
         }
-
-        .ant-btn.edit-expand-button {
-          border-radius: var(--om-radius-md);
-          border: 1px solid @border-light;
-
-          svg {
-            font-size: var(--om-font-size-xl);
-            color: @grey-600;
-          }
-        }
-
-        .ant-btn.delete-expand-button {
-          width: 30px;
-          height: 30px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0;
-          border-radius: var(--om-radius-md);
-          background: transparent;
-          border-color: @error-color;
-
-          svg {
-            width: 16px;
-            color: @error-color;
-          }
-        }
-      }
-
-      .ant-card-extra {
-        .ant-btn.expand-collapse-icon {
-          width: 30px;
-          height: 30px;
-          border-radius: var(--om-radius-md);
-          border: 1px solid @border-light;
-
-          svg {
-            font-size: var(--om-font-size-xl);
-            color: @grey-600;
-          }
-        }
       }
     }
   }
 
   .expanded-active-card {
-    .ant-card-head {
+    .expandable-card-header {
       display: none;
     }
 
-    .ant-card-body {
+    .expandable-card-body {
       padding: 0;
 
       .semantic-form-item-content {
         padding: var(--om-space-20);
-
-        .ant-switch {
-          margin-left: var(--om-space-2);
-          width: 36px;
-          height: 20px;
-
-          .ant-switch-handle {
-            width: 14px;
-            height: 14px;
-            top: 3px;
-            left: 3px;
-
-            &::before {
-              border-radius: var(--om-radius-20);
-            }
-          }
-        }
-
-        .ant-switch-checked {
-          .ant-switch-handle {
-            left: calc(100% - 14px - 4px);
-          }
-        }
       }
     }
   }

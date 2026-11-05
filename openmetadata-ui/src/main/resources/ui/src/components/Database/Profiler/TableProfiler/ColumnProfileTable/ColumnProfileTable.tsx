@@ -11,16 +11,22 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from '@openmetadata/ui-core-components';
-import { ChevronDown, ChevronRight } from '@untitledui/icons';
+import {
+  ButtonUtility,
+  Skeleton,
+  Table,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
@@ -45,9 +51,10 @@ import {
   formatNumberWithComma,
 } from '../../../../../utils/NumberUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
+import { getSkeletonMockData } from '../../../../../utils/Skeleton.utils';
 import { pruneEmptyChildren } from '../../../../../utils/TablePureUtils';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
@@ -97,7 +104,7 @@ const ColumnProfileTable = () => {
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const tableDetailsWithColumns = useMemo(
     () => ({ ...tableProfiler, columns: data as Column[] } as TableType),
@@ -145,32 +152,25 @@ const ColumnProfileTable = () => {
       return data;
     }
 
-    const sorted = [...data].sort((a, b) => {
-      switch (sortDescriptor.column) {
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'dataType':
-          return a.dataType.localeCompare(b.dataType);
-        case 'nullProportion':
-          return (
-            (a.profile?.nullProportion || 0) - (b.profile?.nullProportion || 0)
-          );
-        case 'uniqueProportion':
-          return (
-            (a.profile?.uniqueProportion || 0) -
-            (b.profile?.uniqueProportion || 0)
-          );
-        case 'distinctProportion':
-          return (
-            (a.profile?.distinctProportion || 0) -
-            (b.profile?.distinctProportion || 0)
-          );
-        case 'valuesCount':
-          return (a.profile?.valuesCount || 0) - (b.profile?.valuesCount || 0);
-        default:
-          return 0;
-      }
-    });
+    const columnComparators: Record<
+      string,
+      (a: ModifiedColumn, b: ModifiedColumn) => number
+    > = {
+      name: (a, b) => a.name.localeCompare(b.name),
+      dataType: (a, b) => a.dataType.localeCompare(b.dataType),
+      nullProportion: (a, b) =>
+        (a.profile?.nullProportion || 0) - (b.profile?.nullProportion || 0),
+      uniqueProportion: (a, b) =>
+        (a.profile?.uniqueProportion || 0) - (b.profile?.uniqueProportion || 0),
+      distinctProportion: (a, b) =>
+        (a.profile?.distinctProportion || 0) -
+        (b.profile?.distinctProportion || 0),
+      valuesCount: (a, b) =>
+        (a.profile?.valuesCount || 0) - (b.profile?.valuesCount || 0),
+    };
+
+    const comparator = columnComparators[sortDescriptor.column as string];
+    const sorted = comparator ? [...data].sort(comparator) : [...data];
 
     return sortDescriptor?.direction === 'descending'
       ? sorted.reverse()
@@ -273,6 +273,36 @@ const ColumnProfileTable = () => {
     }
   }, [tableFqn, currentPage, searchText, pageSize]);
 
+  const renderProportionCell = (value: number | undefined) => (
+    <Table.Cell className="tw:w-50">
+      {isNil(value) ? '--' : calculatePercentage(value, 1, 2, true)}
+    </Table.Cell>
+  );
+
+  const renderTestCountCell = (
+    count: number | undefined,
+    dataTestId: string,
+    valueClassName: string,
+    widthClass: string
+  ) => (
+    <Table.Cell className={widthClass}>
+      {isUndefined(count) || count === 0 ? (
+        '--'
+      ) : (
+        <Link
+          data-testid={dataTestId}
+          to={getEntityDetailsPath(
+            EntityType.TABLE,
+            tableFqn,
+            EntityTabs.PROFILER,
+            ProfilerTabPath.DATA_QUALITY
+          )}>
+          <span className={valueClassName}>{count}</span>
+        </Link>
+      )}
+    </Table.Cell>
+  );
+
   const renderRow = (
     id: string,
     record: ModifiedColumn,
@@ -295,22 +325,21 @@ const ColumnProfileTable = () => {
             <div className="d-inline-flex items-start gap-1 flex-column">
               <div className="d-inline-flex items-baseline tw:gap-1">
                 {hasChildren ? (
-                  <button
+                  <ButtonUtility
                     aria-expanded={isExpanded}
-                    className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex"
+                    aria-label={
+                      isExpanded ? t('label.collapse') : t('label.expand')
+                    }
                     data-testid="expand-icon"
-                    onClick={(e) => {
+                    icon={isExpanded ? ChevronDown : ChevronRight}
+                    size="xs"
+                    onClick={(e: MouseEvent) => {
                       e.stopPropagation();
                       handleToggleExpand(rowKey);
-                    }}>
-                    {isExpanded ? (
-                      <ChevronDown className="tw:size-4" />
-                    ) : (
-                      <ChevronRight className="tw:size-4" />
-                    )}
-                  </button>
+                    }}
+                  />
                 ) : (
-                  <span className="tw:inline-block tw:w-4" />
+                  <span className="tw:inline-block tw:w-5" />
                 )}
                 <Link
                   className="break-word p-0 d-block text-link-color tw:font-medium hover:tw:underline"
@@ -341,28 +370,11 @@ const ColumnProfileTable = () => {
           </Typography>
         </Table.Cell>
 
-        <Table.Cell className="tw:w-50">
-          {!isNil(record.profile?.nullProportion)
-            ? calculatePercentage(record.profile!.nullProportion, 1, 2, true)
-            : '--'}
-        </Table.Cell>
+        {renderProportionCell(record.profile?.nullProportion)}
 
-        <Table.Cell className="tw:w-50">
-          {!isNil(record.profile?.uniqueProportion)
-            ? calculatePercentage(record.profile!.uniqueProportion, 1, 2, true)
-            : '--'}
-        </Table.Cell>
+        {renderProportionCell(record.profile?.uniqueProportion)}
 
-        <Table.Cell className="tw:w-50">
-          {!isNil(record.profile?.distinctProportion)
-            ? calculatePercentage(
-                record.profile!.distinctProportion,
-                1,
-                2,
-                true
-              )
-            : '--'}
-        </Table.Cell>
+        {renderProportionCell(record.profile?.distinctProportion)}
 
         <Table.Cell className="tw:w-50">
           {record.profile?.valuesCount !== undefined &&
@@ -371,72 +383,38 @@ const ColumnProfileTable = () => {
             : '--'}
         </Table.Cell>
 
-        <Table.Cell className="tw:w-27.5">
-          {isUndefined(testCounts?.success) || testCounts?.success === 0 ? (
-            '--'
-          ) : (
-            <Link
-              data-testid={`${record.name}-test-success-count`}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}>
-              <span className="tw:text-success-primary">
-                {testCounts?.success}
-              </span>
-            </Link>
-          )}
-        </Table.Cell>
+        {renderTestCountCell(
+          testCounts?.success,
+          `${record.name}-test-success-count`,
+          'tw:text-success-primary',
+          'tw:w-27.5'
+        )}
 
-        <Table.Cell className="tw:w-25">
-          {isUndefined(testCounts?.failed) || testCounts?.failed === 0 ? (
-            '--'
-          ) : (
-            <Link
-              data-testid={`${record.name}-test-failed-count`}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}>
-              <span className="tw:text-error-primary">
-                {testCounts?.failed}
-              </span>
-            </Link>
-          )}
-        </Table.Cell>
+        {renderTestCountCell(
+          testCounts?.failed,
+          `${record.name}-test-failed-count`,
+          'tw:text-error-primary',
+          'tw:w-25'
+        )}
 
-        <Table.Cell className="tw:w-25">
-          {isUndefined(testCounts?.aborted) || testCounts?.aborted === 0 ? (
-            '--'
-          ) : (
-            <Link
-              data-testid={`${record.name}-test-aborted-count`}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}>
-              <span className="tw:text-warning-primary">
-                {testCounts?.aborted}
-              </span>
-            </Link>
-          )}
-        </Table.Cell>
+        {renderTestCountCell(
+          testCounts?.aborted,
+          `${record.name}-test-aborted-count`,
+          'tw:text-warning-primary',
+          'tw:w-25'
+        )}
       </Table.Row>
     );
   };
 
   if (permissions && !permissions?.ViewDataProfile) {
     return (
-      <ErrorPlaceHolder
-        permissionValue={Operation.ViewDataProfile}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={Operation.ViewDataProfile}
+        />
+      </div>
     );
   }
 
@@ -464,6 +442,7 @@ const ColumnProfileTable = () => {
           <div className="p-x-md p-y-md">
             <Searchbar
               removeMargin
+              containerClassName="tw:ml-auto tw:w-1/2"
               placeholder={t('message.find-in-table')}
               searchValue={searchText}
               typingInterval={500}
@@ -492,8 +471,23 @@ const ColumnProfileTable = () => {
               <Table.Body
                 items={isColumnsLoading || isLoading ? [] : flatRows}
                 renderEmptyState={() =>
-                  isColumnsLoading || isLoading ? null : (
-                    <FilterTablePlaceHolder />
+                  isColumnsLoading || isLoading ? (
+                    <div
+                      className="tw:p-4"
+                      data-testid="column-profile-table-loading-skeletons">
+                      {getSkeletonMockData(5).map((skeletonId) => (
+                        <Skeleton
+                          className="tw:mb-2"
+                          height={40}
+                          key={skeletonId}
+                          width="100%"
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                      <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+                    </div>
                   )
                 }>
                 {({ id, record, depth, hasChildren }) =>

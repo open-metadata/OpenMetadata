@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
 import { searchQuery } from '../../rest/searchAPI';
 import Suggestions from './Suggestions';
 
 // Mock dependencies
 jest.mock('../../rest/searchAPI');
-jest.mock('../../context/TourProvider/TourProvider');
 jest.mock('../../utils/SearchUtils', () => ({
   filterOptionsByIndex: jest.fn((options, index) => {
     return options.filter(
-      (option: any) => option._source?.entityType === index
+      (option: { _source?: { entityType?: string } }) =>
+        option._source?.entityType === index
     );
   }),
   getGroupLabel: jest.fn((index) => `Group ${index}`),
@@ -55,7 +54,6 @@ Object.defineProperty(window, 'location', {
 });
 
 const mockSearchQuery = searchQuery as jest.Mock;
-const mockUseTourProvider = useTourProvider as jest.Mock;
 
 const defaultProps = {
   searchText: 'test',
@@ -70,11 +68,6 @@ describe('Suggestions Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSearchQuery.mockResolvedValue({ hits: { hits: [] } });
-    mockUseTourProvider.mockReturnValue({
-      isTourOpen: false,
-      updateTourPage: jest.fn(),
-      updateTourSearch: jest.fn(),
-    });
   });
 
   describe('AI Query Suggestions', () => {
@@ -150,18 +143,6 @@ describe('Suggestions Component', () => {
       expect(
         await screen.findByText('message.please-enter-to-find-data-assets')
       ).toBeInTheDocument();
-    });
-
-    it('should not call searchQuery when tour is open', () => {
-      mockUseTourProvider.mockReturnValue({
-        isTourOpen: true,
-        updateTourPage: jest.fn(),
-        updateTourSearch: jest.fn(),
-      } as any);
-
-      render(<Suggestions {...defaultProps} />);
-
-      expect(mockSearchQuery).not.toHaveBeenCalled();
     });
   });
 });

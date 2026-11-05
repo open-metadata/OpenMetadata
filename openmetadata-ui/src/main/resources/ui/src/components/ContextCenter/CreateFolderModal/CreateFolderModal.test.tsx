@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { createFolder } from 'rest/assetAPI';
+import { createFolder } from '../../../rest/assetAPI';
 import CreateFolderModal from './CreateFolderModal.component';
 
 jest.mock('rest/assetAPI', () => ({
@@ -88,6 +88,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       placeholder?: string;
     }) => (
       <input
+        aria-label="Folder name"
         data-testid={testId}
         placeholder={placeholder}
         value={value}

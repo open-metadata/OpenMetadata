@@ -18,14 +18,48 @@ import {
   screen,
 } from '@testing-library/react';
 import { MemoryRouter, useParams } from 'react-router-dom';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Paging } from '../../../generated/type/paging';
 import { mockPipelineDetails } from '../../../utils/mocks/PipelineDetailsUtils.mock';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+// Mocked below via jest.mock('../../../utils/ToastUtils', ...) — imported here only to
+// assert on it.
+import { showErrorToast } from '../../../utils/ToastUtils';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import PipelineDetails from './PipelineDetails.component';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
+
+// The component now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context — see TableDetailsPageV1.test.tsx's setMockPermissions for
+// the full rationale (partial-object fidelity, mockReturnValue over mockImplementationOnce,
+// the `deleted`-gating blind spot), mirrored here without repeating it.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const mockTasks = [
   {
@@ -51,7 +85,7 @@ const mockTasks = [
 const mockTaskUpdateHandler = jest.fn();
 
 const PipelineDetailsProps: PipeLineDetailsProp = {
-  pipelineDetails: { tasks: mockTasks } as Pipeline,
+  pipelineDetails: { id: 'pipeline-id', tasks: mockTasks } as Pipeline,
   taskUpdateHandler: mockTaskUpdateHandler,
   fetchPipeline: jest.fn(),
   followPipelineHandler: jest.fn(),
@@ -74,8 +108,9 @@ jest.mock(
   })
 );
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(<p>OwnerLabel</p>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('../../Entity/EntityRightPanel/EntityRightPanel', () => {
@@ -129,12 +164,6 @@ jest.mock('../../common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    permissions: DEFAULT_ENTITY_PERMISSION,
-  }),
-}));
-
 jest.mock('../../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
@@ -143,10 +172,6 @@ jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => ({ tab: 'tasks' })),
 }));
-
-jest.mock('../../../context/LineageProvider/LineageProvider', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
 
 jest.mock('../../Lineage/Lineage.component', () => {
   return jest
@@ -282,6 +307,54 @@ jest.mock('../../../constants/LeftSidebar.constants', () => ({
 }));
 
 describe('Test PipelineDetails component', () => {
+  beforeEach(() => {
+    setMockPermissions(DEFAULT_ENTITY_PERMISSION);
+  });
+
+  // Guardrail: the component calls useEntityPermissions with an `{ id }` identifier — a
+  // regression that swapped in the raw fqn/undefined would silently fetch under a
+  // different cache key. See TableDetailsPageV1.test.tsx's afterEach for the general
+  // rationale on asserting the (resource, identifier) pair.
+  afterEach(() => {
+    const calls = mockUseEntityPermissions.mock.calls;
+    if (calls.length === 0) {
+      return;
+    }
+    const [expectedResource, expectedIdentifier] = calls[0];
+    calls.forEach(([resource, identifier]) => {
+      expect(resource).toBe(expectedResource);
+      expect(identifier).toBe(expectedIdentifier);
+    });
+  });
+
+  it('should fetch permissions by id, not fqn', () => {
+    render(<PipelineDetails {...PipelineDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.PIPELINE,
+      { id: 'pipeline-id' },
+      { deleted: false }
+    );
+  });
+
+  it('shows the permission-fetch error toast when the hook reports an error', () => {
+    setMockPermissions(DEFAULT_ENTITY_PERMISSION, {
+      error: new Error('permission fetch failed'),
+    });
+
+    render(<PipelineDetails {...PipelineDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    // t() is globally mocked to the identity function (see src/setupTests.js), so the
+    // interpolated `entity` option collapses out and only the outer key survives.
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'server.fetch-entity-permissions-error'
+    );
+  });
+
   it('Checks if the PipelineDetails component has all the proper components rendered', async () => {
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} />,

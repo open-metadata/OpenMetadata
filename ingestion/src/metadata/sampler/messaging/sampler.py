@@ -13,7 +13,7 @@ Base sampler for messaging services (Kafka, Kinesis, PubSub, etc.)
 """
 
 from abc import abstractmethod
-from typing import Any, List, Optional, cast  # noqa: UP035
+from typing import Any, cast
 
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, TableData
 from metadata.generated.schema.entity.data.topic import Topic
@@ -27,6 +27,9 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = sampler_logger()
 
+# Distinguishes an absent path from a field explicitly set to null.
+MISSING = object()
+
 
 class MessagingSampler(SamplerInterface):
     """
@@ -39,7 +42,7 @@ class MessagingSampler(SamplerInterface):
         service_connection_config: MessagingConnection,
         ometa_client: OpenMetadata,
         entity: Topic,
-        config: Optional[MessagingSamplerConfig] = None,  # noqa: UP045
+        config: MessagingSamplerConfig | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -66,7 +69,7 @@ class MessagingSampler(SamplerInterface):
     def get_dataset(self, **kwargs):
         raise NotImplementedError
 
-    def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
+    def get_columns(self) -> list[SQALikeColumn]:
         entity: Topic = cast("Topic", self.entity)
         if entity.messageSchema and entity.messageSchema.schemaFields:
             columns = []
@@ -75,7 +78,7 @@ class MessagingSampler(SamplerInterface):
             return columns
         return []
 
-    def _flatten_field(self, field, depth: int = 0, max_depth: int = 10, parent_name: str = "") -> List[SQALikeColumn]:  # noqa: UP006
+    def _flatten_field(self, field, depth: int = 0, max_depth: int = 10, parent_name: str = "") -> list[SQALikeColumn]:
         """
         Recursively flatten RECORD fields to their leaf columns.
         Handles nested RECORDs (RECORD within RECORD) up to max_depth to prevent infinite recursion.
@@ -101,24 +104,51 @@ class MessagingSampler(SamplerInterface):
         return [SQALikeColumn(current_name, cast("DataType", field.dataType))]
 
     @abstractmethod
-    def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
+    def _fetch_messages(self, count: int) -> list[dict]:
         """
         Fetch up to `count` messages from the topic.
         Returns a list of dicts mapping field name to value.
         """
 
     @staticmethod
-    def _resolve(msg: dict, dotted: str) -> object:
-        """Walk a dotted path into nested dicts, returning None when absent."""
+    def _walk(msg: dict, dotted: str) -> object:
+        """Walk a dotted path into nested dicts, returning MISSING when absent.
+
+        Schema paths interleave record *type* names with field names: the avro
+        parser emits ``Order.shipping.Address.city`` for a wire message shaped
+        ``{"shipping": {"city": ...}}``, naming the record type at every RECORD
+        level. Only the field names reach the wire, so a segment the current
+        object does not carry is a type name and is skipped.
+
+        The leaf is exempt from that skip. A missing leaf is a genuine miss, and
+        letting it through would resolve the column to its own container.
+        """
         cur: object = msg
-        for part in dotted.split("."):
-            if isinstance(cur, dict):
-                cur = cur.get(part)
-            else:
-                return None
+        parts = dotted.split(".")
+        for index, part in enumerate(parts):
+            if not isinstance(cur, dict):
+                return MISSING
+            if part in cur:
+                cur = cur[part]
+            elif index == len(parts) - 1:
+                return MISSING
         return cur
 
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
+    @staticmethod
+    def _resolve(msg: dict, dotted: str) -> object:
+        """Resolve a column path against a message, tolerating schema type names.
+
+        Column paths carry the schema's record type names because that is what
+        the auto-classification processor matches on, while the message on the
+        wire carries only field names. Consuming a segment whenever the message
+        does have it keeps a genuinely wrapped message winning over a same-named
+        sibling, and keeps a field explicitly set to null on its own value
+        instead of inheriting one.
+        """
+        value = MessagingSampler._walk(msg, dotted)
+        return None if value is MISSING else value
+
+    def fetch_sample_data(self, columns: list[SQALikeColumn] | None) -> TableData:
         column_objs = columns or self.get_columns()
         column_names = [col.name for col in column_objs]
         if not column_names:

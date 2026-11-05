@@ -32,19 +32,27 @@ jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('./AddWidgetTabContent', () =>
-  jest.fn().mockImplementation(({ getAddWidgetHandler }) => (
-    <div>
-      AddWidgetTabContent
-      <div onClick={getAddWidgetHandler(mockWidgetsData.data[0], 3)}>
-        getAddWidgetHandler
+  jest.fn().mockImplementation(({ getAddWidgetHandler }) => {
+    const handleAddWidget = getAddWidgetHandler(mockWidgetsData.data[0], 3);
+
+    return (
+      <div>
+        AddWidgetTabContent
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={handleAddWidget}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              handleAddWidget(e);
+            }
+          }}>
+          getAddWidgetHandler
+        </div>
       </div>
-    </div>
-  ))
+    );
+  })
 );
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -164,6 +172,10 @@ describe('AddWidgetModal component', () => {
       render(<AddWidgetModal {...mockProps} />);
     });
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });

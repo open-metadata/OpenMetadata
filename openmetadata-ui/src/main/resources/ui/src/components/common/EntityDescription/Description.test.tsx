@@ -10,6 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ChangeSource } from '../../../generated/type/changeSummaryMap';
@@ -33,10 +39,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </div>
   )),
   Button: jest.fn().mockImplementation((props) => (
-    <button data-testid={props['data-testid']} onClick={props.onPress}>
+    <button
+      data-testid={props['data-testid']}
+      onClick={props.onPress ?? props.onClick}>
       {props.children}
     </button>
   )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation((props) => (
+      <button
+        aria-label={props.tooltip}
+        data-testid={props['data-testid']}
+        onClick={props.onClick}
+      />
+    )),
   Divider: jest.fn().mockImplementation(() => <hr />),
   Tooltip: jest.fn().mockImplementation((props) => props.children),
   Typography: jest
@@ -84,10 +101,15 @@ jest.mock(
         visible ? (
           <div data-testid="edit-modal">
             <button
+              aria-label="Save"
               data-testid="modal-save"
               onClick={() => onSave('Updated description')}
             />
-            <button data-testid="modal-cancel" onClick={onCancel} />
+            <button
+              aria-label="Cancel"
+              data-testid="modal-cancel"
+              onClick={onCancel}
+            />
           </div>
         ) : null
       ),
@@ -169,10 +191,49 @@ describe('Description', () => {
     );
   });
 
+  it("should head the card like the rail's widget cards in the widget variant", () => {
+    render(<Description {...defaultProps} wrapInCard headerVariant="widget" />);
+
+    // The widget cards' ghost edit, named by its title, not the bordered button.
+    const edit = screen.getByRole('button', { name: 'label.edit-entity' });
+
+    expect(edit).toHaveAttribute('data-testid', 'edit-description');
+    expect(ButtonUtility).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'data-testid': 'edit-description',
+        icon: Edit01,
+      }),
+      expect.anything()
+    );
+    expect(Button).not.toHaveBeenCalledWith(
+      expect.objectContaining({ 'data-testid': 'edit-description' }),
+      expect.anything()
+    );
+    expect(Typography).toHaveBeenCalledWith(
+      expect.objectContaining({
+        children: 'label.description',
+        className: 'tw:whitespace-nowrap tw:text-quaternary',
+      }),
+      expect.anything()
+    );
+  });
+
   it('should show the edit button when edit access is granted', () => {
     render(<Description {...defaultProps} />);
 
     expect(screen.getByTestId('edit-description')).toBeInTheDocument();
+  });
+
+  it('should use the core Edit01 icon for the edit button', () => {
+    render(<Description {...defaultProps} />);
+
+    expect(ButtonUtility).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'data-testid': 'edit-description',
+        icon: Edit01,
+      }),
+      expect.anything()
+    );
   });
 
   it('should hide the edit button when edit access is not granted', () => {
@@ -320,6 +381,7 @@ describe('Description', () => {
   it('should render the authored-by footer when change metadata is present', () => {
     mockUseGenericContext.mockReturnValue({
       isVersionView: false,
+      type: EntityType.TABLE,
       changeSummary: {
         description: {
           changeSource: ChangeSource.Manual,
@@ -333,6 +395,27 @@ describe('Description', () => {
     render(<Description {...defaultProps} />);
 
     expect(screen.getByTestId('authored-by-footer')).toBeInTheDocument();
+  });
+
+  it('should not inherit the page-level change summary when entityType differs from the context entity', () => {
+    // Regression test for #32256: a Query rendered on a Table page must not pick up the
+    // table's description-provenance from the GenericProvider context.
+    mockUseGenericContext.mockReturnValue({
+      isVersionView: false,
+      type: EntityType.TABLE,
+      changeSummary: {
+        description: {
+          changeSource: ChangeSource.Suggested,
+          changedBy: 'admin',
+          changedAt: 1700000000000,
+        },
+      },
+      onThreadLinkSelect: mockOnThreadLinkSelect,
+    });
+
+    render(<Description {...defaultProps} entityType={EntityType.QUERY} />);
+
+    expect(screen.queryByTestId('authored-by-footer')).not.toBeInTheDocument();
   });
 
   it('should not render the authored-by footer when change metadata is absent', () => {

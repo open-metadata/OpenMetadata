@@ -15,7 +15,6 @@ Exit handler safety net for Kubernetes ingestion pipeline jobs
 import logging
 import os
 from datetime import datetime
-from typing import Optional
 
 import yaml
 from kubernetes import client, config
@@ -52,8 +51,8 @@ class FailureDiagnostics(BaseModel):
         has_diagnostics: True if any diagnostic information was successfully gathered
     """
 
-    pod_logs: Optional[str] = None  # noqa: UP045
-    pod_description: Optional[str] = None  # noqa: UP045
+    pod_logs: str | None = None
+    pod_description: str | None = None
 
     @property
     def has_diagnostics(self) -> bool:
@@ -84,7 +83,7 @@ TERMINAL_PIPELINE_STATES = {
 logger = ometa_logger()
 
 
-def get_kubernetes_client() -> Optional[client.CoreV1Api]:  # noqa: UP045
+def get_kubernetes_client() -> client.CoreV1Api | None:
     """
     Initialize and return Kubernetes client.
     First tries in-cluster config, then falls back to local kubeconfig.
@@ -118,10 +117,10 @@ POD_TYPE_MAIN = "main"
 
 def find_main_pod(
     k8s_client: client.CoreV1Api,
-    job_name: Optional[str],  # noqa: UP045
+    job_name: str | None,
     namespace: str,
-    pipeline_run_id: Optional[str] = None,  # noqa: UP045
-) -> Optional[V1Pod]:  # noqa: UP045
+    pipeline_run_id: str | None = None,
+) -> V1Pod | None:
     """
     Find the main ingestion pod for the given Kubernetes job.
     This function is fault-tolerant and will not raise exceptions.
@@ -143,7 +142,6 @@ def find_main_pod(
                 [
                     f"{LABEL_JOB_NAME}={job_name}",
                     f"{LABEL_OMJOB_NAME}={job_name},{LABEL_POD_TYPE}={POD_TYPE_MAIN}",
-                    f"{LABEL_OMJOB_NAME}={job_name}",
                 ]
             )
 
@@ -151,7 +149,6 @@ def find_main_pod(
             label_selectors.extend(
                 [
                     f"{LABEL_APP_RUN_ID}={pipeline_run_id},{LABEL_POD_TYPE}={POD_TYPE_MAIN}",
-                    f"{LABEL_APP_RUN_ID}={pipeline_run_id}",
                 ]
             )
 
@@ -168,6 +165,15 @@ def find_main_pod(
             for pod in pods.items:
                 try:
                     if pod.metadata and pod.metadata.name:
+                        labels = pod.metadata.labels or {}
+                        pod_type = labels.get(LABEL_POD_TYPE)
+                        if pod_type != POD_TYPE_MAIN:
+                            logger.info(
+                                "Skipping non-main pod %s (pod-type=%s)",
+                                pod.metadata.name,
+                                pod_type,
+                            )
+                            continue
                         logger.info(f"Found main pod: {pod.metadata.name} (selector: {label_selector})")
                         return pod
                 except Exception as pod_error:
@@ -182,7 +188,7 @@ def find_main_pod(
         return None
 
 
-def get_main_pod_logs(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str) -> Optional[str]:  # noqa: UP045
+def get_main_pod_logs(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str) -> str | None:
     """
     Fetch logs from the main ingestion pod.
     This function is fault-tolerant and will not raise exceptions.
@@ -219,7 +225,7 @@ def get_main_pod_logs(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: 
         return None
 
 
-def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str) -> Optional[str]:  # noqa: C901, UP045
+def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str) -> str | None:  # noqa: C901
     """
     Get detailed pod description for the main ingestion pod.
     This function is fault-tolerant and will not raise exceptions.
@@ -318,7 +324,7 @@ def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, name
         return None
 
 
-def create_pod_diagnostics(main_pod_logs: Optional[str], pod_description: Optional[str]) -> StepSummary:  # noqa: UP045
+def create_pod_diagnostics(main_pod_logs: str | None, pod_description: str | None) -> StepSummary:
     """
     Create a StepSummary with pod diagnostics for failed workflows.
     """
@@ -401,7 +407,7 @@ def get_or_create_pipeline_status(metadata: OpenMetadata, workflow_config) -> Pi
 def gather_failure_diagnostics(
     job_name: str | None,
     namespace: str,
-    pipeline_run_id: Optional[str] = None,  # noqa: UP045
+    pipeline_run_id: str | None = None,
 ) -> FailureDiagnostics:
     """
     Gather diagnostic information from failed Kubernetes job pods.

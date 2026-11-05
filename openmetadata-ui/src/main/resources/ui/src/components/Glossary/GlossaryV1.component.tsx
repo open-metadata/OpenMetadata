@@ -20,15 +20,13 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityAction, EntityTabs, EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
+import { refreshGlossaryProposals } from '../../hooks/governance/glossary/useGlossaryProposals';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import {
@@ -38,21 +36,46 @@ import {
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
 import { updateGlossaryTermByFqn } from '../../utils/GlossaryPureUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import DeleteModal from '../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../common/Loader/Loader';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
-import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
+import GlossaryTermDrawer from './GlossaryTermDrawer/GlossaryTermDrawer';
 import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
 import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
+
+const getGlossaryCustomPageType = (isGlossaryActive: boolean) =>
+  isGlossaryActive ? PageType.Glossary : PageType.GlossaryTerm;
+
+const shouldShowGlossaryLoader = (
+  isLoading: boolean,
+  isPermissionLoading: boolean
+) => isLoading || isPermissionLoading;
+
+const shouldRenderGlossarySelectedData = (
+  isLoading: boolean,
+  isPermissionLoading: boolean,
+  selectedData: Glossary | GlossaryTerm
+) => !isLoading && !isPermissionLoading && !isEmpty(selectedData);
+
+const getActiveGlossaryPermission = (
+  isGlossaryActive: boolean,
+  glossaryPermission: OperationPermission,
+  glossaryTermPermission: OperationPermission
+) => (isGlossaryActive ? glossaryPermission : glossaryTermPermission);
+
+const getActiveGlossaryEntityType = (isGlossaryActive: boolean) =>
+  isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM;
+
 const GlossaryV1 = ({
   isGlossaryActive,
   selectedData,
@@ -74,7 +97,7 @@ const GlossaryV1 = ({
     tab: string;
   }>();
   const { customizedPage } = useCustomPages(
-    isGlossaryActive ? PageType.Glossary : PageType.GlossaryTerm
+    getGlossaryCustomPageType(isGlossaryActive)
   );
   const navigate = useNavigate();
   const [activeGlossaryTerm, setActiveGlossaryTerm] =
@@ -220,6 +243,11 @@ const GlossaryV1 = ({
     []
   );
 
+  const handleGlossaryTermDrawerClose = useCallback(
+    () => setIsEditModalOpen(false),
+    []
+  );
+
   const updateGlossaryTermInStore = (updatedTerm: GlossaryTerm) => {
     const clonedTerms = cloneDeep(glossaryChildTerms);
     const updatedGlossaryTerms = updateGlossaryTermByFqn(
@@ -250,6 +278,7 @@ const GlossaryV1 = ({
         childrenCount: currentData.childrenCount,
       });
       setIsEditModalOpen(false);
+      refreshGlossaryProposals();
     }
   };
 
@@ -270,6 +299,7 @@ const GlossaryV1 = ({
       // Close modal and set loading to false
       setIsEditModalOpen(false);
       setTermsLoading(false);
+      refreshGlossaryProposals();
       // Refresh glossary list to update term count
       if (isGlossaryActive && refreshGlossaryList) {
         refreshGlossaryList();
@@ -319,8 +349,7 @@ const GlossaryV1 = ({
         newTermData.owners = owners;
         newTermData.references = references;
         newTermData.relatedTerms = relatedTerms?.map((term) => ({
-          id: term,
-          type: 'glossaryTerm',
+          term: { id: term, type: 'glossaryTerm' },
         }));
         await updateGlossaryTerm(activeGlossaryTerm, newTermData);
       }
@@ -362,16 +391,30 @@ const GlossaryV1 = ({
   };
 
   const initializeGlossary = async () => {
-    const permission = await initPermissions();
-    if (permission?.ViewAll || permission?.ViewBasic) {
-      // Only load terms if we're viewing a glossary term, not a glossary
-      // GlossaryTermTab handles pagination for glossaries
-      if (!isGlossaryActive) {
-        loadGlossaryTerms();
+    try {
+      const permission = await initPermissions();
+      // Derived from the just-fetched return value, not the `glossaryPermission`/
+      // `glossaryTermPermission` state: state updates are async, so reading state
+      // here would race the pending update and see the previous permission.
+      // `DEFAULT_ENTITY_PERMISSION` (all-false) fallback preserves the old
+      // `permission?.ViewAll || permission?.ViewBasic` behavior for an
+      // undefined/falsy return.
+      if (
+        getDerivedPermissionFlags(permission ?? DEFAULT_ENTITY_PERMISSION)
+          .hasViewAccess
+      ) {
+        // Only load terms if we're viewing a glossary term, not a glossary
+        // GlossaryTermTab handles pagination for glossaries
+        if (!isGlossaryActive) {
+          loadGlossaryTerms();
+        } else {
+          setIsLoading(false);
+        }
       } else {
         setIsLoading(false);
       }
-    } else {
+    } catch {
+      // Permission fetch already showed an error toast; ensure loading state is cleared
       setIsLoading(false);
     }
   };
@@ -406,18 +449,30 @@ const GlossaryV1 = ({
     setIsTabExpanded(!isTabExpanded);
   };
 
+  // Local derivation over the fetched `glossaryPermission` state — this file fetches
+  // its own permission (owner), but does so across two conditional resource types
+  // (GLOSSARY / GLOSSARY_TERM, chosen by `isGlossaryActive`) plus a static
+  // isVersionsView bypass, none of which fits the single-resource useEntityPermissions
+  // shape cleanly. Deferred: fetch mechanism left untouched (out of scope for this
+  // batch, per the DataQualityTab/TableProfilerProvider precedent), only the raw
+  // ViewAll/ViewBasic reads convert.
+  const glossaryFlags = useMemo(
+    () => getDerivedPermissionFlags(glossaryPermission),
+    [glossaryPermission]
+  );
+
   const glossaryContent = useMemo(() => {
-    if (!(glossaryPermission.ViewAll || glossaryPermission.ViewBasic)) {
+    if (!glossaryFlags.hasViewAccess) {
       return (
         <div className="full-height">
-          <ErrorPlaceHolder
-            className="mt-0-important border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.glossary'),
-            })}
-            size={SIZE.X_LARGE}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <PermissionPlaceholder
+              data-testid="permission-error-placeholder"
+              permissionValue={t('label.view-entity', {
+                entity: t('label.glossary'),
+              })}
+            />
+          </div>
         </div>
       );
     }
@@ -434,8 +489,7 @@ const GlossaryV1 = ({
       />
     );
   }, [
-    glossaryPermission.ViewAll,
-    glossaryPermission.ViewBasic,
+    glossaryFlags.hasViewAccess,
     isTabExpanded,
     isVersionsView,
     onGlossaryDelete,
@@ -443,9 +497,15 @@ const GlossaryV1 = ({
     updateVote,
   ]);
 
+  const shouldRenderSelectedData = shouldRenderGlossarySelectedData(
+    isLoading,
+    isPermissionLoading,
+    selectedData
+  );
+
   return (
     <>
-      {(isLoading || isPermissionLoading) && <Loader />}
+      {shouldShowGlossaryLoader(isLoading, isPermissionLoading) && <Loader />}
 
       <GenericProvider<Glossary | GlossaryTerm>
         currentVersionData={selectedData}
@@ -453,14 +513,14 @@ const GlossaryV1 = ({
         data={selectedData}
         isTabExpanded={isTabExpanded}
         isVersionView={isVersionsView}
-        permissions={
-          isGlossaryActive ? glossaryPermission : glossaryTermPermission
-        }
-        type={isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
+        permissions={getActiveGlossaryPermission(
+          isGlossaryActive,
+          glossaryPermission,
+          glossaryTermPermission
+        )}
+        type={getActiveGlossaryEntityType(isGlossaryActive)}
         onUpdate={handleGlossaryUpdate}>
-        {!isLoading &&
-          !isPermissionLoading &&
-          !isEmpty(selectedData) &&
+        {shouldRenderSelectedData &&
           (isGlossaryActive ? (
             glossaryContent
           ) : (
@@ -492,11 +552,10 @@ const GlossaryV1 = ({
       )}
 
       {isEditModalOpen && (
-        <GlossaryTermModal
+        <GlossaryTermDrawer
           editMode={editMode}
           glossaryTermFQN={activeGlossaryTerm?.fullyQualifiedName}
-          visible={isEditModalOpen}
-          onCancel={() => setIsEditModalOpen(false)}
+          onCancel={handleGlossaryTermDrawerClose}
           onSave={handleGlossaryTermSave}
         />
       )}

@@ -1,0 +1,27 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { EntityType } from '../../../../../../enums/entity.enum';
+import { EntityReference } from '../../../../../../generated/entity/type';
+import { getEntityLinkFromType } from '../../../../../../utils/EntityLinkUtils';
+
+const ALLOW_EFFECT = 'ALLOW';
+
+export const getEffectBadgeColor = (effect: string): 'success' | 'error' =>
+  effect?.toUpperCase() === ALLOW_EFFECT ? 'success' : 'error';
+
+export const getPermissionEntityLink = (ref: EntityReference): string => {
+  const fqn = ref.fullyQualifiedName ?? ref.name ?? '';
+
+  return getEntityLinkFromType(fqn, ref.type as EntityType) || '#';
+};

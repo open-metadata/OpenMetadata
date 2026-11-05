@@ -792,23 +792,6 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        # connection arguments without db
-        expected_url = "mssql+pytds://sa:password@localhost:1433"
-        mssql_conn_obj = MssqlConnection(
-            username="sa",
-            password="password",
-            hostPort="localhost:1433",
-            scheme=MssqlScheme.mssql_pytds,
-            database=None,
-        )
-
-        assert expected_url == get_connection_url(mssql_conn_obj)
-
-    def test_mssql_url(self):  # noqa: F811
-        from metadata.ingestion.source.database.mssql.connection import (
-            get_connection_url,
-        )
-
         # Passing @ in username and password
         expected_url = "mssql+pytds://sa%40123:password%40444@localhost:1433/master"
         mssql_conn_obj = MssqlConnection(
@@ -834,41 +817,41 @@ class SourceConnectionTest(TestCase):
 
     def test_oracle_url(self):
         # oracle with db
-        expected_url = "oracle+cx_oracle://admin:password@localhost:1541/testdb"
+        expected_url = "oracle+oracledb://admin:password@localhost:1541/testdb"
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
-            scheme=OracleScheme.oracle_cx_oracle,
+            scheme=OracleScheme.oracle_oracledb,
             oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
         )
 
         assert expected_url == OracleConnection.get_connection_url(oracle_conn_obj)
 
         # oracle with service name
-        expected_url = "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb"
+        expected_url = "oracle+oracledb://admin:password@localhost:1541/?service_name=testdb"
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
-            scheme=OracleScheme.oracle_cx_oracle,
+            scheme=OracleScheme.oracle_oracledb,
             oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
         )
         assert expected_url == OracleConnection.get_connection_url(oracle_conn_obj)
 
         # oracle with db & connection options
         expected_url = [
-            "oracle+cx_oracle://admin:password@localhost:1541/testdb?test_key_2=test_value_2&test_key_1=test_value_1",
-            "oracle+cx_oracle://admin:password@localhost:1541/testdb?test_key_1=test_value_1&test_key_2=test_value_2",
+            "oracle+oracledb://admin:password@localhost:1541/testdb?test_key_2=test_value_2&test_key_1=test_value_1",
+            "oracle+oracledb://admin:password@localhost:1541/testdb?test_key_1=test_value_1&test_key_2=test_value_2",
         ]
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
-            scheme=OracleScheme.oracle_cx_oracle,
+            scheme=OracleScheme.oracle_oracledb,
             oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
             connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
         )
@@ -876,15 +859,15 @@ class SourceConnectionTest(TestCase):
 
         # oracle with service name & connection options
         expected_url = [
-            "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb&test_key_2=test_value_2&test_key_1=test_value_1",
-            "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb&test_key_1=test_value_1&test_key_2=test_value_2",
+            "oracle+oracledb://admin:password@localhost:1541/?service_name=testdb&test_key_2=test_value_2&test_key_1=test_value_1",
+            "oracle+oracledb://admin:password@localhost:1541/?service_name=testdb&test_key_1=test_value_1&test_key_2=test_value_2",
         ]
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
-            scheme=OracleScheme.oracle_cx_oracle,
+            scheme=OracleScheme.oracle_oracledb,
             oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
             connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
         )
@@ -894,7 +877,7 @@ class SourceConnectionTest(TestCase):
             "(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)"
             "(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME)))"
         )
-        expected_url = f"oracle+cx_oracle://admin:password@{tns_connection}"
+        expected_url = f"oracle+oracledb://admin:password@{tns_connection}"
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",

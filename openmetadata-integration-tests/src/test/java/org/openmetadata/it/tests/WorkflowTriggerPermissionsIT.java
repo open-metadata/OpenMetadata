@@ -2,7 +2,9 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -14,25 +16,40 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.QueryRunnerRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for trigger-endpoint authorization on
@@ -44,8 +61,9 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *   <li>TEST_CONNECTION with {@code serviceName} set — authorized via ANY of EDIT_ALL on the
  *       service OR CREATE on INGESTION_PIPELINE.
  *   <li>TEST_CONNECTION with no {@code serviceName} — authorized via CREATE on INGESTION_PIPELINE.
- *   <li>Other workflow types — intentionally NOT gated by this authorizer (scope limited to
- *       TEST_CONNECTION per issue #26760); they retain their prior trigger behavior.
+ *   <li>REVERSE_INGESTION — authorized via EDIT_ALL on the service it writes back to.
+ *   <li>QUERY_RUNNER — only the requester the stored query runs as, or an admin or bot.
+ *   <li>TEST_SPARK_ENGINE_CONNECTION — authorized via CREATE on INGESTION_PIPELINE.
  * </ul>
  */
 @Execution(ExecutionMode.CONCURRENT)
@@ -179,6 +197,166 @@ public class WorkflowTriggerPermissionsIT {
             + "(falls back to INGESTION_PIPELINE CREATE)");
   }
 
+  @ParameterizedTest
+  @EnumSource(WorkflowUpdateMethod.class)
+  void test_editTestConnection_cannotRetargetStoredSecrets(
+      WorkflowUpdateMethod method, TestNamespace ns) throws Exception {
+    final WorkflowEditFixture fixture = workflowClaimedByNonServiceOwner(ns, method);
+    final CreateWorkflow edit =
+        testConnectionRequest(fixture.workflow().getName(), fixture.ownedService().getName())
+            .withDescription("Retarget connection")
+            .withStatus(WorkflowStatus.RUNNING)
+            .withResponse(new TestConnectionResult().withSteps(List.of()));
+    final TestServiceConnectionRequest request = (TestServiceConnectionRequest) edit.getRequest();
+    request.setConnection(
+        new DatabaseConnection()
+            .withConfig(
+                new MysqlConnection()
+                    .withHostPort("alternate.example.net:3306")
+                    .withUsername("openmetadata_user")
+                    .withAuthType(new basicAuth().withPassword("*********"))));
+
+    final Workflow updated = editWorkflow(fixture, edit, method);
+    assertExecutionRequestUnchanged(fixture.workflow(), updated);
+    final Workflow stored = fixture.editor().workflows().get(fixture.workflow().getId().toString());
+    assertExecutionRequestUnchanged(fixture.workflow(), stored);
+    assertEquals(WorkflowStatus.RUNNING, stored.getStatus());
+    assertEquals(edit.getDescription(), stored.getDescription());
+    assertEquals(
+        JsonUtils.valueToTree(edit.getResponse()), JsonUtils.valueToTree(stored.getResponse()));
+    assertEquals(403, triggerWorkflow(stored.getId(), fixture.token()).statusCode());
+
+    final Workflow runnerWorkflow =
+        SdkClients.ingestionBotClient().workflows().getByName(stored.getFullyQualifiedName());
+    assertEquals(
+        "mysql:3306",
+        JsonUtils.valueToTree(runnerWorkflow.getRequest())
+            .at("/connection/config/hostPort")
+            .asText());
+    assertEquals(
+        "openmetadata_password",
+        JsonUtils.valueToTree(runnerWorkflow.getRequest())
+            .at("/connection/config/authType/password")
+            .asText());
+  }
+
+  @ParameterizedTest
+  @EnumSource(WorkflowUpdateMethod.class)
+  void test_editTestConnection_cannotBypassTriggerBySwitchingType(
+      WorkflowUpdateMethod method, TestNamespace ns) throws Exception {
+    final WorkflowEditFixture fixture = workflowClaimedByNonServiceOwner(ns, method);
+    final CreateWorkflow edit =
+        queryRunnerRequest(fixture.workflow().getName(), SharedEntities.get().USER3_REF)
+            .withDescription("Switch workflow type")
+            .withStatus(WorkflowStatus.RUNNING);
+
+    final Workflow updated = editWorkflow(fixture, edit, method);
+    assertExecutionRequestUnchanged(fixture.workflow(), updated);
+    final Workflow stored =
+        fixture.editor().workflows().getByName(fixture.workflow().getFullyQualifiedName());
+    assertExecutionRequestUnchanged(fixture.workflow(), stored);
+    assertEquals(edit.getDescription(), stored.getDescription());
+    assertEquals(403, triggerWorkflow(stored.getId(), fixture.token()).statusCode());
+  }
+
+  private enum WorkflowUpdateMethod {
+    PATCH_ID,
+    PATCH_NAME,
+    PUT
+  }
+
+  private record WorkflowEditFixture(
+      Workflow workflow, DatabaseService ownedService, OpenMetadataClient editor, String token) {}
+
+  private WorkflowEditFixture workflowClaimedByNonServiceOwner(
+      TestNamespace ns, WorkflowUpdateMethod method) throws Exception {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final EntityReference attacker = SharedEntities.get().USER3_REF;
+    final DatabaseService victim =
+        ns.trackRoot(
+            Entity.DATABASE_SERVICE,
+            createMysqlService(
+                admin, ns.prefix("original" + method), List.of(SharedEntities.get().USER2_REF)));
+    final DatabaseService ownedService =
+        ns.trackRoot(
+            Entity.DATABASE_SERVICE,
+            createMysqlService(admin, ns.prefix("alternate" + method), List.of(attacker)));
+    final CreateWorkflow create =
+        testConnectionRequest(ns.prefix("immutable" + method), victim.getName());
+    final TestServiceConnectionRequest request = (TestServiceConnectionRequest) create.getRequest();
+    final MysqlConnection connection =
+        (MysqlConnection) ((DatabaseConnection) request.getConnection()).getConfig();
+    connection.setAuthType(new basicAuth().withPassword("*********"));
+    final Workflow workflow = ns.trackRoot(Entity.WORKFLOW, admin.workflows().create(create));
+    final String email = "shared_user3@test.openmetadata.org";
+    final OpenMetadataClient editor = SdkClients.createClient(email, email, new String[] {});
+    final String token = tokenFor(email, new String[] {});
+    assertEquals(403, triggerWorkflow(workflow.getId(), token).statusCode());
+
+    final ArrayNode claim = JsonUtils.getObjectMapper().createArrayNode();
+    claim
+        .addObject()
+        .put("op", "add")
+        .put("path", "/owners")
+        .set("value", JsonUtils.valueToTree(List.of(attacker)));
+    final Workflow claimed = editor.workflows().patch(workflow.getId(), claim);
+    assertEquals(
+        "*********",
+        JsonUtils.valueToTree(claimed.getRequest())
+            .at("/connection/config/authType/password")
+            .asText());
+    return new WorkflowEditFixture(claimed, ownedService, editor, token);
+  }
+
+  private Workflow editWorkflow(
+      WorkflowEditFixture fixture, CreateWorkflow edit, WorkflowUpdateMethod method) {
+    if (method == WorkflowUpdateMethod.PUT) {
+      return fixture
+          .editor()
+          .getHttpClient()
+          .execute(HttpMethod.PUT, "/v1/automations/workflows", edit, Workflow.class);
+    }
+    final ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/request")
+        .set("value", JsonUtils.valueToTree(edit.getRequest()));
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/workflowType")
+        .put("value", edit.getWorkflowType().value());
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/description")
+        .put("value", edit.getDescription());
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/status")
+        .put("value", edit.getStatus().value());
+    if (edit.getResponse() != null) {
+      patch
+          .addObject()
+          .put("op", "add")
+          .put("path", "/response")
+          .set("value", JsonUtils.valueToTree(edit.getResponse()));
+    }
+    final String identifier =
+        method == WorkflowUpdateMethod.PATCH_NAME
+            ? "name/" + fixture.workflow().getFullyQualifiedName()
+            : fixture.workflow().getId().toString();
+    return fixture.editor().workflows().patch(identifier, patch);
+  }
+
+  private void assertExecutionRequestUnchanged(Workflow original, Workflow updated) {
+    assertEquals(original.getWorkflowType(), updated.getWorkflowType());
+    assertEquals(
+        JsonUtils.valueToTree(original.getRequest()), JsonUtils.valueToTree(updated.getRequest()));
+  }
+
   @Test
   void test_triggerNonTestConnection_admin_authPasses(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -190,17 +368,155 @@ public class WorkflowTriggerPermissionsIT {
   }
 
   @Test
-  void test_triggerNonTestConnection_notGatedByTestConnectionAuth(TestNamespace ns)
-      throws Exception {
+  void test_triggerQueryRunner_nonRequester_returns403(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
-    Workflow workflow = admin.workflows().create(queryRunnerRequest(ns.prefix("qr-dc")));
+    Workflow workflow =
+        admin
+            .workflows()
+            .create(queryRunnerRequest(ns.prefix("qr-dc"), SharedEntities.get().USER2_REF));
 
     HttpResponse<String> response = triggerWorkflow(workflow.getId(), dataConsumerToken());
 
-    assertAuthPassed(
-        response,
-        "non-TEST_CONNECTION triggers are intentionally out of scope for the test-connection "
-            + "authorizer (issue #26760) and must not be blocked by it");
+    assertEquals(
+        403,
+        response.statusCode(),
+        "a stored query runs with its requester's credentials, so nobody else may replay it");
+  }
+
+  @Test
+  void test_triggerQueryRunner_requester_authPasses(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Workflow workflow =
+        admin
+            .workflows()
+            .create(queryRunnerRequest(ns.prefix("qr-requester"), SharedEntities.get().USER2_REF));
+
+    String requesterToken = tokenFor("shared_user2@test.openmetadata.org", new String[] {});
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), requesterToken);
+
+    assertAuthPassed(response, "the requester must pass auth on their own QUERY_RUNNER workflow");
+  }
+
+  @Test
+  void test_triggerReverseIngestion_serviceOwner_authPasses(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseService ownedService =
+        createMysqlService(
+            admin, ns.prefix("ri-owned-svc"), List.of(SharedEntities.get().USER2_REF));
+    Workflow workflow =
+        admin.workflows().create(reverseIngestionRequest(ns.prefix("ri-owner"), ownedService));
+
+    String ownerToken = tokenFor("shared_user2@test.openmetadata.org", new String[] {});
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), ownerToken);
+
+    assertAuthPassed(response, "the service owner must pass auth via EDIT_ALL on the service");
+  }
+
+  @Test
+  void test_triggerReverseIngestion_nonOwner_returns403(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseService ownedService =
+        createMysqlService(
+            admin, ns.prefix("ri-user2-svc"), List.of(SharedEntities.get().USER2_REF));
+    Workflow workflow =
+        admin.workflows().create(reverseIngestionRequest(ns.prefix("ri-nonowner"), ownedService));
+
+    String nonOwnerToken = tokenFor("shared_user3@test.openmetadata.org", new String[] {});
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), nonOwnerToken);
+
+    assertEquals(
+        403,
+        response.statusCode(),
+        "reverse ingestion writes to the source system; a user who cannot edit the service "
+            + "must not trigger it");
+  }
+
+  @Test
+  void test_triggerSparkEngineConnection_dataConsumer_returns403(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Workflow workflow =
+        admin
+            .workflows()
+            .create(
+                new CreateWorkflow()
+                    .withName(ns.prefix("spark-dc"))
+                    .withDescription("spark engine connection test")
+                    .withWorkflowType(WorkflowType.TEST_SPARK_ENGINE_CONNECTION)
+                    .withRequest(new TestSparkEngineConnectionRequest()));
+
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), dataConsumerToken());
+
+    assertEquals(
+        403,
+        response.statusCode(),
+        "DataConsumer has no CREATE on ingestion pipelines and must be denied");
+  }
+
+  @Test
+  void test_triggerTestConnection_impersonatingBotWithoutGrant_returns403(TestNamespace ns)
+      throws Exception {
+    // Advisory PoC: a bot without the impersonation grant attaches X-Impersonate-User to reach a
+    // gated trigger. authorizeWorkflowTrigger -> authorizeRequests must resolve the effective
+    // subject through impersonation validation and deny it, not trust the header.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseService service = createMysqlService(admin, ns.prefix("svc-impbot"), null);
+    Workflow workflow =
+        admin
+            .workflows()
+            .create(testConnectionRequest(ns.prefix("impbot-trig"), service.getName()));
+
+    String botToken = createImpersonationBotToken(ns, "nogrant", false);
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), botToken, "admin");
+
+    assertEquals(
+        403,
+        response.statusCode(),
+        "Impersonating bot without the grant must be denied on the trigger endpoint: "
+            + response.body());
+    assertTrue(
+        response.body().contains("impersonation"),
+        "Denial must come from impersonation validation: " + response.body());
+  }
+
+  private String createImpersonationBotToken(
+      TestNamespace ns, String suffix, boolean allowImpersonation) {
+    String localPart = "trigbot" + suffix + ns.shortPrefix();
+    OpenMetadataClient admin = SdkClients.adminClient();
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+    User botUser =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(localPart)
+                    .withEmail(localPart + "@test.com")
+                    .withIsBot(true)
+                    .withAuthenticationMechanism(authMechanism));
+    admin
+        .bots()
+        .create(
+            new CreateBot()
+                .withName(ns.prefix("trig_" + suffix + "_bot"))
+                .withBotUser(botUser.getName())
+                .withAllowImpersonation(allowImpersonation));
+    return admin.users().generateToken(botUser.getId(), JWTTokenExpiry.Seven).getJWTToken();
+  }
+
+  private HttpResponse<String> triggerWorkflow(
+      UUID workflowId, String token, String impersonateUser) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + TRIGGER_PATH + workflowId))
+            .header("Authorization", "Bearer " + token)
+            .header("X-Impersonate-User", impersonateUser)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private CreateWorkflow testConnectionRequest(String name, String serviceName) {
@@ -226,12 +542,32 @@ public class WorkflowTriggerPermissionsIT {
   }
 
   private CreateWorkflow queryRunnerRequest(String name) {
+    return queryRunnerRequest(name, null);
+  }
+
+  private CreateWorkflow queryRunnerRequest(String name, EntityReference requester) {
     QueryRunnerRequest request =
-        new QueryRunnerRequest().withConnectionType("Mysql").withQuery("SELECT 1");
+        new QueryRunnerRequest()
+            .withConnectionType("Mysql")
+            .withQuery("SELECT 1")
+            .withUserId(requester == null ? null : requester.getId());
     return new CreateWorkflow()
         .withName(name)
         .withDescription(name)
         .withWorkflowType(WorkflowType.QUERY_RUNNER)
+        .withRequest(request);
+  }
+
+  private CreateWorkflow reverseIngestionRequest(String name, DatabaseService service) {
+    ReverseIngestionPipeline request =
+        new ReverseIngestionPipeline()
+            .withType(ReverseIngestionPipeline.ReverseIngestionType.REVERSE_INGESTION)
+            .withService(service.getEntityReference())
+            .withOperations(List.of());
+    return new CreateWorkflow()
+        .withName(name)
+        .withDescription(name)
+        .withWorkflowType(WorkflowType.REVERSE_INGESTION)
         .withRequest(request);
   }
 

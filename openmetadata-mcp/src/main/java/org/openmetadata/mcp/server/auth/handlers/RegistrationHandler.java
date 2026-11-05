@@ -4,6 +4,7 @@ import java.net.URI;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -12,6 +13,7 @@ import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.OAuthClientMetadata;
 import org.openmetadata.mcp.auth.exception.RegistrationException;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
+import org.openmetadata.mcp.server.auth.util.UriUtils;
 
 /**
  * Handler for OAuth 2.0 Dynamic Client Registration (RFC 7591).
@@ -40,7 +42,7 @@ public class RegistrationHandler {
   // per RFC 8252 Section 7.1 (e.g. cursor://, vscode://, claude-desktop://)
   private static final Set<String> BLOCKED_REDIRECT_SCHEMES =
       Set.of("javascript", "data", "file", "blob", "vbscript");
-  private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "::1");
+  private static final String SCHEME_HTTP = "http";
 
   private final OAuthClientRepository clientRepository;
 
@@ -162,35 +164,7 @@ public class RegistrationHandler {
       }
     }
 
-    // redirect_uris is REQUIRED per RFC 7591 Section 2
-    if (metadata.getRedirectUris() == null || metadata.getRedirectUris().isEmpty()) {
-      throw new RegistrationException(
-          "invalid_redirect_uri", "At least one redirect_uri must be provided");
-    }
-    validateListSize(metadata.getRedirectUris(), "redirect_uris", MAX_REDIRECT_URIS);
-
-    // Validate redirect URI schemes and hosts
-    // RFC 8252 Section 7.1: native apps may use private-use URI schemes (e.g. cursor://, vscode://)
-    // RFC 8252 Section 7.3: http redirect URIs MUST use loopback addresses only
-    for (URI uri : metadata.getRedirectUris()) {
-      String scheme = uri.getScheme();
-      if (scheme == null || BLOCKED_REDIRECT_SCHEMES.contains(scheme.toLowerCase())) {
-        throw new RegistrationException(
-            "invalid_redirect_uri", "redirect_uri uses a disallowed scheme: " + uri);
-      }
-      if (uri.getFragment() != null) {
-        throw new RegistrationException(
-            "invalid_redirect_uri", "redirect_uri must not contain a fragment: " + uri);
-      }
-      if ("http".equalsIgnoreCase(scheme)) {
-        String host = uri.getHost();
-        if (host == null || !LOOPBACK_HOSTS.contains(host)) {
-          throw new RegistrationException(
-              "invalid_redirect_uri",
-              "http redirect_uri must use localhost/loopback address: " + uri);
-        }
-      }
-    }
+    validateRedirectUris(metadata);
 
     // Validate supported grant types
     if (metadata.getGrantTypes() != null) {
@@ -222,6 +196,45 @@ public class RegistrationHandler {
             "invalid_client_metadata",
             "Unsupported token_endpoint_auth_method: " + metadata.getTokenEndpointAuthMethod());
       }
+    }
+  }
+
+  /**
+   * Validates redirect URIs against RFC 8252.
+   *
+   * <p>RFC 8252 Section 7.1 lets native apps use private-use schemes such as cursor:// or
+   * vscode://, and Section 7.3 allows http only for loopback addresses.
+   *
+   * @param metadata The client registration metadata
+   * @throws RegistrationException if any redirect URI is not acceptable
+   */
+  private void validateRedirectUris(OAuthClientMetadata metadata) throws RegistrationException {
+    // redirect_uris is REQUIRED per RFC 7591 Section 2
+    if (metadata.getRedirectUris() == null || metadata.getRedirectUris().isEmpty()) {
+      throw new RegistrationException(
+          "invalid_redirect_uri", "At least one redirect_uri must be provided");
+    }
+    validateListSize(metadata.getRedirectUris(), "redirect_uris", MAX_REDIRECT_URIS);
+
+    for (URI uri : metadata.getRedirectUris()) {
+      validateRedirectUri(uri);
+    }
+  }
+
+  private void validateRedirectUri(URI uri) throws RegistrationException {
+    validateUriFieldLength(uri, "redirect_uri");
+    String scheme = uri.getScheme();
+    if (scheme == null || BLOCKED_REDIRECT_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT))) {
+      throw new RegistrationException(
+          "invalid_redirect_uri", "redirect_uri uses a disallowed scheme: " + uri);
+    }
+    if (uri.getFragment() != null) {
+      throw new RegistrationException(
+          "invalid_redirect_uri", "redirect_uri must not contain a fragment: " + uri);
+    }
+    if (SCHEME_HTTP.equalsIgnoreCase(scheme) && !UriUtils.isLoopback(uri)) {
+      throw new RegistrationException(
+          "invalid_redirect_uri", "http redirect_uri must use localhost/loopback address: " + uri);
     }
   }
 

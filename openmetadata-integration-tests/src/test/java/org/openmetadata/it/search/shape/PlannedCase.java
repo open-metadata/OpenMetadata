@@ -19,7 +19,7 @@ public record PlannedCase(
     String entityType,
     String dimension,
     Rung rung,
-    Supplier<EntityInterface> entity,
+    Supplier<EntityInterface<?>> entity,
     FieldProbe probe) {
 
   public String label() {

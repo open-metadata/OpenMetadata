@@ -11,21 +11,61 @@
  *  limitations under the License.
  */
 
+import { isPlainObject, omit } from 'lodash';
+import { Node } from 'reactflow';
 import { EntityType } from '../enums/entity.enum';
+import { SinkType } from '../generated/governance/workflows/elements/nodes/automatedTask/sinkTask';
+import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
+import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../interface/workflow-builder-components.interface';
+import { t } from './i18next/LocalUtil';
+
+const getEntityTypesFromDataAssets = (
+  config: NodeConfig
+): EntityType | EntityType[] | undefined => {
+  if (!config.dataAssets || config.dataAssets.length === 0) {
+    return undefined;
+  }
+
+  const entityTypes = config.dataAssets.filter(Boolean);
+
+  if (entityTypes.length > 1) {
+    return entityTypes as EntityType[];
+  } else if (entityTypes.length === 1) {
+    return entityTypes[0] as EntityType;
+  }
+
+  return undefined;
+};
+
+const mapTriggerEntityTypes = (
+  entityTypes: string[]
+): EntityType | EntityType[] => {
+  const mappedEntityTypes = entityTypes
+    .map((entityType: string) => {
+      return Object.values(EntityType).includes(entityType as EntityType)
+        ? (entityType as EntityType)
+        : entityType;
+    })
+    .filter(Boolean);
+
+  if (mappedEntityTypes.length > 1) {
+    return mappedEntityTypes as EntityType[];
+  } else if (mappedEntityTypes.length === 1) {
+    return mappedEntityTypes[0] as EntityType;
+  } else {
+    return EntityType.ALL;
+  }
+};
 
 export const getSelectedEntityTypes = (
   config: NodeConfig,
-  workflowDefinition: any
+  workflowDefinition: WorkflowDefinition
 ): EntityType | EntityType[] => {
-  if (config.dataAssets && config.dataAssets.length > 0) {
-    const entityTypes = config.dataAssets.filter(Boolean);
+  const dataAssetTypes = getEntityTypesFromDataAssets(config);
 
-    if (entityTypes.length > 1) {
-      return entityTypes as EntityType[];
-    } else if (entityTypes.length === 1) {
-      return entityTypes[0] as EntityType;
-    }
+  if (dataAssetTypes !== undefined) {
+    return dataAssetTypes;
   }
 
   if (!workflowDefinition) {
@@ -48,24 +88,42 @@ export const getSelectedEntityTypes = (
     Array.isArray(triggerConfig.entityTypes) &&
     triggerConfig.entityTypes.length > 0
   ) {
-    const mappedEntityTypes = triggerConfig.entityTypes
-      .map((entityType: string) => {
-        return Object.values(EntityType).includes(entityType as EntityType)
-          ? (entityType as EntityType)
-          : entityType;
-      })
-      .filter(Boolean);
-
-    if (mappedEntityTypes.length > 1) {
-      return mappedEntityTypes;
-    } else if (mappedEntityTypes.length === 1) {
-      return mappedEntityTypes[0];
-    } else {
-      return EntityType.ALL;
-    }
+    return mapTriggerEntityTypes(triggerConfig.entityTypes);
   }
 
   return EntityType.ALL;
+};
+
+const hasRequiredBaseFields = (config: NodeConfig): boolean => {
+  const hasName = Boolean(config.name && config.name.trim() !== '');
+  const hasTriggerType = Boolean(
+    config.triggerType && config.triggerType.trim() !== ''
+  );
+  const hasDataAssets = Boolean(
+    config.dataAssets && config.dataAssets.length > 0
+  );
+
+  return hasName && hasTriggerType && hasDataAssets;
+};
+
+const validatePeriodicBatchConfig = (config: NodeConfig): boolean => {
+  const hasScheduleType = Boolean(
+    config.scheduleType && config.scheduleType.trim() !== ''
+  );
+
+  // Must have a schedule type selected
+  if (!hasScheduleType) {
+    return false;
+  }
+
+  // If scheduled, validate cron expression
+  if (config.scheduleType === 'Scheduled') {
+    return Boolean(
+      config.cronExpression && config.cronExpression.trim() !== ''
+    );
+  }
+
+  return true;
 };
 
 export const validateWorkflowConfig = (
@@ -76,15 +134,7 @@ export const validateWorkflowConfig = (
     return true;
   }
 
-  const hasName = Boolean(config.name && config.name.trim() !== '');
-  const hasTriggerType = Boolean(
-    config.triggerType && config.triggerType.trim() !== ''
-  );
-  const hasDataAssets = Boolean(
-    config.dataAssets && config.dataAssets.length > 0
-  );
-
-  if (!hasName || !hasTriggerType || !hasDataAssets) {
+  if (!hasRequiredBaseFields(config)) {
     return false;
   }
 
@@ -92,33 +142,11 @@ export const validateWorkflowConfig = (
   const isPeriodicBatch = config.triggerType === 'Periodic Batch';
 
   if (isEventBased) {
-    const hasEventType = Boolean(
-      config.eventType && config.eventType.length > 0
-    );
-
-    return hasEventType;
+    return Boolean(config.eventType && config.eventType.length > 0);
   }
 
   if (isPeriodicBatch) {
-    const hasScheduleType = Boolean(
-      config.scheduleType && config.scheduleType.trim() !== ''
-    );
-
-    // Must have a schedule type selected
-    if (!hasScheduleType) {
-      return false;
-    }
-
-    // If scheduled, validate cron expression
-    if (config.scheduleType === 'Scheduled') {
-      const hasCronExpression = Boolean(
-        config.cronExpression && config.cronExpression.trim() !== ''
-      );
-
-      return hasCronExpression;
-    }
-
-    return true;
+    return validatePeriodicBatchConfig(config);
   }
 
   return true;
@@ -142,4 +170,145 @@ export const filterExcludeFields = (
 
     return true;
   });
+};
+
+export const EXTENSION_FIELD_PREFIX = 'extension.';
+
+// Custom properties are addressed as extension.<name> everywhere in the workflow builder.
+export const withExtensionPrefix = (name: string): string =>
+  `${EXTENSION_FIELD_PREFIX}${name}`;
+
+// Inverse of withExtensionPrefix: the bare name shown to the user.
+export const getFieldLabel = (value: string): string =>
+  value.startsWith(EXTENSION_FIELD_PREFIX)
+    ? value.slice(EXTENSION_FIELD_PREFIX.length)
+    : value;
+
+// Display label for a workflow field option: the bare name, with custom properties
+// marked so a custom property and a same-named standard field stay distinguishable.
+export const getFieldDisplayLabel = (value: string): string =>
+  value.startsWith(EXTENSION_FIELD_PREFIX)
+    ? `${getFieldLabel(value)} (${t('label.custom-property')})`
+    : getFieldLabel(value);
+
+/**
+ * Builds the de-duplicated field-option list for a workflow field picker.
+ *
+ * Custom properties are stored under `extension.<name>` and workflow nodes resolve a field path
+ * against the entity, where a custom property is only reachable at that path. The fields API returns
+ * custom properties by their bare name, so prefix those (and only those) with `extension.`, matching
+ * how the trigger/filter field lists are built (see NodeConfigSidebar). Standard fields are left
+ * as-is. The prefix is applied after {@link filterExcludeFields} so the added dot does not exclude
+ * the property.
+ *
+ * Call this per entity type (each type's own custom properties) and merge the results, so a custom
+ * property on one type does not prefix a standard field of the same name on another type.
+ */
+export const buildFieldOptions = (
+  fields: Array<{ name?: string }>,
+  customPropertyNames: Set<string>
+): string[] => {
+  const seen = new Set<string>();
+  const options: string[] = [];
+
+  filterExcludeFields(fields).forEach(({ name }) => {
+    if (!name) {
+      return;
+    }
+
+    const value = customPropertyNames.has(name)
+      ? withExtensionPrefix(name)
+      : name;
+
+    if (!seen.has(value)) {
+      seen.add(value);
+      options.push(value);
+    }
+  });
+
+  return options;
+};
+
+/**
+ * Maps each entity-specific trigger field to the one selected entity type it belongs to, so the
+ * field picker can group it under that type. A field shared by several selected types is left
+ * ungrouped: the trigger matches it on every type that has it, so naming one type would mislead.
+ */
+export const buildEntityFieldGroups = (
+  entitySpecific: Record<string, string[]>,
+  selectedEntityTypes: string[]
+): Record<string, string> => {
+  const owners: Record<string, string[]> = {};
+  selectedEntityTypes.forEach((entityType) => {
+    (entitySpecific[entityType] ?? []).forEach((field) => {
+      owners[field] = [...(owners[field] ?? []), entityType];
+    });
+  });
+
+  return Object.fromEntries(
+    Object.entries(owners)
+      .filter(([, entityTypes]) => entityTypes.length === 1)
+      .map(([field, [entityType]]) => [field, entityType])
+  );
+};
+
+/**
+ * Whether a builder node writes to a Git sink. The builder's sink form saves every sink as a Git
+ * sink, so a sink node not configured yet counts as one.
+ */
+export const isGitSinkNode = (node: Node): boolean =>
+  node.data?.subType === NodeSubType.SinkTask &&
+  (node.data?.config?.sinkType ?? SinkType.Git) === SinkType.Git;
+
+// Query entities are not synced to a Git sink.
+const isGitSinkSyncedEntityType = (entityType: string): boolean =>
+  entityType !== EntityType.QUERY;
+
+/**
+ * Entity types a workflow's trigger can be defined on. Query entities are not synced to a Git sink,
+ * so a workflow with one offers neither them nor an "All" that includes them.
+ */
+export const getTriggerDataAssets = (
+  entityTypes: string[],
+  hasGitSinkNode: boolean
+): string[] =>
+  hasGitSinkNode ? entityTypes.filter(isGitSinkSyncedEntityType) : entityTypes;
+
+/**
+ * The trigger's selected data assets and their filters, limited to the entity types a Git sink
+ * syncs.
+ */
+export const getGitSinkTriggerNodeConfig = (
+  config: NodeConfig
+): NodeConfig => ({
+  ...config,
+  dataAssets: config.dataAssets.filter(isGitSinkSyncedEntityType),
+  dataAssetFilters: config.dataAssetFilters.filter((dataAssetFilter) =>
+    isGitSinkSyncedEntityType(dataAssetFilter.dataAsset)
+  ),
+});
+
+// A trigger filter is a string applied to every entity type, or an object keyed by entity type.
+const getGitSinkTriggerFilter = (filter: unknown): unknown =>
+  isPlainObject(filter) ? omit(filter as object, EntityType.QUERY) : filter;
+
+/**
+ * A trigger config limited to the entity types a Git sink syncs: in its entity types and in its
+ * per-entity-type `filter` (event-based) and `filters` (periodic batch).
+ */
+export const getGitSinkTriggerConfig = (
+  triggerConfig: Record<string, unknown>
+): Record<string, unknown> => {
+  const { entityTypes, filter, filters } = triggerConfig;
+
+  return {
+    ...triggerConfig,
+    ...(Array.isArray(entityTypes) && {
+      entityTypes: entityTypes.filter(isGitSinkSyncedEntityType),
+    }),
+    ...(filter !== undefined && { filter: getGitSinkTriggerFilter(filter) }),
+    ...(filters !== undefined && {
+      filters: getGitSinkTriggerFilter(filters),
+    }),
+  };
 };

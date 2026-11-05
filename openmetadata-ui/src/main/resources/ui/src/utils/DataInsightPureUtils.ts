@@ -19,8 +19,6 @@ import {
   round,
   toNumber,
 } from 'lodash';
-import { DateTime } from 'luxon';
-import type { RangePickerProps } from '../components/common/DatePicker/DatePicker';
 import { PLACEHOLDER_ROUTE_TAB, ROUTES } from '../constants/constants';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import {
@@ -129,7 +127,7 @@ const getGraphFilteredData = (
         };
       }
 
-      return;
+      return undefined;
     })
     .filter(Boolean);
 
@@ -181,12 +179,6 @@ export const getFormattedActiveUsersData = (
     total: latestCount,
     relativePercentage,
   };
-};
-
-export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
-  const today = DateTime.now().startOf('day');
-
-  return current ? current.startOf('day') < today : false;
 };
 
 export const getDataInsightPathWithFqn = (tab = DataInsightTabs.DATA_ASSETS) =>

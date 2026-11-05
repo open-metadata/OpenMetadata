@@ -98,7 +98,7 @@ Real usage, `openmetadata-ui/src/main/resources/ui/src/components/DomainListing/
 
 ## Card
 
-`variant`: `default | elevated | outlined | ghost`. `color`:
+`variant`: `default | elevated | outlined | ghost | muted`. `color`:
 `default | brand | brandOutlined | error | warning | success`. `size`:
 `sm | md | lg` (controls `Card.Header`/`Card.Content`/`Card.Footer` padding).
 `isClickable` / `isSelected` add interactive/selected styling.
@@ -120,6 +120,37 @@ plain line.
 ```tsx
 <Divider label="or" labelAlign="center" />
 <Divider orientation="vertical" />
+```
+
+## Dialog dividers
+
+New modals pass `dividers="scroll"`: no divider under the title, and a footer divider only while
+`Dialog.Content` overflows (it appears when the form scrolls, never on a short confirmation).
+Never add your own border or `<Divider>` around a dialog's header or footer.
+
+```tsx
+<Dialog dividers="scroll" title={t('label.add-entity', { entity })} onClose={onClose}>
+  <Dialog.Content>{form}</Dialog.Content>
+  <Dialog.Footer>{actions}</Dialog.Footer>
+</Dialog>
+```
+
+## Empty states
+
+Use the prefilled variants from `src/components/common/EmptyPlaceholder/`, not the core
+`EmptyPlaceholder`: `NoDataPlaceholder`, `CreatePlaceholder` (falls back to
+`PermissionPlaceholder` when `permission={false}`), `PermissionPlaceholder`,
+`NoSearchResultsPlaceholder`, `NoFilteredResultsPlaceholder` (`onClearFilters`),
+`SomethingWentWrongPlaceholder` (`onReload`) carry a default icon and copy. `FeaturesPlaceholder`
+(onboarding) has no defaults: pass `title`, `description` and `features`. The placeholder is
+absolutely positioned, so give the host `tw:relative` and a height. Keep the default icon, and pass plain copy
+(a `Transi18next` link is fine) — a `Tooltip` around `title`/`description` pins it to `w-max` and
+the text overflows instead of wrapping.
+
+```tsx
+<div className="tw:relative tw:min-h-60">
+  <NoDataPlaceholder title={t('message.no-data-available')} />
+</div>
 ```
 
 ## Color usage

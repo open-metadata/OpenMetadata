@@ -12,13 +12,15 @@
 
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import cast
 
 from pydoris.sqlalchemy import datatype
 from pydoris.sqlalchemy.dialect import DorisDialect
 from sqlalchemy import sql
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.sql.compiler import IdentifierPreparer
 
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -36,6 +38,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.column_helpers import (
+    column_from_parsed,
+    parse_complex_column_type,
+)
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
@@ -70,6 +76,14 @@ DorisDialect.get_table_names_and_type = get_table_names_and_type
 DorisDialect.get_table_comment = get_table_comment
 
 logger = ingestion_logger()
+
+
+def _qualified_identifier(
+    preparer: IdentifierPreparer,
+    *identifiers: str | None,
+) -> str:
+    """Build a safely quoted Doris identifier from individual name parts."""
+    return ".".join(preparer.quote_identifier(identifier) for identifier in identifiers if identifier is not None)
 
 
 def extract_number(data):
@@ -120,12 +134,14 @@ def _get_column(ordinal, field, _type, null, default, comment):
     arr_data_type = None
     children = None
     if system_data_type == "ARRAY":
-        arr_data_type = _parse_type(extract_child(_type))
-    if system_data_type == "STRUCT":
-        children = []
-        for key_, child in enumerate(extract_child(_type).split(",")):
-            name_type = child.split(":")
-            children.append(_get_column(key_, name_type[0], name_type[1], "YES", None, None))
+        element_type = extract_child(_type) or "string"
+        arr_data_type = _parse_type(element_type)
+        if arr_data_type == "STRUCT":
+            element_parsed = parse_complex_column_type(element_type)
+            children = element_parsed.get("children") if element_parsed else None
+    elif system_data_type == "STRUCT":
+        struct_parsed = parse_complex_column_type(_type)
+        children = struct_parsed.get("children") if struct_parsed else None
     return {
         "name": field,
         "default": default,
@@ -156,7 +172,7 @@ class DorisSource(CommonDbSourceService):
         super().__init__(config, metadata)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("Missing service connection")
@@ -201,8 +217,12 @@ class DorisSource(CommonDbSourceService):
 
         table_columns = []
         primary_columns = []
+        preparer = self.engine.dialect.identifier_preparer
+        qualified_table_name = _qualified_identifier(preparer, schema, table_name)
         # row schema: Field, Type, Collation, Null, Key, Default, Extra, Privileges, Comment
-        for i, row in enumerate(self.connection.execute(sql.text(DORIS_SHOW_FULL_COLUMNS.format(schema, table_name)))):
+        for i, row in enumerate(
+            self.connection.execute(sql.text(DORIS_SHOW_FULL_COLUMNS.format(table_name=qualified_table_name)))
+        ):
             table_columns.append(_get_column(i, row[0], row[1], row[3], row[5], row[8]))
             if row[4] == "YES":
                 primary_columns.append(row[0])
@@ -216,7 +236,7 @@ class DorisSource(CommonDbSourceService):
         db_name: str,
         inspector: Inspector,
         table_type: str = None,  # noqa: RUF013
-    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:  # noqa: UP006, UP045
+    ) -> tuple[list[Column] | None, list[TableConstraint] | None, list[dict] | None]:
         """
         :param schema_name:
         :param table_name:
@@ -230,21 +250,8 @@ class DorisSource(CommonDbSourceService):
         for column in columns:
             try:
                 children = None
-                if column["children"]:
-                    children = [
-                        Column(
-                            name=child["name"] if child["name"] else " ",
-                            description=child.get("comment"),
-                            dataType=child["system_data_type"],
-                            dataTypeDisplay=child["display_type"],
-                            dataLength=self._check_col_length(child["system_data_type"], child["data_type"]),
-                            constraint=None,
-                            children=child["children"],
-                            arrayDataType=child["arr_data_type"],
-                            ordinalPosition=child.get("ordinalPosition"),
-                        )
-                        for child in column["children"]
-                    ]
+                if column.get("children"):
+                    children = [column_from_parsed(ordinal, child) for ordinal, child in enumerate(column["children"])]
                 self.process_additional_table_constraints(column=column, table_constraints=table_constraints)
 
                 col_constraint = self._get_column_constraints(column, primary_columns, [])
@@ -281,13 +288,19 @@ class DorisSource(CommonDbSourceService):
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         """
         check if the table is partitioned table and return the partition details
         """
         try:
+            preparer = self.engine.dialect.identifier_preparer
+            qualified_table_name = _qualified_identifier(
+                preparer,
+                schema_name,
+                table_name,
+            )
             with self.engine.connect() as conn:
-                result = conn.execute(sql.text(DORIS_PARTITION_DETAILS.format(schema_name, table_name))).all()
+                result = conn.execute(sql.text(DORIS_PARTITION_DETAILS.format(table_name=qualified_table_name))).all()
 
             if result and result[0].PartitionKey != "":
                 partition_details = TablePartition(

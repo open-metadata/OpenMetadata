@@ -108,6 +108,10 @@ export interface Task {
     id:   string;
     name: string;
     /**
+     * Immutable, server-managed review target for ontology approval tasks.
+     */
+    ontologyReview?: OntologyReviewTarget;
+    /**
      * Task-specific payload validated at runtime by the resolved TaskFormSchema for the task
      * type and category.
      */
@@ -121,7 +125,12 @@ export interface Task {
      * Users or teams who should review this task.
      */
     reviewers?: EntityReference[];
-    status:     TaskStatus;
+    /**
+     * Counted votes on a workflow approval task, one per voter in each workflow stage,
+     * including the deciding vote. Server-managed.
+     */
+    reviewVotes?: TaskReviewVote[];
+    status:       TaskStatus;
     /**
      * Tags for this task.
      */
@@ -147,6 +156,11 @@ export interface Task {
      * User who made the last update.
      */
     updatedBy?: string;
+    /**
+     * Whether to assign entity owners when this task is created without assignees. Approval
+     * workflows disable this for an explicit wait strategy.
+     */
+    useEntityOwnerFallback?: boolean;
     /**
      * Metadata version of the entity.
      */
@@ -198,6 +212,11 @@ export interface Task {
  * User who created this task.
  *
  * User who resolved the task.
+ *
+ * Assignee entry the vote covers: the voter's own entry, or the team the voter votes
+ * through.
+ *
+ * User who cast the vote.
  */
 export interface EntityReference {
     /**
@@ -482,6 +501,46 @@ export enum SyncStatus {
 }
 
 /**
+ * Immutable, server-managed review target for ontology approval tasks.
+ *
+ * Server-captured immutable ontology release reviewed by an existing approval workflow task.
+ */
+export interface OntologyReviewTarget {
+    /**
+     * Approval rule frozen when the review was requested. Reviews requested before the rule
+     * existed decide on the first approval.
+     */
+    approvalRule?: OntologyApprovalRule;
+    author:        string;
+    /**
+     * SHA-256 of the ontology-review-v3 sealed release identity.
+     */
+    contentDigest: string;
+    entityId:      string;
+    /**
+     * Entity-history version submitted for review; reviewers read this frozen release header.
+     */
+    entityVersion: number;
+    /**
+     * Owning ontology ID used to serialize release review decisions.
+     */
+    ontologyId: string;
+}
+
+/**
+ * Approval rule frozen when the review was requested. Reviews requested before the rule
+ * existed decide on the first approval.
+ *
+ * How many of an ontology's reviewers must approve a release review. AnyReviewer decides on
+ * the first approval. AllReviewers waits for every reviewer entry; a reviewer team counts
+ * once and any member covers it. Frozen into the review task when a review is requested.
+ */
+export enum OntologyApprovalRule {
+    AllReviewers = "AllReviewers",
+    AnyReviewer = "AnyReviewer",
+}
+
+/**
  * Priority level of the task.
  */
 export enum TaskPriority {
@@ -518,6 +577,44 @@ export interface TaskResolution {
      */
     resolvedBy?: EntityReference;
     type?:       ResolutionType;
+}
+
+/**
+ * One counted vote on a multi-reviewer approval task. The server records it; clients cannot
+ * set it.
+ */
+export interface TaskReviewVote {
+    /**
+     * Assignee entry the vote covers: the voter's own entry, or the team the voter votes
+     * through.
+     */
+    assignee: EntityReference;
+    /**
+     * Comment given with the vote, kept verbatim.
+     */
+    comment?: string;
+    decision: ReviewVoteDecision;
+    /**
+     * Workflow stage the task was in when the vote was counted. A voter is recorded once per
+     * stage, so a task that moves through several approval stages keeps every stage's vote.
+     */
+    stage?: string;
+    /**
+     * When the vote was counted.
+     */
+    timestamp: number;
+    /**
+     * User who cast the vote.
+     */
+    voter: EntityReference;
+}
+
+/**
+ * What a counted review vote decided.
+ */
+export enum ReviewVoteDecision {
+    Approved = "Approved",
+    Rejected = "Rejected",
 }
 
 /**
@@ -731,6 +828,8 @@ export enum TaskType {
     DomainUpdate = "DomainUpdate",
     GlossaryApproval = "GlossaryApproval",
     IncidentResolution = "IncidentResolution",
+    MemoryConflictReview = "MemoryConflictReview",
+    MetadataCompletion = "MetadataCompletion",
     OwnershipUpdate = "OwnershipUpdate",
     PipelineReview = "PipelineReview",
     RecognizerFeedbackApproval = "RecognizerFeedbackApproval",

@@ -64,11 +64,11 @@ jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
     <div data-testid="rich-text-preview">{markdown}</div>
   ))
 );
-jest.mock('../../../common/Table/Table', () =>
+jest.mock('../../../common/Table/TableV2', () =>
   jest.fn(({ dataSource }) => (
     <div data-testid="spreadsheet-children-table">
       {dataSource?.map((worksheet: { name: string }, index: number) => (
-        <div data-testid={`worksheet-row-${index}`} key={index}>
+        <div data-testid={`worksheet-row-${index}`} key={worksheet.name}>
           {worksheet.name}
         </div>
       ))}
@@ -648,7 +648,9 @@ describe('SpreadsheetVersion', () => {
       const permissionsWithUndefinedViewCustomFields = {
         ...ENTITY_PERMISSIONS,
       };
-      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+      delete (
+        permissionsWithUndefinedViewCustomFields as Record<string, unknown>
+      ).ViewCustomFields;
 
       renderSpreadsheetVersion({
         entityPermissions: permissionsWithUndefinedViewCustomFields,

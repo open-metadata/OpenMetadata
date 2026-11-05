@@ -107,7 +107,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   private final TableMapper mapper = new TableMapper();
   public static final String COLLECTION_PATH = "/v1/tables/";
   public static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
+      "tableConstraints,tablePartition,tableSharding,usageSummary,owners,customMetrics,columns,sampleData,"
           + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash";
 
   @Override
@@ -195,6 +195,11 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
+              description = "Filter tables by database service name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast"))
+          @QueryParam("service")
+          String serviceParam,
+      @Parameter(
               description = "Filter tables by database fully qualified name",
               schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
           @QueryParam("database")
@@ -264,6 +269,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("include")
           RegexMode regexMode) {
     ListFilter filter = new ListFilter(include);
+    if (serviceParam != null) {
+      filter.addQueryParam("service", serviceParam);
+    }
     if (databaseParam != null) {
       filter.addQueryParam("database", databaseParam);
     }
@@ -526,7 +534,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleTables",
@@ -549,7 +557,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response deleteStale(
-      @Context SecurityContext securityContext, @Valid BulkDeleteStaleRequest request) {
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              required = true,
+              description =
+                  "Scope to reconcile and the FQNs the connector saw this run. Carried as a"
+                      + " request body on DELETE; a topology that strips it is rejected with 400"
+                      + " rather than being read as an empty seen-set.",
+              content = @Content(schema = @Schema(implementation = BulkDeleteStaleRequest.class)))
+          @NotNull
+          @Valid
+          BulkDeleteStaleRequest request) {
     return deleteStaleEntities(securityContext, request);
   }
 
@@ -882,9 +900,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @PUT
@@ -1449,6 +1465,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @NotNull
           @QueryParam("endTs")
           Long endTs) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getSystemProfiles(fqn, startTs, endTs);
   }
 
@@ -1600,9 +1619,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -1693,9 +1710,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, UUID.fromString(userId));
   }
 
   @GET
@@ -1918,6 +1933,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     if (fqn == null || fqn.trim().isEmpty()) {
       throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
     }
+    authorizeEntityRelationshipRoot(securityContext, fqn, deleted);
 
     return Entity.getSearchRepository()
         .searchEntityRelationship(
@@ -1983,6 +1999,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     if (fqn == null || fqn.trim().isEmpty()) {
       throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
     }
+    authorizeEntityRelationshipRoot(securityContext, fqn, deleted);
 
     return Entity.getSearchRepository()
         .searchEntityRelationshipWithDirection(
@@ -1996,6 +2013,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .withLayerFrom(from)
                 .withLayerSize(size)
                 .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
+  }
+
+  private void authorizeEntityRelationshipRoot(
+      SecurityContext securityContext, String fqn, boolean includeDeleted) {
+    Include include = includeDeleted ? Include.ALL : Include.NON_DELETED;
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(fqn, include));
   }
 
   @GET

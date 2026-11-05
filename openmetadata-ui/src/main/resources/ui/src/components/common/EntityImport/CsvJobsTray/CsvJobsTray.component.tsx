@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
   Check,
@@ -22,9 +22,9 @@ import {
   Trash01,
   UploadCloud01,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, kebabCase } from 'lodash';
 import {
   FC,
   SVGProps,
@@ -34,6 +34,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { SOCKET_EVENTS } from '../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
@@ -45,9 +46,14 @@ import {
   getCsvAsyncJobResult,
   getCsvAsyncJobs,
 } from '../../../../rest/csvAPI';
+import { downloadCsv } from '../../../../utils/Export/ExportUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './csv-jobs-tray.less';
-import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
+import {
+  CSV_JOBS_POST_ACTION_REFRESH_MS,
+  CSV_JOBS_REFRESH_EVENT,
+  isCsvJobOwned,
+} from './CsvJobsTray.constants';
 
 const ACTIVE_STATUSES: CsvAsyncJobStatus[] = [
   'QUEUED',
@@ -60,6 +66,10 @@ const TERMINAL_STATUSES: CsvAsyncJobStatus[] = [
   'FAILED',
   'CANCELLED',
 ];
+
+// Fetch well beyond the handful the tray renders so a just-finished job cannot
+// fall outside the fetched window (which would silently skip its auto-open).
+const CSV_JOBS_FETCH_LIMIT = 50;
 
 type StatusVariant = 'running' | 'success' | 'error';
 
@@ -97,25 +107,54 @@ export const CsvJobsTray = () => {
   const [downloadedJobIds, setDownloadedJobIds] = useState<Set<string>>(
     () => new Set()
   );
+  // Jobs whose result the server no longer holds — released by retention, or
+  // produced before results moved into the shared job row.
+  const [expiredJobIds, setExpiredJobIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(
     () => new Set()
   );
   const hasLoadedInitialJobs = useRef(false);
   const autoOpenedJobIds = useRef<Set<string>>(new Set());
+  const postActionTimeoutIds = useRef<Set<ReturnType<typeof setTimeout>>>(
+    new Set()
+  );
+  const latestFetchId = useRef(0);
 
   const fetchJobs = useCallback(async () => {
+    const fetchId = (latestFetchId.current += 1);
     try {
-      const response = await getCsvAsyncJobs();
+      const response = await getCsvAsyncJobs(CSV_JOBS_FETCH_LIMIT);
+
+      // Many sources trigger fetches (mount, refresh event, both socket
+      // channels, the poll, the launcher). If a newer fetch was issued while
+      // this one was in flight, drop this result: a slow response must not
+      // overwrite fresher state and, e.g., flip a completed job back to running
+      // and restart the poll.
+      if (fetchId !== latestFetchId.current) {
+        return;
+      }
 
       if (!hasLoadedInitialJobs.current) {
-        const initialTerminalJobIds = response
-          .filter((job) => TERMINAL_STATUSES.includes(job.status))
+        // Jobs already terminal on the very first fetch are stale (e.g. leftovers
+        // shown after a page refresh) and must not pop the tray. The exception is
+        // a job the user just started this session: a fast export can finish
+        // before this first fetch resolves, so it would look "stale" here even
+        // though it is exactly what the user is waiting to download. Owned jobs
+        // are therefore never pre-dismissed.
+        const staleTerminalJobIds = response
+          .filter(
+            (job) =>
+              TERMINAL_STATUSES.includes(job.status) &&
+              !isCsvJobOwned(job.jobId)
+          )
           .map((job) => job.jobId);
 
-        if (!isEmpty(initialTerminalJobIds)) {
+        if (!isEmpty(staleTerminalJobIds)) {
           setDismissedJobIds((current) => {
             const next = new Set(current);
-            initialTerminalJobIds.forEach((jobId) => next.add(jobId));
+            staleTerminalJobIds.forEach((jobId) => next.add(jobId));
 
             return next;
           });
@@ -148,6 +187,20 @@ export const CsvJobsTray = () => {
   );
 
   useEffect(() => {
+    // Nothing left to show (e.g. right after Clear completed): collapse the tray
+    // so it does not carry a stale open state into the next job. Otherwise a job
+    // started next would reuse open=true and pop the popover while still merely
+    // running — the tray must only open on its own when a job actually finishes.
+    if (isEmpty(visibleJobs)) {
+      setOpen(false);
+
+      return;
+    }
+
+    // A job reaching a terminal state (ready to download, failed, or cancelled)
+    // opens the tray even if the user had minimised it, so completion is never
+    // left hidden behind the launcher. Each job triggers this only once, so the
+    // user can still close the tray and it stays closed.
     const newlyFinished = visibleJobs.filter(
       (job) =>
         TERMINAL_STATUSES.includes(job.status) &&
@@ -176,31 +229,39 @@ export const CsvJobsTray = () => {
     }
   }, []);
 
-  const handleDownload = useCallback(async (job: CsvAsyncJob) => {
-    try {
-      setDownloadingJobId(job.jobId);
-      const csvData = await getCsvAsyncJobResult(job.jobId);
-      const blob = new Blob([csvData], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${job.entityType}-${job.jobId}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      setDownloadedJobIds((current) => {
-        const next = new Set(current);
-        next.add(job.jobId);
+  const handleDownload = useCallback(
+    async (job: CsvAsyncJob) => {
+      try {
+        setDownloadingJobId(job.jobId);
+        const csvData = await getCsvAsyncJobResult(job.jobId);
+        downloadCsv(csvData, `${job.entityType}-${job.jobId}.csv`);
+        setDownloadedJobIds((current) => {
+          const next = new Set(current);
+          next.add(job.jobId);
 
-        return next;
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setDownloadingJobId(undefined);
-    }
-  }, []);
+          return next;
+        });
+      } catch (error) {
+        // A 404 means the payload was released to reclaim storage, or the job
+        // predates result sharing. The row stays Completed but is not downloadable,
+        // so say that instead of surfacing the raw server message.
+        if ((error as AxiosError).response?.status === 404) {
+          setExpiredJobIds((current) => {
+            const next = new Set(current);
+            next.add(job.jobId);
+
+            return next;
+          });
+          showErrorToast(t('message.export-result-no-longer-available'));
+        } else {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        setDownloadingJobId(undefined);
+      }
+    },
+    [t]
+  );
 
   const handleDismiss = useCallback((jobId: string) => {
     setDismissedJobIds((current) => {
@@ -236,13 +297,36 @@ export const CsvJobsTray = () => {
 
   useEffect(() => {
     fetchJobs();
-    window.addEventListener(CSV_JOBS_REFRESH_EVENT, fetchJobs);
+
+    // A refresh event means the user just started an export/import. Fetch now,
+    // then once more shortly after: some actions (notably import) fire the event
+    // before their job exists, so the immediate fetch can miss it and — with no
+    // active job yet — polling never starts. The follow-up fetch picks the job
+    // up so the active-jobs poll can take over.
+    const handleRefreshEvent = () => {
+      fetchJobs();
+      const timeoutId = setTimeout(() => {
+        postActionTimeoutIds.current.delete(timeoutId);
+        fetchJobs();
+      }, CSV_JOBS_POST_ACTION_REFRESH_MS);
+      postActionTimeoutIds.current.add(timeoutId);
+    };
+
+    window.addEventListener(CSV_JOBS_REFRESH_EVENT, handleRefreshEvent);
+
+    const timeoutIds = postActionTimeoutIds.current;
 
     return () => {
-      window.removeEventListener(CSV_JOBS_REFRESH_EVENT, fetchJobs);
+      window.removeEventListener(CSV_JOBS_REFRESH_EVENT, handleRefreshEvent);
+      timeoutIds.forEach((id) => clearTimeout(id));
+      timeoutIds.clear();
     };
   }, [fetchJobs]);
 
+  // Progress and completion arrive over the CSV_IMPORT/EXPORT channels; the server-side
+  // WebSocketRelay (Redis pub/sub, or the DB-poll relay otherwise) delivers them to the pod
+  // holding this socket even when another pod ran the job, so the socket subscription above keeps
+  // the tray truthful on multi-pod without a fallback poll.
   const handleOpen = useCallback(() => {
     setOpen(true);
     fetchJobs();
@@ -253,7 +337,10 @@ export const CsvJobsTray = () => {
   }
 
   const renderJobTitle = (job: CsvAsyncJob) => {
-    const entityLabel = t(`label.${job.entityType}-plural`, {
+    // Job entity types are camelCase (dataAsset, databaseSchema) while the label
+    // keys are kebab-case, so look up the kebab form or every multi-word entity
+    // falls through to the raw type — "Exported dataAsset".
+    const entityLabel = t(`label.${kebabCase(job.entityType)}-plural`, {
       defaultValue: job.entityType,
     });
 
@@ -268,16 +355,22 @@ export const CsvJobsTray = () => {
       : t('label.exporting-entity-plural', { entity: entityLabel });
   };
 
-  const renderJobSubLine = (job: CsvAsyncJob) => {
+  const renderActiveJobSubLine = (job: CsvAsyncJob) => {
     const total = job.total ?? 0;
     const progress = job.progress ?? 0;
     const percent = getJobPercent(job);
 
+    return total > 0
+      ? `${progress} ${t('label.of-lowercase')} ${total} · ${percent}%`
+      : job.message ?? t('message.import-data-in-progress');
+  };
+
+  const renderJobSubLine = (job: CsvAsyncJob) => {
     if (ACTIVE_STATUSES.includes(job.status)) {
-      return total > 0
-        ? `${progress} ${t('label.of-lowercase')} ${total} · ${percent}%`
-        : job.message ?? t('message.import-data-in-progress');
+      return renderActiveJobSubLine(job);
     }
+
+    const total = job.total ?? 0;
 
     if (job.status === 'COMPLETED') {
       return total > 0
@@ -323,7 +416,11 @@ export const CsvJobsTray = () => {
       );
     }
 
-    if (job.status === 'COMPLETED' && job.operation === 'EXPORT') {
+    if (
+      job.status === 'COMPLETED' &&
+      job.operation === 'EXPORT' &&
+      !expiredJobIds.has(job.jobId)
+    ) {
       return (
         <Button
           className="csv-jobs-tray-action"
@@ -338,18 +435,24 @@ export const CsvJobsTray = () => {
     }
 
     return (
-      <Button
+      <ButtonUtility
         className="csv-jobs-tray-dismiss"
-        color="link-gray"
-        iconLeading={XClose}
-        size="xs"
-        onPress={() => handleDismiss(job.jobId)}
+        icon={XClose}
+        size="sm"
+        tooltip={t('label.dismiss')}
+        onClick={() => handleDismiss(job.jobId)}
       />
     );
   };
 
-  return (
-    <div className="csv-jobs-tray">
+  // Portal to body so the fixed tray shares the root stacking context with the
+  // modals (which also portal to body); otherwise an ancestor stacking context
+  // traps it below any open overlay regardless of its z-index.
+  // data-react-aria-top-layer exempts the tray from react-aria's ariaHideOutside,
+  // which otherwise marks every body sibling `inert` while a Modal is open — the
+  // tray is a toast-level surface (--om-z-toast) that must stay interactive above it.
+  return createPortal(
+    <div className="csv-jobs-tray" data-react-aria-top-layer="true">
       {open && (
         <div className="csv-jobs-tray-popover tw:w-100!">
           <div className="csv-jobs-tray-header">
@@ -371,11 +474,13 @@ export const CsvJobsTray = () => {
                 {t('label.clear-completed')}
               </Button>
             )}
-            <Button
-              className="csv-jobs-tray-close tw:-mr-1.5"
-              color="link-gray"
-              iconLeading={Minus}
-              onPress={() => setOpen(false)}
+            <ButtonUtility
+              className="tw:-mr-1.5"
+              data-testid="csv-jobs-tray-close"
+              icon={Minus}
+              size="lg"
+              tooltip={t('label.collapse')}
+              onClick={() => setOpen(false)}
             />
           </div>
           <div className="csv-jobs-tray-list">
@@ -383,20 +488,22 @@ export const CsvJobsTray = () => {
               const percent = getJobPercent(job);
               const variant = getStatusVariant(job.status);
               const KindIcon = getKindIcon(job.operation);
+              const nonRunningIcon = downloadedJobIds.has(job.jobId) ? (
+                <Check size={16} />
+              ) : (
+                <KindIcon size={16} />
+              );
 
               return (
                 <div
                   className={`csv-jobs-tray-item csv-jobs-tray-item-${variant}`}
+                  data-testid={`csv-job-${job.jobId}`}
                   key={job.jobId}>
                   <div className="csv-jobs-tray-item-row">
                     <span className="csv-jobs-tray-kind-icon">
-                      {variant === 'running' ? (
-                        renderStatusIcon(job)
-                      ) : downloadedJobIds.has(job.jobId) ? (
-                        <Check size={16} />
-                      ) : (
-                        <KindIcon size={16} />
-                      )}
+                      {variant === 'running'
+                        ? renderStatusIcon(job)
+                        : nonRunningIcon}
                     </span>
                     <div className="csv-jobs-tray-body">
                       <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-1.5">
@@ -468,6 +575,7 @@ export const CsvJobsTray = () => {
           </button>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 };

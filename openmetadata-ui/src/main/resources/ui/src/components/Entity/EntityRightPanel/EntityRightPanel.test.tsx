@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { EntityTags } from 'Models';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
+import { useEntityRules } from '../../../hooks/useEntityRules';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import EntityRightPanel from './EntityRightPanel';
 
@@ -90,7 +92,7 @@ describe('EntityRightPanel component test', () => {
   } as Table;
 
   it('Component should render', () => {
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -107,7 +109,7 @@ describe('EntityRightPanel component test', () => {
   });
 
   it('Component should not render DataProductsContainer when showDataProductContainer is false', () => {
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -124,7 +126,7 @@ describe('EntityRightPanel component test', () => {
   });
 
   it('Component should render before and after slot', () => {
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -144,7 +146,7 @@ describe('EntityRightPanel component test', () => {
   });
 
   it('Component should not render before and after slot when not provided', () => {
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -168,7 +170,7 @@ describe('EntityRightPanel component test', () => {
     const spy = jest
       .spyOn(entityRightPanelClassBase, 'getKnowLedgeArticlesWidget')
       .mockImplementation(() => KnowledgeArticles);
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -190,7 +192,7 @@ describe('EntityRightPanel component test', () => {
     const spy = jest
       .spyOn(entityRightPanelClassBase, 'getKnowLedgeArticlesWidget')
       .mockImplementation(() => null);
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -209,7 +211,7 @@ describe('EntityRightPanel component test', () => {
   });
 
   it('should not render CustomPropertyTable when no custom properties', () => {
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -224,5 +226,78 @@ describe('EntityRightPanel component test', () => {
     );
 
     expect(screen.queryByText('CustomPropertyTable')).not.toBeInTheDocument();
+  });
+
+  describe('Data Products multi-select rule gating', () => {
+    const getDataProductsContainerMock = () =>
+      jest.requireMock(
+        '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
+      ) as jest.Mock;
+
+    beforeEach(() => {
+      getDataProductsContainerMock().mockClear();
+    });
+
+    const renderPanel = () =>
+      renderWithQueryClient(
+        <EntityRightPanel
+          editGlossaryTermsPermission
+          editTagPermission
+          entityType={EntityType.TABLE}
+          selectedTags={mockSelectedTags}
+          onTagSelectionChange={mockOnTagSelectionChange}
+        />
+      );
+
+    it('holds single-select (multiple=false) while entity rules are loading', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: false,
+        isLoading: true,
+      });
+
+      renderPanel();
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: false });
+    });
+
+    it('enables multiple select when rules are loaded and multi-product rule is not enabled', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: true,
+        isLoading: false,
+      });
+
+      renderPanel();
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: true });
+    });
+
+    it('keeps single select when rules are loaded and multi-product rule is enabled', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: false,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: true,
+        isLoading: false,
+      });
+
+      renderPanel();
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: false });
+    });
   });
 });

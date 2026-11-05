@@ -13,7 +13,6 @@ Wrapper module of Athena client
 """
 
 import traceback
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
@@ -39,7 +38,7 @@ class AthenaLakeFormationClient:
         self.lake_formation_client = get_lake_formation_client(connection=connection)
         self.catalog_id = connection.catalogId
 
-    def get_database_tags(self, name: str) -> Optional[List[TagItem]]:  # noqa: UP006, UP045
+    def get_database_tags(self, name: str) -> list[TagItem] | None:
         """
         Method to call the API and get the database tags
         """

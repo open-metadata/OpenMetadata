@@ -17,30 +17,19 @@ import {
   FeaturedIcon,
   Modal,
   ModalOverlay,
-  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle, Lightbulb05 } from '@untitledui/icons';
+import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  FORM_COLUMN_WIDTH,
+  FORM_WIDTH_WITH_HINT,
+} from '../../../../constants/common/formHint.constants';
+import { ShowHintToggle } from './ShowHintToggle';
 
 type FeaturedIconColor = 'brand' | 'gray' | 'success' | 'warning' | 'error';
 
-/** Width of the Form Hint column itself, per the approved design. */
-const HINT_COLUMN_WIDTH = 380;
-/**
- * Width of the form column. The approved design pairs a 1024px modal with a
- * 642px form, but the real Data Quality form needs the ~772px it had before the
- * hint moved inside the modal — at 642px its test-level cards wrap. The two
- * widths below are derived from this so the form column stays the same width
- * whether the hint is shown or hidden, and only the hint appears/disappears.
- */
-const FORM_COLUMN_WIDTH = 772;
-
-/** Modal width when the Form Hint column is shown. */
-const WIDTH_WITH_HINT = FORM_COLUMN_WIDTH + HINT_COLUMN_WIDTH;
-/** Modal width when the Form Hint column is collapsed. */
-const WIDTH_WITHOUT_HINT = FORM_COLUMN_WIDTH;
 /** Modal width for forms that have no Form Hint column at all. */
 const WIDTH_NO_HINT_COLUMN = 820;
 
@@ -146,6 +135,15 @@ export const AiFormModal: FC<AiFormModalProps> = ({
   const { t } = useTranslation();
   const hasHintColumn = hintOpen !== undefined;
 
+  let modalWidth: number;
+  if (!hasHintColumn) {
+    modalWidth = WIDTH_NO_HINT_COLUMN;
+  } else if (hintOpen) {
+    modalWidth = FORM_WIDTH_WITH_HINT;
+  } else {
+    modalWidth = FORM_COLUMN_WIDTH;
+  }
+
   // The submit handler surfaces failures via an inline alert in the form body
   // and resolves so the modal stays open; swallow the rejection here so React
   // does not log an unhandled promise rejection.
@@ -180,13 +178,7 @@ export const AiFormModal: FC<AiFormModalProps> = ({
           <Dialog
             showCloseButton
             panelClassName="tw:transition-[max-width] tw:duration-[240ms] tw:ease-in-out"
-            width={
-              hasHintColumn
-                ? hintOpen
-                  ? WIDTH_WITH_HINT
-                  : WIDTH_WITHOUT_HINT
-                : WIDTH_NO_HINT_COLUMN
-            }
+            width={modalWidth}
             onClose={onClose}>
             {/* The Request Data Access modal's header verbatim, that form being
                 the reference design named:
@@ -231,32 +223,18 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                     )}
                   </Box>
                 </Box>
-                {/* shrink-0: the Show Hint label + toggle must never be
-                    compressed, or the label wraps mid-phrase when the modal
-                    narrows. whitespace-nowrap on the label for the same
-                    reason. */}
+                {/* shrink-0: the header actions must never be compressed into
+                    a wrap when the modal narrows. */}
                 <Box
                   align="center"
                   className="tw:shrink-0 tw:gap-4"
                   direction="row">
                   {headerActions}
                   {onHintToggle && (
-                    <Box align="center" className="tw:gap-2" direction="row">
-                      <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-                      <Typography
-                        className="tw:whitespace-nowrap tw:text-secondary"
-                        size="text-sm"
-                        weight="medium">
-                        {t('label.show-hint')}
-                      </Typography>
-                      <Toggle
-                        aria-label={t('label.show-hint')}
-                        data-testid="show-hint-toggle"
-                        isSelected={hintOpen}
-                        size="sm"
-                        onChange={onHintToggle}
-                      />
-                    </Box>
+                    <ShowHintToggle
+                      isSelected={Boolean(hintOpen)}
+                      onChange={onHintToggle}
+                    />
                   )}
                 </Box>
               </Box>
@@ -272,8 +250,8 @@ export const AiFormModal: FC<AiFormModalProps> = ({
             <Dialog.Content
               className={
                 hasHintColumn
-                  ? 'tw:max-h-[calc(88vh-141px)] tw:flex-row tw:gap-0 tw:overflow-hidden tw:p-0 tw:sm:p-0'
-                  : 'tw:max-h-[calc(100vh-260px)] tw:overflow-y-auto'
+                  ? 'tw:flex-row tw:gap-0 tw:p-0 tw:sm:p-0'
+                  : undefined
               }>
               {children}
             </Dialog.Content>

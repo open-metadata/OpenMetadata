@@ -20,7 +20,7 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { DeleteModalProps } from './DeleteModal.interface';
 
@@ -51,12 +51,12 @@ export const DeleteModal = ({
               theme="light"
             />
             <div
-              className="tw:flex tw:flex-col tw:gap-0.5 tw:mt-4"
+              className="tw:flex tw:flex-col tw:gap-0.5 tw:mt-4 tw:min-w-0 tw:w-full"
               data-testid="modal-header">
               <Typography ellipsis size="text-md" weight="semibold">
                 {t('label.delete')} {entityTitle}
               </Typography>
-              <Typography as="p" className="tw:text-tertiary">
+              <Typography as="p" className="tw:text-tertiary tw:break-words">
                 {message}
               </Typography>
             </div>

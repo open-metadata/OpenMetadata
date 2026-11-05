@@ -18,7 +18,7 @@ tracks progress has no registry and the workflow reporter (which scans steps
 for the ``_progress_tracking`` attribute) skips it.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from metadata.ingestion.progress.modes import (
     ManualProgress,
@@ -36,7 +36,7 @@ class ProgressTracking:
         self._mode = mode
         self._source_name = source_name
         self._registry = ProgressRegistry()
-        self._manual: Optional[ManualProgress] = None  # noqa: UP045
+        self._manual: ManualProgress | None = None
 
     @property
     def mode(self) -> ProgressMode:

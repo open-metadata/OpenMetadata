@@ -12,7 +12,6 @@
 """Athena utils module"""
 
 from copy import deepcopy
-from typing import Dict, List, Optional  # noqa: UP035
 
 from pyathena.sqlalchemy.util import _HashableDict
 from sqlalchemy import text, types
@@ -92,7 +91,7 @@ def _get_column_type(self, type_):
 
 
 # pylint: disable=unused-argument
-def _get_projection_details(columns: List[Dict], projection_parameters: Dict) -> List[Dict]:  # noqa: UP006
+def _get_projection_details(columns: list[dict], projection_parameters: dict) -> list[dict]:
     """Get the projection details for the columns
 
     Args:
@@ -111,7 +110,7 @@ def _get_projection_details(columns: List[Dict], projection_parameters: Dict) ->
     return columns
 
 
-def _deduplicate_columns(columns: List[Dict], table_name: str) -> List[Dict]:  # noqa: UP006
+def _deduplicate_columns(columns: list[dict], table_name: str) -> list[dict]:
     """Return columns once by exact name, preserving the first occurrence."""
     deduplicated_columns = []
     seen_column_names = set()
@@ -251,7 +250,9 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     """
     Gets the view definition
     """
-    full_view_name = f'"{view_name}"' if not schema else f'"{schema}"."{view_name}"'
+    # Schema and view names come from the source system, so they are untrusted.
+    quote = self.identifier_preparer.quote_identifier
+    full_view_name = quote(view_name) if not schema else f"{quote(schema)}.{quote(view_name)}"
     res = connection.execute(text(f"SHOW CREATE VIEW {full_view_name}")).fetchall()
     if res:
         return "\n".join(i[0] for i in res)
@@ -262,8 +263,8 @@ def get_table_options(
     self,
     connection: "Connection",  # noqa: F821
     table_name: str,
-    schema: Optional[str] = None,  # noqa: UP045
-    **kw,  # noqa: F821, RUF100
+    schema: str | None = None,
+    **kw,
 ):
     metadata = self._get_table(connection, table_name, schema=schema, **kw)
     return {

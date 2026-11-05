@@ -12,37 +12,45 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import { visitServiceDetailsPage } from '../../utils/service';
+import { visitEntityPageByFqn } from '../../utils/entity';
+import type { DatabaseClass } from './DatabaseClass';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import type { ParentNode, ParentSnapshot } from './ParentChain';
+import { parentDeletePath } from './ParentChain';
+import { resolveParents } from './ParentResolver';
+import { DatabaseServiceClass } from './service/DatabaseServiceClass';
 
-export class DatabaseSchemaClass extends EntityClass {
-  service = {
-    name: `pw-database-service-${uuid()}`,
-    serviceType: 'Mysql',
-    connection: {
-      config: {
-        type: 'Mysql',
-        scheme: 'mysql+pymysql',
-        username: 'username',
-        authType: {
-          password: 'password',
-        },
-        hostPort: 'mysql:3306',
-        supportsMetadataExtraction: true,
-        supportsDBTExtraction: true,
-        supportsProfiler: true,
-        supportsQueryComment: true,
-      },
-    },
-  };
+/**
+ * Without a parent the schema sits in the shard's shared service → database.
+ * Pass the deepest parent the test must own: `database` when it mutates or
+ * lists the database, `service` when it touches the service itself.
+ */
+export type DatabaseSchemaClassOptions = {
+  name?: string;
+  service?: DatabaseServiceClass;
+  database?: DatabaseClass;
+  sharedInfraKey?: string;
+};
+
+export class DatabaseSchemaClass extends EntityClass implements ParentNode {
+  readonly parentLevel = 'schema' as const;
+  private readonly parentOverrides: Pick<
+    DatabaseSchemaClassOptions,
+    'service' | 'database'
+  >;
+  service = new DatabaseServiceClass().entity;
   database = {
     name: `pw-database-${uuid()}`,
     service: this.service.name,
@@ -59,30 +67,48 @@ export class DatabaseSchemaClass extends EntityClass {
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
 
-  constructor(name?: string) {
+  constructor(options: DatabaseSchemaClassOptions = {}) {
     super(EntityTypeEndpoint.DatabaseSchema);
-    this.service.name = name ?? this.service.name;
     this.type = 'Database Schema';
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
+    this.sharedInfraKey = options.sharedInfraKey;
+    this.parentOverrides = {
+      service: options.service,
+      database: options.database,
+    };
+    if (options.name) {
+      this.entity.name = options.name;
+    }
+  }
+
+  private bindParentNames(serviceName: string, databaseName: string) {
+    this.service = { ...this.service, name: serviceName };
+    this.database = { name: databaseName, service: serviceName };
+    this.entity.database = `${serviceName}.${databaseName}`;
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/databaseServices',
-      {
-        data: this.service,
-      }
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
+      apiContext,
+      'database',
+      this.parentOverrides,
+      this.sharedInfraKey,
+      'database'
     );
-    const databaseResponse = await apiContext.post('/api/v1/databases', {
-      data: this.database,
-    });
-    const entityResponse = await apiContext.post('/api/v1/databaseSchemas', {
+    const service = parents.service as ResponseDataType;
+    const database = {
+      ...parents.database,
+      service,
+    } as ResponseDataWithServiceType;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
+    this.bindParentNames(service.name, database.name);
+
+    const entity = await createOrFetch(apiContext, {
+      label: 'DatabaseSchemaClass.create schema',
+      createPath: '/api/v1/databaseSchemas',
+      fqnSegments: [service.name, database.name, this.entity.name],
       data: this.entity,
     });
-
-    const service = await serviceResponse.json();
-    const database = await databaseResponse.json();
-    const entity = await entityResponse.json();
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;
@@ -102,17 +128,18 @@ export class DatabaseSchemaClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/databaseSchemas/${this.entityResponseData?.['id']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/databaseSchemas/${this.entityResponseData?.['id']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
-
-    const entity = await serviceResponse.json();
+    const entity = await okJson(serviceResponse, 'DatabaseSchemaClass.patch');
 
     this.entityResponseData = entity;
 
@@ -124,6 +151,7 @@ export class DatabaseSchemaClass extends EntityClass {
       service: this.serviceResponseData,
       database: this.databaseResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
@@ -131,55 +159,57 @@ export class DatabaseSchemaClass extends EntityClass {
     entity: ResponseDataWithServiceType;
     service: ResponseDataType;
     database: ResponseDataWithServiceType;
+    ownedRootPath?: string;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
     this.databaseResponseData = data.database;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.bindParentNames(data.service.name, data.database.name);
   }
 
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
+
+  forget() {
+    this.entityResponseData = {} as typeof this.entityResponseData;
+    this.forgetOwnership();
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return {
+      service: this.serviceResponseData,
+      database: this.databaseResponseData,
+      schema: this.entityResponseData,
+    };
+  }
+
+  rootDeletePath() {
+    return this.ownedRootPath ?? this.schemaPath();
+  }
+
+  private schemaPath() {
+    return parentDeletePath(
+      'databaseSchemas',
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    );
+  }
+
+  // FQN navigation: a shared service/database paginates its children, so
+  // clicking through them can miss this schema.
   async visitEntityPage(page: Page) {
-    await visitServiceDetailsPage(
+    await visitEntityPageByFqn({
       page,
-      {
-        name: this.service.name,
-        type: SERVICE_TYPE.Database,
-      },
-      false
-    );
-
-    // Wait for the database to be visible before clicking
-    await page.getByTestId(this.database.name).waitFor({ state: 'visible' });
-
-    const databaseResponse = page.waitForResponse(
-      `/api/v1/databases/name/*${this.database.name}?**`
-    );
-    await page.getByTestId(this.database.name).click();
-    await databaseResponse;
-
-    // Wait for page to fully load after navigation
-
-    // Target schema specifically within the table container to avoid clicking breadcrumbs or other elements
-    const schemaLocator = page.getByTestId(this.entity.name);
-
-    await schemaLocator.waitFor({ state: 'visible' });
-
-    const databaseSchemaResponse = page.waitForResponse(
-      `/api/v1/databaseSchemas/name/*${this.entity.name}?*`
-    );
-    await schemaLocator.click();
-    await databaseSchemaResponse;
+      endpoint: EntityTypeEndpoint.DatabaseSchema,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
+    });
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
-      `/api/v1/services/databaseServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
-    );
+    await this.deleteOwnedOrLeaf(apiContext, this.schemaPath());
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 }

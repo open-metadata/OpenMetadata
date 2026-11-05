@@ -31,6 +31,9 @@ public class KnowledgePageMapper implements EntityMapper<Page, CreatePage> {
         .withPageType(create.getPageType())
         .withPage(create.getPage())
         .withParent(create.getParent())
-        .withRelatedEntities(relatedEntities);
+        .withRelatedEntities(relatedEntities)
+        // Handed through untouched: a null reaches EntityRepository.setDefaultStatus, which fills
+        // in Unprocessed.
+        .withEntityStatus(create.getEntityStatus());
   }
 }

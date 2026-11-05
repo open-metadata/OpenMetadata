@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
-import { Check } from '@untitledui/icons';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { ListBoxItem as AriaListBoxItem } from 'react-aria-components';
-import { getEntityIconWithBg } from '../../../utils/Assets/AssetsUtils';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { DataAssetPickerRowProps } from './DataAssetPicker.interface';
 
 const DataAssetPickerRow: FC<DataAssetPickerRowProps> = ({
@@ -34,16 +35,21 @@ const DataAssetPickerRow: FC<DataAssetPickerRowProps> = ({
           'tw:hover:bg-utility-gray-blue-50 tw:outline-hidden',
           { 'tw:bg-brand-primary': state.isSelected },
           {
-            'tw:bg-utility-gray-blue-50': isFocused && !state.isSelected,
+            // \`isFocused\` is the picker shell's own keyboard focus; inside a
+            // combobox react-aria tracks focus itself.
+            'tw:bg-utility-gray-blue-50':
+              (isFocused || state.isFocused) && !state.isSelected,
           }
         )
       }
+      data-testid={`option-${option.id}`}
       id={option.id}
       textValue={title}>
       {(state) => (
         <>
           <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
-            {type && getEntityIconWithBg(type)}
+            {type &&
+              searchClassBase.getEntityIconWithBg(type, EntityIconSize.Size16)}
 
             <Box
               align="center"

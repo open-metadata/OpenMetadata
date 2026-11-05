@@ -54,17 +54,12 @@ public class McpTestUtils {
     return createJsonRpcRequest("prompts/get", params);
   }
 
-  public static String createAuthorizationHeader(String token) {
-    return "Bearer " + token;
-  }
-
   public static Map<String, Object> createSearchMetadataToolCall(
       String query, int limit, String entityType) {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("query", query);
     arguments.put("limit", limit);
     arguments.put("entityType", entityType);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("search_metadata", arguments);
   }
@@ -73,7 +68,6 @@ public class McpTestUtils {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("entityType", entityType);
     arguments.put("fqn", fqn);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_entity_details", arguments);
   }
@@ -89,30 +83,36 @@ public class McpTestUtils {
     if (columnLimit != null) {
       arguments.put("columnLimit", columnLimit);
     }
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_entity_details", arguments);
   }
 
+  // The per-type create tools were replaced by create_entity: shared fields stay top-level and the
+  // fields only one type accepts move into 'attributes'.
   public static Map<String, Object> createGlossaryToolCall(String name, String description) {
     Map<String, Object> arguments = new HashMap<>();
+    arguments.put("entityType", "glossary");
     arguments.put("name", name);
     arguments.put("description", description);
-    arguments.put("mutuallyExclusive", false);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+    arguments.put("attributes", Map.of("mutuallyExclusive", false));
 
-    return createToolCallRequest("create_glossary", arguments);
+    return createToolCallRequest("create_entity", arguments);
   }
 
   public static Map<String, Object> createGlossaryTermToolCall(
       String glossary, String name, String description) {
     Map<String, Object> arguments = new HashMap<>();
-    arguments.put("glossary", glossary);
+    arguments.put("entityType", "glossaryTerm");
     arguments.put("name", name);
     arguments.put("description", description);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+    // 'glossary' is an EntityReference on GlossaryTerm; a bare name string fails Jackson binding.
+    // Resolution falls back to fullyQualifiedName when no id is given, and a top-level glossary's
+    // fqn equals its name.
+    arguments.put(
+        "attributes",
+        Map.of("glossary", Map.of("type", "glossary", "fullyQualifiedName", glossary)));
 
-    return createToolCallRequest("create_glossary_term", arguments);
+    return createToolCallRequest("create_entity", arguments);
   }
 
   public static Map<String, Object> createPatchEntityToolCall(
@@ -121,7 +121,6 @@ public class McpTestUtils {
     arguments.put("entityType", entityType);
     arguments.put("fqn", fqn);
     arguments.put("patch", patch);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("patch_entity", arguments);
   }
@@ -133,7 +132,27 @@ public class McpTestUtils {
     arguments.put("fqn", fqn);
     arguments.put("upstreamDepth", upstreamDepth);
     arguments.put("downstreamDepth", downstreamDepth);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("get_entity_lineage", arguments);
+  }
+
+  public static Map<String, Object> createGetLineageToolCall(
+      String entityType, String fqn, Map<String, Object> options) {
+    Map<String, Object> arguments = new HashMap<>(options);
+    arguments.put("entityType", entityType);
+    arguments.put("fqn", fqn);
+
+    return createToolCallRequest("get_entity_lineage", arguments);
+  }
+
+  public static Map<String, Object> createGetColumnLineageToolCall(
+      String entityType, String fqn, String column, int upstreamDepth, int downstreamDepth) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("entityType", entityType);
+    arguments.put("fqn", fqn);
+    arguments.put("column", column);
+    arguments.put("upstreamDepth", upstreamDepth);
+    arguments.put("downstreamDepth", downstreamDepth);
 
     return createToolCallRequest("get_entity_lineage", arguments);
   }
@@ -151,7 +170,6 @@ public class McpTestUtils {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("fromEntity", fromEntity);
     arguments.put("toEntity", toEntity);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("create_lineage", arguments);
   }
@@ -159,7 +177,6 @@ public class McpTestUtils {
   public static Map<String, Object> createGetTestDefinitionsToolCall(String entityType) {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("entityType", entityType);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_test_definitions", arguments);
   }
@@ -174,7 +191,6 @@ public class McpTestUtils {
     arguments.put("fqn", fqn);
     arguments.put("testDefinitionName", testDefinitionName);
     arguments.put("parameterValues", parameterValues);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("create_test_case", arguments);
   }
@@ -186,7 +202,6 @@ public class McpTestUtils {
     arguments.put("entityType", entityType);
     arguments.put("upstreamDepth", upstreamDepth);
     arguments.put("downstreamDepth", downstreamDepth);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("root_cause_analysis", arguments);
   }
@@ -197,14 +212,19 @@ public class McpTestUtils {
       String metricExpressionLanguage,
       String metricExpressionCode) {
     Map<String, Object> arguments = new HashMap<>();
+    arguments.put("entityType", "metric");
     arguments.put("name", name);
     if (description != null) {
       arguments.put("description", description);
     }
-    arguments.put("metricExpressionLanguage", metricExpressionLanguage);
-    arguments.put("metricExpressionCode", metricExpressionCode);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+    // create_metric took the language and code as two flat parameters; create_entity binds to the
+    // request class, where they are the one nested metricExpression object the schema declares.
+    arguments.put(
+        "attributes",
+        Map.of(
+            "metricExpression",
+            Map.of("language", metricExpressionLanguage, "code", metricExpressionCode)));
 
-    return createToolCallRequest("create_metric", arguments);
+    return createToolCallRequest("create_entity", arguments);
   }
 }

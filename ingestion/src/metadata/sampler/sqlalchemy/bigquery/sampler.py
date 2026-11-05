@@ -13,19 +13,18 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from copy import deepcopy  # noqa: I001
-from typing import Optional
+from copy import deepcopy
 
-from sqlalchemy import Column
+from sqlalchemy import Column, text
 from sqlalchemy import Table as SqaTable
-from sqlalchemy import text
 from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
-from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.basic import EntityName, ProfileSampleType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
+from metadata.ingestion.source.database.bigquery.sharding import get_table_sharding
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -44,7 +43,7 @@ class BigQuerySampler(SQASampler):
     def __init__(self, *args, **kwargs):
         table_type = kwargs.pop("table_type", None)
         super().__init__(*args, **kwargs)
-        self.raw_dataset_type: Optional[TableType] = table_type or (  # noqa: UP045
+        self.raw_dataset_type: TableType | None = table_type or (
             self.entity.tableType if isinstance(self.entity, Table) else None
         )
 
@@ -55,6 +54,21 @@ class BigQuerySampler(SQASampler):
             self.connection = get_ssl_connection(connection_config)
 
         self.session_factory = create_and_bind_thread_safe_session(self.connection)
+
+    def build_table_orm(self, table, service_conn_config, ometa_client):
+        self.execution_source = None
+        descriptor = get_table_sharding(table)
+        if descriptor:
+            self.execution_source = descriptor.representative.model_copy(deep=True)
+            table = table.model_copy(deep=True)
+            table.name = EntityName(self.execution_source.tableName)
+        return super().build_table_orm(table, service_conn_config, ometa_client)
+
+    def fetch_sample_data(self, columns=None):
+        sample = super().fetch_sample_data(columns)
+        if not self.sample_query:
+            sample.executionSource = self.execution_source
+        return sample
 
     def set_tablesample(self, static: StaticSamplingConfig | None, selectable: SqaTable):
         """Set the TABLESAMPLE clause for BigQuery
@@ -81,7 +95,7 @@ class BigQuerySampler(SQASampler):
         Returns:
         """
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
+        from sqlalchemy_bigquery import STRUCT
 
         if column is not None:
             column_parts = column.name.split(".")
@@ -93,7 +107,12 @@ class BigQuerySampler(SQASampler):
                 # FROM sample TABLESAMPLE SYSTEM (n PERCENT)
                 column = Column(column_parts[0], STRUCT)
                 # pylint: disable=protected-access
-                column._set_parent(self.raw_dataset.__table__)
+                table = self.raw_dataset.__table__  # pyright: ignore[reportOptionalMemberAccess]
+                column._set_parent(
+                    table,
+                    all_names={c.name: c for c in table.columns},  # pyright: ignore[reportCallIssue]
+                    allow_replacements=True,
+                )
                 # pylint: enable=protected-access
 
         return super()._base_sample_query(selectable, column, label=label)

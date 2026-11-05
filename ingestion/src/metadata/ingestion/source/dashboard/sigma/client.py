@@ -14,7 +14,6 @@ REST Auth & Client for Sigma
 
 import traceback
 from base64 import b64encode
-from typing import List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
     SigmaConnection,
@@ -83,7 +82,7 @@ class SigmaApiClient:
 
         self.client = TrackedREST(client_config, source_name="sigma")
 
-    def get_auth_token(self) -> Tuple[str, int]:  # noqa: UP006
+    def get_auth_token(self) -> tuple[str, int]:
         """
         generate auth token
          Returns:
@@ -92,7 +91,7 @@ class SigmaApiClient:
         result = AuthToken.model_validate(self.token_client.post("/auth/token", data=TOKEN_PAYLOAD))
         return result.access_token, result.expires_in
 
-    def test_get_dashboards(self) -> Optional[List[Workbook]]:  # noqa: RET503, UP006, UP045
+    def test_get_dashboards(self) -> list[Workbook] | None:  # noqa: RET503
         """
         method to test fetch dashboards from api
         """
@@ -101,7 +100,7 @@ class SigmaApiClient:
         if result:
             return result.entries
 
-    def get_dashboards(self) -> Optional[List[Workbook]]:  # noqa: UP006, UP045
+    def get_dashboards(self) -> list[Workbook] | None:
         """
         method to fetch dashboards from api
         """
@@ -121,7 +120,7 @@ class SigmaApiClient:
             logger.error(f"Error fetching Dashboards: {exc}")
         return workbooks
 
-    def get_dashboard_detail(self, workbook_id: str) -> Optional[WorkbookDetails]:  # noqa: UP045
+    def get_dashboard_detail(self, workbook_id: str) -> WorkbookDetails | None:
         """
         method to fetch dashboard details from api
         """
@@ -134,7 +133,7 @@ class SigmaApiClient:
             logger.error(f"Error fetching Dashboard details for for workbook {workbook_id}: {exc}")
         return None
 
-    def get_owner_detail(self, owner_id: str) -> Optional[OwnerDetails]:  # noqa: UP045
+    def get_owner_detail(self, owner_id: str) -> OwnerDetails | None:
         """
         method to fetch dashboard owner details from api
         """
@@ -147,7 +146,7 @@ class SigmaApiClient:
             logger.warning(f"Failed to fetch owner details for owner {owner_id}: {exc}")
         return None
 
-    def get_page_elements(self, workbook_id: str, page_id: str) -> Optional[List[Elements]]:  # noqa: UP006, UP045
+    def get_page_elements(self, workbook_id: str, page_id: str) -> list[Elements] | None:
         """
         method to fetch dashboards page elements from api
         """
@@ -173,7 +172,7 @@ class SigmaApiClient:
             logger.warning(f"Failed to fetch page elements for workbook {workbook_id}: {exc}")
         return elements
 
-    def get_chart_details(self, workbook_id: str) -> Optional[List[Elements]]:  # noqa: UP006, UP045
+    def get_chart_details(self, workbook_id: str) -> list[Elements] | None:
         """
         method to fetch dashboards chart details from api
         """
@@ -205,7 +204,7 @@ class SigmaApiClient:
             logger.warning(f"Failed to fetch chart details for workbook {workbook_id}: {exc}")
         return None
 
-    def get_workbook_queries(self, workbook_id: str) -> Optional[WorkbookQueriesResponse]:  # noqa: UP045
+    def get_workbook_queries(self, workbook_id: str) -> WorkbookQueriesResponse | None:
         """
         Fetch SQL queries for all elements in a workbook
         """
@@ -227,7 +226,7 @@ class SigmaApiClient:
             logger.warning(f"Failed to fetch queries for workbook {workbook_id}: {exc}")
         return None
 
-    def get_lineage_details(self, workbook_id: str, element_id: str) -> Optional[List[NodeDetails]]:  # noqa: UP006, UP045
+    def get_lineage_details(self, workbook_id: str, element_id: str) -> list[NodeDetails] | None:
         """
         method to fetch dashboards lineage details from api
         """

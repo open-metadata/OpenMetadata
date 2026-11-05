@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +34,9 @@ class AuthorizationHandlerTest {
   void setUp() {
     handler = new AuthorizationHandler(provider);
   }
+
+  // A desktop or IDE client: errors are still redirected straight back to it.
+  private static final String LOOPBACK_CALLBACK = "http://127.0.0.1:33418/callback";
 
   private Map<String, String> validParams() {
     Map<String, String> params = new HashMap<>();
@@ -128,7 +133,7 @@ class AuthorizationHandlerTest {
   @Test
   void testInvalidScope_returnsInvalidScopeWithRedirect()
       throws InvalidRedirectUriException, InvalidScopeException {
-    URI redirectUri = URI.create("https://example.com/callback");
+    URI redirectUri = URI.create(LOOPBACK_CALLBACK);
     when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
     when(client.validateRedirectUri(any())).thenReturn(redirectUri);
     when(client.validateScope("admin")).thenThrow(new InvalidScopeException("Not allowed"));
@@ -160,6 +165,61 @@ class AuthorizationHandlerTest {
     assertThat(response.isRedirect()).isTrue();
     assertThat(response.getRedirectUrl()).contains("code=auth-code-123");
     assertThat(response.getRedirectUrl()).contains("state=state123");
+  }
+
+  @Test
+  void testSuccessfulAuthCodeGeneration_includesIssuerParameter()
+      throws InvalidRedirectUriException, InvalidScopeException, AuthorizeException {
+    URI redirectUri = URI.create("https://example.com/callback");
+    when(provider.getIssuer()).thenReturn("https://om.example.com/mcp");
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+    when(client.validateScope(any())).thenReturn(null);
+    when(provider.authorize(eq(client), any()))
+        .thenReturn(CompletableFuture.completedFuture("auth-code-123"));
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(validParams()).join();
+
+    assertThat(response.getRedirectUrl())
+        .contains("iss=" + URLEncoder.encode("https://om.example.com/mcp", StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void testErrorRedirect_includesIssuerParameter()
+      throws InvalidRedirectUriException, InvalidScopeException {
+    URI redirectUri = URI.create("https://example.com/callback");
+    when(provider.getIssuer()).thenReturn("https://om.example.com/mcp");
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+    when(client.validateScope("admin")).thenThrow(new InvalidScopeException("Not allowed"));
+
+    Map<String, String> params = validParams();
+    params.put("scope", "admin");
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+    assertThat(response.getRedirectUrl()).contains("error=invalid_scope");
+    assertThat(response.getRedirectUrl())
+        .contains("iss=" + URLEncoder.encode("https://om.example.com/mcp", StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void testUnresolvedIssuer_omitsIssuerParameter()
+      throws InvalidRedirectUriException, InvalidScopeException, AuthorizeException {
+    // Before the base URL is resolved the issuer is null. RFC 9207 clients must not be handed an
+    // empty iss they would then fail to match against the recorded issuer.
+    URI redirectUri = URI.create("https://example.com/callback");
+    when(provider.getIssuer()).thenReturn(null);
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+    when(client.validateScope(any())).thenReturn(null);
+    when(provider.authorize(eq(client), any()))
+        .thenReturn(CompletableFuture.completedFuture("auth-code-123"));
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(validParams()).join();
+
+    assertThat(response.getRedirectUrl()).contains("code=auth-code-123");
+    assertThat(response.getRedirectUrl()).doesNotContain("iss=");
   }
 
   @Test
@@ -200,7 +260,7 @@ class AuthorizationHandlerTest {
   @Test
   void testAuthorizeException_returnsErrorWithRedirect()
       throws InvalidRedirectUriException, InvalidScopeException, AuthorizeException {
-    URI redirectUri = URI.create("https://example.com/callback");
+    URI redirectUri = URI.create(LOOPBACK_CALLBACK);
     when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
     when(client.validateRedirectUri(any())).thenReturn(redirectUri);
     when(client.validateScope(any())).thenReturn(null);
@@ -220,7 +280,7 @@ class AuthorizationHandlerTest {
   @Test
   void testUnexpectedException_returnsServerError()
       throws InvalidRedirectUriException, InvalidScopeException, AuthorizeException {
-    URI redirectUri = URI.create("https://example.com/callback");
+    URI redirectUri = URI.create(LOOPBACK_CALLBACK);
     when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
     when(client.validateRedirectUri(any())).thenReturn(redirectUri);
     when(client.validateScope(any())).thenReturn(null);
@@ -232,5 +292,27 @@ class AuthorizationHandlerTest {
     assertThat(response.isSuccess()).isFalse();
     assertThat(response.getError().getError()).isEqualTo("server_error");
     assertThat(response.isRedirect()).isTrue();
+  }
+
+  @Test
+  void testErrorForRemoteWebCallback_isALinkNotARedirect()
+      throws InvalidRedirectUriException, InvalidScopeException {
+    // Any client can register an https callback, so redirecting errors to one made
+    // /mcp/authorize an open redirect. The URL is kept so the page can link to it.
+    URI redirectUri = URI.create("https://example.com/callback");
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+    when(client.validateScope("admin")).thenThrow(new InvalidScopeException("Not allowed"));
+
+    Map<String, String> params = validParams();
+    params.put("scope", "admin");
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+    assertThat(response.isRedirect()).isFalse();
+    assertThat(response.getRedirectUrl())
+        .startsWith("https://example.com/callback?")
+        .contains("error=invalid_scope")
+        .contains("state=state123");
   }
 }

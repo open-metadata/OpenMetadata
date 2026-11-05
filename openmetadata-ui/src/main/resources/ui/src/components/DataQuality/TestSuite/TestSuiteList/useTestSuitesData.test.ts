@@ -13,20 +13,14 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { TestSuite } from '../../../../generated/tests/testCase';
 import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
-import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useTestSuitesData, UseTestSuitesDataProps } from './useTestSuitesData';
 
 jest.mock('../../../../rest/testAPI', () => ({
   getListTestSuitesBySearch: jest.fn(),
-}));
-
-jest.mock('../../../../utils/PermissionsUtils', () => ({
-  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -84,7 +78,6 @@ const renderData = (props: UseTestSuitesDataProps = buildProps()) =>
 describe('useTestSuitesData', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getPrioritizedViewPermission as jest.Mock).mockReturnValue(true);
     mockGetListTestSuitesBySearch.mockResolvedValue({
       data: [],
       paging: {},
@@ -139,9 +132,9 @@ describe('useTestSuitesData', () => {
   });
 
   it('should not fetch and should stop loading when the injected view permission is absent', async () => {
-    (getPrioritizedViewPermission as jest.Mock).mockReturnValue(false);
-
-    const { result } = renderData();
+    const { result } = renderData(
+      buildProps({ testSuitePermission: {} as OperationPermission })
+    );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -149,15 +142,14 @@ describe('useTestSuitesData', () => {
   });
 
   it('should gate the fetch on the injected testSuite permission for ViewBasic', async () => {
-    renderData();
-
-    await waitFor(() =>
-      expect(getPrioritizedViewPermission).toHaveBeenCalled()
+    renderData(
+      buildProps({
+        testSuitePermission: { ViewBasic: true } as OperationPermission,
+      })
     );
 
-    expect(getPrioritizedViewPermission).toHaveBeenCalledWith(
-      testSuitePermission,
-      Operation.ViewBasic
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalled()
     );
   });
 
@@ -188,6 +180,75 @@ describe('useTestSuitesData', () => {
     );
   });
 
+  it('should reuse a previously loaded sub-tab instead of fetching it again', async () => {
+    const { rerender } = renderData(buildProps());
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    rerender(buildProps({ subTab: DataQualitySubTabs.BUNDLE_SUITES }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(2)
+    );
+
+    rerender(buildProps({ subTab: DataQualitySubTabs.TABLE_SUITES }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(2)
+    );
+  });
+
+  it('should refetch a cached sub-tab after the cache entry expires', async () => {
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(0);
+    const { rerender } = renderData(buildProps());
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    rerender(buildProps({ subTab: DataQualitySubTabs.BUNDLE_SUITES }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(2)
+    );
+
+    nowSpy.mockReturnValue(60_000);
+    rerender(buildProps({ subTab: DataQualitySubTabs.TABLE_SUITES }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(3)
+    );
+
+    nowSpy.mockRestore();
+  });
+
+  it('should evict the oldest response when the cache reaches its limit', async () => {
+    const { rerender } = renderData(buildProps({ searchValue: 'query-0' }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    await Array.from({ length: 20 }, (_, index) => index + 1).reduce(
+      async (previousLoad, index) => {
+        await previousLoad;
+        rerender(buildProps({ searchValue: `query-${index}` }));
+        await waitFor(() =>
+          expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(index + 1)
+        );
+      },
+      Promise.resolve()
+    );
+
+    rerender(buildProps({ searchValue: 'query-0' }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(22)
+    );
+  });
+
   it('should pass the wildcard query and the owner filter key to the fetch', async () => {
     renderData(
       buildProps({
@@ -201,8 +262,21 @@ describe('useTestSuitesData', () => {
     );
 
     expect(mockGetListTestSuitesBySearch).toHaveBeenCalledWith(
-      expect.objectContaining({ q: '*abc*', owner: 'u1' })
+      expect.objectContaining({ q: 'abc', owner: 'u1' })
     );
+  });
+
+  it('should send a reserved-character term verbatim, since the server parses q as literal text', async () => {
+    const url = 'https://example.com/data-quality/test-case-results';
+    renderData(buildProps({ searchValue: url }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalled()
+    );
+
+    const { q } = mockGetListTestSuitesBySearch.mock.calls.at(-1)?.[0] ?? {};
+
+    expect(q).toBe(url);
   });
 
   it('should refetch when an injected filter changes (driving effect)', async () => {
@@ -220,7 +294,7 @@ describe('useTestSuitesData', () => {
     );
 
     expect(mockGetListTestSuitesBySearch).toHaveBeenLastCalledWith(
-      expect.objectContaining({ q: '*xyz*' })
+      expect.objectContaining({ q: 'xyz' })
     );
   });
 

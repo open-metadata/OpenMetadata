@@ -14,7 +14,9 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 
-from typing import Optional, cast
+import re
+from collections import Counter
+from typing import cast
 
 import sqlalchemy
 from sqlalchemy import MetaData
@@ -37,8 +39,37 @@ class Base(DeclarativeBase):
 
 SQA_RESERVED_ATTRIBUTES = ["metadata"]
 
+# SQLAlchemy 2.x's declarative scan filters out any class attribute whose name matches
+# this pattern (see sqlalchemy.orm.decl_base._match_exclude_dunders).  A column keyed
+# under such a name is silently dropped from the mapped Table, which removes the primary
+# key when that column happens to be first and raises a hard mapper error.
+_SQA_DUNDER_RE = re.compile(r"^(?:__|_sa_)")
+_OM_SAFE_PREFIX = "om_col_"
 
-def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:  # noqa: UP045
+
+def _safe_orm_attr(name: str, existing: set) -> str:
+    """Return a class-attribute key safe for SQLAlchemy's declarative base.
+
+    Renames attributes that SQLAlchemy would silently discard:
+    - reserved names (e.g. "metadata") get a trailing underscore (existing behaviour)
+    - dunder/``_sa_``-prefixed names get the ``om_col_`` prefix so they pass the
+      declarative scan filter; ``Column.name`` and ``Column.key`` are unchanged, so
+      the profiler still addresses columns by their original name.
+
+    Collisions introduced by the renaming are resolved by appending underscores.
+    """
+    if name in SQA_RESERVED_ATTRIBUTES:
+        candidate = name + "_"
+    elif _SQA_DUNDER_RE.match(name):
+        candidate = _OM_SAFE_PREFIX + name
+    else:
+        candidate = name
+    while candidate in existing:
+        candidate += "_"
+    return candidate
+
+
+def check_snowflake_case_sensitive(table_service_type, table_or_col) -> bool | None:
     """Check whether column or table name are not uppercase for snowflake table.
     If so, then force quoting, If not return None to let engine backend handle the logic.
 
@@ -53,7 +84,7 @@ def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional
     return None
 
 
-def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:  # noqa: UP045
+def check_if_should_quote_column_name(table_service_type) -> bool | None:
     """Check whether column name should be quoted when passed into the sql command build up.
     This is important when a column name is the same as a reserve word and causes a sql error.
 
@@ -71,7 +102,9 @@ def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:  # 
     return None
 
 
-def build_orm_col(idx: int, col: Column, table_service_type, *, _quote=None) -> sqlalchemy.Column:
+def build_orm_col(
+    idx: int, col: Column, table_service_type, *, _quote=None, key: str | None = None
+) -> sqlalchemy.Column:
     """
     Cook the ORM column from our metadata instance
     information.
@@ -95,15 +128,36 @@ def build_orm_col(idx: int, col: Column, table_service_type, *, _quote=None) -> 
         type_=converter_registry[table_service_type]().map_types(col, table_service_type),
         primary_key=not bool(idx),  # The first col seen is used as PK
         quote=quote,
-        key=str(col.name.root).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
+        # Add lowercase column name as key for snowflake case sensitive columns
+        key=key or str(col.name.root).lower(),
     )
+
+
+def build_orm_col_keys(columns: list[Column]) -> list[str]:
+    """Compute the SQLAlchemy `key` of each column, keeping them unique.
+
+    SQLAlchemy indexes the column collection of a table by `key`, which we lowercase
+    to handle case sensitive columns. Sources such as Snowflake allow columns that
+    only differ in their casing (e.g. `"Hotel_region"` and `HOTEL_REGION`), whose
+    lowercase keys would collide: only one of them would end up in the ORM table and
+    the mapper would fail with `column ... is not represented in the mapper's table`.
+
+    For those columns we keep the original name as the key so that all of them are
+    mapped and can be profiled or tested.
+    """
+    lowercase_count = Counter(str(col.name.root).lower() for col in columns)
+
+    return [
+        str(col.name.root).lower() if lowercase_count[str(col.name.root).lower()] == 1 else str(col.name.root)
+        for col in columns
+    ]
 
 
 def ometa_to_sqa_orm(
     table: Table,
     metadata: OpenMetadata,
-    sqa_metadata_obj: Optional[MetaData] = None,  # noqa: UP045
-) -> Optional[type]:  # noqa: UP045
+    sqa_metadata_obj: MetaData | None = None,
+) -> type | None:
     """
     Given an OpenMetadata instance, prepare
     the SQLAlchemy ORM class
@@ -138,12 +192,13 @@ def ometa_to_sqa_orm(
     )
     orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.root}".replace(".", "_")
 
-    cols = {
-        (col.name.root + "_" if col.name.root in SQA_RESERVED_ATTRIBUTES else col.name.root): build_orm_col(
-            idx, col, table.serviceType
-        )
-        for idx, col in enumerate(table.columns)
-    }
+    col_keys = build_orm_col_keys(table.columns)
+    attr_names: set = set()
+    cols: dict = {}
+    for idx, col in enumerate(table.columns):
+        attr = _safe_orm_attr(col.name.root, attr_names)
+        attr_names.add(attr)
+        cols[attr] = build_orm_col(idx, col, table.serviceType, key=col_keys[idx])
 
     # Type takes positional arguments in the form of (name, bases, dict)
     orm = type(
@@ -155,6 +210,7 @@ def ometa_to_sqa_orm(
                 "schema": orm_schema_name,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
                 "quote": check_snowflake_case_sensitive(table.serviceType, table.name.root) or None,
+                "quote_schema": check_snowflake_case_sensitive(table.serviceType, orm_schema_name) or None,
             },
             **cols,
             "metadata": _metadata,

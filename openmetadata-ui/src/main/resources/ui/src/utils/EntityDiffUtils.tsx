@@ -84,6 +84,27 @@ export const getNormalDiffElement = (text: string) => {
   );
 };
 
+const BLOCK_END_PATTERN = /<\/(p|li|h[1-6]|div|pre|blockquote)>|<br\s*\/?>/gi;
+// The rich-text editor always wraps content in a block element. Anything else (column types like
+// `array<string>`, markdown such as `Map<K, V>`) is plain text and must keep its angle brackets.
+const EDITOR_HTML_PATTERN = /^\s*<(p|h[1-6]|ul|ol|pre|blockquote|div|table)\b/i;
+
+/**
+ * Rich-text descriptions are stored as HTML. Diffing that markup word by word splits tags, and each
+ * fragment is rendered as escaped text, so the version view showed literal `<p>` and `&#61;`.
+ * Diff what the reader sees instead: the text content, one line per block.
+ */
+const toDiffableText = (text: string) => {
+  if (!EDITOR_HTML_PATTERN.test(text)) {
+    return text;
+  }
+  const html = text.replace(BLOCK_END_PATTERN, (tag) => `${tag}\n`);
+
+  return (
+    new DOMParser().parseFromString(html, 'text/html').body.textContent ?? ''
+  ).trim();
+};
+
 export const getTextDiff = (
   oldText: string,
   newText: string,
@@ -101,7 +122,10 @@ export const getTextDiff = (
     return newText;
   }
 
-  const diffArr = diffWords(toString(oldText), toString(newText));
+  const diffArr = diffWords(
+    toDiffableText(toString(oldText)),
+    toDiffableText(toString(newText))
+  );
 
   const result = diffArr.map((diff) => {
     if (diff.added) {
@@ -187,6 +211,83 @@ export const getDiffDisplayValue = (diff: {
     default:
       return diff.oldValue;
   }
+};
+
+/**
+ * Like getTextDiff but safe for TipTap HTML content: extracts block-level
+ * file-attachment nodes before word-diffing so their attribute strings are
+ * never split across diff chunks. Restored blocks carry a data-diff-state
+ * attribute ("added" | "removed") so FileNodeView can style them visually.
+ */
+export const getRichTextDiff = (
+  oldHtml: string,
+  newHtml: string,
+  fallback?: string
+): string => {
+  if (isEmpty(oldHtml) && isEmpty(newHtml)) {
+    return fallback ?? '';
+  }
+
+  const FILE_BLOCK_RE =
+    /<div[^>]*data-type="file-attachment"[^>]*>[\s\S]*?<\/div>/g;
+
+  // Shared content-keyed registry: identical blocks share a token so diffWords
+  // correctly marks them unchanged; genuinely different blocks get distinct tokens.
+  const blockToToken = new Map<string, string>();
+  const tokenToBlock = new Map<string, string>();
+
+  const tokenize = (html: string) =>
+    html.replace(FILE_BLOCK_RE, (match) => {
+      let token = blockToToken.get(match);
+
+      if (!token) {
+        token = `FILEBLOCK${blockToToken.size}`;
+        blockToToken.set(match, token);
+        tokenToBlock.set(token, match);
+      }
+
+      return token;
+    });
+
+  const oldTokenized = tokenize(oldHtml);
+  const newTokenized = tokenize(newHtml);
+
+  const diffArr = diffWords(oldTokenized, newTokenized);
+
+  return diffArr
+    .flatMap((chunk) =>
+      chunk.value.split(/(FILEBLOCK\d+)/).map((part) => {
+        const tokenMatch = part.match(/^FILEBLOCK\d+$/);
+
+        if (tokenMatch) {
+          const block = tokenToBlock.get(part) ?? '';
+
+          if (chunk.added) {
+            return block.replace(/<div/, '<div data-diff-state="added"');
+          }
+          if (chunk.removed) {
+            return block.replace(/<div/, '<div data-diff-state="removed"');
+          }
+
+          return block;
+        }
+
+        // Preserve spaces — only skip the empty strings emitted by split at boundaries.
+        const value = part.replaceAll('\n', '<br>');
+        if (!value) {
+          return '';
+        }
+        if (chunk.added) {
+          return `<span data-diff="true" class="diff-added text-underline tw:bg-success-primary" data-testid="diff-added">${value}</span>`;
+        }
+        if (chunk.removed) {
+          return `<span data-diff="true" class="text-grey-muted text-line-through tw:bg-error-primary" data-testid="diff-removed">${value}</span>`;
+        }
+
+        return `<span data-diff="true" data-testid="diff-normal">${value}</span>`;
+      })
+    )
+    .join('');
 };
 
 export const getUpdatedExtensionDiffFields = (

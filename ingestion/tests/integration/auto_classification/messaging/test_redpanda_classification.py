@@ -21,7 +21,9 @@ pytest.importorskip("confluent_kafka", reason="confluent_kafka not installed; sk
 
 from ingestion.tests.integration.auto_classification.messaging.conftest import (
     PII_SCHEMA_FIELDS,
+    PII_SCHEMA_TEXT,
     PII_TOPIC_NAME,
+    find_schema_field,
 )
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.messagingService import MessagingServiceType
@@ -117,6 +119,7 @@ def redpanda_pii_topic(metadata, kafka_pii_topic, redpanda_messaging_service):
             partitions=1,
             messageSchema=schema_module.Topic(
                 schemaType=SchemaType.JSON,
+                schemaText=PII_SCHEMA_TEXT,
                 schemaFields=PII_SCHEMA_FIELDS,
             ),
         )
@@ -174,7 +177,7 @@ class TestRedpandaAutoClassification:
             fields=["messageSchema", "tags"],
         )
         fields = topic.messageSchema.schemaFields
-        email_field = next((f for f in fields if f.name.root == "email"), None)
+        email_field = find_schema_field(fields, "email")
         assert email_field is not None
         assert email_field.tags is not None
         assert any(tag.tagFQN.root == "PII.Sensitive" for tag in email_field.tags)

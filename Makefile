@@ -10,6 +10,14 @@ help:
 prerequisites:
 	./scripts/check_prerequisites.sh
 
+.PHONY: dev_setup
+dev_setup:  ## One-call dev environment setup for macOS/Linux (pass flags via ARGS=...)
+	./scripts/dev_setup.sh $(ARGS)
+
+.PHONY: dev_check
+dev_check:  ## Diagnose the dev environment without changing anything
+	./scripts/dev_setup.sh --check
+
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
@@ -40,6 +48,22 @@ yarn_start_e2e_ui:  ## Run the e2e tests locally in UI mode with Yarn
 yarn_start_e2e_codegen:  ## generate playwright code
 	cd openmetadata-ui/src/main/resources/ui && yarn playwright:codegen
 
+.PHONY: playwright_affected
+playwright_affected:  ## List the Playwright specs this branch impacts and the command to run them
+	python3 .github/scripts/plan_local_playwright.py $(ARGS)
+
+.PHONY: playwright_affected_run
+playwright_affected_run:  ## Run the impacted Playwright specs and write the PR results block (ARGS="--update-pr --workers=2")
+	python3 .github/scripts/plan_local_playwright.py --run $(ARGS)
+
+.PHONY: java_affected
+java_affected:  ## List the Java unit tests and integration tests this branch impacts and the commands to run them
+	python3 .github/scripts/plan_local_java_tests.py $(ARGS)
+
+.PHONY: java_affected_run
+java_affected_run:  ## Run the impacted Java unit + integration tests and write the PR results summary + details (ARGS="--update-pr")
+	python3 .github/scripts/plan_local_java_tests.py --run $(ARGS)
+
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
@@ -49,15 +73,13 @@ js_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=JavaScript -o openmetadata-ui/src/main/resources/ui/src/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
 
 ## Ingestion models generation
+.PHONY: check-generated
+check-generated:  ## Check whether ingestion generated files are current
+	@python scripts/check_generated_models.py --check
+
 .PHONY: generate
-generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
-	@echo "Running Datamodel Code Generator"
-	@echo "Make sure to first run the install_dev recipe"
-	rm -rf ingestion/src/metadata/generated
-	mkdir -p ingestion/src/metadata/generated
-	python scripts/datamodel_generation.py
-	$(MAKE) py_antlr js_antlr
-	$(MAKE) install
+generate: python_tools  ## Generate the pydantic models from the JSON Schemas to the ingestion module
+	$(NOX) -s generate -- $(ARGS)
 
 ## Reference docs generation (deterministic; CI fails if the committed output drifts)
 .PHONY: generate-entity-index
@@ -90,14 +112,26 @@ ANTLR_VERSION_RE := $(subst .,\.,$(ANTLR_VERSION))
 #   3. Pinned, checksum-verified download (macOS, non-Debian images, or a distro
 #      carrying a different ANTLR such as jammy's 4.7.2).
 #
+# The checksum is what makes step 3 trustworthy; the archive check next to it is a
+# second opinion, so it reads the archive with whichever tool the host has rather
+# than insisting on one. Requiring a JDK tool to install a CLI that only needs a
+# JRE to run breaks slim runtime images (e.g. ingestion-base ships
+# default-jre-headless, which has java but no jar) on a download that already
+# verified clean. A tool that is present and rejects the archive still fails the
+# build; only the case where no reader exists falls through to the checksum alone,
+# and such a host has no java either, so it could not run the CLI regardless.
+#
 # The version match in step 2 is exact. A distro shipping a different ANTLR falls
 # through to the download rather than silently generating parsers that the pinned
 # runtimes will reject.
 #
 # For step 3, override ANTLR_MAVEN_BASE to pull from an internal Maven mirror
-# instead of Central. The fallback base is tried if the primary is unreachable,
-# so the default (both = Central) stays correct everywhere else.
-ANTLR_MAVEN_BASE ?= https://repo1.maven.org/maven2
+# instead of Central. The default primary is Google's Central mirror, which is
+# CDN-backed and not subject to repo1's per-IP 429 throttling that breaks
+# multi-arch Docker publishes; repo1 stays as the fallback if the mirror is
+# unreachable. The pinned SHA-256 below verifies whatever is fetched, so the
+# source is swappable without lowering trust.
+ANTLR_MAVEN_BASE ?= https://maven-central.storage-download.googleapis.com/maven2
 ANTLR_MAVEN_FALLBACK_BASE ?= https://repo1.maven.org/maven2
 ANTLR_COMPLETE_JAR_PATH := org/antlr/antlr4/$(ANTLR_VERSION)/antlr4-$(ANTLR_VERSION)-complete.jar
 ANTLR_COMPLETE_JAR_URL := $(ANTLR_MAVEN_BASE)/$(ANTLR_COMPLETE_JAR_PATH)
@@ -156,7 +190,11 @@ install_antlr_cli:  ## Install antlr CLI locally
 				--connect-timeout 15 --max-time 60 \
 				--output "$$jar_file" "$$url" \
 				&& printf '%s  %s\n' "$(ANTLR_COMPLETE_JAR_SHA256)" "$$jar_file" | $$sha_check \
-				&& jar tf "$$jar_file" > /dev/null; then \
+				&& { if command -v jar > /dev/null 2>&1; then \
+					jar tf "$$jar_file" > /dev/null; \
+				elif command -v unzip > /dev/null 2>&1; then \
+					unzip -tqq "$$jar_file" > /dev/null; \
+				else :; fi; }; then \
 				break 2; \
 			fi; \
 			echo "ANTLR $(ANTLR_VERSION) download failed from $$url (attempt $$attempt)" >&2; \
@@ -217,6 +255,10 @@ snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies
 	snyk container test postgres:latest $(SNYK_ARGS) --json > security-report/postgres-scan.json | true;
 	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_ARGS) --json > security-report/es-scan.json | true;
 
+.PHONY: docker-base-image-cve-test
+docker-base-image-cve-test:  ## Assert the ingestion-base image is free of the five Debian 12 OS CVEs and its driver stack still loads. Usage: make docker-base-image-cve-test IMAGE=<tag>
+	./ingestion/tests/docker/base_image_cve_test.sh $(IMAGE)
+
 .PHONY: snyk-ingestion-base-slim-report
 snyk-ingestion-base-slim-report:
 	@echo "Validating Ingestion Slim Container"
@@ -250,8 +292,8 @@ build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with th
 	$(MAKE) install_dev generate
 	docker build -f ingestion/operators/docker/Dockerfile.ci . -t openmetadata/ingestion-base:local
 
-.PHONY: build-ingestion-base-slim-local
-build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
+.PHONY: build-ingestion-slim-local
+build-ingestion-slim-local:  ## Builds the SLIM ingestion DEV docker operator with the local ingestion files
 	$(MAKE) install_dev generate
 	docker build -f ingestion/operators/docker/Dockerfile.ci . -t openmetadata/ingestion-base-slim:local --build-arg INGESTION_DEPENDENCY=slim
 

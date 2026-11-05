@@ -2,8 +2,8 @@
 Unit tests for DQ as Code TestRunner
 """
 
+from collections.abc import Generator
 from tempfile import NamedTemporaryFile
-from typing import Generator  # noqa: UP035
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 from uuid import uuid4
 

@@ -14,10 +14,16 @@ import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   copyAndGetClipboardText,
   testCopyLinkButton,
@@ -55,11 +61,28 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    table1 = new TableClass();
-    table2 = new TableClass();
+    // Explore tree's service bucket is capped and sorted alphabetically
+    // (ElasticSearchAggregationManager orders by _key ASC), so a name starting
+    // with a digit guarantees these services land within that bucket
+    // regardless of how many other `pw-*` services have accumulated.
+    table1 = new TableClass({
+      service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
+    });
+    table2 = new TableClass({
+      service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
+    });
 
     await table1.create(apiContext);
     await table2.create(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await table1.delete(apiContext);
+    await table2.delete(apiContext);
 
     await afterAction();
   });
@@ -109,26 +132,26 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Check the quick filters', async () => {
-      await expect(
-        page.getByTestId('search-dropdown-Domains').locator('span')
-      ).toContainText('Domains');
+      await expect(page.getByTestId('search-dropdown-Domains')).toContainText(
+        'Domains'
+      );
       await expect(page.getByTestId('search-dropdown-Owners')).toContainText(
         'Owners'
       );
-      await expect(
-        page.getByTestId('search-dropdown-Tag').locator('span')
-      ).toContainText('Tag');
+      await expect(page.getByTestId('search-dropdown-Tag')).toContainText(
+        'Tag'
+      );
 
-      await page.getByRole('button', { name: 'Tier' }).click();
+      await page.getByTestId('search-dropdown-tier.tagFQN').click();
 
+      await expect(page.getByTestId('search-dropdown-Tier')).toContainText(
+        'Tier'
+      );
+      await expect(page.getByTestId('search-dropdown-Service')).toContainText(
+        'Service'
+      );
       await expect(
-        page.getByTestId('search-dropdown-Tier').locator('span')
-      ).toContainText('Tier');
-      await expect(
-        page.getByTestId('search-dropdown-Service').locator('span')
-      ).toContainText('Service');
-      await expect(
-        page.getByTestId('search-dropdown-Service Type').locator('span')
+        page.getByTestId('search-dropdown-Service Type')
       ).toContainText('Service Type');
     });
 
@@ -138,18 +161,26 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Click on filter dropdown
       await page.getByTestId('search-dropdown-Data Assets').click();
       // assert on dropdown item visibility
-      await page.getByRole('menuitem', { name: 'glossaryterm' }).waitFor();
+      await page
+        .getByRole('menuitemcheckbox', { name: 'glossaryterm' })
+        .waitFor();
       // assert on checkbox state
-      await expect(page.getByTestId('glossaryterm-checkbox')).toBeChecked();
+      await expect(page.getByTestId('glossaryterm')).toHaveAttribute(
+        'aria-checked',
+        'true'
+      );
 
       await page.getByTestId('explore-tree-title-Tags').click();
 
       // Click on filter dropdown
       await page.getByTestId('search-dropdown-Data Assets').click();
       // assert on dropdown item visibility
-      await page.getByRole('menuitem', { name: 'tag' }).waitFor();
+      await page.getByRole('menuitemcheckbox', { name: 'tag' }).waitFor();
       // assert on checkbox state
-      await expect(page.getByTestId('tag-checkbox')).toBeChecked();
+      await expect(page.getByTestId('tag')).toHaveAttribute(
+        'aria-checked',
+        'true'
+      );
     });
 
     await test.step('Click on tree item metrics and check quick filter', async () => {
@@ -158,9 +189,12 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Click on filter dropdown
       await page.getByTestId('search-dropdown-Data Assets').click();
       // assert on dropdown item visibility
-      await page.getByRole('menuitem', { name: 'metric' }).waitFor();
+      await page.getByRole('menuitemcheckbox', { name: 'metric' }).waitFor();
       // assert on checkbox state
-      await expect(page.getByTestId('metric-checkbox')).toBeChecked();
+      await expect(page.getByTestId('metric')).toHaveAttribute(
+        'aria-checked',
+        'true'
+      );
     });
   });
 
@@ -175,10 +209,12 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ).toBeVisible();
 
       await page
-        .locator('.ant-tree-treenode', {
+        .getByTestId('explore-tree')
+        .getByRole('row')
+        .filter({
           has: page.getByTestId('explore-tree-title-Governance'),
         })
-        .locator('.ant-tree-switcher')
+        .getByTestId('tree-expand-btn')
         .click();
     });
 
@@ -233,12 +269,11 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(page.getByTestId('table')).toBeVisible();
 
       // Verify all table column headers are correct
-      await expect(
-        page.locator('.ant-table-thead > tr > .ant-table-cell')
-      ).toHaveText([
+      await expect(page.locator('thead > tr > th')).toHaveText([
         'Enabled',
         'Tag',
         'Display Name',
+        'Usage',
         'Description',
         'Actions',
       ]);
@@ -347,21 +382,61 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 });
 
 test.describe('Explore page', () => {
-  const table = EntityDataClass.table1;
-  const dashboard = EntityDataClass.dashboard1;
-  const apiEndpoint = EntityDataClass.apiEndpoint1;
-  const searchIndex = EntityDataClass.searchIndex1;
+  let table: TableClass;
+  let dashboard: DashboardClass;
+  let apiEndpoint: ApiEndpointClass;
+  let searchIndex: SearchIndexClass;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    // Explore tree's service bucket is capped and sorted alphabetically
+    // (ElasticSearchAggregationManager orders by _key ASC), so a name starting
+    // with a digit guarantees these services land within that bucket
+    // regardless of how many other `pw-*` services have accumulated.
+    table = new TableClass({
+      service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
+    });
+    dashboard = new DashboardClass({
+      service: new DashboardServiceClass(`0-pw-dashboard-service-${uuid()}`),
+    });
+    apiEndpoint = new ApiEndpointClass({
+      service: new ApiServiceClass(`0-pw-api-endpoint-service-${uuid()}`),
+    });
+    searchIndex = new SearchIndexClass({
+      service: new SearchIndexServiceClass(
+        `0-pw-search-index-service-${uuid()}`
+      ),
+    });
+
+    await table.create(apiContext);
+    await dashboard.create(apiContext);
+    await apiEndpoint.create(apiContext);
+    await searchIndex.create(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await table.delete(apiContext);
+    await dashboard.delete(apiContext);
+    await apiEndpoint.delete(apiContext);
+    await searchIndex.delete(apiContext);
+
+    await afterAction();
+  });
 
   test('Check the listing of tags', async ({ page }) => {
     await page
-      .locator('div')
-      .filter({ hasText: /^Governance$/ })
-      .locator('svg')
-      .first()
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({ has: page.getByTestId('explore-tree-title-Governance') })
+      .getByTestId('tree-expand-btn')
       .click();
 
-    await expect(page.getByRole('tree')).toContainText('Glossaries');
-    await expect(page.getByRole('tree')).toContainText('Tags');
+    await expect(page.getByRole('treegrid')).toContainText('Glossaries');
+    await expect(page.getByRole('treegrid')).toContainText('Tags');
 
     // The tree fires size=0 count queries on the dataAsset index alongside the
     // main results query; match the results query (non-zero size) so the hits
@@ -410,20 +485,24 @@ test.describe('Explore page', () => {
     await dashboardNodeClickResponse;
 
     await page
-      .locator('.ant-tree-treenode', {
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({
         has: page.getByTestId('explore-tree-title-Dashboards'),
       })
-      .locator('.ant-tree-switcher')
+      .getByTestId('tree-expand-btn')
       .click();
 
     const supersetNode = page.getByTestId('explore-tree-title-superset');
     await expect(supersetNode).toBeVisible();
 
     await page
-      .locator('.ant-tree-treenode', {
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({
         has: page.getByTestId('explore-tree-title-superset'),
       })
-      .locator('.ant-tree-switcher')
+      .getByTestId('tree-expand-btn')
       .click();
 
     const dashboardServiceNode = page.getByTestId(
@@ -432,10 +511,12 @@ test.describe('Explore page', () => {
     await expect(dashboardServiceNode).toBeVisible();
 
     await page
-      .locator('.ant-tree-treenode', {
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({
         has: page.getByTestId(`explore-tree-title-${serviceName}`),
       })
-      .locator('.ant-tree-switcher')
+      .getByTestId('tree-expand-btn')
       .click();
 
     const chartsNode = page.getByTestId('explore-tree-title-chart');
@@ -474,6 +555,7 @@ test.describe('Explore page', () => {
       page,
       buttonTestId: 'copy-field-link-button',
       containerTestId: 'search-index-fields-table',
+      rowName: searchIndex.children[0].name,
       expectedUrlPath: '/searchIndex/',
       entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
     });
@@ -490,6 +572,7 @@ test.describe('Explore page', () => {
       page,
       buttonTestId: 'copy-field-link-button',
       containerTestId: 'schema-fields-table',
+      rowName: apiEndpoint.children[0].name,
       expectedUrlPath: '/apiEndpoint/',
       entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
     });
@@ -519,7 +602,7 @@ test.describe('Explore page', () => {
     expect(validationResult.pathname).toContain('searchIndex');
 
     // Visit the copied link to verify it opens the side panel
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
 
     // Verify side panel is open
     const sidePanel = page.locator('.column-detail-panel');
@@ -561,7 +644,7 @@ test.describe('Explore page', () => {
     expect(validationResult.pathname).toContain('apiEndpoint');
 
     // Visit the copied link to verify it opens the side panel
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
 
     // Verify side panel is open
     const sidePanel = page.locator('.column-detail-panel');
@@ -595,9 +678,10 @@ test.describe('Explore page', () => {
       '/api/v1/search/query?q=&index=dataAsset*databaseSchema.displayName*'
     );
     await page
-      .locator('.ant-tree-treenode')
+      .getByTestId('explore-tree')
+      .getByRole('row')
       .filter({ hasText: schemaName })
-      .locator('.ant-tree-switcher svg')
+      .getByTestId('tree-expand-btn')
       .click();
     await schemaRes;
 
@@ -628,9 +712,10 @@ test.describe('Explore page', () => {
       '/api/v1/search/query?q=&index=dataAsset*databaseSchema.displayName*'
     );
     await page
-      .locator('.ant-tree-treenode')
+      .getByTestId('explore-tree')
+      .getByRole('row')
       .filter({ hasText: schemaName })
-      .locator('.ant-tree-switcher svg')
+      .getByTestId('tree-expand-btn')
       .click();
     await schemaRes;
 
@@ -642,8 +727,11 @@ test.describe('Explore page', () => {
     await page.getByTestId('search-dropdown-Data Assets').click();
     // The option renders a human-readable label ("Column") with the raw type as
     // a tooltip, so assert on the stable testid instead of the menuitem name.
-    await page.getByTestId('tablecolumn-checkbox').waitFor();
-    // assert on checkbox state
-    await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
+    await page.getByTestId('tablecolumn').waitFor();
+    // assert on selection state
+    await expect(page.getByTestId('tablecolumn')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
   });
 });

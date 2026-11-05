@@ -12,33 +12,42 @@
  */
 
 import {
+  Autocomplete,
+  Box,
+  ButtonUtility,
+  Divider,
+  Select,
+  TextArea,
+} from '@openmetadata/ui-core-components';
+import {
   ArrowUpRight,
   Bold01,
   BookOpen02,
   Check,
-  ChevronDown,
   Code01,
   Cube01,
   Globe02,
   Italic01,
   List,
   Plus,
-  SearchLg,
+  Search,
   Sliders02,
   Tag01,
   Type01,
-} from '@untitledui/icons';
-import Select, { DefaultOptionType } from 'antd/lib/select';
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, startCase, toString } from 'lodash';
 import {
   CSSProperties,
   FocusEvent,
+  Key,
   KeyboardEvent,
   lazy,
   MouseEvent,
   ReactNode,
   RefObject,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -47,14 +56,21 @@ import type { RenderEditCellProps } from 'react-data-grid';
 import { createPortal } from 'react-dom';
 import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
 import Certification from '../../components/Certification/Certification.component';
-import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
+import ClassificationTagPicker, {
+  ClassificationTagPickerProps,
+} from '../../components/common/ClassificationTagPicker/ClassificationTagPicker';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import CsvCellPreview from '../../components/common/EntityImport/CsvCellPreview/CsvCellPreview.component';
 import ExpressionCodeCell from '../../components/common/EntityImport/ExpressionCodeCell/ExpressionCodeCell.component';
 import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
+import { fqnsToGlossaryTags } from '../../components/common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
-import { KeyDownStopPropagationWrapper } from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
+import {
+  KeyDownStopPropagationWrapper,
+  onKeyDownStopPropagation,
+} from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ValueRendererOnEditCell } from '../../components/common/ValueRendererOnEditCell/ValueRendererOnEditCell';
@@ -68,6 +84,7 @@ import {
 import SchemaModal from '../../components/Modals/SchemaModal/SchemaModal';
 import { ENTITY_TYPE_OPTIONS } from '../../constants/BulkImport.constant';
 import {
+  PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   ROUTES,
@@ -78,15 +95,19 @@ import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Language } from '../../generated/entity/data/metric';
 import { Config, EntityReference, Type } from '../../generated/entity/type';
-import { TagLabel, TagSource } from '../../generated/type/tagLabel';
-import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../generated/type/tagLabel';
 import { fetchDataProductsElasticSearch } from '../../rest/dataProductAPI';
 import { getDomainList } from '../../rest/domainAPI';
 import { getGlossariesList, getGlossaryTerms } from '../../rest/glossaryAPI';
 import { getTypeByFQN } from '../../rest/metadataTypeAPI';
 import { getMetrics } from '../../rest/metricsAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getAllClassifications, getTags } from '../../rest/tagAPI';
+import { getTags } from '../../rest/tagAPI';
 import { formatTeamsResponse, formatUsersResponse } from '../APIUtils';
 import {
   getCustomPropertyReferenceSearchIndex,
@@ -96,7 +117,11 @@ import { getEntityName } from '../EntityNameUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
 import { getTermQuery } from '../SearchPureUtils';
-import { removeOuterEscapes } from '../StringUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+  removeOuterEscapes,
+} from '../StringUtils';
 import { isSystemClassificationTagFqn } from './CSV.utils';
 import {
   convertCustomPropertyStringToEntityExtension,
@@ -153,8 +178,10 @@ type CustomPropertyDefinition = NonNullable<Type['customProperties']>[number];
 
 interface InlineDescriptionEditorProps {
   value: string;
+  rowIdx: number;
   onCancel: () => void;
   onComplete: (value: string) => void;
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void;
 }
 
 interface InlineTextCellEditorProps {
@@ -236,6 +263,7 @@ const InlineTextCellEditor = ({
   return (
     <KeyDownStopPropagationWrapper keys={['Enter', 'Escape', 'Tab']}>
       <input
+        aria-label={t('label.edit')}
         className="bulk-edit-text-cell-editor"
         data-testid="bulk-edit-text-cell-editor"
         ref={inputRef}
@@ -391,47 +419,67 @@ const isCustomPropertyEnumMultiSelect = (
   return isRecord(config) && Boolean(config.multiSelect);
 };
 
-const isEntityReferenceValue = (
-  value: ExtensionDataTypes | undefined
-): value is EntityReference =>
-  isRecord(value) &&
-  typeof value.type === 'string' &&
-  Boolean(value.fullyQualifiedName ?? value.name ?? value.id);
+type CsvEntityReference = Omit<EntityReference, 'id'> & { id?: string };
 
-const getEntityReferenceOptionValue = (reference: EntityReference) =>
-  reference.fullyQualifiedName ?? reference.name ?? reference.id;
+const isEntityReferenceValue = (
+  value: unknown
+): value is CsvEntityReference => {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return false;
+  }
+
+  const validStrings = [
+    'id',
+    'name',
+    'fullyQualifiedName',
+    'displayName',
+    'description',
+    'href',
+  ].every((key) => value[key] === undefined || typeof value[key] === 'string');
+  const validFlags = ['deleted', 'inherited'].every(
+    (key) => value[key] === undefined || typeof value[key] === 'boolean'
+  );
+
+  return (
+    validStrings &&
+    validFlags &&
+    Boolean(value.fullyQualifiedName ?? value.name ?? value.id)
+  );
+};
+
+const getEntityReferenceOptionValue = (reference: CsvEntityReference) =>
+  reference.fullyQualifiedName ?? reference.name ?? reference.id ?? '';
 
 const getEntityReferenceOption = (
-  reference: EntityReference
+  reference: CsvEntityReference
 ): DataAssetOption => {
   const label = getEntityName(reference);
+  const value = getEntityReferenceOptionValue(reference);
 
   return {
     displayName: label,
     label,
     name: reference.name,
-    reference,
-    value: getEntityReferenceOptionValue(reference),
+    reference: { ...reference, id: reference.id ?? value },
+    value,
   };
 };
 
 const getEntityReferenceInitialOptions = (
   value: ExtensionDataTypes | undefined
 ) => {
-  const references = Array.isArray(value)
-    ? value.filter(isEntityReferenceValue)
-    : isEntityReferenceValue(value)
-    ? [value]
-    : [];
+  const values: unknown[] = Array.isArray(value) ? value : [value];
 
-  return references.map(getEntityReferenceOption);
+  return values.filter(isEntityReferenceValue).map(getEntityReferenceOption);
 };
 
 const getEntityReferenceSelectValue = (
   value: ExtensionDataTypes | undefined
 ) => {
   if (Array.isArray(value)) {
-    return value
+    const references: unknown[] = value;
+
+    return references
       .filter(isEntityReferenceValue)
       .map(getEntityReferenceOptionValue);
   }
@@ -753,137 +801,146 @@ const getFilteredBulkEditPickerOptions = (
   );
 };
 
+const loadBulkEditDomainOptions = async (searchText: string) => {
+  const response = await getDomainList({ limit: 50 });
+
+  return getFilteredBulkEditPickerOptions(
+    response.data
+      .map((domain) =>
+        getBulkEditPickerOption({
+          color: domain.style?.color,
+          description: getBulkEditOptionContext(t('label.domain')),
+          displayName: domain.displayName,
+          fullyQualifiedName: domain.fullyQualifiedName,
+          kind: 'domain',
+          name: domain.name,
+        })
+      )
+      .filter((option): option is BulkEditPickerOption => Boolean(option)),
+    searchText
+  );
+};
+
+const loadBulkEditDataProductOptions = async (searchText: string) => {
+  const response = await fetchDataProductsElasticSearch(searchText, [], 1);
+
+  return response.data
+    .map(({ value }) =>
+      getBulkEditPickerOption({
+        color: value.style?.color,
+        description: getBulkEditOptionContext(t('label.data-product')),
+        displayName: value.displayName,
+        fullyQualifiedName: value.fullyQualifiedName,
+        kind: 'dataProduct',
+        name: value.name,
+      })
+    )
+    .filter((option): option is BulkEditPickerOption => Boolean(option));
+};
+
+const loadBulkEditTagOptions = async (searchText: string) => {
+  // Search the catalog rather than filtering only the first page of tags.
+  const tags = searchText.trim()
+    ? (
+        await searchQuery({
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_LARGE,
+          query: `*${getEncodedFqn(escapeESReservedCharacters(searchText))}*`,
+          queryFilter: getTermQuery({ disabled: 'false' }),
+          searchIndex: SearchIndex.TAG,
+        })
+      ).hits.hits.map(({ _source }) => _source)
+    : (await getTags({ disabled: false, limit: PAGE_SIZE_LARGE })).data;
+
+  return tags
+    .filter((tag) => !isSystemClassificationTagFqn(getBulkEditTagFqn(tag)))
+    .map((tag) =>
+      getBulkEditPickerOption({
+        color: tag.style?.color,
+        description: tag.description,
+        displayName: tag.displayName,
+        fullyQualifiedName: tag.fullyQualifiedName,
+        kind: 'tag',
+        name: tag.name,
+      })
+    )
+    .filter((option): option is BulkEditPickerOption => Boolean(option));
+};
+
+const loadBulkEditGlossaryTermOptions = async (searchText: string) => {
+  const [glossaries, glossaryTerms] = await Promise.all([
+    getGlossariesList({ limit: 1 }),
+    getGlossaryTerms({ limit: 50 }),
+  ]);
+
+  if (!glossaries.data.length && !glossaryTerms.data.length) {
+    return [];
+  }
+
+  return getFilteredBulkEditPickerOptions(
+    glossaryTerms.data
+      .map((glossaryTerm) =>
+        getBulkEditPickerOption({
+          color: glossaryTerm.style?.color,
+          description: getBulkEditOptionContext(
+            t('label.glossary'),
+            getEntityName(glossaryTerm.glossary)
+          ),
+          displayName: getBulkEditGlossaryTermHierarchyLabel(glossaryTerm),
+          fullyQualifiedName: glossaryTerm.fullyQualifiedName,
+          kind: 'glossary',
+          name: glossaryTerm.name,
+        })
+      )
+      .filter((option): option is BulkEditPickerOption => Boolean(option)),
+    searchText
+  );
+};
+
+const loadBulkEditRelatedMetricOptions = async (searchText: string) => {
+  const response = await getMetrics({ fields: 'domains', limit: 50 });
+
+  return getFilteredBulkEditPickerOptions(
+    response.data
+      .map((metric) =>
+        getBulkEditPickerOption({
+          description: getBulkEditOptionContext(
+            t('label.metric'),
+            metric.domains?.map(getEntityName).filter(Boolean).join(', ')
+          ),
+          displayName: metric.displayName,
+          fullyQualifiedName: metric.fullyQualifiedName,
+          kind: 'metric',
+          name: metric.name,
+        })
+      )
+      .filter((option): option is BulkEditPickerOption => Boolean(option)),
+    searchText
+  );
+};
+
+const BULK_EDIT_PICKER_LOADERS: Record<
+  BulkEditPickerColumn,
+  (searchText: string, includeTeams: boolean) => Promise<BulkEditPickerOption[]>
+> = {
+  owner: (searchText, includeTeams) =>
+    loadBulkEditUserOptions(searchText, includeTeams),
+  owners: (searchText, includeTeams) =>
+    loadBulkEditUserOptions(searchText, includeTeams),
+  reviewers: (searchText, includeTeams) =>
+    loadBulkEditUserOptions(searchText, includeTeams),
+  domains: (searchText) => loadBulkEditDomainOptions(searchText),
+  dataProducts: (searchText) => loadBulkEditDataProductOptions(searchText),
+  tags: (searchText) => loadBulkEditTagOptions(searchText),
+  glossaryTerms: (searchText) => loadBulkEditGlossaryTermOptions(searchText),
+  relatedMetrics: (searchText) => loadBulkEditRelatedMetricOptions(searchText),
+};
+
 const loadBulkEditPickerOptions = async (
   columnKey: BulkEditPickerColumn,
   searchText: string,
   includeTeams = false
-) => {
-  switch (columnKey) {
-    case 'owner':
-    case 'owners':
-    case 'reviewers':
-      return loadBulkEditUserOptions(searchText, includeTeams);
-
-    case 'domains': {
-      const response = await getDomainList({ limit: 50 });
-
-      return getFilteredBulkEditPickerOptions(
-        response.data
-          .map((domain) =>
-            getBulkEditPickerOption({
-              color: domain.style?.color,
-              description: getBulkEditOptionContext(t('label.domain')),
-              displayName: domain.displayName,
-              fullyQualifiedName: domain.fullyQualifiedName,
-              kind: 'domain',
-              name: domain.name,
-            })
-          )
-          .filter((option): option is BulkEditPickerOption => Boolean(option)),
-        searchText
-      );
-    }
-
-    case 'dataProducts': {
-      const response = await fetchDataProductsElasticSearch(searchText, [], 1);
-
-      return response.data
-        .map(({ value }) =>
-          getBulkEditPickerOption({
-            color: value.style?.color,
-            description: getBulkEditOptionContext(t('label.data-product')),
-            displayName: value.displayName,
-            fullyQualifiedName: value.fullyQualifiedName,
-            kind: 'dataProduct',
-            name: value.name,
-          })
-        )
-        .filter((option): option is BulkEditPickerOption => Boolean(option));
-    }
-
-    case 'tags': {
-      const [classifications, tags] = await Promise.all([
-        getAllClassifications({ limit: 1 }),
-        getTags({ disabled: false, limit: 50 }),
-      ]);
-
-      if (!classifications.data.length && !tags.data.length) {
-        return [];
-      }
-
-      return getFilteredBulkEditPickerOptions(
-        tags.data
-          .filter(
-            (tag) => !isSystemClassificationTagFqn(getBulkEditTagFqn(tag))
-          )
-          .map((tag) =>
-            getBulkEditPickerOption({
-              color: tag.style?.color,
-              description: tag.description,
-              displayName: tag.displayName,
-              fullyQualifiedName: tag.fullyQualifiedName,
-              kind: 'tag',
-              name: tag.name,
-            })
-          )
-          .filter((option): option is BulkEditPickerOption => Boolean(option)),
-        searchText
-      );
-    }
-
-    case 'glossaryTerms': {
-      const [glossaries, glossaryTerms] = await Promise.all([
-        getGlossariesList({ limit: 1 }),
-        getGlossaryTerms({ limit: 50 }),
-      ]);
-
-      if (!glossaries.data.length && !glossaryTerms.data.length) {
-        return [];
-      }
-
-      return getFilteredBulkEditPickerOptions(
-        glossaryTerms.data
-          .map((glossaryTerm) =>
-            getBulkEditPickerOption({
-              color: glossaryTerm.style?.color,
-              description: getBulkEditOptionContext(
-                t('label.glossary'),
-                getEntityName(glossaryTerm.glossary)
-              ),
-              displayName: getBulkEditGlossaryTermHierarchyLabel(glossaryTerm),
-              fullyQualifiedName: glossaryTerm.fullyQualifiedName,
-              kind: 'glossary',
-              name: glossaryTerm.name,
-            })
-          )
-          .filter((option): option is BulkEditPickerOption => Boolean(option)),
-        searchText
-      );
-    }
-
-    case 'relatedMetrics': {
-      const response = await getMetrics({ fields: 'domains', limit: 50 });
-
-      return getFilteredBulkEditPickerOptions(
-        response.data
-          .map((metric) =>
-            getBulkEditPickerOption({
-              description: getBulkEditOptionContext(
-                t('label.metric'),
-                metric.domains?.map(getEntityName).filter(Boolean).join(', ')
-              ),
-              displayName: metric.displayName,
-              fullyQualifiedName: metric.fullyQualifiedName,
-              kind: 'metric',
-              name: metric.name,
-            })
-          )
-          .filter((option): option is BulkEditPickerOption => Boolean(option)),
-        searchText
-      );
-    }
-  }
-};
+) => BULK_EDIT_PICKER_LOADERS[columnKey]?.(searchText, includeTeams);
 
 const serializeBulkEditPickerValues = (
   columnKey: BulkEditPickerColumn,
@@ -1088,7 +1145,10 @@ const InlineBulkEditReferencePickerEditor = ({
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('scroll', updatePosition, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
       window.removeEventListener('resize', updatePosition);
@@ -1117,6 +1177,8 @@ const InlineBulkEditReferencePickerEditor = ({
 
   const selectedSet = useMemo(() => new Set(draft), [draft]);
   const hasOptions = options.length > 0;
+  // A draft can outlive a search with no matches; keep Update reachable.
+  const showFooter = options.length + draft.length > 0;
 
   const handleToggleOption = (option: BulkEditPickerOption) => {
     setDraft((previous) =>
@@ -1130,102 +1192,105 @@ const InlineBulkEditReferencePickerEditor = ({
     onComplete(serializeBulkEditPickerValues(columnKey, draft));
   const handleClearAll = () => setDraft([]);
 
+  const optionsOrEmptyContent = hasOptions ? (
+    <div className="bulk-edit-picker-option-list">
+      {options.map((option) => {
+        const isSelected = selectedSet.has(option.value);
+
+        return (
+          <button
+            className={`bulk-edit-picker-option${
+              isSelected ? ' selected' : ''
+            }`}
+            data-testid={`bulk-edit-picker-option-${option.value}`}
+            key={option.value}
+            type="button"
+            onClick={() => handleToggleOption(option)}>
+            {renderBulkEditPickerOptionMarker(option)}
+            <span className="bulk-edit-picker-option-meta">
+              <span className="bulk-edit-picker-option-label">
+                {option.label}
+              </span>
+              {option.description && (
+                <span className="bulk-edit-picker-option-value">
+                  {option.description}
+                </span>
+              )}
+            </span>
+            {isSelected && <Check size={18} />}
+          </button>
+        );
+      })}
+    </div>
+  ) : (
+    <div className="bulk-edit-picker-empty-state">
+      <div className={`bulk-edit-picker-empty-icon ${config.actionStyle}`}>
+        {config.emptyIcon}
+      </div>
+      <div className="bulk-edit-picker-empty-title">{config.emptyTitle}</div>
+      <div className="bulk-edit-picker-empty-description">
+        {config.description}
+      </div>
+      <button
+        className={`bulk-edit-picker-empty-action ${config.actionStyle}`}
+        type="button"
+        onClick={() => openBulkEditPickerPath(config.actionPath)}>
+        {config.actionStyle === 'primary' ? (
+          <Plus size={14} />
+        ) : (
+          <ArrowUpRight size={14} />
+        )}
+        <span>{config.primaryActionLabel}</span>
+      </button>
+      {config.secondaryActionLabel && config.secondaryActionPath && (
+        <button
+          className="bulk-edit-picker-empty-secondary-action"
+          type="button"
+          onClick={() =>
+            openBulkEditPickerPath(config.secondaryActionPath ?? '')
+          }>
+          <span>{config.secondaryActionLabel}</span>
+          <ArrowUpRight size={14} />
+        </button>
+      )}
+      {config.hint && (
+        <span className="bulk-edit-picker-empty-hint">{config.hint}</span>
+      )}
+    </div>
+  );
+
   const editor = (
     <KeyDownStopPropagationWrapper>
       <div
         className="bulk-edit-picker-editor"
         data-testid={`bulk-edit-${columnKey}-picker-editor`}
         ref={editorRef}
+        role="presentation"
         style={editorPosition}
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}>
         <div className="bulk-edit-picker-body-card">
-          <label className="bulk-edit-picker-search">
-            <SearchLg size={14} />
+          <div className="bulk-edit-picker-search">
+            <Search size={14} />
             <input
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
               autoFocus
+              aria-label={config.searchPlaceholder}
               placeholder={config.searchPlaceholder}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
             />
-          </label>
+          </div>
           <div className="bulk-edit-picker-content">
             {isLoading ? (
               <span className="bulk-edit-picker-loading">
                 {t('label.loading')}
               </span>
-            ) : hasOptions ? (
-              <div className="bulk-edit-picker-option-list">
-                {options.map((option) => {
-                  const isSelected = selectedSet.has(option.value);
-
-                  return (
-                    <button
-                      className={`bulk-edit-picker-option${
-                        isSelected ? ' selected' : ''
-                      }`}
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleToggleOption(option)}>
-                      {renderBulkEditPickerOptionMarker(option)}
-                      <span className="bulk-edit-picker-option-meta">
-                        <span className="bulk-edit-picker-option-label">
-                          {option.label}
-                        </span>
-                        {option.description && (
-                          <span className="bulk-edit-picker-option-value">
-                            {option.description}
-                          </span>
-                        )}
-                      </span>
-                      {isSelected && <Check size={18} />}
-                    </button>
-                  );
-                })}
-              </div>
             ) : (
-              <div className="bulk-edit-picker-empty-state">
-                <div
-                  className={`bulk-edit-picker-empty-icon ${config.actionStyle}`}>
-                  {config.emptyIcon}
-                </div>
-                <div className="bulk-edit-picker-empty-title">
-                  {config.emptyTitle}
-                </div>
-                <div className="bulk-edit-picker-empty-description">
-                  {config.description}
-                </div>
-                <button
-                  className={`bulk-edit-picker-empty-action ${config.actionStyle}`}
-                  type="button"
-                  onClick={() => openBulkEditPickerPath(config.actionPath)}>
-                  {config.actionStyle === 'primary' ? (
-                    <Plus size={14} />
-                  ) : (
-                    <ArrowUpRight size={14} />
-                  )}
-                  <span>{config.primaryActionLabel}</span>
-                </button>
-                {config.secondaryActionLabel && config.secondaryActionPath && (
-                  <button
-                    className="bulk-edit-picker-empty-secondary-action"
-                    type="button"
-                    onClick={() =>
-                      openBulkEditPickerPath(config.secondaryActionPath ?? '')
-                    }>
-                    <span>{config.secondaryActionLabel}</span>
-                    <ArrowUpRight size={14} />
-                  </button>
-                )}
-                {config.hint && (
-                  <span className="bulk-edit-picker-empty-hint">
-                    {config.hint}
-                  </span>
-                )}
-              </div>
+              optionsOrEmptyContent
             )}
           </div>
-          {hasOptions && (
+          {showFooter && (
             <div className="bulk-edit-picker-footer">
               <button
                 className="bulk-edit-picker-clear"
@@ -1261,6 +1326,7 @@ const InlineBulkEditReferencePickerEditor = ({
         className="bulk-edit-custom-property-cell-trigger"
         data-testid={`bulk-edit-${columnKey}-cell-trigger`}
         ref={triggerRef}
+        role="presentation"
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}>
         {value ? (
@@ -1293,6 +1359,7 @@ const getInlineBulkEditReferencePickerEditor =
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const value = String(row[column.key] ?? '');
+    // eslint-disable-next-line sonarjs/no-identical-functions -- distinct editor closure
     const handleComplete = (nextValue: string) => {
       if (nextValue === value) {
         onClose(false);
@@ -1360,6 +1427,7 @@ const InlineCustomPropertiesEditor = ({
   }, [entityType, value]);
 
   useEffect(() => {
+    // eslint-disable-next-line sonarjs/no-identical-functions -- distinct effect closure; extraction would cross scopes
     const updatePosition = () => {
       if (!triggerRef.current) {
         return;
@@ -1370,7 +1438,10 @@ const InlineCustomPropertiesEditor = ({
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('scroll', updatePosition, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
       window.removeEventListener('resize', updatePosition);
@@ -1382,9 +1453,13 @@ const InlineCustomPropertiesEditor = ({
     const handleMouseDown = (event: globalThis.MouseEvent) => {
       const target = event.target as Node;
 
+      // Select dropdowns portal to document.body, outside the editor.
       if (
         triggerRef.current?.contains(target) ||
-        editorRef.current?.contains(target)
+        editorRef.current?.contains(target) ||
+        (target as Element).closest?.(
+          '.bulk-edit-custom-property-select-dropdown'
+        )
       ) {
         return;
       }
@@ -1433,97 +1508,187 @@ const InlineCustomPropertiesEditor = ({
     );
   };
 
+  const renderEnumField = (
+    customProperty: CustomPropertyDefinition,
+    propertyValue: ExtensionDataTypes | undefined
+  ) => {
+    const enumValues = getCustomPropertyConfigValues(
+      customProperty.customPropertyConfig?.config
+    );
+    const selectedValues = getCustomPropertyEnumValues(propertyValue);
+    const isMultiSelect = isCustomPropertyEnumMultiSelect(customProperty);
+    const items = enumValues.map((option) => ({ id: option, label: option }));
+
+    // Single-value enums need to swap one value for another, which a chip
+    // Autocomplete refuses while it holds a value; a Select replaces natively.
+    if (!isMultiSelect) {
+      const selectedValue = selectedValues[0] ?? null;
+
+      return (
+        <Box align="center" gap={1}>
+          <Select
+            aria-label={getEntityName(customProperty)}
+            className="bulk-edit-custom-property-enum-select tw:flex-1"
+            data-testid={`${customProperty.name}-enum-select`}
+            items={items}
+            placeholder={t('label.enum-value-plural')}
+            popoverClassName="bulk-edit-custom-property-select-dropdown"
+            value={selectedValue}
+            onChange={(key) =>
+              handleUpdateDraft(
+                customProperty.name,
+                key === null ? [] : [String(key)]
+              )
+            }>
+            {(item) => <Select.Item id={item.id} label={item.label} />}
+          </Select>
+          {selectedValue && (
+            <ButtonUtility
+              aria-label={t('label.clear')}
+              data-testid={`${customProperty.name}-enum-clear`}
+              icon={XClose}
+              size="xs"
+              onClick={() => handleUpdateDraft(customProperty.name, [])}
+            />
+          )}
+        </Box>
+      );
+    }
+
+    const handleInserted = (key: Key) =>
+      handleUpdateDraft(customProperty.name, [
+        ...new Set([...selectedValues, String(key)]),
+      ]);
+
+    const handleCleared = (key: Key) =>
+      handleUpdateDraft(
+        customProperty.name,
+        selectedValues.filter((value) => value !== String(key))
+      );
+
+    return (
+      <Autocomplete
+        multiple
+        aria-label={getEntityName(customProperty)}
+        className="bulk-edit-custom-property-enum-select"
+        data-testid={`${customProperty.name}-enum-select`}
+        items={items}
+        placeholder={t('label.enum-value-plural')}
+        popoverClassName="bulk-edit-custom-property-select-dropdown"
+        selectedItems={items.filter((item) => selectedValues.includes(item.id))}
+        onItemCleared={handleCleared}
+        onItemInserted={handleInserted}>
+        {(item) => <Autocomplete.Item id={item.id} label={item.label} />}
+      </Autocomplete>
+    );
+  };
+
+  const renderReferenceField = (
+    customProperty: CustomPropertyDefinition,
+    propertyValue: ExtensionDataTypes | undefined,
+    isReferenceList: boolean
+  ) => {
+    const initialOptions = getEntityReferenceInitialOptions(propertyValue);
+
+    const handleReferenceChange = (
+      option?: DataAssetOption | DataAssetOption[]
+    ) => {
+      if (Array.isArray(option)) {
+        handleUpdateDraft(
+          customProperty.name,
+          option.map((item) => item.reference)
+        );
+
+        return;
+      }
+
+      handleUpdateDraft(
+        customProperty.name,
+        option?.reference ?? (isReferenceList ? [] : '')
+      );
+    };
+
+    return (
+      <DataAssetAsyncSelectList
+        initialOptions={initialOptions}
+        multiple={isReferenceList}
+        placeholder={
+          isReferenceList
+            ? t('label.entity-reference-plural')
+            : t('label.entity-reference')
+        }
+        popoverClassName="bulk-edit-custom-property-select-dropdown"
+        searchIndex={getCustomPropertyReferenceSearchIndex(customProperty)}
+        value={getEntityReferenceSelectValue(propertyValue)}
+        onChange={handleReferenceChange}
+      />
+    );
+  };
+
+  const renderTimeIntervalField = (
+    customProperty: CustomPropertyDefinition,
+    propertyValue: ExtensionDataTypes | undefined
+  ) => {
+    const interval = (isRecord(propertyValue) ? propertyValue : {}) as Partial<{
+      start: number;
+      end: number;
+    }>;
+
+    return (
+      <div className="bulk-edit-custom-property-time-interval">
+        <input
+          aria-label={t('label.start')}
+          className="bulk-edit-custom-property-input"
+          placeholder={t('label.start')}
+          type="number"
+          value={String(interval.start ?? '')}
+          onChange={(event) =>
+            handleUpdateDraft(customProperty.name, {
+              ...interval,
+              start: Number(event.target.value),
+            } as { start: number; end: number })
+          }
+        />
+        <input
+          aria-label={t('label.end')}
+          className="bulk-edit-custom-property-input"
+          placeholder={t('label.end')}
+          type="number"
+          value={String(interval.end ?? '')}
+          onChange={(event) =>
+            handleUpdateDraft(customProperty.name, {
+              ...interval,
+              end: Number(event.target.value),
+            } as { start: number; end: number })
+          }
+        />
+      </div>
+    );
+  };
+
   const renderField = (customProperty: CustomPropertyDefinition) => {
     const propertyType = customProperty.propertyType.name ?? '';
     const propertyValue = draft[customProperty.name];
 
     if (propertyType === 'enum') {
-      const enumValues = getCustomPropertyConfigValues(
-        customProperty.customPropertyConfig?.config
-      );
-      const selectedValues = getCustomPropertyEnumValues(propertyValue);
-      const isMultiSelect = isCustomPropertyEnumMultiSelect(customProperty);
-      const options = enumValues.map((option) => ({
-        label: option,
-        value: option,
-      }));
-
-      const handleEnumChange = (selectedValue?: string | string[]) => {
-        handleUpdateDraft(
-          customProperty.name,
-          Array.isArray(selectedValue)
-            ? selectedValue
-            : selectedValue
-            ? [selectedValue]
-            : []
-        );
-      };
-
-      return (
-        <Select
-          allowClear
-          showSearch
-          className="bulk-edit-custom-property-enum-select"
-          getPopupContainer={() => document.body}
-          mode={isMultiSelect ? 'multiple' : undefined}
-          optionFilterProp="label"
-          options={options}
-          placeholder={t('label.enum-value-plural')}
-          popupClassName="bulk-edit-custom-property-select-dropdown"
-          value={isMultiSelect ? selectedValues : selectedValues[0]}
-          onChange={handleEnumChange}
-        />
-      );
+      return renderEnumField(customProperty, propertyValue);
     }
 
     if (
       propertyType === 'entityReference' ||
       propertyType === 'entityReferenceList'
     ) {
-      const isReferenceList = propertyType === 'entityReferenceList';
-      const mode = isReferenceList ? 'multiple' : undefined;
-      const initialOptions = getEntityReferenceInitialOptions(propertyValue);
-
-      const handleReferenceChange = (
-        option: DataAssetOption | DataAssetOption[]
-      ) => {
-        if (Array.isArray(option)) {
-          handleUpdateDraft(
-            customProperty.name,
-            option.map((item) => item.reference)
-          );
-
-          return;
-        }
-
-        handleUpdateDraft(
-          customProperty.name,
-          option?.reference ?? (isReferenceList ? [] : '')
-        );
-      };
-
-      return (
-        <DataAssetAsyncSelectList
-          className="bulk-edit-custom-property-reference-select"
-          getPopupContainer={() => document.body}
-          initialOptions={initialOptions}
-          mode={mode}
-          placeholder={
-            isReferenceList
-              ? t('label.entity-reference-plural')
-              : t('label.entity-reference')
-          }
-          popupClassName="bulk-edit-custom-property-select-dropdown"
-          searchIndex={getCustomPropertyReferenceSearchIndex(customProperty)}
-          value={getEntityReferenceSelectValue(propertyValue)}
-          onChange={handleReferenceChange}
-        />
+      return renderReferenceField(
+        customProperty,
+        propertyValue,
+        propertyType === 'entityReferenceList'
       );
     }
 
     if (propertyType === 'markdown' || propertyType === 'sqlQuery') {
       return (
         <textarea
+          aria-label={customProperty.name}
           className="bulk-edit-custom-property-input"
           rows={2}
           value={getCustomPropertyValueAsString(propertyValue)}
@@ -1535,42 +1700,12 @@ const InlineCustomPropertiesEditor = ({
     }
 
     if (propertyType === 'timeInterval') {
-      const interval = (
-        isRecord(propertyValue) ? propertyValue : {}
-      ) as Partial<{ start: number; end: number }>;
-
-      return (
-        <div className="bulk-edit-custom-property-time-interval">
-          <input
-            className="bulk-edit-custom-property-input"
-            placeholder={t('label.start')}
-            type="number"
-            value={String(interval.start ?? '')}
-            onChange={(event) =>
-              handleUpdateDraft(customProperty.name, {
-                ...interval,
-                start: Number(event.target.value),
-              } as { start: number; end: number })
-            }
-          />
-          <input
-            className="bulk-edit-custom-property-input"
-            placeholder={t('label.end')}
-            type="number"
-            value={String(interval.end ?? '')}
-            onChange={(event) =>
-              handleUpdateDraft(customProperty.name, {
-                ...interval,
-                end: Number(event.target.value),
-              } as { start: number; end: number })
-            }
-          />
-        </div>
-      );
+      return renderTimeIntervalField(customProperty, propertyValue);
     }
 
     return (
       <input
+        aria-label={customProperty.name}
         className="bulk-edit-custom-property-input"
         type={['integer', 'number'].includes(propertyType) ? 'number' : 'text'}
         value={getCustomPropertyValueAsString(propertyValue)}
@@ -1598,6 +1733,7 @@ const InlineCustomPropertiesEditor = ({
         }`}
         data-testid="bulk-edit-custom-property-editor"
         ref={editorRef}
+        role="presentation"
         style={editorPosition}
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}>
@@ -1647,21 +1783,21 @@ const InlineCustomPropertiesEditor = ({
               ) : (
                 customProperties.map((customProperty) => {
                   const propertyLabel =
-                    customProperty.displayName ??
+                    customProperty.displayName ||
                     startCase(customProperty.name);
 
                   return (
                     <div
                       className="bulk-edit-custom-property-field"
                       key={customProperty.name}>
-                      <label className="bulk-edit-custom-property-label">
+                      <div className="bulk-edit-custom-property-label">
                         <span>{propertyLabel}</span>
                         <span className="bulk-edit-custom-property-type">
                           {getCustomPropertyTypeDisplayName(
                             customProperty.propertyType.name
                           )}
                         </span>
-                      </label>
+                      </div>
                       {renderField(customProperty)}
                     </div>
                   );
@@ -1705,6 +1841,7 @@ const InlineCustomPropertiesEditor = ({
         className="bulk-edit-custom-property-cell-trigger"
         data-testid="bulk-edit-custom-property-cell-trigger"
         ref={triggerRef}
+        role="presentation"
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}>
         {value ? (
@@ -1733,6 +1870,7 @@ const getInlineCustomPropertiesEditor =
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const value = String(row[column.key] ?? '');
+    // eslint-disable-next-line sonarjs/no-identical-functions -- distinct editor closure
     const handleComplete = (nextValue: string) => {
       if (nextValue === value) {
         onClose(false);
@@ -1756,10 +1894,15 @@ const getInlineCustomPropertiesEditor =
 
 const InlineDescriptionEditor = ({
   value,
+  rowIdx,
   onCancel,
   onComplete,
+  onEditCellHeightChange,
 }: InlineDescriptionEditorProps) => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  // The editor is taller than a grid row; growing the row keeps it from covering the next one.
+  useEditCellHeightReporter(containerRef, rowIdx, onEditCellHeightChange);
   const [draft, setDraft] = useState(value);
 
   useEffect(() => {
@@ -1854,7 +1997,7 @@ const InlineDescriptionEditor = ({
     onComplete(draft);
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       onCancel();
@@ -1870,71 +2013,71 @@ const InlineDescriptionEditor = ({
 
   return (
     <KeyDownStopPropagationWrapper keys={['Enter', 'Escape', 'Tab']}>
-      <div
-        className="bulk-edit-description-editor"
+      <Box
+        className="bulk-edit-description-editor tw:z-10 tw:gap-2.5 tw:px-3.5 tw:pt-2.5 tw:pb-3"
         data-testid="bulk-edit-description-editor"
+        direction="col"
+        ref={containerRef}
+        role="presentation"
         onBlur={handleBlur}>
-        <div className="bulk-edit-description-editor-toolbar">
-          <button
-            aria-label={t('label.bold')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('**')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Bold01 size={16} />
-          </button>
-          <button
-            aria-label={t('label.italic')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('_')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Italic01 size={16} />
-          </button>
-          <button
-            aria-label={t('label.bulleted-list')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyLineFormat(() => '- ')}
-            onMouseDown={handleToolbarMouseDown}>
-            <List size={16} />
-          </button>
-          <button
-            aria-label={t('label.numbered-list')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyLineFormat((index) => `${index + 1}. `)}
-            onMouseDown={handleToolbarMouseDown}>
-            <span className="bulk-edit-description-editor-numbered-icon">
-              1.
-            </span>
-          </button>
-          <button
-            aria-label={t('label.code')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('`')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Code01 size={16} />
-          </button>
-          <span className="bulk-edit-description-editor-separator" />
-          <button
-            aria-label={t('label.clear-formatting')}
-            className="bulk-edit-description-editor-button"
-            type="button"
+        <Box
+          align="center"
+          className="bulk-edit-description-editor-toolbar tw:pb-2"
+          gap={1}>
+          {[
+            {
+              label: 'label.bold',
+              icon: Bold01,
+              onClick: () => applyInlineFormat('**'),
+            },
+            {
+              label: 'label.italic',
+              icon: Italic01,
+              onClick: () => applyInlineFormat('_'),
+            },
+            {
+              label: 'label.bulleted-list',
+              icon: List,
+              onClick: () => applyLineFormat(() => '- '),
+            },
+            {
+              label: 'label.numbered-list',
+              icon: <span className="tw:text-xs tw:font-semibold">1.</span>,
+              onClick: () => applyLineFormat((index) => `${index + 1}. `),
+            },
+            {
+              label: 'label.code',
+              icon: Code01,
+              onClick: () => applyInlineFormat('`'),
+            },
+          ].map(({ label, icon, onClick }) => (
+            <ButtonUtility
+              icon={icon}
+              key={label}
+              size="lg"
+              tooltip={t(label)}
+              onClick={onClick}
+              onMouseDown={handleToolbarMouseDown}
+            />
+          ))}
+          <Divider className="tw:mx-2 tw:h-5" orientation="vertical" />
+          <ButtonUtility
+            icon={Type01}
+            size="lg"
+            tooltip={t('label.clear-formatting')}
             onClick={clearFormatting}
-            onMouseDown={handleToolbarMouseDown}>
-            <Type01 size={16} />
-          </button>
-        </div>
-        <textarea
-          className="bulk-edit-description-editor-textarea"
-          ref={textareaRef}
+            onMouseDown={handleToolbarMouseDown}
+          />
+        </Box>
+        <TextArea
+          aria-label={t('label.description')}
+          textAreaClassName="bulk-edit-description-editor-textarea"
+          textAreaRef={textareaRef}
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={setDraft}
           onKeyDown={handleKeyDown}
         />
-      </div>
+      </Box>
     </KeyDownStopPropagationWrapper>
   );
 };
@@ -1946,6 +2089,882 @@ const ModalWithMarkdownEditor = withSuspenseFallback(
     ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
   )
 );
+
+type CSVCellEditor =
+  | ((
+      props: RenderEditCellProps<Record<string, unknown>, unknown>
+    ) => ReactNode)
+  | undefined;
+
+interface CSVEditorContext {
+  column: string;
+  entityType: EntityType;
+  multipleOwner: {
+    user: boolean;
+    team: boolean;
+  };
+  options: CSVEditorOptions;
+}
+
+type CSVEditorFactory = (ctx: CSVEditorContext) => CSVCellEditor;
+
+// Grid enum cells open their list straight away, like the inline editors
+// beside them; the popover keeps the grid's custom-editor class so the
+// grid's key handling leaves typing inside the list alone. Closing the list
+// ends the edit: re-picking the current value fires no selection change, so
+// without this the cell would stay in edit mode.
+const renderGridEnumSelect = ({
+  ariaLabel,
+  options = [],
+  testId,
+  value,
+  onChange,
+  onDismiss,
+}: {
+  ariaLabel: string;
+  options?: Array<{ label: string; value: string }>;
+  testId: string;
+  value: string;
+  onChange: (value: string) => void;
+  onDismiss: () => void;
+}) => (
+  <Select
+    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
+    autoFocus
+    defaultOpen
+    aria-label={ariaLabel}
+    className="react-grid-select-dropdown tw:w-full"
+    data-testid={testId}
+    items={options.map((option) => ({ id: option.value, label: option.label }))}
+    // The list portals to <body>; it takes the cell's width (core default) with a floor, never
+    // the page's width.
+    popoverClassName="react-grid-select-dropdown tw:min-w-48"
+    size="sm"
+    value={value || null}
+    // A cleared selection reports null; keep the cell empty rather than "null".
+    onChange={(key) => onChange(key === null ? '' : String(key))}
+    onOpenChange={(isOpen) => !isOpen && onDismiss()}>
+    {(item) => <Select.Item id={item.id} label={item.label} />}
+  </Select>
+);
+
+const getCsvOwnerEditor: CSVEditorFactory = ({
+  column,
+  entityType,
+  multipleOwner,
+  options,
+}) => {
+  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+    return getInlineBulkEditReferencePickerEditor(
+      column as BulkEditPickerColumn,
+      {
+        includeTeams: multipleOwner.team,
+      }
+    );
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = String(row[column.key] ?? '');
+    const owners = value.split(';').filter(Boolean);
+    const ownerEntityRef = owners.map((owner: string) => {
+      const [type, user] = owner.split(':');
+
+      return {
+        type,
+        name: user,
+        id: user,
+      } as EntityReference;
+    });
+
+    const handleChange = (owners?: EntityReference[]) => {
+      if (!owners || owners.length === 0) {
+        onRowChange({ ...row, [column.key]: '' }, true);
+
+        return;
+      }
+      const ownerText = owners
+        .map((owner) => `${owner.type}:${owner.name}`)
+        .join(';');
+      onRowChange({ ...row, [column.key]: ownerText }, true);
+    };
+
+    return (
+      <UserTeamSelectableList
+        hasPermission
+        multiple={multipleOwner}
+        owner={ownerEntityRef}
+        popoverProps={{
+          open: true,
+        }}
+        onClose={onClose}
+        onUpdate={handleChange}>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+      </UserTeamSelectableList>
+    );
+  };
+};
+
+// The modal's focus scope restores focus to the cell node rdg replaced while
+// editing, which leaves focus on <body> and breaks arrow-key navigation.
+// Focus the cell right away, so the next key press is not lost, and again once
+// the scope's own restore has run.
+const focusActiveGridCell = () => {
+  const focusCell = () =>
+    document
+      .querySelector<HTMLElement>('.rdg-cell[aria-selected="true"]')
+      ?.focus();
+
+  focusCell();
+  requestAnimationFrame(() => requestAnimationFrame(focusCell));
+};
+
+const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
+  if (options.usePlainTextEditor) {
+    return ({
+      row,
+      rowIdx,
+      onRowChange,
+      onClose,
+      column,
+    }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+      const value = String(row[column.key] ?? '');
+      const handleComplete = (description: string) => {
+        if (description === value) {
+          onClose(false);
+
+          return;
+        }
+
+        onRowChange({ ...row, [column.key]: description }, true);
+        onClose(true);
+      };
+
+      return (
+        <InlineDescriptionEditor
+          rowIdx={rowIdx}
+          value={value}
+          onCancel={() => onClose(false)}
+          onComplete={handleComplete}
+          onEditCellHeightChange={options.onEditCellHeightChange}
+        />
+      );
+    };
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = String(row[column.key] ?? '');
+    const handleSave = async (description: string) => {
+      onRowChange({ ...row, [column.key]: description }, true);
+      focusActiveGridCell();
+    };
+    const handleCancel = () => {
+      onClose(false);
+      focusActiveGridCell();
+    };
+
+    return (
+      <>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        <ModalWithMarkdownEditor
+          visible
+          header="Edit Description"
+          placeholder="Description"
+          value={value}
+          onCancel={handleCancel}
+          onSave={handleSave}
+        />
+      </>
+    );
+  };
+};
+
+const CSV_TAGS_PICKER_TESTID = 'csv-tags-picker';
+const CSV_GLOSSARY_PICKER_TESTID = 'csv-glossary-terms-picker';
+// Matches react-aria's own trigger-to-popover gap.
+const CSV_PICKER_POPOVER_GAP = 8;
+
+// CSV stores tags and glossary terms as a `;`-joined list of FQNs.
+const csvValueToClassificationTags = (value: string): TagLabel[] =>
+  value
+    ? value.split(';').map((tagFQN) => ({
+        tagFQN,
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+        name: Fqn.split(tagFQN).pop(),
+      }))
+    : [];
+
+const csvValueToGlossaryTags = (value: string): TagLabel[] =>
+  fqnsToGlossaryTags(value ? value.split(';') : []);
+
+type CsvPickerProps = Pick<
+  ClassificationTagPickerProps,
+  | 'isOpen'
+  | 'className'
+  | 'data-testid'
+  | 'offset'
+  | 'renderTrigger'
+  | 'value'
+  | 'onChange'
+  | 'onOpenChange'
+>;
+
+interface CsvPickerCellEditorProps
+  extends RenderEditCellProps<Record<string, unknown>, unknown> {
+  options: CSVEditorOptions;
+  testId: string;
+  toTags: (value: string) => TagLabel[];
+  renderPicker: (props: CsvPickerProps) => ReactNode;
+}
+
+const CsvPickerCellEditor = ({
+  row,
+  rowIdx,
+  onRowChange,
+  onClose,
+  column,
+  options,
+  testId,
+  toTags,
+  renderPicker,
+}: CsvPickerCellEditorProps) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
+  const [popoverOffset, setPopoverOffset] = useState(CSV_PICKER_POPOVER_GAP);
+  const popoverSelector = `[data-testid="${testId}-popover"]`;
+
+  // The popover is portaled and mounts a frame late, so poll until it is there.
+  useEffect(() => {
+    let frame = 0;
+    const findPopover = () => {
+      const el = document.querySelector<HTMLElement>(popoverSelector);
+      if (el) {
+        setPopoverEl(el);
+      } else {
+        frame = requestAnimationFrame(findPopover);
+      }
+    };
+    findPopover();
+
+    return () => cancelAnimationFrame(frame);
+  }, [popoverSelector]);
+
+  // Hang the popover off the cell: its own gap would overlap the taller row.
+  useLayoutEffect(() => {
+    const trigger = triggerRef.current;
+    const cell = trigger?.closest('.rdg-cell');
+
+    if (trigger && cell) {
+      setPopoverOffset(
+        cell.getBoundingClientRect().bottom -
+          trigger.getBoundingClientRect().bottom +
+          CSV_PICKER_POPOVER_GAP
+      );
+    }
+  }, []);
+
+  // Focus the popover's search box: the in-cell trigger has nothing to type into.
+  const focusTrapOptions = useMemo(
+    () => ({ initialFocus: `${popoverSelector} input` }),
+    [popoverSelector]
+  );
+
+  useMultiContainerFocusTrap({
+    containers: [containerRef.current, popoverEl],
+    active: true,
+    options: focusTrapOptions,
+  });
+
+  useEditCellHeightReporter(
+    containerRef,
+    rowIdx,
+    options.onEditCellHeightChange
+  );
+
+  const value = toString(row[column.key] ?? '');
+  const tags = useMemo(() => toTags(value), [toTags, value]);
+
+  const handleChange = (selected: TagLabel[]) => {
+    onRowChange({
+      ...row,
+      [column.key]: selected.map((tag) => tag.tagFQN).join(';'),
+    });
+  };
+
+  return (
+    // No save/cancel: each toggle is written to the row, so closing is enough.
+    // No height: the row is measured from this container, so it must not stretch.
+    <div
+      ref={containerRef}
+      role="presentation"
+      onKeyDown={onKeyDownStopPropagation}>
+      {renderPicker({
+        isOpen: true,
+        // Fill the cell; the wrapper is inline-block, which would shrink the trigger.
+        className: 'tw:block tw:w-full',
+        'data-testid': testId,
+        offset: popoverOffset,
+        // A custom trigger moves the search box and footer into the popover.
+        renderTrigger: () => (
+          <div
+            className="bulk-edit-custom-property-cell-trigger"
+            data-testid={testId}
+            ref={triggerRef}>
+            <CsvCellPreview column={column.key} value={value} />
+          </div>
+        ),
+        value: tags,
+        onChange: handleChange,
+        onOpenChange: (open) => !open && onClose(true, true),
+      })}
+    </div>
+  );
+};
+
+const getCsvTagsEditor: CSVEditorFactory = ({ options }) => {
+  // Commit the picker draft and close together so the CSV export sees the selected tags.
+  if (options.usePlainTextEditor) {
+    return getInlineBulkEditReferencePickerEditor('tags');
+  }
+
+  return (props: RenderEditCellProps<Record<string, unknown>, unknown>) => (
+    <CsvPickerCellEditor
+      {...props}
+      options={options}
+      renderPicker={(pickerProps) => (
+        <ClassificationTagPicker {...pickerProps} />
+      )}
+      testId={CSV_TAGS_PICKER_TESTID}
+      toTags={csvValueToClassificationTags}
+    />
+  );
+};
+
+const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
+  column,
+  entityType,
+  options,
+}) => {
+  if (
+    column === 'glossaryTerms' &&
+    options.usePlainTextEditor &&
+    entityType === EntityType.METRIC
+  ) {
+    return getInlineBulkEditReferencePickerEditor('glossaryTerms');
+  }
+
+  return (props: RenderEditCellProps<Record<string, unknown>, unknown>) => (
+    <CsvPickerCellEditor
+      {...props}
+      options={options}
+      renderPicker={(pickerProps) => <GlossaryTermPicker {...pickerProps} />}
+      testId={CSV_GLOSSARY_PICKER_TESTID}
+      toTags={csvValueToGlossaryTags}
+    />
+  );
+};
+
+const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
+  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+    return ({
+      row,
+      onRowChange,
+      onClose,
+      column,
+    }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+      const value = String(row[column.key] ?? '');
+      const handleChange = (selectedValue: string) => {
+        onRowChange({ ...row, [column.key]: selectedValue }, true);
+        onClose(true);
+      };
+
+      return (
+        <KeyDownStopPropagationWrapper>
+          {renderGridEnumSelect({
+            ariaLabel: startCase(column.key),
+            options:
+              entityBulkEditConfigClassBase.getEnumColumnOptions(entityType)[
+                column.key
+              ],
+            testId: `${column.key}-select`,
+            value,
+            onChange: handleChange,
+            onDismiss: () => onClose(false),
+          })}
+        </KeyDownStopPropagationWrapper>
+      );
+    };
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = String(row[column.key] ?? '');
+    const handleChange = async (tag?: Tag) => {
+      onRowChange(
+        {
+          ...row,
+          [column.key]: tag?.fullyQualifiedName,
+        },
+        true
+      );
+    };
+
+    // The popover takes focus on open, so its keydowns bubble (via the portal)
+    // to the rdg EditCell, which closes the editor on Enter / navigates on Tab.
+    // The trigger fills the cell, so the popover opens below the cell.
+    return (
+      <KeyDownStopPropagationWrapper className="tw:h-full">
+        <TierCard
+          open
+          className="tw:flex tw:size-full"
+          currentTier={value}
+          updateTier={handleChange}
+          onClose={() => onClose(false)}>
+          <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        </TierCard>
+      </KeyDownStopPropagationWrapper>
+    );
+  };
+};
+
+const getCsvCertificationEditor: CSVEditorFactory =
+  () =>
+  ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = String(row[column.key] ?? '');
+    // eslint-disable-next-line sonarjs/no-identical-functions -- distinct editor closure
+    const handleChange = async (tag?: Tag) => {
+      onRowChange(
+        {
+          ...row,
+          [column.key]: tag?.fullyQualifiedName,
+        },
+        true
+      );
+    };
+
+    // The search box takes focus on open; keep its keydowns from the rdg EditCell.
+    // The trigger fills the cell, so the popover opens below the cell.
+    return (
+      <KeyDownStopPropagationWrapper className="tw:h-full">
+        <Certification
+          permission
+          className="tw:flex tw:size-full"
+          currentCertificate={value}
+          popoverProps={{ open: true }}
+          onCertificationUpdate={handleChange}
+          onClose={() => onClose(false)}>
+          <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        </Certification>
+      </KeyDownStopPropagationWrapper>
+    );
+  };
+
+const getCsvDomainsEditor: CSVEditorFactory = ({ entityType, options }) => {
+  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+    return getInlineBulkEditReferencePickerEditor('domains');
+  }
+
+  return ({
+    row,
+    onRowChange,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = String(row[column.key] ?? '');
+    const domains = value
+      ? (value?.split(';') ?? []).map((domain: string) => {
+          const fqn = removeOuterEscapes(domain.trim());
+
+          return {
+            type: EntityType.DOMAIN,
+            name: fqn,
+            id: '',
+            fullyQualifiedName: fqn,
+          };
+        })
+      : [];
+
+    const handleChange = async (domain?: EntityReference[]) => {
+      if (!domain || isEmpty(domain)) {
+        onRowChange(
+          {
+            ...row,
+            [column.key]: [],
+          },
+          true
+        );
+
+        return;
+      }
+      onRowChange(
+        {
+          ...row,
+          [column.key]:
+            domain
+              .map((d) => {
+                const fqn = removeOuterEscapes(d.fullyQualifiedName ?? '');
+
+                // Wrap in quotes to match CSV import format; escape any internal " for CSV safety
+                return `"${fqn.replace(/"/g, '""')}"`;
+              })
+              .join(';') ?? '',
+        },
+        true
+      );
+    };
+
+    return (
+      // The picker anchors below its trigger; the trigger must fill the cell or
+      // the dropdown opens mid-cell, over the field being edited.
+      <DomainSelectableList
+        fullWidthTrigger
+        hasPermission
+        multiple
+        className="tw:h-full tw:w-full"
+        popoverProps={{ open: true }}
+        selectedDomain={domains}
+        onUpdate={(domain) => handleChange(domain as EntityReference[])}>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+      </DomainSelectableList>
+    );
+  };
+};
+
+const getCsvReviewersEditor: CSVEditorFactory = ({ entityType, options }) => {
+  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+    return getInlineBulkEditReferencePickerEditor('reviewers');
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = String(row[column.key] ?? '');
+    const reviewers = value.split(';').filter(Boolean);
+    const reviewersEntityRef = reviewers.map((reviewer: string) => {
+      const [type, user] = reviewer.split(':');
+
+      return {
+        type,
+        name: user,
+        id: user,
+      } as EntityReference;
+    });
+
+    const handleChange = (reviewers?: EntityReference[]) => {
+      if (!reviewers || reviewers.length === 0) {
+        onRowChange(
+          {
+            ...row,
+            [column.key]: '',
+          },
+          true
+        );
+
+        return;
+      }
+      const reviewerText = reviewers
+        .map((reviewer) => `${reviewer.type}:${reviewer.name}`)
+        .join(';');
+      onRowChange(
+        {
+          ...row,
+          [column.key]: reviewerText,
+        },
+        true
+      );
+    };
+
+    return (
+      <UserTeamSelectableList
+        hasPermission
+        previewSelected
+        label={t('label.reviewer-plural')}
+        listHeight={200}
+        multiple={{ user: true, team: false }}
+        owner={reviewersEntityRef}
+        popoverProps={{
+          open: true,
+        }}
+        onClose={onClose}
+        onUpdate={handleChange}>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+      </UserTeamSelectableList>
+    );
+  };
+};
+
+const getCsvExtensionEditor: CSVEditorFactory = ({ entityType, options }) => {
+  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+    return getInlineCustomPropertiesEditor(entityType);
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = String(row[column.key] ?? '');
+    const handleSave = async (extension?: string) => {
+      onRowChange({ ...row, [column.key]: extension }, true);
+    };
+
+    return (
+      <>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        <ModalWithCustomPropertyEditor
+          visible
+          entityType={getCustomPropertyEntityType(entityType)}
+          header="Edit CustomProperty"
+          value={value}
+          onCancel={() => onClose(false)}
+          onSave={handleSave}
+        />
+      </>
+    );
+  };
+};
+
+const getCsvEntityTypeEditor: CSVEditorFactory =
+  () =>
+  ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = String(row[column.key] ?? '');
+    const handleChange = (typeValue: string) =>
+      onRowChange({ ...row, [column.key]: typeValue }, true);
+    const translatedEntityTypeOptions = () =>
+      ENTITY_TYPE_OPTIONS.map((opt) => ({
+        ...opt,
+        label: t(opt.label),
+      }));
+
+    return (
+      <KeyDownStopPropagationWrapper>
+        {renderGridEnumSelect({
+          ariaLabel: startCase(column.key),
+          options: translatedEntityTypeOptions(),
+          testId: 'entity-type-select',
+          value: toString(value),
+          onChange: handleChange,
+          onDismiss: () => onClose(false),
+        })}
+      </KeyDownStopPropagationWrapper>
+    );
+  };
+
+const getCsvMultiSelectEditor: CSVEditorFactory = ({
+  column,
+  entityType,
+  options,
+}) => {
+  if (
+    (column === 'dataProducts' || column === 'relatedMetrics') &&
+    options.usePlainTextEditor &&
+    entityType === EntityType.METRIC
+  ) {
+    return getInlineBulkEditReferencePickerEditor(
+      column as BulkEditPickerColumn
+    );
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = String(row[column.key] ?? '');
+    const selected = value ? String(value).split(';').filter(Boolean) : [];
+    const handleChange = (values: string[]) => {
+      onRowChange({ ...row, [column.key]: values.join(';') }, true);
+    };
+
+    return (
+      <KeyDownStopPropagationWrapper>
+        <InlineEdit
+          onCancel={() => onClose(false)}
+          onSave={() => onClose(true)}>
+          <Autocomplete
+            allowsCreation
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
+            autoFocus
+            hideDropdown
+            multiple
+            aria-label={startCase(column.key)}
+            className="react-grid-select-dropdown tw:w-full tw:min-w-48"
+            icon={null}
+            items={[]}
+            placeholder={t('label.add-entity', {
+              entity: startCase(column.key),
+            })}
+            selectedItems={selected.map((item) => ({ id: item, label: item }))}
+            onItemCleared={(key) =>
+              handleChange(selected.filter((item) => item !== String(key)))
+            }
+            onItemInserted={(key) => {
+              const value = String(key).trim();
+              if (value) {
+                handleChange([...new Set([...selected, value])]);
+              }
+            }}>
+            {null}
+          </Autocomplete>
+        </InlineEdit>
+      </KeyDownStopPropagationWrapper>
+    );
+  };
+};
+
+const getCsvExpressionCodeEditor: CSVEditorFactory =
+  () =>
+  ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const language = (row.expressionLanguage as Language) || Language.SQL;
+    const handleCommit = (code: string, selectedLanguage: Language) => {
+      onRowChange(
+        {
+          ...row,
+          [column.key]: code,
+          expressionLanguage: selectedLanguage,
+        },
+        true
+      );
+      onClose(true);
+    };
+
+    return (
+      <>
+        <ValueRendererOnEditCell>
+          {String(row[column.key] ?? '')}
+        </ValueRendererOnEditCell>
+        <ExpressionCodeCell
+          language={language}
+          value={String(row[column.key] ?? '')}
+          onCancel={() => onClose(false)}
+          onCommit={handleCommit}
+        />
+      </>
+    );
+  };
+
+const getCsvEnumEditor: CSVEditorFactory =
+  ({ entityType }) =>
+  ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = String(row[column.key] ?? '');
+    const handleChange = (selectedValue: string) => {
+      onRowChange({ ...row, [column.key]: selectedValue }, true);
+      onClose(true);
+    };
+
+    return (
+      <KeyDownStopPropagationWrapper>
+        {renderGridEnumSelect({
+          ariaLabel: startCase(column.key),
+          options:
+            entityBulkEditConfigClassBase.getEnumColumnOptions(entityType)[
+              column.key
+            ],
+          testId: `${column.key}-select`,
+          value: toString(value),
+          onChange: handleChange,
+          onDismiss: () => onClose(false),
+        })}
+      </KeyDownStopPropagationWrapper>
+    );
+  };
+
+const getCsvCodeEditor: CSVEditorFactory = ({ options }) => {
+  if (options.usePlainTextEditor) {
+    return getInlineTextCellEditor();
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = String(row[column.key] ?? '');
+    const handleChange = (value: string) => {
+      onRowChange({ ...row, [column.key]: value });
+    };
+
+    return (
+      <>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        <SchemaModal
+          isFooterVisible
+          visible
+          data={value}
+          editorClass="custom-code-mirror-theme full-screen-editor-height"
+          mode={{ name: CSMode.SQL }}
+          onChange={handleChange}
+          onClose={() => onClose(false)}
+          onSave={() => onClose(true)}
+        />
+      </>
+    );
+  };
+};
+
+const CSV_EDITOR_FACTORIES: Record<string, CSVEditorFactory> = {
+  owner: getCsvOwnerEditor,
+  owners: getCsvOwnerEditor,
+  description: getCsvDescriptionEditor,
+  tags: getCsvTagsEditor,
+  relatedTerms: getCsvGlossaryTermsEditor,
+  glossaryTerms: getCsvGlossaryTermsEditor,
+  tiers: getCsvTiersEditor,
+  certification: getCsvCertificationEditor,
+  domains: getCsvDomainsEditor,
+  reviewers: getCsvReviewersEditor,
+  extension: getCsvExtensionEditor,
+  'entityType*': getCsvEntityTypeEditor,
+  relatedMetrics: getCsvMultiSelectEditor,
+  dataProducts: getCsvMultiSelectEditor,
+  expressionCode: getCsvExpressionCodeEditor,
+  metricType: getCsvEnumEditor,
+  unitOfMeasurement: getCsvEnumEditor,
+  granularity: getCsvEnumEditor,
+  entityStatus: getCsvEnumEditor,
+  code: getCsvCodeEditor,
+};
 
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
@@ -1980,712 +2999,18 @@ class CSVUtilsClassBase {
       team: boolean;
     },
     options: CSVEditorOptions = {}
-  ):
-    | ((
-        props: RenderEditCellProps<Record<string, unknown>, unknown>
-      ) => ReactNode)
-    | undefined {
-    switch (column) {
-      case 'owner':
-      case 'owners':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return getInlineBulkEditReferencePickerEditor(column, {
-            includeTeams: multipleOwner.team,
-          });
-        }
+  ): CSVCellEditor {
+    const factory = CSV_EDITOR_FACTORIES[column];
 
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row?.[column.key];
-          const owners = value?.split(';') ?? [];
-          const ownerEntityRef = owners.map((owner: string) => {
-            const [type, user] = owner.split(':');
-
-            return {
-              type,
-              name: user,
-              id: user,
-            } as EntityReference;
-          });
-
-          const handleChange = (owners?: EntityReference[]) => {
-            if (!owners || owners.length === 0) {
-              onRowChange({ ...row, [column.key]: '' }, true);
-
-              return;
-            }
-            const ownerText = owners
-              .map((owner) => `${owner.type}:${owner.name}`)
-              .join(';');
-            onRowChange({ ...row, [column.key]: ownerText }, true);
-          };
-
-          return (
-            <UserTeamSelectableList
-              hasPermission
-              multiple={multipleOwner}
-              owner={ownerEntityRef}
-              popoverProps={{
-                open: true,
-              }}
-              onClose={onClose}
-              onUpdate={handleChange}>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-            </UserTeamSelectableList>
-          );
-        };
-      case 'description':
-        if (options.usePlainTextEditor) {
-          return ({
-            row,
-            onRowChange,
-            onClose,
-            column,
-          }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-            const value = String(row[column.key] ?? '');
-            const handleComplete = (description: string) => {
-              if (description === value) {
-                onClose(false);
-
-                return;
-              }
-
-              onRowChange({ ...row, [column.key]: description }, true);
-              onClose(true);
-            };
-
-            return (
-              <InlineDescriptionEditor
-                value={value}
-                onCancel={() => onClose(false)}
-                onComplete={handleComplete}
-              />
-            );
-          };
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleSave = async (description: string) => {
-            onRowChange({ ...row, [column.key]: description }, true);
-          };
-
-          return (
-            <>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-              <ModalWithMarkdownEditor
-                visible
-                header="Edit Description"
-                placeholder="Description"
-                value={value}
-                onCancel={() => onClose(false)}
-                onSave={handleSave}
-              />
-            </>
-          );
-        };
-      case 'tags':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return getInlineBulkEditReferencePickerEditor('tags');
-        }
-
-        return ({
-          row,
-          rowIdx,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const containerRef = useRef<HTMLDivElement | null>(null);
-          const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
-          useMultiContainerFocusTrap({
-            containers: [containerRef.current, dropdownContainerRef.current],
-            active: true,
-          });
-          useEditCellHeightReporter(
-            containerRef,
-            rowIdx,
-            options.onEditCellHeightChange
-          );
-
-          const tags = row[column.key]
-            ? row[column.key]?.split(';').map(
-                (tag: string) =>
-                  ({
-                    tagFQN: tag,
-                    source: TagSource.Classification,
-                    name: Fqn.split(tag).pop(),
-                  } as TagLabel)
-              )
-            : undefined;
-
-          const handleChange = (tags: TagLabel[]) => {
-            onRowChange({
-              ...row,
-              [column.key]: tags.map((tag) => tag.tagFQN).join(';'),
-            });
-          };
-
-          return (
-            <KeyDownStopPropagationWrapper>
-              <div ref={containerRef}>
-                <InlineEdit
-                  onCancel={() => onClose(false)}
-                  onSave={() => onClose(true)}>
-                  <TagSuggestion
-                    autoFocus
-                    dropdownContainerRef={dropdownContainerRef}
-                    selectProps={{
-                      className: 'react-grid-select-dropdown',
-                      getPopupContainer: () => document.body,
-                      size: 'small',
-                    }}
-                    value={tags}
-                    onChange={handleChange}
-                  />
-                </InlineEdit>
-              </div>
-            </KeyDownStopPropagationWrapper>
-          );
-        };
-      case 'relatedTerms':
-      case 'glossaryTerms':
-        if (
-          column === 'glossaryTerms' &&
-          options.usePlainTextEditor &&
-          entityType === EntityType.METRIC
-        ) {
-          return getInlineBulkEditReferencePickerEditor('glossaryTerms');
-        }
-
-        return ({
-          row,
-          rowIdx,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const containerRef = useRef<HTMLDivElement | null>(null);
-          const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
-          useMultiContainerFocusTrap({
-            containers: [containerRef.current, dropdownContainerRef.current],
-            active: true,
-          });
-          useEditCellHeightReporter(
-            containerRef,
-            rowIdx,
-            options.onEditCellHeightChange
-          );
-
-          const value = row[column.key];
-          const tags = value ? value?.split(';') : [];
-
-          const handleChange = (
-            option: DefaultOptionType | DefaultOptionType[]
-          ) => {
-            if (Array.isArray(option)) {
-              onRowChange({
-                ...row,
-                [column.key]: option
-                  .map((tag) => toString(tag.value))
-                  .join(';'),
-              });
-            } else {
-              onRowChange({
-                ...row,
-                [column.key]: toString(option.value),
-              });
-            }
-          };
-
-          return (
-            <div ref={containerRef}>
-              <TreeAsyncSelectList
-                defaultValue={tags}
-                dropdownContainerRef={dropdownContainerRef}
-                dropdownMatchSelectWidth={false}
-                optionClassName="tag-select-box"
-                tagType={TagSource.Glossary}
-                onCancel={() => {
-                  onClose(false);
-                }}
-                onChange={handleChange}
-                onSubmit={() => onClose(true)}
-              />
-            </div>
-          );
-        };
-      case 'tiers':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return ({
-            row,
-            onRowChange,
-            onClose,
-            column,
-          }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-            const value = String(row[column.key] ?? '');
-            const handleChange = (selectedValue: string) => {
-              onRowChange({ ...row, [column.key]: selectedValue }, true);
-              onClose(true);
-            };
-
-            return (
-              <KeyDownStopPropagationWrapper>
-                <Select
-                  autoFocus
-                  open
-                  className="react-grid-select-dropdown bulk-edit-enum-select"
-                  data-testid={`${column.key}-select`}
-                  dropdownMatchSelectWidth={false}
-                  dropdownStyle={{ minWidth: 220 }}
-                  getPopupContainer={() => document.body}
-                  menuItemSelectedIcon={<Check size={16} />}
-                  optionFilterProp="label"
-                  options={
-                    entityBulkEditConfigClassBase.getEnumColumnOptions(
-                      entityType
-                    )[column.key]
-                  }
-                  popupClassName="bulk-edit-enum-select-dropdown"
-                  size="small"
-                  suffixIcon={<ChevronDown size={16} />}
-                  value={value || undefined}
-                  onChange={handleChange}
-                />
-              </KeyDownStopPropagationWrapper>
-            );
-          };
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleChange = async (tag?: Tag) => {
-            onRowChange(
-              {
-                ...row,
-                [column.key]: tag?.fullyQualifiedName,
-              },
-              true
-            );
-          };
-
-          return (
-            <TierCard
-              currentTier={value}
-              popoverProps={{ open: true }}
-              updateTier={handleChange}
-              onClose={() => onClose(false)}>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-            </TierCard>
-          );
-        };
-
-      case 'certification':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleChange = async (tag?: Tag) => {
-            onRowChange(
-              {
-                ...row,
-                [column.key]: tag?.fullyQualifiedName,
-              },
-              true
-            );
-          };
-
-          return (
-            <Certification
-              permission
-              currentCertificate={value}
-              popoverProps={{ open: true }}
-              onCertificationUpdate={handleChange}
-              onClose={() => onClose(false)}>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-            </Certification>
-          );
-        };
-      case 'domains':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return getInlineBulkEditReferencePickerEditor('domains');
-        }
-
-        return ({
-          row,
-          onRowChange,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const domains = value
-            ? (value?.split(';') ?? []).map((domain: string) => {
-                const fqn = removeOuterEscapes(domain.trim());
-
-                return {
-                  type: EntityType.DOMAIN,
-                  name: fqn,
-                  id: '',
-                  fullyQualifiedName: fqn,
-                };
-              })
-            : [];
-
-          const handleChange = async (domain?: EntityReference[]) => {
-            if (!domain || isEmpty(domain)) {
-              onRowChange(
-                {
-                  ...row,
-                  [column.key]: [],
-                },
-                true
-              );
-
-              return;
-            }
-            onRowChange(
-              {
-                ...row,
-                [column.key]:
-                  domain
-                    .map((d) => {
-                      const fqn = removeOuterEscapes(
-                        d.fullyQualifiedName ?? ''
-                      );
-
-                      // Wrap in quotes to match CSV import format; escape any internal " for CSV safety
-                      return `"${fqn.replace(/"/g, '""')}"`;
-                    })
-                    .join(';') ?? '',
-              },
-              true
-            );
-          };
-
-          return (
-            <DomainSelectableList
-              hasPermission
-              multiple
-              getPopupContainer={() => document.body}
-              popoverProps={{ open: true }}
-              selectedDomain={domains}
-              wrapInButton={false}
-              onUpdate={(domain) => handleChange(domain as EntityReference[])}>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-            </DomainSelectableList>
-          );
-        };
-      case 'reviewers':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return getInlineBulkEditReferencePickerEditor('reviewers');
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const reviewers = value?.split(';') ?? [];
-          const reviewersEntityRef = reviewers.map((reviewer: string) => {
-            const [type, user] = reviewer.split(':');
-
-            return {
-              type,
-              name: user,
-              id: user,
-            } as EntityReference;
-          });
-
-          const handleChange = (reviewers?: EntityReference[]) => {
-            if (!reviewers || reviewers.length === 0) {
-              onRowChange(
-                {
-                  ...row,
-                  [column.key]: '',
-                },
-                true
-              );
-
-              return;
-            }
-            const reviewerText = reviewers
-              .map((reviewer) => `${reviewer.type}:${reviewer.name}`)
-              .join(';');
-            onRowChange(
-              {
-                ...row,
-                [column.key]: reviewerText,
-              },
-              true
-            );
-          };
-
-          return (
-            <UserTeamSelectableList
-              hasPermission
-              previewSelected
-              label={t('label.reviewer-plural')}
-              listHeight={200}
-              multiple={{ user: true, team: false }}
-              owner={reviewersEntityRef}
-              popoverProps={{
-                open: true,
-              }}
-              onClose={onClose}
-              onUpdate={handleChange}>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-            </UserTeamSelectableList>
-          );
-        };
-      case 'extension':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return getInlineCustomPropertiesEditor(entityType);
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleSave = async (extension?: string) => {
-            onRowChange({ ...row, [column.key]: extension }, true);
-          };
-
-          return (
-            <>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-              <ModalWithCustomPropertyEditor
-                visible
-                entityType={getCustomPropertyEntityType(entityType)}
-                header="Edit CustomProperty"
-                value={value}
-                onCancel={() => onClose(false)}
-                onSave={handleSave}
-              />
-            </>
-          );
-        };
-      case 'entityType*':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleChange = (typeValue: string) => {
-            onRowChange({ ...row, [column.key]: typeValue });
-          };
-          const translatedEntityTypeOptions = () =>
-            ENTITY_TYPE_OPTIONS.map((opt) => ({
-              ...opt,
-              label: t(opt.label),
-            }));
-
-          return (
-            <KeyDownStopPropagationWrapper>
-              <InlineEdit
-                onCancel={() => onClose(false)}
-                onSave={() => onClose(true)}>
-                <Select
-                  autoFocus
-                  open
-                  data-testid="entity-type-select"
-                  options={translatedEntityTypeOptions()}
-                  size="small"
-                  style={{ width: '155px' }}
-                  value={value}
-                  onChange={handleChange}
-                />
-              </InlineEdit>
-            </KeyDownStopPropagationWrapper>
-          );
-        };
-
-      case 'relatedMetrics':
-      case 'dataProducts':
-        if (
-          (column === 'dataProducts' || column === 'relatedMetrics') &&
-          options.usePlainTextEditor &&
-          entityType === EntityType.METRIC
-        ) {
-          return getInlineBulkEditReferencePickerEditor(column);
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const selected = value
-            ? String(value).split(';').filter(Boolean)
-            : [];
-          const handleChange = (values: string[]) => {
-            onRowChange({ ...row, [column.key]: values.join(';') }, true);
-          };
-
-          return (
-            <KeyDownStopPropagationWrapper>
-              <InlineEdit
-                onCancel={() => onClose(false)}
-                onSave={() => onClose(true)}>
-                <Select
-                  autoFocus
-                  open
-                  className="react-grid-select-dropdown"
-                  getPopupContainer={() => document.body}
-                  mode="tags"
-                  placeholder={t('label.add-entity', {
-                    entity: startCase(column.key),
-                  })}
-                  size="small"
-                  value={selected}
-                  onChange={handleChange}
-                />
-              </InlineEdit>
-            </KeyDownStopPropagationWrapper>
-          );
-        };
-
-      case 'expressionCode':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const language = (row.expressionLanguage as Language) || Language.SQL;
-          const handleCommit = (code: string, selectedLanguage: Language) => {
-            onRowChange(
-              {
-                ...row,
-                [column.key]: code,
-                expressionLanguage: selectedLanguage,
-              },
-              true
-            );
-            onClose(true);
-          };
-
-          return (
-            <>
-              <ValueRendererOnEditCell>
-                {row[column.key]}
-              </ValueRendererOnEditCell>
-              <ExpressionCodeCell
-                language={language}
-                value={String(row[column.key] ?? '')}
-                onCancel={() => onClose(false)}
-                onCommit={handleCommit}
-              />
-            </>
-          );
-        };
-
-      case 'metricType':
-      case 'unitOfMeasurement':
-      case 'granularity':
-      case 'entityStatus':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleChange = (selectedValue: string) => {
-            onRowChange({ ...row, [column.key]: selectedValue }, true);
-            onClose(true);
-          };
-
-          return (
-            <KeyDownStopPropagationWrapper>
-              <Select
-                autoFocus
-                open
-                className="react-grid-select-dropdown bulk-edit-enum-select"
-                data-testid={`${column.key}-select`}
-                dropdownMatchSelectWidth={false}
-                dropdownStyle={{ minWidth: 240 }}
-                getPopupContainer={() => document.body}
-                menuItemSelectedIcon={<Check size={16} />}
-                optionFilterProp="label"
-                options={
-                  entityBulkEditConfigClassBase.getEnumColumnOptions(
-                    entityType
-                  )[column.key]
-                }
-                popupClassName="bulk-edit-enum-select-dropdown"
-                size="small"
-                suffixIcon={<ChevronDown size={16} />}
-                value={value || undefined}
-                onChange={handleChange}
-              />
-            </KeyDownStopPropagationWrapper>
-          );
-        };
-
-      case 'code':
-        if (options.usePlainTextEditor) {
-          return getInlineTextCellEditor();
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleChange = (value: string) => {
-            onRowChange({ ...row, [column.key]: value });
-          };
-
-          return (
-            <>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-              <SchemaModal
-                isFooterVisible
-                visible
-                data={value}
-                editorClass="custom-code-mirror-theme full-screen-editor-height"
-                mode={{ name: CSMode.SQL }}
-                onChange={handleChange}
-                onClose={() => onClose(false)}
-                onSave={() => onClose(true)}
-              />
-            </>
-          );
-        };
-      default:
-        if (options.usePlainTextEditor) {
-          return getInlineTextCellEditor();
-        }
-
-        return lazyTextEditor;
+    if (factory) {
+      return factory({ column, entityType, multipleOwner, options });
     }
+
+    if (options.usePlainTextEditor) {
+      return getInlineTextCellEditor();
+    }
+
+    return lazyTextEditor;
   }
 }
 

@@ -80,33 +80,131 @@ describe('DeploymentSummaryCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('should aggregate asset counts from Metadata agents only', () => {
+  it('should take the newest Metadata run rather than summing the agents', () => {
     render(
       <DeploymentSummaryCard
         agents={[
-          buildAgent({ assets: 120 }),
-          buildAgent({ id: 'agent-2', fqn: 'service.agent-2', assets: 30 }),
+          // The older run has the larger count on purpose: a sum reads 150 and a Math.max reads 120,
+          // so only "newest run wins" produces 30.
+          buildAgent({ assets: 120, lastRunAt: 1_000 }),
           buildAgent({
-            id: 'agent-3',
-            fqn: 'service.agent-3',
-            pipelineType: PipelineType.Profiler,
-            unit: 'assets',
-            assets: 999,
+            assets: 30,
+            fqn: 'service.agent-2',
+            id: 'agent-2',
+            lastRunAt: 2_000,
           }),
           buildAgent({
-            id: 'agent-4',
+            assets: 999,
+            fqn: 'service.agent-3',
+            id: 'agent-3',
+            lastRunAt: 3_000,
+            pipelineType: PipelineType.Profiler,
+            unit: 'assets',
+          }),
+          buildAgent({
+            assets: 500,
             fqn: 'service.agent-4',
+            id: 'agent-4',
+            lastRunAt: 4_000,
             pipelineType: PipelineType.Usage,
             unit: 'queries',
-            assets: 500,
           }),
         ]}
       />
     );
 
     expect(screen.getByTestId('summary-assets-ingested')).toHaveTextContent(
-      '150'
+      '30'
     );
+  });
+
+  it('should prefer a running Metadata agent, whose run is the newest', () => {
+    render(
+      <DeploymentSummaryCard
+        agents={[
+          buildAgent({ assets: 900, lastRunAt: 1_000 }),
+          buildAgent({
+            assets: 12,
+            fqn: 'service.agent-2',
+            id: 'agent-2',
+            lastRunAt: 5_000,
+            pct: 10,
+            status: 'running',
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('summary-assets-ingested')).toHaveTextContent(
+      '12'
+    );
+  });
+
+  it('should keep the last finished count when a newer run is only queued', () => {
+    render(
+      <DeploymentSummaryCard
+        agents={[
+          buildAgent({ assets: 50, lastRunAt: 1_000 }),
+          buildAgent({
+            assets: 0,
+            fqn: 'service.agent-2',
+            id: 'agent-2',
+            lastRunAt: 9_000,
+            pct: 0,
+            status: 'queued',
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('summary-assets-ingested')).toHaveTextContent(
+      '50'
+    );
+  });
+
+  it('should fall back to the first Metadata agent when no run timestamps exist', () => {
+    render(
+      <DeploymentSummaryCard
+        agents={[
+          buildAgent({ assets: 42 }),
+          buildAgent({ assets: 7, fqn: 'service.agent-2', id: 'agent-2' }),
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('summary-assets-ingested')).toHaveTextContent(
+      '42'
+    );
+  });
+
+  it('should count agents beyond the current page as unfinished', () => {
+    render(
+      <DeploymentSummaryCard
+        // Two agents on this page, but the service has five: the summary must not claim the page is
+        // the whole deployment.
+        agents={[
+          buildAgent({}),
+          buildAgent({ fqn: 'service.agent-2', id: 'agent-2' }),
+        ]}
+        totalAgents={5}
+      />
+    );
+
+    expect(screen.getByTestId('deployment-summary-title')).toHaveTextContent(
+      'message.agents-deploying-ingesting'
+    );
+    expect(screen.getByTestId('deployment-progress-bar')).toBeInTheDocument();
+  });
+
+  it('should render nothing when the page holds only never-run agents', () => {
+    const { container } = render(
+      <DeploymentSummaryCard
+        agents={[buildAgent({ status: 'none' })]}
+        totalAgents={4}
+      />
+    );
+
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('should keep the Metadata agent count while other agents still run', () => {

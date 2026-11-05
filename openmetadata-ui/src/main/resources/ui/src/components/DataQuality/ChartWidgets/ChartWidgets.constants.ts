@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { TestCaseStatus } from '../../../generated/entity/feed/testCaseResult';
+import type { CustomAreaChartData } from '../../Visualisations/Chart/Chart.interface';
+
+/** Stable fallback while an area chart has no data, so its memoized body doesn't recompute. */
+export const EMPTY_CHART_DATA: CustomAreaChartData[] = [];
 
 /** Segment order for TestCaseStatusPieChartWidget: Success, Failed, Aborted */
 export const TEST_CASE_STATUS_PIE_SEGMENT_ORDER: TestCaseStatus[] = [
@@ -25,7 +30,16 @@ export const TEST_CASE_STATUS_PIE_SEGMENT_ORDER: TestCaseStatus[] = [
  * Used by EntityHealthStatusPieChartWidget (Healthy → Success, Unhealthy → Failed)
  * and DataAssetsCoveragePieChartWidget (Covered → Success, Not covered → Failed).
  */
-export const BINARY_STATUS_PIE_SEGMENT_ORDER: TestCaseStatus[] = [
-  TestCaseStatus.Success,
-  TestCaseStatus.Failed,
+export const BINARY_STATUS_PIE_SEGMENT_ORDER: TestCaseStatus[][] = [
+  [TestCaseStatus.Success, TestCaseStatus.Queued],
+  [TestCaseStatus.Failed, TestCaseStatus.Aborted],
 ];
+
+/** Chart colour of a test case status, for the status area charts. */
+export const TEST_CASE_STATUS_CHART_STATUS: Partial<
+  Record<TestCaseStatus, ChartStatus>
+> = {
+  [TestCaseStatus.Success]: 'success',
+  [TestCaseStatus.Failed]: 'failed',
+  [TestCaseStatus.Aborted]: 'warning',
+};

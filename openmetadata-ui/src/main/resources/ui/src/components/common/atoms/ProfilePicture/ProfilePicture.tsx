@@ -14,7 +14,7 @@
 import { Avatar, Typography } from '@openmetadata/ui-core-components';
 import { ComponentProps, useMemo } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {

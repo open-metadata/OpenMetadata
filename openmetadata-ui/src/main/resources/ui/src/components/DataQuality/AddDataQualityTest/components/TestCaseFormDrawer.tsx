@@ -10,31 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  EmptyPlaceholder,
-  HookForm,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Lightbulb05 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { TFunction } from 'i18next';
+import { isEmpty, isUndefined, noop } from 'lodash';
+import {
+  FC,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
-import {
-  OPEN_METADATA,
-  TEST_CASE_FORM,
-} from '../../../../constants/service-guide.constant';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { EntityType as EntityTypeEnum } from '../../../../enums/entity.enum';
-import { ServiceCategory } from '../../../../enums/service.enum';
+import { EntityType } from '../../../../enums/entity.enum';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
-import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
@@ -48,18 +44,21 @@ import {
 } from '../../../../rest/testAPI';
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { monospaceParameterNames } from '../../../../utils/DataQuality/FormHintDocUtils';
-import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
-import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
+import { omitInapplicableDimensionParams } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
-import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { FormHintDoc } from '../../../common/atoms/drawer/formHint/FormHintDoc';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
 import Loader from '../../../common/Loader/Loader';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import TestCaseFormBody from './TestCaseFormBody';
+import {
+  ROOT_SELECTED_ENTITY_PATH,
+  ROOT_TABLE_PATH,
+} from './TestCaseFormBody.constants';
 import {
   FormValues,
   TestCaseFormContext,
@@ -74,6 +73,39 @@ import {
   transformTestCaseFormData,
 } from './transformTestCaseFormData';
 
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
+
+const getDefaultDrawerTitle = (
+  isEditMode: boolean,
+  testCase: TestCase | undefined,
+  t: TFunction
+): string =>
+  isEditMode
+    ? t('label.edit-entity', { entity: getEntityName(testCase) })
+    : t('label.add-entity', { entity: t('label.test-case') });
+
+const getIsEditPrefilling = (
+  isEditMode: boolean,
+  open: boolean,
+  editPrefilledId: string | undefined,
+  testCaseId: string | undefined
+): boolean => isEditMode && open && editPrefilledId !== testCaseId;
+
+const getSelectedTableSearchSource = (
+  selectedTableData: TestCaseFormContext['selectedTableData']
+): TableSearchSource | undefined =>
+  isUndefined(selectedTableData)
+    ? undefined
+    : ({
+        ...selectedTableData,
+        entityType: EntityType.TABLE,
+      } as TableSearchSource);
+
 const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   open,
   onClose,
@@ -82,11 +114,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   table,
   testSuite,
   testLevel,
-  variant = getDefaultTestCaseFormVariant(),
   title,
   headerActions,
   width,
-  showDocPanel = variant === 'drawer',
+  showDocPanel = true,
   testCase,
   showOnlyParameter = false,
   onUpdate,
@@ -96,6 +127,13 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const { isAirflowAvailable } = useAirflowStatus();
   const { permissions } = usePermissionProvider();
   const { ingestionPipeline } = permissions;
+  // Resource-level permission (usePermissionProvider().permissions.ingestionPipeline) —
+  // itself OperationPermission-shaped, so it runs through getDerivedPermissionFlags exactly
+  // like an entity-level fetch (Task 8 Batch 3 DatabaseSchemaTable.tsx precedent).
+  const ingestionPipelineFlags = useMemo(
+    () => getDerivedPermissionFlags(ingestionPipeline),
+    [ingestionPipeline]
+  );
 
   const isEditMode = !!testCase;
 
@@ -116,9 +154,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   });
 
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [activeField, setActiveField] = useState<string>('');
   const [formContext, setFormContext] = useState<TestCaseFormContext>();
-  const [showHint, setShowHint] = useState<boolean>(true);
+  // The selected table's summary shows only with the Select Table hint.
+  const [isTableFieldActive, setIsTableFieldActive] = useState(false);
   const [editDefinition, setEditDefinition] = useState<TestDefinition>();
   // Id of the test case whose edit prefill has finished. Until this matches the
   // open test case, the body renders a loader so the form appears fully
@@ -162,18 +200,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     };
   }, [testCase, open, form]);
 
-  const handleActiveFieldChange = useCallback(
-    (fieldId: string) => {
-      setActiveField(fieldId);
-      onActiveFieldChange?.(fieldId);
-    },
-    [onActiveFieldChange]
-  );
-
   const createTestCasePipeline = useCallback(
     async (values: FormValues, created: TestCase) => {
-      const pipelineTestSuite =
-        (created.testSuite as TestSuite | undefined) ?? testSuite;
+      const pipelineTestSuite = created.testSuite ?? testSuite;
       if (!formContext?.canCreatePipeline || !pipelineTestSuite) {
         return;
       }
@@ -181,16 +210,20 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       const pipeline = buildTestSuitePipelinePayload(values, {
         testSuite: pipelineTestSuite,
         createdTestCaseName: created.name,
-        selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
+        // Prefer the raw form FQN: `canCreatePipeline` is gated on it, so it can
+        // be submitted while `selectedTableData` is still being fetched.
+        selectedTable:
+          formContext?.selectedTableFqn ??
+          formContext?.selectedTableData?.fullyQualifiedName,
         table,
       });
 
       const ingestion = await addIngestionPipeline(pipeline);
-      if (isAirflowAvailable && ingestionPipeline.EditAll) {
+      if (isAirflowAvailable && ingestionPipelineFlags.canEditAll) {
         await deployIngestionPipelineById(ingestion.id ?? '');
       }
     },
-    [formContext, testSuite, table, isAirflowAvailable, ingestionPipeline]
+    [formContext, testSuite, table, isAirflowAvailable, ingestionPipelineFlags]
   );
 
   const handleEditSubmit = useCallback(
@@ -217,6 +250,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         values,
         resolvedDefinition
       );
+      normalizedValues.params = omitInapplicableDimensionParams(
+        normalizedValues.params,
+        !isEmpty(normalizedValues.dimensionColumns)
+      );
       const formValue = normalizedValues as unknown as TestCaseFormType;
       const jsonPatch = createUpdatedTestCasePatch({
         testCase: testCase as TestCase,
@@ -227,6 +264,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         ),
         showOnlyParameter,
         isComputeRowCountFieldVisible,
+        // The dimension field is prefilled with the definition's dimension when
+        // the test case has none of its own, so the patch needs it to tell that
+        // prefill apart from a dimension the user actually picked.
+        inheritedDimension: resolvedDefinition?.dataQualityDimension,
       });
 
       if (!jsonPatch.length) {
@@ -253,7 +294,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         selectedColumn: formContext?.selectedColumn,
         selectedTestLevel: formContext?.selectedTestLevel ?? TestLevel.TABLE,
         table,
-        selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
+        // `resolveEntityLink` falls back to '' when every source is empty, so
+        // this must also prefer the raw form FQN over the fetched table.
+        selectedTable:
+          formContext?.selectedTableFqn ??
+          formContext?.selectedTableData?.fullyQualifiedName,
         generateName: formContext?.generateName ?? (() => ''),
       });
 
@@ -303,20 +348,14 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     [isEditMode, handleEditSubmit, handleCreateSubmit, t]
   );
 
-  const serviceDocPanel = (
-    <ServiceDocPanel
-      activeField={activeField}
-      selectedEntity={
-        isUndefined(formContext?.selectedTableData)
-          ? undefined
-          : ({
-              ...formContext?.selectedTableData,
-              entityType: EntityTypeEnum.TABLE,
-            } as TableSearchSource)
-      }
-      serviceName={TEST_CASE_FORM}
-      serviceType={OPEN_METADATA as ServiceCategory}
-    />
+  const handleActiveFieldChange = useCallback(
+    (fieldId: string) => {
+      setIsTableFieldActive(
+        fieldId === ROOT_TABLE_PATH || fieldId === ROOT_SELECTED_ENTITY_PATH
+      );
+      onActiveFieldChange?.(fieldId);
+    },
+    [onActiveFieldChange]
   );
 
   const testCaseFormBody = (
@@ -334,32 +373,15 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     />
   );
 
-  const isModalVariant = variant === 'modal';
-
-  const docPanel = showDocPanel ? (
-    <div className="drawer-doc-panel service-doc-panel markdown-parser">
-      {serviceDocPanel}
-    </div>
-  ) : null;
-
-  // Without the doc panel the form spans the full drawer, so drop the drawer
-  // width to roughly the form's original 65% column and let it fill (see the
-  // .no-doc-panel grid override in TestCaseFormV1.less).
-  const resolvedWidth = width ?? (showDocPanel ? '80vw' : '52vw');
-
-  const scrollToError = useMemo(
-    () =>
-      createScrollToErrorHandler({
-        errorSelector: '[aria-invalid="true"], [data-invalid="true"]',
-      }),
-    []
-  );
-
   // In edit mode hold the form behind a loader until the prefill (definition
   // fetch + form.reset) is done for the open test case, so it renders fully
   // populated in one paint rather than flickering values in as calls resolve.
-  const isEditPrefilling =
-    isEditMode && open && editPrefilledId !== testCase?.id;
+  const isEditPrefilling = getIsEditPrefilling(
+    isEditMode,
+    open,
+    editPrefilledId,
+    testCase?.id
+  );
 
   const gatedFormBody = isEditPrefilling ? (
     <div className="tw:flex tw:items-center tw:justify-center tw:py-16">
@@ -369,25 +391,28 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     testCaseFormBody
   );
 
-  const formBody = (
-    <HookForm
-      form={form}
-      onSubmit={form.handleSubmit(
-        (data) =>
-          submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
-        () => scrollToError()
-      )}>
-      <div
-        className={`drawer-content-wrapper${
-          showDocPanel ? '' : ' no-doc-panel'
-        }`}>
-        <div className="drawer-form-content">{gatedFormBody}</div>
-        {docPanel}
-      </div>
-    </HookForm>
-  );
-
   const closeDrawerRef = useRef<() => void>(() => undefined);
+
+  // Stable identity: the summary panel's permission lookup depends on it.
+  const selectedTableDetails = useMemo(() => {
+    const details = getSelectedTableSearchSource(
+      formContext?.selectedTableData
+    );
+
+    return details ? { details } : undefined;
+  }, [formContext?.selectedTableData]);
+
+  const renderFieldDoc = (markdown: string) =>
+    isTableFieldActive && selectedTableDetails ? (
+      <div className="tw:mt-3" data-testid="selected-table-summary">
+        <EntitySummaryPanel
+          entityDetails={selectedTableDetails}
+          handleClosePanel={noop}
+        />
+      </div>
+    ) : (
+      <FormHintDoc markdown={monospaceParameterNames(markdown)} />
+    );
 
   // Every dismissal path (cancel, X, Escape, backdrop, programmatic close)
   // funnels through the base drawer's onClose, so the parent is notified
@@ -401,106 +426,28 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     onClose();
   }, [form, onClose]);
 
-  const defaultTitle = isEditMode
-    ? t('label.edit-entity', { entity: getEntityName(testCase) })
-    : t('label.add-entity', { entity: t('label.test-case') });
+  const defaultTitle = getDefaultDrawerTitle(isEditMode, testCase, t);
+  const resolvedTitle = title ?? defaultTitle;
 
-  const { formDrawer, openDrawer, closeDrawer, isOpen } =
-    useFormDrawerWithHook<FormValues>({
-      className: 'test-case-form-drawer',
-      title: title ?? defaultTitle,
-      hookForm: form,
-      form: formBody,
-      headerActions,
-      width: resolvedWidth,
-      submitLabel: isEditMode ? t('label.update') : t('label.create'),
-      submitTestId: 'create-btn',
-      submitLoading: formContext?.isCheckingPermissions ?? false,
-      onClose: handleDrawerDismiss,
-      onSubmit: (data) =>
-        submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
-    });
+  const { formDrawer, closeDrawer } = useFormDrawerWithHook<FormValues>({
+    className: 'test-case-form-drawer',
+    title: resolvedTitle,
+    hookForm: form,
+    form: gatedFormBody,
+    formHint: { enabled: showDocPanel, renderDoc: renderFieldDoc },
+    headerActions,
+    // Without the doc panel there is no hint column to size for.
+    width: width ?? (showDocPanel ? undefined : '52vw'),
+    open,
+    submitLabel: isEditMode ? t('label.update') : t('label.create'),
+    submitTestId: 'create-btn',
+    submitLoading: formContext?.isCheckingPermissions ?? false,
+    onClose: handleDrawerDismiss,
+    onSubmit: (data) =>
+      submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
+  });
 
   closeDrawerRef.current = closeDrawer;
-
-  useEffect(() => {
-    if (isModalVariant) {
-      return;
-    }
-    if (open) {
-      openDrawer();
-    } else if (isOpen) {
-      closeDrawer();
-    }
-  }, [isModalVariant, open, isOpen, openDrawer, closeDrawer]);
-
-  if (isModalVariant) {
-    return (
-      <AiFormModal
-        headerActions={headerActions}
-        hintOpen={showHint}
-        isSubmitting={form.formState.isSubmitting}
-        open={open}
-        submitLabel={isEditMode ? t('label.update') : undefined}
-        subtitle={t('message.page-sub-header-for-data-quality')}
-        title={title ?? defaultTitle}
-        onClose={handleDrawerDismiss}
-        onHintToggle={setShowHint}
-        onSubmit={form.handleSubmit(
-          (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
-          () => scrollToError()
-        )}>
-        <HookForm
-          emptyFieldDoc={
-            // width="100%" is required: EmptyPlaceholder's 300px default is
-            // wider than the hint column's 260px minimum and would overflow
-            // once the column shrinks on a narrow viewport.
-            <EmptyPlaceholder
-              description={t('message.form-hint-empty-state')}
-              icon={Lightbulb05}
-              title={t('label.no-entity-selected', {
-                entity: t('label.field'),
-              })}
-              width="100%"
-            />
-          }
-          fieldDocDisplay="panel"
-          fieldDocHeader={
-            <Box align="center" className="tw:gap-2" direction="row">
-              <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-              <Typography
-                className="tw:text-secondary"
-                size="text-sm"
-                weight="medium">
-                {t('label.form-hint')}
-              </Typography>
-            </Box>
-          }
-          form={form}
-          // min-w-193 (772px) overrides HookForm's 380px default: this form's
-          // test-level cards need ~574px before they clip, so a lower floor
-          // lets the hint steal room the form cannot spare.
-          formClassName="tw:min-w-193 tw:px-7 tw:pt-6 tw:pb-7"
-          renderFieldDoc={(markdown) => (
-            // Render the full field doc without the "see more" toggle — the
-            // column scrolls, so the whole hint is reachable without it.
-            <div className="form-hint-doc">
-              <RichTextEditorPreviewerV1
-                enableSeeMoreVariant={false}
-                markdown={monospaceParameterNames(markdown)}
-              />
-            </div>
-          )}
-          showFieldDocs={showHint}
-          onSubmit={form.handleSubmit(
-            (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
-            () => scrollToError()
-          )}>
-          {gatedFormBody}
-        </HookForm>
-      </AiFormModal>
-    );
-  }
 
   return formDrawer;
 };

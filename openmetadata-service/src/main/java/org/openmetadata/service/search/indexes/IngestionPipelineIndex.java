@@ -18,10 +18,15 @@ public class IngestionPipelineIndex implements TaggableIndex, ServiceBackedIndex
   final Set<String> excludeFields = Set.of("sourceConfig", "openMetadataServerConnection");
 
   /**
-   * Free-form per-run map fields on a {@link PipelineStatus} that are not searched and whose
-   * arbitrary keys must never reach the index (see {@link #searchableStatus}).
+   * Non-searchable fields on a {@link PipelineStatus} whose arbitrary/unbounded keys must never reach
+   * the index (see {@link #searchableStatus}). {@code config}/{@code metadata} are free-form per-run
+   * maps; {@code status} is the per-step telemetry whose {@code operationMetrics}/{@code progress}
+   * nest one key per API endpoint, query, or entity type — thousands of distinct keys that get
+   * dynamically mapped one-field-each and push the index past its total-fields limit. None are
+   * searched (only {@code pipelineState} and the run timestamps are).
    */
-  private static final Set<String> NON_SEARCHABLE_STATUS_FIELDS = Set.of("config", "metadata");
+  private static final Set<String> NON_SEARCHABLE_STATUS_FIELDS =
+      Set.of("config", "metadata", "status");
 
   public IngestionPipelineIndex(IngestionPipeline ingestionPipeline) {
     this.ingestionPipeline = ingestionPipeline;
@@ -84,13 +89,14 @@ public class IngestionPipelineIndex implements TaggableIndex, ServiceBackedIndex
   }
 
   /**
-   * Drops the free-form {@code config} and {@code metadata} blobs from the run status before
-   * indexing. Both are arbitrary per-run key/value maps (a {@code map} in the schema): they are not
-   * searched (only the derived {@code applicationType} is), can be large, and dynamically mapping
-   * their arbitrary keys previously triggered type conflicts (a key seen first as a string then as an
-   * object) and can push the index past its total-fields limit — either of which rejects the whole
-   * document. The searchable status fields (state, runId, timestamps) are preserved. Returns a copy
-   * so the entity is not mutated.
+   * Drops the non-searchable blobs ({@code config}, {@code metadata}, {@code status}) from a run
+   * before indexing. {@code config}/{@code metadata} are arbitrary per-run key/value maps; {@code
+   * status} is per-step telemetry whose {@code operationMetrics}/{@code progress} nest one key per API
+   * endpoint or entity type. None are searched (only the run state and timestamps are), yet their
+   * arbitrary keys are dynamically mapped one-field-each and push the index past its total-fields
+   * limit ("Limit of total fields [1000] has been exceeded"), which rejects the whole document. The
+   * searchable status fields (state, runId, timestamps) are preserved. Returns a copy so the entity
+   * is not mutated.
    */
   private Map<String, Object> searchableStatus(PipelineStatus status) {
     Map<String, Object> result = null;

@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { startCase } from 'lodash';
 import {
   assetsData,
   userWithOwnerPermission,
   userWithTagPermission,
 } from '../../constant/conditionalPermissions';
+import { test as base } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import {
   checkViewAllPermission,
@@ -31,13 +32,13 @@ const test = base.extend<{
 }>({
   user1Page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await userWithOwnerPermission.login(page);
+    await userWithOwnerPermission.signIn(page);
     await use(page);
     await page.close();
   },
   user2Page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await userWithTagPermission.login(page);
+    await userWithTagPermission.signIn(page);
     await use(page);
     await page.close();
   },

@@ -12,39 +12,37 @@
 PowerBI Models
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from pydantic import BaseModel, Field
 
 
 class AuthToken(BaseModel):
     access_token: str
-    refresh_token: Optional[str] = None  # noqa: UP045
+    refresh_token: str | None = None
     token_type: str
-    expires_in: Optional[int] = 0  # noqa: UP045
+    expires_in: int | None = 0
 
 
 class Workbook(BaseModel):
     workbookId: str  # noqa: N815
-    name: Optional[str] = None  # noqa: UP045
-    ownerId: Optional[str] = None  # noqa: N815, UP045
+    name: str | None = None
+    ownerId: str | None = None  # noqa: N815
 
 
 class WorkbookDetails(BaseModel):
     workbookId: str  # noqa: N815
-    name: Optional[str] = None  # noqa: UP045
+    name: str | None = None
     createdAt: str  # noqa: N815
     url: str
-    path: Optional[str] = None  # noqa: UP045
-    ownerId: Optional[str] = None  # noqa: N815, UP045
+    path: str | None = None
+    ownerId: str | None = None  # noqa: N815
     isArchived: bool  # noqa: N815
-    description: Optional[str] = None  # noqa: UP045
+    description: str | None = None
 
 
 class WorkBookResponseDetails(BaseModel):
-    entries: Optional[List[Workbook]] = []  # noqa: UP006, UP045
+    entries: list[Workbook] | None = []
     total: int
-    nextPage: Optional[str] = None  # noqa: N815, UP045
+    nextPage: str | None = None  # noqa: N815
 
 
 class OwnerDetails(BaseModel):
@@ -57,22 +55,22 @@ class WorkBookPage(BaseModel):
 
 
 class WorkBookPageResponse(BaseModel):
-    entries: Optional[List[WorkBookPage]] = []  # noqa: UP006, UP045
+    entries: list[WorkBookPage] | None = []
     total: int
-    nextPage: Optional[str] = None  # noqa: N815, UP045
+    nextPage: str | None = None  # noqa: N815
 
 
 class Elements(BaseModel):
     elementId: str  # noqa: N815
-    name: Optional[str] = None  # noqa: UP045
-    vizualizationType: Optional[str] = None  # noqa: N815, UP045
-    columns: Optional[List[str]] = []  # noqa: UP006, UP045
+    name: str | None = None
+    vizualizationType: str | None = None  # noqa: N815
+    columns: list[str] | None = []
 
 
 class ElementsResponse(BaseModel):
-    entries: Optional[List[Elements]] = []  # noqa: UP006, UP045
+    entries: list[Elements] | None = []
     total: int
-    nextPage: Optional[str] = None  # noqa: N815, UP045
+    nextPage: str | None = None  # noqa: N815
 
 
 class EdgeSource(BaseModel):
@@ -94,20 +92,20 @@ class EdgeSource(BaseModel):
 class Dependency(BaseModel):
     nodeId: str  # noqa: N815
     type: str
-    name: Optional[str]  # noqa: UP045
-    elementId: Optional[str]  # noqa: N815, UP045
+    name: str | None
+    elementId: str | None  # noqa: N815
 
 
 class EdgeSourceResponse(BaseModel):
-    edges: Optional[List[EdgeSource]] = []  # noqa: UP006, UP045
-    dependencies: Optional[dict] = {}  # noqa: UP045
+    edges: list[EdgeSource] | None = []
+    dependencies: dict | None = {}
 
 
 class NodeDetails(BaseModel):
     id: str
-    name: Optional[str]  # noqa: UP045
+    name: str | None
     node_type: str = Field(alias="type")
-    path: Optional[str] = ""  # noqa: UP045
+    path: str | None = ""
 
     @property
     def node_schema(self):
@@ -124,12 +122,12 @@ class NodeDetails(BaseModel):
 
 class WorkbookQuery(BaseModel):
     elementId: str  # noqa: N815
-    name: Optional[str]  # noqa: UP045
-    sql: Optional[str] = None  # noqa: UP045
-    error: Optional[str] = None  # noqa: UP045
+    name: str | None
+    sql: str | None = None
+    error: str | None = None
 
 
 class WorkbookQueriesResponse(BaseModel):
-    entries: Optional[List[WorkbookQuery]] = []  # noqa: UP006, UP045
+    entries: list[WorkbookQuery] | None = []
     total: int
-    nextPage: Optional[str] = None  # noqa: N815, UP045
+    nextPage: str | None = None  # noqa: N815

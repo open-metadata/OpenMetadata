@@ -12,7 +12,10 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ContextFile } from '../../../generated/entity/data/contextFile';
+import {
+  ContextFile,
+  FileType,
+} from '../../../generated/entity/data/contextFile';
 import DocumentsView from './DocumentsView.component';
 
 jest.mock('react-aria-components', () => ({
@@ -32,6 +35,7 @@ jest.mock('react-aria-components', () => ({
       <div
         data-testid={testId}
         role="menuitem"
+        tabIndex={0}
         onClick={onAction}
         onKeyDown={undefined}>
         {typeof children === 'function' ? children() : children}
@@ -167,6 +171,7 @@ const mockFiles: ContextFile[] = [
     id: 'file-1',
     name: 'report.pdf',
     fileExtension: 'pdf',
+    fileType: FileType.PDF,
     fileSize: 2097152,
     updatedBy: 'alice',
     updatedAt: 1778756959299,
@@ -175,26 +180,45 @@ const mockFiles: ContextFile[] = [
     id: 'file-2',
     name: 'data.csv',
     fileExtension: 'csv',
+    fileType: FileType.CSV,
     fileSize: 512000,
   },
 ];
 
 describe('DocumentsView', () => {
   it('renders the documents view container', () => {
-    render(<DocumentsView data={mockFiles} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        totalFileCount={mockFiles.length}
+      />
+    );
 
     expect(screen.getByTestId('documents-view')).toBeInTheDocument();
   });
 
   it('renders a row for each file when data is provided', () => {
-    render(<DocumentsView data={mockFiles} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        totalFileCount={mockFiles.length}
+      />
+    );
 
     expect(screen.getByTestId('document-row-file-1')).toBeInTheDocument();
     expect(screen.getByTestId('document-row-file-2')).toBeInTheDocument();
   });
 
   it('renders file name and size for each file', () => {
-    render(<DocumentsView data={mockFiles} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        totalFileCount={mockFiles.length}
+      />
+    );
 
     expect(screen.getByText('report.pdf')).toBeInTheDocument();
     expect(screen.getByText('2.0 MB')).toBeInTheDocument();
@@ -203,19 +227,37 @@ describe('DocumentsView', () => {
   });
 
   it('renders uploadedBy and uploadedAt when provided', () => {
-    render(<DocumentsView data={mockFiles} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        totalFileCount={mockFiles.length}
+      />
+    );
 
     expect(screen.getByText('alice')).toBeInTheDocument();
   });
 
   it('renders the file icon for pdf files', () => {
-    render(<DocumentsView data={[mockFiles[0]]} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={[mockFiles[0]]}
+        isLoading={false}
+        totalFileCount={1}
+      />
+    );
 
     expect(screen.getByTestId('file-icon-pdf')).toBeInTheDocument();
   });
 
   it('renders the file icon for csv files', () => {
-    render(<DocumentsView data={[mockFiles[1]]} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={[mockFiles[1]]}
+        isLoading={false}
+        totalFileCount={1}
+      />
+    );
 
     expect(screen.getByTestId('file-icon-csv')).toBeInTheDocument();
   });
@@ -242,7 +284,7 @@ describe('DocumentsView', () => {
   });
 
   it('renders skeletons when isLoading is true', () => {
-    render(<DocumentsView isLoading data={[]} />);
+    render(<DocumentsView isLoading data={[]} totalFileCount={0} />);
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
@@ -254,12 +296,29 @@ describe('DocumentsView', () => {
       <DocumentsView
         data={[mockFiles[0]]}
         isLoading={false}
+        totalFileCount={1}
         onDownload={onDownload}
       />
     );
 
-    fireEvent.click(screen.getAllByText('btn')[0]);
+    fireEvent.click(screen.getByTestId('download-btn'));
 
     expect(onDownload).toHaveBeenCalledWith(mockFiles[0]);
+  });
+
+  it('calls onOpenPreview when the preview button is clicked', () => {
+    const onOpenPreview = jest.fn();
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        totalFileCount={mockFiles.length}
+        onOpenPreview={onOpenPreview}
+      />
+    );
+
+    fireEvent.click(screen.getAllByTestId('preview-btn')[0]);
+
+    expect(onOpenPreview).toHaveBeenCalledWith(mockFiles[0]);
   });
 });

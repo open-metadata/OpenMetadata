@@ -42,10 +42,16 @@ public class SearchClusterMetrics {
   // payloads. Bulk buffers are off-heap, so they escape -Xmx and count against the cgroup limit.
   public static final double INFLIGHT_MEMORY_SAFETY_FACTOR = 0.5;
   // Conservative per-entity heap footprint, used to bound the buffered entity queue by bytes rather
-  // than a flat count. Wide tables / large descriptions / sampleData run far above a naive 10 KB;
-  // genuinely huge entities are still caught by the bulk sink's runtime backpressure.
-  public static final long ESTIMATED_ENTITY_BYTES = 100 * 1024L;
+  // than a flat count. 100 KB proved wildly optimistic: an `all` reindex with vector embeddings
+  // OOM'd a 748 MB pod after AutoTune sized an 1840-entity queue at the old estimate. Wide tables,
+  // embeddings, and status history run 250 KB - several MB; 256 KB is a calibrated middle ground.
+  // The runtime guard is HeapBackpressure; this only right-sizes the initial queue.
+  public static final long ESTIMATED_ENTITY_BYTES = 256 * 1024L;
   public static final double QUEUE_HEAP_FRACTION = 0.25;
+  // Floor for the heap-bounded queue: a tiny heap still gets a modest buffer, but never the old
+  // flat
+  // 1000 (which alone was ~256 MB at 256 KB/entity and could OOM a sub-1 GB pod by itself).
+  static final int MIN_HEAP_BOUNDED_QUEUE = 250;
 
   public static SearchClusterMetrics fetchClusterMetrics(
       SearchRepository searchRepository, long totalEntities, int maxDbConnections) {
@@ -462,12 +468,16 @@ public class SearchClusterMetrics {
   static int boundQueueSizeToHeap(int queueSize, long maxHeapBytes) {
     long heapBudget = (long) (maxHeapBytes * QUEUE_HEAP_FRACTION);
     long budgeted = heapBudget / ESTIMATED_ENTITY_BYTES;
-    if (budgeted < 1000) {
+    if (budgeted < MIN_HEAP_BOUNDED_QUEUE) {
       LOG.info(
-          "Queue floor of 1000 entities exceeds heap budget (~{} fit {}% of heap at {} KB/entity); heap is very small",
-          budgeted, (int) (QUEUE_HEAP_FRACTION * 100), ESTIMATED_ENTITY_BYTES / 1024);
+          "Heap-bounded queue floored at {} entities (~{} fit {}% of {} MB heap at {} KB/entity); heap is small",
+          MIN_HEAP_BOUNDED_QUEUE,
+          budgeted,
+          (int) (QUEUE_HEAP_FRACTION * 100),
+          maxHeapBytes / (1024 * 1024),
+          ESTIMATED_ENTITY_BYTES / 1024);
     }
-    int maxByHeap = (int) Math.max(1000, budgeted);
+    int maxByHeap = (int) Math.max(MIN_HEAP_BOUNDED_QUEUE, budgeted);
     return Math.min(queueSize, maxByHeap);
   }
 

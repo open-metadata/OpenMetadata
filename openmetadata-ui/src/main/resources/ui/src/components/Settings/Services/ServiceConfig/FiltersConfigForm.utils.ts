@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table } from '@untitledui/icons';
+import { Table } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../../../../constants/ServiceConnection.constants';
 import { ServiceConnectionFilterPatternFields } from '../../../../enums/ServiceConnection.enum';
 import { ConfigData } from '../../../../interface/service.interface';
-import {
-  getFilteredSchema,
-  getSnowflakeAccountDisplayHost,
-} from '../../../../utils/ServiceConnectionUtils';
+import { getSnowflakeAccountDisplayHost } from '../../../../utils/ServiceConnectionUtils';
 import {
   FILTER_ICONS,
   REGEX_SPECIAL_CHARS,
@@ -28,6 +25,7 @@ import {
   FilterPatternConfig,
   FilterSchemaProperty,
   FilterSectionState,
+  IconComponent,
 } from './FiltersConfigForm.types';
 
 export const escapeRegex = (value: string) =>
@@ -66,6 +64,9 @@ type PatternMatcher = {
   suffix: string;
 };
 
+// Ops are assigned by how Python's start-anchored re.match evaluates the
+// pattern (metadata/utils/filters.py), not by how the regex reads: a bare
+// pattern matches as a prefix and a bare `value$` only matches exactly.
 const PATTERN_MATCHERS: PatternMatcher[] = [
   { op: 'is', prefix: '^', suffix: '$' },
   { op: 'contains', prefix: '^.*', suffix: '.*$' },
@@ -74,9 +75,9 @@ const PATTERN_MATCHERS: PatternMatcher[] = [
   { op: 'startsWith', prefix: '^', suffix: '.*' },
   { op: 'startsWith', prefix: '^', suffix: '' },
   { op: 'endsWith', prefix: '.*', suffix: '$' },
-  { op: 'endsWith', prefix: '', suffix: '$' },
+  { op: 'is', prefix: '', suffix: '$' },
   { op: 'contains', prefix: '.*', suffix: '.*' },
-  { op: 'contains', prefix: '', suffix: '' },
+  { op: 'startsWith', prefix: '', suffix: '' },
 ];
 
 const tryMatchPattern = (
@@ -132,9 +133,9 @@ export const conditionToRegex = (condition: FilterCondition) => {
     case 'startsWith':
       return `^${escapeRegex(condition.value)}`;
     case 'endsWith':
-      return `${escapeRegex(condition.value)}$`;
+      return `.*${escapeRegex(condition.value)}$`;
     case 'contains':
-      return escapeRegex(condition.value);
+      return `.*${escapeRegex(condition.value)}.*`;
     case 'regex':
     default:
       return condition.value;
@@ -143,6 +144,9 @@ export const conditionToRegex = (condition: FilterCondition) => {
 
 export const conditionKey = (condition: FilterCondition) =>
   `${condition.op}:${conditionToRegex(condition).toLowerCase()}`;
+
+const isNonArrayObject = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
 export const isFilterPatternConfig = (
   value: unknown
@@ -160,7 +164,7 @@ export const isFilterSchemaProperty = (
   fieldName: string,
   property: unknown
 ): property is FilterSchemaProperty => {
-  if (!property || typeof property !== 'object' || Array.isArray(property)) {
+  if (!isNonArrayObject(property)) {
     return false;
   }
 
@@ -259,40 +263,36 @@ export const singularizeFallback = (label: string) => {
   return label;
 };
 
-export const getSectionIcon = (fieldName: string) =>
+export const getSectionIcon = (fieldName: string): IconComponent =>
   FILTER_ICONS[fieldName as ServiceConnectionFilterPatternFields] ?? Table;
 
 export const getOrderedFilterEntries = (
   properties: Record<string, unknown>
 ) => {
-  const knownFilterFields = getFilteredSchema(properties, false);
-  const fieldNames = Object.keys(properties).filter((fieldName) =>
-    isFilterSchemaProperty(fieldName, properties[fieldName])
+  const entries = Object.entries(properties).filter(
+    (entry): entry is [string, FilterSchemaProperty] =>
+      isFilterSchemaProperty(entry[0], entry[1])
   );
+  const fieldNames = entries.map(([fieldName]) => fieldName);
 
-  return fieldNames
-    .toSorted((first, second) => {
-      const firstKnownIndex = SERVICE_FILTER_PATTERN_FIELDS.indexOf(
-        first as ServiceConnectionFilterPatternFields
-      );
-      const secondKnownIndex = SERVICE_FILTER_PATTERN_FIELDS.indexOf(
-        second as ServiceConnectionFilterPatternFields
-      );
-      const normalizedFirstIndex =
-        firstKnownIndex === -1
-          ? SERVICE_FILTER_PATTERN_FIELDS.length + fieldNames.indexOf(first)
-          : firstKnownIndex;
-      const normalizedSecondIndex =
-        secondKnownIndex === -1
-          ? SERVICE_FILTER_PATTERN_FIELDS.length + fieldNames.indexOf(second)
-          : secondKnownIndex;
+  return entries.toSorted(([first], [second]) => {
+    const firstKnownIndex = SERVICE_FILTER_PATTERN_FIELDS.indexOf(
+      first as ServiceConnectionFilterPatternFields
+    );
+    const secondKnownIndex = SERVICE_FILTER_PATTERN_FIELDS.indexOf(
+      second as ServiceConnectionFilterPatternFields
+    );
+    const normalizedFirstIndex =
+      firstKnownIndex === -1
+        ? SERVICE_FILTER_PATTERN_FIELDS.length + fieldNames.indexOf(first)
+        : firstKnownIndex;
+    const normalizedSecondIndex =
+      secondKnownIndex === -1
+        ? SERVICE_FILTER_PATTERN_FIELDS.length + fieldNames.indexOf(second)
+        : secondKnownIndex;
 
-      return normalizedFirstIndex - normalizedSecondIndex;
-    })
-    .map((fieldName) => [
-      fieldName,
-      knownFilterFields[fieldName] ?? properties[fieldName],
-    ]);
+    return normalizedFirstIndex - normalizedSecondIndex;
+  });
 };
 
 export const addSnowflakeSystemExcludes = (

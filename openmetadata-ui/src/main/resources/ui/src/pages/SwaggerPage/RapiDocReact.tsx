@@ -84,11 +84,11 @@ interface RapiDocProps
   'api-key-value'?: string | null;
   'fetch-credentials'?: 'omit' | 'same-origin' | 'include';
   // Events
-  beforeRender?: (spec: any) => void;
-  specLoaded?: (spec: any) => void;
-  beforeTry?: (request: any) => any;
-  afterTry?: (data: any) => any;
-  apiServerChange?: (server: any) => any;
+  beforeRender?: (spec: unknown) => void;
+  specLoaded?: (spec: unknown) => void;
+  beforeTry?: (request: unknown) => unknown;
+  afterTry?: (data: unknown) => unknown;
+  apiServerChange?: (server: unknown) => unknown;
 }
 
 declare global {
@@ -124,23 +124,23 @@ const RapiDocReact = React.forwardRef<HTMLDivElement, RapiDocProps>(
           ? ref?.current
           : localRef.current;
 
-      const handleBeforeRender = (spec: any) => {
+      const handleBeforeRender = (spec: unknown) => {
         beforeRender?.(spec);
       };
 
-      const handleSpecLoaded = (spec: any) => {
+      const handleSpecLoaded = (spec: unknown) => {
         specLoaded?.(spec);
       };
 
-      const handleBeforeTry = (request: any) => {
+      const handleBeforeTry = (request: unknown) => {
         beforeTry?.(request);
       };
 
-      const handleAfterTry = (data: any) => {
+      const handleAfterTry = (data: unknown) => {
         afterTry?.(data);
       };
 
-      const handleApiServerChange = (server: any) => {
+      const handleApiServerChange = (server: unknown) => {
         apiServerChange?.(server);
       };
 

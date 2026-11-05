@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import type { Editor } from '@tiptap/react';
-import { Button, Space, Tooltip } from 'antd';
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
-import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconAddColumnAfter } from '../../../assets/svg/ic-format-add-column-after.svg';
 import { ReactComponent as IconAddRowAfter } from '../../../assets/svg/ic-format-add-row-after.svg';
 import { ReactComponent as IconDeleteColumn } from '../../../assets/svg/ic-format-delete-column.svg';
@@ -158,55 +158,50 @@ const TableMenu = (props: TableMenuProps) => {
 
   return (
     <div className="table-menu" ref={menuRef}>
-      <Space size="middle">
-        <Tooltip showArrow={false} title="Add row after current row">
-          <Button
-            data-testid="Add row after current row"
-            type="text"
-            onClick={() => editor.chain().focus().addRowAfter().run()}>
-            <IconAddRowAfter style={{ verticalAlign: 'middle' }} />
-          </Button>
-        </Tooltip>
+      <Box align="center" gap={4}>
+        <ButtonUtility
+          data-testid="Add row after current row"
+          icon={IconAddRowAfter}
+          size="lg"
+          tooltip="Add row after current row"
+          onClick={() => editor.chain().focus().addRowAfter().run()}
+        />
 
-        <Tooltip showArrow={false} title="Add column after current column">
-          <Button
-            data-testid="Add column after current column"
-            type="text"
-            onClick={() => editor.chain().focus().addColumnAfter().run()}>
-            <IconAddColumnAfter style={{ verticalAlign: 'middle' }} />
-          </Button>
-        </Tooltip>
+        <ButtonUtility
+          data-testid="Add column after current column"
+          icon={IconAddColumnAfter}
+          size="lg"
+          tooltip="Add column after current column"
+          onClick={() => editor.chain().focus().addColumnAfter().run()}
+        />
 
-        <Tooltip showArrow={false} title="Delete current row">
-          <Button
-            data-testid="Delete current row"
-            type="text"
-            onClick={() => editor.chain().focus().deleteRow().run()}>
-            <IconDeleteRow style={{ verticalAlign: 'middle' }} />
-          </Button>
-        </Tooltip>
+        <ButtonUtility
+          data-testid="Delete current row"
+          icon={IconDeleteRow}
+          size="lg"
+          tooltip="Delete current row"
+          onClick={() => editor.chain().focus().deleteRow().run()}
+        />
 
-        <Tooltip showArrow={false} title="Delete current column">
-          <Button
-            data-testid="Delete current col"
-            type="text"
-            onClick={() => editor.chain().focus().deleteColumn().run()}>
-            <IconDeleteColumn style={{ verticalAlign: 'middle' }} />
-          </Button>
-        </Tooltip>
+        <ButtonUtility
+          data-testid="Delete current col"
+          icon={IconDeleteColumn}
+          size="lg"
+          tooltip="Delete current column"
+          onClick={() => editor.chain().focus().deleteColumn().run()}
+        />
 
-        <Tooltip showArrow={false} title="Delete table">
-          <Button
-            data-testid="Delete table"
-            type="text"
-            onClick={() => {
-              editor.chain().focus().deleteTable().run();
-              tableMenuPopup.current?.hide();
-            }}>
-            <IconDeleteTable style={{ verticalAlign: 'middle' }} width={14} />
-          </Button>
-        </Tooltip>
-      </Space>
+        <ButtonUtility
+          data-testid="Delete table"
+          icon={Trash01}
+          size="lg"
+          tooltip="Delete table"
+          onClick={() => {
+            editor.chain().focus().deleteTable().run();
+            tableMenuPopup.current?.hide();
+          }}
+        />
+      </Box>
     </div>
   );
 };

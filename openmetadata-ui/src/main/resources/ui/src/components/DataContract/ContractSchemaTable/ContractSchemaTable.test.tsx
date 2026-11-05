@@ -91,21 +91,21 @@ describe('ContractSchemaTable', () => {
     expect(
       screen.getByTestId('schema-column-property-success')
     ).toBeInTheDocument();
-
-    // Since being on second page
     expect(
-      screen.queryByTestId('schema-column-business-success')
-    ).not.toBeInTheDocument();
+      screen.getByTestId('schema-column-business-success')
+    ).toBeInTheDocument();
   });
 
   it('should render schema table with pagination', () => {
     render(<ContractSchemaTable schemaDetail={mockSchemaDetail} />);
 
-    expect(screen.getByTitle('Previous Page')).toBeInTheDocument();
-    expect(screen.getByTitle('Next Page')).toBeInTheDocument();
-    // Pagination items
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
+    // The core pager: labelled Previous/Next buttons and a page input, rather
+    // than AntD's numbered items with title attributes.
+    expect(
+      screen.getByRole('button', { name: /previous/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument();
+    expect(screen.getByDisplayValue('1')).toBeInTheDocument();
   });
 
   it('should render SchemaTable Status badge', () => {

@@ -16,7 +16,6 @@ import ast
 import traceback
 from abc import ABC
 from datetime import datetime
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
@@ -39,7 +38,7 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: ClickhouseConnection = config.serviceConnection.root.config
         if not isinstance(connection, ClickhouseConnection):
@@ -80,7 +79,7 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
         """
         Fetch queries only from DB that is ingested in OM
         """
-        databases: List[Database] = self.metadata.list_all_entities(  # noqa: UP006
+        databases: list[Database] = self.metadata.list_all_entities(
             Database, ["databaseSchemas"], params={"service": self.config.serviceName}
         )
         database_name_list = []

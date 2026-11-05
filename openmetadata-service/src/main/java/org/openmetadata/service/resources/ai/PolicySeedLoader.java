@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.AIGovernancePolicyRepository;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 final class PolicySeedLoader {
@@ -36,6 +37,7 @@ final class PolicySeedLoader {
       try {
         seedPolicy(seedFile, policyRepository);
       } catch (Exception e) {
+        SeedDataGate.getInstance().recordSeedFailure();
         LOG.warn("Failed to load policy seed {}: {}", seedFile, e.getMessage(), e);
       }
     }

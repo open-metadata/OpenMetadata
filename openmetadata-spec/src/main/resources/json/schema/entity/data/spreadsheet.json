@@ -1,12 +1,12 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/spreadsheet.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Spreadsheet",
   "$comment": "@om-entity-type",
   "description": "This schema defines the Spreadsheet entity. A Spreadsheet is a file containing multiple worksheets/tabs, such as Google Sheets or Excel files.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Spreadsheet",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "spreadsheetMimeType": {
       "description": "MIME type for spreadsheet files",

@@ -16,23 +16,23 @@ Dependency-free on purpose (stdlib only) so both the workflow base and the
 status mixin can import it without a circular dependency.
 """
 
-from typing import TYPE_CHECKING, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from metadata.ingestion.progress.registry import ProgressNodeSnapshot
 
 
-def render_progress_tree(root: "Optional[ProgressNodeSnapshot]") -> str:  # noqa: UP045
+def render_progress_tree(root: "ProgressNodeSnapshot | None") -> str:
     """Active-scope tree: the run rollup, then one indented line per in-flight
     branch. Known counts render ``processed/expected``; lazy counts render a
     bare ``processed``."""
-    lines: List[str] = []  # noqa: UP006
+    lines: list[str] = []
     if root is not None:
         _render_node(root, 0, lines)
     return "\n".join(lines)
 
 
-def _render_node(node: "ProgressNodeSnapshot", depth: int, lines: List[str]) -> None:  # noqa: UP006
+def _render_node(node: "ProgressNodeSnapshot", depth: int, lines: list[str]) -> None:
     prefix = "  " * depth + ("└ " if depth else "")
     label = f"{node.label} " if node.label else ""
     type_ = f"{node.child_type} " if node.child_type else ""
@@ -46,7 +46,7 @@ def _render_node(node: "ProgressNodeSnapshot", depth: int, lines: List[str]) -> 
         _render_node(child, depth + 1, lines)
 
 
-def snapshot_to_progress_payload(root: "Optional[ProgressNodeSnapshot]") -> Optional[dict]:  # noqa: UP045
+def snapshot_to_progress_payload(root: "ProgressNodeSnapshot | None") -> dict | None:
     """Map a snapshot tree to the ProgressUpdate.progress (progressNode) shape."""
     return _node_to_payload(root) if root is not None else None
 
@@ -62,7 +62,7 @@ def format_eta(seconds: int) -> str:
     return result
 
 
-def _render_joined(node: "ProgressNodeSnapshot", ancestors: "List[str]", lines: "List[str]") -> None:  # noqa: UP006
+def _render_joined(node: "ProgressNodeSnapshot", ancestors: "list[str]", lines: "list[str]") -> None:
     """Render active nodes with ancestor labels joined by '.' so sibling-level
     hierarchy collapses into a single readable label, e.g. ``sales.public  Table 45/310``."""
     path = [*ancestors, node.label] if node.label else list(ancestors)

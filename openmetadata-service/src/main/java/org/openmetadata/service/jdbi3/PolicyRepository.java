@@ -47,7 +47,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -252,12 +251,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           ENABLED, () -> recordChange(ENABLED, original.getEnabled(), updated.getEnabled()));
-      compareAndUpdate(
-          "rules",
-          () -> {
-            updateRules(original.getRules(), updated.getRules());
-            SubjectCache.invalidateAll();
-          });
+      compareAndUpdate("rules", () -> updateRules(original.getRules(), updated.getRules()));
     }
 
     private void updateRules(List<Rule> origRules, List<Rule> updatedRules) {

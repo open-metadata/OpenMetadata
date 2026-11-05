@@ -11,13 +11,23 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  expectNoErrorToast,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { fillDeleteConfirmationIfPresent } from '../../utils/entity';
-import { getFailedRowsData, visitDataQualityTab } from '../../utils/testCases';
+import {
+  getFailedRowsData,
+  verifyTestCaseLastRunBanner,
+  visitDataQualityTab,
+} from '../../utils/testCases';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // use the admin user to login
 test.use({
@@ -101,8 +111,8 @@ test(
         .waitFor({ state: 'visible' });
 
       await expect(
-        page.locator('.failed-sample-data-column').first()
-      ).toBeVisible();
+        page.locator('.failed-sample-data-column').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       const sampleDataTable = page.getByTestId('sample-data-table').first();
 
@@ -134,17 +144,18 @@ test(
 );
 
 test.describe('Failed rows sample fetch gating', () => {
-  const table = new TableClass();
+  let table: TableClass;
   let passingTestCaseFqn = '';
   let failedTestCaseFqn = '';
+  let withinThresholdTestCaseFqn = '';
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
+    table = new TableClass();
     await table.create(apiContext);
 
-    // A passing test case — a failed-rows sample can never exist for it, so the
-    // UI must not request one.
+    // A clean pass has no failed rows to inspect.
     const passingTestCase = await table.createTestCase(apiContext, {
       name: `pw_passing_row_count_${uuid()}`,
     });
@@ -177,6 +188,26 @@ test.describe('Failed rows sample fetch gating', () => {
     );
     failedTestCaseFqn = failedTestCase.fullyQualifiedName;
 
+    const withinThresholdTestCase = await table.createTestCase(apiContext, {
+      name: `pw_within_threshold_${uuid()}`,
+    });
+    await table.addTestCaseResult(
+      apiContext,
+      withinThresholdTestCase.fullyQualifiedName,
+      {
+        result: 'Passing with failed rows (fixture)',
+        testCaseStatus: 'Success',
+        failedRows: 7,
+        timestamp: Date.now(),
+      }
+    );
+    const sampleResponse = await apiContext.put(
+      `/api/v1/dataQuality/testCases/${withinThresholdTestCase.id}/failedRowsSample`,
+      { data: getFailedRowsData(table) }
+    );
+    expect(sampleResponse.ok()).toBe(true);
+    withinThresholdTestCaseFqn = withinThresholdTestCase.fullyQualifiedName;
+
     await afterAction();
   });
 
@@ -187,9 +218,45 @@ test.describe('Failed rows sample fetch gating', () => {
   });
 
   test(
-    'gates the sample fetch on failed status',
+    'gates the sample fetch on failed rows including passing runs within threshold',
     PLAYWRIGHT_INGESTION_TAG_OBJ,
     async ({ page }) => {
+      await test.step('passing within threshold shows the stored rows after navigation and reload', async () => {
+        const sampleResponse = waitForResponseWithStatus(
+          page,
+          (res) =>
+            res.request().method() === 'GET' &&
+            res.url().includes('/failedRowsSample'),
+          200
+        );
+        await page.goto(
+          `test-case/${encodeURIComponent(
+            withinThresholdTestCaseFqn
+          )}/test-case-results`,
+          { waitUntil: 'domcontentloaded' }
+        );
+        await sampleResponse;
+        await verifyTestCaseLastRunBanner(page, 'success');
+        const sampleTable = page.getByTestId('sample-data-table');
+        const sampleData = getFailedRowsData(table);
+        await expect(sampleTable).toBeVisible();
+        await expect(sampleTable.getByRole('row')).toHaveCount(
+          sampleData.rows.length + 1
+        );
+        for (const column of sampleData.columns) {
+          await expect(
+            sampleTable.getByRole('columnheader', { name: column, exact: true })
+          ).toBeVisible();
+        }
+
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await verifyTestCaseLastRunBanner(page, 'success');
+        await expect(sampleTable).toBeVisible();
+        await expect(sampleTable.getByRole('row')).toHaveCount(
+          sampleData.rows.length + 1
+        );
+      });
+
       await test.step('passing test case does not request the failed-rows sample', async () => {
         // Intercept so any failed-rows request is caught the moment it starts,
         // independent of response timing.
@@ -199,10 +266,12 @@ test.describe('Failed rows sample fetch gating', () => {
           await route.continue();
         });
 
-        const testCaseDetails = page.waitForResponse(
+        const testCaseDetails = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes('/api/v1/dataQuality/testCases/name/') &&
-            res.status() === 200
+            res.request().method() === 'GET' &&
+            res.url().includes('/api/v1/dataQuality/testCases/name/'),
+          200
         );
         // The results tab loads its own testCaseResults on the same mount that
         // would have fired the sample fetch — awaiting it is a deterministic
@@ -215,13 +284,15 @@ test.describe('Failed rows sample fetch gating', () => {
         await page.goto(
           `test-case/${encodeURIComponent(
             passingTestCaseFqn
-          )}/test-case-results`
+          )}/test-case-results`,
+          { waitUntil: 'domcontentloaded' }
         );
         await testCaseDetails;
         await testCaseResults;
         await page
           .locator('[data-testid="test-case-result-tab-container"]')
           .waitFor({ state: 'visible' });
+        await verifyTestCaseLastRunBanner(page, 'success');
 
         await page.unroute('**/failedRowsSample');
         expect(sampleRequested).toBe(false);
@@ -232,7 +303,10 @@ test.describe('Failed rows sample fetch gating', () => {
           res.url().includes('/failedRowsSample')
         );
         await page.goto(
-          `test-case/${encodeURIComponent(failedTestCaseFqn)}/test-case-results`
+          `test-case/${encodeURIComponent(
+            failedTestCaseFqn
+          )}/test-case-results`,
+          { waitUntil: 'domcontentloaded' }
         );
         const response = await failedRowsSample;
         expect(response.status()).toBe(404);
@@ -240,10 +314,11 @@ test.describe('Failed rows sample fetch gating', () => {
         await page
           .locator('[data-testid="test-case-result-tab-container"]')
           .waitFor({ state: 'visible' });
+        await verifyTestCaseLastRunBanner(page, 'failed');
 
         // The 404 is the expected "no sample stored" empty state — it must not
         // surface as an error toast.
-        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+        await expectNoErrorToast(page);
       });
     }
   );

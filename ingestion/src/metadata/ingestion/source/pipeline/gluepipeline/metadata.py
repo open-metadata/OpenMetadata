@@ -15,7 +15,8 @@ Glue pipeline source to extract metadata
 
 import re
 import traceback
-from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 from urllib.parse import urlparse
 
 from metadata.clients.aws_client import AWSClient
@@ -58,8 +59,10 @@ from metadata.ingestion.source.pipeline.gluepipeline.models import (
     JobNodeResponse,
     S3Source,
     S3Target,
+    SnowflakeNode,
 )
 from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
+    SnowflakeRef,
     parse_glue_script,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -91,6 +94,8 @@ TABLE_MODEL_MAP = {
     "RedshiftSource": CatalogSource,
     "RedshiftTarget": CatalogSource,
     "DirectJDBC": CatalogSource,
+    "SnowflakeSource": SnowflakeNode,
+    "SnowflakeTarget": SnowflakeNode,
 }
 STORAGE_MODEL_MAP = {
     "S3CsvSource": S3Source,
@@ -117,10 +122,10 @@ class GluepipelineSource(PipelineServiceSource):
         self.job_name_list = set()
         self.glue = self.connection
         self._s3_client = None
-        self._glue_connection_cache: Dict[str, Optional[dict]] = {}  # noqa: UP006, UP045
+        self._glue_connection_cache: dict[str, dict | None] = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GluePipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, GluePipelineConnection):
@@ -153,7 +158,7 @@ class GluepipelineSource(PipelineServiceSource):
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
-    def get_tasks(self, pipeline_details: Any) -> List[Task]:  # noqa: UP006
+    def get_tasks(self, pipeline_details: Any) -> list[Task]:
         task_list = []
         for task in pipeline_details["Graph"]["Nodes"]:
             self.task_id_mapping[task["UniqueId"]] = task["Name"][:128]
@@ -183,7 +188,7 @@ class GluepipelineSource(PipelineServiceSource):
             self._s3_client = AWSClient(self.service_connection.awsConfig).get_s3_client()
         return self._s3_client
 
-    def get_lineage_details(self, job) -> Optional[dict]:  # noqa: UP045
+    def get_lineage_details(self, job) -> dict | None:
         """
         Get the Lineage Details of the pipeline.
 
@@ -215,24 +220,7 @@ class GluepipelineSource(PipelineServiceSource):
                 elif key in STORAGE_MODEL_MAP:
                     storage_model = STORAGE_MODEL_MAP[key].model_validate(entity)
                 if table_model:
-                    for db_service_name in self.get_db_service_names() or ["*"]:
-                        table_entity = self.metadata.get_entity_reference(
-                            entity=Table,
-                            fqn=fqn.build(
-                                metadata=self.metadata,
-                                entity_type=Table,
-                                table_name=table_model.table_name,
-                                database_name=table_model.database_name,
-                                schema_name=table_model.schema_name,
-                                service_name=db_service_name,
-                            ),
-                        )
-                        if table_entity:
-                            if key.endswith("Source"):
-                                lineage_details["sources"].append(table_entity)
-                            else:
-                                lineage_details["targets"].append(table_entity)
-                            break
+                    self._add_visual_table_lineage(key, table_model, lineage_details)
                 if storage_model:
                     for path in storage_model.Paths or [storage_model.Path]:
                         container = self.metadata.es_search_container_by_path(full_path=path)
@@ -250,6 +238,42 @@ class GluepipelineSource(PipelineServiceSource):
                                     lineage_details["targets"].append(storage_entity)
                                 break
 
+    def _add_visual_table_lineage(
+        self,
+        key: str,
+        table_model: AmazonRedshift | JDBCSource | CatalogSource | SnowflakeNode,
+        lineage_details: dict,
+    ):
+        # a Snowflake source of type "query" carries no table: nothing to link
+        if not table_model.table_name:
+            return
+        direction = "sources" if key.endswith("Source") else "targets"
+        if isinstance(table_model, SnowflakeNode):
+            # same resolver as script refs: every configured service, unique match only
+            table_entity = self._resolve_snowflake_ref(
+                SnowflakeRef(
+                    table=table_model.table_name,
+                    database=table_model.database_name,
+                    schema=table_model.schema_name,
+                )
+            )
+            if table_entity:
+                lineage_details[direction].append(table_entity)
+            return
+        for db_service_name in self.get_db_service_names() or ["*"]:
+            table_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                table_name=table_model.table_name,
+                database_name=table_model.database_name,
+                schema_name=table_model.schema_name,
+                service_name=db_service_name,
+            )
+            table_entity = self.metadata.get_entity_reference(entity=Table, fqn=table_fqn) if table_fqn else None
+            if table_entity:
+                lineage_details[direction].append(table_entity)
+                break
+
     def _extract_script_lineage(self, script_location: str, lineage_details: dict):
         script_content = self._download_s3_script(script_location)
         if not script_content:
@@ -266,8 +290,10 @@ class GluepipelineSource(PipelineServiceSource):
         self._resolve_catalog_entities(result.catalog_targets, lineage_details, "targets")
         self._resolve_jdbc_entities(result.jdbc_sources, lineage_details, "sources")
         self._resolve_jdbc_entities(result.jdbc_targets, lineage_details, "targets")
+        self._resolve_snowflake_entities(result.snowflake_sources, lineage_details, "sources")
+        self._resolve_snowflake_entities(result.snowflake_targets, lineage_details, "targets")
 
-    def _download_s3_script(self, s3_uri: str) -> Optional[str]:  # noqa: UP045
+    def _download_s3_script(self, s3_uri: str) -> str | None:
         try:
             parsed = urlparse(s3_uri)
             bucket = parsed.netloc
@@ -282,7 +308,7 @@ class GluepipelineSource(PipelineServiceSource):
             logger.debug(traceback.format_exc())
             return None
 
-    def _resolve_s3_entities(self, paths: List[str], lineage_details: dict, direction: str):  # noqa: UP006
+    def _resolve_s3_entities(self, paths: list[str], lineage_details: dict, direction: str):
         for path in paths:
             try:
                 # Normalize: try both with and without trailing slash
@@ -369,7 +395,92 @@ class GluepipelineSource(PipelineServiceSource):
                 except Exception as exc:
                     logger.debug(f"Failed to resolve JDBC ref {table_name} in service {db_service_name}: {exc}")
 
-    def _resolve_glue_connection(self, connection_name: str) -> Optional[dict]:  # noqa: UP045
+    def _resolve_snowflake_entities(self, refs: list, lineage_details: dict, direction: str):
+        """
+        Snowflake refs carry database and schema, so the first attempt is exact.
+        When the script's sfDatabase does not match the ingested database name
+        fall back to schema.table. The bare table name is only tried when the
+        schema is unknown: with a known schema a name-only hit would belong to
+        another schema. Every attempt requires an unambiguous match.
+        """
+        for ref in refs:
+            table_entity = self._resolve_snowflake_ref(ref)
+            if table_entity:
+                lineage_details[direction].append(table_entity)
+
+    def _resolve_snowflake_ref(self, ref: SnowflakeRef) -> EntityReference | None:
+        """
+        The first attempt with any match decides: one match links, several are
+        ambiguous (a less specific attempt would only match more), none tries the next.
+        ADR:2026-10-22-glue-snowflake-refs-with-unknown-schema-link-only-unique-tables
+        """
+        for database_name, schema_name in self._snowflake_lookup_attempts(ref):
+            matches = self._search_tables(ref.table, database_name, schema_name)
+            if len(matches) == 1:
+                return next(iter(matches.values()))
+            if matches:
+                logger.warning(
+                    "Snowflake table %s matches several tables %s; skipping lineage", ref.table, sorted(matches)
+                )
+                return None
+        logger.warning(
+            "Could not find table entity for Snowflake reference %s.%s.%s. "
+            "Ensure the Snowflake service has been ingested.",
+            ref.database,
+            ref.schema,
+            ref.table,
+        )
+        return None
+
+    @staticmethod
+    def _snowflake_lookup_attempts(ref) -> list:
+        """Ordered (database, schema) pairs to try, most specific first, without repeats."""
+        attempts = [(ref.database, ref.schema)]
+        if ref.schema:
+            attempts.append((None, ref.schema))
+        else:
+            attempts.append((None, None))
+        unique = []
+        for attempt in attempts:
+            if attempt not in unique:
+                unique.append(attempt)
+        return unique
+
+    def _search_tables(
+        self, table_name: str, database_name: str | None, schema_name: str | None
+    ) -> dict[str, EntityReference]:
+        """
+        Existing tables matching the name in every configured service, by FQN.
+        The matches of every configured service are collected before deciding, so the
+        same table ingested from two Snowflake services is ambiguous rather than
+        resolved to whichever service is listed first. Each name is confirmed to
+        exist: when the search misses, fqn.build returns a name built from the
+        parts, which must not count as a second match.
+        """
+        table_fqns: set[str] = set()
+        for db_service_name in self.get_db_service_names() or ["*"]:
+            try:
+                found = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    table_name=table_name,
+                    database_name=database_name,
+                    schema_name=schema_name,
+                    service_name=db_service_name,
+                    fetch_multiple_entities=True,
+                )
+            except Exception as exc:
+                logger.debug("Failed to search table %s in service %s: %s", table_name, db_service_name, exc)
+                continue
+            table_fqns.update(found or [])
+        matches = {}
+        for table_fqn in sorted(table_fqns):
+            table_entity = self.metadata.get_entity_reference(entity=Table, fqn=table_fqn)
+            if table_entity:
+                matches[table_fqn] = table_entity
+        return matches
+
+    def _resolve_glue_connection(self, connection_name: str) -> dict | None:
         if connection_name in self._glue_connection_cache:
             return self._glue_connection_cache[connection_name]
 
@@ -386,7 +497,7 @@ class GluepipelineSource(PipelineServiceSource):
             return None
 
     @staticmethod
-    def _parse_jdbc_url(jdbc_url: str) -> Optional[dict]:  # noqa: UP045
+    def _parse_jdbc_url(jdbc_url: str) -> dict | None:
         if not jdbc_url:
             return None
         # jdbc:redshift://host:port/database

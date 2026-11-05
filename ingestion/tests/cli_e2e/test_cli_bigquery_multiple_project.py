@@ -13,8 +13,6 @@
 Test Bigquery connector with CLI
 """
 
-from typing import List  # noqa: UP035
-
 from metadata.ingestion.api.status import Status
 
 from .base.e2e_types import E2EType  # noqa: TID252
@@ -36,7 +34,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                        FROM `modified-leaf-330420`.do_not_touch.orders;
     """
 
-    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
+    insert_data_queries: list[str] = [  # noqa: RUF012
         "INSERT INTO `modified-leaf-330420.do_not_touch`.orders (id, order_name) VALUES (1,'XBOX');",
         "INSERT INTO `modified-leaf-330420.do_not_touch`.orders (id, order_name) VALUES (2,'PS');",
     ]
@@ -91,15 +89,15 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "local_bigquery_multiple.modified-leaf-330420.do_not_touch.orders"
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:  # noqa: UP006
+    def get_includes_schemas() -> list[str]:
         return ["do_not_touch"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:  # noqa: UP006
+    def get_includes_tables() -> list[str]:
         return ["exclude_table"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:  # noqa: UP006
+    def get_excludes_tables() -> list[str]:
         return ["testtable"]
 
     @staticmethod
@@ -123,7 +121,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 19
 
     @staticmethod
-    def delete_queries() -> List[str]:  # noqa: UP006
+    def delete_queries() -> list[str]:
         return [
             """
             DELETE FROM `modified-leaf-330420.do_not_touch`.orders WHERE id IN (1)
@@ -131,7 +129,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     @staticmethod
-    def update_queries() -> List[str]:  # noqa: UP006
+    def update_queries() -> list[str]:
         return [
             """
             UPDATE `modified-leaf-330420.do_not_touch`.orders SET order_name = 'NINTENDO' WHERE id = 2
