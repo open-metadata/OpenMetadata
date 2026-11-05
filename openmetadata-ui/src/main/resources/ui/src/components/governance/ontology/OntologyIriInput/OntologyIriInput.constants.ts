@@ -20,7 +20,6 @@ export const ONTOLOGY_DATATYPE_OPTIONS: OntologyIriOption[] = [
   'integer',
   'decimal',
   'double',
-  'date',
   'dateTime',
   'anyURI',
 ].map((name) => ({ iri: `${XSD}${name}`, label: name }));
