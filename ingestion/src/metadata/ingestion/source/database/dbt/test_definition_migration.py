@@ -13,7 +13,12 @@
 from typing import Any
 
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testDefinition import EntityType, TestDefinition, TestPlatform
+from metadata.generated.schema.tests.testDefinition import (
+    EntityType,
+    TestCaseParameterDefinition,
+    TestDefinition,
+    TestPlatform,
+)
 from metadata.generated.schema.type.basic import ProviderType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import APIError
@@ -32,17 +37,14 @@ logger = ingestion_logger()
 
 
 def _matches_dbt_definition(definition: TestDefinition, manifest_node: Any, entity_type: EntityType) -> bool:
-    expected_parameters = create_test_case_parameter_definitions(manifest_node)
-    expected = TestDefinition(
-        name=definition.name,
-        testPlatforms=[TestPlatform.dbt],
-        entityType=entity_type,
-        parameterDefinition=expected_parameters,
-    )
+    expected_parameters = [
+        TestCaseParameterDefinition.model_validate(parameter)
+        for parameter in create_test_case_parameter_definitions(manifest_node) or []
+    ]
     return (
-        definition.testPlatforms == expected.testPlatforms
+        definition.testPlatforms == [TestPlatform.dbt]
         and definition.entityType == entity_type
-        and definition.parameterDefinition == expected.parameterDefinition
+        and (definition.parameterDefinition or []) == expected_parameters
         and definition.enabled is not False
         and not definition.deleted
     )
