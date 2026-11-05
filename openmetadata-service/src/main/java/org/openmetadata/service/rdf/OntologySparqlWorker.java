@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.rdf;
 
+import com.google.common.base.Utf8;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
@@ -44,7 +45,8 @@ import org.openmetadata.service.rdf.SparqlQueryLimits.QueryLimitExceededExceptio
 
 @Slf4j
 final class OntologySparqlWorker implements AutoCloseable {
-  private static final Semaphore PERMIT = new Semaphore(1);
+  private static final Semaphore PERMIT = new Semaphore(1, true);
+  private static final long MAX_ADMISSION_WAIT_NANOS = TimeUnit.SECONDS.toNanos(5);
   private static final int MAX_INPUT_BYTES = 32 * 1024 * 1024;
   private static final int BASE_HEAP_MIB = 64;
   private static final int MAX_HEAP_MIB = 256;
@@ -58,6 +60,8 @@ final class OntologySparqlWorker implements AutoCloseable {
   private static final String OUTPUT = "result";
   private static final String STATUS = "status";
   private static final String LOADING_ONTOLOGY = "loading-ontology";
+  private static final String INPUT_LIMIT_MESSAGE =
+      "SPARQL ontology exceeds the maximum input size of 32 MiB";
   private static final String OUTPUT_LIMIT_MESSAGE =
       "SPARQL result exceeds the maximum response size of %,d bytes"
           .formatted(SparqlQueryLimits.MAX_OUTPUT_BYTES);
@@ -74,10 +78,28 @@ final class OntologySparqlWorker implements AutoCloseable {
   }
 
   static OntologySparqlWorker acquire(final int timeoutMillis) {
-    if (!PERMIT.tryAcquire()) {
-      throw new QueryCapacityException("SPARQL ontology worker concurrency limit reached");
+    final OntologySparqlWorker worker = new OntologySparqlWorker(timeoutMillis);
+    worker.awaitPermit();
+    try {
+      worker.requireTimeRemaining();
+    } catch (final QueryTimeoutException exception) {
+      worker.close();
+      throw exception;
     }
-    return new OntologySparqlWorker(timeoutMillis);
+    return worker;
+  }
+
+  private void awaitPermit() {
+    try {
+      final long waitNanos = Math.min(requireTimeRemaining(), MAX_ADMISSION_WAIT_NANOS);
+      if (!PERMIT.tryAcquire(waitNanos, TimeUnit.NANOSECONDS)) {
+        requireTimeRemaining();
+        throw new QueryCapacityException("SPARQL ontology worker concurrency limit reached");
+      }
+    } catch (final InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new QueryTimeoutException(timeoutMillis, exception);
+    }
   }
 
   String execute(final Model model, final SparqlQuery request) {
@@ -115,15 +137,36 @@ final class OntologySparqlWorker implements AutoCloseable {
                 new BoundedOutputStream(
                     new DeadlineOutputStream(Files.newOutputStream(directory.resolve(INPUT))),
                     MAX_INPUT_BYTES,
-                    "SPARQL ontology exceeds the maximum input size of 32 MiB")))) {
+                    INPUT_LIMIT_MESSAGE)))) {
       final byte[] query = request.getQuery().getBytes(StandardCharsets.UTF_8);
       output.writeInt(query.length);
       output.write(query);
       output.writeUTF(request.getFormat() == null ? "" : request.getFormat().name());
       output.writeUTF(request.getInference() == null ? "" : request.getInference().name());
       output.writeInt(timeoutMillis);
+      writePrefixes(output, model);
       RDFDataMgr.write(output, model, RDFFormat.NTRIPLES_UTF8);
     }
+  }
+
+  private static void writePrefixes(final DataOutputStream output, final Model model)
+      throws IOException {
+    final var prefixes = model.getNsPrefixMap();
+    output.writeInt(prefixes.size());
+    for (final var prefix : prefixes.entrySet()) {
+      writePrefixText(output, prefix.getKey());
+      writePrefixText(output, prefix.getValue());
+    }
+  }
+
+  private static void writePrefixText(final DataOutputStream output, final String value)
+      throws IOException {
+    if (value.length() > MAX_INPUT_BYTES || Utf8.encodedLength(value) > MAX_INPUT_BYTES) {
+      throw new QueryLimitExceededException(INPUT_LIMIT_MESSAGE);
+    }
+    final byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+    output.writeInt(bytes.length);
+    output.write(bytes);
   }
 
   private ProcessBuilder processBuilder() throws IOException {
@@ -305,8 +348,32 @@ final class OntologySparqlWorker implements AutoCloseable {
     Files.createFile(
         loading,
         PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+    readPrefixes(input, model);
     RDFParser.create().source(input).lang(Lang.NTRIPLES).parse(model);
     Files.delete(loading);
+  }
+
+  private static void readPrefixes(final DataInputStream input, final Model model)
+      throws IOException {
+    final int count = input.readInt();
+    if (count < 0 || count > MAX_INPUT_BYTES / (2 * Integer.BYTES)) {
+      throw new IOException("Invalid SPARQL worker prefix count");
+    }
+    for (int index = 0; index < count; index++) {
+      model.setNsPrefix(readPrefixText(input), readPrefixText(input));
+    }
+  }
+
+  private static String readPrefixText(final DataInputStream input) throws IOException {
+    final int length = input.readInt();
+    if (length < 0 || length > MAX_INPUT_BYTES) {
+      throw new IOException("Invalid SPARQL worker prefix size");
+    }
+    final byte[] bytes = input.readNBytes(length);
+    if (bytes.length != length) {
+      throw new IOException("Incomplete SPARQL worker prefix");
+    }
+    return new String(bytes, StandardCharsets.UTF_8);
   }
 
   static SparqlQuery readRequest(final DataInputStream input) throws IOException {

@@ -1,7 +1,7 @@
 # Ontology SPARQL runs in a disposable JVM with bounded query memory
 
 - **Status:** Proposed
-- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-04 (input-proportional heap and loading refusals)
+- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-04 (input-proportional heap and loading refusals) · v3 2026-11-05 (prefix fidelity and bounded admission wait)
 - **Deciders:** Pending maintainer review
 - **Guard:** OntologySparqlQueryServiceTest and reviewer
 - **Related:** [#37088](https://github.com/open-metadata/OpenMetadata/issues/37088), ANT-2026-J4XIPJA4
@@ -70,3 +70,18 @@ Inference can grow far beyond the source graph: OWL Mini on the distinct-predica
 exhausted even a 512 MiB profiling JVM. Neither the byte allowance nor a lower transport cap
 can guarantee arbitrary inference fits. The disposable worker and its fixed ceiling remain
 the containment boundary.
+
+## Amendment: prefix fidelity and bounded admission wait (v3)
+
+The private request now includes the model's prefix map before the N-Triples, inside the same
+32 MiB transport bound. The worker restores it before parsing so CONSTRUCT and DESCRIBE retain
+source prefixes. N-Triples remains the transport because Turtle abbreviation would change the
+serialized-byte heap calibration for the same graph. Prefix text uses bounded UTF-8 lengths,
+including the empty default prefix and namespaces longer than Java's modified-UTF limit.
+
+Validation precedes worker admission, within the existing global and per-principal execution
+guard. The single worker permit now queues fairly for up to five seconds or the request's
+remaining budget. The deadline starts before waiting and is not renewed after admission.
+Saturation returns HTTP 429 with `Retry-After: 1`; deadline expiry or interruption remains a
+timeout. The permit is still held through materialization and child cleanup, preserving the
+one-worker memory bound. Configurable worker concurrency is outside this amendment.

@@ -51,10 +51,9 @@ public final class OntologySparqlQueryService {
   }
 
   public QueryResult query(final UUID glossaryId, final SparqlQuery request) {
-    Objects.requireNonNull(request, "SPARQL request is required");
+    final ValidatedQuery validated = validate(request);
     try (final OntologySparqlWorker worker =
-        OntologySparqlWorker.acquire(timeoutMillis(request.getTimeout()))) {
-      final ValidatedQuery validated = validate(request);
+        OntologySparqlWorker.acquire(validated.timeoutMillis())) {
       final Model ontology = modelProvider.materialize(glossaryId, true);
       try {
         return new QueryResult(

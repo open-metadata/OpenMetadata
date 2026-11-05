@@ -14,9 +14,11 @@ resource peaks, cancellation, and restart persistence against a specified catalo
 
 Glossary and native ontology SPARQL queries run in a disposable JVM on the OpenMetadata server,
 including when RDF storage is disabled. Each server admits one such query at a time. Concurrent
-requests receive HTTP 429, and queries exceeding their memory or response budget receive HTTP 400.
-The deadline includes worker startup and input transfer. Smaller queries pay JVM startup latency
-on each request.
+requests wait fairly for up to five seconds within their request deadline. Saturation returns
+HTTP 429 with `Retry-After: 1`; an expired request deadline returns HTTP 503. The existing global
+and per-principal admission limits still apply. Queries exceeding their memory or response budget
+receive HTTP 400. The deadline includes admission wait, worker startup and input transfer.
+Smaller queries pay JVM startup latency on each request.
 
 Reserve additional container memory for the worker, beyond the server's heap and existing native
 memory allowance. The worker heap is 64 MiB plus 24 times the serialized input length, rounded up

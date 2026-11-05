@@ -57,6 +57,66 @@ class OntologySparqlWorkerTest {
   @TempDir private Path temporaryDirectory;
 
   @Test
+  void waitsForWorkerCapacityAndReleasesItAfterUse() throws Exception {
+    final var held = OntologySparqlWorker.acquire(SparqlQueryLimits.TIMEOUT_MILLIS);
+    final var task =
+        new FutureTask<>(
+            () -> {
+              try (final var worker =
+                  OntologySparqlWorker.acquire(SparqlQueryLimits.TIMEOUT_MILLIS)) {
+                return true;
+              }
+            });
+    final Thread waiter = Thread.ofVirtual().start(task);
+    try {
+      await()
+          .atMost(Duration.ofSeconds(2))
+          .until(() -> waiter.getState() == Thread.State.TIMED_WAITING || task.isDone());
+      assertFalse(task.isDone(), "The second caller must wait for the occupied worker");
+      held.close();
+      assertTrue(task.get(10, TimeUnit.SECONDS));
+      try (final var worker = OntologySparqlWorker.acquire(SparqlQueryLimits.TIMEOUT_MILLIS)) {
+        assertThrows(
+            SparqlQueryExecutionGuard.QueryTimeoutException.class,
+            () -> OntologySparqlWorker.acquire(50));
+      }
+    } finally {
+      held.close();
+      waiter.interrupt();
+      waiter.join(10_000);
+    }
+  }
+
+  @Test
+  void interruptedWaiterDoesNotReleaseTheOccupiedPermit() throws Exception {
+    try (final var held = OntologySparqlWorker.acquire(SparqlQueryLimits.TIMEOUT_MILLIS)) {
+      final var task =
+          new FutureTask<>(
+              () -> {
+                assertThrows(
+                    SparqlQueryExecutionGuard.QueryTimeoutException.class,
+                    () -> OntologySparqlWorker.acquire(SparqlQueryLimits.TIMEOUT_MILLIS));
+                return Thread.currentThread().isInterrupted();
+              });
+      final Thread waiter = Thread.ofVirtual().start(task);
+      try {
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .until(() -> waiter.getState() == Thread.State.TIMED_WAITING || task.isDone());
+        assertFalse(task.isDone());
+        waiter.interrupt();
+        assertTrue(task.get(10, TimeUnit.SECONDS));
+        assertThrows(
+            SparqlQueryExecutionGuard.QueryTimeoutException.class,
+            () -> OntologySparqlWorker.acquire(50));
+      } finally {
+        waiter.interrupt();
+        waiter.join(10_000);
+      }
+    }
+  }
+
+  @Test
   void queriesMultiMegabyteModelsWithDistinctNodes() throws Exception {
     final Model model = distinctNodeModel(80_000);
     assertTrue(serializedBytes(model) > 3 * 1024 * 1024);
@@ -126,6 +186,7 @@ class OntologySparqlWorkerTest {
       output.writeUTF("");
       output.writeUTF("");
       output.writeInt(SparqlQueryLimits.TIMEOUT_MILLIS);
+      output.writeInt(0);
       RDFDataMgr.write(output, model, RDFFormat.NTRIPLES_UTF8);
     } finally {
       model.close();
@@ -189,6 +250,34 @@ class OntologySparqlWorkerTest {
     final byte[] header = ByteBuffer.allocate(Integer.BYTES).putInt(declaredLength).array();
     try (final var input = new DataInputStream(new ByteArrayInputStream(header))) {
       assertThrows(IOException.class, () -> OntologySparqlWorker.readRequest(input));
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {-1, Integer.MAX_VALUE})
+  void refusesCorruptPrefixCounts(final int count) throws Exception {
+    final byte[] frame = ByteBuffer.allocate(Integer.BYTES).putInt(count).array();
+    final Model model = ModelFactory.createDefaultModel();
+    try (final var input = new DataInputStream(new ByteArrayInputStream(frame))) {
+      assertThrows(
+          IOException.class,
+          () -> OntologySparqlWorker.readModel(temporaryDirectory, input, model));
+    } finally {
+      model.close();
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {-1, Integer.MAX_VALUE, 8})
+  void refusesCorruptPrefixLengths(final int length) throws Exception {
+    final byte[] frame = ByteBuffer.allocate(2 * Integer.BYTES).putInt(1).putInt(length).array();
+    final Model model = ModelFactory.createDefaultModel();
+    try (final var input = new DataInputStream(new ByteArrayInputStream(frame))) {
+      assertThrows(
+          IOException.class,
+          () -> OntologySparqlWorker.readModel(temporaryDirectory, input, model));
+    } finally {
+      model.close();
     }
   }
 
