@@ -13,9 +13,12 @@
 
 package org.openmetadata.service.resources.tasks;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,6 +50,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -99,6 +103,8 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
+import org.openmetadata.service.tasks.IncidentWorkflowStages;
+import org.openmetadata.service.tasks.TaskTagTarget;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -939,6 +945,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
+    TaskTagTarget.requireTagField(task);
     return create(uriInfo, securityContext, task);
   }
 
@@ -970,6 +977,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
+    TaskTagTarget.requireTagField(task);
     return createOrUpdate(uriInfo, securityContext, task);
   }
 
@@ -991,6 +999,23 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     OperationContext operationContext =
         new OperationContext(aboutRef.getType(), MetadataOperation.CREATE_TASK);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (isApprovalTaskType(task.getType())) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_ALL),
+          resourceContext);
+    }
+  }
+
+  /**
+   * Resolving one of these approves the entity it is about, so filing one through the API takes
+   * the edit rights that approval exercises. Governance workflows open them on their own path.
+   */
+  private static final Set<TaskEntityType> APPROVAL_TASK_TYPES =
+      Set.of(TaskEntityType.GlossaryApproval, TaskEntityType.RequestApproval);
+
+  private static boolean isApprovalTaskType(TaskEntityType type) {
+    return type != null && APPROVAL_TASK_TYPES.contains(type);
   }
 
   /**
@@ -1136,7 +1161,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task original = repository.get(uriInfo, id, repository.getPatchFields());
     Task patched = JsonUtils.applyPatch(original, patch, Task.class);
     validateTaskPatch(original, patched, isAdmin(securityContext));
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return patchInternal(
+        uriInfo, securityContext, id, keepWorkflowBinding(original, patched, patch));
   }
 
   private boolean isAdmin(SecurityContext securityContext) {
@@ -1177,7 +1203,37 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     rejectStatusChangeToWorkflowDecision(original, patched);
     rejectAvailableTransitionsEditByNonAdmin(original, patched, callerIsAdmin);
     rejectPayloadOrAboutEditAfterOpen(original, patched);
+    rejectWorkflowBindingEdits(original, patched);
   }
+
+  /** The type and category of a task decide which resolve rules apply to it. */
+  private void rejectWorkflowBindingEdits(Task original, Task patched) {
+    if (!Objects.equals(original.getType(), patched.getType())) {
+      throw workflowOwnedFieldRejection("type");
+    }
+    if (!Objects.equals(original.getCategory(), patched.getCategory())) {
+      throw workflowOwnedFieldRejection("category");
+    }
+  }
+
+  /**
+   * The workflow instance a task belongs to is the server's: a PATCH keeps it. A client that diffs
+   * a copy taken before the workflow recorded it would otherwise remove it, so it is restored
+   * rather than refused, and the PATCH is rebuilt only when it touched it.
+   */
+  private static JsonPatch keepWorkflowBinding(Task original, Task patched, JsonPatch patch) {
+    JsonPatch effective = patch;
+    if (!Objects.equals(original.getWorkflowInstanceId(), patched.getWorkflowInstanceId())) {
+      patched.setWorkflowInstanceId(original.getWorkflowInstanceId());
+      effective = JsonUtils.getJsonPatch(original, patched);
+    }
+    return effective;
+  }
+
+  private static final Set<String> ASSIGNMENT_TRANSITIONS =
+      Set.of(
+          IncidentWorkflowStages.ASSIGN_TRANSITION_ID,
+          IncidentWorkflowStages.REASSIGN_TRANSITION_ID);
 
   private void rejectForgeAttributionEdits(Task original, Task patched) {
     if (!Objects.equals(original.getResolution(), patched.getResolution())) {
@@ -1271,7 +1327,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
 
-    repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
+    repository.checkPermissionsForResolveTask(
+        authorizer,
+        task,
+        false,
+        securityContext,
+        new TaskRepository.TaskResolutionInput(
+            resolveTask.getPayload(), resolveTask.getNewValue()));
     validateTaskCanBeResolved(task);
 
     // Use TaskWorkflowHandler to resolve the task and apply entity changes. The strict-transition
@@ -1299,6 +1361,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Object resolvedPayload = resolveTask.getPayload();
     String comment = resolveTask.getComment();
     validateTransitionComment(task, transitionId, comment);
+    requireReassignForPayloadAssignees(task, transitionId, resolvedPayload, securityContext);
 
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
@@ -1310,6 +1373,49 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             comment,
             userName);
     return Response.ok(resolvedTask).build();
+  }
+
+  /**
+   * The assign and reassign transitions carry their new assignees in the payload. On any other
+   * transition, a payload that names different assignees changes who decides the task, which PATCH
+   * and bulk Assign reserve to ReassignTask.
+   */
+  private void requireReassignForPayloadAssignees(
+      Task task, String transitionId, Object payload, SecurityContext securityContext) {
+    if (!isAssignmentTransition(transitionId) && changesAssignees(task, payload)) {
+      repository.checkPermissionsForOwnerOnlyAction(
+          authorizer, securityContext, task, "reassignTask");
+    }
+  }
+
+  private static boolean isAssignmentTransition(String transitionId) {
+    return transitionId != null && ASSIGNMENT_TRANSITIONS.contains(transitionId);
+  }
+
+  static boolean changesAssignees(Task task, Object payload) {
+    JsonNode requested =
+        payload == null ? MissingNode.getInstance() : JsonUtils.valueToTree(payload);
+    JsonNode assignees = requested.path("assignees");
+    boolean changes = false;
+    if (assignees.isArray() && !assignees.isEmpty()) {
+      Set<String> current = new HashSet<>();
+      listOrEmpty(task.getAssignees())
+          .forEach(
+              assignee -> {
+                current.add(String.valueOf(assignee.getId()));
+                current.add(assignee.getName());
+              });
+      Set<String> wanted = new HashSet<>();
+      assignees.forEach(
+          assignee ->
+              wanted.add(
+                  assignee.hasNonNull("id")
+                      ? assignee.get("id").asText()
+                      : assignee.path("name").asText()));
+      changes =
+          !current.containsAll(wanted) || wanted.size() != listOrEmpty(task.getAssignees()).size();
+    }
+    return changes;
   }
 
   private ListFilter buildTaskListFilter(

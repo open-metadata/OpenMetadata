@@ -17,8 +17,10 @@ import { useTranslation } from 'react-i18next';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
+import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import DeferredWidget from '../../common/DeferredWidget/DeferredWidget.component';
 import DescriptionSourceBadge from '../../common/DescriptionSourceBadge/DescriptionSourceBadge';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -83,7 +85,18 @@ const TableDescription = ({
     if (suggestionData) {
       return suggestionData;
     } else if (columnData.field) {
-      return <RichTextEditorPreviewerNew markdown={columnData.field} />;
+      // Column tables render up to 50 rows; building a TipTap editor per row up front blocks the
+      // main thread, so off-screen cells show plain text until they scroll near the viewport.
+      return (
+        <DeferredWidget
+          placeholder={
+            <span className="tw:line-clamp-2">
+              {getTextFromHtmlString(columnData.field)}
+            </span>
+          }>
+          <RichTextEditorPreviewerNew markdown={columnData.field} />
+        </DeferredWidget>
+      );
     } else {
       return (
         <span className="text-grey-muted">
@@ -93,7 +106,7 @@ const TableDescription = ({
         </span>
       );
     }
-  }, [columnData, suggestionData]);
+  }, [columnData.field, suggestionData, t]);
 
   return (
     <Space

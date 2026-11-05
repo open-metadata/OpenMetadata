@@ -2,7 +2,9 @@ package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_EVENT_TYPE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -16,6 +18,7 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
@@ -23,6 +26,7 @@ import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
@@ -84,7 +88,15 @@ public class FilterEntityImpl implements JavaDelegate {
       passesFilter = true;
     } else {
       passesFilter =
-          passesExcludedFilter(entityLinkStr, excludedFilter, includeFields, filterLogic);
+          passesExcludedFilter(
+              entityLinkStr,
+              varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE),
+              excludedFilter,
+              includeFields,
+              filterLogic,
+              mayCarryNoChange(
+                  varHandler.getNamespacedVariable(
+                      GLOBAL_NAMESPACE, TRIGGERING_EVENT_TYPE_VARIABLE)));
     }
 
     // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
@@ -201,21 +213,33 @@ public class FilterEntityImpl implements JavaDelegate {
     return feedback.getTagFQN().equals(entityLink.getEntityFQN());
   }
 
+  /**
+   * Only a create carries no change: an update that leaves none (an edit undone within its session
+   * reverts the entity to a version without one, and a follow never stores one) has nothing for
+   * include/exclude to judge. A run started before the event type was recorded keeps treating a
+   * missing change as a create.
+   */
+  private static boolean mayCarryNoChange(Object triggeringEventType) {
+    return triggeringEventType == null
+        || EventType.ENTITY_CREATED.value().equals(triggeringEventType);
+  }
+
   private boolean passesExcludedFilter(
       String entityLinkStr,
+      Object triggeringVersion,
       List<String> excludedFilter,
       List<String> includeFields,
-      String filterLogic) {
+      String filterLogic,
+      boolean mayCarryNoChange) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
     boolean fieldBasedFilter;
     Optional<ChangeDescription> oChangeDescription =
-        Optional.ofNullable(entity.getChangeDescription());
+        Optional.ofNullable(TriggeringChange.of(entity, triggeringVersion));
 
-    // ChangeDescription is empty means it is a Create event.
     if (oChangeDescription.isEmpty()) {
-      fieldBasedFilter = true;
+      fieldBasedFilter = mayCarryNoChange;
     } else {
       ChangeDescription changeDescription = oChangeDescription.get();
       List<FieldChange> changedFields = getAllChangedFields(changeDescription);
@@ -256,11 +280,7 @@ public class FilterEntityImpl implements JavaDelegate {
         .anyMatch(
             field -> {
               String fieldName = field.getName();
-              boolean isTriggerField =
-                  Arrays.stream(WorkflowTriggerFields.values())
-                      .map(WorkflowTriggerFields::value)
-                      .anyMatch(tf -> matchesField(fieldName, tf));
-              if (!isTriggerField) {
+              if (!isTriggerField(fieldName)) {
                 return false;
               }
 
@@ -273,7 +293,14 @@ public class FilterEntityImpl implements JavaDelegate {
             });
   }
 
-  private boolean matchesField(String fieldName, String triggerField) {
+  /** Whether a change to {@code fieldName} can start a workflow. */
+  public static boolean isTriggerField(String fieldName) {
+    return Arrays.stream(WorkflowTriggerFields.values())
+        .map(WorkflowTriggerFields::value)
+        .anyMatch(triggerField -> matchesField(fieldName, triggerField));
+  }
+
+  private static boolean matchesField(String fieldName, String triggerField) {
     return fieldName.equals(triggerField) || fieldName.startsWith(triggerField + Entity.SEPARATOR);
   }
 }

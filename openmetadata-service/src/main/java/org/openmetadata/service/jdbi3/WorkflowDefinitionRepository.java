@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonPatch;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,6 +14,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.bpmn.exceptions.XMLException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
@@ -89,6 +91,19 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     // trigger (getUpdater), so a stored definition that breaks them can still be edited otherwise.
     LOG.info("Validating workflow configuration for: {}", entity.getName());
     validateWorkflowStructure(entity);
+    requireDeployable(entity);
+  }
+
+  // postCreate and postUpdate deploy the stored definition, so one whose BPMN cannot be built is
+  // refused here instead of being stored behind a failed deploy.
+  private static void requireDeployable(WorkflowDefinition workflowDefinition) {
+    try {
+      WorkflowHandler.toBpmn(new Workflow(workflowDefinition));
+    } catch (XMLException e) {
+      throw BadRequestException.of(
+          "Workflow '%s' cannot be deployed: %s"
+              .formatted(workflowDefinition.getName(), e.getMessage()));
+    }
   }
 
   @Override
@@ -261,6 +276,27 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateConditionalTasks(workflowDefinition);
     // 6. Restrict the values interpolated into conditional-edge JUEL expressions
     validateEdgeConditions(workflowDefinition);
+    // 7. Trigger filter entries are JSON Logic strings
+    validateTriggerFilterEntries(workflowDefinition);
+  }
+
+  private static void validateTriggerFilterEntries(WorkflowDefinition workflowDefinition) {
+    JsonNode filter =
+        JsonUtils.valueToTree(workflowDefinition.getTrigger()).path("config").path("filter");
+    List<String> invalid = new ArrayList<>();
+    filter
+        .fields()
+        .forEachRemaining(
+            entry -> {
+              if (!entry.getValue().isTextual() && !entry.getValue().isNull()) {
+                invalid.add(entry.getKey());
+              }
+            });
+    if (!invalid.isEmpty()) {
+      throw BadRequestException.of(
+          "Workflow '%s': trigger filter entries must be JSON Logic strings: %s"
+              .formatted(workflowDefinition.getName(), String.join(", ", invalid)));
+    }
   }
 
   /**

@@ -190,7 +190,7 @@ function APIEndpointsTab({
           return <Typography.Text>{requestMethod ?? NO_DATA}</Typography.Text>;
         },
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<APIEndpoint>(),
     ],
     [searchValue, t]
   );
