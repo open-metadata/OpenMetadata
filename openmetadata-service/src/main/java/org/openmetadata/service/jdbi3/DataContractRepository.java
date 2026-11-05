@@ -79,6 +79,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.datacontract.odcs.ODCSPreservedFields;
 import org.openmetadata.service.datacontract.sla.ContractSlaValidator;
 import org.openmetadata.service.datacontract.sla.TableRefreshHistoryLoader;
 import org.openmetadata.service.events.ChangeEvents;
@@ -1595,6 +1596,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       preserveUnspecifiedODCSPassthrough();
+      updated.setOdcsPreservedFields(
+          ODCSPreservedFields.bindNativeCustomProperties(
+              updated.getOdcsPreservedFields(), updated.getExtension()));
       compareAndUpdate(
           "latestResult",
           () ->

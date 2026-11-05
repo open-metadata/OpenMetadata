@@ -3268,6 +3268,22 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
       assertTrue(nullOrEmpty(stored.getOdcsQualityRules()));
       assertNull(stored.getOdcsPreservedFields());
 
+      for (String route :
+          List.of(
+              "/v1/dataContracts/" + created.getId() + "/odcs",
+              "/v1/dataContracts/" + created.getId() + "/odcs/yaml",
+              "/v1/dataContracts/name/" + created.getFullyQualifiedName() + "/odcs",
+              "/v1/dataContracts/name/" + created.getFullyQualifiedName() + "/odcs/yaml")) {
+        OpenMetadataException unsupported =
+            assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    client
+                        .getHttpClient()
+                        .executeForString(HttpMethod.GET, route + "?odcsVersion=v99.0.0", null));
+        assertEquals(400, unsupported.getStatusCode());
+      }
+
       YAMLMapper mapper = new YAMLMapper();
       List<JsonNode> exported =
           List.of(
@@ -3317,6 +3333,20 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                   "merge",
                   false);
       assertNotNull(reimported.getOdcsPreservedFields());
+      DataContract nativeImport =
+          client.dataContracts().get(reimported.getId().toString(), "extension");
+      assertEquals(values, nativeImport.getExtension());
+      JsonNode explicitVersion =
+          mapper.readTree(
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET,
+                      "/v1/dataContracts/"
+                          + created.getId()
+                          + "/odcs?odcsVersion=v3.1.0&fields=schema",
+                      null));
+      assertEquals(4, explicitVersion.path("customProperties").size());
 
       request.setExtension(Map.of(costCenter, "UPDATED"));
       DataContract updated = client.dataContracts().createOrUpdate(request);
@@ -3359,9 +3389,10 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         customProperties:
           - property: enabled
             value: false
-        futureSection:
-          nested: [1, null, false, {unknown: preserved}]
-          preciseAmount: 1234567890.1234567890123456789
+          - property: externalSection
+            value:
+              nested: [1, null, false, {unknown: preserved}]
+              preciseAmount: 1234567890.1234567890123456789
         schema:
           - name: %s
             logicalType: object
@@ -3370,7 +3401,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                 logicalType: string
                 physicalType: VARCHAR
                 primaryKeyPosition: 2
-                futureColumnAttribute: {settings: [true, 1.25]}
+                customProperties:
+                  - property: externalSettings
+                    value: {settings: [true, 1.25]}
         """
             .formatted(UUID.randomUUID(), ns.prefix("generic_odcs"), table.getName());
     DataContract imported =
@@ -3392,37 +3425,26 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .readTree(yamlById);
     assertEquals(
         "1234567890.1234567890123456789",
-        precise.at("/futureSection/preciseAmount").decimalValue().toPlainString());
+        precise.at("/customProperties/1/value/preciseAmount").decimalValue().toPlainString());
     JsonNode byName =
         mapper.readTree(
             SdkClients.adminClient()
                 .dataContracts()
                 .exportToODCSYamlByFqn(edited.getFullyQualifiedName()));
-    assertEquals(original.get("futureSection"), byId.get("futureSection"));
     assertEquals(original.get("customProperties"), byId.get("customProperties"));
     assertEquals(
-        original.at("/schema/0/properties/0/futureColumnAttribute"),
-        byId.at("/schema/0/properties/0/futureColumnAttribute"));
+        original.at("/schema/0/properties/0/customProperties"),
+        byId.at("/schema/0/properties/0/customProperties"));
     assertEquals("Description edited outside of ODCS", byId.at("/description/purpose").asText());
     assertEquals(byId, byName);
     ODCSDataContract jsonById =
         SdkClients.adminClient().dataContracts().exportToODCS(edited.getId());
     ODCSDataContract jsonByName =
         SdkClients.adminClient().dataContracts().exportToODCSByFqn(edited.getFullyQualifiedName());
-    assertEquals(
-        original.get("futureSection"),
-        mapper.valueToTree(jsonById.getAdditionalProperties().get("futureSection")));
     assertEquals(jsonById.getAdditionalProperties(), jsonByName.getAdditionalProperties());
     assertEquals(
-        original.at("/schema/0/properties/0/futureColumnAttribute"),
-        mapper.valueToTree(
-            jsonById
-                .getSchema()
-                .getFirst()
-                .getProperties()
-                .getFirst()
-                .getAdditionalProperties()
-                .get("futureColumnAttribute")));
+        original.at("/schema/0/properties/0/customProperties"),
+        mapper.valueToTree(jsonById).at("/schema/0/properties/0/customProperties"));
 
     CreateDataContract clear =
         new CreateDataContract()
@@ -3435,6 +3457,42 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         mapper.readTree(SdkClients.adminClient().dataContracts().exportToODCSYaml(cleared.getId()));
     assertFalse(exported.has("futureSection"));
     assertFalse(exported.has("customProperties"));
+  }
+
+  @Test
+  void testIncompatiblePreservedMetadataBlocksAllExportRoutesWithoutLosingIt(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns);
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: '1.0.0'
+        status: active
+        futureSection: {retained: true}
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("incompatible_odcs"));
+    OpenMetadataClient client = SdkClients.adminClient();
+    DataContract imported =
+        client.dataContracts().importFromODCSYaml(yaml, table.getId(), "table", false);
+    for (String route :
+        List.of(
+            "/v1/dataContracts/" + imported.getId() + "/odcs",
+            "/v1/dataContracts/" + imported.getId() + "/odcs/yaml",
+            "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs",
+            "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs/yaml")) {
+      OpenMetadataException error =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> client.getHttpClient().executeForString(HttpMethod.GET, route, null));
+      assertEquals(400, error.getStatusCode());
+      assertTrue(error.getMessage().contains("futureSection"), error.getMessage());
+    }
+    DataContract stored =
+        client.dataContracts().get(imported.getId().toString(), "odcsPreservedFields");
+    assertEquals(imported.getOdcsPreservedFields(), stored.getOdcsPreservedFields());
   }
 
   @Test

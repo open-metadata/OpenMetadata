@@ -856,7 +856,9 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataContract*",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/dataContracts/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/OD*Converter*",
-        "openmetadata-spec/src/main/resources/json/schema/entity/datacontract/**"
+        "openmetadata-spec/src/main/resources/json/schema/entity/datacontract/**",
+        "openmetadata-spec/src/main/resources/json/schema/type/datacontract/odcs/**",
+        "openmetadata-spec/src/main/resources/odcs/**"
       ],
       "tests": [
         "*DataContract*IT",

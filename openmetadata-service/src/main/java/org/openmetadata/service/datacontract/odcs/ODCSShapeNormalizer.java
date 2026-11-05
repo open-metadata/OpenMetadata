@@ -56,6 +56,7 @@ public final class ODCSShapeNormalizer {
 
   public static void normalize(ObjectNode root, ODCSImportIssues issues) {
     normalizeDescription(root, issues);
+    rewriteMapFormCustomProperties(root, "", issues);
     wrapScalarTags(root);
     wrapBareArrayTeam(root, issues);
     joinArrayApprovers(root, issues);

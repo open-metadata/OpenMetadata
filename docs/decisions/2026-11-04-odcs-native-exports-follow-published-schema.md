@@ -1,6 +1,6 @@
 # Native ODCS exports follow the published schema
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-05-odcs-exports-use-versioned-schema-backed-mappers
 - **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-04 (native deletion and array round trips)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `ODCSNativeExportTest`, `DataContractResourceIT`

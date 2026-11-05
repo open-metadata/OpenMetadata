@@ -108,7 +108,7 @@ public final class ODCSFieldCoverage {
             field -> {
               if (SCHEMA.equals(field.getKey())) {
                 reportSchema(field.getValue(), importedObject, issues);
-              } else {
+              } else if (!"customProperties".equals(field.getKey())) {
                 visit(field.getKey(), field.getValue(), Section.ROOT, "", issues);
               }
             });

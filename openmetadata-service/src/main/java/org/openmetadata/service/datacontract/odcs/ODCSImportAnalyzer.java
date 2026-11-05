@@ -66,12 +66,24 @@ public final class ODCSImportAnalyzer {
 
   private final ODCSQualityRuleImporter qualityRules;
   private final Function<DataContract, ContractValidation> contractValidator;
+  private final ODCSNativeCustomProperties customProperties;
 
   public ODCSImportAnalyzer(
       ODCSQualityRuleImporter qualityRules,
       Function<DataContract, ContractValidation> contractValidator) {
+    this(
+        qualityRules,
+        contractValidator,
+        new ODCSNativeCustomProperties(name -> false, Function.identity()));
+  }
+
+  public ODCSImportAnalyzer(
+      ODCSQualityRuleImporter qualityRules,
+      Function<DataContract, ContractValidation> contractValidator,
+      ODCSNativeCustomProperties customProperties) {
     this.qualityRules = qualityRules;
     this.contractValidator = contractValidator;
+    this.customProperties = customProperties;
   }
 
   public ContractValidation analyze(Request request) {
@@ -100,7 +112,7 @@ public final class ODCSImportAnalyzer {
         request);
   }
 
-  private static Optional<DataContract> convert(
+  private Optional<DataContract> convert(
       ODCSDataContract odcs, JsonNode original, Request request, ODCSImportIssues issues) {
     Optional<DataContract> contract = Optional.empty();
     try {
@@ -112,6 +124,7 @@ public final class ODCSImportAnalyzer {
           Optional.of(
               ODCSConverter.fromODCS(
                   odcs, request.entity(), request.objectName(), issues, original));
+      customProperties.apply(contract.orElseThrow(), original, issues);
     } catch (IllegalArgumentException e) {
       issues.blocking(ODCSImportIssueCategory.SCHEMA, null, "schema", e.getMessage());
     }

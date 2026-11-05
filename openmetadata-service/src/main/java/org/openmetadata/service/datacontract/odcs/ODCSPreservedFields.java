@@ -31,6 +31,7 @@ public final class ODCSPreservedFields {
       new ObjectMapper().enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
   private static final String DOCUMENT = "document";
   private static final String UNAPPLIED = "unapplied";
+  private static final String NATIVE_BINDINGS = "nativeBindings";
   private static final String SCHEMA = "schema";
   private static final String NAME = "name";
   private static final String PROPERTIES = "properties";
@@ -69,7 +70,9 @@ public final class ODCSPreservedFields {
           SCHEMA,
           captureSchema(source.path(SCHEMA), applied.path(SCHEMA), selectedObject, unapplied));
     }
-    return envelope(preserved, unapplied);
+    ObjectNode payload = envelope(preserved, unapplied);
+    if (source.has("apiVersion")) payload.set("sourceVersion", source.get("apiVersion").deepCopy());
+    return payload;
   }
 
   private static ObjectNode envelope(JsonNode document, JsonNode unapplied) {
@@ -315,7 +318,64 @@ public final class ODCSPreservedFields {
       }
     }
     imported.path(UNAPPLIED).forEach(pointer -> unapplied.add(pointer.deepCopy()));
-    return envelope(mergeJson(preservedDocument(existing), incomingDocument), unapplied);
+    ObjectNode merged = (ObjectNode) mergeJson(existing, imported);
+    merged.put(DOCUMENT, mergeJson(preservedDocument(existing), incomingDocument).toString());
+    merged.set(UNAPPLIED, unapplied);
+    ArrayNode bindings = JSON.createArrayNode();
+    for (JsonNode binding : existing.path(NATIVE_BINDINGS)) {
+      if (incomingDocument.at(binding.path("sourceCollection").asText()).isMissingNode())
+        bindings.add(binding.deepCopy());
+    }
+    for (JsonNode binding : imported.path(NATIVE_BINDINGS)) {
+      if (!contains(bindings, binding)) bindings.add(binding.deepCopy());
+    }
+    if (bindings.isEmpty()) merged.remove(NATIVE_BINDINGS);
+    else merged.set(NATIVE_BINDINGS, bindings);
+    return merged;
+  }
+
+  /** Records ownership only after a source value exists in the current native extension. */
+  public static JsonNode bindNativeCustomProperties(JsonNode payload, Object extension) {
+    if (payload == null || !payload.isObject()) return payload;
+    JsonNode values = JSON.valueToTree(extension);
+    if (values == null || !values.isObject()) return payload;
+    ObjectNode result = payload.deepCopy();
+    ArrayNode bindings = JSON.createArrayNode();
+    for (JsonNode binding : result.path(NATIVE_BINDINGS)) bindings.add(binding.deepCopy());
+    for (JsonNode property : preservedDocument(payload).path("customProperties")) {
+      String name = property.path("property").asText();
+      if (values.has(name)) {
+        ObjectNode binding = JSON.createObjectNode();
+        binding.put("nativePath", "/extension/" + name.replace("~", "~0").replace("/", "~1"));
+        binding.put("sourceCollection", "/customProperties");
+        binding.put("keyField", "property");
+        binding.put("keyValue", name);
+        binding.put("valueField", "value");
+        if (!contains(bindings, binding)) bindings.add(binding);
+      }
+    }
+    if (!bindings.isEmpty()) result.set(NATIVE_BINDINGS, bindings);
+    return result;
+  }
+
+  public static Set<String> nativeCustomPropertyNames(JsonNode payload) {
+    Set<String> result = new HashSet<>();
+    if (payload != null) {
+      for (JsonNode binding : payload.path(NATIVE_BINDINGS)) {
+        if ("/customProperties".equals(binding.path("sourceCollection").asText())
+            && "property".equals(binding.path("keyField").asText())
+            && "value".equals(binding.path("valueField").asText())
+            && binding.path("nativePath").asText().startsWith("/extension/")) {
+          result.add(binding.path("keyValue").asText());
+        }
+      }
+    }
+    return Set.copyOf(result);
+  }
+
+  private static boolean contains(ArrayNode values, JsonNode candidate) {
+    for (JsonNode value : values) if (value.equals(candidate)) return true;
+    return false;
   }
 
   private static JsonNode preservedDocument(JsonNode payload) {
