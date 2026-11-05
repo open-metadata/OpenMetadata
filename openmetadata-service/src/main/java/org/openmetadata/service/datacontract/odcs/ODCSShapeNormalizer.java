@@ -65,6 +65,25 @@ public final class ODCSShapeNormalizer {
     normalizeHolders(root.get(SERVERS), SERVERS, issues);
   }
 
+  /** Projects standard items into reader/baseline copies without changing the preserved source. */
+  public static void projectArrayItemsForReader(ObjectNode root) {
+    for (JsonNode element : root.path(SCHEMA)) {
+      projectArrayItemProperties(element);
+    }
+  }
+
+  private static void projectArrayItemProperties(JsonNode element) {
+    if (element instanceof ObjectNode object) {
+      JsonNode itemProperties = object.path(ITEMS).path(PROPERTIES);
+      if ("array".equals(object.path("logicalType").asText()) && itemProperties.isArray()) {
+        object.set(PROPERTIES, itemProperties.deepCopy());
+      }
+      for (JsonNode child : object.path(PROPERTIES)) {
+        projectArrayItemProperties(child);
+      }
+    }
+  }
+
   private static void normalizeDescription(ObjectNode root, ODCSImportIssues issues) {
     JsonNode description = root.get(DESCRIPTION);
     if (description != null && description.isTextual()) {

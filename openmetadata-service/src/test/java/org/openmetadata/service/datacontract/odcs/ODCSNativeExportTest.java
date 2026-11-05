@@ -19,9 +19,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -269,6 +272,75 @@ class ODCSNativeExportTest {
     assertEquals("BIGINT", item.path("physicalType").asText());
     assertEquals("source", item.at("/customProperties/0/value").asText());
     assertEquals(List.of(), ODCSPublishedSchema.validate(exported));
+  }
+
+  @Test
+  void clearedRegisteredPropertiesStayAbsentAfterAnExportImportRoundTrip() throws Exception {
+    DataContract original = customers();
+    original.setExtension(Map.of("costCenter", "ANALYTICS-042"));
+    JsonNode source = ODCSConverter.toODCSDocument(original, List.of());
+    ((ObjectNode) source)
+        .withArray("customProperties")
+        .addObject()
+        .put("property", "externalOnly")
+        .put("value", "preserve me");
+    DataContract imported =
+        ODCSConverter.fromODCS(
+            ODCSLenientReader.readOrReject(JSON, source.deepCopy()),
+            original.getEntity(),
+            null,
+            ODCSImportIssues.discarding(),
+            source);
+
+    for (Object cleared : Arrays.asList(null, Map.of(), Map.of("other", 90))) {
+      imported.setExtension(cleared);
+      JsonNode exported = ODCSConverter.toODCSDocument(imported, List.of(), Set.of("costCenter"));
+      assertFalse(exported.path("customProperties").toString().contains("costCenter"));
+      assertEquals("preserve me", property(exported, "externalOnly").asText());
+      assertEquals(List.of(), ODCSPublishedSchema.validate(exported));
+    }
+    imported.setExtension(Map.of("costCenter", "UPDATED"));
+    assertEquals(
+        "UPDATED",
+        property(
+                ODCSConverter.toODCSDocument(imported, List.of(), Set.of("costCenter")),
+                "costCenter")
+            .asText());
+    assertEquals("ANALYTICS-042", source.at("/customProperties/0/value").asText());
+  }
+
+  @Test
+  void exportedArrayChildrenAndRulesAreNativeAfterReimportAndStayDeletedWhenRemoved() {
+    DataContract original = customers();
+    original.setSchema(
+        List.of(
+            new Column()
+                .withName("orders")
+                .withDataType(ColumnDataType.ARRAY)
+                .withChildren(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))));
+    JsonNode source =
+        ODCSConverter.toODCSDocument(
+            original,
+            List.of(rule("order_id_not_null", "columnValuesToBeNotNull", "orders.id", List.of())));
+    DataContract imported =
+        ODCSConverter.fromODCS(
+            ODCSLenientReader.readOrReject(JSON, source.deepCopy()),
+            original.getEntity(),
+            null,
+            ODCSImportIssues.discarding(),
+            source);
+    assertEquals("id", imported.getSchema().getFirst().getChildren().getFirst().getName());
+    assertEquals("orders.id", imported.getOdcsQualityRules().getFirst().getColumn());
+    JsonNode roundTrip = ODCSConverter.toODCSDocument(imported, List.of());
+    assertEquals(1, roundTrip.at("/schema/0/properties/0/items/properties/0/quality").size());
+    assertFalse(roundTrip.at("/schema/0/properties/0").has("properties"));
+    assertEquals(List.of(), ODCSPublishedSchema.validate(roundTrip));
+    imported.getSchema().getFirst().setChildren(List.of());
+    imported.setOdcsQualityRules(List.of());
+    JsonNode removed = ODCSConverter.toODCSDocument(imported, List.of());
+    assertEquals(0, removed.at("/schema/0/properties/0/items/properties").size());
+    assertEquals(List.of(), ODCSPublishedSchema.validate(removed));
   }
 
   private static JsonNode property(JsonNode exported, String name) {

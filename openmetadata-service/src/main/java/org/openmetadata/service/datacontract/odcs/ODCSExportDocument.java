@@ -160,21 +160,36 @@ public final class ODCSExportDocument {
   }
 
   public static JsonNode withNativeCustomProperties(JsonNode exported, Object extension) {
+    return withNativeCustomProperties(exported, extension, Set.of());
+  }
+
+  public static JsonNode withNativeCustomProperties(
+      JsonNode exported, Object extension, Set<String> nativePropertyNames) {
     ObjectNode document = exported.deepCopy();
-    JsonNode values = JsonUtils.valueToTree(extension);
-    if (values != null && values.isObject() && !values.isEmpty()) {
-      document.set(
-          CUSTOM_PROPERTIES, mergeCustomProperties(document.path(CUSTOM_PROPERTIES), values));
+    JsonNode supplied = JsonUtils.valueToTree(extension);
+    JsonNode values = supplied != null && supplied.isObject() ? supplied : JSON.createObjectNode();
+    if (!values.isEmpty()
+        || (!nativePropertyNames.isEmpty() && document.path(CUSTOM_PROPERTIES).isArray())) {
+      ArrayNode properties =
+          mergeCustomProperties(document.path(CUSTOM_PROPERTIES), values, nativePropertyNames);
+      if (properties.isEmpty()) {
+        document.remove(CUSTOM_PROPERTIES);
+      } else {
+        document.set(CUSTOM_PROPERTIES, properties);
+      }
     }
     return document;
   }
 
-  private static ArrayNode mergeCustomProperties(JsonNode preserved, JsonNode nativeValues) {
+  private static ArrayNode mergeCustomProperties(
+      JsonNode preserved, JsonNode nativeValues, Set<String> nativePropertyNames) {
     ArrayNode result = JSON.createArrayNode();
     Set<String> seen = new HashSet<>();
     if (preserved.isArray()) {
       for (JsonNode original : preserved) {
-        result.add(mergeCustomProperty(original, nativeValues, seen));
+        if (!isRemovedNativeProperty(original, nativeValues, nativePropertyNames)) {
+          result.add(mergeCustomProperty(original, nativeValues, seen));
+        }
       }
     }
     nativeValues
@@ -189,6 +204,12 @@ public final class ODCSExportDocument {
               }
             });
     return result;
+  }
+
+  private static boolean isRemovedNativeProperty(
+      JsonNode original, JsonNode nativeValues, Set<String> nativePropertyNames) {
+    String name = original.path(PROPERTY).asText();
+    return nativePropertyNames.contains(name) && !nativeValues.has(name);
   }
 
   private static JsonNode mergeCustomProperty(

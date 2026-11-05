@@ -64,6 +64,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -1826,7 +1827,18 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
 
   private JsonNode toODCS(DataContract contract) {
     return ODCSConverter.toODCSDocument(
-        contract, qualityRuleExporter.nativeTestCaseRules(contract));
+        contract, qualityRuleExporter.nativeTestCaseRules(contract), nativeCustomPropertyNames());
+  }
+
+  private static Set<String> nativeCustomPropertyNames() {
+    var typeRepository = Entity.getTypeRepository();
+    return listOrEmpty(
+            typeRepository
+                .getByName(null, Entity.DATA_CONTRACT, typeRepository.getFields("customProperties"))
+                .getCustomProperties())
+        .stream()
+        .map(CustomProperty::getName)
+        .collect(Collectors.toSet());
   }
 
   private DataContract loadExistingContract(EntityReference entityRef) {

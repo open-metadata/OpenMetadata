@@ -61,6 +61,7 @@ public final class ODCSLenientReader {
     if (!issues.hasBlocking()) {
       ObjectNode root = (ObjectNode) document;
       ODCSShapeNormalizer.normalize(root, issues);
+      ODCSShapeNormalizer.projectArrayItemsForReader(root);
       contract = Optional.of(readRepairing(mapper, root, issues));
     }
     return contract;

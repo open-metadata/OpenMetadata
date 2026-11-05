@@ -1,7 +1,7 @@
 # Native ODCS exports follow the published schema
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-04 (initial)
+- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-04 (native deletion and array round trips)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `ODCSNativeExportTest`, `DataContractResourceIT`
 - **Related:** [#33493](https://github.com/open-metadata/OpenMetadata/issues/33493), ADR:2026-11-04-odcs-preserves-unmapped-fields-as-generic-json
@@ -41,3 +41,16 @@ defaults and is not a check of the original HTTP wire document.
 Native custom properties and quality expectations can be exchanged without OpenMetadata-only wire
 fields. Stored contracts and generated reader models need no migration. The schema fixture and its
 provenance are versioned with tests, so validation is offline and changes only by explicit review.
+
+## Amendment v2
+
+Registered data-contract custom-property names are native-owned during export. A name absent from
+its current OM extension is omitted even when preserved metadata contains an older value; unknown
+ODCS names remain preserved. The resource reads current definitions from the type repository and
+passes their names to the pure converter. Import does not register or apply external declarations.
+
+Reader copies project structured array `items.properties` into native children. Preservation
+compares both standard and legacy child paths against the current normalized schema, so nested
+rules retain qualified column paths and deleting a previously applied child does not resurrect it.
+The generic preserved envelope also has a declared stored RDF predicate, consistent with its sibling
+ODCS fields.

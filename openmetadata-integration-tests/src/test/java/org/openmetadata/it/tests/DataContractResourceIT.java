@@ -11,6 +11,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import jakarta.json.Json;
 import java.net.URI;
@@ -3299,15 +3300,43 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         assertEquals(99.5, properties.get(qualityTarget).asDouble());
         assertFalse(document.at("/schema/0/properties/0/quality/0").has("column"));
       }
+      String externalProperty = ns.prefix("externalOnly");
+      ObjectNode reimportDocument = (ObjectNode) exported.getFirst().deepCopy();
+      reimportDocument
+          .withArray("customProperties")
+          .addObject()
+          .put("property", externalProperty)
+          .put("value", "preserved external value");
+      DataContract reimported =
+          client
+              .dataContracts()
+              .createOrUpdateFromODCSYaml(
+                  mapper.writeValueAsString(reimportDocument),
+                  table.getId(),
+                  "table",
+                  "merge",
+                  false);
+      assertNotNull(reimported.getOdcsPreservedFields());
+
       request.setExtension(Map.of(costCenter, "UPDATED"));
       DataContract updated = client.dataContracts().createOrUpdate(request);
       JsonNode changed = mapper.readTree(client.dataContracts().exportToODCSYaml(updated.getId()));
-      assertEquals(1, changed.path("customProperties").size());
+      assertEquals(2, changed.path("customProperties").size());
       assertEquals("UPDATED", changed.at("/customProperties/0/value").asText());
       request.setExtension(Map.of());
       client.dataContracts().createOrUpdate(request);
       JsonNode cleared = mapper.readTree(client.dataContracts().exportToODCSYaml(created.getId()));
-      assertFalse(cleared.has("customProperties"));
+      assertEquals(1, cleared.path("customProperties").size());
+      assertEquals(externalProperty, cleared.at("/customProperties/0/property").asText());
+      assertEquals("preserved external value", cleared.at("/customProperties/0/value").asText());
+      JsonNode jsonCleared =
+          mapper.readTree(
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET, "/v1/dataContracts/" + created.getId() + "/odcs", null));
+      assertEquals(cleared.path("customProperties"), jsonCleared.path("customProperties"));
+      assertEquals(List.of(), ODCSPublishedSchema.validate(cleared));
     } finally {
       for (String property : types.keySet()) {
         CustomPropertyTestSupport.removeProperty(client, "dataContract", property);

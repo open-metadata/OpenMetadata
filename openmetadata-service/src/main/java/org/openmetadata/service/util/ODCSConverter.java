@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.ContractSLA;
@@ -100,16 +101,38 @@ public class ODCSConverter {
 
   public static JsonNode toODCSDocument(
       DataContract contract, List<ODCSQualityRule> additionalQualityRules) {
-    String tableName =
-        contract.getEntity() != null && contract.getEntity().getName() != null
-            ? contract.getEntity().getName()
-            : contract.getName();
+    return toODCSDocument(contract, additionalQualityRules, Set.of());
+  }
+
+  public static JsonNode toODCSDocument(
+      DataContract contract,
+      List<ODCSQualityRule> additionalQualityRules,
+      Set<String> nativePropertyNames) {
     JsonNode nativeDocument =
         ODCSExportDocument.nativeDocument(
-            MAPPER.valueToTree(toNativeODCS(contract, additionalQualityRules)), tableName);
+            MAPPER.valueToTree(toNativeODCS(contract, additionalQualityRules)),
+            exportedTableName(contract));
     JsonNode preserved =
         ODCSPreservedFields.restore(contract.getOdcsPreservedFields(), nativeDocument);
-    return ODCSExportDocument.withNativeCustomProperties(preserved, contract.getExtension());
+    return ODCSExportDocument.withNativeCustomProperties(
+        preserved, contract.getExtension(), nativePropertyNames);
+  }
+
+  private static String exportedTableName(DataContract contract) {
+    return contract.getEntity() != null && contract.getEntity().getName() != null
+        ? contract.getEntity().getName()
+        : contract.getName();
+  }
+
+  private static JsonNode captureBaseline(DataContract contract) {
+    ObjectNode applied = MAPPER.valueToTree(toNativeODCS(contract, List.of()));
+    ObjectNode normalized =
+        (ObjectNode) ODCSExportDocument.nativeDocument(applied, exportedTableName(contract));
+    ODCSShapeNormalizer.projectArrayItemsForReader(normalized);
+    if (normalized.has("schema")) {
+      applied.set("schema", normalized.get("schema"));
+    }
+    return applied;
   }
 
   private static ODCSDataContract toNativeODCS(
@@ -294,7 +317,7 @@ public class ODCSConverter {
     contract.setOdcsPreservedFields(
         ODCSPreservedFields.capture(
             original,
-            MAPPER.valueToTree(toNativeODCS(contract, List.of())),
+            captureBaseline(contract),
             importedSchemaObjectName(odcs, entityRef, objectName).orElse(null)));
     List<ODCSElementExtension> elementExtensions = collectElementExtensions(odcs);
     if (!elementExtensions.isEmpty()) {
@@ -768,7 +791,7 @@ public class ODCSConverter {
 
     if (odcs.getSchema() != null) {
       for (ODCSSchemaElement schemaObject : odcs.getSchema()) {
-        collectQualityRulesFromElement(schemaObject, allRules);
+        collectQualityRulesFromElement(schemaObject, allRules, null);
       }
     }
 
@@ -776,12 +799,16 @@ public class ODCSConverter {
   }
 
   private static void collectQualityRulesFromElement(
-      ODCSSchemaElement element, List<ODCSQualityRule> allRules) {
+      ODCSSchemaElement element, List<ODCSQualityRule> allRules, String parentPath) {
+    String columnPath =
+        nullOrEmpty(parentPath)
+            ? element.getName()
+            : FullyQualifiedName.add(parentPath, element.getName());
     if (element.getQuality() != null && !element.getQuality().isEmpty()) {
       for (ODCSQualityRule rule : element.getQuality()) {
         if (rule.getColumn() == null || rule.getColumn().isEmpty()) {
           ODCSQualityRule copy = copyQualityRule(rule);
-          copy.setColumn(element.getName());
+          copy.setColumn(columnPath);
           allRules.add(copy);
         } else {
           allRules.add(rule);
@@ -791,7 +818,7 @@ public class ODCSConverter {
 
     if (element.getProperties() != null) {
       for (ODCSSchemaElement property : element.getProperties()) {
-        collectQualityRulesFromElement(property, allRules);
+        collectQualityRulesFromElement(property, allRules, parentPath == null ? "" : columnPath);
       }
     }
   }
