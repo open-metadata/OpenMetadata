@@ -930,6 +930,34 @@ def test_saved_evidence_detects_changed_sources_and_tampered_reports(
         PLANNER.load_evidence(tmp_path)
 
 
+@pytest.mark.parametrize("tracked", [False, True])
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "module/src/main/java/Example.java",
+        "module/src/test/java/ExampleTest.java",
+        "module/src/main/resources/config.json",
+    ],
+)
+def test_evidence_rejects_changed_nested_sources(
+    tmp_path: Path, relative: str, tracked: bool
+) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    source = tmp_path / relative
+    source.parent.mkdir(parents=True)
+    source.write_text("original")
+    if tracked:
+        subprocess.run(["git", "add", relative], cwd=tmp_path, check=True)
+    summary = tmp_path / PLANNER.RESULTS_MARKDOWN
+    summary.parent.mkdir(parents=True)
+    summary.write_text("PASSED")
+    PLANNER.save_evidence(tmp_path, 0)
+    assert PLANNER.load_evidence(tmp_path)["exitCode"] == 0
+    source.write_text("changed")
+    with pytest.raises(SystemExit, match="changed"):
+        PLANNER.load_evidence(tmp_path)
+
+
 def test_publish_existing_evidence_never_runs_tests(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -1318,6 +1346,9 @@ def test_update_pr_posts_the_details_and_links_them_from_the_summary(
     [body] = edited
     assert body.startswith("#### Backend integration tests")
     assert summary.strip() in body
+    for _ in range(2):
+        assert PLANNER.main(["--publish-results"]) == 0
+        assert edited[-1].count("- [Details](") == 1
 
 
 def test_a_step_that_ran_no_tests_is_not_a_pass() -> None:

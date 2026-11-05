@@ -2643,12 +2643,12 @@ def update_pr_body(
 def evidence_fingerprint(repo_root: Path) -> str:
     paths = [
         "pom.xml",
-        "**/pom.xml",
+        ":(glob)**/pom.xml",
         ".mvn",
         "conf",
         "bootstrap",
-        "**/src/main",
-        "**/src/test",
+        ":(glob)**/src/main/**",
+        ":(glob)**/src/test/**",
         IMPACT_MAP,
         ".github/scripts/plan_local_java_tests.py",
     ]
@@ -2745,7 +2745,7 @@ def publish_evidence(repo_root: Path, impact_map: dict[str, Any]) -> int:
         else ""
     )
     block = (repo_root / RESULTS_MARKDOWN).read_text()
-    if details_url:
+    if details_url and f"]({details_url})" not in block:
         block = block.replace(BLOCK_END, f"- [Details]({details_url})\n{BLOCK_END}")
     update_pr_body(
         repo_root, pr, block, impact_map.get("prHeading", DEFAULT_PR_HEADING)
