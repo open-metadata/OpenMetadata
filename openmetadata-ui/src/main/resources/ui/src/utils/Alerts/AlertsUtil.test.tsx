@@ -37,8 +37,8 @@ import {
   mockTypedEventEmptyDataSuccessful,
   mockTypedEventEmptyDataUnprocessed,
 } from '../../mocks/AlertUtil.mock';
-import { ModifiedDestination } from '../../utils/AlertsClassBase.interface';
 import { searchQuery } from '../../rest/searchAPI';
+import { ModifiedDestination } from '../../utils/AlertsClassBase.interface';
 import {
   getAlertExtraInfo,
   getAlertRecentEventsFilterOptions,

@@ -14,7 +14,6 @@
 import { ModifiedDestination } from '../../../utils/AlertsClassBase.interface';
 
 export const ALERT_AI_DEFAULT_CONNECTION_TIMEOUT = 10;
-export const ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH = 1;
 export const ALERT_AI_DESCRIPTION_TEXT_AREA_ROWS = 5;
 export const ALERT_AI_DESTINATION_TEXT_AREA_ROWS = 2;
 export const ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER =

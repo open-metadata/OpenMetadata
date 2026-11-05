@@ -34,12 +34,12 @@ import { useTranslation } from 'react-i18next';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
 import type { Destination } from '../../../generated/events/eventSubscription';
 import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
-import type { ModifiedDestination } from '../../../utils/AlertsClassBase.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import {
   getDestinationsWithTestStatus,
   getFormattedDestinations,
 } from '../../../utils/Alerts/AlertsUtilPure';
+import type { ModifiedDestination } from '../../../utils/AlertsClassBase.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DESTINATIONS_MIN_COUNT_ERROR_PATH } from './DestinationFormItem.constants';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';
