@@ -53,6 +53,7 @@ import {
   assignGlossaryTerm,
   assignGlossaryTermToChildren,
   assignTag,
+  getEncodedFqn,
   updateDescription,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -1921,19 +1922,25 @@ test.describe('Glossary tests', () => {
       await performUserLogin(browser, dataConsumerUser);
 
     try {
+      await redirectToHomePage(dataConsumerPage);
       // Listings leave out rows a deny rule refuses (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read),
       // so the denied glossary is reachable only by its URL.
-      await dataConsumerPage.goto(
-        `/glossary/${encodeURIComponent(
-          glossary1.responseData.fullyQualifiedName
-        )}`
+      const fqn = glossary1.responseData.fullyQualifiedName;
+      const deniedResponse = dataConsumerPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          decodeURIComponent(new URL(response.url()).pathname) ===
+            `/api/v1/glossaries/name/${fqn}`
       );
+      await dataConsumerPage.goto(`${GLOSSARY_ROUTE}/${getEncodedFqn(fqn)}`, {
+        waitUntil: 'commit',
+      });
+      expect((await deniedResponse).status()).toBe(403);
+      await expect(dataConsumerPage).toHaveURL(/\/403$/);
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toContainText(
-        "You don't have necessary permissions. Please check with the admin to get the Resource permission."
-      );
+      ).toBeVisible();
     } finally {
       await consumerAfterAction();
       await cleanup(apiContext);
@@ -1946,7 +1953,6 @@ test.describe('Glossary tests', () => {
 
     const { dataConsumerUser, glossary1, glossaryTerm1, cleanup } =
       await setupGlossaryDenyPermissionTest(apiContext, false);
-    glossary1.data.terms = [glossaryTerm1];
 
     const {
       page: dataConsumerPage,
@@ -1955,6 +1961,7 @@ test.describe('Glossary tests', () => {
     } = await performUserLogin(browser, dataConsumerUser);
 
     try {
+      await redirectToHomePage(dataConsumerPage);
       // Listings leave out rows a deny rule refuses (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read).
       const termList = await okJson<{ data: { id: string }[] }>(
         await dataConsumerApiContext.get(
@@ -1966,18 +1973,22 @@ test.describe('Glossary tests', () => {
       expect(termList.data.map((term) => term.id)).not.toContain(
         glossaryTerm1.responseData.id
       );
-
-      await dataConsumerPage.goto(
-        `/glossary/${encodeURIComponent(
-          glossaryTerm1.responseData.fullyQualifiedName
-        )}`
+      const fqn = glossaryTerm1.responseData.fullyQualifiedName;
+      const deniedResponse = dataConsumerPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          decodeURIComponent(new URL(response.url()).pathname) ===
+            `/api/v1/glossaryTerms/name/${fqn}`
       );
+      await dataConsumerPage.goto(`${GLOSSARY_ROUTE}/${getEncodedFqn(fqn)}`, {
+        waitUntil: 'commit',
+      });
+      expect((await deniedResponse).status()).toBe(403);
+      await expect(dataConsumerPage).toHaveURL(/\/403$/);
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toContainText(
-        "You don't have necessary permissions. Please check with the admin to get the Resource permission."
-      );
+      ).toBeVisible();
     } finally {
       await consumerAfterAction();
       await cleanup(apiContext);

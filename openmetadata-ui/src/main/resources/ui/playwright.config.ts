@@ -348,10 +348,13 @@ export default defineConfig({
     {
       name: 'visual-regression',
       testMatch: '**/VisualRegression/**/*.spec.ts',
+      grep: shardGrep,
       dependencies: ['setup', 'entity-data-setup'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
+        locale: 'en-US',
+        timezoneId: 'UTC',
         storageState: 'playwright/.auth/admin.json',
         // Snapshots are captured under the default motion path.
         reducedMotion: 'no-preference',
