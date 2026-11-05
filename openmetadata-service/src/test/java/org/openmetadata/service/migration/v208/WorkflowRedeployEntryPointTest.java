@@ -43,10 +43,13 @@ class WorkflowRedeployEntryPointTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("migrationEntryPoints")
   void runDataMigrationRewritesThenRedeploysTheWorkflows(
-      String database, Function<MigrationFile, MigrationProcessImpl> createMigration)
+      String database,
+      Function<MigrationFile, MigrationProcessImpl> createMigration,
+      int indexStepRuns)
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
-    setField(migration, "handle", mock(Handle.class));
+    Handle handle = mock(Handle.class);
+    setField(migration, "handle", handle);
     setField(migration, "collectionDAO", mock(CollectionDAO.class));
     setField(migration, "migrationDAO", mock(MigrationDAO.class));
 
@@ -66,6 +69,8 @@ class WorkflowRedeployEntryPointTest {
       // `migrate` runs before Flowable starts, so the steps that deploy workflows start it.
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
       workflowRedeploy.verify(WorkflowRedeployMigration::redeploy);
+      grantUserNameIndexes.verify(
+          () -> McpGrantUserNameIndexes.addOnMySql(handle), times(indexStepRuns));
     }
   }
 
@@ -74,11 +79,13 @@ class WorkflowRedeployEntryPointTest {
         Arguments.of(
             "MySQL",
             (Function<MigrationFile, MigrationProcessImpl>)
-                org.openmetadata.service.migration.mysql.v208.Migration::new),
+                org.openmetadata.service.migration.mysql.v208.Migration::new,
+            1),
         Arguments.of(
             "PostgreSQL",
             (Function<MigrationFile, MigrationProcessImpl>)
-                org.openmetadata.service.migration.postgres.v208.Migration::new));
+                org.openmetadata.service.migration.postgres.v208.Migration::new,
+            0));
   }
 
   private static void setField(MigrationProcessImpl migration, String fieldName, Object value)
