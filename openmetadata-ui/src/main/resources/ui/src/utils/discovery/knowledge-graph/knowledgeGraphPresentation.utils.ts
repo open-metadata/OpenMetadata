@@ -50,6 +50,17 @@ export const isCoverageNode = (node: GraphNode) =>
   ].includes(node.type.toLowerCase());
 
 export const getGraphNodeLabel = (node: GraphNode) => {
+  // The RDF projection can return an empty label (seen on glossary terms),
+  // which left the ontology concept picker and the node card blank.
+  if (!node.label?.trim()) {
+    return (
+      node.name ||
+      (node.fullyQualifiedName
+        ? Fqn.split(node.fullyQualifiedName).slice(-1)[0]
+        : '') ||
+      node.id
+    );
+  }
   if (node.type.toLowerCase() !== 'column') {
     return node.label;
   }

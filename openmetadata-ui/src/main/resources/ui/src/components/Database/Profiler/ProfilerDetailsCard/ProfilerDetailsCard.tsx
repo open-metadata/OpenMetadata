@@ -30,7 +30,8 @@ import {
   DQTooltipContent,
 } from '../../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { ProfileExecutionSource } from '../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import {
   MetricChartType,
   ProfilerDetailsCardProps,
@@ -52,6 +53,8 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   isLoading,
   noDataPlaceholderText,
   chartType = 'line',
+  profiles,
+  isSharded,
 }: ProfilerDetailsCardProps) => {
   const { data, information } = chartCollection;
   const Chart = chartType === 'area' ? AreaChart : LineChart;
@@ -82,13 +85,20 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
     () => ({
       render: (items, row) => (
         <DQTooltipContent
+          footer={
+            <ProfileExecutionSource
+              isSharded={isSharded}
+              profiles={profiles}
+              timestamp={Number(row?.timestamp)}
+            />
+          }
           header={formatDateTimeLong(Number(row?.timestamp ?? 0))}
           rows={chartTooltipRows(items)}
           valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
         />
       ),
     }),
-    [tickFormatter]
+    [tickFormatter, profiles, isSharded]
   );
 
   if (isLoading) {
@@ -124,10 +134,12 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                 />
               </div>
             ) : (
-              <ErrorPlaceHolder
-                className="mt-0-important"
-                placeholderText={noDataPlaceholderText}
-              />
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoDataPlaceholder
+                  data-testid="no-data-placeholder"
+                  description={noDataPlaceholderText}
+                />
+              </div>
             )}
           </Box>
         </Card.Content>

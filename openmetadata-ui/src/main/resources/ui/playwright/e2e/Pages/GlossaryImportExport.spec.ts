@@ -168,6 +168,12 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
 
       try {
         glossary1CsvContent = await exportActiveGlossaryCsv(page, apiContext);
+        await page
+          .getByRole('button', { name: 'Clear completed', exact: true })
+          .click();
+        await expect(
+          page.getByRole('heading', { name: 'Background jobs', exact: true })
+        ).toBeHidden();
       } finally {
         await afterAction();
       }
@@ -292,6 +298,7 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
 
       await page
         .getByRole('dialog')
+        .filter({ has: page.getByTestId('bulk-import-details-modal') })
         .getByRole('button', { name: 'Close' })
         .click();
 

@@ -42,6 +42,9 @@ export interface UseInboxInfiniteList<T> {
   // The server holds more pages than are loaded.
   hasMore: boolean;
   total: number;
+  // The first page failed and nothing is cached to show in its place.
+  error: unknown;
+  refetch: () => void;
   // Attach to the scroll container and to a sentinel element at the end of the
   // list; crossing the sentinel triggers the next page fetch.
   scrollRef: RefObject<HTMLDivElement>;
@@ -92,13 +95,23 @@ export function useInboxInfiniteList<T>(
     placeholderData: keepPreviousData,
     staleTime: LIST_STALE_TIME,
   });
-  const { data, error, hasNextPage, isFetchingNextPage, fetchNextPage } = query;
+  const {
+    data,
+    error,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    refetch,
+  } = query;
 
+  // A first page that fails renders the caller's error state; only a failure
+  // behind rows already on screen (a later page, a refresh) needs the toast.
+  const hasData = Boolean(data);
   useEffect(() => {
-    if (error) {
+    if (error && hasData) {
       showErrorToast(error as AxiosError);
     }
-  }, [error]);
+  }, [error, hasData]);
 
   const items = useMemo(
     () => data?.pages.flatMap((page) => page.data) ?? [],
@@ -183,6 +196,8 @@ export function useInboxInfiniteList<T>(
     isLoadingMore: isFetchingNextPage,
     hasMore: Boolean(hasNextPage),
     total,
+    error: data ? null : error,
+    refetch,
     scrollRef,
     sentinelRef,
     setItems,

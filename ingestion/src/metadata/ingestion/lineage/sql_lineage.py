@@ -26,13 +26,20 @@ from collate_sqllineage.core.models import Column, DataFunction
 from collate_sqllineage.core.models import Table as LineageTable
 from networkx import DiGraph
 
+from metadata.entity_resolution.table_search import (
+    DEFAULT_SCHEMA_NAME,
+    database_service_type_cache,  # noqa: F401 - compatibility import of the shared cache
+    get_database_service_type,  # noqa: F401 - compatibility import
+    get_table_fqn_from_query_name,
+    search_cache,  # noqa: F401 - compatibility import of the shared cache
+    search_table_entities,
+)
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedure,
     StoredProcedureType,
 )
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -54,15 +61,12 @@ from metadata.ingestion.models.ometa_lineage import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
-from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.timeout import timeout
 
 logger = utils_logger()
-DEFAULT_SCHEMA_NAME = "<default>"
 CUTOFF_NODES = 20
 NODE_PROCESSING_TIMEOUT = 30  # seconds
 
@@ -98,269 +102,6 @@ def get_column_fqn(
             )
 
     return None
-
-
-search_cache = LRUCache(LRU_CACHE_SIZE)
-database_service_type_cache = LRUCache(LRU_CACHE_SIZE)
-alias_resolution_cache = LRUCache(LRU_CACHE_SIZE)
-
-# Connection field a connector sets to opt into alias resolution. Read by name
-# rather than by service type so any connector exposing alternate names (SQL
-# Server synonyms today, Oracle synonyms later) participates without this
-# service-agnostic module learning connector names.
-ALIAS_OPT_IN_FIELD = "includeSynonyms"
-
-
-def service_resolves_aliases(metadata: OpenMetadata, service_name: str) -> bool:
-    """
-    Whether this service's connection opts into resolving alternate table names.
-
-    Resolving an alias costs an extra exact-match search per unresolved name, so
-    connectors that cannot produce aliases must not pay for it. Absent field
-    means no.
-    """
-    if service_name in alias_resolution_cache:
-        return bool(alias_resolution_cache.get(service_name))
-
-    resolves = False
-    try:
-        service: DatabaseService | None = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
-        if service:
-            resolves = bool(getattr(service.connection.config, ALIAS_OPT_IN_FIELD, False))
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning("Could not read alias opt-in for service '%s', assuming disabled: %s", service_name, exc)
-
-    alias_resolution_cache.put(service_name, resolves)
-
-    return resolves
-
-
-def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str | None:
-    """
-    Get the database service type (e.g., 'mysql', 'postgres', 'clickhouse').
-
-    Args:
-        metadata: OMeta client
-        service_name: service name
-
-    Returns:
-        The database service type or None if not found.
-    """
-    if service_name in database_service_type_cache:
-        return database_service_type_cache.get(service_name)
-
-    try:
-        # try ES search first
-        es_result_entities = metadata.es_search_from_fqn(
-            entity_type=DatabaseService,
-            fqn_search_string=service_name,
-        )
-
-        service: DatabaseService | None = None
-        if es_result_entities:
-            service = es_result_entities[0] if es_result_entities else None
-
-        # try API search if ES is empty
-        if not service:
-            service = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
-
-        if service:
-            service_type = service.connection.config.type.value.lower()
-            logger.debug(f"Service (name={service.name.root}) is of type '{service_type}'")
-
-            # cache the result
-            database_service_type_cache.put(service_name, service_type)
-            return service_type
-
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning(f"Could not determine service type for service '{service_name}': {exc}")
-
-    return None
-
-
-def normalize_table_params_by_service(
-    metadata: OpenMetadata,
-    service_name: str,
-    database: str | None,
-    database_schema: str | None,
-) -> tuple[str | None, str | None]:
-    """
-    Normalize database and schema parameters based on service type.
-
-    Certain database types require parameter normalization:
-    - ClickHouse: Uses database_schema as schema, sets database to None
-
-    Args:
-        metadata: OMeta client
-        service_name: service name
-        database: database name
-        database_schema: schema name
-
-    Returns:
-        Tuple of (normalized_database, normalized_schema)
-    """
-    conn_type = get_database_service_type(metadata, service_name)
-
-    # ClickHouse normalization
-    if conn_type == "clickhouse" and database:
-        return None, database_schema
-
-    return database, database_schema
-
-
-def search_table_entities(
-    metadata: OpenMetadata,
-    service_names: str | list[str],
-    database: str | None,
-    database_schema: str | None,
-    table: str,
-) -> list[Table] | None:
-    """
-    Method to get table entity from database, database_schema & table name.
-    Now supports searching across multiple services (cross-database lineage).
-
-    Args:
-        metadata: OMeta client
-        service_names: service name or list of service names (current + cross db)
-        database: database name
-        database_schema: schema name
-        table: table name
-
-    Returns:
-        A list of Table entities from the first service where found, otherwise None
-    """
-    if not table:
-        logger.debug(
-            f"Skipping table entity search with an empty table name for database [{database}] and schema [{database_schema}]"
-        )
-        return None
-
-    if isinstance(service_names, str):
-        service_names = [service_names]
-
-    for service_name in service_names:
-        # normalize database and schema parameters based on service type
-        normalized_db, normalized_schema = normalize_table_params_by_service(
-            metadata, service_name, database, database_schema
-        )
-
-        search_tuple = (service_name, normalized_db, normalized_schema, table)
-        if search_tuple in search_cache:
-            result = search_cache.get(search_tuple)
-            if result:
-                return result
-
-        try:
-            table_entities: list[Table] | None = []
-
-            # search on ES first
-            fqn_search_string = build_es_fqn_search_string(normalized_db, normalized_schema, service_name, table)
-            es_result_entities = metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=fqn_search_string,
-            )
-            if es_result_entities:
-                table_entities = es_result_entities
-            else:
-                # build FQNs and search with the API in case ES response is empty
-                table_fqns = fqn.build(
-                    metadata,
-                    entity_type=Table,
-                    service_name=service_name,
-                    database_name=normalized_db,
-                    schema_name=normalized_schema,
-                    table_name=table,
-                    fetch_multiple_entities=True,
-                    skip_es_search=True,
-                )
-                for table_fqn in table_fqns or []:
-                    table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
-                    if table_entity:
-                        table_entities.append(table_entity)
-
-            # added the search tuple to the cache
-            search_cache.put(search_tuple, table_entities)
-            if table_entities:
-                return table_entities
-
-            # An alias name resolves to the canonical table it points at.
-            # Gated per service so connectors that cannot produce aliases never
-            # pay for the extra lookup.
-            if not service_resolves_aliases(metadata, service_name):
-                continue
-
-            alias_fqn = fqn.build(
-                metadata,
-                entity_type=Table,
-                service_name=service_name,
-                database_name=normalized_db,
-                schema_name=normalized_schema,
-                table_name=table,
-                skip_es_search=True,
-            )
-            if alias_fqn:
-                alias_entities = metadata.es_search_from_alias(
-                    entity_type=Table,
-                    alias_fqn=alias_fqn,
-                )
-                if alias_entities:
-                    # LRUCache.put's `key` is typed as `str`, but this cache is keyed by the
-                    # same (service, db, schema, table) tuple as the `search_cache.put` call
-                    # above (line ~251, pre-existing and baselined) -- a real annotation gap,
-                    # not a bug: dict keys accept any hashable value.
-                    search_cache.put(search_tuple, alias_entities)  # pyright: ignore[reportArgumentType]
-                    return alias_entities
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error searching for table entities for service [{service_name}]: {exc}")
-
-    return None
-
-
-def get_table_fqn_from_query_name(
-    table_name: str,
-) -> tuple[str | None, str | None, str | None]:
-    """
-    Method to extract database, schema and table name
-    from raw table name used in query
-
-    The split is quote-aware: connectors are free to put a `.` inside a single name
-    component (Dremio flattens nested folder paths into `folder.subfolder`), in which
-    case that component reaches us quoted. Splitting such a name on every `.` would
-    tear the quoted identifier in half and yield components with unbalanced quotes,
-    which `fqn.quote_name` then rejects with `Invalid name "folder`.
-    """
-
-    split_table = fqn.split_raw_name(table_name)
-    empty_list: list[Any] = [None]  # Otherwise, there's a typing error in the concat
-
-    if len(split_table) > 3:
-        # In case of bigquery, it is possible that tables within information schema when
-        # referred with their fully qualified name may look like this
-        # `project-id.dataset-id.information_schema.table-name` in such cases there
-        # will be 4 values to unpack vs the expected 3 values, hence in such case we
-        # just pick the table name and keep the database and schema name as none
-
-        table = split_table[-1]
-        database_query, schema_query = None, None
-    else:
-        database_query, schema_query, table = (empty_list * (3 - len(split_table))) + split_table
-
-        logger.debug(
-            f"[UsageSink] Extracted components before cleanup -> "
-            f"database: {database_query}, schema: {schema_query}, table: {table}"
-        )
-
-    if schema_query == DEFAULT_SCHEMA_NAME:
-        schema_query = None
-
-    if database_query == DEFAULT_SCHEMA_NAME:
-        database_query = None
-
-    return database_query, schema_query, table
 
 
 def __process_intermediate_column_lineage(
@@ -667,8 +408,12 @@ def get_column_lineage(
     Returns:
         List[ColumnLineage]
     """
+    if "*" in to_table_raw_name:
+        return []
     column_lineage = []
     pairs = column_lineage_map.get(to_table_raw_name, {}).get(from_table_raw_name, [])
+    if "*" in from_table_raw_name:
+        pairs = [(to_col, from_col) for to_col, from_col in pairs if "*" not in to_col and "*" not in from_col]
     if pairs:
         # COUNT(*) yields ("alias", "*"), which must not expand source columns.
         if ("*", "*") in pairs:

@@ -29,7 +29,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     icon: Edit01,
-    color: 'secondary',
+    color: 'tertiary',
     size: 'sm',
     tooltip: 'Edit',
   },
@@ -94,6 +94,43 @@ export const WithTooltip: StoryObj = {
       <ButtonUtility icon={HelpCircle} tooltip="Help" />
       <ButtonUtility icon={InfoCircle} tooltip="Info" />
       <ButtonUtility icon={Trash01} tooltip="Delete" />
+    </div>
+  ),
+};
+
+// A toggle, off and on: `isSelected` paints the on state in brand and sets
+// `aria-pressed`.
+export const Selected: StoryObj = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <ButtonUtility
+        color="tertiary"
+        icon={Edit01}
+        isSelected={false}
+        size="lg"
+        tooltip="Tertiary, off"
+      />
+      <ButtonUtility
+        isSelected
+        color="tertiary"
+        icon={Edit01}
+        size="lg"
+        tooltip="Tertiary, on"
+      />
+      <ButtonUtility
+        color="secondary"
+        icon={Edit01}
+        isSelected={false}
+        size="lg"
+        tooltip="Secondary, off"
+      />
+      <ButtonUtility
+        isSelected
+        color="secondary"
+        icon={Edit01}
+        size="lg"
+        tooltip="Secondary, on"
+      />
     </div>
   ),
 };

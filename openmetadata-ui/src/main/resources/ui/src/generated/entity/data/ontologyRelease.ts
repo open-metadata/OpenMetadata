@@ -21,6 +21,11 @@ export interface OntologyRelease {
     baseReleaseId?:     string;
     changeDescription?: ChangeDescription;
     /**
+     * Member change counts against baseReleaseId, assigned by the server at capture. Absent on
+     * releases captured before change summaries existed.
+     */
+    changeSummary?: OntologyReleaseChangeSummary;
+    /**
      * SHA-256 of the sealed manifest, including ordered member identities and payload digests.
      */
     contentDigest: string;
@@ -49,6 +54,11 @@ export interface OntologyRelease {
     owners?:      EntityReference[];
     provider?:    ProviderType;
     /**
+     * Immutable publication notes preserved exactly as captured, independently of the semantic
+     * content digest.
+     */
+    releaseNotes?: string;
+    /**
      * Monotonic release number allocated under the owning ontology state lock.
      */
     releaseRevision: number;
@@ -61,9 +71,14 @@ export interface OntologyRelease {
      * Current approval task, assigned by the existing workflow infrastructure. Clients cannot
      * set this field.
      */
-    reviewTask?:           string;
-    sealedAt:              number;
-    sealedBy:              string;
+    reviewTask?: string;
+    sealedAt:    number;
+    sealedBy:    string;
+    /**
+     * Immutable semantic version allocated by the server. Absent on legacy releases;
+     * independent of entity version, release revision and version IRI.
+     */
+    semanticVersion?:      string;
     sourceWorkingRevision: number;
     /**
      * Total UTF-8 size of canonical member payloads.
@@ -136,6 +151,26 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+/**
+ * Member change counts against baseReleaseId, assigned by the server at capture. Absent on
+ * releases captured before change summaries existed.
+ *
+ * Member change counts of a release against the release that was active when it was
+ * captured. The counts partition the rows of GET /v1/ontologyReleases/{id}/diff with its
+ * default base.
+ */
+export interface OntologyReleaseChangeSummary {
+    added:   number;
+    changed: number;
+    /**
+     * Existing concepts or properties newly marked deprecated. Disjoint from added, changed and
+     * removed. New captures always set this count; its absence on older summaries means the
+     * total is unavailable.
+     */
+    deprecated?: number;
+    removed:     number;
 }
 
 /**

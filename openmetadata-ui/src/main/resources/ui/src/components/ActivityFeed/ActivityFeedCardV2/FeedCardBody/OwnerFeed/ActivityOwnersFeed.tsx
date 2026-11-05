@@ -100,28 +100,29 @@ function ActivityOwnersFeed({
   const getOwnerItems = useCallback(
     (ownerList: EntityReference[]) => {
       return ownerList.length <= maxVisibleOwners ? (
-        <Box align="center" className="tw:min-w-0" wrap="wrap">
+        <Box align="center" className="tw:min-w-0 tw:gap-y-2" wrap="wrap">
           {ownerList.map((owner: EntityReference) =>
             owner.type === EntityType.USER ? (
               <UserPopOverCard key={owner.id} userName={owner.name ?? ''}>
                 <div
-                  className={`owner-chip d-flex items-center ${
-                    showThread && 'bg-white'
-                  }`}
+                  className={classNames(
+                    'owner-chip d-flex items-center tw:min-w-0 tw:max-w-full',
+                    { 'bg-white': showThread }
+                  )}
                   key={owner.id}>
                   <ProfilePicture
                     displayName={owner.displayName}
                     name={owner.name ?? ''}
                     width="24"
                   />
-                  <Typography className="owner-chip-text">
+                  <Typography ellipsis className="owner-chip-text">
                     {owner.displayName}
                   </Typography>
                 </div>
               </UserPopOverCard>
             ) : (
               <div
-                className={classNames('owner-chip', {
+                className={classNames('owner-chip tw:min-w-0 tw:max-w-full', {
                   'bg-white': showThread,
                 })}
                 key={owner.id}>
@@ -160,7 +161,8 @@ function ActivityOwnersFeed({
   return (
     <Box direction="col" gap={2}>
       {!isEmpty(updatedOwner) && (
-        <Box align="center" wrap="wrap">
+        // gap-y: when the chips wrap under the label, keep them off it.
+        <Box align="center" className="tw:gap-y-2" wrap="wrap">
           <Box align="center" className="tw:min-w-0" wrap="wrap">
             <AddIcon className="text-success-hover" height={16} width={16} />
             <Typography className="owners-label">
@@ -172,7 +174,7 @@ function ActivityOwnersFeed({
         </Box>
       )}
       {!isEmpty(previousOwner) && (
-        <Box align="center" wrap="wrap">
+        <Box align="center" className="tw:gap-y-2" wrap="wrap">
           <div className="tw:max-w-full">
             <Box align="center" className="tw:min-w-0" wrap="wrap">
               <DeletedIcon className="text-error" height={14} width={14} />

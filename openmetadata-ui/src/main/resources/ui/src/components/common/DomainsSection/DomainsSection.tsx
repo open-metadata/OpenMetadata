@@ -16,6 +16,7 @@ import { compare } from 'fast-json-patch';
 import { get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEntityRules } from '../../../hooks/useEntityRules';
@@ -232,11 +233,11 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           {selectableList}
         </div>
         <div className="domains-content">
-          <span className="no-data-placeholder">
+          <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
             {t('label.no-entity-assigned', {
               entity: t('label.domain-plural'),
             })}
-          </span>
+          </Typography>
         </div>
       </div>
     );

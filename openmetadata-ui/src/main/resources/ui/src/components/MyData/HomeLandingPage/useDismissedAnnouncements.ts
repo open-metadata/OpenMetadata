@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { useCallback, useState } from 'react';
+import { isTourMockActive } from '../../../rest/product-tour/productTourMock';
 
 /**
  * Each Home surface keeps its own list, because each prunes against what *it*
@@ -120,6 +121,11 @@ export const useDismissedAnnouncements = (
 
   const prune = useCallback(
     (liveIds: string[]) => {
+      // A product tour shows recorded announcements, not the live ones, so
+      // pruning against them would forget the user's real dismissals.
+      if (isTourMockActive()) {
+        return;
+      }
       const live = new Set(liveIds);
       setState((prev) => {
         const ids = new Set([...prev.ids].filter((id) => live.has(id)));

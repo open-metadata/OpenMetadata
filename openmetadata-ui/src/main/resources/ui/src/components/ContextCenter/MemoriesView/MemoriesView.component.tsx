@@ -10,25 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   Badge,
   Box,
   ButtonUtility,
   Dot,
   Dropdown,
-  EmptyPlaceholder,
   Skeleton,
-  Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ThumbsDown, ThumbsUp } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  Edit01,
+  ThumbsDown,
+  ThumbsUp,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
 import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
@@ -40,10 +41,13 @@ import {
   ContextMemoryStatus,
   EntityReference,
 } from '../../../generated/entity/context/contextMemory';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getMemoryCitations } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/RichTextStringUtils';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   MemoriesViewProps,
@@ -57,10 +61,9 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
   return (
     <Dropdown.Root>
       <ButtonUtility
-        color="tertiary"
         data-testid="manage-button"
-        icon={<DotsVerticalIcon height={20} width={20} />}
-        size="sm"
+        icon={DotsVerticalIcon}
+        size="lg"
         tooltip={t('label.manage-entity', { entity: t('label.memory') })}
       />
       <Dropdown.Popover className="tw:w-36">
@@ -72,11 +75,10 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
           }}>
           <Dropdown.Item data-testid="delete-btn" id="delete">
             <Box align="center" gap={2}>
-              <TrashIcon
+              <Trash01
                 aria-hidden="true"
                 className="tw:shrink-0 tw:text-error-primary"
-                height={20}
-                width={20}
+                size={20}
               />
               <Typography
                 ellipsis
@@ -279,20 +281,16 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
   return (
     <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
       <CopyLinkButton url={memoryUrl}>
-        <CopyIcon aria-hidden="true" height={20} width={20} />
+        <Copy01 data-icon aria-hidden="true" />
       </CopyLinkButton>
       {canActOnMemory && canEdit && onEditMemory && (
-        <Tooltip title={t('label.edit')}>
-          <TooltipTrigger>
-            <ButtonUtility
-              color="tertiary"
-              data-testid="edit-memory-btn"
-              icon={<EditIcon height={20} width={20} />}
-              size="sm"
-              onClick={() => onEditMemory(memory)}
-            />
-          </TooltipTrigger>
-        </Tooltip>
+        <ButtonUtility
+          data-testid="edit-memory-btn"
+          icon={Edit01}
+          size="lg"
+          tooltip={t('label.edit')}
+          onClick={() => onEditMemory(memory)}
+        />
       )}
       {canActOnMemory && canDelete && (
         <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
@@ -378,6 +376,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
   onEditMemory,
   onViewMemory,
 }) => {
+  const authorDisplayName = useApplicationStore(
+    (state) => state.userProfilePics[memory.updatedBy ?? '']?.displayName
+  );
   const isOwner =
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
   const canActOnMemory = isOwner || Boolean(isAdminUser);
@@ -442,7 +443,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
           gap={1}>
           <MemoryRowHeader
             updatedAt={memory.updatedAt}
-            updatedBy={memory.updatedBy}
+            updatedBy={authorDisplayName || memory.updatedBy}
           />
 
           <Box align="center" gap={2} wrap="wrap">
@@ -511,9 +512,24 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   }
 
   if (data.length === 0 && (isSearching || isFiltered)) {
+    const emptyState = isSearching
+      ? {
+          Component: NoSearchResultsPlaceholder,
+          description: t('message.check-spelling-or-try-different-term'),
+          icon: <NoSearchResultIcon />,
+          title: t('label.no-matching-results'),
+        }
+      : {
+          Component: NoFilteredResultsPlaceholder,
+          description: t('message.no-results-for-filters-description'),
+          icon: <NoFilterResultsIcon />,
+          title: t('label.no-results-for-filters'),
+        };
+    const EmptyStatePlaceholder = emptyState.Component;
+
     return (
       <div className="tw:relative tw:min-h-[320px] tw:py-12">
-        <EmptyPlaceholder
+        <EmptyStatePlaceholder
           actions={
             !isSearching && onClearFilters
               ? [
@@ -526,24 +542,9 @@ const MemoriesView: FC<MemoriesViewProps> = ({
                 ]
               : undefined
           }
-          description={
-            isSearching
-              ? t('message.check-spelling-or-try-different-term')
-              : t('message.no-results-for-filters-description')
-          }
-          icon={
-            isSearching ? (
-              <NoSearchResultIcon className="tw:text-quaternary" />
-            ) : (
-              <NoFilterResultsIcon className="tw:text-quaternary" />
-            )
-          }
-          title={
-            isSearching
-              ? t('label.no-matching-results')
-              : t('label.no-results-for-filters')
-          }
-          variant="blank"
+          description={emptyState.description}
+          icon={emptyState.icon}
+          title={emptyState.title}
         />
       </div>
     );

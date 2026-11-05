@@ -10,177 +10,1107 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   Alert,
   Box,
   Button,
+  ButtonUtility,
+  Card,
+  Checkbox,
+  Dialog,
+  Input,
+  Modal,
+  ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { lazy, Suspense, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Ontology } from '../../../../generated/entity/data/ontology';
-import { listOntologyConcepts } from '../../../../rest/ontologyAPI';
-import { buildNativeOntologyGraph } from '../../../../utils/governance/ontology/OntologyGraph.utils';
-import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
-import { LayoutType } from '../../../OntologyExplorer/OntologyExplorer.constants';
-import { OntologyGraphHandle } from '../../../OntologyExplorer/OntologyExplorer.interface';
+import { Search, XClose } from '@openmetadata/ui-core-components/icons';
+import { useQuery } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import {
-  buildOntologyTreeGroups,
+  lazy,
+  Suspense,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
+import { OntologyDraftContext } from '../../../../context/OntologyDraft/OntologyDraftContext';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
+import { Ontology } from '../../../../generated/entity/data/ontology';
+import { RelationshipType } from '../../../../generated/entity/data/relationshipType';
+import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
+import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
+import { useBulkEntityPermissions } from '../../../../hooks/useEntityPermissions/useBulkEntityPermissions';
+import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
+import {
+  createOntologyAxiom,
+  createOntologyProperty,
+  createRelationshipType,
+  listRelationshipTypes,
+  patchOntologyProperty,
+  patchRelationshipType,
+} from '../../../../rest/ontologyAPI';
+import {
+  buildInverseBackLink,
+  buildNativeRelationCatalog,
+  buildNativeRelationGroups,
+  findNativeRelationTypeByLabel,
+  MAX_RELATIONSHIP_TYPE_PAGES,
+  NativeRelationStep,
+  NativeRelationType,
+  planNativeProperties,
+  planNativeRelation,
+  planRelationshipType,
+  RelationshipTypeDraft,
+  RelationshipTypePlan,
+  toNativeRelationType,
+} from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
+import { listAllPages } from '../../../../utils/governance/ontology/OntologyPaging.utils';
+import {
+  buildDataPropertyRequest,
+  buildOntologyStudioGraph,
+  DataPropertyInput,
+} from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
+import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
+import {
+  LayoutType,
+  RELATION_COLORS,
+} from '../../../OntologyExplorer/OntologyExplorer.constants';
+import { OntologyGraphHandle } from '../../../OntologyExplorer/OntologyExplorer.interface';
+import OntologyHealthPanel from '../../../OntologyExplorer/OntologyHealthPanel';
+import {
+  buildNativeTreeIndex,
   buildOntologyTreeMetrics,
+  getOntologyHealthSummary,
 } from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
+import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/RelationshipTypePicker.constants';
+import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
+import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
+import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
+import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
+import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
+import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
+import OntologyGraphModeTabs from './OntologyGraphModeTabs';
+import { useOntologyGraphSearchSlot } from './OntologyGraphSearchSlot.context';
+import {
+  AI_GRAPH_BACKDROP_CLASS,
+  AI_GRAPH_CONTROLS_CLASS,
+} from './OntologyGraphView.constants';
 
 const OntologyGraphG6 = lazy(
   () => import('../../../OntologyExplorer/OntologyGraphG6')
 );
-const GRAPH_LIMIT = 10000;
 const FILTERS = {
-  viewMode: 'hierarchy' as const,
   glossaryIds: [],
   relationTypes: [],
   searchQuery: '',
-  showIsolatedNodes: true,
   showCrossGlossaryOnly: false,
+  showIsolatedNodes: true,
+  viewMode: 'hierarchy' as const,
 };
 const SETTINGS = { layout: LayoutType.Hierarchical, showEdgeLabels: true };
+const GRAPH_BACKDROP_CLASS =
+  'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-border-color-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
+const RELATIONSHIP_TYPES_QUERY_KEY = 'relationship-types';
+const NO_RELATIONSHIP_TYPES: RelationshipType[] = [];
 
-const OntologyGraphView = ({ ontology }: { ontology: Ontology }) => {
+const missingRelationType = (id: string): never => {
+  throw new Error(`Unknown relation type ${id}`);
+};
+
+const writeStep = (step: NativeRelationStep) => {
+  switch (step.kind) {
+    case 'property':
+      return createOntologyProperty(step.request);
+    case 'link':
+      return patchOntologyProperty(step.id, step.patch);
+    case 'axiom':
+      return createOntologyAxiom(step.request);
+  }
+};
+
+const loadRegistry = () =>
+  listAllPages(
+    (after) => listRelationshipTypes({ limit: 1000, after }),
+    MAX_RELATIONSHIP_TYPE_PAGES
+  );
+
+const registerInverse = async ({
+  inverse,
+  reusedInverse,
+}: RelationshipTypePlan) =>
+  reusedInverse ?? (inverse ? createRelationshipType(inverse) : undefined);
+
+/**
+ * Links the unlinked inverse with this id back to the type that names it, whatever a retry is
+ * called, so a relabelled retry never gives it a second primary. The registry comes back with the
+ * linked inverse in place, so a retry drawn under the inverse's label is planned as a pair. While
+ * nothing names the inverse, it is returned for the draft to reuse.
+ */
+const finishUnlinkedPair = async (
+  registry: readonly RelationshipType[],
+  id: string | undefined
+): Promise<{
+  registry: readonly RelationshipType[];
+  unlinked?: RelationshipType;
+}> => {
+  const unlinked = registry.find((type) => type.id === id && !type.inverse);
+  if (!unlinked) {
+    return { registry };
+  }
+  const primary = registry.find((type) => type.inverse?.id === unlinked.id);
+  if (!primary) {
+    return { registry, unlinked };
+  }
+  const linked = await patchRelationshipType(
+    unlinked.id,
+    buildInverseBackLink(primary)
+  );
+
+  return {
+    registry: registry.map((type) => (type === unlinked ? linked : type)),
+  };
+};
+
+interface RelationshipTypeDialogProps {
+  readonly label: string;
+  /** The inverse's back link is a patch on the inverse type, which the registry authorizes as EditAll. */
+  readonly canLinkInverse: boolean;
+  readonly onCancel: () => void;
+  readonly onSubmit: (draft: RelationshipTypeDraft) => void;
+}
+
+const RelationshipTypeDialog = ({
+  label,
+  canLinkInverse,
+  onCancel,
+  onSubmit,
+}: RelationshipTypeDialogProps) => {
   const { t } = useTranslation();
+  const [name, setName] = useState(label);
+  const [inverseName, setInverseName] = useState('');
+  const [symmetric, setSymmetric] = useState(false);
+  const [description, setDescription] = useState('');
+
+  return (
+    <ModalOverlay
+      isDismissable
+      isOpen
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onCancel();
+        }
+      }}>
+      <Modal>
+        <Dialog
+          aria-labelledby="relationship-type-dialog-title"
+          width={480}
+          onClose={onCancel}>
+          <Box
+            className="tw:p-5"
+            data-testid="relationship-type-dialog"
+            direction="col"
+            gap={4}>
+            <Typography
+              id="relationship-type-dialog-title"
+              role="heading"
+              size="text-md"
+              weight="bold">
+              {t('label.add-entity', { entity: t('label.relationship-type') })}
+            </Typography>
+            <Input
+              inputDataTestId="relationship-type-name"
+              label={t('label.name')}
+              size="sm"
+              value={name}
+              onChange={setName}
+            />
+            <Checkbox
+              data-testid="relationship-type-symmetric"
+              isSelected={symmetric}
+              label={t('label.symmetric')}
+              onChange={setSymmetric}
+            />
+            {symmetric ? (
+              <Typography color="secondary" size="text-xs">
+                {t('message.symmetric-relationship-type')}
+              </Typography>
+            ) : (
+              <Input
+                hint={
+                  canLinkInverse
+                    ? undefined
+                    : t('message.no-permission-for-action')
+                }
+                inputDataTestId="relationship-type-inverse"
+                isDisabled={!canLinkInverse}
+                label={t('label.inverse-name')}
+                size="sm"
+                value={inverseName}
+                onChange={setInverseName}
+              />
+            )}
+            <Input
+              inputDataTestId="relationship-type-description"
+              label={t('label.description')}
+              size="sm"
+              value={description}
+              onChange={setDescription}
+            />
+            <Box gap={2} justify="end">
+              <Button
+                color="secondary"
+                data-testid="relationship-type-cancel"
+                size="sm"
+                onPress={onCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                data-testid="relationship-type-submit"
+                isDisabled={name.trim().length === 0}
+                size="sm"
+                onPress={() =>
+                  onSubmit({
+                    description,
+                    inverseLabel: inverseName,
+                    label: name,
+                    symmetric,
+                  })
+                }>
+                {t('label.create')}
+              </Button>
+            </Box>
+          </Box>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+};
+
+interface OntologyGraphViewProps {
+  readonly ontology: Ontology;
+  readonly surface: 'graph' | 'tree';
+  readonly onRequestGraphSurface: () => void;
+  readonly createConceptRequestKey?: number;
+  readonly onRequestCreateConcept?: () => void;
+  readonly onAuthoringLockChange?: (locked: boolean) => void;
+  readonly isEditing?: boolean;
+  readonly selectedConceptId?: string;
+  readonly onSelectedConceptChange?: (id?: string) => void;
+  readonly onRequestEdit?: () => void;
+  readonly onStatsChange?: (stats: OntologyModelStats) => void;
+  readonly onWorkingChange?: () => void;
+}
+
+export interface OntologyModelStats {
+  readonly conceptCount: number;
+  readonly isolatedCount: number;
+  readonly ontologyId: string;
+  readonly relationCount: number;
+}
+
+interface ConceptEditorRequest {
+  readonly conceptId?: string;
+}
+
+const OntologyGraphView = ({
+  ontology,
+  surface,
+  onRequestGraphSurface,
+  createConceptRequestKey = 0,
+  onRequestCreateConcept,
+  onAuthoringLockChange,
+  isEditing = false,
+  selectedConceptId,
+  onSelectedConceptChange,
+  onRequestEdit,
+  onStatsChange,
+  onWorkingChange,
+}: OntologyGraphViewProps) => {
+  const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const searchSlot = useOntologyGraphSearchSlot();
   const graphRef = useRef<OntologyGraphHandle>(null);
-  const [surface, setSurface] = useState<'graph' | 'tree'>('graph');
-  const [selectedId, setSelectedId] = useState<string>();
-  const query = useInfiniteQuery({
-    queryKey: ['ontology-studio-concepts', ontology.id],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam, signal }) =>
-      listOntologyConcepts(
-        {
-          ontology: ontology.fullyQualifiedName,
-          fields: 'superClasses',
-          limit: 500,
-          after: pageParam,
-        },
-        signal
-      ),
-    getNextPageParam: (page) => page.paging.after,
-    retry: false,
-    gcTime: 0,
-  });
-  const concepts = useMemo(
-    () => query.data?.pages.flatMap((page) => page.data) ?? [],
-    [query.data]
+  const [typeDraft, setTypeDraft] = useState<{
+    label: string;
+    resolve: (draft?: RelationshipTypeDraft) => void;
+  }>();
+  // The inverse this view registered and has not linked back yet. A retry reuses or links it, since
+  // a delete needs a right the dialog never checks and a soft delete leaves its name taken.
+  const unlinkedInverseId = useRef<string>();
+  const handledCreateConceptRequest = useRef(createConceptRequestKey);
+  const [nodePositions, setNodePositions] =
+    useState<Record<string, { x: number; y: number }>>();
+  const creationPositions = useRef<Record<string, { x: number; y: number }>>();
+  const { canEditAll: canEditOntology } = useEntityPermissions(
+    ResourceEntity.ONTOLOGY,
+    { id: ontology.id },
+    { deleted: ontology.deleted }
   );
-  const graph = useMemo(
-    () => buildNativeOntologyGraph(ontology, concepts),
-    [ontology, concepts]
+
+  const [search, setSearch] = useState('');
+  const [graphMode, setGraphMode] = useState<'model' | 'data'>('model');
+  const [hasOpenedData, setHasOpenedData] = useState(false);
+  const [dataRevision, setDataRevision] = useState(0);
+  const noteWorkingChange = useCallback(() => {
+    setDataRevision((revision) => revision + 1);
+    onWorkingChange?.();
+  }, [onWorkingChange]);
+  const changeGraphMode = useCallback((mode: 'model' | 'data') => {
+    setGraphMode(mode);
+    if (mode === 'data') {
+      setHasOpenedData(true);
+    }
+  }, []);
+  const [localSelectedId, setLocalSelectedId] = useState<string>();
+  const selectedId = onSelectedConceptChange
+    ? selectedConceptId
+    : localSelectedId;
+  const [conceptEditor, setConceptEditor] = useState<ConceptEditorRequest>();
+  const guard = useOntologyDraftGuard();
+  const { runConfirmed } = useContext(OntologyDraftContext);
+  const setSelectedId = useCallback(
+    (id?: string) =>
+      guard(() => {
+        setConceptEditor(undefined);
+        (onSelectedConceptChange ?? setLocalSelectedId)(id);
+      }),
+    [guard, onSelectedConceptChange]
   );
-  const groups = useMemo(
-    () => buildOntologyTreeGroups(graph, FILTERS, [], []),
+  const { graph, isError, isFetching, isLoading, model, refetch, relations } =
+    useOntologyStudioModel(ontology);
+  const treeIndex = useMemo(
+    () => buildNativeTreeIndex(graph, { ...FILTERS, searchQuery: search }, []),
+    [graph, search]
+  );
+  const metrics = useMemo(
+    () => buildOntologyTreeMetrics(graph, { ...FILTERS, searchQuery: search }),
+    [graph, search]
+  );
+  const health = useMemo(
+    () => getOntologyHealthSummary(graph, FILTERS),
     [graph]
   );
-  const selected = concepts.find((concept) => concept.id === selectedId);
-  if (query.isError) {
+  const searchHighlight = useMemo(
+    () =>
+      graph
+        ? computeGraphSearchHighlight(graph.nodes, graph.edges, search, [], [])
+        : null,
+    [graph, search]
+  );
+  const relationColors = useMemo(
+    () =>
+      graph
+        ? Object.fromEntries(
+            graph.edges.map((edge) => [
+              edge.relationType,
+              RELATION_COLORS[edge.relationType] ?? RELATION_COLORS.isA,
+            ])
+          )
+        : {},
+    [graph]
+  );
+  const { permissions } = usePermissionProvider();
+  const flagsOf = (resource: ResourceEntity) =>
+    getDerivedPermissionFlags(
+      permissions[resource] ?? DEFAULT_ENTITY_PERMISSION
+    );
+  const canCreateDefinition = (resource: ResourceEntity) =>
+    isEditing && !ontology.deleted && flagsOf(resource).canCreate;
+  const canCreateConcept = canCreateDefinition(ResourceEntity.ONTOLOGY_CONCEPT);
+  const canCreateChangeSet = canCreateDefinition(
+    ResourceEntity.ONTOLOGY_CHANGE_SET
+  );
+  const canCreateNewClass = [
+    canCreateConcept,
+    canCreateChangeSet,
+    canEditOntology,
+  ].every(Boolean);
+  const canCreateProperty = canCreateDefinition(
+    ResourceEntity.ONTOLOGY_PROPERTY
+  );
+  const canCreateAxiom = canCreateDefinition(ResourceEntity.ONTOLOGY_AXIOM);
+  const canCreateRelationType = [
+    ResourceEntity.RELATIONSHIP_TYPE,
+    ResourceEntity.ONTOLOGY_PROPERTY,
+    ResourceEntity.ONTOLOGY_AXIOM,
+  ].every(canCreateDefinition);
+  const canLinkInverse = flagsOf(ResourceEntity.RELATIONSHIP_TYPE).canEditAll;
+  const conceptPermissionId = conceptEditor?.conceptId ?? selectedId;
+  const { canEditAll: canEditConcept } = useEntityPermissions(
+    ResourceEntity.ONTOLOGY_CONCEPT,
+    { id: conceptPermissionId ?? '' },
+    {
+      enabled: Boolean(conceptPermissionId),
+      deleted: model?.concepts.find(
+        (concept) => concept.id === conceptPermissionId
+      )?.deleted,
+    }
+  );
+  const selected = model?.concepts.find((concept) => concept.id === selectedId);
+  const {
+    data: relationTypes = NO_RELATIONSHIP_TYPES,
+    error: registryError,
+    refetch: refetchRegistry,
+  } = useQuery({
+    queryKey: [RELATIONSHIP_TYPES_QUERY_KEY],
+    enabled: isEditing,
+    gcTime: 30_000,
+    staleTime: 30_000,
+    retry: false,
+    queryFn: loadRegistry,
+  });
+  const catalogOf = useCallback(
+    (types: readonly RelationshipType[]) =>
+      model
+        ? buildNativeRelationCatalog(model, types, {
+            subClassOf: t('label.is-a'),
+          })
+        : [],
+    [model, t]
+  );
+  const catalog = useMemo(
+    () => catalogOf(relationTypes),
+    [catalogOf, relationTypes]
+  );
+  // Every relation ends in an axiom, so nothing is planned without the right to create one.
+  // Label lookups keep the whole catalog, so a type hidden here is reused, never registered twice.
+  const propertyWrites = useMemo(
+    () => (model && canCreateAxiom ? planNativeProperties(model, catalog) : []),
+    [canCreateAxiom, catalog, model]
+  );
+  const relinkedPropertyFqns = useMemo(
+    () =>
+      propertyWrites.flatMap(({ steps }) =>
+        steps.flatMap((step) => (step.kind === 'link' ? [step.fqn] : []))
+      ),
+    [propertyWrites]
+  );
+  // Edit rights are read per property, because a property inherits the ontology's owners and a
+  // resource-level read counts an owner rule as denied.
+  const { flagsByFqn: propertyFlags } = useBulkEntityPermissions(
+    ResourceEntity.ONTOLOGY_PROPERTY,
+    relinkedPropertyFqns
+  );
+  const canWrite = useCallback(
+    (step: NativeRelationStep): boolean => {
+      switch (step.kind) {
+        case 'property':
+          return canCreateProperty;
+        case 'link':
+          return Boolean(propertyFlags[step.fqn]?.canEditAll);
+        case 'axiom':
+          return canCreateAxiom;
+      }
+    },
+    [canCreateAxiom, canCreateProperty, propertyFlags]
+  );
+  const relationTypeGroups = useMemo(
+    () =>
+      buildNativeRelationGroups(
+        propertyWrites
+          .filter(({ steps }) => steps.every(canWrite))
+          .map(({ type }) => type),
+        {
+          core: t('label.core-owl-skos'),
+          custom: t('label.custom-admin-defined'),
+        }
+      ),
+    [canWrite, propertyWrites, t]
+  );
+
+  const showWriteError = useCallback(
+    (error: unknown) => {
+      showErrorToast(
+        isAxiosError(error) ? error : t('server.unexpected-error')
+      );
+    },
+    [t]
+  );
+
+  useEffect(() => {
+    if (registryError) {
+      showWriteError(registryError);
+    }
+  }, [registryError, showWriteError]);
+
+  const createType = useCallback(
+    async (label: string): Promise<NativeRelationType | undefined> => {
+      const existing = findNativeRelationTypeByLabel(catalog, label);
+      if (existing || !canCreateRelationType) {
+        return existing;
+      }
+      const draft = await new Promise<RelationshipTypeDraft | undefined>(
+        (resolve) => setTypeDraft({ label: label.trim(), resolve })
+      );
+      setTypeDraft(undefined);
+      if (!draft) {
+        return undefined;
+      }
+      // The cached list is up to 30 s old. A type registered since then is reused with its inverse,
+      // and new names are chosen apart from everything the registry holds now.
+      const { registry, unlinked } = await finishUnlinkedPair(
+        await loadRegistry(),
+        unlinkedInverseId.current
+      );
+      unlinkedInverseId.current = unlinked?.id;
+      const registered = findNativeRelationTypeByLabel(
+        catalogOf(registry),
+        draft.label
+      );
+      if (registered) {
+        void refetchRegistry();
+
+        return registered;
+      }
+      const plan = planRelationshipType(draft, registry, unlinked);
+      const inverse = await registerInverse(plan);
+      if (inverse) {
+        unlinkedInverseId.current = inverse.id;
+      }
+      const primary = await createRelationshipType(plan.primary);
+      if (inverse) {
+        await patchRelationshipType(inverse.id, buildInverseBackLink(primary));
+        unlinkedInverseId.current = undefined;
+      }
+      void refetchRegistry();
+
+      return toNativeRelationType(
+        primary,
+        inverse ? [primary, inverse] : [primary]
+      );
+    },
+    [canCreateRelationType, catalog, catalogOf, refetchRegistry]
+  );
+
+  const createRelation = useCallback(
+    async (
+      fromId: string,
+      toId: string,
+      relationType: string
+    ): Promise<boolean> => {
+      if (!model) {
+        return false;
+      }
+      const from = model.concepts.find((concept) => concept.id === fromId);
+      const to = model.concepts.find((concept) => concept.id === toId);
+      if (!from || !to) {
+        showErrorToast(t('server.unexpected-error'));
+
+        return false;
+      }
+      let written = false;
+      try {
+        const type = relationType.startsWith(NEW_RELATION_TYPE_PREFIX)
+          ? await createType(
+              relationType.slice(NEW_RELATION_TYPE_PREFIX.length)
+            )
+          : catalog.find((candidate) => candidate.id === relationType) ??
+            missingRelationType(relationType);
+        if (!type) {
+          return false;
+        }
+        const steps = planNativeRelation({ from, model, to, type });
+        if (!steps.every(canWrite)) {
+          showErrorToast(t('message.no-permission-for-action'));
+
+          return false;
+        }
+        for (const step of steps) {
+          written = true;
+          await writeStep(step);
+        }
+
+        return true;
+      } catch (error) {
+        showWriteError(error);
+
+        return false;
+      } finally {
+        if (written) {
+          noteWorkingChange();
+          await refetch();
+        }
+      }
+    },
+    [
+      canWrite,
+      catalog,
+      createType,
+      model,
+      noteWorkingChange,
+      refetch,
+      showWriteError,
+      t,
+    ]
+  );
+
+  const createDataProperty = useCallback(
+    async (conceptId: string, input: DataPropertyInput): Promise<boolean> => {
+      const concept = model?.concepts.find((item) => item.id === conceptId);
+      if (!model || !concept || !canCreateProperty) {
+        return false;
+      }
+      try {
+        await createOntologyProperty(
+          buildDataPropertyRequest(model, concept, input)
+        );
+        noteWorkingChange();
+        await refetch();
+
+        return true;
+      } catch (error) {
+        showWriteError(error);
+
+        return false;
+      }
+    },
+    [canCreateProperty, model, noteWorkingChange, refetch, showWriteError]
+  );
+
+  useEffect(() => {
+    if (model) {
+      onStatsChange?.({
+        conceptCount: model.concepts.length,
+        isolatedCount: health.isolatedTerms.length,
+        ontologyId: ontology.id,
+        relationCount: relations.length,
+      });
+    }
+  }, [
+    health.isolatedTerms.length,
+    model,
+    onStatsChange,
+    ontology.id,
+    relations.length,
+  ]);
+
+  useEffect(() => {
+    if (
+      isEditing &&
+      createConceptRequestKey > 0 &&
+      handledCreateConceptRequest.current !== createConceptRequestKey
+    ) {
+      handledCreateConceptRequest.current = createConceptRequestKey;
+      runConfirmed(() =>
+        (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
+      );
+      setConceptEditor({});
+      setGraphMode('model');
+      onRequestGraphSurface();
+    }
+  }, [
+    createConceptRequestKey,
+    isEditing,
+    onRequestGraphSurface,
+    onSelectedConceptChange,
+    runConfirmed,
+  ]);
+
+  if ([isError, !model].every(Boolean)) {
     return (
       <Alert variant="error">
-        {t('server.entity-fetch-error', { entity: t('label.concept-plural') })}
-        <Button color="secondary" onPress={() => void query.refetch()}>
+        {t('server.entity-fetch-error', { entity: t('label.ontology') })}
+        <Button color="secondary" onPress={() => void refetch()}>
           {t('label.retry')}
         </Button>
       </Alert>
     );
   }
-  if (query.isPending) {
-    return <Typography role="status">{t('label.loading')}</Typography>;
+  if (isLoading || !model || !graph) {
+    return <Loader />;
   }
 
-  return (
-    <Box className="tw:h-full tw:w-full" direction="col" gap={3}>
-      <Box align="center" className="tw:px-6 tw:pt-4" gap={3}>
-        {(['graph', 'tree'] as const).map((view) => (
+  const selectNode = ({ id }: { id: string }) => setSelectedId(id);
+  const connectNode = ({ id }: { id: string }) => {
+    setSelectedId(id);
+    onRequestEdit?.();
+  };
+
+  const renderConceptEditor = () => {
+    const editingConcept = model.concepts.find(
+      (concept) => concept.id === conceptEditor?.conceptId
+    );
+
+    if (!editingConcept) {
+      return (
+        <OntologyNewClassPanel
+          canCreate={canCreateNewClass}
+          canCreateAxiom={canCreateAxiom}
+          canCreateProperty={canCreateProperty}
+          model={model}
+          ontology={ontology}
+          onBeforeCreate={() => {
+            creationPositions.current =
+              graphRef.current?.getNodePositions() ?? {};
+          }}
+          onClose={() => guard(() => setConceptEditor(undefined))}
+          onCreated={async (iri) => {
+            const refreshed = await refetch();
+            if (refreshed.error || !refreshed.data) {
+              return false;
+            }
+            const created = refreshed.data.concepts.find((c) => c.iri === iri);
+            if (!created) {
+              return false;
+            }
+            const oldNodes = buildOntologyStudioGraph(
+              refreshed.data
+            ).nodes.filter((n) => n.id !== created.id);
+            const positions = placeNewClass(
+              creationPositions.current ??
+                graphRef.current?.getNodePositions() ??
+                {},
+              oldNodes,
+              created.id
+            );
+            setNodePositions(positions);
+            runConfirmed(() =>
+              (onSelectedConceptChange ?? setLocalSelectedId)(created.id)
+            );
+            setConceptEditor(undefined);
+            noteWorkingChange();
+
+            return true;
+          }}
+          onLockChange={onAuthoringLockChange}
+        />
+      );
+    }
+
+    return (
+      <aside
+        className="tw:flex tw:h-full tw:w-75 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
+        data-testid="ontology-concept-authoring">
+        <Box
+          align="center"
+          className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3"
+          gap={2}>
+          <Typography className="tw:flex-1" size="text-sm" weight="semibold">
+            {editingConcept
+              ? t('label.edit-entity', { entity: t('label.concept') })
+              : t('label.add-entity', { entity: t('label.concept') })}
+          </Typography>
+          <ButtonUtility
+            data-testid="ontology-concept-authoring-close"
+            icon={XClose}
+            size="sm"
+            tooltip={t('label.close')}
+            onClick={() => guard(() => setConceptEditor(undefined))}
+          />
+        </Box>
+        <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-5">
+          <OntologyConceptEditor
+            canEdit={editingConcept ? canEditConcept : canCreateConcept}
+            concept={editingConcept}
+            key={editingConcept?.id ?? 'new'}
+            ontology={ontology}
+            onSaved={(saved) => {
+              setSelectedId(saved.id);
+              setConceptEditor(undefined);
+              noteWorkingChange();
+              void refetch();
+            }}
+          />
+        </div>
+      </aside>
+    );
+  };
+
+  const renderSidebar = () => {
+    if (conceptEditor && isEditing) {
+      return renderConceptEditor();
+    }
+
+    if (selected) {
+      return (
+        <OntologyConceptInspector
+          canAddProperty={canCreateProperty}
+          canAddRelation={canCreateAxiom}
+          canCreateRelationType={canCreateRelationType}
+          canEditBindings={isEditing && canEditConcept}
+          concept={selected}
+          isEditing={isEditing}
+          model={model}
+          relationTypeGroups={relationTypeGroups}
+          relations={relations}
+          onAddProperty={(input) => createDataProperty(selected.id, input)}
+          onAddRelation={(targetId, relationType) =>
+            createRelation(selected.id, targetId, relationType)
+          }
+          onClose={() => setSelectedId(undefined)}
+          onEdit={
+            canEditConcept
+              ? () => {
+                  setConceptEditor({ conceptId: selected.id });
+                  onRequestEdit?.();
+                }
+              : undefined
+          }
+          onEditMappings={
+            isEditing && canEditConcept
+              ? () => setConceptEditor({ conceptId: selected.id })
+              : undefined
+          }
+          onOpenData={() => {
+            onRequestGraphSurface();
+            changeGraphMode('data');
+          }}
+          onSelectConcept={(concept) => setSelectedId(concept.id)}
+        />
+      );
+    }
+
+    return (
+      <OntologyHealthPanel
+        health={health}
+        placement="sidebar"
+        onConnect={connectNode}
+      />
+    );
+  };
+
+  const renderDataSurface = () =>
+    hasOpenedData ? (
+      <div
+        className={
+          graphMode === 'data'
+            ? 'tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col'
+            : undefined
+        }
+        hidden={graphMode !== 'data'}>
+        <OntologyNativeDataMode
+          isActive={graphMode === 'data'}
+          ontologyId={ontology.id}
+          revision={dataRevision}
+          selectedConceptId={selectedId}
+          onSelectConcept={setSelectedId}
+        />
+      </div>
+    ) : null;
+
+  const renderGraphControls = () => {
+    const controls = (
+      <OntologyControlButtons
+        isLoading={isFetching}
+        onFitToScreen={() => void graphRef.current?.fitView()}
+        onRefresh={() => void refetch()}
+        onZoomIn={() => graphRef.current?.zoomIn()}
+        onZoomOut={() => graphRef.current?.zoomOut()}
+      />
+    );
+
+    return isAiMode ? (
+      <div
+        className={AI_GRAPH_CONTROLS_CLASS}
+        data-testid="ontology-graph-controls">
+        {controls}
+      </div>
+    ) : (
+      <Card
+        className="tw:absolute tw:bottom-4 tw:left-4 tw:z-6 tw:flex tw:items-center tw:rounded-lg"
+        data-testid="ontology-graph-controls"
+        variant="elevated">
+        {controls}
+      </Card>
+    );
+  };
+
+  const renderSurface = () => {
+    if (surface === 'tree') {
+      return (
+        <OntologyTreeView
+          density="compact"
+          emptyMessage={t('label.no-entity-found', {
+            entity: t('label.concept-plural'),
+          })}
+          metrics={metrics}
+          selectedNodeId={selectedId}
+          source={{ kind: 'native', index: treeIndex }}
+          onConnect={connectNode}
+          onSelect={selectNode}
+        />
+      );
+    }
+    if (graphMode === 'data') {
+      return <>{renderDataSurface()}</>;
+    }
+
+    return (
+      <>
+        {renderDataSurface()}
+        <div
+          aria-hidden="true"
+          className={isAiMode ? AI_GRAPH_BACKDROP_CLASS : GRAPH_BACKDROP_CLASS}
+        />
+        <Suspense fallback={<Loader />}>
+          <OntologyGraphG6
+            keepCanvasOnAdd
+            studioMode
+            canCreateRelationType={canCreateRelationType}
+            edges={graph.edges}
+            focusNodeId={selectedId}
+            glossaries={[]}
+            glossaryColorMap={{}}
+            graphSearchHighlight={searchHighlight}
+            isEditMode={canCreateAxiom}
+            nodePositions={nodePositions}
+            nodes={graph.nodes}
+            ref={graphRef}
+            relationColors={relationColors}
+            relationTypeGroups={relationTypeGroups}
+            selectedNodeId={selectedId}
+            settings={SETTINGS}
+            onCreateRelation={async (fromId, toId, relationType) => {
+              await createRelation(fromId, toId, relationType);
+            }}
+            onNodeClick={selectNode}
+            onNodeDoubleClick={selectNode}
+            onPaneClick={() => setSelectedId(undefined)}
+          />
+        </Suspense>
+        {renderGraphControls()}
+      </>
+    );
+  };
+
+  const renderGraphMode = () => {
+    if (surface !== 'graph') {
+      return null;
+    }
+
+    return isAiMode ? (
+      <OntologyGraphModeTabs mode={graphMode} onChange={changeGraphMode} />
+    ) : (
+      <Box
+        className="tw:absolute tw:top-3.5 tw:right-4 tw:z-10 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-1"
+        gap={1}>
+        {(['model', 'data'] as const).map((mode) => (
           <Button
-            aria-pressed={surface === view}
-            color="secondary"
-            data-testid={`submode-tab-${view}`}
-            key={view}
-            onPress={() => setSurface(view)}>
-            {t(`label.${view}`)}
+            aria-pressed={graphMode === mode}
+            color={graphMode === mode ? 'primary' : 'tertiary'}
+            data-testid={`ontology-graph-mode-${mode}`}
+            key={mode}
+            size="xs"
+            onPress={() => changeGraphMode(mode)}>
+            {t(`label.${mode}`)}
           </Button>
         ))}
-        <Typography>
-          {concepts.length} / {query.data.pages[0].paging.total}{' '}
-          {t('label.concept-plural')}
-        </Typography>
-        {query.hasNextPage && (
-          <Button
-            color="secondary"
-            isDisabled={query.isFetching || concepts.length >= GRAPH_LIMIT}
-            onPress={() => void query.fetchNextPage()}>
-            {t('label.load-more')}
-          </Button>
-        )}
-        <OntologyControlButtons
-          isLoading={query.isFetching}
-          onFitToScreen={() => void graphRef.current?.fitView()}
-          onRefresh={() => void query.refetch()}
-          onZoomIn={() => graphRef.current?.zoomIn()}
-          onZoomOut={() => graphRef.current?.zoomOut()}
+      </Box>
+    );
+  };
+
+  const renderTypeDialog = () =>
+    typeDraft ? (
+      <RelationshipTypeDialog
+        canLinkInverse={canLinkInverse}
+        label={typeDraft.label}
+        onCancel={() => typeDraft.resolve(undefined)}
+        onSubmit={typeDraft.resolve}
+      />
+    ) : null;
+
+  const isEmptyModel = model.concepts.length === 0;
+  const canAddFirstConcept = [
+    Boolean(onRequestCreateConcept),
+    canEditOntology,
+    !ontology.deleted,
+    ...[
+      ResourceEntity.ONTOLOGY_CONCEPT,
+      ResourceEntity.ONTOLOGY_CHANGE_SET,
+    ].map((resource) => flagsOf(resource).canCreate),
+  ].every(Boolean);
+
+  const renderEmptyCard = () =>
+    [isEmptyModel, surface === 'graph', graphMode === 'model'].every(
+      Boolean
+    ) ? (
+      <OntologyEmptyCard
+        canAdd={canAddFirstConcept}
+        onAdd={() => {
+          if (!isEditing) {
+            onRequestEdit?.();
+          }
+          onRequestCreateConcept?.();
+        }}
+      />
+    ) : null;
+
+  const renderAddConcept = () =>
+    [canCreateNewClass, Boolean(onRequestCreateConcept), !isEmptyModel].every(
+      Boolean
+    ) ? (
+      <Button
+        className="tw:absolute tw:bottom-4 tw:right-4 tw:z-6"
+        data-testid="ontology-canvas-add-concept"
+        size="sm"
+        onPress={onRequestCreateConcept}>
+        {t('label.add-entity', { entity: t('label.concept') })}
+      </Button>
+    ) : null;
+
+  const renderSearch = () => {
+    if (isAiMode && searchSlot) {
+      return createPortal(
+        <Input
+          aria-label={t('label.find-concept')}
+          icon={Search}
+          inputDataTestId="ontology-graph-search"
+          placeholder={`${t('label.find-concept')}…`}
+          size="sm"
+          value={search}
+          onChange={setSearch}
+        />,
+        searchSlot
+      );
+    }
+
+    return (
+      <div
+        className={
+          surface === 'tree'
+            ? 'tw:px-6 tw:pt-4'
+            : 'tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6'
+        }>
+        <Input
+          aria-label={t('label.find-concept')}
+          className="tw:w-54"
+          icon={Search}
+          inputDataTestId="ontology-graph-search"
+          placeholder={`${t('label.find-concept')}…`}
+          size="sm"
+          value={search}
+          onChange={setSearch}
         />
-      </Box>
-      {query.hasNextPage && concepts.length >= GRAPH_LIMIT && (
-        <Alert variant="warning">
-          {t('message.ontology-graph-limit', { count: GRAPH_LIMIT })}
-        </Alert>
-      )}
-      <Box className="tw:min-h-0 tw:flex-1" gap={4}>
-        <Box className="tw:min-h-96 tw:min-w-0 tw:flex-1">
-          {surface === 'tree' ? (
-            <OntologyTreeView
-              groups={groups}
-              metrics={buildOntologyTreeMetrics(graph, FILTERS)}
-              onConnect={(node) => setSelectedId(node.id)}
-              onSelect={(node) => setSelectedId(node.id)}
-            />
-          ) : (
-            <Suspense
-              fallback={
-                <Typography role="status">{t('label.loading')}</Typography>
-              }>
-              <OntologyGraphG6
-                edges={graph.edges}
-                glossaries={[]}
-                glossaryColorMap={{}}
-                nodes={graph.nodes}
-                ref={graphRef}
-                selectedNodeId={selectedId}
-                settings={SETTINGS}
-                onNodeClick={(node) => setSelectedId(node.id)}
-                onNodeDoubleClick={(node) => setSelectedId(node.id)}
-                onPaneClick={() => setSelectedId(undefined)}
-              />
-            </Suspense>
-          )}
-        </Box>
-        {selected && (
-          <Box
-            className="tw:w-96 tw:shrink-0 tw:overflow-auto tw:p-4"
-            direction="col"
-            gap={3}>
-            <Button color="secondary" onPress={() => setSelectedId(undefined)}>
-              {t('label.close')}
-            </Button>
-            <OntologyConceptEditor
-              canEdit={false}
-              concept={selected}
-              key={selected.id}
-              ontology={ontology}
-              onSaved={() => void query.refetch()}
-            />
-          </Box>
-        )}
-      </Box>
-    </Box>
+      </div>
+    );
+  };
+
+  return (
+    <div className="tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden">
+      <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
+        {renderSearch()}
+        {renderAddConcept()}
+        {renderGraphMode()}
+        {renderSurface()}
+        {renderEmptyCard()}
+      </div>
+      {renderSidebar()}
+      {renderTypeDialog()}
+    </div>
   );
 };
 

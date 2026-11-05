@@ -230,11 +230,21 @@ def test_error_pack_classifies_a_signature_error_through_a_wrapping_cause():
     assert diagnosis.title == "AWS secret key does not match"
 
 
-def test_error_pack_classifies_missing_workgroup():
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_error_pack_classifies_missing_workgroup(wrapped):
     error = RuntimeError("WorkGroup primary is not found")
+    if wrapped:
+        outer = RuntimeError("driver wrapper")
+        outer.__cause__ = error
+        error = outer
     diagnosis = ATHENA_ERRORS.classify(error)
     assert diagnosis is not None
     assert diagnosis.title == "Workgroup not found"
+
+
+@pytest.mark.parametrize("message", ["WorkGroup unavailable", "Database is not found"])
+def test_error_pack_requires_both_missing_workgroup_signals(message):
+    assert ATHENA_ERRORS.classify(RuntimeError(message)) is None
 
 
 def test_error_pack_classifies_missing_result_location():
@@ -383,6 +393,15 @@ def test_athena_url_other_staging_dir():
         "?s3_staging_dir=s3%3A%2F%2Fpostgres%2Fintput%2F&work_group=primary"
     )
     assert AthenaConnection.get_connection_url(_config(s3StagingDir="s3://postgres/intput/")) == expected
+
+
+@pytest.mark.parametrize("workgroup", [None, ""])
+def test_athena_url_without_workgroup_runs_in_the_default_workgroup(workgroup):
+    expected = (
+        "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443"
+        "?s3_staging_dir=s3%3A%2F%2Fpostgres%2Finput%2F"
+    )
+    assert AthenaConnection.get_connection_url(_config(workgroup=workgroup)) == expected
 
 
 def test_get_tables_caveats_when_all_targeted_schemas_empty():

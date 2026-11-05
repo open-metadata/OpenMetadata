@@ -8,9 +8,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.UUID;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -81,51 +78,7 @@ class ContextFileTextExtractorTest {
   }
 
   @Test
-  void extractImageUsesConfiguredOcrEngine() throws Exception {
-    ContextFileTextExtractor extractor =
-        new ContextFileTextExtractor(
-            new ContextFileTextExtractor.ImageOcrEngine() {
-              @Override
-              public boolean isAvailable() {
-                return true;
-              }
-
-              @Override
-              public String extract(java.nio.file.Path imagePath) {
-                return "Revenue chart shows regional growth";
-              }
-            });
-    ContextFile file =
-        new ContextFile()
-            .withId(UUID.randomUUID())
-            .withName("diagram")
-            .withFileType(ContextFileType.Image)
-            .withFileExtension("png");
-
-    ContextFileTextExtractor.ExtractionResult result =
-        extractor.extract(new ByteArrayInputStream(new byte[] {1, 2, 3}), file);
-
-    assertEquals(ProcessingStatus.Processed, result.processingStatus());
-    assertEquals("Revenue chart shows regional growth", result.extractedText());
-    assertEquals(result.extractedText(), result.indexedText());
-    assertEquals(1, result.pageCount());
-  }
-
-  @Test
-  void extractImageReturnsUnsupportedWhenOcrUnavailable() throws Exception {
-    ContextFileTextExtractor extractor =
-        new ContextFileTextExtractor(
-            new ContextFileTextExtractor.ImageOcrEngine() {
-              @Override
-              public boolean isAvailable() {
-                return false;
-              }
-
-              @Override
-              public String extract(java.nio.file.Path imagePath) {
-                throw new UnsupportedOperationException("OCR should not run when unavailable");
-              }
-            });
+  void extractImageReturnsUnsupported() throws Exception {
     ContextFile file =
         new ContextFile()
             .withId(UUID.randomUUID())
@@ -138,40 +91,7 @@ class ContextFileTextExtractorTest {
 
     assertEquals(ProcessingStatus.Unsupported, result.processingStatus());
     assertNull(result.extractedText());
-    assertTrue(result.processingError().contains("OCR"));
-  }
-
-  @Test
-  void extractImageUsesConfiguredTikaTesseractPathOverride() throws Exception {
-    String originalPath = System.getProperty(ContextFileTextExtractor.TIKA_TESSERACT_PATH_PROPERTY);
-    Path fakeTesseractHome = createFakeTesseractHome("Revenue chart shows regional growth");
-    System.setProperty(
-        ContextFileTextExtractor.TIKA_TESSERACT_PATH_PROPERTY, fakeTesseractHome.toString());
-
-    try {
-      ContextFileTextExtractor extractor =
-          new ContextFileTextExtractor(new ContextFileTextExtractor.TesseractImageOcrEngine());
-      ContextFile file =
-          new ContextFile()
-              .withId(UUID.randomUUID())
-              .withName("diagram")
-              .withFileType(ContextFileType.Image)
-              .withFileExtension("png");
-
-      ContextFileTextExtractor.ExtractionResult result =
-          extractor.extract(new ByteArrayInputStream(new byte[] {1, 2, 3}), file);
-
-      assertEquals(ProcessingStatus.Processed, result.processingStatus());
-      assertEquals("Revenue chart shows regional growth", result.extractedText());
-      assertEquals(result.extractedText(), result.indexedText());
-    } finally {
-      if (originalPath == null) {
-        System.clearProperty(ContextFileTextExtractor.TIKA_TESSERACT_PATH_PROPERTY);
-      } else {
-        System.setProperty(ContextFileTextExtractor.TIKA_TESSERACT_PATH_PROPERTY, originalPath);
-      }
-      deleteRecursively(fakeTesseractHome);
-    }
+    assertTrue(result.processingError().contains("Image"));
   }
 
   @Test
@@ -215,34 +135,6 @@ class ContextFileTextExtractorTest {
       row.createCell(1).setCellValue(42);
       workbook.write(outputStream);
       return outputStream.toByteArray();
-    }
-  }
-
-  private Path createFakeTesseractHome(String extractedText) throws IOException {
-    Path home = Files.createTempDirectory("fake-tesseract-home-");
-    Path executable = home.resolve("tesseract");
-    Files.writeString(
-        executable,
-        "#!/bin/sh\n"
-            + "if [ $# -eq 0 ] || [ \"$1\" = \"--version\" ]; then\n"
-            + "  echo \"tesseract 5.0.0\"\n"
-            + "  exit 0\n"
-            + "fi\n"
-            + "output_base=\"$2\"\n"
-            + "printf '%s\\n' \""
-            + extractedText
-            + "\" > \"${output_base}.txt\"\n",
-        StandardCharsets.UTF_8);
-    executable.toFile().setExecutable(true);
-    return home;
-  }
-
-  private void deleteRecursively(Path root) throws IOException {
-    if (root == null || Files.notExists(root)) {
-      return;
-    }
-    try (var paths = Files.walk(root)) {
-      paths.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete());
     }
   }
 }

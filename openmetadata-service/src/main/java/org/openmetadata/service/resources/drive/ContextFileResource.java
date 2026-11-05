@@ -340,6 +340,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @FormDataParam("displayName") String displayName,
       @FormDataParam("description") String description,
       @FormDataParam("folder") String folderFqn,
+      @FormDataParam("domain") String domainFqn,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext)
       throws IOException {
@@ -377,6 +378,9 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     createFile.setProcessingStatus(ProcessingStatus.Uploaded);
     if (folderFqn != null && !folderFqn.isEmpty()) {
       createFile.setFolder(folderFqn);
+    }
+    if (!nullOrEmpty(domainFqn)) {
+      createFile.setDomains(List.of(domainFqn));
     }
 
     ContextFile file = mapper.createToEntity(createFile, user);
@@ -984,5 +988,26 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   /** Clamp expiry to [1, MAX_EXPIRY_SECONDS]. */
   static int clampExpiry(int expirySeconds) {
     return Math.max(1, Math.min(expirySeconds, MAX_EXPIRY_SECONDS));
+  }
+
+  /**
+   * A snapshot is decided on its file as it is now, as a read by id is: making a file private takes
+   * back the versions it was visible in.
+   */
+  @Override
+  protected List<ContextFile> retainReadableHistory(
+      SecurityContext securityContext, List<ContextFile> snapshots) {
+    return snapshots.isEmpty()
+        ? snapshots
+        : ContextFileVisibility.retainVisibleNow(
+            snapshots, currentFiles(snapshots), securityContext);
+  }
+
+  private List<ContextFile> currentFiles(List<ContextFile> snapshots) {
+    return repository.get(
+        null,
+        snapshots.stream().map(ContextFile::getId).distinct().toList(),
+        getFields(ContextFileVisibility.guardFields("")),
+        Include.ALL);
   }
 }

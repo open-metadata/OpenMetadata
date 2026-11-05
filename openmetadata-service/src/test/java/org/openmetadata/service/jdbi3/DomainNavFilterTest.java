@@ -27,6 +27,8 @@ class DomainNavFilterTest {
     // Basic test suites and queries inherit their table's domain, like test cases.
     assertFalse(DomainNavFilter.shouldApply(Entity.TEST_SUITE, true, false, DOMAIN_ID));
     assertFalse(DomainNavFilter.shouldApply(Entity.QUERY, true, false, DOMAIN_ID));
+    // Tasks and approvals are the user's work queue, whatever domain they are about.
+    assertFalse(DomainNavFilter.shouldApply(Entity.TASK, true, false, DOMAIN_ID));
   }
 
   @Test
@@ -178,6 +180,24 @@ class DomainNavFilterTest {
         DomainNavFilter.ParentScope.IN_SELECTION);
     assertEquals("'22222222-2222-2222-2222-222222222222'", filter.getQueryParams().get("domainId"));
     assertNull(filter.getQueryParams().get("domainAccessControl"));
+  }
+
+  @Test
+  void apply_sharedConfigurationKeepsItemsWithNoDomain() {
+    ListFilter filter = new ListFilter();
+    DomainNavFilter.apply(
+        filter, Entity.AI_GOVERNANCE_FRAMEWORK, true, DOMAIN_ID, () -> DOMAIN_AND_SUB_DOMAIN_IDS);
+    assertEquals(DOMAIN_AND_SUB_DOMAIN_IDS, filter.getQueryParams().get("domainId"));
+    assertEquals("true", filter.getQueryParams().get("domainAccessControl"));
+  }
+
+  @Test
+  void apply_registeredExtensionTypeKeepsItemsWithNoDomain() {
+    DomainFilterExclusions.registerKeepsUnassigned("extensionConfig");
+    ListFilter filter = new ListFilter();
+    DomainNavFilter.apply(
+        filter, "extensionConfig", true, DOMAIN_ID, () -> DOMAIN_AND_SUB_DOMAIN_IDS);
+    assertEquals("true", filter.getQueryParams().get("domainAccessControl"));
   }
 
   @Test

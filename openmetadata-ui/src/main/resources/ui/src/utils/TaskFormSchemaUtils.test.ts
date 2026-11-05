@@ -119,6 +119,7 @@ describe('TaskFormSchemaUtils', () => {
   it('builds editable description payloads from legacy task values', () => {
     const task = {
       id: 'task-id',
+      createdBy: { id: 'creator-id', type: 'user' },
       taskId: 'TASK-00001',
       name: 'desc-task',
       category: TaskCategory.MetadataUpdate,
@@ -142,6 +143,7 @@ describe('TaskFormSchemaUtils', () => {
   it('uses schema metadata for editable payload field mapping when provided', () => {
     const task = {
       id: 'task-id',
+      createdBy: { id: 'creator-id', type: 'user' },
       taskId: 'TASK-00003',
       name: 'desc-task-custom',
       category: TaskCategory.Custom,
@@ -173,6 +175,7 @@ describe('TaskFormSchemaUtils', () => {
   it('resolves handler metadata from schema ui bindings', () => {
     const task = {
       id: 'task-id',
+      createdBy: { id: 'creator-id', type: 'user' },
       taskId: 'TASK-01000',
       name: 'custom-task',
       category: TaskCategory.Custom,
@@ -204,6 +207,7 @@ describe('TaskFormSchemaUtils', () => {
   it('uses schema metadata for editable tag payload mapping for custom tasks', () => {
     const task = {
       id: 'task-id',
+      createdBy: { id: 'creator-id', type: 'user' },
       taskId: 'TASK-00005',
       name: 'tag-task-custom',
       category: TaskCategory.Custom,
@@ -266,6 +270,7 @@ describe('TaskFormSchemaUtils', () => {
   it('derives resolved tag values from schema-edited payloads', () => {
     const task = {
       id: 'task-id',
+      createdBy: { id: 'creator-id', type: 'user' },
       taskId: 'TASK-00002',
       name: 'tag-task',
       category: TaskCategory.MetadataUpdate,
@@ -317,6 +322,7 @@ describe('TaskFormSchemaUtils', () => {
   it('uses schema metadata to derive the resolved value', () => {
     const task = {
       id: 'task-id',
+      createdBy: { id: 'creator-id', type: 'user' },
       taskId: 'TASK-00004',
       name: 'desc-task-resolution',
       category: TaskCategory.MetadataUpdate,
@@ -345,6 +351,7 @@ describe('TaskFormSchemaUtils', () => {
   it('uses schema metadata to derive resolved tag values for custom tasks', () => {
     const task = {
       id: 'task-id',
+      createdBy: { id: 'creator-id', type: 'user' },
       taskId: 'TASK-00006',
       name: 'custom-tag-resolution',
       category: TaskCategory.Custom,
@@ -407,6 +414,7 @@ describe('TaskFormSchemaUtils', () => {
   it('treats payload-mode resolutions as payload-driven instead of requiring newValue', () => {
     const task = {
       id: 'task-id',
+      createdBy: { id: 'creator-id', type: 'user' },
       taskId: 'TASK-00007',
       name: 'custom-payload-resolution',
       category: TaskCategory.Custom,
@@ -462,9 +470,6 @@ describe('TaskFormSchemaUtils', () => {
     expect(
       getTaskTransitionFormSchema(schema, {
         id: 'resolve',
-        label: 'Resolve',
-        targetStageId: 'done',
-        targetTaskStatus: TaskEntityStatus.Completed,
       })
     ).toEqual({
       type: 'object',
@@ -475,9 +480,6 @@ describe('TaskFormSchemaUtils', () => {
     expect(
       getTaskTransitionUiSchema(schema, {
         id: 'resolve',
-        label: 'Resolve',
-        targetStageId: 'done',
-        targetTaskStatus: TaskEntityStatus.Completed,
       })
     ).toEqual({
       resolution: { 'ui:widget': 'textarea' },
@@ -497,9 +499,6 @@ describe('TaskFormSchemaUtils', () => {
       },
       {
         id: 'close',
-        label: 'Close',
-        targetStageId: 'closed',
-        targetTaskStatus: TaskEntityStatus.Cancelled,
         requiresComment: true,
       }
     );
@@ -515,9 +514,6 @@ describe('TaskFormSchemaUtils', () => {
       },
       {
         id: 'close',
-        label: 'Close',
-        targetStageId: 'closed',
-        targetTaskStatus: TaskEntityStatus.Cancelled,
         requiresComment: true,
       }
     );

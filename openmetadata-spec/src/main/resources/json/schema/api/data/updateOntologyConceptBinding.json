@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/updateOntologyConceptBinding.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UpdateOntologyConceptBinding",
+  "description": "Replace one authorized asset association while preserving all other concept associations, including unreadable ones.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.UpdateOntologyConceptBinding",
+  "properties": {
+    "expectedRevision": { "$ref": "../../type/ontologyConceptBindings.json#/definitions/revision" },
+    "asset": { "$ref": "../../type/ontologyConceptBindings.json#/definitions/assetBinding" }
+  },
+  "required": ["expectedRevision", "asset"],
+  "additionalProperties": false
+}

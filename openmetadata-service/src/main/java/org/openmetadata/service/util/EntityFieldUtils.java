@@ -18,7 +18,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -35,6 +34,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.governance.EntityStatusAdapter;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -114,18 +114,17 @@ public class EntityFieldUtils {
         EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
         // The wildcard accepts any current ETag while selecting the version-guarded storage path.
         // This prevents an asynchronously loaded entity from overwriting a concurrent user patch.
-        entityRepository.patch(null, entity.getId(), user, patch, null, "*", impersonatedBy);
+        EntityInterface<?> patched =
+            (EntityInterface<?>)
+                entityRepository
+                    .patch(null, entity.getId(), user, patch, null, "*", impersonatedBy)
+                    .entity();
+        // Built from the patched entity so the event carries its changeDescription: alert and
+        // activity-feed filters match on the changed fields and drop events without one.
         ChangeEvent changeEvent =
-            new ChangeEvent()
-                .withId(UUID.randomUUID())
-                .withEventType(EventType.ENTITY_UPDATED)
-                .withEntityId(entity.getId())
+            ChangeEvents.createChangeEventForEntity(user, EventType.ENTITY_UPDATED, patched)
                 .withEntityType(entityType)
-                .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
-                .withUserName(user)
-                .withImpersonatedBy(impersonatedBy)
-                .withTimestamp(System.currentTimeMillis())
-                .withEntity(entity);
+                .withImpersonatedBy(impersonatedBy);
 
         Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
       }

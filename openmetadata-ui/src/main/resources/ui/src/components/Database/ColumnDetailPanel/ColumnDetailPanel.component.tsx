@@ -13,7 +13,7 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   Card,
   SlideoutMenu,
   Tooltip,
@@ -23,6 +23,8 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  ConstraintKey,
+  Edit01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -38,7 +40,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
-import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
@@ -69,7 +70,6 @@ import DataQualitySection from '../../common/DataQualitySection/DataQualitySecti
 import { DataQualityTest } from '../../common/DataQualitySection/DataQualitySection.interface';
 import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import TagsSection from '../../common/TagsSection/TagsSection';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -602,10 +602,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       }
     };
 
-    if (canViewCustomFields) {
+    if (canViewCustomFields && entityType === EntityType.TABLE) {
       fetchEntityTypeDetail();
     }
-  }, [canViewCustomFields]);
+  }, [canViewCustomFields, entityType]);
 
   useEffect(() => {
     setActiveColumn(column);
@@ -633,7 +633,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       previousFqnRef.current = undefined;
       fetchedColumnFqnRef.current = undefined;
     }
-  }, [isOpen, activeColumn?.fullyQualifiedName]);
+  }, [isOpen, activeColumn]);
 
   const handleTabChange = (tab: EntityRightPanelTab) => {
     setActiveTab(tab);
@@ -752,7 +752,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     if (!lineageData) {
       return (
-        <div className="tw:text-center tw:text-gray-400 tw:p-6">
+        <div className="tw:text-center tw:text-utility-gray-400 tw:p-6">
           {t('label.no-data-found')}
         </div>
       );
@@ -811,7 +811,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               className={classNames('tw:text-xs tw:truncate', {
                 'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
                   isLastItem,
-                'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
+                'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-utility-gray-400 hover:tw:underline':
                   !isLastItem,
               })}
               title={getEntityName(breadcrumb)}
@@ -822,7 +822,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </Typography>
             {index < breadcrumbPath.length - 1 && (
               <ChevronRight
-                className="tw:text-gray-400 tw:shrink-0"
+                className="tw:text-utility-gray-400 tw:shrink-0"
                 height={16}
                 width={16}
               />
@@ -845,13 +845,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <EditIconButton
-        newLook
+      <ButtonUtility
         className="tw:ml-2"
         data-testid="edit-displayName-button"
-        disabled={false}
-        size="small"
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
           entity: t('label.display-name'),
         })}
         onClick={() => setIsDisplayNameEditing(true)}
@@ -872,7 +870,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     return (
       <Typography
-        className="tw:text-gray-400 tw:text-xs"
+        className="tw:text-utility-gray-400 tw:text-xs"
         data-testid="entity-name"
         ellipsis={{ tooltip: true }}>
         {renderHighlightedText(activeColumn.name || '')}
@@ -909,7 +907,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     return (
       <div className="data-type-chip tw:flex tw:items-center tw:gap-1">
-        <KeyIcon height={12} width={12} />
+        <ConstraintKey size={12} />
         {t('label.primary-key')}
       </div>
     );
@@ -960,13 +958,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 {renderDisplayNameSubtitle()}
               </div>
             </div>
-            <div className="tw:shrink-0">
-              <Button
-                aria-label={t('label.close')}
-                color="secondary"
+            <div className="tw:flex tw:shrink-0">
+              <ButtonUtility
                 data-testid="close-button"
-                iconLeading={XClose}
-                size="sm"
+                icon={XClose}
+                size="lg"
+                tooltip={t('label.close')}
                 onClick={onClose}
               />
             </div>
@@ -1050,21 +1047,19 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
   const navFooter = (
     <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
-      <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
-        <Button
-          aria-label={t('label.previous')}
-          color="secondary"
-          iconLeading={ChevronUp}
+      <div className="tw:flex tw:items-center tw:gap-1">
+        <ButtonUtility
+          icon={ChevronUp}
           isDisabled={isPreviousDisabled}
           size="sm"
+          tooltip={t('label.previous')}
           onClick={handlePreviousColumn}
         />
-        <Button
-          aria-label={t('label.next')}
-          color="secondary"
-          iconLeading={ChevronDown}
+        <ButtonUtility
+          icon={ChevronDown}
           isDisabled={isNextDisabled}
           size="sm"
+          tooltip={t('label.next')}
           onClick={handleNextColumn}
         />
         {renderColumnCountLabel()}

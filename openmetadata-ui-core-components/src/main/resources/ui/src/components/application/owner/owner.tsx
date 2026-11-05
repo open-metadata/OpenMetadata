@@ -13,11 +13,50 @@
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { User01 } from '../../../icons/User01';
+import { Typography } from '../../foundations/typography';
 import { Popover, PopoverTrigger } from '../popover/popover';
 import { OwnerAvatarStack } from './owner-avatar-stack';
 import { OwnerChip } from './owner-chip';
 import { toOwnerRefs } from './owner-utils';
-import type { OwnerProps } from './owner.types';
+import type { OwnerLabelVariant, OwnerProps } from './owner.types';
+
+const EMPTY_OWNERS_TEXT = '--';
+
+// `header` is the type of the other page-header values (Domains, Tier,
+// Email…); `cell` is a table row's body size in the subtle tone. Typography's
+// `color` prop has no quaternary or `text-secondary`, so those stay classes.
+const LABEL_VARIANT_STYLES: Record<
+  OwnerLabelVariant,
+  { size: 'text-xs' | 'text-sm'; weight: 'regular' | 'medium'; color: string }
+> = {
+  header: { size: 'text-sm', weight: 'medium', color: 'tw:text-secondary' },
+  cell: { size: 'text-sm', weight: 'regular', color: 'tw:text-quaternary' },
+  subtle: { size: 'text-xs', weight: 'regular', color: 'tw:text-quaternary' },
+};
+
+const OwnerEmptyPlaceholder = ({
+  text,
+  variant,
+}: {
+  text: string;
+  variant: OwnerLabelVariant;
+}) => (
+  <Typography
+    as="span"
+    className={LABEL_VARIANT_STYLES[variant].color}
+    data-testid="owner-empty-placeholder"
+    size={LABEL_VARIANT_STYLES[variant].size}
+    weight={LABEL_VARIANT_STYLES[variant].weight}>
+    {text}
+  </Typography>
+);
+
+const NoOwnerIcon = () => (
+  <User01
+    className="tw:size-4 tw:shrink-0 tw:text-quaternary"
+    data-testid="no-owner-icon"
+  />
+);
 
 /**
  * Unified Owner display and edit component.
@@ -28,6 +67,9 @@ import type { OwnerProps } from './owner.types';
  * call sites don't wrap the array.
  * Editable mode: also pass `hasPermission` and `selectorContent` (a pre-configured
  * UserTeamSelectableList from the consuming app that handles data-fetching).
+ *
+ * With no owners it shows `--`, the same empty value as the fields beside it,
+ * unless the caller names the empty state (`placeHolder`, e.g. "No Assignee").
  */
 export const Owner = ({
   owners: ownersInput = [],
@@ -38,6 +80,7 @@ export const Owner = ({
   showDashPlaceholder = false,
   placeHolder,
   ownerDisplayName,
+  labelVariant,
   className,
   hasPermission,
   selectorContent,
@@ -56,20 +99,22 @@ export const Owner = ({
   const isInlineWithSelector = !showLabel && Boolean(selectorContent);
 
   if (owners.length === 0) {
+    // A caller-named empty state (e.g. "No Assignee") replaces `--`; the
+    // compact and inline layouts put the user glyph the app asserts on
+    // (data-testid="no-owner-icon") before it.
+    const namedEmptyText = showDashPlaceholder ? undefined : placeHolder;
+    const emptyText = namedEmptyText ?? EMPTY_OWNERS_TEXT;
+
     if (!isCompactView && isInlineWithSelector) {
       return (
         <div
           className={cx('tw:flex tw:items-center tw:gap-1', className)}
           data-testid={dataTestId}>
-          {!showDashPlaceholder && (
-            <User01
-              className="tw:size-4 tw:shrink-0 tw:text-quaternary"
-              data-testid="no-owner-icon"
-            />
-          )}
-          <span className="tw:text-quaternary tw:text-xs">
-            {showDashPlaceholder ? '--' : placeHolder ?? t('label.no-owners')}
-          </span>
+          {namedEmptyText && <NoOwnerIcon />}
+          <OwnerEmptyPlaceholder
+            text={emptyText}
+            variant={labelVariant ?? 'subtle'}
+          />
           {selectorContent}
         </div>
       );
@@ -89,16 +134,22 @@ export const Owner = ({
           {hasLabelRow && (
             <div className="tw:flex tw:items-center tw:mb-2 tw:gap-2">
               {showLabel && (
-                <span className="tw:text-sm tw:font-medium tw:text-secondary">
+                <Typography
+                  as="span"
+                  className="tw:text-secondary"
+                  size="text-sm"
+                  weight="medium">
                   {placeHolder ?? t('label.owners')}
-                </span>
+                </Typography>
               )}
               {selectorContent}
             </div>
           )}
-          <span className="tw:text-quaternary tw:text-xs">
-            {showDashPlaceholder ? '--' : placeHolder ?? t('label.no-owners')}
-          </span>
+          {/* Under a label, `placeHolder` is that label, not the empty text. */}
+          <OwnerEmptyPlaceholder
+            text={showLabel ? EMPTY_OWNERS_TEXT : emptyText}
+            variant={labelVariant ?? (selectorContent ? 'header' : 'subtle')}
+          />
         </div>
       );
     }
@@ -113,29 +164,15 @@ export const Owner = ({
       );
     }
 
-    if (showDashPlaceholder) {
-      return (
-        <span
-          className={cx('tw:text-tertiary', className)}
-          data-testid={dataTestId}>
-          —
-        </span>
-      );
-    }
-
     return (
       <div
         className={cx('tw:flex tw:items-center tw:gap-1', className)}
         data-testid={dataTestId}>
-        {/* Matches the legacy NoOwnerFound placeholder: a user glyph the app
-            asserts on (data-testid="no-owner-icon") for the empty compact state. */}
-        <User01
-          className="tw:size-4 tw:shrink-0 tw:text-quaternary"
-          data-testid="no-owner-icon"
+        {namedEmptyText && <NoOwnerIcon />}
+        <OwnerEmptyPlaceholder
+          text={emptyText}
+          variant={labelVariant ?? 'subtle'}
         />
-        <span className="tw:text-quaternary tw:text-xs">
-          {placeHolder ?? t('label.no-owners')}
-        </span>
       </div>
     );
   }
@@ -167,9 +204,13 @@ export const Owner = ({
         {(showLabel || selectorContent) && (
           <div className="tw:flex tw:items-center tw:mb-2 tw:gap-2">
             {showLabel && (
-              <span className="tw:text-sm tw:font-medium tw:text-secondary">
+              <Typography
+                as="span"
+                className="tw:text-secondary"
+                size="text-sm"
+                weight="medium">
                 {placeHolder ?? t('label.owners')}
-              </span>
+              </Typography>
             )}
             {selectorContent}
           </div>

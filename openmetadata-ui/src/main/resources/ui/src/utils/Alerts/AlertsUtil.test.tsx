@@ -24,6 +24,7 @@ import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EventType, Status } from '../../generated/events/api/typedEvent';
 import {
+  HTTPMethod,
   SubscriptionCategory,
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
@@ -44,6 +45,7 @@ import {
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
   getFqnSearchIndexes,
+  getOptionsByFqns,
   searchEntity,
 } from './AlertsUtil';
 import {
@@ -776,6 +778,36 @@ describe('handleAlertSave - downstream notification fields', () => {
       ]);
     });
 
+    it('getOptionsByFqns looks the saved FQNs up by term and labels them by display name', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await getOptionsByFqns(
+        ['test.database.table', 'test.user'],
+        [SearchIndex.TABLE, SearchIndex.USER]
+      );
+
+      const { query, queryFilter, searchIndex } = (searchQuery as jest.Mock)
+        .mock.calls[0][0];
+
+      expect(query).toBe('');
+      expect(searchIndex).toEqual([SearchIndex.TABLE, SearchIndex.USER]);
+      expect(queryFilter).toEqual({
+        query: {
+          bool: {
+            should: [
+              { term: { fullyQualifiedName: 'test.database.table' } },
+              { term: { fullyQualifiedName: 'test.user' } },
+            ],
+            minimum_should_match: 1,
+          },
+        },
+      });
+      expect(result).toEqual([
+        { label: 'Test Table', value: 'test.database.table' },
+        { label: 'Test User', value: 'test.user' },
+      ]);
+    });
+
     it('should return search results with showDisplayNameAsLabel false', async () => {
       (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
 
@@ -1026,7 +1058,7 @@ describe('normalizeDestinationConfig', () => {
       endpoint: 'https://hooks.slack.com/services/xxx',
       headers: [{ key: 'header1', value: 'value1' }],
       queryParams: [{ key: 'param1', value: 'value1' }],
-      httpMethod: 'POST',
+      httpMethod: HTTPMethod.Post,
     };
 
     const result = normalizeDestinationConfig(config);

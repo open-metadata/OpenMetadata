@@ -21,10 +21,14 @@ public class LocalJwkProvider implements JwkProvider {
                 "e", key.getE()));
   }
 
+  boolean hasKey(String kid) {
+    return self.getId().equals(kid);
+  }
+
   @Override
   public Jwk get(String kid) throws com.auth0.jwk.JwkException {
     // Only return the key if the kid matches
-    if (self.getId().equals(kid)) {
+    if (hasKey(kid)) {
       return self;
     }
     throw new SigningKeyNotFoundException("No key found with kid: " + kid, null);

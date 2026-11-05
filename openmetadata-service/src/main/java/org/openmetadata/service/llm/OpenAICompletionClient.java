@@ -112,7 +112,9 @@ public final class OpenAICompletionClient extends LLMCompletionClient {
     try {
       ObjectNode payload = MAPPER.createObjectNode();
       payload.put("model", model);
-      payload.put("temperature", temperature);
+      if (supportsTemperature(model)) {
+        payload.put("temperature", temperature);
+      }
       payload.put("max_tokens", maxTokens);
       ArrayNode messages = payload.putArray("messages");
       messages.addObject().put("role", "system").put("content", systemPrompt);

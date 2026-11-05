@@ -73,12 +73,14 @@ class QueryParserTest(TestCase):
         """
         Check the join count
         """
+        # sample_data is a BigQuery service, whose usage resolution rewrites each
+        # query reference to the matched table's FQN without the service prefix.
         expected_result = {
-            "shopify.raw_product_catalog": 6,
-            "dim_customer": 4,
-            "fact_order": 4,
-            "shopify.fact_sale": 5,
-            "shopify.raw_customer": 11,
+            "ecommerce_db.shopify.raw_product_catalog": 6,
+            "ecommerce_db.shopify.dim_customer": 4,
+            "ecommerce_db.shopify.fact_order": 4,
+            "ecommerce_db.shopify.fact_sale": 5,
+            "ecommerce_db.shopify.raw_customer": 11,
         }
         config_dict = json.loads(config)
         config_dict["source"]["serviceConnection"]["config"]["connectionOptions"]["sampleDataFolder"] = (
@@ -94,9 +96,5 @@ class QueryParserTest(TestCase):
         for key, value in workflow.steps[1].table_usage.items():
             table_usage_map[key[0]] = value.count
 
-        for table_name, expected_count in expected_result.items():
-            try:
-                self.assertEqual(table_usage_map[table_name], expected_count)
-            except KeyError:
-                self.assertTrue(False)
+        assert {name: table_usage_map.get(name) for name in expected_result} == expected_result
         workflow.stop()

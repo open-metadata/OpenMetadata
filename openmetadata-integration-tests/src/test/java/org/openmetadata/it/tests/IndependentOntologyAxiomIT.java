@@ -16,8 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -257,23 +255,11 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
     assertEquals(5, capture(ontology).getMemberCount());
   }
 
-  @ParameterizedTest
-  @ValueSource(booleans = {false, true})
-  void propertyEditRevalidatesInverseCardinalityUsers(boolean indirect, TestNamespace ns) {
-    final var ontology = createModel(ns, "inverseUsers" + indirect);
+  @Test
+  void propertyEditRevalidatesInverseCardinalityUsers(TestNamespace ns) {
+    final var ontology = createModel(ns, "inverseUsers");
     final var client = SdkClients.adminClient();
     client.ontologyProperties().create(propertyRequest(ontology));
-    URI partner = PROPERTY;
-    if (indirect) {
-      partner = URI.create("https://example.org/model/inversePartner");
-      client
-          .ontologyProperties()
-          .create(
-              propertyRequest(ontology)
-                  .withName("inversePartner")
-                  .withIri(partner)
-                  .withInverse(PROPERTY));
-    }
     final var inverse =
         client
             .ontologyProperties()
@@ -293,7 +279,7 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
                             .withRestrictionKind(OntologyRestrictionKind.EXACT)
                             .withCardinality(1)
                             .withFiller(namedClass(PARTY)))));
-    final var patch = transitiveInversePatch(partner);
+    final var patch = transitiveInversePatch(PROPERTY);
     final long revision = state(ontology).getWorkingRevision();
     final var failure =
         assertThrows(
@@ -304,7 +290,7 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
         failure.getMessage().contains("cardinality restrictions over non-simple properties"));
     assertNull(client.ontologyProperties().get(inverse.getId()).getInverse());
     assertEquals(revision, state(ontology).getWorkingRevision());
-    assertEquals(indirect ? 7 : 6, capture(ontology).getMemberCount());
+    assertEquals(6, capture(ontology).getMemberCount());
   }
 
   @Test

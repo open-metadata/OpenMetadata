@@ -59,7 +59,7 @@ describe('SeverityModal', () => {
     render(<SeverityModal {...mockProps} />);
 
     expect(
-      await screen.findByRole('button', { name: /Severity 1/ })
+      await screen.findByRole('button', { name: /label.severity 1/ })
     ).toBeInTheDocument();
   });
 
@@ -84,7 +84,7 @@ describe('SeverityModal', () => {
   it('should submit the newly picked severity', async () => {
     render(<SeverityModal {...mockProps} />);
 
-    await pickSeverity('Severity 3');
+    await pickSeverity('label.severity 3');
     await act(async () => {
       fireEvent.click(screen.getByText('label.save'));
     });

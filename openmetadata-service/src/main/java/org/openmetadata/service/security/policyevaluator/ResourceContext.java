@@ -47,6 +47,7 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
   // When set (bulk authorization), on-demand fields are batch-loaded for the whole request instead
   // of once per entity. Null for single-entity requests, which keep the per-entity load.
   private BulkFieldHydrator bulkFieldHydrator;
+  private List<TagLabel> policyTags;
   // Service attributes are read only when a condition asks for them, then memoized for this
   // context. The loaded flags are needed separately because "no service" is a valid null result.
   private EntityInterface<?> serviceEntity;
@@ -198,8 +199,30 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
     if (entity == null) {
       return Collections.emptyList();
     }
+    if (entityRepository.hasNestedPolicyTags()) {
+      return nestedPolicyTags();
+    }
     ensureTagsLoaded();
     return Entity.getEntityTags(getResource(), entity);
+  }
+
+  /**
+   * Tags on inline children (columns, tasks, schema fields) are read from a copy loaded with the
+   * policy tag projection, so the entity being authorized, which a GET may return as is, keeps the
+   * projection it was loaded with (ADR:2026-11-03-tag-conditions-see-the-tags-of-inline-children).
+   */
+  private List<TagLabel> nestedPolicyTags() {
+    if (policyTags == null) {
+      List<TagLabel> fromBatch =
+          bulkFieldHydrator == null ? null : bulkFieldHydrator.policyTags(entity.getId());
+      policyTags =
+          fromBatch != null
+              ? fromBatch
+              : entityRepository
+                  .loadPolicyTags(List.of(entity))
+                  .getOrDefault(entity.getId(), List.of());
+    }
+    return policyTags;
   }
 
   /**
@@ -215,7 +238,11 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
       if (bulkFieldHydrator != null) {
         bulkFieldHydrator.hydrate(Entity.FIELD_TAGS); // one batch query for the whole bulk request
       } else {
-        entityRepository.setFieldsInternal(entity, entityRepository.getFields(Entity.FIELD_TAGS));
+        Fields tagFields = entityRepository.getFields(Entity.FIELD_TAGS);
+        entityRepository.setFieldsInternal(entity, tagFields);
+        // A tag a deny rule matches may be inherited from a parent (a service, a database), so a
+        // matchAnyTag rule must see inherited tags too, not only the entity's own.
+        entityRepository.setInheritedFieldsInternal(entity, tagFields);
       }
       loadedFieldNames.add(Entity.FIELD_TAGS);
     }
@@ -430,14 +457,21 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
    * never sees less than it did before.
    */
   private Fields authorizationFields() {
+    return authorizationFields(entityRepository, requestedFields);
+  }
+
+  /**
+   * {@link #authorizationFields(EntityRepository)} together with {@code requested}, for a caller
+   * that loads the entity itself to answer a request and authorizes on the same copy.
+   */
+  public static Fields authorizationFields(EntityRepository<?> entityRepository, Fields requested) {
     Fields securityFields = authorizationFields(entityRepository);
-    Fields result = securityFields;
-    if (requestedFields != null) {
-      Set<String> merged = new HashSet<>(securityFields.getFieldList());
-      merged.addAll(requestedFields.getFieldList());
-      result = new Fields(merged);
+    if (requested == null) {
+      return securityFields;
     }
-    return result;
+    Set<String> merged = new HashSet<>(securityFields.getFieldList());
+    merged.addAll(requested.getFieldList());
+    return new Fields(merged);
   }
 
   /**
@@ -467,11 +501,13 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
   }
 
   private Include resolveInclude() {
-    if (operation == ResourceContextInterface.Operation.PATCH
-        || operation == ResourceContextInterface.Operation.PUT) {
+    if (operation == ResourceContextInterface.Operation.PATCH) {
       return Include.NON_DELETED;
     }
-    if (operation == ResourceContextInterface.Operation.DELETE) {
+    // A PUT finds the entity it writes with Include.ALL and restores it when soft-deleted, so the
+    // decision has to see that entity too; without it every condition is evaluated against none.
+    if (operation == ResourceContextInterface.Operation.PUT
+        || operation == ResourceContextInterface.Operation.DELETE) {
       return Include.ALL;
     }
     return include != null ? include : Include.ALL;

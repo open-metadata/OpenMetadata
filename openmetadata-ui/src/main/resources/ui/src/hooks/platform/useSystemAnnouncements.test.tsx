@@ -104,6 +104,25 @@ describe('useSystemAnnouncementsList', () => {
     expect(result.current.hasFilters).toBe(true);
   });
 
+  it('surfaces a server error at once instead of retrying behind the skeleton', async () => {
+    mockList.mockRejectedValue({ response: { status: 500 } });
+    const retryingWrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: 3 } } })}>
+        {children}
+      </QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => useSystemAnnouncementsList(), {
+      wrapper: retryingWrapper,
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.isLoading).toBe(false);
+    expect(mockList).toHaveBeenCalledTimes(1);
+  });
+
   it('clears every filter, not only the search', async () => {
     const { result } = renderHook(() => useSystemAnnouncementsList(), {
       wrapper,
@@ -153,18 +172,18 @@ describe('useSystemAnnouncementsList', () => {
 
   it('pages locally, newest start first, and starts over when the filters change', async () => {
     mockList.mockResolvedValue({
-      data: Array.from({ length: 25 }, (_, i) =>
+      data: Array.from({ length: 35 }, (_, i) =>
         announcement(`a${i}`, `Announcement ${i}`, i)
       ),
-      paging: { total: 25 },
+      paging: { total: 35 },
     });
     const { result } = renderHook(() => useSystemAnnouncementsList(), {
       wrapper,
     });
-    await waitFor(() => expect(result.current.total).toBe(25));
+    await waitFor(() => expect(result.current.total).toBe(35));
 
     expect(result.current.pageCount).toBe(3);
-    expect(result.current.announcements[0].id).toBe('a24');
+    expect(result.current.announcements[0].id).toBe('a34');
 
     act(() => result.current.goToPage(3));
 

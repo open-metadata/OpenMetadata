@@ -34,6 +34,7 @@ export interface QueryBuilderNode {
   type?: string;
   properties?: {
     conjunction?: string;
+    not?: boolean;
     field?: string | null;
     operator?: string | null;
     value?: unknown[];
@@ -100,6 +101,7 @@ export interface QueryBuilderControlProps {
   render?: (props: FieldProps) => ReactNode;
   // Overrides the testid the registered renderer would use by default.
   dataTestId?: string;
+  className?: string;
   onChange: (key: string) => void;
 }
 
@@ -118,8 +120,14 @@ export interface QueryBuilderGroupConnectorProps {
   onChange: (conjunction: string) => void;
 }
 
+export interface QueryBuilderConjunctionHintProps {
+  conjunction: string;
+  negated: boolean;
+}
+
 export interface QueryBuilderGroupHeaderProps {
   conjunction: string;
+  negated: boolean;
   // Set only for a group the rows drill into, where the rows show a subfield and this is the only place the level
   // itself is named.
   groupField?: { field: string; path: string[] };
