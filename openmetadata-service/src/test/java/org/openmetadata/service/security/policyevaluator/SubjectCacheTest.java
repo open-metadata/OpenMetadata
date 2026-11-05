@@ -375,6 +375,53 @@ public class SubjectCacheTest {
   }
 
   @Test
+  void testDisabledPolicyContributesNoRules() {
+    Policy disabled =
+        new Policy()
+            .withName("disabled_policy")
+            .withId(UUID.randomUUID())
+            .withEnabled(false)
+            .withRules(getRules("disabled_policy"));
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.POLICY, disabled.getId()), JsonUtils.pojoToJson(disabled));
+    putUserWithPolicy("disabledPolicyUser", disabled);
+
+    List<PolicyContext> policies = SubjectCache.getPolicies("disabledPolicyUser");
+
+    assertEquals(1, policies.size());
+    assertEquals("disabled_policy", policies.get(0).getPolicyName());
+    assertTrue(policies.get(0).getRules().isEmpty());
+  }
+
+  @Test
+  void testOwnerTeamOfAResourceContributesOnlyItsDenyRules() {
+    Policy mixed =
+        new Policy()
+            .withName("owner_team_mixed_policy")
+            .withId(UUID.randomUUID())
+            .withRules(
+                List.of(
+                    new Rule().withName("owner_team_allow").withEffect(Rule.Effect.ALLOW),
+                    new Rule().withName("owner_team_deny").withEffect(Rule.Effect.DENY)));
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.POLICY, mixed.getId()), JsonUtils.pojoToJson(mixed));
+    Team ownerTeam = createTeam("mixedOwnerTeam", List.of(), List.of(mixed), null);
+
+    Iterator<PolicyContext> policies =
+        SubjectContext.getSubjectContext("testUser")
+            .getPolicies(List.of(ownerTeam.getEntityReference()));
+
+    List<String> ownerTeamRules = new ArrayList<>();
+    while (policies.hasNext()) {
+      PolicyContext policy = policies.next();
+      if (policy.getPolicyName().equals("owner_team_mixed_policy")) {
+        policy.getRules().forEach(rule -> ownerTeamRules.add(rule.getName()));
+      }
+    }
+    assertEquals(List.of("owner_team_deny"), ownerTeamRules);
+  }
+
+  @Test
   void testBotUserDoesNotInheritTeamPolicies() {
     // Create a bot user
     List<Role> botRoles = getRoles("bot");
@@ -454,5 +501,18 @@ public class SubjectCacheTest {
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
     return team;
+  }
+
+  private static void putUserWithPolicy(String userName, Policy policy) {
+    Role role =
+        new Role()
+            .withName(userName + "_role")
+            .withId(UUID.randomUUID())
+            .withPolicies(toEntityReferences(List.of(policy)));
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.ROLE, role.getId()), JsonUtils.pojoToJson(role));
+    User user = new User().withName(userName).withRoles(toEntityReferences(List.of(role)));
+    EntityRepository.CACHE_WITH_NAME.put(
+        new ImmutablePair<>(Entity.USER, userName), JsonUtils.pojoToJson(user));
   }
 }

@@ -6541,6 +6541,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Restore moves the row from deleted=true to deleted=false, changing the listing total.
       ListCountCache.invalidate(entityType);
       response = new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
+      postRestore(updated);
     } catch (EntityNotFoundException e) {
       // Entity exists (verified above) but is not in DELETED state — already restored.
       LOG.info("Entity already restored or not in deleted state {} {}", entityType, id);
@@ -6551,6 +6552,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     restoreAdditionalChildren(id, updatedBy);
     return response;
   }
+
+  /** Runs after an entity is restored from a soft delete. */
+  protected void postRestore(T entity) {}
 
   @Transaction
   protected void restoreChildren(UUID id, String updatedBy) {
