@@ -63,15 +63,19 @@ class MstrSearchResult(MstrModel):
 
 
 class MstrSearchPage(MstrModel):
-    totalItems: int | None = 0  # noqa: N815
+    totalItems: int | None = None  # noqa: N815
     result: list[dict[str, Any]] | None = None
 
 
-class MstrDashboard(MstrSearchResult):
+class MstrDashboard(MstrModel):
     """
     A dossier as listed by the quick search, labelled with the project it was listed under
     """
 
+    id: str
+    name: str
+    description: str | None = None
+    owner: MstrOwner | None = None
     projectId: str  # noqa: N815
     projectName: str  # noqa: N815
 

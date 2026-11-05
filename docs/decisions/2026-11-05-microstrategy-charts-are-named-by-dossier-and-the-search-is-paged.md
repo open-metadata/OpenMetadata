@@ -26,15 +26,18 @@ also asked for every result in one response (`limit=-1`).
   searched.
 - Cube SQL and owner email lookups are cached per id in a 512-entry LRU (`CACHE_SIZE`), failures
   included.
-- A run that could not list every project's dossiers deletes no stale dashboard, chart or data
-  model. A run that could not read a dossier's definition deletes no stale chart or data model.
-  `markDeleted*` would otherwise soft-delete what a non-empty seen-set leaves out, and the
-  `SourceListing` confirmation only governs an empty one. A dossier whose definition fails is still
-  ingested from its listing and keeps the charts it already has linked.
+- A run that could not list every project's dossiers, or dropped a listed object that did not
+  parse, deletes no stale dashboard, chart or data model. `markDeleted*` would otherwise
+  soft-delete what a non-empty seen-set leaves out, and the `SourceListing` confirmation only
+  governs an empty one.
+- A dossier whose definition cannot be read is still ingested from its listing. It keeps the charts
+  it already has linked, and they count as seen, so stale charts are still deleted. Its data models
+  are not linked from the dashboard, so a run with such a dossier deletes no stale data model.
 
 ## Consequences
 - The upgrade renames every MicroStrategy chart. With `markDeletedCharts` on, the first run
-  soft-deletes the charts named the old way and creates the new ones; descriptions, tags or lineage
-  added by hand to an old chart are not carried over.
-- A server that keeps failing to render some definitions keeps stale charts and data models until
-  it renders them. Reverting that needs a per-dossier stale scope, which `deleteStale` does not have.
+  soft-deletes the charts named the old way, except those linked to a dossier whose definition
+  cannot be read, and creates the new ones; descriptions, tags or lineage added by hand to an old
+  chart are not carried over.
+- A server that keeps failing to render some definitions keeps stale data models until it renders
+  them. Reverting that needs a per-dossier stale scope, which `deleteStale` does not have.

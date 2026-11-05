@@ -193,7 +193,9 @@ class MicroStrategyClient:
             results = page.result or []
             yield from self._validate_each(results, MstrSearchResult, "search result")
             offset += len(results)
-            if not results or offset >= (page.totalItems or 0):
+            # Without totalItems, only a short page proves the search is exhausted.
+            exhausted = offset >= page.totalItems if page.totalItems is not None else len(results) < page_size
+            if not results or exhausted:
                 return
 
     def get_dashboard_details(self, project_id: str, dashboard_id: str) -> dict[str, Any]:

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 
 
@@ -58,7 +58,7 @@ class MicroStrategyColumnParser:
         data_type = cls.datatype_mapping.get(str(raw_type).lower(), DataType.UNKNOWN) if raw_type else DataType.UNKNOWN
 
         return Column(
-            name=truncate_column_name(str(field["name"])),
+            name=ColumnName(truncate_column_name(str(field["name"]))),
             displayName=field["name"],
             dataTypeDisplay=raw_type,
             dataType=data_type,

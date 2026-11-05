@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
     MicroStrategyConnection,
 )
@@ -104,6 +104,16 @@ class MicrostrategySource(DashboardServiceSource):
         # A dossier whose definition could not be read hides charts and data models that still exist.
         self.definition_failed = False
 
+    @property
+    def _service(self) -> str:
+        return self.context.get().dashboard_service  # pyright: ignore[reportAttributeAccessIssue]
+
+    def _fqn(self, entity_type: type, **names: str) -> str:
+        entity_fqn = fqn.build(self.metadata, entity_type=entity_type, service_name=self._service, **names)
+        if entity_fqn is None:
+            raise ValueError(f"Cannot build the FQN of {entity_type.__name__} {names}")
+        return entity_fqn
+
     @classmethod
     def create(
         cls,
@@ -117,7 +127,7 @@ class MicrostrategySource(DashboardServiceSource):
             raise InvalidSourceException(f"Expected MicroStrategyConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Iterable[MstrDashboard]:
+    def get_dashboards_list(self) -> Iterable[MstrDashboard]:  # pyright: ignore[reportIncompatibleMethodOverride]
         """
         List the dossiers of every project the filter keeps. Projects are filtered here, before
         their dossiers are searched or any definition is read.
@@ -221,18 +231,19 @@ class MicrostrategySource(DashboardServiceSource):
                 sourceUrl=SourceUrl(dashboard_url),
                 project=dashboard_details.projectName,
                 charts=self._chart_fqns(dashboard_details),
-                service=self.context.get().dashboard_service,
+                service=FullyQualifiedEntityName(self._service),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
-            yield Either(right=dashboard_request)
+            yield Either(left=None, right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:
             yield Either(
+                right=None,
                 left=StackTraceError(
                     name=dashboard_details.id,
                     error=f"Error yielding dashboard for {dashboard_details.name}: {exc}",
                     stackTrace=traceback.format_exc(),
-                )
+                ),
             )
 
     def _chart_fqns(self, dashboard_details: MstrDashboardDetails) -> list[FullyQualifiedEntityName]:
@@ -240,23 +251,17 @@ class MicrostrategySource(DashboardServiceSource):
         Without its definition a dossier's charts are unknown, and an empty chart list would
         unlink the charts of a dashboard ingested before, so it keeps the charts it has.
         """
-        service = self.context.get().dashboard_service
         if dashboard_details.definition_read:
-            return [
-                FullyQualifiedEntityName(
-                    fqn.build(self.metadata, entity_type=Chart, service_name=service, chart_name=chart)
-                )
-                for chart in self.context.get().charts or []
-            ]
+            charts_in_context = self.context.get().charts or []  # pyright: ignore[reportAttributeAccessIssue]
+            return [FullyQualifiedEntityName(self._fqn(Chart, chart_name=chart)) for chart in charts_in_context]
         existing = self.metadata.get_by_name(
-            entity=Dashboard,
-            fqn=fqn.build(
-                self.metadata, entity_type=Dashboard, service_name=service, dashboard_name=dashboard_details.id
-            ),
-            fields=["charts"],
+            entity=Dashboard, fqn=self._fqn(Dashboard, dashboard_name=dashboard_details.id), fields=["charts"]
         )
         charts = existing.charts.root if existing and existing.charts else []
-        return [FullyQualifiedEntityName(chart.fullyQualifiedName) for chart in charts if chart.fullyQualifiedName]
+        kept = [chart.fullyQualifiedName for chart in charts if chart.fullyQualifiedName]
+        # Seen, so stale-chart deletion keeps them while it removes every other stale chart.
+        self.chart_source_state.update(kept)
+        return [FullyQualifiedEntityName(chart_fqn) for chart_fqn in kept]
 
     def yield_dashboard_lineage_details(
         self,
@@ -290,12 +295,7 @@ class MicrostrategySource(DashboardServiceSource):
                     continue
                 datamodel_entity = self.metadata.get_by_name(
                     entity=DashboardDataModel,
-                    fqn=fqn.build(
-                        self.metadata,
-                        entity_type=DashboardDataModel,
-                        service_name=self.context.get().dashboard_service,
-                        data_model_name=dataset.id,
-                    ),
+                    fqn=self._fqn(DashboardDataModel, data_model_name=dataset.id),
                 )
                 if not datamodel_entity:
                     logger.debug(f"Data model [{dataset.id}] not found, skipping its lineage")
@@ -318,6 +318,7 @@ class MicrostrategySource(DashboardServiceSource):
                         ):
                             continue
                         yield Either(
+                            left=None,
                             right=AddLineageRequest(
                                 edge=EntitiesEdge(
                                     fromEntity=EntityReference(id=Uuid(table_entity.id.root), type="table"),
@@ -326,19 +327,22 @@ class MicrostrategySource(DashboardServiceSource):
                                     ),
                                     lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
                                 )
-                            )
+                            ),
                         )
             except Exception as exc:
                 yield Either(
+                    right=None,
                     left=StackTraceError(
                         name=f"Lineage of data model {dataset.id}",
                         error=f"Error to yield dashboard lineage details for data model [{dataset.name}]: {exc}",
                         stackTrace=traceback.format_exc(),
-                    )
+                    ),
                 )
 
     @staticmethod
-    def _matches_prefix(table_entity, database_name: str | None, schema_name: str | None, table_name: str | None):
+    def _matches_prefix(
+        table_entity: Table, database_name: str | None, schema_name: str | None, table_name: str | None
+    ):
         checks = (
             (table_name, table_entity.name.root),
             (schema_name, getattr(table_entity.databaseSchema, "name", None)),
@@ -360,18 +364,23 @@ class MicrostrategySource(DashboardServiceSource):
                         chart_request = CreateChartRequest(
                             name=EntityName(chart_name(dashboard_details.id, page.key, visualization.key)),
                             displayName=visualization.name,
-                            chartType=get_standard_chart_type(visualization.visualizationType).value,
-                            service=FullyQualifiedEntityName(self.context.get().dashboard_service),
+                            chartType=(
+                                get_standard_chart_type(visualization.visualizationType)
+                                if visualization.visualizationType
+                                else None
+                            ),
+                            service=FullyQualifiedEntityName(self._service),
                         )
-                        yield Either(right=chart_request)
+                        yield Either(left=None, right=chart_request)
                         self.register_record_chart(chart_request=chart_request)
                     except Exception as exc:
                         yield Either(
+                            right=None,
                             left=StackTraceError(
                                 name=f"Chart {visualization.key}",
                                 error=f"Error creating chart [{visualization.name}]: {exc}",
                                 stackTrace=traceback.format_exc(),
-                            )
+                            ),
                         )
 
     def _get_column_info(self, dataset: MstrDataset) -> list[Column]:
@@ -382,7 +391,7 @@ class MicrostrategySource(DashboardServiceSource):
                 children = [MicroStrategyColumnParser.parse(form) for form in available_object.forms or []]
                 datasource_columns.append(
                     Column(
-                        name=truncate_column_name(available_object.name),
+                        name=ColumnName(truncate_column_name(available_object.name)),
                         displayName=available_object.name,
                         dataTypeDisplay=available_object.type.title(),
                         dataType=DataType.UNKNOWN,
@@ -412,21 +421,22 @@ class MicrostrategySource(DashboardServiceSource):
                 data_model_request = CreateDashboardDataModelRequest(
                     name=EntityName(dataset.id),
                     displayName=dataset.name,
-                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                    dataModelType=DataModelType.MicroStrategyDataset.value,
-                    serviceType=DashboardServiceType.MicroStrategy.value,
+                    service=FullyQualifiedEntityName(self._service),
+                    dataModelType=DataModelType.MicroStrategyDataset,
+                    serviceType=DashboardServiceType.MicroStrategy,
                     columns=self._get_column_info(dataset),
                     project=self.get_project_name(dashboard_details=dashboard_details),
                 )
-                yield Either(right=data_model_request)
+                yield Either(left=None, right=data_model_request)
                 self.register_record_datamodel(datamodel_request=data_model_request)
             except Exception as exc:
                 yield Either(
+                    right=None,
                     left=StackTraceError(
                         name=dataset.name,
                         error=f"Error yielding Data Model [{dataset.name}]: {exc}",
                         stackTrace=traceback.format_exc(),
-                    )
+                    ),
                 )
 
     def mark_dashboards_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
@@ -435,7 +445,8 @@ class MicrostrategySource(DashboardServiceSource):
         yield from super().mark_dashboards_as_deleted()
 
     def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
-        if self._keep_stale("charts", self.listing_failed or self.definition_failed):
+        # A dossier whose definition failed reports the charts it already had as seen.
+        if self._keep_stale("charts", self.listing_failed):
             return
         yield from super().mark_charts_as_deleted()
 

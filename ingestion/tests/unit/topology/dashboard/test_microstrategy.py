@@ -318,6 +318,17 @@ class TestClient:
         assert all(s.headers["X-MSTR-ProjectID"] == TUTORIAL["id"] for s in searches)
         assert all("project_id" not in s.params for s in searches)
 
+    def test_paging_without_total_items_stops_on_a_short_page(self, server, client):
+        rows = [OFFICE_ROYALE, AIRLINE, BROKEN]
+
+        def page() -> tuple[int, Any]:
+            offset = int(server.calls[-1].params["offset"])
+            return 200, {"result": rows[offset : offset + 2]}
+
+        server.overrides["/searches/results"] = page
+
+        assert len(list(client.iter_search_results(TUTORIAL["id"], page_size=2))) == 3
+
     def test_only_the_auth_token_is_forwarded_from_the_login(self, server, client):
         client.get_projects_list()
 
@@ -485,13 +496,13 @@ class TestSource:
         assert list(source.yield_dashboard_chart(details)) == []
         assert list(source.yield_datamodel(details)) == []
         with patch("metadata.ingestion.source.dashboard.dashboard_service.delete_entity_from_source") as delete:
-            assert list(source.mark_charts_as_deleted()) == []
             assert list(source.mark_datamodels_as_deleted()) == []
         delete.assert_not_called()
 
     def test_an_existing_dashboard_keeps_its_charts_when_its_definition_fails(self, client):
         source = _source(client)
         source.dashboard_source_state = set()
+        source.chart_source_state = set()
         linked = SimpleNamespace(fullyQualifiedName=f"mstr.{BROKEN['id']}_K1_W1")
         source.metadata.get_by_name.return_value = SimpleNamespace(charts=SimpleNamespace(root=[linked]))
 
@@ -500,6 +511,7 @@ class TestSource:
         assert [chart.root for chart in dashboard.charts] == [linked.fullyQualifiedName]
         assert dashboard.owners is not None
         assert source.dashboard_source_state == {f"mstr.{BROKEN['id']}"}
+        assert linked.fullyQualifiedName in source.chart_source_state
 
     def test_datamodel_columns(self, client):
         source = _source(client)
