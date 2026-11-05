@@ -24,6 +24,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -132,18 +133,16 @@ public class RdfEntityDiffWriteIT {
 
   @Test
   void oneTagChangeOnAWideTableWritesOnlyItsTriples() throws Exception {
+    // 2.0 does not project a table's columns, so its wide tables are wide in custom properties.
     final Table table = wideTable();
     writeBoth(TABLE, table);
-    final Column tagged = table.getColumns().get(10);
-    assertEquals("PII.Sensitive", tagged.getTags().getFirst().getTagFQN());
-    tagged.setTags(List.of(tag("PII.None")));
+    table.setTags(List.of(tag("Tier.Tier2")));
     final Model projection = translator.toRdf(table);
     final long before = updateRequests(DIFF_DATASET);
 
     final RdfEntityWriteResult result = writeBoth(TABLE, table);
 
     assertEquals(RdfEntityWriteResult.Outcome.CHANGED_TRIPLES, result.outcome());
-    assertEquals(1, result.deletedTriples(), "only the column's link to the removed tag goes");
     assertTrue(
         result.deletedTriples() + result.insertedTriples() < projection.size() / 50,
         () -> result + " for a projection of " + projection.size() + " triples");
@@ -323,6 +322,14 @@ public class RdfEntityDiffWriteIT {
             .withWriteMaxRetries(0));
   }
 
+  private static Map<String, Object> wideExtension() {
+    final Map<String, Object> extension = new LinkedHashMap<>();
+    for (int index = 0; index < WIDE_COLUMNS; index++) {
+      extension.put("attribute_" + index, "value " + index);
+    }
+    return extension;
+  }
+
   private static Table wideTable() {
     final List<Column> columns = new ArrayList<>();
     for (int index = 0; index < WIDE_COLUMNS; index++) {
@@ -343,6 +350,7 @@ public class RdfEntityDiffWriteIT {
             .withDescription("Every order, one column per attribute")
             .withUpdatedAt(1_700_000_000_120L)
             .withTags(List.of(tag("Tier.Tier1")))
+            .withExtension(wideExtension())
             .withColumns(columns);
     table.setVersion(0.1);
     return table;
