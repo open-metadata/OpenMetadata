@@ -407,14 +407,17 @@ public class ActivityStreamRepository {
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
   }
 
-  /** List activity events by EntityLink (about field). */
+  /**
+   * List activity events by EntityLink (about field). FQNs are unique only within a type, so the
+   * events must also be of the link's entity type.
+   */
   public List<ActivityEvent> listByAbout(String entityLink, long afterTimestamp, int limit) {
-    String aboutFqnHash =
-        nullOrEmpty(entityLink)
-            ? null
-            : FullyQualifiedName.buildHash(
-                MessageParser.EntityLink.parse(entityLink).getEntityFQN());
-    List<String> jsonList = activityStreamDAO.listByAbout(aboutFqnHash, afterTimestamp, limit);
+    MessageParser.EntityLink link =
+        nullOrEmpty(entityLink) ? null : MessageParser.EntityLink.parse(entityLink);
+    String aboutFqnHash = link == null ? null : FullyQualifiedName.buildHash(link.getEntityFQN());
+    String entityType = link == null ? null : link.getEntityType();
+    List<String> jsonList =
+        activityStreamDAO.listByAbout(aboutFqnHash, entityType, afterTimestamp, limit);
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
   }
 
@@ -425,16 +428,15 @@ public class ActivityStreamRepository {
       return listByAbout(entityLink, afterTimestamp, limit);
     }
 
-    String aboutFqnHash =
-        nullOrEmpty(entityLink)
-            ? null
-            : FullyQualifiedName.buildHash(
-                MessageParser.EntityLink.parse(entityLink).getEntityFQN());
+    MessageParser.EntityLink link =
+        nullOrEmpty(entityLink) ? null : MessageParser.EntityLink.parse(entityLink);
+    String aboutFqnHash = link == null ? null : FullyQualifiedName.buildHash(link.getEntityFQN());
+    String entityType = link == null ? null : link.getEntityType();
     List<String> domainIdStrings = domainIds.stream().map(UUID::toString).toList();
     String domainJson = JsonUtils.pojoToJson(domainIdStrings);
     List<String> jsonList =
         activityStreamDAO.listByAboutAndDomains(
-            aboutFqnHash, domainJson, domainIdStrings, afterTimestamp, limit);
+            aboutFqnHash, entityType, domainJson, domainIdStrings, afterTimestamp, limit);
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
   }
 

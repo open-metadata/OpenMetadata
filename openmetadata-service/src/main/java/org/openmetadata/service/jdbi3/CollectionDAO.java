@@ -15188,27 +15188,32 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutFqnHash = :aboutFqnHash "
+                + "AND entityType = :entityType "
                 + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutfqnhash = :aboutFqnHash "
+                + "AND entitytype = :entityType "
                 + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
         connectionType = POSTGRES)
     List<String> listByAbout(
         @Bind("aboutFqnHash") String aboutFqnHash,
+        @Bind("entityType") String entityType,
         @Bind("after") long after,
         @Bind("limit") int limit);
 
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutFqnHash = :aboutFqnHash "
+                + "AND entityType = :entityType "
                 + "AND JSON_OVERLAPS(domains, :domainJson) "
                 + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutfqnhash = :aboutFqnHash "
+                + "AND entitytype = :entityType "
                 + "AND EXISTS ("
                 + "SELECT 1 FROM jsonb_array_elements_text(domains) AS domain_id "
                 + "WHERE domain_id IN (<domainIds>)) "
@@ -15216,6 +15221,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     List<String> listByAboutAndDomains(
         @Bind("aboutFqnHash") String aboutFqnHash,
+        @Bind("entityType") String entityType,
         @Bind("domainJson") String domainJson,
         @BindList("domainIds") List<String> domainIds,
         @Bind("after") long after,
