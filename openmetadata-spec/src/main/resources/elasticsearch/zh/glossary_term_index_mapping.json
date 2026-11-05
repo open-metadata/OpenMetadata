@@ -310,7 +310,8 @@
       },
       "synonyms": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
         "fields": {
           "keyword": {
             "type": "keyword",

@@ -66,8 +66,12 @@ class IndexMappingNestedFieldConsistencyTest {
         violations.add(entity + " missing synonyms");
         continue;
       }
-      if (!"om_analyzer".equals(synonyms.path("analyzer").asText())) {
-        violations.add(entity + " synonyms analyzer");
+      // Each locale has its own text analyzers (e.g. zh uses ik_*), so match displayName's
+      JsonNode displayName = properties.path("displayName");
+      for (String analyzerKey : List.of("analyzer", "search_analyzer")) {
+        if (!displayName.path(analyzerKey).equals(synonyms.path(analyzerKey))) {
+          violations.add(entity + " synonyms " + analyzerKey + " differs from displayName");
+        }
       }
       JsonNode fields = synonyms.path("fields");
       if (!"keyword".equals(fields.path("keyword").path("type").asText())) {
