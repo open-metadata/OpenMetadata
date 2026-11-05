@@ -1812,6 +1812,34 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._extract_tables_from_sql("", "db", "server")
         assert result is None
 
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_line_comment_ends_at_its_line(self):
+        """
+        A -- comment must only comment out its own #(lf)-separated line,
+        not every table referenced after it.
+        """
+        result = self.powerbi._extract_tables_from_sql(
+            "SELECT yr.res_id,--some comment#(lf)  yr.res_periodTo#(lf)"
+            "FROM yachtReservation yr#(lf)"
+            "LEFT JOIN V_reservationSubCategory  vrsc ON vrsc.res_id = yr.res_id",
+            "MyDb",
+            "server",
+        )
+        assert result is not None
+        tables = {t["table"] for t in result}
+        assert tables == {"yachtReservation", "V_reservationSubCategory"}
+
+        result = self.powerbi._extract_tables_from_sql(
+            "WITH cte AS (SELECT id FROM dbo.first_table) -- first CTE#(lf)"
+            "SELECT * FROM cte#(lf)"
+            "JOIN dbo.second_table s ON s.id = cte.id",
+            "MyDb",
+            "server",
+        )
+        assert result is not None
+        tables = {t["table"] for t in result}
+        assert tables == {"first_table", "second_table"}
+
     @pytest.mark.order(41)
     def test_create_dataflow_table_lineage(self):
         """

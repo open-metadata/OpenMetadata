@@ -112,7 +112,7 @@ const OntologyPackCard = ({
       className="tw:relative tw:h-full"
       data-testid={`ontology-pack-${pack.id}`}
       size="md"
-      variant={isAiMode ? 'default' : 'elevated'}>
+      variant={isAiMode ? 'muted' : 'elevated'}>
       <Card.Content className="tw:h-full">
         <Box className="tw:h-full" direction="col" gap={3}>
           <Box align="center" gap={3}>

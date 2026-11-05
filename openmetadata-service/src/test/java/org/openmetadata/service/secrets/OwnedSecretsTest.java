@@ -356,6 +356,29 @@ class OwnedSecretsTest {
   }
 
   @Test
+  void retireKeepsASecretTheWriteStillReadsUnderAnotherSpelling() {
+    OwnedSecrets owned = new CaseInsensitiveVault().ownedSecrets();
+    String kept = partReference(owned, "kept", "a");
+    String dropped = partReference(owned, "dropped", "b");
+
+    owned.retire(Set.of(kept, dropped), Set.of(upperCased(kept)), ALICE);
+
+    assertTrue(owned.exists(kept));
+    assertFalse(owned.exists(dropped));
+  }
+
+  @Test
+  void twoSpellingsOfOneSecretResolveToTheSameName() {
+    OwnedSecrets owned = new CaseInsensitiveVault().ownedSecrets();
+    String reference = partReference(owned, "password", "a");
+
+    assertEquals(owned.resolvedName(reference), owned.resolvedName(upperCased(reference)));
+    assertNotEquals(
+        owned.resolvedName(reference), owned.resolvedName(partReference(owned, "other", "b")));
+    assertThrows(IllegalArgumentException.class, () -> owned.resolvedName("plain-password"));
+  }
+
+  @Test
   void referencesListsWhatTheFieldsPointAt() {
     SnowflakeConnection connection =
         encrypt(snowflake("alice-password").withPrivateKey("alice-key"), ALICE);
@@ -486,6 +509,43 @@ class OwnedSecretsTest {
 
   private static String secretName(String reference) {
     return reference.substring(SECRET_FIELD_PREFIX.length());
+  }
+
+  private static String partReference(OwnedSecrets owned, String password, String part) {
+    SnowflakeConnection connection =
+        (SnowflakeConnection) owned.encrypt(snowflake(password), ALICE, List.of(part), Set.of());
+    return reference(connection.getPassword());
+  }
+
+  private static String upperCased(String reference) {
+    return SECRET_FIELD_PREFIX + secretName(reference).toUpperCase(Locale.ROOT);
+  }
+
+  /** A provider whose secret names are case-insensitive, as Azure Key Vault's are. */
+  private static final class CaseInsensitiveVault extends InMemorySecretsManager {
+    private CaseInsensitiveVault() {
+      super(CONFIG);
+    }
+
+    @Override
+    void storeSecret(String secretName, String secretValue) {
+      super.storeSecret(canonicalSecretName(secretName), secretValue);
+    }
+
+    @Override
+    String getSecret(String secretName) {
+      return super.getSecret(canonicalSecretName(secretName));
+    }
+
+    @Override
+    protected void deleteSecretInternal(String secretName) {
+      super.deleteSecretInternal(canonicalSecretName(secretName));
+    }
+
+    @Override
+    protected String canonicalSecretName(String secretName) {
+      return secretName.toLowerCase(Locale.ROOT);
+    }
   }
 
   /** A provider that deletes softly: a deleted secret keeps its name and refuses writes to it. */

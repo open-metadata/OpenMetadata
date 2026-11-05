@@ -627,6 +627,7 @@ const KnowledgeGraphDetails = ({
           {drawer !== 'coverage' && (
             <Input
               aria-label={t('label.search')}
+              autoComplete="off"
               className="tw:w-52 tw:max-w-full"
               placeholder={t('label.search')}
               size="sm"

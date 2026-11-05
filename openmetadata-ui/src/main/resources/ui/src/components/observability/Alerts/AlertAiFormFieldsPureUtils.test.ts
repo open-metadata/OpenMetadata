@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from '../../../constants/Alerts.constants';
 import {
   ArgumentsInput,
   Effect,
@@ -20,8 +21,7 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
-import { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
+import { ModifiedDestination } from '../../../utils/AlertsClassBase.interface';
 import { AlertAiFormValue } from './AlertAiFormFields.interface';
 import {
   getAlertAiSectionInputs,

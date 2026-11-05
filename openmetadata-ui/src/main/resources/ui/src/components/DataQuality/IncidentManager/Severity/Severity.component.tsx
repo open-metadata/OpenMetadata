@@ -80,7 +80,7 @@ const Severity = ({
   if (headerName) {
     return (
       <div className="tw:flex tw:flex-col tw:gap-1.5">
-        <div className="tw:flex tw:items-center tw:gap-1">
+        <div className="tw:flex tw:min-h-6 tw:items-center tw:gap-1">
           <Typography
             as="span"
             className="tw:whitespace-nowrap tw:text-secondary"

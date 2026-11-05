@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  FeaturedIcon,
   Owner,
   PageHeader,
   Tooltip,
@@ -667,7 +668,12 @@ const ClassificationDetails = forwardRef(
               displayName={displayName}
               displayNameClassName="text-xl"
               icon={
-                <ClassificationIcon className="tw:text-quaternary" size={36} />
+                <FeaturedIcon
+                  color="gray"
+                  icon={ClassificationIcon}
+                  size="md"
+                  theme="surface"
+                />
               }
               isDisabled={isClassificationDisabled}
               name={name ?? classification.name}
