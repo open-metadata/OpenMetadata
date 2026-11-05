@@ -72,7 +72,10 @@ describe('TableLinkedConcepts', () => {
     const link = await screen.findByTestId('table-linked-concept-link');
 
     expect(link).toHaveTextContent('Prescription');
-    expect(link).toHaveAttribute('href', '/governance/ontology?ontology=o1');
+    expect(link).toHaveAttribute(
+      'href',
+      '/governance/ontology?ontology=o1&concept=c1'
+    );
     expect(screen.getByText('LC Clinical')).toBeInTheDocument();
     expect(
       screen
@@ -87,6 +90,32 @@ describe('TableLinkedConcepts', () => {
       't1',
       expect.anything()
     );
+  });
+
+  it('links each concept of the same ontology to its own Studio selection', async () => {
+    (getOntologyConceptsBoundToAsset as jest.Mock).mockResolvedValue({
+      links: [
+        ...LINKS.links,
+        {
+          concept: ref('c2', 'Dispense', 'ontologyConcept'),
+          ontology: ref('o1', 'LC Clinical', 'ontology'),
+          columns: [],
+        },
+      ],
+    });
+
+    renderSection();
+
+    await screen.findAllByTestId('table-linked-concept-link');
+
+    expect(
+      screen
+        .getAllByTestId('table-linked-concept-link')
+        .map((a) => [a.textContent, a.getAttribute('href')])
+    ).toEqual([
+      ['Prescription', '/governance/ontology?ontology=o1&concept=c1'],
+      ['Dispense', '/governance/ontology?ontology=o1&concept=c2'],
+    ]);
   });
 
   it('shows only the bindings of the column the page is on', async () => {

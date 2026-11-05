@@ -28,6 +28,12 @@ interface TableLinkedConceptsProps {
   columnFqn?: string;
 }
 
+const conceptStudioPath = (ontologyId: string, conceptId: string) =>
+  `${ROUTES.ONTOLOGY_EXPLORER}?${new URLSearchParams({
+    ontology: ontologyId,
+    concept: conceptId,
+  })}`;
+
 const columnLabel = (binding: ColumnBinding) =>
   binding.column?.fullyQualifiedName ?? binding.columnPath.join('.');
 
@@ -79,9 +85,7 @@ const TableLinkedConcepts = ({
           <Box align="center" gap={2}>
             <Link
               data-testid="table-linked-concept-link"
-              to={`${ROUTES.ONTOLOGY_EXPLORER}?ontology=${encodeURIComponent(
-                link.ontology.id
-              )}`}>
+              to={conceptStudioPath(link.ontology.id, link.concept.id)}>
               {getEntityName(link.concept)}
             </Link>
             <Typography color="secondary" size="text-xs">

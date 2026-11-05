@@ -614,8 +614,13 @@ test.describe(
           await expect(drawer).toBeHidden();
           await section.getByTestId('table-linked-concept-link').click();
           await expect(page).toHaveURL(
-            new RegExp(`/governance/ontology\\?ontology=${ontology.id}`)
+            new RegExp(
+              `/governance/ontology\\?ontology=${ontology.id}&concept=${concept.id}`
+            )
           );
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toContainText('Prescription');
         } finally {
           await cleanUp(api, { ontology, tables: [table] });
         }
