@@ -208,13 +208,34 @@ class SemanticMemoryDuplicateFinderTest {
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
   }
 
+  /** An added number, a year here, rewords a value; only a replaced number changes it. */
   @Test
-  void anAddedCitationDoesNotPreventReusingTheSameApprovedValue() {
+  void anAddedYearDoesNotPreventReusingTheSameApprovedValue() {
     ContextMemory candidate =
         memory(UUID.randomUUID(), "What is the retention window?", "Data is kept for 90 days.");
     ContextMemory derived =
         memory(
             UUID.randomUUID(), "What is the retention window?", "Data is kept for 90 days (2025).");
+    when(completionClient.completeStructured(
+            anyString(), anyString(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
+        .thenReturn(List.of(new SemanticMemoryDuplicateFinder.MatchChoice(0)));
+
+    assertEquals(candidate, finderWithCandidate(candidate).findEquivalent(derived));
+  }
+
+  /** A citation is no value: renumbering "(section 3)" to "(section 4)" keeps the fact reusable. */
+  @Test
+  void aRenumberedCitationDoesNotPreventReusingTheSameApprovedValue() {
+    ContextMemory candidate =
+        memory(
+            UUID.randomUUID(),
+            "What is the retention window?",
+            "Data is kept for 90 days (section 3).");
+    ContextMemory derived =
+        memory(
+            UUID.randomUUID(),
+            "What is the retention window?",
+            "Data is kept for 90 days (section 4).");
     when(completionClient.completeStructured(
             anyString(), anyString(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
         .thenReturn(List.of(new SemanticMemoryDuplicateFinder.MatchChoice(0)));
