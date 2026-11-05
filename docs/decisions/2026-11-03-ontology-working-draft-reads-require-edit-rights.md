@@ -1,7 +1,7 @@
 # Reading an ontology's working draft requires EditAll on the ontology
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial); v2 2026-11-03 (change sets); v3 2026-11-05 (rows of an unscoped list)
+- **Revisions:** v1 2026-11-03 (initial); v2 2026-11-03 (change sets); v3 2026-11-05 (rows of an unscoped list); v3 amended 2026-11-05 (glossary scopes taken from the page)
 - **Deciders:** Ontology Studio program
 - **Guard:** `OntologyResourceAccessTest`, `ListFilterTest`, `IndependentOntologyDraftReadIT`, `IndependentOntologyAuthorizationIT`
 - **Related:** ADR:2026-11-02-ontology-reviewers-vote-without-edit-rights, `OntologyResourceAccess.requireDraftRead`, `useOntologyStudioModel.ts`, `OntologyMemoryReviewPanel.tsx`
@@ -37,7 +37,8 @@ endpoints and not others.
 - A list that names an ontology (`ontology` or `ontologyId`) needs `EditAll` on that ontology. A
   list that names none needs `EditAll` on ontologies as a type and, in addition, `EditAll` on the
   ontology of every row on the returned page (v3). A change set in glossary scope is checked with
-  the glossary rule above. Each distinct scope is checked once per request, and one refusal
+  the glossary rule above. Each distinct scope, ontology or glossary, is checked once per request, using the glossaries and
+  operations the listed rows already carry rather than a read per row, and one refusal
   refuses the whole page. A conditional rule such as `noOwner()` passes on a context that holds no
   entity, so the type-level check alone cannot tell whose rows the page holds. The page is still
   not filtered, for the reason above.

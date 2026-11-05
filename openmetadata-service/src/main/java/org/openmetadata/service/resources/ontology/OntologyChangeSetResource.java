@@ -39,7 +39,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
@@ -156,9 +158,38 @@ public class OntologyChangeSetResource
             .filter(row -> row.getOntology() != null)
             .map(row -> row.getOntology().getId())
             .toList());
-    rows.stream()
-        .filter(row -> row.getOntology() == null)
-        .forEach(row -> authorizeScopeRead(securityContext, readableChangeSet(row.getId())));
+    glossaryScopeChecks(rows)
+        .forEach(
+            check ->
+                authorizeGlossary(
+                    securityContext,
+                    check.glossary(),
+                    check.planned(),
+                    MetadataOperation.EDIT_ALL));
+  }
+
+  /** One glossary a page of glossary-scope rows touches, and the glossary a row plans to create. */
+  record GlossaryScopeCheck(EntityReference glossary, Glossary planned) {}
+
+  /**
+   * The rows of a list already carry {@code glossaries} and {@code operations}, so the distinct
+   * glossary checks come from the page itself, not from a read per row.
+   */
+  static java.util.Collection<GlossaryScopeCheck> glossaryScopeChecks(
+      final java.util.Collection<OntologyChangeSet> rows) {
+    final Map<String, GlossaryScopeCheck> distinct = new LinkedHashMap<>();
+    for (final OntologyChangeSet row : rows) {
+      if (row.getOntology() != null) {
+        continue;
+      }
+      for (final EntityReference glossary : listOrEmpty(row.getGlossaries())) {
+        final Glossary planned = plannedGlossary(row, glossary);
+        distinct.putIfAbsent(
+            glossary.getId() + (planned == null ? ":existing" : ":planned"),
+            new GlossaryScopeCheck(glossary, planned));
+      }
+    }
+    return distinct.values();
   }
 
   @GET
@@ -389,25 +420,36 @@ public class OntologyChangeSetResource
       final OntologyChangeSet changeSet,
       final MetadataOperation operation) {
     for (final EntityReference glossary : changeSet.getGlossaries()) {
-      final Glossary planned =
-          listOrEmpty(changeSet.getOperations()).stream()
-              .filter(change -> change.getGlossary() != null)
-              .map(change -> change.getGlossary())
-              .filter(candidate -> candidate.getId().equals(glossary.getId()))
-              .findFirst()
-              .orElse(null);
-      if (planned != null) {
-        authorizer.authorize(
-            securityContext,
-            new OperationContext(Entity.GLOSSARY, MetadataOperation.CREATE),
-            new CreateResourceContext<>(Entity.GLOSSARY, planned));
-        continue;
-      }
+      authorizeGlossary(securityContext, glossary, plannedGlossary(changeSet, glossary), operation);
+    }
+  }
+
+  private static Glossary plannedGlossary(
+      final OntologyChangeSet changeSet, final EntityReference glossary) {
+    return listOrEmpty(changeSet.getOperations()).stream()
+        .filter(change -> change.getGlossary() != null)
+        .map(change -> change.getGlossary())
+        .filter(candidate -> candidate.getId().equals(glossary.getId()))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private void authorizeGlossary(
+      final SecurityContext securityContext,
+      final EntityReference glossary,
+      final Glossary planned,
+      final MetadataOperation operation) {
+    if (planned != null) {
       authorizer.authorize(
           securityContext,
-          new OperationContext(Entity.GLOSSARY, operation),
-          new ResourceContext<>(Entity.GLOSSARY, glossary.getId(), null));
+          new OperationContext(Entity.GLOSSARY, MetadataOperation.CREATE),
+          new CreateResourceContext<>(Entity.GLOSSARY, planned));
+      return;
     }
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.GLOSSARY, operation),
+        new ResourceContext<>(Entity.GLOSSARY, glossary.getId(), null));
   }
 
   private void authorizeNativeScope(

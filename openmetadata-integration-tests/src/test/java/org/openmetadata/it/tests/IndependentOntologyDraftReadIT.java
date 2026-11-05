@@ -226,6 +226,45 @@ class IndependentOntologyDraftReadIT extends BaseOntologyApprovalIT {
     assertTrue(scopedConcepts.contains("\"name\":\"Customer\""));
   }
 
+  @Test
+  void anUnscopedListOfGlossaryChangeSetsNeedsEditAllOnTheirGlossary(final TestNamespace ns) {
+    final User editor = createEditor(ns);
+    final User consumer = createConsumer(ns);
+    final Glossary glossary =
+        ns.trackRoot(
+            Entity.GLOSSARY,
+            SdkClients.adminClient()
+                .glossaries()
+                .create(
+                    new CreateGlossary()
+                        .withName(ns.prefix("sharedScope"))
+                        .withDescription("Glossary scope")));
+    final List<String> ids = new java.util.ArrayList<>();
+    for (int index = 0; index < 4; index++) {
+      ids.add(
+          ns.trackRoot(
+                  "ontologyChangeSet",
+                  SdkClients.adminClient()
+                      .ontologyChangeSets()
+                      .create(
+                          new CreateOntologyChangeSet()
+                              .withName(ns.prefix("sharedDraft" + index))
+                              .withDisplayName("Shared draft " + index)
+                              .withDescription("Glossary-scope change set")
+                              .withGlossaries(Set.of(glossary.getFullyQualifiedName()))))
+              .getId()
+              .toString());
+    }
+
+    final String list = "GET /v1/ontologyChangeSets?limit=1000000";
+    final String body = bodyOf(token(editor), list);
+    ids.forEach(id -> assertTrue(body.contains(id), "the editor's page holds " + id));
+    assertTrue(body.contains("\"glossaries\""), "listed rows carry their glossaries");
+    assertTrue(body.contains("\"operations\""), "listed rows carry their operations");
+    assertEquals(403, statusOf(token(consumer), list));
+    assertEquals(200, statusOf(SdkClients.getAdminToken(), list));
+  }
+
   private static String populate(final TestNamespace ns, final Ontology ontology) {
     final String base = ontology.getNamespace().toString();
     final var admin = SdkClients.adminClient();
