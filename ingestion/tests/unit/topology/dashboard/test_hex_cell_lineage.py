@@ -325,6 +325,7 @@ class FakeOpenMetadata:
             name=request.name,
             fullyQualifiedName=model_fqn,
             dataModelType=request.dataModelType,
+            sql=request.sql,
             columns=columns,
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
         )
@@ -552,6 +553,20 @@ class TestHexCellLineage:
         run(source)
 
         assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
+
+    def test_a_data_model_without_columns_from_a_deleted_cell_is_not_kept(self, make_source):
+        source = make_source(
+            [sql_cell("c1", "select * from sales.orders", "orders")], tables=(make_table("orders", {}),)
+        )
+        run(source)
+        source.client.get_project_cells.return_value = [MARKDOWN_CELL]
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
+        data_models, edges = run(source)
+
+        assert (data_models, edges) == ([], [])
+        assert source.datamodel_source_state == set()
 
     def test_a_data_model_whose_cells_are_all_gone_is_not_kept(self, make_source):
         source = make_source([REVENUE_CELL])

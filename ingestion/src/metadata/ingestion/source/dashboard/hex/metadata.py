@@ -700,8 +700,9 @@ class HexSource(DashboardServiceSource):
 
     def _keep_columnless_data_model(self, project: Project) -> None:
         """
-        A data model without columns only links tables the query history named: one whose
-        tables fell out of the history's lookback window is kept, with its lineage
+        A data model without columns and SQL only links tables the query history named: one
+        whose tables fell out of the history's lookback window is kept, with its lineage. One
+        with SQL came from cells, which are read each run, so it goes when they do.
         """
         try:
             data_model = self.metadata.get_by_name(
@@ -713,7 +714,7 @@ class HexSource(DashboardServiceSource):
             logger.warning("Could not look up the data model of Hex project %s: %s", project.id, exc)
             self._keep_data_model(project)
             return
-        if data_model and not data_model.columns:
+        if data_model and not data_model.columns and not data_model.sql:
             self._keep_data_model(project)
 
     def _keep_data_model(self, project: Project) -> None:

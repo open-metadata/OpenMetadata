@@ -18,6 +18,7 @@
   `test_a_cell_whose_table_gives_no_columns_still_links_it_to_a_data_model`,
   `test_a_data_model_without_columns_outlives_the_query_history_window`,
   `test_a_data_model_without_columns_that_cant_be_looked_up_is_kept`,
+  `test_a_data_model_without_columns_from_a_deleted_cell_is_not_kept`,
   `test_resolver.py::test_hex_query_history_never_drops_a_schema_the_query_names`)
 - **Related:** #36357
 
@@ -87,8 +88,9 @@ query history carries no column lineage, as it can't tell which cell read the ta
 
 - A project with tables to link but no columns (cells that read tables yet output none, cells that
   can't be read, or tables only the query history names) gets a data model without columns.
-- A data model without columns is kept when this run finds no tables for it: the query history only
-  looks back seven days, and a project not run in that window would otherwise lose its lineage.
+- A data model without columns or SQL (built from the query history alone) is kept when this run
+  finds no tables for it: the query history only looks back seven days, and a project not run in
+  that window would otherwise lose its lineage. One with SQL came from cells and goes with them.
 - With data models off, or the project's data model filtered out, tables link to the dashboard as
   before.
 - A query history reference that names a schema resolves only in that schema; a bare name falls
