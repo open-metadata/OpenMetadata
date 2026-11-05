@@ -24,9 +24,11 @@ import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestDefinitionDAO.SortField
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
+import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RestUtil.DeleteResponse;
 
 @Slf4j
 public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
@@ -368,6 +370,21 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   @Override
   public void storeRelationships(TestDefinition entity) {
     // No relationships to store beyond what is stored in the super class
+  }
+
+  public DeleteResponse<TestDefinition> deleteUnusedDefinition(
+      String updatedBy, UUID id, String ifMatch) {
+    if (CommonUtil.nullOrEmpty(ifMatch)) {
+      throw new BadRequestException("If-Match is required when deleting an unused test definition");
+    }
+    return executeInTransaction(
+        () -> {
+          // Hold the definition row through deletion so a saved customization cannot
+          // be erased between validating its version and removing its relationships.
+          TestDefinition current = dao.jsonToEntity(dao.findJsonByIdForUpdate(id, Include.ALL), id);
+          EntityETag.validateETag(ifMatch, current, true);
+          return delete(updatedBy, id, false, true);
+        });
   }
 
   @Override

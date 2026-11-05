@@ -132,7 +132,14 @@ def migrate_test_definition(metadata: OpenMetadata, test_case: TestCase, manifes
     try:
         # The server checks all remaining relationships, including soft-deleted
         # cases. Never recurse: doing so would delete those cases and their history.
-        metadata.delete(entity=TestDefinition, entity_id=legacy.id, recursive=False, hard_delete=True)
+        etag = _entity_etag(legacy)
+        if not etag:
+            logger.warning("Retaining legacy dbt definition %s: no version for conditional deletion", legacy_name)
+            return test_case
+        metadata.client.delete(
+            f"{metadata.get_suffix(TestDefinition)}/{model_str(legacy.id)}/unused",
+            headers={"If-Match": etag},
+        )
     except APIError as exc:
         logger.warning(
             "Retaining legacy dbt definition %s; cleanup will retry on the next ingestion: %s", legacy_name, exc

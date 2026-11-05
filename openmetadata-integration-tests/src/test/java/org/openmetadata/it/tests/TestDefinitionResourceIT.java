@@ -15,19 +15,30 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 
 /**
@@ -64,6 +75,97 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     supportsNameLengthValidation = false; // TestDefinition doesn't enforce name length
     supportsSearchIndex = false; // TestDefinition doesn't have a search index
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Test
+  void test_deleteUnusedDefinitionRequiresCurrentVersion(TestNamespace ns) throws Exception {
+    TestDefinition original = createEntity(createMinimalRequest(ns));
+    TestDefinition edited = getEntity(original.getId().toString());
+    edited.setDescription("Customization saved after ingestion read the definition");
+    edited = patchEntity(edited.getId().toString(), edited);
+
+    ApiException stale =
+        assertThrows(
+            ApiException.class,
+            () -> deleteUnusedDefinition(original.getId(), original.getVersion()));
+    assertEquals(412, stale.getStatusCode());
+    assertEquals(edited.getDescription(), getEntity(original.getId().toString()).getDescription());
+    deleteUnusedDefinition(edited.getId(), edited.getVersion());
+    ApiException missing =
+        assertThrows(
+            ApiException.class,
+            () ->
+                SdkClients.adminClient()
+                    .testDefinitions()
+                    .get(original.getId().toString(), null, "all"));
+    assertEquals(404, missing.getStatusCode());
+  }
+
+  @Test
+  void test_deleteUnusedDefinitionRetainsActiveAndSoftDeletedCases(TestNamespace ns)
+      throws Exception {
+    TestDefinition definition = createEntity(createMinimalRequest(ns));
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("guarded_delete"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").build())));
+    TestCase testCase =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("dependent"))
+            .forTable(table)
+            .testDefinition(definition.getName())
+            .create();
+    assertThrows(
+        InvalidRequestException.class,
+        () -> deleteUnusedDefinition(definition.getId(), definition.getVersion()));
+    SdkClients.adminClient().testCases().delete(testCase.getId().toString());
+    assertThrows(
+        InvalidRequestException.class,
+        () -> deleteUnusedDefinition(definition.getId(), definition.getVersion()));
+    assertNotNull(getEntity(definition.getId().toString()));
+  }
+
+  @Test
+  void test_deleteUnusedDefinitionRequiresVersionAndDeletePermission(TestNamespace ns) {
+    TestDefinition definition = createEntity(createMinimalRequest(ns));
+    String path = "/v1/dataQuality/testDefinitions/" + definition.getId() + "/unused";
+    assertThrows(
+        ApiException.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(HttpMethod.DELETE, path, null, RequestOptions.builder().build()));
+    ApiException denied =
+        assertThrows(
+            ApiException.class,
+            () ->
+                SdkClients.dataConsumerClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.DELETE,
+                        path,
+                        null,
+                        RequestOptions.builder()
+                            .header("If-Match", "W/\"" + definition.getVersion() + "\"")
+                            .build()));
+    assertEquals(403, denied.getStatusCode());
+    assertNotNull(getEntity(definition.getId().toString()));
+  }
+
+  private static void deleteUnusedDefinition(UUID id, Double expectedVersion) throws Exception {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/dataQuality/testDefinitions/" + id + "/unused",
+            null,
+            RequestOptions.builder().header("If-Match", "W/\"" + expectedVersion + "\"").build());
   }
 
   @Override

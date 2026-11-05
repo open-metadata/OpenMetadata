@@ -38,6 +38,7 @@ def migration():
     old = Definition(
         id=uuid4(),
         name=node.name,
+        version=0.1,
         description=node.description,
         entityType="COLUMN",
         testPlatforms=["dbt"],
@@ -60,9 +61,19 @@ def migration():
     )
     catalog = {node.name: old, "unique": target}
     client = MagicMock(spec=OpenMetadata)
-    client.get_by_name.side_effect = lambda entity, fqn, **kwargs: catalog.get(model_str(fqn))
+    client.client = MagicMock()
+    client.get_suffix.return_value = "dataQuality/testDefinitions"
+    client.get_by_name.side_effect = lambda entity, fqn, **kwargs: (
+        catalog[model_str(fqn)].model_copy(deep=True) if model_str(fqn) in catalog else None
+    )
     client.patch.side_effect = lambda **kwargs: kwargs["destination"]
-    client.delete.side_effect = lambda **kwargs: catalog.pop(node.name)
+
+    def delete_unchanged(path, headers):
+        if headers["If-Match"] != f'W/"{model_str(catalog[node.name].version)}"':
+            raise APIError({"message": "Definition changed"}, 412)
+        return catalog.pop(node.name)
+
+    client.client.delete.side_effect = delete_unchanged
     return SimpleNamespace(node=node, old=old, target=target, case=case, catalog=catalog, client=client)
 
 
@@ -75,12 +86,8 @@ def test_reassigns_existing_case_and_hard_deletes_legacy_definition(migration):
     assert migrated.description == m.case.description
     assert migrated.testDefinition.id == m.target.id
     assert m.node.name not in m.catalog
-    assert m.client.delete.call_args.kwargs == {
-        "entity": Definition,
-        "entity_id": m.old.id,
-        "recursive": False,
-        "hard_delete": True,
-    }
+    assert m.client.client.delete.call_args.args == (f"dataQuality/testDefinitions/{model_str(m.old.id)}/unused",)
+    assert m.client.client.delete.call_args.kwargs == {"headers": {"If-Match": 'W/"0.1"'}}
     assert m.client.patch.call_args.kwargs["if_match"] == 'W/"0.1"'
     assert migrate_test_definition(m.client, migrated, m.node) == migrated
     assert m.client.patch.call_count == 1
@@ -114,7 +121,7 @@ def test_preserves_customized_or_incompatible_legacy_definitions(migration, fiel
     assert migrate_test_definition(m.client, m.case, m.node) == m.case
     assert m.node.name in m.catalog
     m.client.patch.assert_not_called()
-    m.client.delete.assert_not_called()
+    m.client.client.delete.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -133,7 +140,7 @@ def test_preserves_case_when_shared_definition_is_incompatible(migration, field,
     m.catalog["unique"] = Definition.model_validate(data)
     assert migrate_test_definition(m.client, m.case, m.node) == m.case
     m.client.patch.assert_not_called()
-    m.client.delete.assert_not_called()
+    m.client.client.delete.assert_not_called()
 
 
 def test_patch_failure_never_deletes_legacy_definition(migration):
@@ -142,7 +149,7 @@ def test_patch_failure_never_deletes_legacy_definition(migration):
     with pytest.raises(APIError):
         migrate_test_definition(m.client, m.case, m.node)
     assert m.node.name in m.catalog
-    m.client.delete.assert_not_called()
+    m.client.client.delete.assert_not_called()
 
 
 @pytest.mark.parametrize("response", [None, "unchanged"])
@@ -152,16 +159,16 @@ def test_unconfirmed_patch_never_deletes_legacy_definition(migration, response):
     m.client.patch.return_value = m.case if response else None
     with pytest.raises(ValueError, match="reassign"):
         migrate_test_definition(m.client, m.case, m.node)
-    m.client.delete.assert_not_called()
+    m.client.client.delete.assert_not_called()
 
 
 def test_cleanup_retries_when_another_case_still_references_definition(migration):
     m = migration
-    m.client.delete.side_effect = APIError({"message": "Definition has test cases"}, 400)
+    m.client.client.delete.side_effect = APIError({"message": "Definition has test cases"}, 400)
     migrated = migrate_test_definition(m.client, m.case, m.node)
     assert migrated.testDefinition.id == m.target.id
     assert m.node.name in m.catalog
-    m.client.delete.side_effect = lambda **kwargs: m.catalog.pop(m.node.name)
+    m.client.client.delete.side_effect = lambda *args, **kwargs: m.catalog.pop(m.node.name)
     assert migrate_test_definition(m.client, migrated, m.node) == migrated
     assert m.node.name not in m.catalog
     assert m.client.patch.call_count == 1
@@ -172,7 +179,7 @@ def test_missing_definition_leaves_case_unchanged(migration, missing):
     m = migration
     m.catalog.pop(missing)
     assert migrate_test_definition(m.client, m.case, m.node) == m.case
-    m.client.delete.assert_not_called()
+    m.client.client.delete.assert_not_called()
 
 
 def test_singular_test_is_not_migrated(migration):
@@ -213,4 +220,27 @@ def test_same_named_unrelated_definition_is_not_migrated(migration):
     m.case.testDefinition.id = type(m.case.testDefinition.id)(uuid4())
     assert migrate_test_definition(m.client, m.case, m.node) == m.case
     m.client.patch.assert_not_called()
-    m.client.delete.assert_not_called()
+    m.client.client.delete.assert_not_called()
+
+
+def test_concurrent_customization_prevents_hard_deletion(migration):
+    m = migration
+
+    def patch_after_definition_edit(**kwargs):
+        m.old.description = type(m.old.description)("Saved during ingestion")
+        m.old.version = type(m.old.version)(0.2)
+        return kwargs["destination"]
+
+    m.client.patch.side_effect = patch_after_definition_edit
+    migrated = migrate_test_definition(m.client, m.case, m.node)
+    assert migrated.testDefinition.id == m.target.id
+    assert model_str(m.catalog[m.node.name].description) == "Saved during ingestion"
+
+
+def test_definition_without_version_is_never_deleted(migration):
+    m = migration
+    m.old.version = None
+    migrated = migrate_test_definition(m.client, m.case, m.node)
+    assert migrated.testDefinition.id == m.target.id
+    assert m.node.name in m.catalog
+    m.client.client.delete.assert_not_called()
