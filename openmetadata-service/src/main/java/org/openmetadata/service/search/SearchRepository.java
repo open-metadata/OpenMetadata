@@ -3263,6 +3263,21 @@ public class SearchRepository {
     return withClusterAlias(childAliasesWithCapability(indexMapping, includeCapability));
   }
 
+  private List<String> filterChildWriteTargetsByCapability(
+      IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
+    List<String> childAliases = childAliasesWithCapability(indexMapping, includeCapability);
+    List<String> targets = new ArrayList<>(withClusterAlias(childAliases));
+    // Resolve each child's canonical key: fanning out a short alias would include staged indices
+    // of unrelated types, whose documents may not support this script's deleted field.
+    childAliases.stream()
+        .map(this::canonicalIndexFor)
+        .filter(Objects::nonNull)
+        .map(activeStagedIndices::get)
+        .filter(Objects::nonNull)
+        .forEach(targets::add);
+    return targets;
+  }
+
   private List<String> childAliasesWithCapability(
       IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
     return childAliasesOf(indexMapping).stream()
@@ -4509,7 +4524,8 @@ public class SearchRepository {
     // one: an incident under the parent takes its test case's flag here.
     for (String deletedField : childDeletedFields(indexMapping)) {
       SoftDeleteScript script = new SoftDeleteScript(delete, deletedField);
-      List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
+      List<String> targets =
+          filterChildWriteTargetsByCapability(indexMapping, script::compatibleWith);
       searchClient.softDeleteOrRestoreChildren(targets, script.painless(), parentMatch);
     }
   }

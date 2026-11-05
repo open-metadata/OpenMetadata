@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -51,6 +52,9 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Regression for the live-indexing soft-delete propagation bug. {@code SOFT_DELETE_RESTORE_SCRIPT}
@@ -145,6 +149,78 @@ public class TestCaseSoftDeleteSearchIT {
   }
 
   private record IncidentFixture(Database database, Table table, TestCase testCase) {}
+
+  @Test
+  void tableDeleteAndRestoreReachOnlyCompatibleStagedIndices() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    IncidentFixture fixture = createTestCaseWithIncident(client, "staged_soft_delete");
+    SearchRepository repository = Entity.getSearchRepository();
+    SearchClient search = repository.getSearchClient();
+    Map<String, String> stagedIndices = new LinkedHashMap<>();
+    String docId = UUID.randomUUID().toString();
+    try {
+      for (String entityType :
+          List.of(Entity.TEST_CASE, Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT)) {
+        var mapping = repository.getIndexMapping(entityType);
+        String staged = mapping.getIndexName(repository.getClusterAlias()) + "_rebuild_" + docId;
+        stagedIndices.put(entityType, staged);
+        search.createIndex(staged, repository.readIndexMapping(mapping));
+        Map<String, Object> doc = new LinkedHashMap<>();
+        doc.put("id", docId);
+        doc.put("table", Map.of("id", fixture.table().getId().toString()));
+        // Seed this sentinel on every type so a misrouted incident script cannot silently no-op.
+        doc.put("testCase", Map.of("deleted", false));
+        if (Entity.TEST_CASE.equals(entityType)) {
+          doc.put("deleted", false);
+        }
+        search.createEntity(staged, docId, MAPPER.writeValueAsString(doc));
+        repository.registerStagedIndex(entityType, staged);
+      }
+
+      client
+          .tables()
+          .delete(
+              fixture.table().getId().toString(),
+              Map.of("hardDelete", "false", "recursive", "true"));
+      assertIncidentListedOnlyWithDeleted(client, fixture.testCase().getFullyQualifiedName());
+      assertStagedDeletionFlags(search, stagedIndices, docId, true);
+
+      client.tables().restore(fixture.table().getId());
+      assertIncidentListedOnlyWithoutDeleted(client, fixture.testCase().getFullyQualifiedName());
+      assertStagedDeletionFlags(search, stagedIndices, docId, false);
+    } finally {
+      stagedIndices.forEach(repository::unregisterStagedIndex);
+      try {
+        stagedIndices.values().forEach(search::deleteIndex);
+      } finally {
+        hardDeleteQuietly(client, fixture.database());
+      }
+    }
+  }
+
+  private void assertStagedDeletionFlags(
+      SearchClient search, Map<String, String> stagedIndices, String docId, boolean deleted) {
+    await("Staged documents preserve their entity-specific deletion fields")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              for (Map.Entry<String, String> staged : stagedIndices.entrySet()) {
+                try (var response = search.getDocByID(staged.getValue(), docId)) {
+                  assertEquals(200, response.getStatus());
+                  JsonNode doc = MAPPER.valueToTree(response.getEntity());
+                  if (Entity.TEST_CASE.equals(staged.getKey())) {
+                    assertEquals(deleted, doc.path("deleted").asBoolean());
+                  } else {
+                    assertFalse(doc.has("deleted"), staged.getKey());
+                  }
+                  assertEquals(
+                      Entity.TEST_CASE_RESOLUTION_STATUS.equals(staged.getKey()) && deleted,
+                      doc.path("testCase").path("deleted").asBoolean(),
+                      staged.getKey());
+                }
+              }
+            });
+  }
 
   private IncidentFixture createTestCaseWithIncident(OpenMetadataClient client, String prefix)
       throws Exception {
