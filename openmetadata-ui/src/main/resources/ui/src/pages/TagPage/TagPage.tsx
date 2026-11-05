@@ -866,9 +866,7 @@ const TagPage = () => {
     );
   }
 
-  const learningIcon = (
-    <LearningIcon className="m-t-xss" pageId={LEARNING_PAGE_IDS.TAGS} />
-  );
+  const learningIcon = <LearningIcon pageId={LEARNING_PAGE_IDS.TAGS} />;
 
   const renderAddAssetsButton = () =>
     !isCertificationClassification && !tagItem.disabled ? (
