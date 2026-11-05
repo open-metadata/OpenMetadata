@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import {
   Control,
@@ -36,6 +30,12 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
 import CreateMemoryModal from './CreateMemoryModal.component';
+
+const DISPLAY_NAMES: Record<string, string> = {
+  admin: 'Admin User',
+  alice: 'Alice Smith',
+  MemoryReconciliationApplicationBot: 'Memory Reconciliation Agent',
+};
 
 jest.mock('react-markdown', () => ({
   __esModule: true,
@@ -333,23 +333,17 @@ describe('CreateMemoryModal', () => {
     (getUserByName as jest.Mock).mockImplementation(async (name: string) => ({
       id: name,
       name,
+      displayName: DISPLAY_NAMES[name],
       email: '',
     }));
   });
 
-  /** Renders a memory read-only and settles its updater's profile, which loads after rendering. */
-  const renderViewOnly = async (memory: ContextMemory) => {
+  const renderViewOnly = (memory: ContextMemory) =>
     render(
       <MemoryRouter>
         <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
       </MemoryRouter>
     );
-    await waitFor(() =>
-      expect(
-        useApplicationStore.getState().userProfilePics[memory.updatedBy ?? '']
-      ).toBeDefined()
-    );
-  };
 
   it('renders the content input', () => {
     render(<CreateMemoryModal {...defaultProps} />);
@@ -387,8 +381,13 @@ describe('CreateMemoryModal', () => {
       updatedAt: 1767225600000,
     };
 
-    await renderViewOnly(memory);
+    renderViewOnly(memory);
 
+    const metadata = within(screen.getByTestId('memory-metadata-section'));
+
+    expect(await metadata.findByText('Admin User')).toBeInTheDocument();
+    expect(metadata.getByText('label.updated-by')).toBeInTheDocument();
+    expect(metadata.getByText(/Jan 1, 2026/)).toBeInTheDocument();
     expect(screen.getByText('label.owner')).toBeInTheDocument();
     expect(screen.getByText(owner.displayName)).toBeInTheDocument();
     expect(UserPopOverCard).toHaveBeenCalledWith(
@@ -396,21 +395,9 @@ describe('CreateMemoryModal', () => {
       expect.anything()
     );
     expect(screen.queryByText('label.created-by')).not.toBeInTheDocument();
-
-    const metadata = within(screen.getByTestId('memory-metadata-section'));
-
-    expect(metadata.getByText('label.updated-by')).toBeInTheDocument();
-    expect(metadata.getByText('admin')).toBeInTheDocument();
-    expect(metadata.getByText(/Jan 1, 2026/)).toBeInTheDocument();
   });
 
   it('names the last updater by display name, as the memory card does', async () => {
-    (getUserByName as jest.Mock).mockImplementation(async (name: string) => ({
-      id: name,
-      name,
-      displayName: 'Memory Reconciliation Agent',
-      email: '',
-    }));
     const memory: ContextMemory = {
       id: 'memory-id',
       name: 'refund-policy',
@@ -421,7 +408,7 @@ describe('CreateMemoryModal', () => {
       updatedAt: 1767225600000,
     };
 
-    await renderViewOnly(memory);
+    renderViewOnly(memory);
 
     const metadata = within(screen.getByTestId('memory-metadata-section'));
 
@@ -441,15 +428,14 @@ describe('CreateMemoryModal', () => {
       updatedAt: 1767225600000,
     };
 
-    await renderViewOnly(memory);
-
-    expect(screen.queryByText('label.owner')).not.toBeInTheDocument();
-    expect(screen.queryByText('label.created-by')).not.toBeInTheDocument();
+    renderViewOnly(memory);
 
     const metadata = within(screen.getByTestId('memory-metadata-section'));
 
+    expect(await metadata.findByText('Admin User')).toBeInTheDocument();
     expect(metadata.getByText('label.updated-by')).toBeInTheDocument();
-    expect(metadata.getByText('admin')).toBeInTheDocument();
+    expect(screen.queryByText('label.owner')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.created-by')).not.toBeInTheDocument();
   });
 
   it('shows the last updater when the owner also made the update', async () => {
@@ -461,14 +447,13 @@ describe('CreateMemoryModal', () => {
       updatedAt: 1767225600000,
     };
 
-    await renderViewOnly(memory);
-
-    expect(screen.getByText('label.owner')).toBeInTheDocument();
+    renderViewOnly(memory);
 
     const metadata = within(screen.getByTestId('memory-metadata-section'));
 
+    expect(await metadata.findByText('Alice Smith')).toBeInTheDocument();
     expect(metadata.getByText('label.updated-by')).toBeInTheDocument();
-    expect(metadata.getByText('alice')).toBeInTheDocument();
+    expect(screen.getByText('label.owner')).toBeInTheDocument();
   });
 
   it('keeps the update date when a legacy memory has no updater', () => {
@@ -478,11 +463,7 @@ describe('CreateMemoryModal', () => {
       updatedAt: 1767225600000,
     };
 
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
-      </MemoryRouter>
-    );
+    renderViewOnly(memory);
 
     const metadata = within(screen.getByTestId('memory-metadata-section'));
 
