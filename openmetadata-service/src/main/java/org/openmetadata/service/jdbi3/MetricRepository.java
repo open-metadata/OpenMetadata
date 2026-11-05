@@ -763,19 +763,23 @@ public class MetricRepository extends EntityRepository<Metric> {
 
     // A group change moves the subtree as it stands when written, which includes metrics earlier
     // rows of this import put under it (e.g. a child created a few rows up).
+    // Stored members are checked again in their queued state, since an earlier row may have
+    // changed what the policy sees (e.g. added a denied tag to an existing child).
     private void authorizeQueuedDescendants(MetricRepository repository, Set<UUID> subtree) {
       List<Metric> queued = unwrittenMetrics();
+      Set<UUID> checked = new HashSet<>();
       boolean grew = true;
       while (grew) {
         grew = false;
         for (Metric metric : queued) {
-          if (metric.getParent() != null
-              && subtree.contains(metric.getParent().getId())
-              && subtree.add(metric.getId())) {
+          boolean inSubtree =
+              subtree.contains(metric.getId())
+                  || (metric.getParent() != null && subtree.contains(metric.getParent().getId()));
+          if (inSubtree && checked.add(metric.getId())) {
             authorize(
                 new OperationContext(METRIC, MetadataOperation.EDIT_ALL),
                 unsavedContext(repository, metric));
-            grew = true;
+            grew = subtree.add(metric.getId()) || grew;
           }
         }
       }

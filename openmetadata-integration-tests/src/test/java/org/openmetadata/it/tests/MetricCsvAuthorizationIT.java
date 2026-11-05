@@ -242,6 +242,37 @@ class MetricCsvAuthorizationIT {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
+  void movingMetricChecksTheImportedStateOfExistingChildren(boolean dryRun, TestNamespace ns)
+      throws Exception {
+    Editor editor = editor(ns, "true", "matchAnyTag('" + RESTRICTED_TAG + "')");
+    Metric root = metric(ns, "root");
+    Metric child =
+        create(ns, request(ns.shortPrefix("child")).withParent(root.getFullyQualifiedName()));
+    MetricGroup group =
+        ns.trackRoot(
+            Entity.METRIC_GROUP,
+            ADMIN
+                .getHttpClient()
+                .execute(
+                    HttpMethod.POST,
+                    "/v1/metricGroups",
+                    new CreateMetricGroup().withName(ns.shortPrefix("group")),
+                    MetricGroup.class));
+    String csv =
+        csv(
+            child,
+            List.of(
+                Map.of(10, RESTRICTED_TAG),
+                Map.of(0, root.getName(), 19, "", 21, group.getFullyQualifiedName())));
+
+    assertRows(importCsv(ns, editor.client(), root, csv, dryRun), 1, 1);
+
+    assertNull(ADMIN.metrics().get(root.getId().toString(), "metricGroup").getMetricGroup());
+    assertNull(ADMIN.metrics().get(child.getId().toString(), "metricGroup").getMetricGroup());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
   void unchangedMembershipDoesNotRequireEditOnParent(boolean dryRun, TestNamespace ns)
       throws Exception {
     Editor editor = editor(ns, "true", "matchAnyTag('" + RESTRICTED_TAG + "')");
