@@ -159,7 +159,7 @@ export type TableCardVariant = 'default' | 'muted';
  */
 export const MUTED_TABLE_SURFACE_CLASSES = [
   'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
-  'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover',
+  'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover',
   'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!',
   'tw:dark:[&_tbody:not(table_table_tbody)>tr:hover]:[--markdown-clamp-fade-color:color-mix(in_srgb,var(--tw-color-bg-secondary),white_6%)]!',
 ].join(' ');

@@ -64,10 +64,9 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
         <div className="ask-main-panel__header-actions">
           <ButtonUtility
             className="ask-main-panel__collapse-btn"
-            color="tertiary"
             data-testid="ask-collapse-btn"
             icon={CollapsePanelIcon}
-            size="sm"
+            size="lg"
             tooltip={t('label.collapse')}
             type="button"
             onClick={onCollapse}

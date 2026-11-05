@@ -4,12 +4,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
-import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
-import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,12 +19,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.metrics.MetricAuthorization;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.BoundedJsonPatch;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -66,8 +66,11 @@ public class PatchEntityTool implements McpTool {
   //   testCase             table-or-testCase authorization, sample cleanup
   //   testSuite            getAuthRequestsForUpdate authorization
   //   task                 restricted-field diff validation
+  //   team                 authorizeAdmin on defaultPersona
   //   user                 isAdmin / isBot / roles / teams authorization
   //   workflow             connection-secret decryptOrNullify
+  // metric and metricGroup are not listed: their resources' checks are shared, and execute() runs
+  // them through MetricAuthorization.
   private static final Set<String> DEDICATED_PATCH_LIFECYCLES =
       Set.of(
           Entity.ANNOUNCEMENT,
@@ -82,6 +85,7 @@ public class PatchEntityTool implements McpTool {
           Entity.TEST_CASE,
           Entity.TEST_SUITE,
           Entity.TASK,
+          Entity.TEAM,
           Entity.USER,
           Entity.WORKFLOW);
 
@@ -112,6 +116,7 @@ public class PatchEntityTool implements McpTool {
         securityContext,
         new OperationContext(entityType, jsonPatch),
         new ResourceContext<>(entityType, null, fqn, ResourceContextInterface.Operation.PATCH));
+    MetricAuthorization.authorizePatch(authorizer, securityContext, entityType, fqn, jsonPatch);
 
     // The response carries the patched entity, so this write answers a read as well: apply the
     // per-entity visibility rules the authorize() above cannot see, since they live outside the
@@ -202,7 +207,16 @@ public class PatchEntityTool implements McpTool {
           "Parameter 'patch' is required: a JSONPatch document (RFC 6902) as a JSON array string,"
               + " e.g. [{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"...\"}].");
     }
-    JsonArray operations = readOperations(rawPatch);
+    // Bound the parse the same way the REST reader does, before anything is authorized.
+    JsonArray operations;
+    try {
+      operations = BoundedJsonPatch.readArray(rawPatch);
+    } catch (BoundedJsonPatch.PatchTooLargeException e) {
+      throw new IllegalArgumentException("Parameter 'patch' is too large: " + e.getMessage(), e);
+    } catch (BoundedJsonPatch.InvalidPatchException e) {
+      throw new IllegalArgumentException(
+          "Parameter 'patch' is not valid JSON: " + e.getMessage(), e);
+    }
     operations.forEach(PatchEntityTool::requireOperationShape);
     return Json.createPatch(operations);
   }
@@ -253,26 +267,6 @@ public class PatchEntityTool implements McpTool {
         "Parameter 'patch' is not a valid JSONPatch document: "
             + reason
             + ". Nothing was changed. See https://jsonpatch.com for the shape of each operation.");
-  }
-
-  /**
-   * Parses the document, reporting a syntax error as the caller's to fix.
-   *
-   * <p>The patch is an argument, so malformed JSON is a bad argument. Left to propagate, the
-   * dispatcher classifies an unrecognised exception as a server fault and tells the model its
-   * arguments were fine and not to retry - for a document the model wrote and could correct.
-   */
-  private static JsonArray readOperations(String rawPatch) {
-    try {
-      return Json.createReader(new StringReader(rawPatch)).readArray();
-    } catch (JsonException | IllegalStateException e) {
-      throw new IllegalArgumentException(
-          "Parameter 'patch' is not valid JSON: "
-              + e.getMessage()
-              + ". It must be a JSON array of operations, e.g. [{\"op\": \"add\", \"path\":"
-              + " \"/owners/-\", \"value\": {\"id\": \"<uuid>\", \"type\": \"user\"}}].",
-          e);
-    }
   }
 
   @Override
