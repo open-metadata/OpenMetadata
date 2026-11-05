@@ -177,6 +177,7 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
+import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
@@ -200,6 +201,10 @@ public class SearchRepository {
   private static final Duration MAPPED_FIELD_CACHE_TTL = Duration.ofMinutes(1);
 
   private volatile SearchClient searchClient;
+
+  // Reads each background inherited-field propagation's status through whichever client is current.
+  private final InheritedFieldPropagationCheck propagationCheck =
+      new InheritedFieldPropagationCheck(taskId -> searchClient.childUpdateStatus(taskId));
   private final Cache<String, Boolean> mappedFieldCache =
       Caffeine.newBuilder()
           .maximumSize(MAPPED_FIELD_CACHE_MAX_SIZE)
@@ -1257,12 +1262,16 @@ public class SearchRepository {
         index, managedIndexMappings(), aliasIndexMap, clusterAlias);
   }
 
+  private static final String PIPELINE_RUN_INDEX = "pipelineStatus";
+
   // A query cost record carries the query's SQL, so a deny rule on the query must reach its cost
   // records too; they are indexed separately, so search RBAC treats them as a child of the query.
+  // A pipeline's runs are indexed separately too, with the pipeline's access fields copied on.
   private static final Map<String, Set<String>> RBAC_CHILD_TYPES =
       Map.of(
           Entity.TABLE, Set.of(Entity.TABLE_COLUMN),
-          Entity.QUERY, Set.of(Entity.QUERY_COST_RECORD));
+          Entity.QUERY, Set.of(Entity.QUERY_COST_RECORD),
+          Entity.PIPELINE, Set.of(PIPELINE_RUN_INDEX));
 
   public List<String> getChildIndexAliases(String entityType) {
     Set<String> rbacChildren = RBAC_CHILD_TYPES.getOrDefault(entityType, Set.of());
@@ -1494,11 +1503,12 @@ public class SearchRepository {
     }
 
     List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+    List<String> tablePolicyTags = SearchIndexUtils.policyTagFqns(table);
     List<Map<String, String>> docs = new ArrayList<>();
 
     for (Column column : flattenedColumns) {
       try {
-        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table, tablePolicyTags);
         String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
         String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
         docs.add(Collections.singletonMap(columnId, doc));
@@ -1592,8 +1602,87 @@ public class SearchRepository {
     }
   }
 
+  // A run carries its pipeline's task tags too, merged into its tags.
+  private static final Set<String> RUN_ACCESS_FIELD_NAMES =
+      Set.of(
+          Entity.FIELD_OWNERS,
+          Entity.FIELD_DOMAINS,
+          Entity.FIELD_TAGS,
+          Entity.FIELD_CERTIFICATION,
+          "tasks");
+
+  private boolean changesRunAccessFields(ChangeDescription changeDescription) {
+    return changeDescription == null
+        || changedFieldNames(changeDescription)
+            .anyMatch(name -> RUN_ACCESS_FIELD_NAMES.stream().anyMatch(name::startsWith));
+  }
+
+  private static final String RESTAMP_RUNS_SCRIPT =
+      "def fields = params.byPipeline[ctx._source.pipelineId];"
+          + " if (fields == null) { ctx.op = 'noop'; } else {"
+          + " for (def field : fields.entrySet()) { ctx._source[field.getKey()] = field.getValue(); } }";
+
+  /**
+   * Copies a pipeline's access fields onto its run documents, which search access control decides
+   * on as it does on the pipeline
+   * (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads). Asynchronous, as a
+   * pipeline can have many runs.
+   */
+  private void restampPipelineRuns(Pipeline pipeline) {
+    IndexMapping runIndex = entityIndexMap.get(PIPELINE_RUN_INDEX);
+    if (runIndex == null) {
+      return;
+    }
+    try {
+      Pipeline loaded = PipelineExecutionIndex.withAccessFields(pipeline.getEntityReference());
+      String pipelineId = loaded.getId().toString();
+      searchClient.updateChildren(
+          List.of(getWriteIndexName(runIndex)),
+          new ImmutablePair<>("pipelineId", pipelineId),
+          new ImmutablePair<>(
+              RESTAMP_RUNS_SCRIPT,
+              Map.of(
+                  "byPipeline", Map.of(pipelineId, PipelineExecutionIndex.accessFields(loaded)))));
+    } catch (Exception e) {
+      LOG.error("Failed to update the runs of pipeline [{}]", pipeline.getFullyQualifiedName(), e);
+    }
+  }
+
+  /**
+   * Refreshes the access fields on the runs of pipelines being reindexed, which also fills them in
+   * on runs indexed before they were copied. The pipelines carry {@link
+   * PipelineExecutionIndex#ACCESS_FIELDS}, being loaded for their own documents. Synchronous, so a
+   * reindex does not queue a task per batch.
+   */
+  public void restampPipelineRuns(List<? extends EntityInterface<?>> pipelines) {
+    IndexMapping runIndex = entityIndexMap.get(PIPELINE_RUN_INDEX);
+    if (runIndex == null) {
+      return;
+    }
+    Map<String, Object> byPipeline = new HashMap<>();
+    for (EntityInterface<?> entity : pipelines) {
+      if (entity instanceof Pipeline pipeline) {
+        byPipeline.put(pipeline.getId().toString(), PipelineExecutionIndex.accessFields(pipeline));
+      }
+    }
+    if (byPipeline.isEmpty()) {
+      return;
+    }
+    try {
+      searchClient.updateChildren(
+          List.of(getWriteIndexName(runIndex)),
+          "pipelineId",
+          List.copyOf(byPipeline.keySet()),
+          new ImmutablePair<>(RESTAMP_RUNS_SCRIPT, Map.of("byPipeline", byPipeline)));
+    } catch (Exception e) {
+      LOG.error("Failed to update the runs of {} reindexed pipelines", byPipeline.size(), e);
+    }
+  }
+
   private void syncTableColumns(Table table, ChangeDescription changeDescription) {
-    if (hasColumnsChanged(changeDescription) || changesTagsWithOtherFields(changeDescription)) {
+    if (hasColumnsChanged(changeDescription)
+        || changesTagsWithOtherFields(changeDescription)
+        || changesColumnPolicyTags(changeDescription)) {
       // Rebuilt from the table: the column tree, the inherited fields and the inherited terms
       deleteTableColumns(table);
       indexTableColumns(table);
@@ -1601,6 +1690,16 @@ public class SearchRepository {
       // Only inherited fields changed - use efficient update
       updateTableColumnsInheritedFields(table);
     }
+  }
+
+  /**
+   * Column entries carry their table's tags in {@code policyTags}, which search access control
+   * matches tag rules on and the tag cascade does not maintain, so while access control is on a
+   * table's tag change rebuilds its column entries; the cascade arriving afterwards changes nothing
+   * (ADR:2026-10-08-column-entries-carry-only-their-own-tags).
+   */
+  private boolean changesColumnPolicyTags(ChangeDescription changeDescription) {
+    return isTagsOnlyChange(changeDescription) && SearchUtils.isAccessControlEnabled();
   }
 
   /**
@@ -1855,9 +1954,10 @@ public class SearchRepository {
       }
 
       List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+      List<String> tablePolicyTags = SearchIndexUtils.policyTagFqns(table);
       for (Column column : flattenedColumns) {
         try {
-          ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+          ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table, tablePolicyTags);
           String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
           String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
           allColumnDocs.add(Collections.singletonMap(columnId, doc));
@@ -2088,6 +2188,9 @@ public class SearchRepository {
               e);
         }
       }
+      if (Entity.PIPELINE.equals(entityType) && changesRunAccessFields(changeDescription)) {
+        restampPipelineRuns((Pipeline) entity);
+      }
 
       long updateTime = System.currentTimeMillis() - startTime;
 
@@ -2145,10 +2248,12 @@ public class SearchRepository {
       Pipeline pipeline, List<PipelineStatus> pipelineStatuses) {
     try {
       String indexName = routeToStagedIfActive(getIndexOrAliasName("pipeline_status_search_index"));
+      Pipeline withAccessFields =
+          PipelineExecutionIndex.withAccessFields(pipeline.getEntityReference());
       List<Map<String, String>> docsAndIds = new ArrayList<>();
       for (PipelineStatus pipelineStatus : pipelineStatuses) {
         PipelineExecutionIndex pipelineExecutionIndex =
-            new PipelineExecutionIndex(pipeline, pipelineStatus);
+            new PipelineExecutionIndex(withAccessFields, pipelineStatus);
         Map<String, Object> doc = pipelineExecutionIndex.buildSearchIndexDoc();
         String docId = PipelineExecutionIndex.getDocumentId(pipeline, pipelineStatus);
         String docJson = JsonUtils.pojoToJson(doc);
@@ -3019,7 +3124,10 @@ public class SearchRepository {
               entityType,
               descriptor -> !view.skippedFields().contains(descriptor.fieldName()));
       if (!nullOrEmpty(updates.getKey())) {
-        searchClient.updateChildren(withClusterAlias(group.getValue()), parentMatch, updates);
+        String taskId =
+            searchClient.updateChildrenInBackground(
+                withClusterAlias(group.getValue()), parentMatch, updates);
+        propagationCheck.watch(taskId, entity, changeDescription);
       }
     }
     Pair<String, Map<String, Object>> updates =
@@ -4613,6 +4721,7 @@ public class SearchRepository {
   }
 
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, request);
     if (targetsDisabledColumnIndex(request.getIndex())) {
       return emptySearchResponse();
     }
@@ -4636,6 +4745,7 @@ public class SearchRepository {
 
   public int countSearchResults(SearchRequest baseRequest, SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, baseRequest);
     SearchRequest countRequest =
         new SearchRequest()
             .withQuery(baseRequest.getQuery())
@@ -4665,6 +4775,7 @@ public class SearchRepository {
       int from,
       java.io.OutputStream output)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, baseRequest);
     java.io.BufferedWriter writer =
         new java.io.BufferedWriter(
             new java.io.OutputStreamWriter(output, java.nio.charset.StandardCharsets.UTF_8));
@@ -4799,6 +4910,7 @@ public class SearchRepository {
 
   public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, request);
     if (targetsDisabledColumnIndex(request.getIndex())) {
       return emptySearchResponse();
     }
@@ -5046,6 +5158,7 @@ public class SearchRepository {
       int size,
       SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseFieldReference(subjectContext, index, fieldName);
     return searchClient.searchByField(
         fieldName, fieldValue, index, deleted, from, size, subjectContext);
   }
@@ -5107,6 +5220,7 @@ public class SearchRepository {
 
   public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, request);
     if (targetsDisabledColumnIndex(request.getIndex())) {
       return emptySearchResponse();
     }
@@ -5119,6 +5233,7 @@ public class SearchRepository {
 
   public Response getEntityTypeCounts(
       SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, index, request);
     return searchClient.getEntityTypeCounts(request, index, subjectContext);
   }
 

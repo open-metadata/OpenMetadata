@@ -22,7 +22,7 @@ import { performAdminLogin } from '../../../utils/admin';
  *
  * Tests task workflows for Container entities including:
  * - Entity-level description tasks
- * - DataModel column description tasks (dataModel::columnName::description)
+ * - DataModel column description tasks (dataModel.columns.columnName.description)
  * - Ownership update tasks for containers
  * - Tier update tasks for containers
  * - Domain update tasks for containers
@@ -148,7 +148,7 @@ test.describe('Task Creation and Resolution - Container Entity', () => {
         'Updated dataModel column description from task';
 
       // Create DescriptionUpdate task for dataModel column
-      // Format: dataModel::columnName::description
+      // Format: dataModel.columns.columnName.description
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
@@ -156,7 +156,7 @@ test.describe('Task Creation and Resolution - Container Entity', () => {
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `dataModel::${columnName}::description`,
+            fieldPath: `dataModel.columns.${columnName}.description`,
             newDescription: newColumnDescription,
           },
         },

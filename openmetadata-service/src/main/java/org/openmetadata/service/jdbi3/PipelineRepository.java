@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.type.Relationship.OWNS;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -87,6 +88,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -309,7 +311,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Index pipeline execution in Elasticsearch for analytics
     try {
-      indexPipelineExecutionInES(pipeline, pipelineStatus);
+      indexPipelineExecutionInES(
+          PipelineExecutionIndex.withAccessFields(pipeline.getEntityReference()), pipelineStatus);
     } catch (Exception e) {
       LOG.error("Failed to index pipeline execution in Elasticsearch", e);
       // Don't fail the entire operation if ES indexing fails
@@ -978,6 +981,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,tasks");
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Pipeline pipeline = (Pipeline) entity;
@@ -1135,7 +1143,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         updatedTask.setTags(
             updateTags(
                 storedTask.getFullyQualifiedName(),
-                EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
+                EntityUtil.getFieldName(
+                    EntityFieldPath.childKey(TASKS_FIELD, updatedTask.getName()), FIELD_TAGS),
                 storedTask.getTags(),
                 updatedTask.getTags()));
       }
@@ -1168,7 +1177,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         return;
       }
       recordChange(
-          EntityUtil.getFieldName(TASKS_FIELD, origTask.getName(), FIELD_DISPLAY_NAME),
+          EntityUtil.getFieldName(
+              EntityFieldPath.childKey(TASKS_FIELD, origTask.getName()), FIELD_DISPLAY_NAME),
           origTask.getDisplayName(),
           updatedTask.getDisplayName());
     }
@@ -1185,7 +1195,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   && !origTask.getDescription().equals(updatedTask.getDescription()))
               || !nullOrEmpty(updatedTask.getDescription()))) {
         recordChange(
-            "tasks." + origTask.getName() + ".description",
+            EntityUtil.getFieldName(
+                EntityFieldPath.childKey(TASKS_FIELD, origTask.getName()), FIELD_DESCRIPTION),
             origTask.getDescription(),
             updatedTask.getDescription());
       }
@@ -2446,7 +2457,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Get all pipelines
     ListFilter filter = new ListFilter(NON_DELETED);
-    List<Pipeline> pipelines = listAll(new Fields(Set.of("service")), filter);
+    List<Pipeline> pipelines =
+        listAll(getFields("service," + PipelineExecutionIndex.ACCESS_FIELDS), filter);
 
     int totalIndexed = 0;
     int totalFailed = 0;

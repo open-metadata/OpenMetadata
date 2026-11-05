@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/type/tableExecutionSource.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tableExecutionSource",
+  "description": "Physical execution target.",
+  "javaType": "org.openmetadata.schema.type.TableExecutionSource",
+  "type": "object",
+  "properties": {
+    "databaseName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tableName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "shardDate": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "databaseName",
+    "schemaName",
+    "tableName"
+  ],
+  "additionalProperties": false
+}

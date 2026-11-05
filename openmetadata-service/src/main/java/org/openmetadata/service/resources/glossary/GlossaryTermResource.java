@@ -33,6 +33,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -91,6 +92,7 @@ import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository.MovePlan;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository.TermSearch;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -100,6 +102,7 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
@@ -325,15 +328,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         Entity.GLOSSARY_TERM,
         () -> termListParent(parentTermParam, listGlossaryId, parentTermFQNParam));
 
-    ResultList<GlossaryTerm> terms;
-    if (before != null) { // Reverse paging
-      terms =
-          repository.listBefore(
-              uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
-    } else { // Forward paging or first page
-      terms = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, terms);
+    return addHref(
+        uriInfo,
+        readableListPage(uriInfo, securityContext, fields, filter, limitParam, before, after));
   }
 
   @GET
@@ -439,7 +436,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       // Uses efficient database-level search and pagination
       result = repository.searchGlossaryTermsByParentFQN(null, search);
     }
-
+    retainReadableRows(securityContext, fields, result);
     return addHref(uriInfo, result);
   }
 
@@ -1262,17 +1259,47 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                       mediaType = MediaType.APPLICATION_JSON,
                       schema = @Schema(implementation = MoveGlossaryTermRequest.class)))
           MoveGlossaryTermRequest moveRequest) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    requireParent(moveRequest);
+    // A move is authorized and admitted as the PATCH of parent and glossary that makes it
+    // (ADR:2026-10-30-a-glossary-term-move-is-authorized-and-held-as-the-patch-that-makes-it).
+    MovePlan plan = repository.planMove(id, moveRequest);
     authorizer.authorize(
         securityContext,
-        operationContext,
-        getResourceContextById(id, ResourceContextInterface.Operation.PUT));
-
+        new OperationContext(entityType, plan.patch()),
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     // Validate the move operation synchronously before submitting to async executor
     // This will throw IllegalArgumentException if circular reference detected
     repository.validateMoveOperation(id, moveRequest);
+    return repository
+        .submitHeldMove(plan, ChangeActor.fromRequest(securityContext))
+        .map(changeRequestId -> heldMoveResponse(plan.original(), changeRequestId))
+        .orElseGet(() -> startMove(uriInfo, securityContext, id, moveRequest));
+  }
 
+  // The parent is resolved by id and type before the move is authorized, so a reference missing
+  // either is refused here rather than failing the lookup.
+  private static void requireParent(MoveGlossaryTermRequest moveRequest) {
+    EntityReference parent = moveRequest == null ? null : moveRequest.getParent();
+    if (parent == null || parent.getId() == null || parent.getType() == null) {
+      throw new BadRequestException("A move needs the parent the term moves under");
+    }
+  }
+
+  // A held move is not started: the term stays where it is until the change request is approved.
+  private static Response heldMoveResponse(GlossaryTerm term, UUID changeRequestId) {
+    return Response.accepted()
+        .header(RestUtil.PENDING_CHANGE_HEADER, changeRequestId.toString())
+        .entity(
+            new MoveGlossaryTermResponse(
+                null, ApprovalGate.pendingMessage(changeRequestId), term.getName()))
+        .build();
+  }
+
+  private Response startMove(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      MoveGlossaryTermRequest moveRequest) {
     String jobId = UUID.randomUUID().toString();
     GlossaryTerm glossaryTerm =
         repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);

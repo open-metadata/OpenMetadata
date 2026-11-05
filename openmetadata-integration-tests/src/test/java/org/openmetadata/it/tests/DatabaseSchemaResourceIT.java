@@ -22,7 +22,10 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.CsvJobClient;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -39,13 +42,16 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
@@ -1104,6 +1110,63 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     assertEquals(List.of(0.5, 0.4, 0.3, 0.2, 0.1), versionsInHistory(table.getId()));
     assertEquals(1, ownerEdit.getOwners().size());
     assertEquals(1, ownerEdit.getTags().size());
+  }
+
+  @Test
+  void test_exportLeavesOutTablesTheExporterMayNotView(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = createImportSchema(ns);
+    Table open = createExportTable(schema, ns.prefix("open_table"), List.of());
+    Table restricted =
+        createExportTable(schema, ns.prefix("restricted_table"), List.of(personalDataTagLabel()));
+    String principal = ns.shortPrefix("schema_export");
+    OpenMetadataClient exporter =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            principal,
+            Entity.TABLE,
+            MetadataOperation.VIEW_ALL,
+            "matchAnyTag('" + personalDataTagLabel().getTagFQN() + "')");
+
+    assertThrows(
+        ForbiddenException.class, () -> exporter.tables().get(restricted.getId().toString()));
+    String exported = exporter.databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+    String adminExported =
+        SdkClients.adminClient().databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+
+    String asyncExported = exportAsync(principal + "_user", schema.getFullyQualifiedName());
+
+    assertTrue(exported.contains(open.getName()), exported);
+    assertFalse(exported.contains(restricted.getName()), exported);
+    assertTrue(asyncExported.contains(open.getName()), asyncExported);
+    assertFalse(asyncExported.contains(restricted.getName()), asyncExported);
+    assertTrue(adminExported.contains(restricted.getName()), adminExported);
+  }
+
+  /** Runs the schema's background export as {@code userName} and returns the CSV it produced. */
+  private static String exportAsync(String userName, String schemaFqn) throws Exception {
+    String token =
+        JwtAuthProvider.tokenFor(
+            userName, userName + "@test.openmetadata.org", new String[] {}, 3600);
+    CsvJobClient jobs = CsvJobClient.onDefaultServer();
+    String jobId =
+        jobs.startJob("GET", "/v1/databaseSchemas/name/" + schemaFqn + "/exportAsync", null, token);
+    Awaitility.await()
+        .atMost(2, TimeUnit.MINUTES)
+        .until(
+            () ->
+                jobs.request("GET", "/v1/csvAsyncJobs/" + jobId, null, token)
+                    .body()
+                    .contains("\"COMPLETED\""));
+    return jobs.request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, token).body();
+  }
+
+  private Table createExportTable(DatabaseSchema schema, String name, List<TagLabel> tags) {
+    CreateTable createTable = new CreateTable();
+    createTable.setName(name);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setTags(tags);
+    createTable.setColumns(
+        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+    return SdkClients.adminClient().tables().create(createTable);
   }
 
   private DatabaseSchema createImportSchema(TestNamespace ns) {

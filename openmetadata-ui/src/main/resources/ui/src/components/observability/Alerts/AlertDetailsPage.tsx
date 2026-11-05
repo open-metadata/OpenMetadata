@@ -41,8 +41,8 @@ import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
 import { useAlertDetailsData } from '../../../hooks/observability/alerts/useAlertDetailsData';
+import { useAlertFormData } from '../../../hooks/observability/alerts/useAlertFormData';
 import { useFqn } from '../../../hooks/useFqn';
-import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -342,7 +342,6 @@ const AlertDetailsPage = ({
       <>
         {editPermission && alertDetails?.provider !== ProviderType.System && (
           <ButtonUtility
-            color="tertiary"
             data-testid="edit-button"
             icon={Edit01}
             size="lg"
@@ -354,7 +353,6 @@ const AlertDetailsPage = ({
         )}
         {deletePermission && alertDetails?.provider !== ProviderType.System && (
           <ButtonUtility
-            color="tertiary"
             data-testid="delete-button"
             icon={Trash01}
             size="lg"
@@ -365,7 +363,6 @@ const AlertDetailsPage = ({
           />
         )}
         <ButtonUtility
-          color="tertiary"
           data-testid="sync-button"
           icon={RefreshCw04}
           isDisabled={isSyncing}

@@ -1294,15 +1294,18 @@
     --color-bg-primary_alt: theme(--color-bg-secondary);
     --color-bg-primary_hover: --alpha(theme(--color-white) / 6%);
 
-    /* Empty-placeholder "features" gradient — dark: fade to the page (gray-950)
-       with a subtle blue tint top/bottom, mirroring the light gradient. */
+    /* Empty-placeholder "features" gradient — dark: the middle is the card
+       surface (gray-800) it sits on, with a subtle blue tint top/bottom,
+       mirroring the light gradient whose middle is the white card. A
+       gray-950 middle and an opaque bottom tint read as a dark band with
+       hard edges on the card, so both tints stay translucent. */
     --gradient-empty-placeholder-features: linear-gradient(
       180deg,
       rgba(41, 53, 74, 0.5) 0%,
-      theme(--color-bg-primary) 25%,
-      theme(--color-bg-primary) 49.52%,
-      theme(--color-bg-primary) 75%,
-      rgba(41, 53, 74, 1) 100%
+      theme(--color-bg-surface) 25%,
+      theme(--color-bg-surface) 49.52%,
+      theme(--color-bg-surface) 75%,
+      rgba(41, 53, 74, 0.5) 100%
     );
     --color-bg-secondary: theme(--color-gray-900);
     --color-bg-secondary-solid: theme(--color-gray-600);
@@ -1846,11 +1849,6 @@ Badge's own default neutral border/background instead of the tint. */
 .tag-accent:focus {
   outline: none;
   text-decoration: none;
-}
-
-.tag-tinted__close-icon button,
-.tag-accent__close-icon button {
-  color: color-mix(in srgb, var(--tag-color) 60%, transparent);
 }
 
 /* Typography wraps its content in a `.prose` div, which sets its own
