@@ -17,14 +17,14 @@ import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ProviderType } from '../../../generated/entity/events/notificationTemplate';
-import { getAllNotificationTemplates } from '../../../rest/notificationtemplateAPI';
-import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   UseObservabilityAlertTemplatesOptions,
   UseObservabilityAlertTemplatesReturn,
 } from '../../../interface/observability/alertForm.interface';
+import { getAllNotificationTemplates } from '../../../rest/notificationtemplateAPI';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 
 export function useObservabilityAlertTemplates({
   extraFormWidgets,

@@ -30,6 +30,10 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
+  UseAlertFormDataOptions,
+  UseAlertFormDataReturn,
+} from '../../../interface/observability/alertForm.interface';
+import {
   createNotificationAlert,
   getAlertsFromName,
   updateNotificationAlert,
@@ -40,19 +44,15 @@ import {
   updateObservabilityAlert,
 } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from '../../../utils/AlertsClassBase.interface';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
-import {
-  UseAlertFormDataOptions,
-  UseAlertFormDataReturn,
-} from '../../../interface/observability/alertForm.interface';
-import {
-  ModifiedCreateEventSubscription,
-  ModifiedEventSubscription,
-} from '../../../utils/AlertsClassBase.interface';
 import { useAlertResources } from './useAlertResources';
 import { useObservabilityAlertTemplates } from './useObservabilityAlertTemplates';
 

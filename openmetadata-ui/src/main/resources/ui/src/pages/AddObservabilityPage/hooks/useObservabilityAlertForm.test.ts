@@ -66,9 +66,12 @@ jest.mock('../../../hooks/observability/alerts/useAlertResources', () => ({
   useAlertResources: () => ({ loading: false }),
 }));
 
-jest.mock('../../../hooks/observability/alerts/useObservabilityAlertTemplates', () => ({
-  useObservabilityAlertTemplates: () => ({ loading: false }),
-}));
+jest.mock(
+  '../../../hooks/observability/alerts/useObservabilityAlertTemplates',
+  () => ({
+    useObservabilityAlertTemplates: () => ({ loading: false }),
+  })
+);
 
 describe('useObservabilityAlertForm', () => {
   beforeEach(() => jest.clearAllMocks());
