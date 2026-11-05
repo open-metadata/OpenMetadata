@@ -90,6 +90,21 @@
   ],
   "mappings": [
     {
+      "_comment": "QueryViewer renders the topic Config, search index Settings, table dbt and View Definition tabs and the incident SQL Query tab.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryViewer/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Topic/TopicDetails/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/SearchIndexUtils.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/EntityConfigTabs.spec.ts",
+        "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Features/Topic.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts"
+      ]
+    },
+    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts",
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.teardown.ts"
