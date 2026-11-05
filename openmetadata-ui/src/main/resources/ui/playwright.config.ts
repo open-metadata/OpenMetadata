@@ -348,9 +348,6 @@ export default defineConfig({
     {
       name: 'visual-regression',
       testMatch: '**/VisualRegression/**/*.spec.ts',
-      // Every visual state owns its page and HTTP fixtures, including forms
-      // and delete feedback, so it can run independently of neighboring states.
-      fullyParallel: true,
       grep: shardGrep,
       // Catalog responses are isolated in the browser; random entity seeding
       // adds runtime and cross-test variability without serving these captures.
