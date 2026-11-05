@@ -532,6 +532,23 @@ class TestHexCellLineage:
         assert (data_models, edges) == ([], [])
         assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
 
+    def test_a_data_model_only_the_query_history_fills_outlives_its_window_beside_unresolved_cells(self, make_source):
+        # The cell reads a table not in OpenMetadata: SQL, but no tables and no columns
+        source = make_source([sql_cell("c1", "select * from other.missing", "missing")])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+        (request,), _ = run(source)
+        assert request.sql is None
+        source.hex_project_lineage = {}
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
+        data_models, _ = run(source)
+
+        assert data_models == []
+        assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
+
     def test_a_data_model_without_columns_that_cant_be_looked_up_is_kept(self, make_source):
         source = make_source([MARKDOWN_CELL])
         warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)

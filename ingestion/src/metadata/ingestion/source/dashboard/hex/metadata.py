@@ -674,7 +674,13 @@ class HexSource(DashboardServiceSource):
         ):
             self._keep_columnless_data_model(dashboard_details)
             return
-        cells = [cell for cell in cell_lineage if not cell.failed]
+        # A data model only the query history fills gets no SQL, even from cells that read
+        # nothing resolvable: SQL marks one built from cells, see _keep_columnless_data_model
+        cells = (
+            [cell for cell in cell_lineage if not cell.failed]
+            if columns or any(cell.tables for cell in cell_lineage)
+            else []
+        )
         try:
             source_url = self.client.get_project_url(dashboard_details)
             data_model_request = CreateDashboardDataModelRequest(
