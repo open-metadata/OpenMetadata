@@ -55,13 +55,14 @@ NAME_PATTERN = "|".join(
     )
 )
 
-# Characters that may continue a word identifier. Used to keep `q'` / `nq'`
-# from matching the tail of an identifier like `seq'...`.
-_WORD_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+
+def _continues_identifier(char: str) -> bool:
+    """Match the name grammar's Unicode word characters and Oracle continuations."""
+    return char.isalnum() or char in "_$#"
 
 
 def _blank_line_comment(text: str, i: int, n: int, out: list[str]) -> int:
-    """Blank a `--` line comment to end of line (the newline survives)."""
+    """Blank a `--` or `#` line comment to end of line (the newline survives)."""
     j = i
     while j < n and text[j] != "\n":
         j += 1
@@ -137,7 +138,7 @@ def _detect_qquote(text: str, i: int, n: int) -> tuple[int, str]:
     the opening `'` and the delimiter character. Otherwise return ``(-1, "")``.
     """
     c = text[i]
-    if c in ("q", "Q") and i + 2 < n and text[i + 1] == "'" and (i == 0 or text[i - 1] not in _WORD_CHARS):
+    if c in ("q", "Q") and i + 2 < n and text[i + 1] == "'" and (i == 0 or not _continues_identifier(text[i - 1])):
         d = text[i + 2]
         if not d.isspace():
             return i + 1, d
@@ -146,7 +147,7 @@ def _detect_qquote(text: str, i: int, n: int) -> tuple[int, str]:
         and i + 3 < n
         and text[i + 1] in ("q", "Q")
         and text[i + 2] == "'"
-        and (i == 0 or text[i - 1] not in _WORD_CHARS)
+        and (i == 0 or not _continues_identifier(text[i - 1]))
     ):
         d = text[i + 3]
         if not d.isspace():
@@ -204,8 +205,8 @@ def _sanitize(query_text: str) -> str:
     A single linear scan (no backtracking regex) handles every form so repeated
     unmatched `q'`-like prefixes in comment text stay linear in input size:
 
-    * `--` line and `/* ... */` block comments are blanked (the newline after a
-      `--` comment survives). An unterminated `/*` runs to end of text, so the
+    * `--` / `#` line and `/* ... */` block comments are blanked (the newline after a
+      `--` / `#` comment survives). An unterminated `/*` runs to end of text, so the
       tail is truncated at its opener -- a `CALL` inside it never executed.
     * `"..."` (Snowflake/Oracle) and `` `...` `` (BigQuery) delimited
       identifiers are preserved verbatim; a delimited name may hold any
@@ -238,8 +239,11 @@ def _sanitize(query_text: str) -> str:
     while i < n:
         c = query_text[i]
 
-        # `--` line comment: blank to end of line (the newline survives).
-        if c == "-" and i + 1 < n and query_text[i + 1] == "-":
+        # BigQuery's `#` opens a comment at a lexical boundary, while Oracle
+        # permits it inside an unquoted identifier such as `a#$$`.
+        if (c == "-" and i + 1 < n and query_text[i + 1] == "-") or (
+            c == "#" and (i == 0 or not _continues_identifier(query_text[i - 1]))
+        ):
             i = _blank_line_comment(query_text, i, n, out)
             continue
 
@@ -274,7 +278,7 @@ def _sanitize(query_text: str) -> str:
         # `$` that continues an identifier (`my$`, `a$$`) from being read as a
         # dollar-quote opener that would truncate a real `CALL`/`BEGIN`.
         # An unterminated dollar-quote truncates.
-        if c == "$" and (i == 0 or (query_text[i - 1] not in _WORD_CHARS and query_text[i - 1] not in "$#")):
+        if c == "$" and (i == 0 or not _continues_identifier(query_text[i - 1])):
             new_i = _blank_dollar(query_text, i, n, out)
             if new_i is None:
                 return "".join(out)
@@ -326,7 +330,7 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
     We'll return the lowered procedure name
     """
     # Comments and literal values can mention invocations that never executed.
-    if any(marker in query_text for marker in ("--", "/*", "'", "$")):
+    if any(marker in query_text for marker in ("--", "/*", "'", "$", "#")):
         query_text = _sanitize(query_text)
 
     res = re.search(NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else 0)

@@ -55,6 +55,37 @@ def test_get_procedure_name_preserves_dollars_after_hash_in_identifiers(query_te
     assert get_procedure_name_from_call(query_text) == expected
 
 
+@pytest.mark.parametrize(
+    "query_text",
+    [
+        "CALL # deprecated: CALL legacy_load()\n dataset.nightly_load('x')",
+        "CALL # deprecated: CALL legacy_load()\n dataset.nightly_load(/*param*/)",
+        "CALL # harmless note\n dataset.nightly_load()",
+        "CALL #deprecated: CALL legacy_load()\n dataset.nightly_load()",
+    ],
+)
+def test_get_procedure_name_ignores_hash_comments(query_text: str) -> None:
+    assert get_procedure_name_from_call(query_text) == "nightly_load"
+
+
+@pytest.mark.parametrize(
+    "query_text,expected",
+    [
+        ("CALL etl.é$proc$archive()", "é$proc$archive"),
+        ("CALL etl.é$$()", "é$$"),
+        ("CALL etl.é#$$()", "é#$$"),
+        ("CALL etl.a#$proc$archive()", "a#$proc$archive"),
+        ('CALL "hash#proc"()', "hash#proc"),
+        ("CALL `dataset.hash#proc`()", "hash#proc"),
+        ("SELECT '# CALL hidden()'; CALL real()", "real"),
+        ("SELECT $$# CALL hidden()$$; CALL real()", "real"),
+        ("SELECT q'[# CALL hidden()]'; CALL real()", "real"),
+    ],
+)
+def test_get_procedure_name_preserves_identifier_and_literal_hashes(query_text: str, expected: str) -> None:
+    assert get_procedure_name_from_call(query_text) == expected
+
+
 class TestStoredProcedures:
     """Group stored procedures tests"""
 
