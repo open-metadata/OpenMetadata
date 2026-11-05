@@ -44,6 +44,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -89,7 +90,10 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.resources.metrics.MetricResource;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -112,6 +116,8 @@ public class MetricRepository extends EntityRepository<Metric> {
   static final String FIELD_CHILDREN = "children";
   static final String FIELD_CHILDREN_COUNT = "childrenCount";
   static final String FIELD_METRIC_GROUP = "metricGroup";
+  private static final Set<String> HIERARCHY_PATCH_FIELDS =
+      Set.of(FIELD_PARENT, FIELD_METRIC_GROUP);
   private static final int ASSET_SCAN_BATCH_SIZE = 200;
   private static final int HIERARCHY_SCAN_BATCH_SIZE = 200;
   static final int MAX_OBSERVABILITY_ASSET_DETAILS = 1_000;
@@ -1859,6 +1865,62 @@ public class MetricRepository extends EntityRepository<Metric> {
   private static boolean sameReference(EntityReference left, EntityReference right) {
     return left == right
         || (left != null && right != null && Objects.equals(left.getId(), right.getId()));
+  }
+
+  @Override
+  protected void authorizeWrite(
+      final Metric original, final Metric updated, final ChangeActor actor, final Edit edit) {
+    final BiConsumer<OperationContext, ResourceContextInterface> authorize =
+        (operation, resource) -> authorizeAuthor(actor, operation, resource);
+    if (writesHierarchy(edit)) {
+      authorizeHierarchyChange(original, updated, authorize);
+    }
+    authorizeRequestedAssets(updated, authorize);
+  }
+
+  // A PATCH stores only the fields it names, so one naming neither parent nor group moves nothing.
+  private static boolean writesHierarchy(final Edit edit) {
+    return edit == null
+        || edit.kind() != Edit.Kind.PATCH
+        || !Collections.disjoint(edit.patchedFields(), HIERARCHY_PATCH_FIELDS);
+  }
+
+  /**
+   * EditAll on what a write changes in the hierarchy: the stored subtree of a metric that moves,
+   * and the parent and group a new or moved metric lands in. {@code original} is null for a create.
+   */
+  public void authorizeHierarchyChange(
+      final Metric original,
+      final Metric updated,
+      final BiConsumer<OperationContext, ResourceContextInterface> authorize) {
+    if (original != null && hierarchyMembershipChanged(original, updated)) {
+      hierarchySubtree(original.getId()).forEach(metric -> authorizeEditAll(metric, authorize));
+    }
+    hierarchyDestinations(original, updated)
+        .forEach(destination -> authorizeEditAll(destination, authorize));
+  }
+
+  /** Linking an asset exposes it on the metric, so require the VIEW access /assets/add requires. */
+  public static void authorizeRequestedAssets(
+      final Metric metric, final BiConsumer<OperationContext, ResourceContextInterface> authorize) {
+    for (final EntityReference asset : listOrEmpty(metric.getAssets())) {
+      try {
+        authorize.accept(
+            new OperationContext(asset.getType(), MetadataOperation.VIEW_BASIC),
+            new ResourceContext<>(asset.getType(), asset.getId(), asset.getFullyQualifiedName()));
+      } catch (AuthorizationException | EntityNotFoundException | IllegalArgumentException e) {
+        throw new AuthorizationException(
+            String.format("Not authorized to view the requested asset %s", asset.getId()), e);
+      }
+    }
+  }
+
+  public static void authorizeEditAll(
+      final EntityReference entity,
+      final BiConsumer<OperationContext, ResourceContextInterface> authorize) {
+    authorize.accept(
+        new OperationContext(entity.getType(), MetadataOperation.EDIT_ALL),
+        new ResourceContext<>(entity.getType(), entity.getId(), entity.getFullyQualifiedName()));
   }
 
   static int countVisibleReferences(

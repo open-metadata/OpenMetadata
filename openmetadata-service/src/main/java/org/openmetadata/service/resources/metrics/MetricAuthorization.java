@@ -13,16 +13,10 @@
 
 package org.openmetadata.service.resources.metrics;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Metric;
@@ -39,6 +33,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.JsonPatchUtils;
 
 /**
@@ -48,7 +43,9 @@ import org.openmetadata.service.util.JsonPatchUtils;
  *
  * <p>The create, PUT and PATCH endpoints of both resources and the metric bulk PUT call these, and
  * so do the MCP entity tools (ADR:2026-11-03-metric-writes-run-the-same-checks-through-rest-and-mcp).
- * CSV import uses the same membership comparisons for row-level hierarchy authorization.
+ * CSV import uses the same membership comparisons for row-level hierarchy authorization. The
+ * EditAll and asset checks live in {@code MetricRepository} and {@code MetricGroupRepository}, which
+ * also run them on every write through {@code EntityRepository.authorizeWrite}.
  */
 public final class MetricAuthorization {
 
@@ -113,35 +110,16 @@ public final class MetricAuthorization {
 
   static void authorizeHierarchyChange(
       Authorizer authorizer, SecurityContext securityContext, Metric original, Metric updated) {
-    boolean changed =
-        original == null || MetricRepository.hierarchyMembershipChanged(original, updated);
-    if (changed) {
-      if (original != null) {
-        authorizeHierarchyMutation(authorizer, securityContext, original.getId());
-      }
-      authorizeHierarchyDestinations(authorizer, securityContext, original, updated);
-    }
+    metrics().authorizeHierarchyChange(original, updated, asRequest(authorizer, securityContext));
   }
 
   static void authorizeHierarchyDestinations(
       Authorizer authorizer, SecurityContext securityContext, Metric original, Metric updated) {
-    for (EntityReference destination : MetricRepository.hierarchyDestinations(original, updated)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(destination.getType(), MetadataOperation.EDIT_ALL),
-          new ResourceContext<>(
-              destination.getType(), destination.getId(), destination.getFullyQualifiedName()));
-    }
-  }
-
-  private static void authorizeHierarchyMutation(
-      Authorizer authorizer, SecurityContext securityContext, UUID metricId) {
-    for (EntityReference metric : metrics().hierarchySubtree(metricId)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.METRIC, MetadataOperation.EDIT_ALL),
-          new ResourceContext<>(Entity.METRIC, metric.getId(), metric.getFullyQualifiedName()));
-    }
+    MetricRepository.hierarchyDestinations(original, updated)
+        .forEach(
+            destination ->
+                MetricRepository.authorizeEditAll(
+                    destination, asRequest(authorizer, securityContext)));
   }
 
   /** A whole-document replace can set the parent too, and the patched fields leave it out. */
@@ -168,15 +146,9 @@ public final class MetricAuthorization {
     }
   }
 
-  /** Linking an asset exposes it on the metric, so require the VIEW access /assets/add requires. */
   static void authorizeRequestedAssets(
       Authorizer authorizer, SecurityContext securityContext, Metric metric) {
-    for (EntityReference asset : listOrEmpty(metric.getAssets())) {
-      if (!canAccess(authorizer, securityContext, asset, MetadataOperation.VIEW_BASIC)) {
-        throw new AuthorizationException(
-            String.format("Not authorized to view the requested asset %s", asset.getId()));
-      }
-    }
+    MetricRepository.authorizeRequestedAssets(metric, asRequest(authorizer, securityContext));
   }
 
   static boolean canAccess(
@@ -220,38 +192,13 @@ public final class MetricAuthorization {
       SecurityContext securityContext,
       MetricGroup original,
       MetricGroup updated) {
-    for (EntityReference metric : membershipMutationTargets(original, updated)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.METRIC, MetadataOperation.EDIT_ALL),
-          new ResourceContext<>(Entity.METRIC, metric.getId(), metric.getFullyQualifiedName()));
-    }
+    MetricGroupRepository.authorizeMembershipChange(
+        original, updated, asRequest(authorizer, securityContext));
   }
 
-  static List<EntityReference> membershipMutationTargets(
-      MetricGroup original, MetricGroup updated) {
-    Map<UUID, EntityReference> originalMembers = new LinkedHashMap<>();
-    Map<UUID, EntityReference> updatedMembers = new LinkedHashMap<>();
-    for (EntityReference metric : listOrEmpty(original == null ? null : original.getMetrics())) {
-      originalMembers.put(metric.getId(), metric);
-    }
-    for (EntityReference metric : listOrEmpty(updated.getMetrics())) {
-      updatedMembers.put(metric.getId(), metric);
-    }
-    List<EntityReference> affected = new ArrayList<>();
-    originalMembers.forEach(
-        (id, metric) -> {
-          if (!updatedMembers.containsKey(id)) {
-            affected.add(metric);
-          }
-        });
-    updatedMembers.forEach(
-        (id, metric) -> {
-          if (!originalMembers.containsKey(id)) {
-            affected.add(metric);
-          }
-        });
-    return affected;
+  private static BiConsumer<OperationContext, ResourceContextInterface> asRequest(
+      Authorizer authorizer, SecurityContext securityContext) {
+    return (operation, resource) -> authorizer.authorize(securityContext, operation, resource);
   }
 
   private static MetricRepository metrics() {

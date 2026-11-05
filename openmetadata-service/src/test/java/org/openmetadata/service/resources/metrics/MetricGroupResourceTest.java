@@ -358,10 +358,10 @@ class MetricGroupResourceTest {
     MetricGroup metadataOnly = new MetricGroup().withMetrics(List.of(retained, removed));
     MetricGroup membershipUpdate = new MetricGroup().withMetrics(List.of(retained, added));
 
-    assertEquals(List.of(), MetricAuthorization.membershipMutationTargets(original, metadataOnly));
+    assertEquals(List.of(), MetricGroupRepository.membershipChanges(original, metadataOnly));
     assertEquals(
         Set.of(removed.getId(), added.getId()),
-        MetricAuthorization.membershipMutationTargets(original, membershipUpdate).stream()
+        MetricGroupRepository.membershipChanges(original, membershipUpdate).stream()
             .map(EntityReference::getId)
             .collect(java.util.stream.Collectors.toSet()));
   }

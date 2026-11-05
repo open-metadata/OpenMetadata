@@ -23,6 +23,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -30,6 +31,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -52,8 +54,12 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.metrics.MetricGroupResource;
+import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RequestEntityCache;
@@ -187,6 +193,52 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
     MetricGroup metricGroup = get(null, id, EntityUtil.Fields.EMPTY_FIELDS, include, false);
     metricGroup.setMetrics(getMetrics(metricGroup));
     return metricGroup;
+  }
+
+  @Override
+  protected void authorizeWrite(
+      final MetricGroup original,
+      final MetricGroup updated,
+      final ChangeActor actor,
+      final Edit edit) {
+    authorizeMembershipChange(
+        original, updated, (operation, resource) -> authorizeAuthor(actor, operation, resource));
+  }
+
+  /** EditAll on each metric a write adds to the group or removes from it. */
+  public static void authorizeMembershipChange(
+      final MetricGroup original,
+      final MetricGroup updated,
+      final BiConsumer<OperationContext, ResourceContextInterface> authorize) {
+    membershipChanges(original, updated)
+        .forEach(metric -> MetricRepository.authorizeEditAll(metric, authorize));
+  }
+
+  /** The metrics in one member list and not the other; {@code original} is null for a create. */
+  public static List<EntityReference> membershipChanges(
+      final MetricGroup original, final MetricGroup updated) {
+    final Map<UUID, EntityReference> originalMembers = new LinkedHashMap<>();
+    final Map<UUID, EntityReference> updatedMembers = new LinkedHashMap<>();
+    for (EntityReference metric : listOrEmpty(original == null ? null : original.getMetrics())) {
+      originalMembers.put(metric.getId(), metric);
+    }
+    for (EntityReference metric : listOrEmpty(updated.getMetrics())) {
+      updatedMembers.put(metric.getId(), metric);
+    }
+    final List<EntityReference> changed = new ArrayList<>();
+    originalMembers.forEach(
+        (id, metric) -> {
+          if (!updatedMembers.containsKey(id)) {
+            changed.add(metric);
+          }
+        });
+    updatedMembers.forEach(
+        (id, metric) -> {
+          if (!originalMembers.containsKey(id)) {
+            changed.add(metric);
+          }
+        });
+    return changed;
   }
 
   public MetricGroup getByNameWithMembers(String fullyQualifiedName, Include include) {

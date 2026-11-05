@@ -3647,6 +3647,56 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertEquals(expectedDirection, asset.path("direction").asText());
   }
 
+  @Test
+  void approvalPreviewRefusesAMoveIntoAGroupTheCallerCannotEdit(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Metric source = createEntity(createRequest(ns.prefix("preview_source"), ns));
+    MetricGroup restrictedGroup =
+        admin
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/metricGroups",
+                new CreateMetricGroup()
+                    .withName(ns.prefix("preview_group"))
+                    .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN))),
+                MetricGroup.class);
+    JsonNode describe =
+        JSON.createArrayNode()
+            .add(
+                JSON.createObjectNode()
+                    .put("op", "add")
+                    .put("path", "/description")
+                    .put("value", "previewed"));
+    JsonNode moveIntoGroup =
+        JSON.createArrayNode()
+            .add(
+                JSON.createObjectNode()
+                    .put("op", "add")
+                    .put("path", "/metricGroup")
+                    .set("value", JSON.valueToTree(restrictedGroup.getEntityReference())));
+
+    // The preview never went through the metric endpoint, so only the write's own check refuses it.
+    withRestrictedHierarchyDestinationEditor(
+        ns,
+        editor -> {
+          assertDoesNotThrow(() -> previewPatch(editor, source, describe));
+          assertApiStatus(403, () -> previewPatch(editor, source, moveIntoGroup));
+        });
+  }
+
+  private static String previewPatch(OpenMetadataClient client, Metric metric, JsonNode patch) {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/changeRequests/preview/metric/" + metric.getId(),
+            patch.toString(),
+            RequestOptions.builder()
+                .header("Content-Type", MediaType.APPLICATION_JSON_PATCH_JSON)
+                .build());
+  }
+
   private static void withRestrictedHierarchyDestinationEditor(
       TestNamespace ns, Consumer<OpenMetadataClient> assertions) {
     withRestrictedEditor(

@@ -62,8 +62,10 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -790,6 +792,66 @@ class MetricRepositoryTest {
           transactionDAO,
           () -> assertSame(transactionMetricDAO, fixture.repository().entityDAOForWrite()));
       assertSame(fixture.metricDAO(), fixture.repository().entityDAOForWrite());
+    }
+  }
+
+  @Test
+  void admitRefusesMovingAMetricIntoAGroupTheAuthorCannotEdit() {
+    final Metric original =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("revenue")
+            .withFullyQualifiedName("revenue");
+    final EntityReference group =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.METRIC_GROUP)
+            .withFullyQualifiedName("finance");
+    final Metric moved = JsonUtils.deepCopy(original, Metric.class).withMetricGroup(group);
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    final Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorizeActor(
+            eq(actor),
+            any(),
+            argThat(resource -> Entity.METRIC_GROUP.equals(resource.getResource())));
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class, Mockito.CALLS_REAL_METHODS)) {
+      entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC_GROUP))
+          .thenReturn(mock(MetricGroupRepository.class));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      Entity.METRIC, List.of(original.getId()), NON_DELETED))
+          .thenReturn(
+              List.of(
+                  new EntityReference()
+                      .withId(original.getId())
+                      .withType(Entity.METRIC)
+                      .withFullyQualifiedName("revenue")));
+
+      // The move is checked in the write itself: EditAll on the metric that moves passes, and on
+      // the group it lands in is refused.
+      assertThrows(
+          AuthorizationException.class,
+          () ->
+              fixture
+                  .repository()
+                  .admit(original, moved, actor, Edit.patch(Set.of("metricGroup"))));
+      verify(authorizer)
+          .authorizeActor(
+              eq(actor), any(), argThat(resource -> Entity.METRIC.equals(resource.getResource())));
+      // A PATCH stores only the fields it names, so one naming neither parent nor group is no move,
+      // even where the group the write resolves differs from the stored one.
+      assertDoesNotThrow(
+          () ->
+              fixture
+                  .repository()
+                  .authorizeWrite(original, moved, actor, Edit.patch(Set.of("description"))));
     }
   }
 
