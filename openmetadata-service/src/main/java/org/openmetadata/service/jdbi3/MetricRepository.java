@@ -762,9 +762,9 @@ public class MetricRepository extends EntityRepository<Metric> {
     }
 
     // A group change moves the subtree as it stands when written, which includes metrics earlier
-    // rows of this batch queued under it (e.g. a child created a few rows up).
+    // rows of this import put under it (e.g. a child created a few rows up).
     private void authorizeQueuedDescendants(MetricRepository repository, Set<UUID> subtree) {
-      List<Metric> queued = queuedEntities(METRIC).stream().map(Metric.class::cast).toList();
+      List<Metric> queued = unwrittenMetrics();
       boolean grew = true;
       while (grew) {
         grew = false;
@@ -779,6 +779,13 @@ public class MetricRepository extends EntityRepository<Metric> {
           }
         }
       }
+    }
+
+    // A dry run queues nothing, so its earlier rows are only in the dry-run cache.
+    private List<Metric> unwrittenMetrics() {
+      return Boolean.TRUE.equals(importResult.getDryRun())
+          ? List.copyOf(dryRunCreatedEntities.values())
+          : queuedEntities(METRIC).stream().map(Metric.class::cast).toList();
     }
 
     private ResourceContextInterface destinationContext(
