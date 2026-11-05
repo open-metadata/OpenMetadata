@@ -298,7 +298,9 @@ public class SearchMetadataTool implements McpTool {
             .withSize(size)
             .withFrom(from)
             .withFetchSource(true)
-            .withDeleted(includeDeleted);
+            .withDeleted(includeDeleted)
+            // Callers count with totalFound; without this the engine stops counting at 10,000.
+            .withTrackTotalHits(true);
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
     Response response = Entity.getSearchRepository().search(searchRequest, subjectContext);

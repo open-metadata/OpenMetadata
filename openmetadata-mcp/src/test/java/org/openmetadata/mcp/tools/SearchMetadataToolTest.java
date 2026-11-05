@@ -336,6 +336,22 @@ class SearchMetadataToolTest {
     }
   }
 
+  /** totalFound is read as a count, so it must not stop at the engine's 10,000 default. */
+  @Test
+  void testSearchAsksForExactTotals() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, Map.of("query", "*"));
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(true, captor.getValue().getTrackTotalHits());
+    }
+  }
+
   @Test
   void testPersonaScopeIsAppliedByDefaultAndDisclosedOnEmptyResults() throws Exception {
     PersonaSearchScope scope =
