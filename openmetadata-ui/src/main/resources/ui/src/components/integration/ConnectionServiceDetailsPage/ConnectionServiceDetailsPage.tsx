@@ -1062,7 +1062,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       <PageLayout.Content className="tw:relative tw:flex tw:flex-1 tw:flex-col tw:overflow-hidden! tw:p-0!">
         {/* Tab Content */}
         <div
-          className="tw:relative tw:flex-1 tw:overflow-y-auto tw:overflow-x-hidden tw:p-4"
+          className="tw:relative tw:flex-1 tw:overflow-y-auto tw:overflow-x-hidden tw:py-3"
           data-testid="service-details-scroll-container"
           ref={contentScrollRef}
           // Reserve the contributed footer's height so the last of a tab's content can be scrolled
