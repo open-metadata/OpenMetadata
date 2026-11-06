@@ -54,6 +54,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { Control, useForm } from 'react-hook-form';
@@ -447,6 +448,7 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
 const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
   memoryToEdit,
   canDelete,
+  isDecidingStatus,
   isDeleting,
   isSubmitting,
   handleDelete,
@@ -458,52 +460,57 @@ const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
   statusActions,
   submitLabel,
   t,
-}) => (
-  <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-tertiary tw:shrink-0 tw:px-6">
-    <div>
-      {Boolean(memoryToEdit) && canDelete && (
+}) => {
+  const isBusy = isDeleting || isSubmitting || isDecidingStatus;
+
+  return (
+    <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-tertiary tw:shrink-0 tw:px-6">
+      <div>
+        {Boolean(memoryToEdit) && canDelete && (
+          <Button
+            color="tertiary-destructive"
+            iconLeading={Trash01}
+            isDisabled={isBusy}
+            isLoading={isDeleting}
+            size="sm"
+            onClick={handleDelete}>
+            {t('label.delete')}
+          </Button>
+        )}
+      </div>
+      <div className="tw:flex tw:items-center tw:gap-3">
         <Button
-          color="tertiary-destructive"
-          iconLeading={Trash01}
-          isDisabled={isDeleting || isSubmitting}
-          isLoading={isDeleting}
+          color="secondary"
+          isDisabled={isBusy}
           size="sm"
-          onClick={handleDelete}>
-          {t('label.delete')}
+          onClick={handleClose}>
+          {t('label.cancel')}
         </Button>
-      )}
+        {showEditButton && (
+          <Button
+            color={statusActions ? 'secondary' : 'primary'}
+            iconLeading={Edit01}
+            isDisabled={isBusy}
+            size="sm"
+            onClick={handleSwitchToEdit}>
+            {t('label.edit')}
+          </Button>
+        )}
+        {statusActions}
+        {showSubmitButton && (
+          <Button
+            color="primary"
+            isDisabled={isSubmitDisabled || isBusy}
+            isLoading={isSubmitting}
+            size="sm"
+            type="submit">
+            {submitLabel}
+          </Button>
+        )}
+      </div>
     </div>
-    <div className="tw:flex tw:items-center tw:gap-3">
-      <Button
-        color="secondary"
-        isDisabled={isSubmitting || isDeleting}
-        size="sm"
-        onClick={handleClose}>
-        {t('label.cancel')}
-      </Button>
-      {showEditButton && (
-        <Button
-          color={statusActions ? 'secondary' : 'primary'}
-          iconLeading={Edit01}
-          size="sm"
-          onClick={handleSwitchToEdit}>
-          {t('label.edit')}
-        </Button>
-      )}
-      {statusActions}
-      {showSubmitButton && (
-        <Button
-          color="primary"
-          isDisabled={isSubmitDisabled || isSubmitting || isDeleting}
-          isLoading={isSubmitting}
-          size="sm"
-          type="submit">
-          {submitLabel}
-        </Button>
-      )}
-    </div>
-  </div>
-);
+  );
+};
 
 interface MemoryMetadataSectionProps {
   control: Control<MemoryFormValues>;
@@ -986,6 +993,16 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const [selectedTags, setSelectedTags] = useState<TagLabel[]>([]);
   const [showTagForm, setShowTagForm] = useState(false);
   const [decidingStatus, setDecidingStatus] = useState<ContextMemoryStatus>();
+  const activeDecision = useRef<symbol | undefined>(undefined);
+
+  useEffect(() => {
+    setDecidingStatus(undefined);
+
+    return () => {
+      activeDecision.current = undefined;
+    };
+  }, [isOpen, memoryToEdit?.id]);
+
   const canDecideStatus = canDecideMemoryStatus(
     memoryToEdit,
     Boolean(isAdminUser),
@@ -1033,6 +1050,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   }, [memoryToEdit, form, t]);
 
   const resetModal = () => {
+    activeDecision.current = undefined;
+    setDecidingStatus(undefined);
     form.reset(DEFAULT_FORM_VALUES);
     setLinkedAssets([]);
     setSelectedTags([]);
@@ -1141,29 +1160,38 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     if (!memoryToEdit) {
       return;
     }
+    const decision = Symbol();
+    activeDecision.current = decision;
     setDecidingStatus(status);
     try {
       await updateContextMemory(
         memoryToEdit.id,
         getMemoryStatusPatch(memoryToEdit, status)
       );
-      queryClient.invalidateQueries({
-        queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
-      });
-      showSuccessToast(
-        t('server.entity-updated-success', { entity: t(MEMORY_LABEL_KEY) })
-      );
-      onUpdated?.();
-      handleClose();
+      if (activeDecision.current === decision) {
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+        });
+        showSuccessToast(
+          t('server.entity-updated-success', { entity: t(MEMORY_LABEL_KEY) })
+        );
+        onUpdated?.();
+        handleClose();
+      }
     } catch (err) {
       const isChanged = await hasMemoryChangedSince(memoryToEdit);
-      showErrorToast(
-        isChanged
-          ? t('message.memory-changed-since-opened')
-          : (err as AxiosError)
-      );
+      if (activeDecision.current === decision) {
+        showErrorToast(
+          isChanged
+            ? t('message.memory-changed-since-opened')
+            : (err as AxiosError)
+        );
+      }
     } finally {
-      setDecidingStatus(undefined);
+      if (activeDecision.current === decision) {
+        activeDecision.current = undefined;
+        setDecidingStatus(undefined);
+      }
     }
   };
 
@@ -1247,13 +1275,14 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
   return (
     <ModalOverlay
+      isKeyboardDismissDisabled={Boolean(decidingStatus)}
       isOpen={isOpen}
       style={{ zIndex: 999 }}
-      onOpenChange={(open) => !open && handleClose()}>
+      onOpenChange={(open) => !open && !decidingStatus && handleClose()}>
       <Modal>
         <Dialog
-          showCloseButton
           data-testid="memory-modal"
+          showCloseButton={!decidingStatus}
           title=""
           width={600}
           onClose={handleClose}>
@@ -1399,6 +1428,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 handleClose={handleClose}
                 handleDelete={handleDelete}
                 handleSwitchToEdit={handleSwitchToEdit}
+                isDecidingStatus={Boolean(decidingStatus)}
                 isDeleting={isDeleting}
                 isSubmitDisabled={isSubmitDisabled}
                 isSubmitting={isSubmitting}

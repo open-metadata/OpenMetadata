@@ -188,9 +188,29 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     <div>{children}</div>
   )),
   Dialog: Object.assign(
-    jest.fn(({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    )),
+    jest.fn(
+      ({
+        children,
+        showCloseButton,
+        onClose,
+      }: {
+        children: React.ReactNode;
+        showCloseButton?: boolean;
+        onClose?: () => void;
+      }) => (
+        <div>
+          {showCloseButton && (
+            <button
+              aria-label="label.close"
+              data-testid="memory-modal-close"
+              onClick={onClose}>
+              x
+            </button>
+          )}
+          {children}
+        </div>
+      )
+    ),
     {
       Content: jest.fn(({ children }: { children: React.ReactNode }) => (
         <div>{children}</div>
@@ -1078,5 +1098,98 @@ describe('CreateMemoryModal', () => {
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
     });
+
+    it('holds editing, deletion and dismissal while a decision is being saved', async () => {
+      let finishSave: ((memory: ContextMemory) => void) | undefined;
+      (updateContextMemory as jest.Mock).mockReturnValue(
+        new Promise<ContextMemory>((resolve) => {
+          finishSave = resolve;
+        })
+      );
+      renderMemory(awaiting(ContextMemoryStatus.Unprocessed), {
+        isAdminUser: true,
+        canEdit: true,
+        canDelete: true,
+      });
+
+      fireEvent.click(screen.getByTestId('memory-approve-btn'));
+
+      try {
+        expect(screen.getByText('label.edit')).toBeDisabled();
+        expect(screen.getByText('label.delete')).toBeDisabled();
+        expect(screen.getByText('label.cancel')).toBeDisabled();
+        expect(
+          screen.queryByTestId('memory-modal-close')
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('label.edit'));
+        fireEvent.click(screen.getByText('label.cancel'));
+
+        expect(
+          screen.queryByTestId('memory-content-input')
+        ).not.toBeInTheDocument();
+        expect(defaultProps.onClose).not.toHaveBeenCalled();
+      } finally {
+        await act(async () => {
+          finishSave?.(awaiting(ContextMemoryStatus.Approved));
+        });
+      }
+
+      expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['changes identity', false],
+      ['unmounts', false],
+      ['changes identity after a failed request', true],
+    ])(
+      'does not notify or close the parent after the originating panel %s',
+      async (change, fails) => {
+        let finishSave: ((memory: ContextMemory) => void) | undefined;
+        (updateContextMemory as jest.Mock).mockReturnValue(
+          new Promise<ContextMemory>((resolve, reject) => {
+            finishSave = fails
+              ? () => reject(new Error('The decision was refused'))
+              : resolve;
+          })
+        );
+        (getContextMemoryById as jest.Mock).mockResolvedValue(
+          awaiting(ContextMemoryStatus.Unprocessed)
+        );
+        const onUpdated = jest.fn();
+        const panel = renderMemory(awaiting(ContextMemoryStatus.Unprocessed), {
+          isAdminUser: true,
+          onUpdated,
+        });
+        fireEvent.click(screen.getByTestId('memory-approve-btn'));
+
+        if (change === 'unmounts') {
+          panel.unmount();
+        } else {
+          panel.rerender(
+            <MemoryRouter>
+              <CreateMemoryModal
+                {...defaultProps}
+                isAdminUser
+                viewOnly
+                memoryToEdit={{
+                  ...awaiting(ContextMemoryStatus.Unprocessed),
+                  id: 'memory-b',
+                }}
+                onUpdated={onUpdated}
+              />
+            </MemoryRouter>
+          );
+        }
+        await act(async () => {
+          finishSave?.(awaiting(ContextMemoryStatus.Approved));
+        });
+
+        expect(onUpdated).not.toHaveBeenCalled();
+        expect(defaultProps.onClose).not.toHaveBeenCalled();
+        expect(showSuccessToast).not.toHaveBeenCalled();
+        expect(showErrorToast).not.toHaveBeenCalled();
+      }
+    );
   });
 });

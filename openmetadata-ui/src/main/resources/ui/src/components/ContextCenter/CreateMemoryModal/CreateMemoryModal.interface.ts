@@ -77,6 +77,7 @@ export interface LinkedAssetsSectionProps {
 export interface MemoryModalFooterProps {
   memoryToEdit?: ContextMemory;
   canDelete: boolean;
+  isDecidingStatus: boolean;
   isDeleting: boolean;
   isSubmitting: boolean;
   handleDelete: () => void;
