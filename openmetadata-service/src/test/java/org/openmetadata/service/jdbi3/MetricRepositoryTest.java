@@ -939,6 +939,19 @@ class MetricRepositoryTest {
             () -> repository.authorizePatch(metric, test, actor),
             path);
       }
+      // JSON-P matches an op name ignoring case, so an upper-case test is still a test.
+      final JsonPatch upperCaseTest =
+          Json.createPatch(
+              Json.createArrayBuilder()
+                  .add(
+                      Json.createObjectBuilder()
+                          .add("op", "TEST")
+                          .add("path", "/parent/name")
+                          .add("value", "guess"))
+                  .build());
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> repository.authorizePatch(metric, upperCaseTest, actor));
       // Reordering within a relation (as jsonpatch diff tools emit) and copying plain fields still
       // pass.
       repository.authorizePatch(

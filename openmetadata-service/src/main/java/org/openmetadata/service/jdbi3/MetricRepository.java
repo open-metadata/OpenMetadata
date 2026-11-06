@@ -220,7 +220,8 @@ public class MetricRepository extends EntityRepository<Metric> {
   private static boolean readsRelationElsewhere(final JsonObject operation) {
     final String path = operation.getString("path", "");
     boolean readsRelation;
-    if ("test".equals(operation.getString("op", ""))) {
+    // JSON-P matches op names ignoring case, so this must too, or "TEST" would get past it.
+    if (JsonPatch.Operation.TEST.operationName().equalsIgnoreCase(operation.getString("op", ""))) {
       readsRelation = path.isEmpty() || RELATION_FIELDS.contains(topLevelField(path));
     } else if (operation.containsKey("from")) {
       final String from = operation.getString("from", "");
