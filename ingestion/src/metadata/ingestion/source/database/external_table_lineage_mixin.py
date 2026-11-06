@@ -37,8 +37,18 @@ logger = ingestion_logger()
 
 # Anchored, so a key that happens to contain "s3a://" further along is left alone.
 _SCHEME_PATTERN = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*)://")
-# Hadoop-era names for the bucket that the S3 storage connector always records as s3://.
-_SCHEME_ALIASES = {"s3a": "s3", "s3n": "s3"}
+# Hadoop-era names for the bucket that the storage connectors record as s3:// and gs://.
+# Mirrors the alias set in unitycatalog/path_utils.py, which de-aliases the same container
+# index: the GCS storage connector writes gs://, but Snowflake reports gcs://; the Azure
+# connector writes abfss://, but Hadoop-era clients report abfs/wasb/wasbs.
+_SCHEME_ALIASES = {
+    "s3a": "s3",
+    "s3n": "s3",
+    "gcs": "gs",
+    "abfs": "abfss",
+    "wasb": "abfss",
+    "wasbs": "abfss",
+}
 
 
 def container_lookup_paths(location: str | None) -> list[str]:

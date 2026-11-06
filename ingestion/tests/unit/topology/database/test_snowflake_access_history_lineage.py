@@ -890,6 +890,99 @@ def test_copy_edge_emitted_when_container_resolves():
     assert str(request.edge.toEntity.id.root) == "33333333-3333-3333-3333-333333333333"
 
 
+def test_copy_edge_emitted_for_gcs_stage_de_aliased_to_gs():
+    """Snowflake reports GCS stage locations as gcs://, but the GCS storage connector
+    indexes containers as gs://. The COPY_HISTORY path must de-alias gcs -> gs to find
+    the container and emit the edge."""
+    downstream_entity = _make_table_entity("33333333-3333-3333-3333-333333333333", "DB", "SCHEMA", "STAGE_TBL")
+    container_entity = _make_container_entity("44444444-4444-4444-4444-444444444444", "gs://my-bucket/path/")
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(return_value=downstream_entity)
+
+    def _search(full_path, **kwargs):
+        # The container was indexed as gs:// — only gs:// candidates match.
+        if full_path.startswith("gs://"):
+            return [container_entity]
+        return None
+
+    metadata.es_search_container_by_path = MagicMock(side_effect=_search)
+
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "COPY_HISTORY": [
+                _Row(
+                    downstream_database="DB",
+                    downstream_schema="SCHEMA",
+                    downstream_table="STAGE_TBL",
+                    stage_location="gcs://my-bucket/path/",
+                    last_load_time="2025-01-15",
+                    load_count=5,
+                ),
+            ],
+        },
+    )
+    edges = list(src._yield_copy_history_lineage())
+    assert len(edges) == 1
+    request = edges[0].right
+    assert request.edge.fromEntity.type == "container"
+    assert str(request.edge.fromEntity.id.root) == "44444444-4444-4444-4444-444444444444"
+    # Verify the gs:// canonical form was searched, not just the raw gcs://
+    searched = [call.kwargs["full_path"] for call in metadata.es_search_container_by_path.call_args_list]
+    assert "gs://my-bucket/path" in searched
+
+
+def test_resolve_container_by_path_tries_gs_candidates_for_gcs_location():
+    """_resolve_container_by_path must try the de-aliased gs:// candidate when given a
+    gcs:// stage location, since the container index records gs://."""
+    container_entity = _make_container_entity("44444444-4444-4444-4444-444444444444", "gs://my-bucket/path/")
+    metadata = MagicMock()
+
+    def _search(full_path, **kwargs):
+        if full_path.startswith("gs://"):
+            return [container_entity]
+        return None
+
+    metadata.es_search_container_by_path = MagicMock(side_effect=_search)
+    src = _make_lineage_source(metadata=metadata)
+
+    result = src._resolve_container_by_path("gcs://my-bucket/path/")
+
+    assert result is container_entity
+    searched = [call.kwargs["full_path"] for call in metadata.es_search_container_by_path.call_args_list]
+    # The canonical gs:// form must be searched (proving gcs -> gs de-aliasing happened)
+    assert "gs://my-bucket/path" in searched
+    # The first candidate matched, so the raw gcs:// form was never reached
+    assert all(not p.startswith("gcs://") for p in searched)
+
+
+def test_resolve_container_by_path_returns_none_when_no_candidate_matches():
+    """When no candidate path (de-aliased or raw) matches a container, return None."""
+    metadata = MagicMock()
+    metadata.es_search_container_by_path = MagicMock(return_value=None)
+    src = _make_lineage_source(metadata=metadata)
+
+    assert src._resolve_container_by_path("gcs://my-bucket/path/") is None
+
+
+def test_resolve_container_by_path_finds_container_via_raw_form():
+    """A container indexed verbatim as gcs:// (edge case) should still be found via the
+    raw candidate that comes last in the lookup list."""
+    container_entity = _make_container_entity("44444444-4444-4444-4444-444444444444", "gcs://my-bucket/path/")
+    metadata = MagicMock()
+
+    def _search(full_path, **kwargs):
+        if full_path.startswith("gcs://"):
+            return [container_entity]
+        return None
+
+    metadata.es_search_container_by_path = MagicMock(side_effect=_search)
+    src = _make_lineage_source(metadata=metadata)
+
+    result = src._resolve_container_by_path("gcs://my-bucket/path/")
+    assert result is container_entity
+
+
 def test_copy_edge_skipped_when_container_not_ingested():
     downstream_entity = _make_table_entity("33333333-3333-3333-3333-333333333333", "DB", "SCHEMA", "STAGE_TBL")
     metadata = MagicMock()
