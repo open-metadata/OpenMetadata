@@ -523,9 +523,15 @@ const ContextCenterDocumentsPage: FC = () => {
     fetchPermission();
   }, [fetchPermission]);
 
+  // A link to another document (a memory's linked assets, Back) changes the URL without remounting.
   useEffect(() => {
     const documentId = searchParams.get('document');
-    if (!documentId || isDocumentsLoading || previewFile) {
+    if (!documentId) {
+      setPreviewFile(undefined);
+
+      return;
+    }
+    if (isDocumentsLoading || documentId === previewFile?.id) {
       return;
     }
     const match = allDocuments.find((d) => d.id === documentId);
@@ -561,8 +567,14 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => {
       isCancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allDocuments, isDocumentsLoading, searchParams, t, setSearchParams]);
+  }, [
+    allDocuments,
+    isDocumentsLoading,
+    previewFile?.id,
+    searchParams,
+    t,
+    setSearchParams,
+  ]);
 
   useEffect(() => {
     const folderId = searchParams.get('folder');

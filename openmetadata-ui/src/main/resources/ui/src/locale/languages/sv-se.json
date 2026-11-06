@@ -5334,6 +5334,7 @@
     "members-users-description": "Visa och hantera vanliga användare i din organisation. För administratörer, gå till sidan Administratörer.",
     "memory-conflict-review-message": "Granskning av minneskonflikt för",
     "memory-no-longer-exists": "Det här minnet finns inte längre.",
+    "memory-supporting-query-deleted": "Den stödjande frågan \"{{query}}\" har tagits bort; kontrollera om detta minne fortfarande gäller utan den",
     "mentioned-you-on-the-lowercase": "nämnde dig på",
     "metadata-agents-description": "Extrahera metadata, användning, datahärkomst och profilering från källan.",
     "metadata-agents-table-description": "Metadataagenter används för att extrahera metadata från källtjänsterna.",

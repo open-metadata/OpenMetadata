@@ -1,10 +1,10 @@
 # An alert destination's endpoint, header values and credentials are encrypted at rest, masked in every response, and restored from the stored alert when the mask is sent back
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel); v4 2026-10-27 (a PATCH that moves a target must itself write every secret, since a row stored in plaintext reads as entered); v5 2026-10-28 (a PATCH may not carry a stored value into a channel that does not name it a secret); v6 2026-10-29 (a receivers list is a target; a template send resolves masks as a test send does); v7 2026-11-03 (an id the alert does not store, or one the request repeats, is matched by position); v8 2026-11-03 (a destination may change channel while its stored secrets stay secret; user and team profile webhooks follow the same rules)
+- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel); v4 2026-10-27 (a PATCH that moves a target must itself write every secret, since a row stored in plaintext reads as entered); v5 2026-10-28 (a PATCH may not carry a stored value into a channel that does not name it a secret); v6 2026-10-29 (a receivers list is a target; a template send resolves masks as a test send does); v7 2026-11-03 (an id the alert does not store, or one the request repeats, is matched by position); v8 2026-11-03 (a destination may change channel while its stored secrets stay secret; user and team profile webhooks follow the same rules); v9 2026-11-03 (secrets are encrypted for the destination or profile webhook that holds it; the 2.1.0 data step follows ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written)
 - **Deciders:** Teddy Crepineau
 - **Guard:** `DestinationSecretsTest`, `DestinationSecretGuardsTest`, `DestinationSecretGuardsTest#aDestinationMayChangeChannelWhileItsStoredSecretsStaySecret`, `EventSubscriptionResourceIT#test_destinationSecretsAreMaskedEncryptedAndRestored`, `EventSubscriptionResourceIT#test_patchCannotCarryAStoredSecretIntoAChannelThatDoesNotMaskIt`, `EventSubscriptionResourceIT#test_receiversCannotRedirectStoredCredentials`, `EventSubscriptionResourceIT#test_ownersDestinationMovesFromEmailToSlack`, `TemplateTestSendIT`, `ProfileWebhookSecretsTest`, `WebhookSecretStoresTest`, `ProfileWebhookSecretsIT`
-- **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials
+- **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials, ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written
 
 ## Context
 
@@ -93,5 +93,8 @@ mask back, decrypt only at the point of use.
   saved again. Search documents of users and teams drop their profile webhooks when they are
   reindexed.
 - The team page shows a profile webhook as the mask, team admins included, as the alert form does.
+- (v9:2026-11-03) Each secret is encrypted for the destination or profile webhook that holds it, and
+  the 2.1.0 data step binds stored rows to their owner rather than encrypting them as they are,
+  as ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written describes.
 - A new channel with secrets implements `secretFields` and gets storage, masking and restoring
   without touching the resource or repository.
