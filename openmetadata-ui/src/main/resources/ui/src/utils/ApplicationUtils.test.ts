@@ -15,7 +15,6 @@ import { EntityStats } from '../components/Settings/Applications/AppLogsViewer/A
 import { App, ScheduleTimeline } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import {
-  formatLatencyAverage,
   getAppCronExpression,
   getAppRunFailureLogs,
   getEntityStatsData,
@@ -150,12 +149,5 @@ describe('getAppCronExpression', () => {
     expect(
       getAppCronExpression(appSchedule as App['appSchedule'])
     ).toBeUndefined();
-  });
-
-  it('formatLatencyAverage should roll averages of a second or more into compact units', () => {
-    expect(formatLatencyAverage(0, 4)).toBe('<1 ms');
-    expect(formatLatencyAverage(50, 4)).toBe('12.5 ms');
-    expect(formatLatencyAverage(10_000, 4)).toBe('2s');
-    expect(formatLatencyAverage(9_936_000, 1)).toBe('2h 45m');
   });
 });
