@@ -365,8 +365,9 @@ public class McpServer implements McpServerProvider {
       LOG.info("Registered /mcp/callback servlet (runtime SSO dispatch)");
     } catch (Exception ex) {
       LOG.error(
-          "MCP server initialization failed — MCP OAuth will be non-functional. "
-              + "Check the configuration and restart.",
+          "[MCP] Initialization failed partway: the /mcp endpoint, or the OAuth routes registered "
+              + "after it, are missing, so MCP clients may not connect. Check the configuration "
+              + "and restart.",
           ex);
     }
   }
