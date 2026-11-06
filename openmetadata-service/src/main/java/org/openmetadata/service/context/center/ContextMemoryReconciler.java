@@ -36,11 +36,11 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
  * flipped to Manual) or by a review that moved it to any other stage, is left untouched:
  * re-extraction never rewrites it, approves it again or releases it. A derived value no pill claims
  * that resembles a Draft or decided pill may be that pill reworded, so it starts Unprocessed: one
- * clearing the identity bar with no conflicting number, and beside a correction one with a
- * conflicting number too when the questions alone clear the bar, so a correction holds any such
- * value it does not claim. Two answers the source gives to one question stay two pills for review.
- * Equivalent file-derived facts may be linked to more than one source; retiring one source
- * preserves the memory while another still references it.
+ * clearing the identity bar with no conflicting number, and beside a correction also any with a
+ * conflicting number whose question alone clears the bar, however low the whole pair scores, so a
+ * correction holds every such value it does not claim. Two answers the source gives to one question
+ * stay two pills for review. Equivalent file-derived facts may be linked to more than one source;
+ * retiring one source preserves the memory while another still references it.
  */
 @Slf4j
 public class ContextMemoryReconciler {
@@ -161,25 +161,41 @@ public class ContextMemoryReconciler {
       ReconciliationPlan plan) {
     for (ContextMemory pill : existing) {
       if (!isEngineManaged(pill)) {
-        holdWhatResembles(pill, derivedByQuestion, plan);
+        holdAgreeingValues(pill, derivedByQuestion, plan);
+      }
+      if (isHumanOwned(pill)) {
+        holdValuesACorrectionMayHaveReplaced(pill, derivedByQuestion, plan);
       }
     }
   }
 
-  private static void holdWhatResembles(
+  /** Values that clear the identity bar and agree with the pill's numbers. */
+  private static void holdAgreeingValues(
       ContextMemory pill, Map<String, ContextMemory> derivedByQuestion, ReconciliationPlan plan) {
     candidatesClearingTheBar(derivedByQuestion, pill).stream()
-        .filter(candidate -> resembles(pill, candidate))
+        .filter(candidate -> !candidate.conflicting())
         .map(Candidate::key)
         .forEach(plan.heldForReview::add);
   }
 
   /**
-   * Any value agreeing with the pill's numbers; beside a correction also a changed one whose
-   * question alone clears the bar, as it may be the very value the person replaced.
+   * Any value whose number conflicts with a correction's and whose question alone clears the bar,
+   * however the rest scores: the edit modal stores the corrected text as question and answer alike.
    */
-  private static boolean resembles(ContextMemory pill, Candidate candidate) {
-    return !candidate.conflicting() || (isHumanOwned(pill) && candidate.questionsAlike());
+  private static void holdValuesACorrectionMayHaveReplaced(
+      ContextMemory correction,
+      Map<String, ContextMemory> derivedByQuestion,
+      ReconciliationPlan plan) {
+    derivedByQuestion.entrySet().stream()
+        .filter(entry -> mayHaveBeenReplaced(correction, entry.getValue()))
+        .map(Map.Entry::getKey)
+        .forEach(plan.heldForReview::add);
+  }
+
+  private static boolean mayHaveBeenReplaced(ContextMemory correction, ContextMemory derived) {
+    return MemoryTextSimilarity.hasConflictingNumbers(correction.getAnswer(), derived.getAnswer())
+        && MemoryTextSimilarity.questionSimilarity(correction.getQuestion(), derived.getQuestion())
+            >= MemoryTextSimilarity.IDENTITY_THRESHOLD;
   }
 
   private void planNewMemories(
@@ -255,12 +271,7 @@ public class ContextMemoryReconciler {
     return byFact;
   }
 
-  private record Candidate(
-      String key,
-      double score,
-      boolean conflicting,
-      boolean sameQuestion,
-      boolean questionsAlike) {}
+  private record Candidate(String key, double score, boolean conflicting, boolean sameQuestion) {}
 
   /**
    * Claims and returns the remaining candidate most similar to {@code pill}, or null when it may
@@ -309,9 +320,7 @@ public class ContextMemoryReconciler {
         key,
         score,
         MemoryTextSimilarity.hasConflictingNumbers(pill.getAnswer(), candidate.getAnswer()),
-        MemoryTextSimilarity.sameQuestion(pill.getQuestion(), candidate.getQuestion()),
-        MemoryTextSimilarity.questionSimilarity(pill.getQuestion(), candidate.getQuestion())
-            >= MemoryTextSimilarity.IDENTITY_THRESHOLD);
+        MemoryTextSimilarity.sameQuestion(pill.getQuestion(), candidate.getQuestion()));
   }
 
   /**

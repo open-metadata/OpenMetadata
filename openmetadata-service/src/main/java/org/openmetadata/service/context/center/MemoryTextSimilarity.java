@@ -117,11 +117,13 @@ final class MemoryTextSimilarity {
 
   /**
    * How far two questions ask about the same thing: the overlap {@link #weighted} scores, over the
-   * words naming the topic, a plural folded. "refund window" and "window for refunds" share their
-   * topic; "VAT rate" and "discount rate" do not, though most of their words are the same.
+   * words naming the topic, a plural folded ("window for refunds" is the "refund window", "discount
+   * rate" not the "VAT rate"). 0 when either has no topic word it reads: Cyrillic, "What is Q3?".
    */
   static double questionSimilarity(String questionA, String questionB) {
-    return jaccard(topicWords(questionA), topicWords(questionB));
+    Set<String> topicA = topicWords(questionA);
+    Set<String> topicB = topicWords(questionB);
+    return topicA.isEmpty() || topicB.isEmpty() ? 0.0 : jaccard(topicA, topicB);
   }
 
   private static Set<String> topicWords(String question) {

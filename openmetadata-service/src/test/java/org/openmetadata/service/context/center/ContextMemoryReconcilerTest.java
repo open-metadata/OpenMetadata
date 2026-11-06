@@ -18,6 +18,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -737,6 +738,47 @@ class ContextMemoryReconcilerTest {
             ContextMemoryStatus.APPROVED));
 
     reconcile(List.of(derived("What is the discount rate?", "15%")));
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).create(isNull(), captor.capture());
+    assertEquals(ContextMemoryStatus.APPROVED, captor.getValue().getEntityStatus());
+  }
+
+  /**
+   * The edit modal stores a correction's text as question and answer alike, so the value it
+   * replaced matches it by topic only: the pair scores under the bar, the questions alone do not.
+   */
+  @Test
+  void theValueAnEditedCorrectionReplacedAwaitsReview() {
+    existing(
+        pill(
+            "The refund window is 45 days",
+            "The refund window is 45 days",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED));
+
+    reconcile(List.of(derived(REFUND_WINDOW, "30 days")));
+
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
+    assertCreatedAwaitingReview(REFUND_WINDOW);
+  }
+
+  /** A question naming no topic word the test reads is alike to none: no changed number is held. */
+  @ParameterizedTest
+  @CsvSource({
+    "Какая ставка НДС?, 20%, Какая ставка скидки?, 15%",
+    "What is Q3?, $2M, What is Q4?, $3M"
+  })
+  void aCorrectionWithNoReadableTopicHoldsNoChangedNumber(
+      String correctedQuestion, String correctedAnswer, String question, String answer) {
+    existing(
+        pill(
+            correctedQuestion,
+            correctedAnswer,
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED));
+
+    reconcile(List.of(derived(question, answer)));
 
     ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
     verify(memoryRepository).create(isNull(), captor.capture());

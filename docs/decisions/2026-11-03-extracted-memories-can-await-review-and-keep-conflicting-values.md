@@ -54,12 +54,16 @@ survived.
   The hold runs after both matching passes, for every such pill, matched exactly or not. A value
   resembles the pill when it clears the similarity bar without a conflicting number, its own
   question's second rewording included. Beside a correction, a value with a conflicting number
-  resembles it too when the two questions alone clear the bar, since it may be the very value the
-  person replaced; so a correction holds any such value it does not claim, both values when two are
-  left for its question. The question test (`MemoryTextSimilarity.questionSimilarity`) compares
-  topic words, without filler, question words or a plural's "s", because number-only answers agree
-  word for word: "window for refunds" asks about the "refund window", "discount rate" not about
-  the "VAT rate".
+  resembles it too when the two questions alone clear the bar, however low the whole pair scores,
+  since it may be the very value the person replaced: the edit modal stores the corrected text as
+  both question and answer ("The refund window is 45 days"), which a derived "What is the refund
+  window?" / "30 days" matches by topic only. So a correction holds any such value it does not
+  claim, both values when two are left for its question. The question test
+  (`MemoryTextSimilarity.questionSimilarity`) compares topic words, without filler, question words
+  or a plural's "s", because number-only answers agree word for word: "window for refunds" asks
+  about the "refund window", "discount rate" not about the "VAT rate". A question naming no topic
+  word the test reads (another script, "What is Q3?") is alike to none, so beside such a correction
+  a changed number is not held.
 - Extracted memories stay owned by their writer. A conflict review over one is also assigned to
   whoever owns its source when the review opens; owning the memory would keep it readable after
   the source changes hands.

@@ -1,5 +1,6 @@
 package org.openmetadata.service.context.center;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -80,6 +81,14 @@ class MemoryTextSimilarityTest {
         MemoryTextSimilarity.questionSimilarity(
                 "What is the VAT rate?", "What is the discount rate?")
             < MemoryTextSimilarity.IDENTITY_THRESHOLD);
+  }
+
+  /** Two questions naming no topic word the test reads ask about nothing it can compare. */
+  @Test
+  void aQuestionWithNoReadableTopicIsAlikeToNone() {
+    assertEquals(0.0, MemoryTextSimilarity.questionSimilarity("What is Q3?", "What is it?"));
+    assertEquals(
+        0.0, MemoryTextSimilarity.questionSimilarity("Какая ставка НДС?", "Какая ставка скидки?"));
   }
 
   @Test
