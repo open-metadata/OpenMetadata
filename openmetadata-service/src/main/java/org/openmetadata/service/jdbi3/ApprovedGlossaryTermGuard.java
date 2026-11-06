@@ -18,19 +18,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
-import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -38,18 +39,23 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * API applies it (ADR:2026-11-06-only-approved-glossary-terms-can-be-newly-applied-to-an-asset).
  * A write is judged per target, the asset or a field addressed by its FQN: a term is new on a
  * target that does not already hold it in its own right. A term that leaves Approved later stays
- * where it was applied, so writes that carry it back to the same target still pass.
+ * where it was applied, so writes that carry it back to the same target still pass. Terms are
+ * compared by FQN hash, the way they are stored and looked up, so quoting cannot disguise one.
  */
 public final class ApprovedGlossaryTermGuard {
 
   private ApprovedGlossaryTermGuard() {}
 
-  /** Labels on the entity and on every field nested under it, keyed by target FQN. */
+  /**
+   * Labels on the entity and on every field nested under it, keyed by target FQN. {@code
+   * fieldsByContainer} holds the entity's tagged inline fields by the container path that holds
+   * them, as {@link EntityRepository#taggedFieldContainers} reports them.
+   */
   public static Map<String, List<TagLabel>> tagsByTarget(
-      EntityInterface<?> entity, String entityType) {
+      EntityInterface<?> entity, Map<String, List<? extends FieldInterface>> fieldsByContainer) {
     Map<String, List<TagLabel>> tagsByTarget = new HashMap<>();
-    taggedTargets(entity, entityType)
-        .forEach(target -> tagsByTarget.put(target.fqn(), target.tags()));
+    taggedTargets(entity, fieldsByContainer)
+        .forEach(target -> addTags(tagsByTarget, target.fqn(), target.tags()));
     return tagsByTarget;
   }
 
@@ -59,16 +65,18 @@ public final class ApprovedGlossaryTermGuard {
    * field is matched to its stored self by its name path, not by its FQN.
    */
   public static Map<String, List<TagLabel>> tagsByStoredTarget(
-      EntityInterface<?> entity, EntityInterface<?> stored, String entityType) {
+      TaggedEntity entity, TaggedEntity stored) {
     Map<List<String>, String> storedFqnByPath = new HashMap<>();
-    taggedTargets(stored, entityType)
-        .forEach(target -> storedFqnByPath.put(target.namePath(), target.fqn()));
+    taggedTargets(stored.entity(), stored.fieldsByContainer())
+        .forEach(target -> storedFqnByPath.putIfAbsent(target.namePath(), target.fqn()));
     Map<String, List<TagLabel>> tagsByTarget = new HashMap<>();
-    taggedTargets(entity, entityType)
+    taggedTargets(entity.entity(), entity.fieldsByContainer())
         .forEach(
             target ->
-                tagsByTarget.put(
-                    storedFqnByPath.getOrDefault(target.namePath(), target.fqn()), target.tags()));
+                addTags(
+                    tagsByTarget,
+                    storedFqnByPath.getOrDefault(target.namePath(), target.fqn()),
+                    target.tags()));
     return tagsByTarget;
   }
 
@@ -100,48 +108,62 @@ public final class ApprovedGlossaryTermGuard {
    */
   public static Map<String, String> rejectionsByTarget(
       Map<String, List<TagLabel>> requested, Map<String, List<TagLabel>> held) {
-    Map<String, Set<String>> appliedByTarget = appliedTermsByTarget(requested);
-    Map<String, GlossaryTerm> unapproved =
-        TagLabelUtil.unapprovedGlossaryTerms(allTerms(appliedByTarget)).stream()
-            .collect(Collectors.toMap(GlossaryTerm::getFullyQualifiedName, term -> term));
-    appliedByTarget.values().forEach(terms -> terms.retainAll(unapproved.keySet()));
-    appliedByTarget.values().removeIf(Set::isEmpty);
-    dropHeld(appliedByTarget, appliedTermsByTarget(held));
-    if (!appliedByTarget.isEmpty()) {
-      dropHeld(appliedByTarget, storedTermsByTarget(appliedByTarget.keySet()));
+    Map<String, Set<String>> requestedTerms = appliedTermsByTarget(requested);
+    Map<String, GlossaryTerm> unapprovedByHash =
+        TagLabelUtil.unapprovedGlossaryTerms(allTerms(requestedTerms)).stream()
+            .collect(Collectors.toMap(term -> termHash(term.getFullyQualifiedName()), t -> t));
+    Map<String, Set<String>> newlyApplied = termHashesByTarget(requestedTerms);
+    newlyApplied.values().forEach(hashes -> hashes.retainAll(unapprovedByHash.keySet()));
+    newlyApplied.values().removeIf(Set::isEmpty);
+    dropHeld(newlyApplied, termHashesByTarget(appliedTermsByTarget(held)));
+    if (!newlyApplied.isEmpty()) {
+      dropHeld(newlyApplied, storedTermHashesByTarget(newlyApplied.keySet()));
     }
     Map<String, String> rejections = new TreeMap<>();
-    appliedByTarget.forEach(
-        (target, terms) ->
+    newlyApplied.forEach(
+        (target, hashes) ->
             rejections.put(
                 String.valueOf(target),
-                TagLabelUtil.unapprovedTermMessage(unapproved.get(new TreeSet<>(terms).first()))));
+                TagLabelUtil.unapprovedTermMessage(
+                    unapprovedByHash.get(new TreeSet<>(hashes).first()))));
     return rejections;
   }
 
-  // A target is the entity (empty name path) or a field, named by the field names leading to it.
+  /** An entity with its tagged inline fields, by the container path that holds them. */
+  public record TaggedEntity(
+      EntityInterface<?> entity, Map<String, List<? extends FieldInterface>> fieldsByContainer) {}
+
+  // A target is the entity (empty name path) or a field, named by its container path and the
+  // field names leading to it. Field names are matched the way columns are, ignoring case.
   private record TaggedTarget(List<String> namePath, String fqn, List<TagLabel> tags) {}
 
-  private static List<TaggedTarget> taggedTargets(EntityInterface<?> entity, String entityType) {
+  private static List<TaggedTarget> taggedTargets(
+      EntityInterface<?> entity, Map<String, List<? extends FieldInterface>> fieldsByContainer) {
     List<TaggedTarget> targets = new ArrayList<>();
     targets.add(
         new TaggedTarget(List.of(), entity.getFullyQualifiedName(), listOrEmpty(entity.getTags())));
-    if (ChildFieldResolver.supports(entityType)) {
-      collectFields(ChildFieldResolver.childrenOf(entity, entityType), List.of(), targets);
-    }
+    fieldsByContainer.forEach(
+        (containerPath, fields) -> collectFields(fields, List.of(containerPath), targets));
     return targets;
   }
 
   private static void collectFields(
       List<? extends FieldInterface> fields, List<String> parentPath, List<TaggedTarget> targets) {
     for (FieldInterface field : listOrEmpty(fields)) {
-      List<String> namePath = new ArrayList<>(parentPath);
-      namePath.add(field.getName());
+      List<String> namePath =
+          Stream.concat(
+                  parentPath.stream(),
+                  Stream.of(String.valueOf(field.getName()).toLowerCase(Locale.ROOT)))
+              .toList();
       targets.add(
-          new TaggedTarget(
-              List.copyOf(namePath), field.getFullyQualifiedName(), listOrEmpty(field.getTags())));
+          new TaggedTarget(namePath, field.getFullyQualifiedName(), listOrEmpty(field.getTags())));
       collectFields(field.getChildren(), namePath, targets);
     }
+  }
+
+  private static void addTags(
+      Map<String, List<TagLabel>> tagsByTarget, String target, List<TagLabel> tags) {
+    tagsByTarget.computeIfAbsent(target, key -> new ArrayList<>()).addAll(tags);
   }
 
   // Labels a target only inherits or derives are not applied to it, on either side.
@@ -158,19 +180,35 @@ public final class ApprovedGlossaryTermGuard {
     return termsByTarget;
   }
 
+  private static Map<String, Set<String>> termHashesByTarget(Map<String, Set<String>> terms) {
+    Map<String, Set<String>> hashesByTarget = new HashMap<>();
+    terms.forEach(
+        (target, fqns) ->
+            hashesByTarget.put(
+                target,
+                fqns.stream()
+                    .map(ApprovedGlossaryTermGuard::termHash)
+                    .collect(Collectors.toCollection(HashSet::new))));
+    return hashesByTarget;
+  }
+
+  private static String termHash(String termFqn) {
+    return FullyQualifiedName.buildHash(termFqn);
+  }
+
   private static void dropHeld(
       Map<String, Set<String>> newlyApplied, Map<String, Set<String>> heldByTarget) {
     heldByTarget.forEach(
         (target, held) -> {
-          Set<String> terms = newlyApplied.get(target);
-          if (terms != null) {
-            terms.removeAll(held);
+          Set<String> hashes = newlyApplied.get(target);
+          if (hashes != null) {
+            hashes.removeAll(held);
           }
         });
     newlyApplied.values().removeIf(Set::isEmpty);
   }
 
-  private static Map<String, Set<String>> storedTermsByTarget(Set<String> targets) {
+  private static Map<String, Set<String>> storedTermHashesByTarget(Set<String> targets) {
     Map<String, String> targetByHash =
         targets.stream()
             .filter(Objects::nonNull)
@@ -180,7 +218,7 @@ public final class ApprovedGlossaryTermGuard {
         .tagUsageDAO()
         .getTagsByTargetFQNHashes(List.copyOf(targetByHash.keySet()))
         .forEach((hash, tags) -> storedByTarget.put(targetByHash.get(hash), tags));
-    return appliedTermsByTarget(storedByTarget);
+    return termHashesByTarget(appliedTermsByTarget(storedByTarget));
   }
 
   private static Set<String> allTerms(Map<String, Set<String>> termsByTarget) {

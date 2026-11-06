@@ -29,6 +29,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.TaggedEntity;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -156,7 +158,7 @@ class ApprovedGlossaryTermGuardTest {
             .withColumns(List.of(parent));
 
     Map<String, List<TagLabel>> tagsByTarget =
-        ApprovedGlossaryTermGuard.tagsByTarget(table, Entity.TABLE);
+        ApprovedGlossaryTermGuard.tagsByTarget(table, columnsOf(table));
 
     assertEquals(
         Map.of(
@@ -186,7 +188,8 @@ class ApprovedGlossaryTermGuardTest {
                     column("total", movedTable + ".total", List.of())));
 
     Map<String, List<TagLabel>> requested =
-        ApprovedGlossaryTermGuard.tagsByStoredTarget(moved, stored, Entity.TABLE);
+        ApprovedGlossaryTermGuard.tagsByStoredTarget(
+            new TaggedEntity(moved, columnsOf(moved)), new TaggedEntity(stored, columnsOf(stored)));
 
     assertEquals(
         Map.of(
@@ -198,7 +201,73 @@ class ApprovedGlossaryTermGuardTest {
             List.of()),
         requested);
     ApprovedGlossaryTermGuard.checkNewlyApplied(
-        requested, ApprovedGlossaryTermGuard.tagsByTarget(stored, Entity.TABLE));
+        requested, ApprovedGlossaryTermGuard.tagsByTarget(stored, columnsOf(stored)));
+  }
+
+  /** A request and a response field can share a name; each keeps its own target. */
+  @Test
+  void sameNamedFieldsInDifferentContainersStayApart() {
+    String endpoint = "svc.collection.orders";
+    Column request = column("id", endpoint + ".requestSchema.id", List.of(label(DEPRECATED)));
+    Column response = column("id", endpoint + ".responseSchema.id", List.of());
+    TaggedEntity stored =
+        new TaggedEntity(
+            new Table().withFullyQualifiedName(endpoint),
+            Map.of(
+                "requestSchema.schemaFields",
+                    List.of(column("id", request.getFullyQualifiedName(), List.of())),
+                "responseSchema.schemaFields", List.of(response)));
+    TaggedEntity updated =
+        new TaggedEntity(
+            new Table().withFullyQualifiedName(endpoint),
+            Map.of(
+                "requestSchema.schemaFields", List.of(request),
+                "responseSchema.schemaFields", List.of(response)));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            ApprovedGlossaryTermGuard.checkNewlyApplied(
+                ApprovedGlossaryTermGuard.tagsByStoredTarget(updated, stored),
+                ApprovedGlossaryTermGuard.tagsByTarget(
+                    stored.entity(), stored.fieldsByContainer())));
+  }
+
+  /** A term is judged by its hash, so quoting a segment that needs none changes nothing. */
+  @Test
+  void aQuotedTermFqnIsTheSameTerm() {
+    TagLabel quoted = label(DEPRECATED).withTagFQN("Glossary.\"Revenue\"");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            ApprovedGlossaryTermGuard.checkNewlyApplied(
+                Map.of(COLUMN_B, List.of(quoted)), Map.of()));
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        Map.of(COLUMN_A, List.of(quoted)), Map.of(COLUMN_A, List.of(label(DEPRECATED))));
+  }
+
+  /** Columns match ignoring case, so a re-ingest that changes a name's case keeps its terms. */
+  @Test
+  void aFieldRenamedOnlyInCaseKeepsItsStoredTarget() {
+    Table stored =
+        new Table()
+            .withFullyQualifiedName(TABLE_FQN)
+            .withColumns(List.of(column("ID", TABLE_FQN + ".ID", List.of(label(DEPRECATED)))));
+    Table renamed =
+        new Table()
+            .withFullyQualifiedName(TABLE_FQN)
+            .withColumns(List.of(column("id", COLUMN_A, List.of(label(DEPRECATED)))));
+
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        ApprovedGlossaryTermGuard.tagsByStoredTarget(
+            new TaggedEntity(renamed, columnsOf(renamed)),
+            new TaggedEntity(stored, columnsOf(stored))),
+        ApprovedGlossaryTermGuard.tagsByTarget(stored, columnsOf(stored)));
+  }
+
+  private static Map<String, List<? extends FieldInterface>> columnsOf(Table table) {
+    return Map.of("columns", table.getColumns() == null ? List.of() : table.getColumns());
   }
 
   private static Column column(String name, String fqn, List<TagLabel> tags) {

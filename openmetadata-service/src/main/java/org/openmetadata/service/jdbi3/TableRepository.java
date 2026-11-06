@@ -1421,7 +1421,7 @@ public class TableRepository extends EntityRepository<Table> {
             NON_DELETED,
             false);
     ApprovedGlossaryTermGuard.checkNewlyApplied(
-        modelTagsByTarget(table, dataModel), ApprovedGlossaryTermGuard.tagsByTarget(table, TABLE));
+        modelTagsByTarget(table, dataModel), glossaryTagsByTarget(table));
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {

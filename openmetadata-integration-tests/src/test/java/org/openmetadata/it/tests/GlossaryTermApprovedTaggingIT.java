@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -24,8 +25,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.APIServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.DriveServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -35,20 +38,29 @@ import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.data.BulkColumnUpdatePreview;
 import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
 import org.openmetadata.schema.api.data.ColumnUpdate;
+import org.openmetadata.schema.api.data.CreateAPICollection;
+import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.api.data.CreateContainer;
+import org.openmetadata.schema.api.data.CreateFile;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.type.APIRequestMethod;
+import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.BulkCreateItemResult;
 import org.openmetadata.schema.type.BulkCreateItemResult.Reason;
@@ -58,6 +70,8 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -347,6 +361,93 @@ public class GlossaryTermApprovedTaggingIT {
         .withTestDefinition("tableRowCountToEqual")
         .withParameterValues(
             List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+  }
+
+  /** File columns are not in the shared field registry, yet their tags are stored. */
+  @Test
+  void fileColumnWithDeprecatedTerm_isRejected(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(client, ns);
+    DriveService drive = DriveServiceTestFactory.createGoogleDrive(ns);
+    CreateFile request =
+        new CreateFile()
+            .withName(ns.shortPrefix("file_dep"))
+            .withService(drive.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withDataType(ColumnDataType.INT)
+                        .withTags(List.of(label(term)))));
+
+    assertRejected(() -> client.files().create(request), term);
+  }
+
+  /** A request field shares its name with a response field; each is judged on its own. */
+  @Test
+  void apiRequestFieldWithDeprecatedTerm_isRejected(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = approvedTerm(client, ns);
+    ApiService service = APIServiceTestFactory.createRest(ns);
+    APICollection collection =
+        client
+            .apiCollections()
+            .create(
+                new CreateAPICollection()
+                    .withName(ns.shortPrefix("collection"))
+                    .withService(service.getFullyQualifiedName())
+                    .withEndpointURL(URI.create("https://localhost:8585/api/v1")));
+    APIEndpoint endpoint =
+        client
+            .apiEndpoints()
+            .create(
+                new CreateAPIEndpoint()
+                    .withName(ns.shortPrefix("endpoint"))
+                    .withApiCollection(collection.getFullyQualifiedName())
+                    .withEndpointURL(URI.create("https://localhost:8585/api/v1/orders"))
+                    .withRequestMethod(APIRequestMethod.POST)
+                    .withRequestSchema(schemaWithField())
+                    .withResponseSchema(schemaWithField(label(term))));
+    deprecate(client, term);
+
+    APIEndpoint fetched =
+        client.apiEndpoints().get(endpoint.getId().toString(), "requestSchema,responseSchema,tags");
+    fetched.getRequestSchema().getSchemaFields().get(0).setTags(List.of(label(term)));
+
+    assertRejected(() -> client.apiEndpoints().update(endpoint.getId().toString(), fetched), term);
+  }
+
+  /** A daily dbt run re-sends the terms its model already applied; that keeps working. */
+  @Test
+  void dataModelResendingHeldTermThatLeftApproved_succeeds(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = approvedTerm(client, ns);
+    Table table = client.tables().create(tableRequest(ns, schema(ns), "data_model_resend"));
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("id")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withTags(List.of(label(term)))));
+    client.tables().updateDataModel(table.getId(), dataModel);
+    deprecate(client, term);
+
+    Table resent = client.tables().updateDataModel(table.getId(), dataModel);
+
+    assertTrue(hasTerm(resent.getColumns().get(0).getTags(), term));
+  }
+
+  private static APISchema schemaWithField(TagLabel... tags) {
+    return new APISchema()
+        .withSchemaFields(
+            List.of(
+                new Field()
+                    .withName("id")
+                    .withDataType(FieldDataType.STRING)
+                    .withTags(List.of(tags))));
   }
 
   /**

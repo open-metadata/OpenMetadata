@@ -296,6 +296,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.UpdatedDomainsResourceContext;
 import org.openmetadata.service.seeding.SeedDataGate;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
@@ -6411,8 +6412,36 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   final void checkAppliedGlossaryTermsApproved(T entity) {
-    ApprovedGlossaryTermGuard.checkApplied(
-        ApprovedGlossaryTermGuard.tagsByTarget(entity, entityType));
+    ApprovedGlossaryTermGuard.checkApplied(glossaryTagsByTarget(entity));
+  }
+
+  /** Labels on the entity and its tagged inline fields, keyed by target FQN. */
+  final Map<String, List<TagLabel>> glossaryTagsByTarget(T entity) {
+    return ApprovedGlossaryTermGuard.tagsByTarget(entity, taggedFieldContainers(entity));
+  }
+
+  /**
+   * The inline fields that carry their own tags, by the container path that holds them. The
+   * default reads the {@link ChildFieldResolver} registry; a repository whose tagged fields are not
+   * registered there overrides it, or the approved-term guard would not see their labels.
+   */
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(T entity) {
+    Map<String, List<? extends FieldInterface>> fieldsByContainer = new LinkedHashMap<>();
+    if (ChildFieldResolver.supports(entityType)) {
+      for (String containerPath : ChildFieldResolver.specFor(entityType).containerPaths()) {
+        fieldsByContainer.put(containerPath, fieldsAt(entity, containerPath));
+      }
+    }
+    return fieldsByContainer;
+  }
+
+  // The registry declares each container's element class as a FieldInterface type, but walks the
+  // POJO reflectively and hands the list back untyped.
+  @SuppressWarnings("unchecked")
+  private static List<? extends FieldInterface> fieldsAt(
+      EntityInterface<?> entity, String containerPath) {
+    return (List<? extends FieldInterface>)
+        listOrEmpty(ChildFieldResolver.containerListFor(entity, containerPath));
   }
 
   private void createNewEntityFlushBody(T entity) {
@@ -11219,8 +11248,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // version, so the baseline is the stored entity this request changes.
     private void checkNewlyAppliedGlossaryTermsApproved() {
       ApprovedGlossaryTermGuard.checkNewlyApplied(
-          ApprovedGlossaryTermGuard.tagsByStoredTarget(updated, original, entityType),
-          ApprovedGlossaryTermGuard.tagsByTarget(original, entityType));
+          ApprovedGlossaryTermGuard.tagsByStoredTarget(
+              new ApprovedGlossaryTermGuard.TaggedEntity(updated, taggedFieldContainers(updated)),
+              new ApprovedGlossaryTermGuard.TaggedEntity(
+                  original, taggedFieldContainers(original))),
+          glossaryTagsByTarget(original));
     }
 
     private UpdaterSnapshot snapshotUpdaterState() {
