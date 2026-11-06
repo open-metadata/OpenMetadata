@@ -27,13 +27,13 @@
 
 import { APIRequestContext, Response } from '@playwright/test';
 import {
-    CUSTOM_PROPERTIES_ENTITIES,
-    NAME_SUFFIX
+  CUSTOM_PROPERTIES_ENTITIES,
+  NAME_SUFFIX,
 } from '../../constant/customProperty';
 import {
-    CP_BASE_VALUES,
-    CP_PARTIAL_SEARCH_VALUES,
-    CP_RANGE_VALUES
+  CP_BASE_VALUES,
+  CP_PARTIAL_SEARCH_VALUES,
+  CP_RANGE_VALUES,
 } from '../../constant/customPropertyAdvancedSearch';
 import { ENDPOINT_TO_EXPLORE_TAB_MAP } from '../../constant/explore';
 import { migratedTo } from '../../constant/migration';
@@ -62,68 +62,68 @@ import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    CONDITIONS_MUST,
-    selectOption,
-    showAdvancedSearchDialog
+  CONDITIONS_MUST,
+  selectOption,
+  showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
 import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomProperty';
 import { CODE_EDITOR_SCROLLER } from '../../utils/codeEditor';
 import {
-    createNewPage,
-    getApiContext,
-    getDescriptionBox,
-    redirectToHomePage,
-    uuid
+  createNewPage,
+  getApiContext,
+  getDescriptionBox,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
-    addCustomPropertiesForEntity,
-    closeEditModalListbox,
-    createCustomPropertyForEntity,
-    CustomProperty,
-    CustomPropertyTypeByName,
-    deleteCreatedProperty,
-    editCreatedProperty,
-    fillCustomPropertyEditModal,
-    getCustomPropertyCard,
-    getCustomPropertyEditButton,
-    openCustomPropertiesTab,
-    openCustomPropertyEditModal,
-    removeCustomPropertyViaApi,
-    setValueForProperty,
-    updateCustomPropertyInRightPanel,
-    validateValueForProperty,
-    verifyCustomPropertyInAdvancedSearch,
-    verifyTableColumnCustomPropertyPersistence
+  addCustomPropertiesForEntity,
+  closeEditModalListbox,
+  createCustomPropertyForEntity,
+  CustomProperty,
+  CustomPropertyTypeByName,
+  deleteCreatedProperty,
+  editCreatedProperty,
+  fillCustomPropertyEditModal,
+  getCustomPropertyCard,
+  getCustomPropertyEditButton,
+  openCustomPropertiesTab,
+  openCustomPropertyEditModal,
+  removeCustomPropertyViaApi,
+  setValueForProperty,
+  updateCustomPropertyInRightPanel,
+  validateValueForProperty,
+  verifyCustomPropertyInAdvancedSearch,
+  verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
 import {
-    applyCustomPropertyFilter,
-    clearAdvancedSearchFilters,
-    CPASTestData,
-    setupCustomPropertyAdvancedSearchTest,
-    verifySearchResults
+  applyCustomPropertyFilter,
+  clearAdvancedSearchFilters,
+  CPASTestData,
+  setupCustomPropertyAdvancedSearchTest,
+  verifySearchResults,
 } from '../../utils/customPropertyAdvancedSearchUtils';
 import {
-    getEntityDisplayName,
-    waitForAllLoadersToDisappear
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { createTable } from '../../utils/KnowledgeCenter';
 import {
-    openMatchingFieldsPanel,
-    selectSettingOption,
-    setSliderValue
+  openMatchingFieldsPanel,
+  selectSettingOption,
+  setSliderValue,
 } from '../../utils/searchSettingUtils';
 import {
-    settingClick,
-    SettingOptionsType,
-    sidebarClick
+  settingClick,
+  SettingOptionsType,
+  sidebarClick,
 } from '../../utils/sidebar';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import {
-    RightPanelPageObject,
-    RIGHT_PANEL_TAB
+  RightPanelPageObject,
+  RIGHT_PANEL_TAB,
 } from '../PageObject/Explore/RightPanelPageObject';
 import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
 

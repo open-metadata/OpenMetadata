@@ -14,9 +14,9 @@ import { Page, Request } from '@playwright/test';
 import { isUndefined, startCase } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import {
-    COMMON_TIER_TAG,
-    EXTENDED_TEST_TIMEOUT,
-    KEY_PROFILE_METRICS
+  COMMON_TIER_TAG,
+  EXTENDED_TEST_TIMEOUT,
+  KEY_PROFILE_METRICS,
 } from '../../constant/common';
 import { migratedTo } from '../../constant/migration';
 import { DATA_CONSUMER_RULES } from '../../constant/permission';
@@ -45,35 +45,35 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
-    generateRandomUsername,
-    getApiContext,
-    getAuthContext,
-    getToken,
-    redirectToHomePage,
-    resolveDescriptionBox,
-    toastNotification,
-    uuid
+  generateRandomUsername,
+  getApiContext,
+  getAuthContext,
+  getToken,
+  redirectToHomePage,
+  resolveDescriptionBox,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
-    addMultiOwner,
-    assignTagToChildren,
-    closeColumnDetailPanel,
-    copyAndGetClipboardText,
-    openClassificationTagPicker,
-    openColumnDetailPanel,
-    removeOwner,
-    removeOwnersFromList,
-    removeTagsFromChildren,
-    searchClassificationTagPicker,
-    waitForAllLoadersToDisappear
+  addMultiOwner,
+  assignTagToChildren,
+  closeColumnDetailPanel,
+  copyAndGetClipboardText,
+  openClassificationTagPicker,
+  openColumnDetailPanel,
+  removeOwner,
+  removeOwnersFromList,
+  removeTagsFromChildren,
+  searchClassificationTagPicker,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
 import {
-    applyGlossaryPicker,
-    openGlossaryPicker,
-    toggleGlossaryTermInPicker
+  applyGlossaryPicker,
+  openGlossaryPicker,
+  toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
 
 const BROWSER_TESTS = 'src/test/browser/entity-matrix';
