@@ -18,6 +18,7 @@
  * on Explore, and deletes it. Real pages; only the network is mocked. Each
  * step asserts what the page sent to the types API and what it shows.
  */
+import { escapeRegExp } from 'lodash';
 import { describe, expect, test } from 'vitest';
 import { Locator, page, userEvent } from 'vitest/browser';
 import { CustomProperty } from '../../../generated/type/customProperty';
@@ -42,7 +43,7 @@ export interface SettingsEntity {
 
 /** A property type as the add form lists it, with the spec's config. */
 export interface PropertyKind {
-  /** The type's option label in the form, e.g. `Sql Query`. */
+  /** The type's option label in the form, e.g. `SQL Query`. */
   label: string;
   /** The seeded type's name, e.g. `sqlQuery`. */
   type: string;
@@ -66,7 +67,7 @@ export const PROPERTY_KINDS: PropertyKind[] = [
   { label: 'Duration', type: 'duration', searchFields: one },
   { label: 'Email', type: 'email', searchFields: one },
   { label: 'Number', type: 'number', searchFields: one },
-  { label: 'Sql Query', type: 'sqlQuery', searchFields: one },
+  { label: 'SQL Query', type: 'sqlQuery', searchFields: one },
   {
     label: 'Time Interval',
     type: 'timeInterval',
@@ -356,7 +357,11 @@ const deleteProperty = async (types: TypeServer, name: string) => {
   await userEvent.click(page.getByRole('menuitem', { name: 'Delete' }));
   const dialog = page.getByRole('dialog', { name: 'Delete Property' });
 
-  await expect.element(dialog.getByTestId('body-text')).toHaveTextContent(name);
+  // The dialog names the property by its display name, which the edit step
+  // set to the upper-cased name.
+  await expect
+    .element(dialog.getByTestId('body-text'))
+    .toHaveTextContent(new RegExp(escapeRegExp(name), 'i'));
 
   await userEvent.click(dialog.getByTestId('save-button'));
 
