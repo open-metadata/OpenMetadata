@@ -18,18 +18,16 @@ import {
 } from '@openmetadata/ui-core-components';
 
 import { AxiosError } from 'axios';
-import { isNil } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import {
-  convertSecondsToHumanReadableFormat,
   formatDateTime,
+  formatTimeDurationFromSeconds,
 } from '../../utils/date-time/DateTimeUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -118,9 +116,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'avgSessionDuration',
         render: (avgSessionDuration: number) => (
           <Typography className="tw:text-primary">
-            {isNil(avgSessionDuration)
-              ? NO_DATA_PLACEHOLDER
-              : convertSecondsToHumanReadableFormat(avgSessionDuration, 2)}
+            {formatTimeDurationFromSeconds(avgSessionDuration)}
           </Typography>
         ),
       },

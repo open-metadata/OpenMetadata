@@ -64,9 +64,9 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTimeLong: jest
     .fn()
     .mockReturnValue('Jan 3, 2024, 6:45 PM (UTC+05:30)'),
-  convertSecondsToHumanReadableFormat: jest.requireActual(
-    '../../../../utils/date-time/DateTimeUtils'
-  ).convertSecondsToHumanReadableFormat,
+  convertSecondsToHumanReadableFormat: jest
+    .fn()
+    .mockReturnValue('7Y 2M 22d 9m 24s'),
   getEpochMillisForPastDays: jest.fn().mockReturnValue(1709424034000),
   getStartOfDayInMillis: jest.fn().mockReturnValue(1709424034000),
   getEndOfDayInMillis: jest.fn().mockReturnValue(1709510434000),
@@ -178,11 +178,13 @@ describe('Test TestSummaryCustomTooltip component', () => {
     expect(screen.queryByTestId('placedKeys')).not.toBeInTheDocument();
   });
 
-  it('should display freshness in its two largest units', async () => {
+  it('should display freshness values in seconds', async () => {
     render(<TestSummaryCustomTooltip {...mockPropsWithFreshness} />);
 
     expect((await screen.findByTestId('status')).textContent).toBe('Failed');
-    expect((await screen.findByTestId('freshness')).textContent).toBe('7Y 2M');
+    expect((await screen.findByTestId('freshness')).textContent).toBe(
+      '7Y 2M 22d 9m 24s'
+    );
   });
 
   describe('incident fallback', () => {

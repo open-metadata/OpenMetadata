@@ -58,7 +58,7 @@ import {
 } from '../../../../utils/ApplicationUtils';
 import {
   formatDateTime,
-  formatRunDuration,
+  formatDurationToHHMMSS,
   getEpochMillisForPastDays,
   getIntervalInMilliseconds,
 } from '../../../../utils/date-time/DateTimeUtils';
@@ -336,14 +336,14 @@ const AppRunsHistory = forwardRef(
             }
 
             if (isExternalApp && record.executionTime) {
-              return formatRunDuration(record.executionTime);
+              return formatDurationToHHMMSS(record.executionTime);
             }
 
             if (record.startTime) {
               const endTime = record.endTime || Date.now(); // Use current time in epoch milliseconds if endTime is not present
               const ms = getIntervalInMilliseconds(record.startTime, endTime);
 
-              return formatRunDuration(ms);
+              return formatDurationToHHMMSS(ms);
             } else {
               return NO_DATA_PLACEHOLDER;
             }

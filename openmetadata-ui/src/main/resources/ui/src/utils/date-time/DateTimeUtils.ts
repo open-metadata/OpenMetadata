@@ -221,6 +221,13 @@ export const formatDateTimeWithTimezone = (
 };
 
 /**
+ * @param seconds EPOCH seconds
+ * @returns Formatted duration for valid input. Format: 00:09:31
+ */
+export const formatTimeDurationFromSeconds = (seconds: number) =>
+  isNil(seconds) ? '' : Duration.fromObject({ seconds }).toFormat('hh:mm:ss');
+
+/**
  * @param milliseconds EPOCH millis
  * @param format Custom format string
  * @returns Formatted date
@@ -533,9 +540,16 @@ export const formatRunDuration = (milliseconds: number) => {
   return seconds < 60
     ? `${seconds.toFixed(1)}s`
     : convertMillisecondsToHumanReadableFormat(
-        Math.round(milliseconds / 1000) * 1000,
-        2
+        Math.round(milliseconds / 1000) * 1000
       );
+};
+
+export const formatDurationToHHMMSS = (ms: number) => {
+  if (ms > 0 && ms < 1000) {
+    return `${Math.floor(ms)} ms`;
+  }
+
+  return Duration.fromMillis(ms).toFormat('hh:mm:ss');
 };
 
 export const getStartOfDayInMillis = (timestamp: number) =>

@@ -176,8 +176,7 @@ export const WorkflowExecutionHistory: React.FC<
           let value: string;
           if (record.startedAt && record.endedAt) {
             value = convertMillisecondsToHumanReadableFormat(
-              record.endedAt - record.startedAt,
-              2
+              record.endedAt - record.startedAt
             );
           } else if (record.startedAt && !record.endedAt) {
             value = t('label.running-ellipsis');

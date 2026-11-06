@@ -23,8 +23,10 @@ import {
   formatDate,
   formatDateTime,
   formatDateTimeLong,
+  formatDurationToHHMMSS,
   formatMonth,
   formatRunDuration,
+  formatTimeDurationFromSeconds,
   getActiveTimeFormat,
   getElapsedTime,
   getMappedTimeFormat,
@@ -83,6 +85,17 @@ describe('DateTimeUtils tests', () => {
     );
   });
 
+  it(`formatTimeDurationFromSeconds should formate date and time both`, () => {
+    expect(formatTimeDurationFromSeconds(60)).toBe(`00:01:00`);
+  });
+
+  it(`formatDurationToHHMMSS should show milliseconds for short runs`, () => {
+    expect(formatDurationToHHMMSS(0)).toBe('00:00:00');
+    expect(formatDurationToHHMMSS(210)).toBe('210 ms');
+    expect(formatDurationToHHMMSS(999.6)).toBe('999 ms');
+    expect(formatDurationToHHMMSS(1000)).toBe('00:00:01');
+  });
+
   it(`formatRunDuration should keep sub-minute precision`, () => {
     expect(formatRunDuration(0)).toBe('<1ms');
     expect(formatRunDuration(210)).toBe('210ms');
@@ -92,7 +105,7 @@ describe('DateTimeUtils tests', () => {
 
   it(`formatRunDuration should roll long runs up into hours and minutes`, () => {
     expect(formatRunDuration(125_000)).toBe('2m 5s');
-    expect(formatRunDuration(9_936_000)).toBe('2h 45m');
+    expect(formatRunDuration(9_936_000)).toBe('2h 45m 36s');
     expect(formatRunDuration(90_000_000)).toBe('1d 1h');
   });
 
