@@ -253,15 +253,8 @@ def report(args: argparse.Namespace) -> None:
             continue
         try:
             reason = compare_job(args.repo, args.sha, url, name, args.branch, token)
-        except (
-            mq.ApiError,
-            subprocess.CalledProcessError,
-            subprocess.TimeoutExpired,
-            ValueError,
-            KeyError,
-            TypeError,
-            zipfile.BadZipFile,
-        ) as exc:
+        except Exception as exc:
+            # Attribution is auxiliary; a failed comparison must not suppress the report.
             print(
                 f"::warning::Could not compare dequeue evidence: {type(exc).__name__}: {' '.join(str(exc).split())}",
                 file=sys.stderr,

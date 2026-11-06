@@ -7,6 +7,7 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 import zipfile
+import zlib
 from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import asdict, replace
 from pathlib import Path
@@ -370,38 +371,47 @@ class ReportTest(unittest.TestCase):
             )
 
     def test_failed_evidence_read_does_not_drop_other_alerts(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            failures = Path(directory) / "failures.tsv"
-            failures.write_text(
-                "malformed\nhttps://github.com/org/repo/actions/runs/1/job/2\t<!channel>\nhttps://github.com/org/repo/actions/runs/3/job/4\tsecond-job\n",
-                encoding="utf-8",
-            )
-            args = argparse.Namespace(
-                repo="org/repo", sha="a" * 40, branch="main", failures=failures
-            )
-            output, error = io.StringIO(), io.StringIO()
-            with (
-                patch.object(evidence.mq, "env_token", return_value="test-token"),
-                patch.object(
-                    evidence,
-                    "compare_job",
-                    side_effect=[
-                        evidence.mq.ApiError("HTTP 403"),
-                        "Also failing on main: 1 matching test failure(s).",
-                    ],
-                ),
-                redirect_stdout(output),
-                redirect_stderr(error),
-            ):
-                evidence.report(args)
-            report = json.loads(output.getvalue())
-            self.assertIn("&lt;!channel&gt;: Unknown", report["slack"])
-            self.assertIn("` <!channel> `: Unknown", report["markdown"])
-            for text in report.values():
-                self.assertIn("Unknown: malformed Actions job reference", text)
-                self.assertIn("Also failing on main", text)
-                self.assertIn("second-job", text)
-            self.assertIn("warning", error.getvalue())
+        for failure_error in (
+            evidence.mq.ApiError("HTTP 403"),
+            RuntimeError("artifact decoder failed"),
+            RecursionError("JSON nesting is too deep"),
+            zlib.error("invalid compressed data"),
+        ):
+            with self.subTest(error=type(failure_error).__name__):
+                with tempfile.TemporaryDirectory() as directory:
+                    failures = Path(directory) / "failures.tsv"
+                    failures.write_text(
+                        "malformed\nhttps://github.com/org/repo/actions/runs/1/job/2\t<!channel>\nhttps://github.com/org/repo/actions/runs/3/job/4\tsecond-job\n",
+                        encoding="utf-8",
+                    )
+                    args = argparse.Namespace(
+                        repo="org/repo", sha="a" * 40, branch="main", failures=failures
+                    )
+                    output, error = io.StringIO(), io.StringIO()
+                    with (
+                        patch.object(
+                            evidence.mq, "env_token", return_value="test-token"
+                        ),
+                        patch.object(
+                            evidence,
+                            "compare_job",
+                            side_effect=[
+                                failure_error,
+                                "Also failing on main: 1 matching test failure(s).",
+                            ],
+                        ),
+                        redirect_stdout(output),
+                        redirect_stderr(error),
+                    ):
+                        evidence.report(args)
+                    report = json.loads(output.getvalue())
+                    self.assertIn("&lt;!channel&gt;: Unknown", report["slack"])
+                    self.assertIn("` <!channel> `: Unknown", report["markdown"])
+                    for text in report.values():
+                        self.assertIn("Unknown: malformed Actions job reference", text)
+                        self.assertIn("Also failing on main", text)
+                        self.assertIn("second-job", text)
+                    self.assertIn("warning", error.getvalue())
 
 
 class RecordCliTest(unittest.TestCase):
