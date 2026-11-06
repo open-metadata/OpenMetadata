@@ -1598,8 +1598,28 @@ test.describe('Input Output Ports', () => {
         const lineageView = page.getByTestId('ports-lineage-view');
         await expect(lineageView).toHaveCSS('position', 'fixed');
 
+        // Wait for the fullscreen fit to settle: the effect re-fits after
+        // 100ms, changing the viewport transform from the pre-fullscreen
+        // value to one centered on the 100vh container.
+        const viewport = page.locator('.react-flow__viewport');
+        const preFitStyle = (await viewport.getAttribute('style')) ?? '';
+        await expect
+          .poll(async () => viewport.getAttribute('style'), {
+            timeout: 15_000,
+          })
+          .not.toBe(preFitStyle);
+        const fullscreenStyle = (await viewport.getAttribute('style')) ?? '';
+
         await page.getByTestId('toggle-fullscreen-btn').click();
         await expect(lineageView).toHaveCSS('position', 'relative');
+
+        // The viewport transform must change — the graph re-fits to the
+        // 250px container instead of keeping the fullscreen transform.
+        await expect
+          .poll(async () => viewport.getAttribute('style'), {
+            timeout: 15_000,
+          })
+          .not.toBe(fullscreenStyle);
       });
     });
 
@@ -1632,8 +1652,32 @@ test.describe('Input Output Ports', () => {
         const lineageView = page.getByTestId('ports-lineage-view');
         await expect(lineageView).toHaveCSS('position', 'fixed');
 
+        // Wait for the fullscreen fit to settle: the effect re-fits after
+        // 100ms, changing the viewport transform from the pre-fullscreen
+        // value to one centered on the 100vh container.
+        const viewport = page.locator('.react-flow__viewport');
+        const preFitStyle = (await viewport.getAttribute('style')) ?? '';
+        await expect
+          .poll(async () => viewport.getAttribute('style'), {
+            timeout: 15_000,
+          })
+          .not.toBe(preFitStyle);
+        const fullscreenStyle = (await viewport.getAttribute('style')) ?? '';
+
         await page.keyboard.press('Escape');
         await expect(lineageView).toHaveCSS('position', 'relative');
+
+        // The viewport transform must change — the graph re-fits to the
+        // 250px container instead of keeping the fullscreen transform.
+        // Before the fix, exiting via Escape skipped the refit (the parent
+        // set isFullScreen=false directly, bypassing the button handler
+        // that used to perform fitView/zoomTo), leaving the graph cropped
+        // or off-center until the user manually panned/zoomed.
+        await expect
+          .poll(async () => viewport.getAttribute('style'), {
+            timeout: 15_000,
+          })
+          .not.toBe(fullscreenStyle);
       });
     });
 
