@@ -1343,7 +1343,7 @@
     --color-bg-raised: theme(--color-gray-700);
     /* Modal/slideout panel matches bg-surface (gray-800, rgb(34,38,47)). Floating
        overlays (popover, menu, select, date picker) use bg-raised (gray-700) so they
-       stay distinct when opened from a drawer. */
+       stay distinct when opened from a drawer (ADR:2026-11-06-floating-overlays-sit-on-bg-raised). */
     --color-bg-overlay-surface: theme(--color-gray-800);
     --color-bg-brand-section: theme(--color-bg-secondary);
     --color-bg-brand-section_subtle: theme(--color-bg-primary);
@@ -1910,8 +1910,20 @@ core-components bundle. */
 /* Dark: shadow-raised is an 8% near-black shadow that vanishes on dark
 surfaces, and Tailwind inlines the value, so a token override cannot reach it.
 Deepen it here so every floating overlay (popover, menu, select, date picker,
-hover card) reads as lifted above the drawer or page it opens from. */
-.dark-mode .tw\:shadow-raised {
+hover card) reads as lifted above the drawer or page it opens from.
+ADR:2026-11-06-floating-overlays-sit-on-bg-raised */
+.dark-mode :is(.tw\:shadow-raised, .tw\:dark\:shadow-raised) {
   --tw-shadow: 0px 12px 16px -4px rgb(0 0 0 / 0.5),
     0px 4px 6px -2px rgb(0 0 0 / 0.3), 0px 2px 2px -1px rgb(0 0 0 / 0.3);
+}
+
+/* Dark: secondary Button and ButtonUtility hover to bg-raised, which is also the
+floating-overlay surface, so inside a popover or picker the hover matched the
+panel. Step one lighter there. shadow-raised marks floating overlays only, so
+buttons on pages, cards and drawers keep their bg-raised hover.
+ADR:2026-11-06-floating-overlays-sit-on-bg-raised */
+.dark-mode
+  :is(.tw\:shadow-raised, .tw\:dark\:shadow-raised)
+  .tw\:dark\:hover\:bg-raised:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-bg-raised) 92%, white);
 }

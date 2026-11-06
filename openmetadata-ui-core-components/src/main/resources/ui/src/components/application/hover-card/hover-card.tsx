@@ -152,7 +152,7 @@ export const HoverCard = ({
         <div
           {...mergeProps(cardHoverProps, cardFocusWithinProps)}
           className={cx(
-            'tw:rounded-xl tw:bg-raised tw:p-4 tw:shadow-raised tw:outline-1 tw:outline-secondary_alt',
+            'tw:rounded-xl tw:bg-raised tw:p-4 tw:shadow-raised tw:dark:text-primary tw:outline-1 tw:outline-secondary_alt',
             className
           )}>
           {content}
