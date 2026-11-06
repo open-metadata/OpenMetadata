@@ -24,6 +24,8 @@ import {
 export interface CreateMemoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Called instead of onClose when a link out of the memory is followed; the URL is left alone. */
+  onNavigate?: () => void;
   onCreated: () => void;
   memoryToEdit?: ContextMemory;
   onUpdated?: () => void;
@@ -51,6 +53,7 @@ export interface MemoryModalHeaderProps {
   memoryToEdit?: ContextMemory;
   memorySource?: EntityReference;
   memorySourceLink?: string;
+  onNavigate: () => void;
   t: TFunc;
 }
 
@@ -67,6 +70,7 @@ export interface LinkedAssetsSectionProps {
   linkedAssets: DataAssetOption[];
   setLinkedAssets: Dispatch<SetStateAction<DataAssetOption[]>>;
   handleAssetChange: (option?: DataAssetOption | DataAssetOption[]) => void;
+  onNavigate: () => void;
   t: TFunc;
 }
 

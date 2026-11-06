@@ -145,6 +145,26 @@ class ContextFileProcessingServiceTest {
     assertEquals("Quarterly results", contentUpdates.get(1).getExtractedText());
   }
 
+  /** A file with no recorded editor is stamped as admin, as the extraction engines do. */
+  @Test
+  void processStampsAdminWhenTheFileHasNoEditor() throws Exception {
+    file.setUpdatedBy(null);
+    content.setUpdatedBy(null);
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), any(), eq(Entity.ADMIN_USER_NAME));
+    verify(contentRepository, times(2))
+        .updateIfCurrent(isNull(), same(content), any(), eq(Entity.ADMIN_USER_NAME));
+  }
+
   @Test
   void processKeepsMetadataEditedDuringTextExtraction() throws Exception {
     AtomicReference<ContextFile> stored = new AtomicReference<>(file);

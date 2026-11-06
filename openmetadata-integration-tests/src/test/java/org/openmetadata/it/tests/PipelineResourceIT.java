@@ -1628,4 +1628,22 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     request.setName(ns.prefix("invalid_pipeline"));
     return request;
   }
+
+  @Test
+  void patch_rejectedRenameKeepsTaskFqns(TestNamespace ns) {
+    Pipeline created =
+        createEntity(
+            createMinimalRequest(ns)
+                .withTasks(List.of(new Task().withName("task1"), new Task().withName("task2"))));
+    Pipeline patch = getEntity(created.getId().toString());
+    patch.setName(created.getName() + "_renamed");
+
+    Pipeline updated = patchEntity(created.getId().toString(), patch);
+
+    String fqn = created.getFullyQualifiedName();
+    List<String> taskFqns = updated.getTasks().stream().map(Task::getFullyQualifiedName).toList();
+    assertEquals(fqn, updated.getFullyQualifiedName());
+    assertEquals(2, taskFqns.size());
+    assertTrue(taskFqns.stream().allMatch(f -> f.startsWith(fqn + ".")), taskFqns::toString);
+  }
 }
