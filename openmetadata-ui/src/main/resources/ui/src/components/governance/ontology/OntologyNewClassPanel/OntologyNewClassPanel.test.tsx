@@ -102,6 +102,11 @@ const openAdvanced = () =>
   fireEvent.click(screen.getByTestId('new-class-advanced-toggle'));
 const fill = (id: string, value: string) =>
   fireEvent.change(screen.getByTestId(id), { target: { value } });
+const fillMappingIri = (value: string) =>
+  fireEvent.change(
+    within(screen.getByTestId('new-class-mapping-iri')).getByRole('combobox'),
+    { target: { value } }
+  );
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -840,12 +845,14 @@ describe('one drawer for every entry point', () => {
       'new-class-description',
       'new-class-iri-input',
       'new-class-synonyms',
-      'new-class-mapping-iri',
     ]);
+    expect(
+      within(screen.getByTestId('new-class-mapping-iri')).getByRole('combobox')
+    ).toBeVisible();
     expect(
       screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))
     ).toEqual(['OWL_CLASS', 'SKOS_CONCEPT', 'BOTH']);
-    expect(textboxNames()).toHaveLength(6);
+    expect(textboxNames()).toHaveLength(5);
     expect(
       screen.queryByRole('combobox', { name: 'label.subclass-of' })
     ).not.toBeInTheDocument();
@@ -969,7 +976,7 @@ describe('one drawer for every entry point', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'label.both-owl-skos' }));
     fill('new-class-iri-input', 'https://example.org/other#Remittance');
     fill('new-class-synonyms', 'Wire,');
-    fill('new-class-mapping-iri', 'https://schema.org/Payment');
+    fillMappingIri('https://schema.org/Payment');
     fireEvent.click(screen.getByTestId('new-class-add-mapping'));
 
     expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
@@ -1415,7 +1422,7 @@ describe('a SKOS concept takes no OWL axioms', () => {
     fill('new-class-label', 'Remittance');
     chooseType(OntologyConceptType.SkosConcept);
     fill('new-class-synonyms', 'Wire,');
-    fill('new-class-mapping-iri', 'https://schema.org/Payment');
+    fillMappingIri('https://schema.org/Payment');
     fireEvent.click(screen.getByTestId('new-class-add-mapping'));
 
     expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
@@ -1450,5 +1457,226 @@ describe('a SKOS concept takes no OWL axioms', () => {
     expect(
       screen.queryByRole('option', { name: 'Vocabulary' })
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('mappings are picked by label', () => {
+  const ledgerAccount = {
+    id: 'ledger-account',
+    name: 'Account',
+    displayName: 'Account',
+    fullyQualifiedName: 'Ledger.Account',
+    iri: 'https://example.org/ledger#Account',
+    conceptType: OntologyConceptType.OwlClass,
+    ontology: { id: 'ledger', name: 'Ledger', type: 'ontology' },
+  };
+  const serveReadableConcepts = () => {
+    const base = get.getMockImplementation();
+    get.mockImplementation(async (url: string, ...rest: unknown[]) =>
+      url === '/ontologyConcepts'
+        ? { data: { data: [ledgerAccount], paging: {} } }
+        : base?.(url, ...rest)
+    );
+  };
+  const mappingPicker = async () => {
+    const picker = await screen.findByRole('combobox', {
+      name: /^label\.concept-iri/,
+    });
+    await act(async () => undefined);
+
+    return picker;
+  };
+  const type = (picker: HTMLElement, text: string) => {
+    fireEvent.focus(picker);
+    fireEvent.change(picker, { target: { value: text } });
+  };
+  const addMapping = () =>
+    fireEvent.click(screen.getByTestId('new-class-add-mapping'));
+  const createdConcept = async () => {
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+    await waitFor(() => expect(reconcile).toHaveBeenCalled());
+
+    return post.mock.calls.find(([url]) => url === '/ontologyChangeSets')?.[1]
+      .operations[0].concept;
+  };
+
+  beforeEach(serveReadableConcepts);
+
+  it('offers a concept of another ontology by label and saves its IRI', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    const picker = await mappingPicker();
+    type(picker, 'Acc');
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    const option = await screen.findByRole('option', { name: /Account/ });
+
+    expect(option).toHaveTextContent(
+      'Ledger · https://example.org/ledger#Account'
+    );
+
+    fireEvent.click(option);
+    addMapping();
+
+    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
+      'Exact match · https://example.org/ledger#Account'
+    );
+    expect(picker).toHaveValue('');
+
+    expect((await createdConcept()).conceptMappings).toEqual([
+      expect.objectContaining({
+        mappingType: 'EXACT_MATCH',
+        conceptIri: 'https://example.org/ledger#Account',
+      }),
+    ]);
+  });
+
+  it('offers a concept of the ontology being edited by label', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'Trans');
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: /Transaction/ }));
+    addMapping();
+
+    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
+      'Exact match · https://example.org/fin#Transaction'
+    );
+  });
+
+  it('keeps a pasted IRI that no concept carries, next to a picked one', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    const picker = await mappingPicker();
+    type(picker, 'Acc');
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: /Account/ }));
+    addMapping();
+    type(picker, 'https://schema.org/Payment');
+    fireEvent.blur(picker);
+
+    expect(screen.getByTestId('new-class-add-mapping')).toBeEnabled();
+
+    addMapping();
+
+    expect(
+      screen.getAllByTestId('new-class-mapping').map((row) => row.textContent)
+    ).toEqual([
+      'Exact match · https://example.org/ledger#Account',
+      'Exact match · https://schema.org/Payment',
+    ]);
+    expect(
+      (await createdConcept()).conceptMappings.map(
+        (mapping: { conceptIri: string }) => mapping.conceptIri
+      )
+    ).toEqual([
+      'https://example.org/ledger#Account',
+      'https://schema.org/Payment',
+    ]);
+  });
+
+  it('rejects text that is neither a concept label nor an absolute IRI', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'no such concept');
+
+    expect(screen.getByText('message.invalid-concept-iri')).toBeVisible();
+    expect(screen.getByTestId('new-class-add-mapping')).toBeDisabled();
+
+    addMapping();
+
+    expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
+  });
+
+  it('adds a pasted IRI when Enter is pressed and no option is focused', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'https://schema.org/Payment');
+    fireEvent.keyDown(picker, { key: 'Enter' });
+
+    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
+      'Exact match · https://schema.org/Payment'
+    );
+    expect(picker).toHaveValue('');
+  });
+
+  it('does not add text that is not an absolute IRI when Enter is pressed', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'no such concept');
+    fireEvent.keyDown(picker, { key: 'Enter' });
+
+    expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
+  });
+
+  it('selects the focused option on Enter instead of adding the mapping', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'Acc');
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    await screen.findByRole('option', { name: /Account/ });
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    fireEvent.keyDown(picker, { key: 'Enter' });
+
+    await waitFor(() => expect(picker).toHaveValue('Account'));
+
+    expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-add-mapping')).toBeEnabled();
+
+    addMapping();
+
+    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
+      'Exact match · https://example.org/ledger#Account'
+    );
+  });
+
+  it('shows a loading row, then the matches of concepts that arrive after typing', async () => {
+    let release: () => void = () => undefined;
+    const arrival = new Promise((resolve) => {
+      release = resolve;
+    });
+    const base = get.getMockImplementation();
+    get.mockImplementation(async (url: string, ...rest: unknown[]) => {
+      if (url === '/ontologyConcepts') {
+        await arrival;
+
+        return { data: { data: [ledgerAccount], paging: {} } };
+      }
+
+      return base?.(url, ...rest);
+    });
+    setup();
+    const picker = await screen.findByRole('combobox', {
+      name: /^label\.concept-iri/,
+    });
+    type(picker, 'Acc');
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+
+    expect(
+      await screen.findByRole('option', { name: 'label.loading' })
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.queryByRole('option', { name: /Account/ })
+    ).not.toBeInTheDocument();
+
+    await act(async () => release());
+
+    expect(
+      await screen.findByRole('option', { name: /Account/ })
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('option', { name: 'label.loading' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('refuses the same mapping twice', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'https://schema.org/Payment');
+    addMapping();
+    type(picker, 'https://schema.org/Payment');
+
+    expect(screen.getByTestId('new-class-add-mapping')).toBeDisabled();
   });
 });

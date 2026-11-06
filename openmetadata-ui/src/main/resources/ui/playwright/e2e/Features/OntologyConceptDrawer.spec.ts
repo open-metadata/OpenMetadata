@@ -95,6 +95,38 @@ const submitDrawer = async (page: Page, testId: string) => {
   expect((await applied).ok()).toBe(true);
 };
 
+const pasteMappingIri = async (page: Page, iri: string) => {
+  const input = page.getByTestId('new-class-mapping-iri').locator('input');
+  await input.fill(iri);
+  await input.press('Tab');
+};
+
+// React Aria closes an open list when the drawer scrolls. The field sits under
+// the drawer's sticky footer, so Playwright's own scroll-to-focus would land
+// after the list opened; centring the field first leaves nothing to scroll.
+const centerMappingField = async (page: Page) => {
+  const input = page.getByTestId('new-class-mapping-iri').getByRole('combobox');
+  await input.evaluate((element) =>
+    element.scrollIntoView({ block: 'center', behavior: 'instant' })
+  );
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(resolve))
+  );
+};
+
+const pickMappingByLabel = async (page: Page, label: string, iri: string) => {
+  const input = page.getByTestId('new-class-mapping-iri').getByRole('combobox');
+  const option = page
+    .getByRole('option', { name: new RegExp(`^${label}`) })
+    .filter({ hasText: iri });
+  await expect(input).toBeVisible();
+  await centerMappingField(page);
+  await input.fill(label);
+  await expect(option).toBeVisible();
+  await option.click();
+  await expect(input).toHaveValue(label);
+};
+
 const closeDraftPrompt = async (page: Page, button: 'Cancel' | 'Discard') => {
   const prompt = page.getByRole('dialog', { name: DRAFT_PROMPT });
   await prompt.getByRole('button', { name: button, exact: true }).click();
@@ -262,15 +294,11 @@ for (const mode of ['classic', 'ai'] as const) {
         await page.getByTestId('new-class-synonyms').fill('Wire,');
         await page.getByTestId('new-class-synonyms').fill('Transfer');
         await page.getByTestId('new-class-synonyms').press('Enter');
-        await page
-          .getByTestId('new-class-mapping-iri')
-          .fill('https://schema.org/Payment');
+        await pasteMappingIri(page, 'https://schema.org/Payment');
         await page.getByTestId('new-class-add-mapping').click();
         await page.getByRole('button', { name: /Mapping type/ }).click();
         await page.getByRole('option', { name: 'Close match' }).click();
-        await page
-          .getByTestId('new-class-mapping-iri')
-          .fill('https://example.org/Remit');
+        await pasteMappingIri(page, 'https://example.org/Remit');
         await page.getByTestId('new-class-add-mapping').click();
         await expect(page.getByTestId('new-class-mapping')).toHaveText([
           'Exact match · https://schema.org/Payment',
@@ -290,6 +318,119 @@ for (const mode of ['classic', 'ai'] as const) {
           ['EXACT_MATCH', 'https://schema.org/Payment'],
           ['CLOSE_MATCH', 'https://example.org/Remit'],
         ]);
+      });
+
+      test('picks a mapping from another ontology by label and keeps a pasted IRI beside it', async ({
+        isolatedUserPage: page,
+      }) => {
+        test.slow();
+        const elsewhere = await createOntology(api, 'concept_drawer_other');
+        try {
+          const target = await createConcept(
+            api,
+            elsewhere,
+            `Ledger${uuid().slice(0, 8)}`
+          );
+          await createConcept(api, owner, 'Existing');
+          await page.goto('/governance/ontology?ontology=' + owner.id);
+          await page.getByTestId('mode-tab-edit').click();
+          await page.getByTestId('ontology-add-concept').click();
+          await page.getByTestId('new-class-label').fill('Settlement');
+
+          await pickMappingByLabel(page, target.name, target.iri);
+          await page.getByTestId('new-class-add-mapping').click();
+          await pasteMappingIri(page, 'https://schema.org/Invoice');
+          await page.getByTestId('new-class-add-mapping').click();
+          await expect(page.getByTestId('new-class-mapping')).toHaveText([
+            `Exact match · ${target.iri}`,
+            'Exact match · https://schema.org/Invoice',
+          ]);
+          await submitDrawer(page, 'new-class-create');
+
+          const created = (await listConcepts(api, owner)).find(
+            (c) => c.name === 'Settlement'
+          );
+
+          expect(
+            created?.conceptMappings?.map((m) => [m.mappingType, m.conceptIri])
+          ).toEqual([
+            ['EXACT_MATCH', target.iri],
+            ['EXACT_MATCH', 'https://schema.org/Invoice'],
+          ]);
+
+          await page.goto(
+            `/governance/ontology?ontology=${owner.id}&concept=${created?.id}`
+          );
+          const mappings = page.getByTestId('ontology-concept-mappings');
+
+          await expect(mappings).toContainText(target.iri);
+          await expect(mappings).toContainText('https://schema.org/Invoice');
+        } finally {
+          await removeOntology(api, elsewhere);
+        }
+      });
+
+      test('Enter adds a pasted IRI as a mapping, and Enter on a focused option picks it', async ({
+        isolatedUserPage: page,
+      }) => {
+        test.slow();
+        const elsewhere = await createOntology(api, 'concept_drawer_enter');
+        try {
+          const target = await createConcept(
+            api,
+            elsewhere,
+            `Enter${uuid().slice(0, 8)}`
+          );
+          await page.goto('/governance/ontology?ontology=' + owner.id);
+          await page.getByTestId('mode-tab-edit').click();
+          await page.getByTestId('ontology-add-concept').click();
+          const input = page
+            .getByTestId('new-class-mapping-iri')
+            .getByRole('combobox');
+
+          await centerMappingField(page);
+          await input.fill('https://schema.org/Invoice');
+          await input.press('Enter');
+
+          await expect(page.getByTestId('new-class-mapping')).toHaveText([
+            'Exact match · https://schema.org/Invoice',
+          ]);
+          await expect(input).toHaveValue('');
+
+          await centerMappingField(page);
+          await input.fill(target.name);
+          await expect(
+            page.getByRole('option', { name: new RegExp(`^${target.name}`) })
+          ).toBeVisible();
+          await input.press('ArrowDown');
+          await input.press('Enter');
+
+          await expect(input).toHaveValue(target.name);
+          await expect(page.getByTestId('new-class-mapping')).toHaveCount(1);
+
+          await page.getByTestId('new-class-add-mapping').click();
+          await expect(page.getByTestId('new-class-mapping')).toHaveText([
+            'Exact match · https://schema.org/Invoice',
+            `Exact match · ${target.iri}`,
+          ]);
+        } finally {
+          await removeOntology(api, elsewhere);
+        }
+      });
+
+      test('rejects text that is not an IRI or a concept label in the mapping row', async ({
+        isolatedUserPage: page,
+      }) => {
+        await createConcept(api, owner, 'Existing');
+        await page.goto('/governance/ontology?ontology=' + owner.id);
+        await page.getByTestId('mode-tab-edit').click();
+        await page.getByTestId('ontology-add-concept').click();
+        await pasteMappingIri(page, 'no such concept');
+
+        await expect(
+          page.getByText('Enter a valid concept IRI.')
+        ).toBeVisible();
+        await expect(page.getByTestId('new-class-add-mapping')).toBeDisabled();
       });
 
       test('blocks a duplicate name, a duplicate label and Spaced Name! with a message', async ({

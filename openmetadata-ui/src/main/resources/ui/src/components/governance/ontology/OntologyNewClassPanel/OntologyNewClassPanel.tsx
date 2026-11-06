@@ -33,7 +33,14 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
-import { Fragment, MutableRefObject, useEffect, useRef, useState } from 'react';
+import {
+  Fragment,
+  MutableRefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuid } from 'uuid';
@@ -76,6 +83,8 @@ import {
   toEntityReferences,
 } from '../../../Glossary/AddGlossary/AddGlossary.utils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
+import { useMappingTargetOptions } from '../OntologyConceptEditor/useReadableConceptOptions';
+import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import {
   ClassIdentityIssue,
   classIdentityIssues,
@@ -636,6 +645,17 @@ const OntologyNewClassPanel = ({
       submitting.current = false;
     }
   };
+  const localMappingTargets = useMemo(
+    () =>
+      model.concepts.map((c) => ({
+        iri: c.iri,
+        label: c.displayName ?? c.name,
+        context: getEntityName(ontology),
+      })),
+    [model.concepts, ontology]
+  );
+  const { options: mappingTargets, isLoading: mappingTargetsLoading } =
+    useMappingTargetOptions(localMappingTargets, !locked);
   const conceptOptions = model.concepts
     .filter((c) => c.conceptType !== OntologyConceptType.SkosConcept)
     .map((c) => ({
@@ -757,20 +777,16 @@ const OntologyNewClassPanel = ({
         onChange={(key) => setMappingType(String(key) as ConceptMappingType)}>
         {(item) => <Select.Item id={item.id} label={item.label} />}
       </Select>
-      <Input
-        hint={mappingRowInvalid ? t('message.invalid-concept-iri') : undefined}
-        inputDataTestId="new-class-mapping-iri"
+      <OntologyIriInput
+        error={mappingRowInvalid ? t('message.invalid-concept-iri') : undefined}
         isDisabled={locked}
-        isInvalid={mappingRowInvalid}
+        isLoading={mappingTargetsLoading}
         label={t('label.concept-iri')}
+        options={mappingTargets}
+        testId="new-class-mapping-iri"
         value={mappingIri}
         onChange={setMappingIri}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            addMapping();
-          }
-        }}
+        onSubmit={addMapping}
       />
       <Button
         color="secondary"

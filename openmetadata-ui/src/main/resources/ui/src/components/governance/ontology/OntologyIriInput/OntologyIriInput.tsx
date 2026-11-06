@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import { Input, Select } from '@openmetadata/ui-core-components';
-import { useMemo, useState } from 'react';
+import { KeyboardEvent, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { OntologyIriOption } from './OntologyIriInput.types';
 
 interface OntologyIriInputProps {
@@ -23,8 +25,14 @@ interface OntologyIriInputProps {
   hint?: string;
   error?: string;
   testId?: string;
+  /** Options are still arriving; the list says so instead of looking empty. */
+  isLoading?: boolean;
   onChange: (iri: string) => void;
+  /** Enter on a typed absolute IRI with no option focused, as a pasted IRI is committed. */
+  onSubmit?: () => void;
 }
+
+const LOADING_KEY = '\u0000loading';
 
 const OntologyIriInput = ({
   label,
@@ -35,14 +43,22 @@ const OntologyIriInput = ({
   hint,
   error,
   testId,
+  isLoading,
   onChange,
+  onSubmit,
 }: OntologyIriInputProps) => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState<string>();
+  useEffect(() => {
+    if (!value) {
+      setSearch(undefined);
+    }
+  }, [value]);
   const selected = options?.find((option) => option.iri === value);
   const items = useMemo(() => {
     const query = search?.toLowerCase() ?? '';
 
-    return (options ?? [])
+    const matches = (options ?? [])
       .filter(
         (option) =>
           !query ||
@@ -57,9 +73,28 @@ const OntologyIriInput = ({
           ? `${option.context} · ${option.iri}`
           : option.iri,
       }));
-  }, [options, search]);
 
-  if (!options?.length) {
+    return isLoading
+      ? [
+          ...matches,
+          { id: LOADING_KEY, label: t('label.loading'), supportingText: '' },
+        ]
+      : matches;
+  }, [options, search, isLoading, t]);
+  const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (
+      event.key !== 'Enter' ||
+      !onSubmit ||
+      event.currentTarget.getAttribute('aria-activedescendant') ||
+      !isAbsoluteOntologyIri(event.currentTarget.value.trim())
+    ) {
+      return;
+    }
+    event.preventDefault();
+    onSubmit();
+  };
+
+  if (!options) {
     return (
       <Input
         data-testid={testId}
@@ -79,6 +114,7 @@ const OntologyIriInput = ({
     <Select.ComboBox
       allowsCustomValue
       data-testid={testId}
+      disabledKeys={isLoading ? [LOADING_KEY] : undefined}
       hint={error ?? hint}
       inputValue={search ?? selected?.label ?? value}
       isDisabled={isDisabled}
@@ -94,13 +130,14 @@ const OntologyIriInput = ({
           return;
         }
         const label = text.trim().toLowerCase();
-        const matches = options.filter(
+        const matches = (options ?? []).filter(
           (option) => option.label.toLowerCase() === label
         );
         onChange(matches.length === 1 ? matches[0].iri : text);
       }}
+      onKeyDown={submitOnEnter}
       onSelectionChange={(key) => {
-        const option = options.find((entry) => entry.iri === key);
+        const option = options?.find((entry) => entry.iri === key);
         if (option) {
           onChange(option.iri);
           setSearch(undefined);
