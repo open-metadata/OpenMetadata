@@ -15,18 +15,22 @@ package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.google.common.collect.Lists;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -36,6 +40,7 @@ import org.openmetadata.schema.type.OntologyChangeOperationResult;
 import org.openmetadata.schema.type.OntologyChangeOperationResultStatus;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -60,6 +65,7 @@ public final class OntologyChangeApplicationService {
       "operations,undoCursor,state,applicationResult,glossaries";
   private static final String ROLLBACK_MESSAGE =
       "Rolled back because a later ontology operation failed";
+  private static final int DECLARATION_BATCH = 500;
   private static final String SKIP_MESSAGE = "Skipped after an earlier ontology operation failed";
 
   private final OntologyChangeSetRepository changeSetRepository;
@@ -376,7 +382,30 @@ public final class OntologyChangeApplicationService {
 
   private static OntologyChangePreflight productionPreflight() {
     return new OntologyChangePreflight(
-        (entityType, id) -> Entity.getEntity(entityType, id, "", Include.ALL));
+        (entityType, id) -> Entity.getEntity(entityType, id, "", Include.ALL),
+        OntologyChangeApplicationService::declaredConcepts);
+  }
+
+  private static Set<String> declaredConcepts(final UUID ontologyId, final Set<String> iris) {
+    final var concepts = Entity.getCollectionDAO().ontologyConceptDAO();
+    final Set<String> declared = new HashSet<>();
+    Lists.partition(new ArrayList<>(iris), DECLARATION_BATCH)
+        .forEach(
+            batch ->
+                concepts
+                    .findDeclarations(
+                        concepts.getTableName(),
+                        ontologyId,
+                        batch.stream().map(DigestUtils::md5Hex).toList(),
+                        batch.size(),
+                        "")
+                    .forEach(
+                        json ->
+                            declared.add(
+                                JsonUtils.readValue(json, OntologyConcept.class)
+                                    .getIri()
+                                    .toString())));
+    return declared;
   }
 
   record Dependencies(

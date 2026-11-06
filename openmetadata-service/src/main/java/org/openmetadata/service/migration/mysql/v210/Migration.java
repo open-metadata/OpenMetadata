@@ -59,6 +59,7 @@ import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMig
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
 import org.openmetadata.service.migration.utils.v210.TaskFieldPathMigration;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
 
@@ -210,5 +211,12 @@ public class Migration extends MigrationProcessImpl {
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnMySql(handle);
     UnsupportedNotificationTemplates.review(handle);
+    // Seed data never reaches a role that already exists, so stewards of an installed catalog get
+    // the ontology author and reviewer policies here. Idempotent.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        OntologyRolesMigration.STEP_NAME,
+        () -> OntologyRolesMigration.attachOntologyPoliciesToDataSteward(collectionDAO));
   }
 }

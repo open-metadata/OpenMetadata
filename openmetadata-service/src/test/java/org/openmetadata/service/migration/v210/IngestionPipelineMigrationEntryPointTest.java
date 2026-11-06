@@ -47,6 +47,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigrat
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
+import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
@@ -54,6 +55,7 @@ import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
 import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
+import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
 
 class IngestionPipelineMigrationEntryPointTest {
@@ -98,6 +100,10 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(AuthenticationSecretsEncryptionMigration.class);
         MockedStatic<ConsumerIdMigration> consumerIdMigration =
             mockStatic(ConsumerIdMigration.class);
+        MockedStatic<OntologyRolesMigration> ontologyRoles =
+            mockStatic(OntologyRolesMigration.class);
+        MockedStatic<DestinationIdMigration> destinationIdMigration =
+            mockStatic(DestinationIdMigration.class);
         MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
             mockStatic(DeltaLakeRetirementMigration.class);
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
