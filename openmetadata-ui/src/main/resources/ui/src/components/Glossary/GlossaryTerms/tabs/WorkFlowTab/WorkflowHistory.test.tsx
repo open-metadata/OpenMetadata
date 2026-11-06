@@ -172,7 +172,7 @@ jest.mock('react-i18next', () => ({
       switch (key) {
         case 'label.workflow-history':
           return 'Workflow History';
-        case 'label.no-entity-available':
+        case 'label.no-entity-found':
           return 'No Workflow History available';
         default:
           return key;
@@ -214,6 +214,9 @@ describe('WorkflowHistory Component', () => {
         ).toBeInTheDocument();
       });
 
+      expect(screen.getByTestId('workflow-history-empty')).toHaveTextContent(
+        'Workflow History'
+      );
       expect(getWorkflowDefinitionById).not.toHaveBeenCalled();
       expect(getWorkflowInstanceStateById).not.toHaveBeenCalled();
       expect(
