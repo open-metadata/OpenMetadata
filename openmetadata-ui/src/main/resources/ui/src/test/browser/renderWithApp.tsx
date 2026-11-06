@@ -119,12 +119,26 @@ export const renderWithApp = (
   );
 };
 
+export interface RenderAppOptions {
+  /** The router to mount; a distribution (Collate) passes its own. */
+  router?: ReactNode;
+  /** Extra providers a distribution's app adds around the router. */
+  wrap?: (app: ReactNode) => ReactNode;
+}
+
 /**
  * Renders the whole signed-in app at a URL through the real
  * AuthenticatedAppRouter, so routing, lazy pages and route params are exactly
  * what production does. Use this for page-level tests.
  */
-export const renderApp = (url: string, user: User = ADMIN_USER) => {
+export const renderApp = (
+  url: string,
+  user: User = ADMIN_USER,
+  {
+    router = <AuthenticatedAppRouter />,
+    wrap = (app) => app,
+  }: RenderAppOptions = {}
+) => {
   useApplicationStore.setState({
     currentUser: user,
     isAuthenticated: true,
@@ -134,15 +148,15 @@ export const renderApp = (url: string, user: User = ADMIN_USER) => {
 
   return render(
     <AppProviders>
-      <PermissionProvider>
-        <ApplicationsProvider>
-          <AsyncDeleteProvider>
-            <AirflowStatusProvider>
-              <AuthenticatedAppRouter />
-            </AirflowStatusProvider>
-          </AsyncDeleteProvider>
-        </ApplicationsProvider>
-      </PermissionProvider>
+      {wrap(
+        <PermissionProvider>
+          <ApplicationsProvider>
+            <AsyncDeleteProvider>
+              <AirflowStatusProvider>{router}</AirflowStatusProvider>
+            </AsyncDeleteProvider>
+          </ApplicationsProvider>
+        </PermissionProvider>
+      )}
     </AppProviders>
   );
 };
