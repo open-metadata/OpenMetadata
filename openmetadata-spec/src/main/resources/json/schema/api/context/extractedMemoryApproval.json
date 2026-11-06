@@ -1,0 +1,30 @@
+{
+  "$id": "https://open-metadata.org/schema/api/context/extractedMemoryApproval.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExtractedMemoryApproval",
+  "description": "What approving a document's extracted memories does: how many it approves and which it leaves for a person to decide.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.context.ExtractedMemoryApproval",
+  "properties": {
+    "approved": {
+      "description": "Unprocessed extracted memories approved; on a preview, those approval would approve.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "failed": {
+      "description": "Unprocessed extracted memories whose approval was refused or that changed while being approved. They stay pending.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "needsDecision": {
+      "description": "Unprocessed extracted memories left pending because another pending or Approved memory of the same document answers the same question.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      }
+    }
+  },
+  "required": ["approved", "needsDecision"],
+  "additionalProperties": false
+}

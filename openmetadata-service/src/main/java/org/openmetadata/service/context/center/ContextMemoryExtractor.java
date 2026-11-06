@@ -177,7 +177,7 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
     for (KnowledgePill pill : pills) {
       if (isValid(pill)) {
         List<KnowledgePill> kept =
-            byQuestion.computeIfAbsent(normalize(pill.question()), ignored -> new ArrayList<>());
+            byQuestion.computeIfAbsent(questionKey(pill.question()), ignored -> new ArrayList<>());
         boolean newValue =
             kept.stream()
                 .allMatch(
@@ -191,8 +191,9 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
     return byQuestion.values().stream().flatMap(List::stream).toList();
   }
 
-  private static String normalize(String text) {
-    return text.trim().toLowerCase(Locale.ROOT);
+  /** What deduplication groups pills by: two pills of one key are two values of one question. */
+  public static String questionKey(String question) {
+    return question == null ? "" : question.trim().toLowerCase(Locale.ROOT);
   }
 
   private boolean isValid(KnowledgePill pill) {

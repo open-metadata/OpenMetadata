@@ -55,7 +55,9 @@ import java.util.UUID;
 import java.util.function.IntSupplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.context.ApproveExtractedMemories;
 import org.openmetadata.schema.api.context.CreateContextMemory;
+import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -63,6 +65,7 @@ import org.openmetadata.schema.entity.context.MemoryDerivation;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -72,6 +75,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.MemoryDerivations;
 import org.openmetadata.service.context.outcome.MemoryOutcomeWriter;
+import org.openmetadata.service.context.review.ExtractedMemoryApprover;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -102,6 +106,11 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   static final String COUNTED_AT_REQUIRED = "countedAt is required: it orders the recounts";
   static final String COUNTED_AT_AHEAD = "countedAt %d is ahead of the server clock";
   static final Duration COUNTED_AT_CLOCK_SKEW = Duration.ofMinutes(1);
+  static final String NOT_AN_EXTRACTION_SOURCE =
+      "Memories are extracted from context files and pages, not from a %s";
+  static final String EXTRACTED_APPROVAL_NEEDS_OWNER =
+      "Only an admin or an owner of the document can approve its extracted memories";
+  private static final Set<String> EXTRACTION_SOURCES = Set.of(Entity.CONTEXT_FILE, Entity.PAGE);
 
   /** Rows read to count a list page's visible total; a judgment call between cost and accuracy. */
   static final int MAX_VISIBLE_COUNT_SCAN = 10_000;
@@ -111,9 +120,11 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
 
   private final ContextMemoryMapper mapper = new ContextMemoryMapper();
   private final MemoryDerivations derivations = new MemoryDerivations();
+  private final ExtractedMemoryApprover extractedMemoryApprover;
 
   public ContextMemoryResource(Authorizer authorizer, Limits limits) {
     super(Entity.CONTEXT_MEMORY, authorizer, limits);
+    extractedMemoryApprover = new ExtractedMemoryApprover(repository);
   }
 
   public static class ContextMemoryList extends ResultList<ContextMemory> {
@@ -944,6 +955,99 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       throw new WebApplicationException(STALE_RECOUNT, Response.Status.CONFLICT);
     }
     return addHref(uriInfo, repository.get(uriInfo, id, getFields(""), Include.NON_DELETED, false));
+  }
+
+  @GET
+  @Path("/extractedApproval")
+  @Operation(
+      operationId = "previewExtractedMemoryApproval",
+      summary = "Preview approving a document's extracted memories",
+      description =
+          "Count the Unprocessed memories extracted from a context file or page that approval would"
+              + " approve, and list those it would leave for a decision because another pending or"
+              + " Approved memory of the document answers the same question. Admins and the"
+              + " document's owners only.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "What approval would do",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ExtractedMemoryApproval.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "The source is not a context file or page"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Not an admin or an owner of the document"),
+        @ApiResponse(responseCode = "404", description = "Document not found")
+      })
+  public ExtractedMemoryApproval previewExtractedApproval(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the context file or page", schema = @Schema(type = "UUID"))
+          @QueryParam("sourceId")
+          @NotNull
+          UUID sourceId,
+      @Parameter(description = "contextFile or page") @QueryParam("sourceType") @NotNull
+          String sourceType) {
+    EntityReference source =
+        requireDecidesExtractedMemories(
+            securityContext, new EntityReference().withId(sourceId).withType(sourceType));
+    return extractedMemoryApprover.preview(source);
+  }
+
+  @PUT
+  @Path("/extractedApproval")
+  @Operation(
+      operationId = "approveExtractedMemories",
+      summary = "Approve a document's extracted memories",
+      description =
+          "Approve the Unprocessed memories extracted from a context file or page, as a review"
+              + " decision does. A memory whose question another pending or Approved memory of the"
+              + " document answers stays pending and is returned for a decision; Draft memories and"
+              + " other stages are untouched. Admins and the document's owners only.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "What approval did",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ExtractedMemoryApproval.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "The source is not a context file or page"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Not an admin or an owner of the document"),
+        @ApiResponse(responseCode = "404", description = "Document not found")
+      })
+  public ExtractedMemoryApproval approveExtracted(
+      @Context SecurityContext securityContext, @Valid @NotNull ApproveExtractedMemories request) {
+    EntityReference source = requireDecidesExtractedMemories(securityContext, request.getSource());
+    return extractedMemoryApprover.approve(source, securityContext.getUserPrincipal().getName());
+  }
+
+  /**
+   * An admin or an owner of the document decides its extracted memories, as its owners already
+   * decide their conflicts (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).
+   */
+  private static EntityReference requireDecidesExtractedMemories(
+      SecurityContext securityContext, EntityReference requested) {
+    if (!EXTRACTION_SOURCES.contains(requested.getType())) {
+      throw new BadRequestException(String.format(NOT_AN_EXTRACTION_SOURCE, requested.getType()));
+    }
+    EntityReference source =
+        Entity.getEntityReferenceById(requested.getType(), requested.getId(), Include.NON_DELETED);
+    boolean decides =
+        ContextMemoryVisibility.isAdmin(securityContext)
+            || ContextMemoryVisibility.ownsSource(
+                securityContext.getUserPrincipal().getName(), source);
+    if (!decides) {
+      throw new AuthorizationException(EXTRACTED_APPROVAL_NEEDS_OWNER);
+    }
+    return source;
   }
 
   /**
