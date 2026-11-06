@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, screen, within } from '@testing-library/react';
-import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import React from 'react';
 import {
   Control,
@@ -31,6 +30,7 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getContextMemoryVersions } from '../../../rest/contextMemoryAPI';
 import { getUserByName } from '../../../rest/userAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import CreateMemoryModal from './CreateMemoryModal.component';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
 
