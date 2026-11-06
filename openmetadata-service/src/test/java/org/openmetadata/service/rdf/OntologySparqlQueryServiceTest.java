@@ -240,18 +240,27 @@ class OntologySparqlQueryServiceTest {
   }
 
   @Test
-  void retainsSerializationFailuresAsServerErrors() {
-    final Model model = modelWithStatement();
+  void retainsTheRequestedFormatAndReasonForUnrepresentableRdfXml() {
+    final Model model = ModelFactory.createDefaultModel();
+    model.add(
+        model.createResource("urn:table:orders"),
+        model.createProperty("https://example.com/p/"),
+        "plain");
+    final var expected =
+        assertThrows(
+            UnsupportedRdfSerializationException.class,
+            () -> RdfGraphSerializer.asString(model, RdfSerializationFormat.RDF_XML));
     final var failure =
         assertThrows(
-            IllegalStateException.class,
+            UnsupportedRdfSerializationException.class,
             () ->
                 service(model)
                     .query(
                         GLOSSARY_ID,
-                        request("DESCRIBE <urn:subject>").withFormat(SparqlQuery.Format.RDFXML)));
+                        request("CONSTRUCT WHERE { ?s ?p ?o }")
+                            .withFormat(SparqlQuery.Format.RDFXML)));
 
-    assertTrue(failure.getMessage().contains("SPARQL worker failed:"), failure.getMessage());
+    assertEquals(expected.getMessage(), failure.getMessage());
     assertTrue(model.isClosed());
   }
 

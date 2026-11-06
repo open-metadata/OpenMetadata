@@ -249,8 +249,7 @@ final class OntologySparqlWorker implements AutoCloseable {
         }
       }
       case LIMIT -> throw new QueryLimitExceededException(detail);
-      case UNSUPPORTED_FORMAT -> throw new UnsupportedRdfSerializationException(
-          RdfSerializationFormat.JSON_LD);
+      case UNSUPPORTED_FORMAT -> throw new UnsupportedRdfSerializationException(detail);
       case INVALID_QUERY -> throw new IllegalArgumentException(detail);
       case DENIED_QUERY -> throw new QueryDeniedException(detail);
       case TIMEOUT -> throw new QueryTimeoutException(timeoutMillis, null);
