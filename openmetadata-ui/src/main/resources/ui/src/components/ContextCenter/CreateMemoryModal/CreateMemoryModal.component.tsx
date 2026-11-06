@@ -480,16 +480,16 @@ const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
         onClick={handleClose}>
         {t('label.cancel')}
       </Button>
-      {statusActions}
       {showEditButton && (
         <Button
-          color="primary"
+          color={statusActions ? 'secondary' : 'primary'}
           iconLeading={Edit01}
           size="sm"
           onClick={handleSwitchToEdit}>
           {t('label.edit')}
         </Button>
       )}
+      {statusActions}
       {showSubmitButton && (
         <Button
           color="primary"
@@ -1142,7 +1142,10 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     }
     setDecidingStatus(status);
     try {
-      await updateContextMemory(memoryToEdit.id, getMemoryStatusPatch(status));
+      await updateContextMemory(
+        memoryToEdit.id,
+        getMemoryStatusPatch(memoryToEdit, status)
+      );
       queryClient.invalidateQueries({
         queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
       });

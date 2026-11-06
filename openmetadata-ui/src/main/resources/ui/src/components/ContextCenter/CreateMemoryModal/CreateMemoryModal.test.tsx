@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import {
   act,
   fireEvent,
@@ -901,6 +902,7 @@ describe('CreateMemoryModal', () => {
       name: 'vat-rate',
       title: 'VAT rate',
       entityStatus,
+      updatedAt: 1767225600000,
     });
 
     it.each([ContextMemoryStatus.Unprocessed, ContextMemoryStatus.Draft])(
@@ -936,6 +938,28 @@ describe('CreateMemoryModal', () => {
       expect(screen.queryByTestId('memory-reject-btn')).not.toBeInTheDocument();
     });
 
+    // Its conflict review decides it: approving here would leave both contradicting memories Approved.
+    it('offers an admin no decision on a Draft held for disputes', () => {
+      renderMemory(
+        {
+          ...awaiting(ContextMemoryStatus.Draft),
+          disputes: [
+            {
+              memory: { id: 'other-memory', type: 'contextMemory' },
+              reason: 'The rates differ',
+            },
+          ],
+        },
+        { isAdminUser: true }
+      );
+
+      expect(screen.getByText('label.cancel')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('memory-approve-btn')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('memory-reject-btn')).not.toBeInTheDocument();
+    });
+
     it.each([
       ['memory-approve-btn', 'Approved'],
       ['memory-reject-btn', 'Rejected'],
@@ -958,6 +982,7 @@ describe('CreateMemoryModal', () => {
 
         expect(updateContextMemory).toHaveBeenCalledTimes(1);
         expect(updateContextMemory).toHaveBeenCalledWith('memory-id', [
+          { op: 'test', path: '/updatedAt', value: 1767225600000 },
           { op: 'replace', path: '/entityStatus', value: status },
         ]);
         expect(showSuccessToast).toHaveBeenCalledWith(
@@ -966,6 +991,18 @@ describe('CreateMemoryModal', () => {
         expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
       }
     );
+
+    it.each<[string, string, ContextMemoryStatus]>([
+      ['beside Approve', 'secondary', ContextMemoryStatus.Unprocessed],
+      ['with nothing to decide', 'primary', ContextMemoryStatus.Approved],
+    ])('shows Edit %s as %s', (_case, color, status) => {
+      renderMemory(awaiting(status), { isAdminUser: true, canEdit: true });
+
+      expect(jest.mocked(Button)).toHaveBeenCalledWith(
+        expect.objectContaining({ children: 'label.edit', color }),
+        expect.anything()
+      );
+    });
 
     it('reports a refused decision and keeps the memory open', async () => {
       const error = new Error('Draft cannot move to Approved');

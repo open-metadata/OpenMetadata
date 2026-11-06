@@ -758,11 +758,13 @@ describe('ContextCenterMemoriesPage — approve pending', () => {
       id: 'pending-1',
       name: 'vat-rate',
       entityStatus: ContextMemoryStatus.Unprocessed,
+      updatedAt: 1001,
     },
     {
       id: 'pending-2',
       name: 'refund-window',
       entityStatus: ContextMemoryStatus.Unprocessed,
+      updatedAt: 1002,
     },
     {
       id: 'draft-1',
@@ -775,7 +777,9 @@ describe('ContextCenterMemoriesPage — approve pending', () => {
       entityStatus: ContextMemoryStatus.Approved,
     },
   ];
-  const approvePatch = [
+  // Each approval is refused unless the memory is still the one the admin saw.
+  const approvePatch = (updatedAt: number) => [
+    { op: 'test', path: '/updatedAt', value: updatedAt },
     { op: 'replace', path: '/entityStatus', value: 'Approved' },
   ];
   const setIsAdmin = (isAdmin: boolean) =>
@@ -849,8 +853,14 @@ describe('ContextCenterMemoriesPage — approve pending', () => {
     );
 
     expect(updateContextMemory).toHaveBeenCalledTimes(2);
-    expect(updateContextMemory).toHaveBeenCalledWith('pending-1', approvePatch);
-    expect(updateContextMemory).toHaveBeenCalledWith('pending-2', approvePatch);
+    expect(updateContextMemory).toHaveBeenCalledWith(
+      'pending-1',
+      approvePatch(1001)
+    );
+    expect(updateContextMemory).toHaveBeenCalledWith(
+      'pending-2',
+      approvePatch(1002)
+    );
     expect(showSuccessToast).toHaveBeenCalledWith('Memories approved: 2');
     expect(showErrorToast).not.toHaveBeenCalled();
     expect(invalidateQueries).toHaveBeenCalledWith({

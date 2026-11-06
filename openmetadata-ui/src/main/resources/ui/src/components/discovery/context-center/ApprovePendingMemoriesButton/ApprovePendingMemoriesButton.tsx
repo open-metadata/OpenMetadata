@@ -57,7 +57,7 @@ const ApprovePendingMemoriesButton: FC<ApprovePendingMemoriesButtonProps> = ({
         pendingMemories.map((memory) =>
           updateContextMemory(
             memory.id,
-            getMemoryStatusPatch(ContextMemoryStatus.Approved)
+            getMemoryStatusPatch(memory, ContextMemoryStatus.Approved)
           )
         )
       );

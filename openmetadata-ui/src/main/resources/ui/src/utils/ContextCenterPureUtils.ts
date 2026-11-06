@@ -193,10 +193,17 @@ export const getMemoryCitations = (
     : { count: outcomes.appliedCount ?? 0, lastAt: outcomes.lastAppliedAt };
 };
 
-/** The JSON patch that moves a memory to another lifecycle stage. */
+/**
+ * The JSON patch that moves a memory to another stage, refused unless the memory is still the one
+ * its reader saw: an edit or review meanwhile makes the decision fail instead of overwriting it.
+ */
 export const getMemoryStatusPatch = (
+  memory: ContextMemory,
   status: ContextMemoryStatus
-): Operation[] => [{ op: 'replace', path: '/entityStatus', value: status }];
+): Operation[] => [
+  { op: 'test', path: '/updatedAt', value: memory.updatedAt },
+  { op: 'replace', path: '/entityStatus', value: status },
+];
 
 export const getSortConfig = (
   sortBy: MemorySortBy

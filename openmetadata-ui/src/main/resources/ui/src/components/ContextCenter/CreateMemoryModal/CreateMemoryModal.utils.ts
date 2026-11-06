@@ -93,7 +93,10 @@ export const getLinkedAssetPath = (
     : undefined;
 };
 
-/** An admin decides a memory they view while it awaits approval. */
+/**
+ * An admin decides a memory they view while it awaits approval, unless it is held for disputes: its
+ * conflict review decides it, and approving here would leave both contradicting memories Approved.
+ */
 export const canDecideMemoryStatus = (
   memory: ContextMemory | undefined,
   isAdminUser: boolean,
@@ -101,6 +104,7 @@ export const canDecideMemoryStatus = (
 ): boolean =>
   isAdminUser &&
   isViewOnly &&
+  !memory?.disputes?.length &&
   MEMORY_STATUSES_AWAITING_DECISION.some(
     (status) => status === memory?.entityStatus
   );
