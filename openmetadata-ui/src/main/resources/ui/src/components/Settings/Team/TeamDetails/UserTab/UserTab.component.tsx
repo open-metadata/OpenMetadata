@@ -20,6 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Download01,
+  MinusCircle,
   Plus,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
@@ -28,7 +29,6 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remove.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { ExportTypes } from '../../../../../constants/Export.constants';
 import {
@@ -280,7 +280,7 @@ export const UserTab = ({
             itemClassName="layout-space-item">
             <ButtonUtility
               data-testid="remove-user-btn"
-              icon={IconRemove}
+              icon={MinusCircle}
               isDisabled={!editUserPermission}
               size="lg"
               tooltip={

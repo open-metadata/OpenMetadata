@@ -101,6 +101,30 @@ class McpReadOnlyModeTest {
     assertSame(SUCCESS, callInReadOnlyMode(succeedingToolContext(), "search_metadata"));
   }
 
+  @Test
+  void aDisabledToolIsWithheldAndAnUnknownNameIsIgnored() {
+    List<McpSchema.Tool> tools = new McpServer().getTools();
+    MCPConfiguration config =
+        new MCPConfiguration().withDisabledTools(Set.of("semantic_search", "no_such_tool"));
+
+    List<String> exposed = names(McpServer.exposedTools(tools, config));
+
+    assertFalse(exposed.contains("semantic_search"));
+    assertEquals(tools.size() - 1, exposed.size());
+  }
+
+  @Test
+  void aRegisteredDisabledToolIsRefusedOnEveryCall() {
+    DefaultToolContext toolContext = succeedingToolContext();
+    MCPConfiguration config = new MCPConfiguration().withDisabledTools(Set.of("search_metadata"));
+
+    McpSchema.CallToolResult result = call(toolContext, "search_metadata", config);
+
+    assertTrue(result.isError(), "a disabled tool must not run");
+    assertEquals(403, ((Map<?, ?>) result.structuredContent()).get("statusCode"));
+    verify(toolContext, never()).callToolWithMetadata(any(), any(), any(), any(), any());
+  }
+
   private static DefaultToolContext succeedingToolContext() {
     DefaultToolContext toolContext = mock(DefaultToolContext.class);
     when(toolContext.callToolWithMetadata(any(), any(), any(), any(), any()))
@@ -110,6 +134,11 @@ class McpReadOnlyModeTest {
 
   private static McpSchema.CallToolResult callInReadOnlyMode(
       DefaultToolContext toolContext, String toolName) {
+    return call(toolContext, toolName, READ_ONLY);
+  }
+
+  private static McpSchema.CallToolResult call(
+      DefaultToolContext toolContext, String toolName, MCPConfiguration mcpConfig) {
     McpServer server = new McpServer(toolContext, new DefaultPromptsContext());
     server.jwtFilter = jwtFilterFor("alice");
     McpSchema.CallToolRequest request =
@@ -118,7 +147,7 @@ class McpReadOnlyModeTest {
     try (MockedStatic<SecurityConfigurationManager> config =
             mockStatic(SecurityConfigurationManager.class);
         MockedStatic<McpUsageRecorder> usage = mockStatic(McpUsageRecorder.class)) {
-      config.when(SecurityConfigurationManager::getCurrentMcpConfig).thenReturn(READ_ONLY);
+      config.when(SecurityConfigurationManager::getCurrentMcpConfig).thenReturn(mcpConfig);
       return server.getTool(toolNamed(toolName)).callHandler().apply(callerContext(), request);
     }
   }

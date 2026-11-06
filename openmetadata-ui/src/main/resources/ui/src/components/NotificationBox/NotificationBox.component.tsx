@@ -17,12 +17,14 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  TextEditorMention,
+  TotalOccurrences,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
-import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   DEFAULT_DOMAIN_VALUE,
@@ -243,7 +245,7 @@ const NotificationBox = ({
 
   const getTabTitle = (name: string, key: string) => {
     const NotificationIcon =
-      key === NotificationTabsKey.TASK ? IconTask : IconMentions;
+      key === NotificationTabsKey.TASK ? TotalOccurrences : TextEditorMention;
 
     return (
       <span className="tw:relative tw:inline-flex tw:items-center">

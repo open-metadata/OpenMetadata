@@ -19,11 +19,13 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ClockRewind } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronLeft,
+  ClockRewind,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowSvg } from '../../../../assets/svg/vector.svg';
 import {
   PipelineStatus,
   Task,
@@ -95,7 +97,10 @@ const TreeViewTab = ({
           style={{ ...getLayoutGutter(16) }}
           wrap="wrap">
           <Box className="layout-column tw:block">
-            <ArrowSvg className="cursor-pointer" height={11} width={7} />
+            <ChevronLeft
+              className="cursor-pointer tw:text-utility-gray-500"
+              size={12}
+            />
           </Box>
           <Box className="layout-column tw:block">
             <Typography className="p-b-0 m-b-0 font-medium">
@@ -105,10 +110,9 @@ const TreeViewTab = ({
             </Typography>
           </Box>
           <Box className="layout-column tw:block">
-            <ArrowSvg
-              className=" cursor-pointer transform-180"
-              height={11}
-              width={7}
+            <ChevronLeft
+              className="cursor-pointer transform-180 tw:text-utility-gray-500"
+              size={12}
             />
           </Box>
         </Box>

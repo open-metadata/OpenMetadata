@@ -22,13 +22,15 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { User01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Persona as PersonaIcon,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PersonaIcon } from '../../../assets/svg/common/persona.svg';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';

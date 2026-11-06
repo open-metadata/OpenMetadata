@@ -12,6 +12,7 @@
  */
 
 import { Box, Tooltip } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { groupBy, isEmpty, isUndefined, map, toLower } from 'lodash';
 import React from 'react';
 import { MenuOptions } from '../constants/execution.constants';
@@ -25,7 +26,10 @@ import { TreeNode } from '../interface/tree.interface';
 import { getLayoutGutter } from './common/layout.utils';
 import { formatDateTime, formatDuration } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
-import { getStatusBadgeIcon } from './PipelineDetailsUtils';
+import {
+  getStatusBadgeClassName,
+  getStatusBadgeIcon,
+} from './PipelineDetailsUtils';
 interface StatusIndicatorInterface {
   status: StatusType;
 }
@@ -48,9 +52,12 @@ const StatusBadge = ({ status }: { status?: StatusType }) => {
   return (
     <Badge
       aria-label="result"
-      // the badge supplies its own colours; stop currentColor tinting it
-      className="tw:align-middle tw:size-6 tw:shrink-0 tw:text-transparent"
+      className={classNames(
+        'tw:align-middle tw:shrink-0',
+        getStatusBadgeClassName(status)
+      )}
       role="img"
+      size={24}
     />
   );
 };
@@ -67,9 +74,12 @@ export const StatusIndicator = ({ status }: StatusIndicatorInterface) => {
       itemClassName="layout-space-item">
       <StatusBadgeIcon
         aria-label="result"
-        // the badge supplies its own colours; stop currentColor tinting it
-        className="tw:align-middle tw:size-4 tw:shrink-0 tw:text-transparent"
+        className={classNames(
+          'tw:align-middle tw:shrink-0',
+          getStatusBadgeClassName(status)
+        )}
         role="img"
+        size={16}
       />
       <p>
         {status === StatusType.Successful

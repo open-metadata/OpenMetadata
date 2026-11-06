@@ -12,9 +12,8 @@
  */
 
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { HomeLine } from '@openmetadata/ui-core-components/icons';
+import { Governance, HomeLine } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
-import { ReactComponent as GovernanceIcon } from '../../../assets/svg/ic-governance.svg';
 import { ROUTES } from '../../../constants/constants';
 
 /**
@@ -29,7 +28,7 @@ export const getGlossaryHomeCrumb = (
 ): Omit<BreadcrumbItemType, 'id'> => ({
   label: null,
   ariaLabel: t('label.glossary'),
-  icon: GovernanceIcon,
+  icon: Governance,
   href: ROUTES.GLOSSARY,
 });
 

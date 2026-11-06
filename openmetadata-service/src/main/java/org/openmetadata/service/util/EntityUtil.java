@@ -49,6 +49,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -58,11 +59,8 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.*;
@@ -166,6 +164,47 @@ public final class EntityUtil {
               && ((constraint1.getReferredColumns() == null
                       && constraint2.getReferredColumns() == null)
                   || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
+
+  /**
+   * Sort a constraint's column and referredColumn lists together as pairs keyed by the local
+   * column name, so that the FK mapping {@code columns[i] → referredColumns[i]} is preserved
+   * after normalization. When there is no column-for-column mapping ({@code referredColumns} is
+   * null or its size differs from {@code columns}), each list is sorted on its own as before.
+   */
+  public static void sortConstraintPairs(TableConstraint constraint) {
+    final List<String> columns = constraint.getColumns();
+    final List<String> referredColumns = constraint.getReferredColumns();
+    if (isPairedByPosition(columns, referredColumns)) {
+      sortPairsByLocalColumn(columns, referredColumns);
+    } else {
+      sortIfPresent(columns);
+      sortIfPresent(referredColumns);
+    }
+  }
+
+  private static boolean isPairedByPosition(List<String> columns, List<String> referredColumns) {
+    return columns != null && referredColumns != null && columns.size() == referredColumns.size();
+  }
+
+  private static void sortPairsByLocalColumn(List<String> columns, List<String> referredColumns) {
+    final List<Integer> order =
+        IntStream.range(0, columns.size())
+            .boxed()
+            .sorted(Comparator.comparing(columns::get))
+            .toList();
+    final List<String> sortedColumns = order.stream().map(columns::get).toList();
+    final List<String> sortedReferredColumns = order.stream().map(referredColumns::get).toList();
+    columns.clear();
+    columns.addAll(sortedColumns);
+    referredColumns.clear();
+    referredColumns.addAll(sortedReferredColumns);
+  }
+
+  private static void sortIfPresent(List<String> values) {
+    if (values != null) {
+      Collections.sort(values);
+    }
+  }
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch =
@@ -747,47 +786,6 @@ public final class EntityUtil {
 
   public static String getFieldName(String... strings) {
     return String.join(Entity.SEPARATOR, strings);
-  }
-
-  /** Return column field name of format "columns".columnName.columnFieldName */
-  public static String getColumnField(Column column, String columnField) {
-    // Remove table FQN from column FQN to get the local name
-    String localColumnName = column.getName();
-    return columnField == null
-        ? FullyQualifiedName.build("columns", localColumnName)
-        : FullyQualifiedName.build("columns", localColumnName, columnField);
-  }
-
-  /** Return schema field name of format "schemaFields".fieldName.fieldName */
-  public static String getSchemaField(Topic topic, Field field, String fieldName) {
-    // Remove topic FQN from schemaField FQN to get the local name
-    String localFieldName =
-        EntityUtil.getLocalColumnName(topic.getFullyQualifiedName(), field.getFullyQualifiedName());
-    return fieldName == null
-        ? FullyQualifiedName.build("schemaFields", localFieldName)
-        : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
-  }
-
-  public static String getSchemaField(APIEndpoint apiEndpoint, Field field, String fieldName) {
-    // Remove APIEndpoint FQN from schemaField FQN to get the local name
-    String localFieldName =
-        EntityUtil.getLocalColumnName(
-            apiEndpoint.getFullyQualifiedName(), field.getFullyQualifiedName());
-    return fieldName == null
-        ? FullyQualifiedName.build("schemaFields", localFieldName)
-        : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
-  }
-
-  /** Return searchIndex field name of format "fields".fieldName.fieldName */
-  public static String getSearchIndexField(
-      SearchIndex searchIndex, SearchIndexField field, String fieldName) {
-    // Remove topic FQN from schemaField FQN to get the local name
-    String localFieldName =
-        EntityUtil.getLocalColumnName(
-            searchIndex.getFullyQualifiedName(), field.getFullyQualifiedName());
-    return fieldName == null
-        ? FullyQualifiedName.build("fields", localFieldName)
-        : FullyQualifiedName.build("fields", localFieldName, fieldName);
   }
 
   /** Return rule field name of format "rules".ruleName.ruleFieldName */

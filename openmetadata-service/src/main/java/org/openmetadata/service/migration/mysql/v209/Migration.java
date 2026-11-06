@@ -13,24 +13,12 @@
  */
 package org.openmetadata.service.migration.mysql.v209;
 
-import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
-
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes;
 
 public class Migration extends MigrationProcessImpl {
 
   public Migration(final MigrationFile migrationFile) {
     super(migrationFile);
-  }
-
-  @Override
-  public void runDataMigration() {
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        McpGrantUserNameIndexes.STEP_NAME,
-        () -> McpGrantUserNameIndexes.addOnMySql(handle));
   }
 }

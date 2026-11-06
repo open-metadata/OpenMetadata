@@ -19,6 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Announcement02,
+  Brush01,
   Collapse,
   Download01,
   Edit01,
@@ -32,7 +33,6 @@ import { toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -224,7 +224,7 @@ const getManageButtonContent = ({
               description={t('message.edit-entity-style-description', {
                 entity: t('label.data-product'),
               })}
-              icon={StyleIcon}
+              icon={Brush01}
               id="rename-button"
               name={t('label.style')}
             />

@@ -21,8 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
@@ -39,6 +41,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
@@ -47,6 +50,11 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Regression for the live-indexing soft-delete propagation bug. {@code SOFT_DELETE_RESTORE_SCRIPT}
@@ -70,82 +78,210 @@ public class TestCaseSoftDeleteSearchIT {
   @Test
   void softDeletingTestCaseDoesNotPollutePropagatedTimeSeriesDocs() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-
-    long ts = System.currentTimeMillis();
-    Database database = null;
-    DatabaseSchema schema = null;
-    Table table = null;
-    TestCase testCase = null;
+    IncidentFixture fixture = createTestCaseWithIncident(client, "soft_delete");
+    String testCaseFqn = fixture.testCase().getFullyQualifiedName();
     try {
-      database =
-          client
-              .databases()
-              .create(
-                  new CreateDatabase()
-                      .withName("soft_delete_db_" + ts)
-                      .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
-      schema =
-          client
-              .databaseSchemas()
-              .create(
-                  new CreateDatabaseSchema()
-                      .withName("soft_delete_schema_" + ts)
-                      .withDatabase(database.getFullyQualifiedName()));
-      table =
-          client
-              .tables()
-              .create(
-                  new CreateTable()
-                      .withName("soft_delete_table_" + ts)
-                      .withDatabaseSchema(schema.getFullyQualifiedName())
-                      .withColumns(
-                          List.of(
-                              new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
-
-      // A definition that supports the BIGINT `id` column: the server rejects a column type the
-      // definition does not list, and the first definition the listing returns need not list it.
-      String testDefFqn = "columnValuesToBeNotNull";
-
-      testCase =
-          client
-              .testCases()
-              .create(
-                  new CreateTestCase()
-                      .withName("soft_delete_tc_" + ts)
-                      .withEntityLink(
-                          "<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
-                      .withTestDefinition(testDefFqn));
-
-      client
-          .testCaseResolutionStatuses()
-          .create(
-              new CreateTestCaseResolutionStatus()
-                  .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
-                  .withTestCaseReference(testCase.getFullyQualifiedName())
-                  .withSeverity(Severity.Severity2));
-
-      awaitIncidentIndexed(client, testCase.getFullyQualifiedName());
-
       client
           .testCases()
-          .delete(testCase.getId().toString(), Map.of("hardDelete", "false", "recursive", "true"));
+          .delete(
+              fixture.testCase().getId().toString(),
+              Map.of("hardDelete", "false", "recursive", "true"));
 
-      assertListingApiReturnsCleanlyAfterSoftDelete(client, testCase.getFullyQualifiedName());
-      assertNoTopLevelDeletedFieldOnIncidentDoc(client, testCase.getFullyQualifiedName());
+      assertListingApiReturnsCleanlyAfterSoftDelete(client, testCaseFqn);
+      assertNoTopLevelDeletedFieldOnIncidentDoc(client, testCaseFqn);
+      assertIncidentListedOnlyWithDeleted(client, testCaseFqn);
     } finally {
-      // Hard-delete the entire database tree so the test leaves no artefacts behind. The
-      // testCase + resolution statuses are recursively cascaded with the parent table.
-      // Best-effort cleanup — assertion failures take precedence over cleanup exceptions.
-      if (database != null) {
-        try {
-          client
-              .databases()
-              .delete(
-                  database.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
-        } catch (Exception ignored) {
-          // intentionally swallowed
+      hardDeleteQuietly(client, fixture.database());
+    }
+  }
+
+  // A table soft delete or restore reaches its test cases through the cascade, which writes no
+  // search document per test case; their incidents must still leave and rejoin the default listing.
+  @Test
+  void softDeletingAndRestoringTableScopesItsIncidents() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    IncidentFixture fixture = createTestCaseWithIncident(client, "soft_delete_table_cascade");
+    try {
+      client
+          .tables()
+          .delete(
+              fixture.table().getId().toString(),
+              Map.of("hardDelete", "false", "recursive", "true"));
+
+      assertIncidentListedOnlyWithDeleted(client, fixture.testCase().getFullyQualifiedName());
+
+      client.tables().restore(fixture.table().getId());
+      assertIncidentListedOnlyWithoutDeleted(client, fixture.testCase().getFullyQualifiedName());
+    } finally {
+      hardDeleteQuietly(client, fixture.database());
+    }
+  }
+
+  // A test suite soft delete reaches the incidents only through the test suite reference the
+  // incident document carries, as the cascade under it writes no search document per test case.
+  @Test
+  void softDeletingAndRestoringTestSuiteScopesItsIncidents() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    IncidentFixture fixture = createTestCaseWithIncident(client, "soft_delete_suite_cascade");
+    String testCaseFqn = fixture.testCase().getFullyQualifiedName();
+    UUID testSuiteId =
+        client
+            .testCases()
+            .get(fixture.testCase().getId().toString(), "testSuite")
+            .getTestSuite()
+            .getId();
+    try {
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.DELETE,
+              "/v1/dataQuality/testSuites/basic/" + testSuiteId,
+              null,
+              TestSuite.class,
+              RequestOptions.builder().queryParam("recursive", "true").build());
+      assertIncidentListedOnlyWithDeleted(client, testCaseFqn);
+
+      client.testSuites().restore(testSuiteId);
+      assertIncidentListedOnlyWithoutDeleted(client, testCaseFqn);
+    } finally {
+      hardDeleteQuietly(client, fixture.database());
+    }
+  }
+
+  private record IncidentFixture(Database database, Table table, TestCase testCase) {}
+
+  @Test
+  void tableDeleteAndRestoreReachOnlyCompatibleStagedIndices() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    IncidentFixture fixture = createTestCaseWithIncident(client, "staged_soft_delete");
+    SearchRepository repository = Entity.getSearchRepository();
+    SearchClient search = repository.getSearchClient();
+    Map<String, String> stagedIndices = new LinkedHashMap<>();
+    String docId = UUID.randomUUID().toString();
+    try {
+      for (String entityType :
+          List.of(Entity.TEST_CASE, Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT)) {
+        var mapping = repository.getIndexMapping(entityType);
+        String staged = mapping.getIndexName(repository.getClusterAlias()) + "_rebuild_" + docId;
+        stagedIndices.put(entityType, staged);
+        search.createIndex(staged, repository.readIndexMapping(mapping));
+        Map<String, Object> doc = new LinkedHashMap<>();
+        doc.put("id", docId);
+        doc.put("table", Map.of("id", fixture.table().getId().toString()));
+        // Seed this sentinel on every type so a misrouted incident script cannot silently no-op.
+        doc.put("testCase", Map.of("deleted", false));
+        if (Entity.TEST_CASE.equals(entityType)) {
+          doc.put("deleted", false);
         }
+        search.createEntity(staged, docId, MAPPER.writeValueAsString(doc));
+        repository.registerStagedIndex(entityType, staged);
       }
+
+      client
+          .tables()
+          .delete(
+              fixture.table().getId().toString(),
+              Map.of("hardDelete", "false", "recursive", "true"));
+      assertIncidentListedOnlyWithDeleted(client, fixture.testCase().getFullyQualifiedName());
+      assertStagedDeletionFlags(search, stagedIndices, docId, true);
+
+      client.tables().restore(fixture.table().getId());
+      assertIncidentListedOnlyWithoutDeleted(client, fixture.testCase().getFullyQualifiedName());
+      assertStagedDeletionFlags(search, stagedIndices, docId, false);
+    } finally {
+      stagedIndices.forEach(repository::unregisterStagedIndex);
+      try {
+        stagedIndices.values().forEach(search::deleteIndex);
+      } finally {
+        hardDeleteQuietly(client, fixture.database());
+      }
+    }
+  }
+
+  private void assertStagedDeletionFlags(
+      SearchClient search, Map<String, String> stagedIndices, String docId, boolean deleted) {
+    await("Staged documents preserve their entity-specific deletion fields")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              for (Map.Entry<String, String> staged : stagedIndices.entrySet()) {
+                try (var response = search.getDocByID(staged.getValue(), docId)) {
+                  assertEquals(200, response.getStatus());
+                  JsonNode doc = MAPPER.valueToTree(response.getEntity());
+                  if (Entity.TEST_CASE.equals(staged.getKey())) {
+                    assertEquals(deleted, doc.path("deleted").asBoolean());
+                  } else {
+                    assertFalse(doc.has("deleted"), staged.getKey());
+                  }
+                  assertEquals(
+                      Entity.TEST_CASE_RESOLUTION_STATUS.equals(staged.getKey()) && deleted,
+                      doc.path("testCase").path("deleted").asBoolean(),
+                      staged.getKey());
+                }
+              }
+            });
+  }
+
+  private IncidentFixture createTestCaseWithIncident(OpenMetadataClient client, String prefix)
+      throws Exception {
+    long ts = System.currentTimeMillis();
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(prefix + "_db_" + ts)
+                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(prefix + "_schema_" + ts)
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(prefix + "_table_" + ts)
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
+
+    // A definition that supports the BIGINT `id` column: the server rejects a column type the
+    // definition does not list, and the first definition the listing returns need not list it.
+    TestCase testCase =
+        client
+            .testCases()
+            .create(
+                new CreateTestCase()
+                    .withName(prefix + "_tc_" + ts)
+                    .withEntityLink(
+                        "<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
+                    .withTestDefinition("columnValuesToBeNotNull"));
+
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withSeverity(Severity.Severity2));
+
+    awaitIncidentIndexed(client, testCase.getFullyQualifiedName());
+    return new IncidentFixture(database, table, testCase);
+  }
+
+  // Hard-delete the entire database tree so the test leaves no artefacts behind. Best-effort
+  // cleanup — assertion failures take precedence over cleanup exceptions.
+  private void hardDeleteQuietly(OpenMetadataClient client, Database database) {
+    try {
+      client
+          .databases()
+          .delete(database.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    } catch (Exception ignored) {
+      // intentionally swallowed
     }
   }
 
@@ -191,6 +327,42 @@ public class TestCaseSoftDeleteSearchIT {
               assertNotNull(
                   resp, "list endpoint must return a body; null implies a deserialization failure");
             });
+  }
+
+  // The classic Incident Manager lists from search with the default include=non-deleted, so an
+  // incident of a soft-deleted test case must drop out of it and stay reachable with
+  // include=deleted.
+  private void assertIncidentListedOnlyWithDeleted(OpenMetadataClient client, String testCaseFqn) {
+    await("Incident of a soft-deleted test case leaves the default listing")
+        .atMost(Duration.ofMinutes(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              assertEquals(0, searchIncidents(client, testCaseFqn, null).size());
+              assertEquals(1, searchIncidents(client, testCaseFqn, "deleted").size());
+            });
+  }
+
+  private void assertIncidentListedOnlyWithoutDeleted(
+      OpenMetadataClient client, String testCaseFqn) {
+    await("Incident of a restored test case returns to the default listing")
+        .atMost(Duration.ofMinutes(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              assertEquals(1, searchIncidents(client, testCaseFqn, null).size());
+              assertEquals(0, searchIncidents(client, testCaseFqn, "deleted").size());
+            });
+  }
+
+  private List<TestCaseResolutionStatus> searchIncidents(
+      OpenMetadataClient client, String testCaseFqn, String include) throws Exception {
+    ListParams params =
+        new ListParams().withLimit(10).withLatest(true).addFilter("testCaseFQN", testCaseFqn);
+    if (include != null) {
+      params.addFilter("include", include);
+    }
+    return client.testCaseResolutionStatuses().searchList(params).getData();
   }
 
   /**
