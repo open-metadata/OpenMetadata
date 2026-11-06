@@ -13,11 +13,16 @@
 
 package org.openmetadata.service.migration.mysql.v208;
 
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
+import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -27,6 +32,11 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ConnectionSecretsEncryptionMigration.STEP_NAME,
+        () -> ConnectionSecretsEncryptionMigration.encryptConnectionSecrets(handle, MYSQL));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -46,5 +56,23 @@ public class Migration extends MigrationProcessImpl {
           initializeWorkflowHandler();
           MigrationUtil.rewriteWorkflowRules();
         });
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DataProductDomainContainmentRepair.STEP_NAME,
+        () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WorkflowRedeployMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          WorkflowRedeployMigration.redeploy();
+        });
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        McpGrantUserNameIndexes.STEP_NAME,
+        () -> McpGrantUserNameIndexes.addOnMySql(handle));
   }
 }

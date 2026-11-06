@@ -133,6 +133,7 @@ import {
 } from '../OntologyExplorer.constants';
 import { ASK_COLLATE_SPARKLE_SRC } from './askCollateSparkle';
 import { computeCardinalityLabelAttrs } from './cardinalityLabelUtils';
+import { CONFLICT_COLOR, CONFLICT_COLOR_FALLBACK } from './conflictHighlight';
 import './ontologyComboAwarePolylineEdge';
 import { getRelationshipColor } from './relationshipTypeUtils';
 import {
@@ -333,6 +334,16 @@ const STUDIO_LABEL_FONT = `${NODE_LABEL_FONT_WEIGHT} ${NODE_LABEL_FONT_SIZE}px I
 
 export const STUDIO_PROPOSED_NODE_KIND = 'proposed';
 
+export function buildStudioConflictNodeStyle(
+  getColor: (cssVar: string, fallback: string) => string
+) {
+  return {
+    lineWidth: 2,
+    stroke: getColor(CONFLICT_COLOR, CONFLICT_COLOR_FALLBACK),
+    studioConflict: true,
+  };
+}
+
 export interface StudioProposedNodeStyle {
   fill: string;
   lineDash: number[];
@@ -448,6 +459,7 @@ class StudioTermNode extends RectNode {
       mutedColor,
       container
     );
+    this.renderConflictBadge(attrs, bounds, container);
     const plusLineStyles = getStudioEditPortPlusLineStyles(
       bounds.max[0],
       centerY
@@ -474,6 +486,52 @@ class StudioTermNode extends RectNode {
       'studio-edit-port-plus-vertical',
       GLine,
       attrs.studioEditMode === true ? plusLineStyles[1] : false,
+      container
+    );
+  }
+
+  private renderConflictBadge(
+    attrs: Record<string, unknown>,
+    bounds: { min: number[]; max: number[] },
+    container: Group
+  ): void {
+    const isConflict = attrs.studioConflict === true;
+    const color = getCanvasColor(CONFLICT_COLOR, CONFLICT_COLOR_FALLBACK);
+    const cx = bounds.max[0] - 2;
+    const cy = bounds.min[1] + 2;
+    this.upsert(
+      'studio-conflict-badge',
+      GCircle,
+      isConflict
+        ? {
+            cx,
+            cy,
+            r: 8,
+            fill: color,
+            stroke: getCanvasColor(NODE_FILL_DEFAULT, '#ffffff'),
+            lineWidth: 1.5,
+            zIndex: 2,
+          }
+        : false,
+      container
+    );
+    this.upsert(
+      'studio-conflict-mark',
+      GText,
+      isConflict
+        ? {
+            x: cx,
+            y: cy,
+            text: '!',
+            fill: '#ffffff',
+            fontFamily: 'Inter',
+            fontSize: 11,
+            fontWeight: 700,
+            textAlign: 'center',
+            textBaseline: 'middle',
+            zIndex: 3,
+          }
+        : false,
       container
     );
   }

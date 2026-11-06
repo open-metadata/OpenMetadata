@@ -20,13 +20,14 @@ fallback so it resolves even in isolation.
 
 ## Semantic roles
 
-Use semantic elevation for new component work. These roles alias the existing
-scale, so adopting them does not change current light-mode shadows.
+Use semantic elevation for new component work. `card` and `overlay` alias the
+existing scale. `raised` is the floating-overlay shadow in both themes
+(ADR:2026-11-06-floating-overlays-sit-on-bg-floating).
 
 | Token | Tailwind utility | Scale alias | Use |
 | --- | --- | --- | --- |
 | `--om-shadow-card` | `tw:shadow-card` | `--shadow-xs` | Cards and contained panels |
-| `--om-shadow-raised` | `tw:shadow-raised` | `--shadow-lg` | Menus, dropdowns, and popovers |
+| `--om-shadow-raised` | `tw:shadow-raised` | `--shadow-lg` geometry, near-black 14 / 8 / 6% (dark: black 50 / 30 / 30%) | Menus, dropdowns, popovers, selects, date pickers |
 | `--om-shadow-overlay` | `tw:shadow-overlay` | `--shadow-xl` | Modals and drawers |
 
 ## Bespoke shadows
@@ -37,8 +38,8 @@ offset/blur/spread values are kept verbatim:
 
 ```less
 /* migrated */
-box-shadow: 0px -13px 16px -4px var(--om-legacy-color-10-13-18-0-04),
-  0px -4px 6px -2px var(--om-legacy-color-10-13-18-0-04);
+box-shadow: 0px -13px 16px -4px var(--om-legacy-color-10-13-18-0-05),
+  0px -4px 6px -2px var(--om-legacy-color-10-13-18-0-05);
 ```
 
 When a bespoke shadow matches a scale step, prefer the token

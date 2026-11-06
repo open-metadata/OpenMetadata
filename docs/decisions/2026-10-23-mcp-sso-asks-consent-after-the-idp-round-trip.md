@@ -1,10 +1,11 @@
 # MCP SSO sign-in asks the user to approve the client after the IdP round trip, before any code exists
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial)
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-30 (direct ID token entry removed) · v3 2026-11-03 (password sign-in names the destination)
 - **Deciders:** Vishnu Jain
 - **Guard:** `UserSSOOAuthProviderTest`
-  (`handleSSOCallbackWithDbState_servesConsentPageInsteadOfIssuingCode`)
+  (`handleSSOCallbackWithDbState_servesConsentPageInsteadOfIssuingCode`),
+  `BasicAuthLoginServletTest` (`loginForm_namesTheHostTheCodeIsSentTo`)
 - **Related:** ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
 
 ## Context
@@ -45,3 +46,18 @@ for the named client; that page does not show the redirect host yet.
   MySQL adds them from the 2.0.7 Java migration, which checks `information_schema` first
   (ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration), and again from 2.1.0, since
   a database already at 2.1.0 reprocesses 2.0.7 for its SQL only.
+
+## Amendment: the direct ID token entry is removed
+
+The MCP SSO entries are now the OIDC code flow and SAML; the direct ID token entry no longer
+exists (ADR:2026-10-30-the-mcp-callback-needs-the-state-of-a-pending-login). Both remaining
+entries still end in `handleSSOCallbackWithDbState` and ask for consent as decided above.
+
+## Amendment: password sign-in names the destination
+
+`/mcp/login` (Basic and LDAP) now names the client, what signing in lets it do, and the redirect
+host before the user types a password. The host comes from the pending request, the redirect URI
+the code is then sent to. That page is the approval: unlike SSO, password sign-in has no round
+trip that could separate the browser that reads the page from the one that signs in, because the
+page's own CSRF-bound form carries the password. So password sign-in gets no separate consent page
+and no extra click.

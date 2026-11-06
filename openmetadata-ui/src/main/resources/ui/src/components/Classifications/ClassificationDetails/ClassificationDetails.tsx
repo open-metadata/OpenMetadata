@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   Box,
   Button,
+  ButtonUtility,
+  FeaturedIcon,
   Owner,
   PageHeader,
   Tooltip,
@@ -20,6 +23,7 @@ import {
 import {
   Classification as ClassificationIcon,
   Download01,
+  Edit01,
   Lock01,
   Plus,
   RefreshCcw01,
@@ -93,15 +97,11 @@ import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interf
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 import { useTagUsageCounts } from './useTagUsageCounts';
@@ -596,6 +596,8 @@ const ClassificationDetails = forwardRef(
       classification: Classification,
       breadcrumb?: ReactNode
     ) {
+      const headerName = name ?? classification.name;
+
       return (
         <PageHeader
           actions={
@@ -650,31 +652,41 @@ const ClassificationDetails = forwardRef(
           breadcrumb={breadcrumb}
           data-testid="header"
           title={
-            <EntityHeaderTitle
-              badge={
-                <div className="d-flex gap-1">
+            <EntityPageTitle
+              badges={
+                <>
+                  {isClassificationDisabled && (
+                    <Badge
+                      color="gray"
+                      data-testid="disabled"
+                      size="sm"
+                      type="pill-color">
+                      {t('label.disabled')}
+                    </Badge>
+                  )}
                   {headerBadge}
                   {classification.mutuallyExclusive && (
-                    <div data-testid="mutually-exclusive-container">
+                    <Box data-testid="mutually-exclusive-container">
                       <AppBadge
                         bgColor={theme.primaryColor}
                         className="whitespace-nowrap"
                         label={t('label.mutually-exclusive')}
                       />
-                    </div>
+                    </Box>
                   )}
-                </div>
+                </>
               }
-              className="flex-wrap"
               displayName={displayName}
-              displayNameClassName="text-xl"
               icon={
-                <ClassificationIcon className="tw:text-quaternary" size={36} />
+                <FeaturedIcon
+                  color="gray"
+                  icon={ClassificationIcon}
+                  size="md"
+                  theme="surface"
+                />
               }
-              isDisabled={isClassificationDisabled}
-              name={name ?? classification.name}
-              nameClassName="text-xl"
-              serviceName="classification"
+              name={headerName}
+              testId={`classification-${headerName}`}
             />
           }
           variant={isAiMode ? 'gradient' : 'flat'}
@@ -822,16 +834,18 @@ const ClassificationDetails = forwardRef(
                         });
                       }}>
                       {isEmpty(currentClassification.owners) ? (
-                        <WidgetPlusButton
+                        <ButtonUtility
                           data-testid="add-owner"
-                          title={t('label.add-entity', {
+                          icon={Plus}
+                          tooltip={t('label.add-entity', {
                             entity: t('label.owner-plural'),
                           })}
                         />
                       ) : (
-                        <WidgetEditButton
+                        <ButtonUtility
                           data-testid="edit-owner"
-                          title={t('label.edit-entity', {
+                          icon={Edit01}
+                          tooltip={t('label.edit-entity', {
                             entity: t('label.owner-plural'),
                           })}
                         />

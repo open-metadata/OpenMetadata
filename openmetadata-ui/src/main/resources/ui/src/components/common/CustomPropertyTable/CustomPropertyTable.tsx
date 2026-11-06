@@ -14,7 +14,7 @@
 import { SkeletonParagraph } from '@openmetadata/ui-core-components';
 import { GridDotsOuter } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { castArray, isEmpty, isUndefined, startCase } from 'lodash';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
@@ -131,11 +131,14 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       const newValues = getChangedEntityNewValue(extensionDiff);
 
       if (extensionDiff.added) {
-        const addedFields = JSON.parse(newValues ?? [])[0];
-        if (addedFields) {
+        // The server lists each added property as its own one-key object.
+        const addedFields: Record<string, unknown>[] = castArray(
+          JSON.parse(newValues ?? '[]')
+        );
+        if (!isEmpty(addedFields)) {
           return {
             extensionObject: entityDetails?.extension,
-            addedKeysList: Object.keys(addedFields),
+            addedKeysList: addedFields.flatMap(Object.keys),
           };
         }
       }
@@ -259,8 +262,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
     return (
       <CustomPropertiesRightPanel
+        addedKeys={extensionObject.addedKeysList}
         extension={extensionObject.extensionObject}
         hasEditPermissions={hasEditAccess}
+        isVersionView={isVersionView}
         properties={dataSource}
         viewAllPath={viewAllPath}
         widgetSettings={widgetSettings}

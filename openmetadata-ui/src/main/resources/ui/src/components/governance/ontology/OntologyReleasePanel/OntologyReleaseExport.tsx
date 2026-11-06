@@ -17,24 +17,24 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { exportOntologyRelease } from '../../../../rest/ontologyAPI';
 import {
-  EXPORT_FORMAT_TO_ACCEPT_HEADER,
-  EXPORT_FORMAT_TO_FILE_EXTENSION,
-  OntologyExportFormat,
-} from '../../../../rest/rdfAPI';
+  NATIVE_EXPORT_EXTENSIONS,
+  NATIVE_EXPORT_MEDIA_TYPES,
+  OntologyReleaseExportFormat,
+} from '../../../../rest/ontologyExport.constants';
 import { downloadFile } from '../../../../utils/Export/ExportUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 const OntologyReleaseExport = ({ releaseId }: { releaseId: string }) => {
   const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
-  const exportRelease = async (format: OntologyExportFormat) => {
+  const exportRelease = async (format: OntologyReleaseExportFormat) => {
     setIsExporting(true);
     try {
       const content = await exportOntologyRelease(releaseId, format);
       downloadFile(
         content,
-        `ontology-release-${releaseId}.${EXPORT_FORMAT_TO_FILE_EXTENSION[format]}`,
-        EXPORT_FORMAT_TO_ACCEPT_HEADER[format]
+        `ontology-release-${releaseId}.${NATIVE_EXPORT_EXTENSIONS[format]}`,
+        NATIVE_EXPORT_MEDIA_TYPES[format]
       );
     } catch (error) {
       showErrorToast(
@@ -72,6 +72,12 @@ const OntologyReleaseExport = ({ releaseId }: { releaseId: string }) => {
             id="ntriples"
             onAction={() => void exportRelease('ntriples')}>
             {t('label.n-triples-nt')}
+          </Dropdown.Item>
+          <Dropdown.Item id="skos" onAction={() => void exportRelease('skos')}>
+            {t('label.skos-turtle')}
+          </Dropdown.Item>
+          <Dropdown.Item id="csv" onAction={() => void exportRelease('csv')}>
+            {t('label.csv')}
           </Dropdown.Item>
           <Dropdown.Item
             id="jsonld"

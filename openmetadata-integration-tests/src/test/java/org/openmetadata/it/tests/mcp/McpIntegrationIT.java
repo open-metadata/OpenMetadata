@@ -95,6 +95,16 @@ public class McpIntegrationIT extends McpTestBase {
   }
 
   @Test
+  void testMcpPromptsGet() throws Exception {
+    Map<String, Object> promptGetRequest =
+        McpTestUtils.createPromptGetRequest("search_metadata", Map.of("query", "customer"));
+
+    JsonNode responseJson = executeMcpRequest(promptGetRequest);
+    assertThat(responseJson.has("error")).isFalse();
+    assertThat(responseJson.at("/result/messages/0/content/text").asText()).contains("customer");
+  }
+
+  @Test
   void testGetEntityDetailsSurfacesCustomProperties() throws Exception {
     String propertyName = "mcpCustomProperty";
     String propertyValue = "mcp-value-" + UUID.randomUUID().toString().substring(0, 8);

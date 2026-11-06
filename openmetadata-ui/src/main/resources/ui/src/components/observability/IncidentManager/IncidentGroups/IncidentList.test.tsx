@@ -218,7 +218,7 @@ describe('IncidentList', () => {
       'label.assigned'
     );
     expect(within(row).getByTestId('incident-severity')).toHaveTextContent(
-      'Severity 1'
+      'label.severity 1'
     );
     expect(within(row).getByTestId('incident-assignee')).toHaveTextContent(
       'Tomas Montiel'

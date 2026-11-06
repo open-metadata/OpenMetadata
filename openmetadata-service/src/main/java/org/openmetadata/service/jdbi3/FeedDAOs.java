@@ -390,10 +390,15 @@ public interface FeedDAOs {
 
     String TASK_SEARCH_PARAM = "taskSearch";
 
+    // The REST list endpoints page by creation time (TaskListOrder), where the cursor's name slot
+    // carries createdAt; every other listing, the search reindex included, keeps the name keyset.
     // A free-text search can't narrow the rows through an index, so filter first and sort only
     // the matches (e.g. one entity's tasks); paging the name index would check every task.
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
+      if (TaskListOrder.isRequestedBy(filter)) {
+        return listByCreatedAt(filter, limit, TaskListOrder.of(filter).after(afterName, afterId));
+      }
       if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
@@ -408,6 +413,10 @@ public interface FeedDAOs {
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
+      if (TaskListOrder.isRequestedBy(filter)) {
+        return listByCreatedAt(
+            filter, limit, TaskListOrder.of(filter).before(beforeName, beforeId));
+      }
       if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
@@ -418,6 +427,61 @@ public interface FeedDAOs {
           beforeName,
           beforeId);
     }
+
+    default List<String> listByCreatedAt(
+        ListFilter filter, int limit, TaskListOrder.CreatedAtPage page) {
+      final String condition = filter.getConditionForEntity(getTableName());
+      return filter.getQueryParam(TASK_SEARCH_PARAM) == null
+          ? listPageByCreatedAt(condition, filter.getQueryParams(), limit, page)
+          : listSearchPageByCreatedAt(condition, filter.getQueryParams(), limit, page);
+    }
+
+    // The createdAt bound is written twice so the outer `<op>=` stays a range the createdAt index
+    // can seek on; the OR alone would make the planner walk the index from the first row.
+    String CREATED_AT_KEYSET =
+        "task_entity.createdAt <op>= :cursorCreatedAt AND (task_entity.createdAt <op> "
+            + ":cursorCreatedAt OR task_entity.id <op> :cursorId)";
+
+    @SqlQuery(
+        "SELECT task_entity.json FROM task_entity INNER JOIN ("
+            + "SELECT task_entity.id FROM task_entity <cond> AND "
+            + CREATED_AT_KEYSET
+            + " ORDER BY task_entity.createdAt <scanDir>, task_entity.id <scanDir> LIMIT :limit"
+            + ") page_rows ON task_entity.id = page_rows.id "
+            + "ORDER BY task_entity.createdAt <pageDir>, task_entity.id <pageDir>")
+    List<String> listPageByCreatedAt(
+        @Define("cond") String cond,
+        @BindMap Map<String, ?> params,
+        @Bind("limit") int limit,
+        @TaskListOrder.BindPage TaskListOrder.CreatedAtPage page);
+
+    // A free-text search can't narrow the rows through an index, so filter first and sort only
+    // the matches (e.g. one entity's tasks); paging the createdAt index would check every task.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT task_entity.id FROM task_entity IGNORE INDEX (idx_created_at) <cond> AND "
+                + CREATED_AT_KEYSET
+                + " ORDER BY task_entity.createdAt <scanDir>, task_entity.id <scanDir> LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.createdAt <pageDir>, task_entity.id <pageDir>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH matched AS MATERIALIZED ("
+                + "SELECT task_entity.id, task_entity.createdAt FROM task_entity <cond> AND "
+                + CREATED_AT_KEYSET
+                + ") SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT matched.id FROM matched "
+                + "ORDER BY matched.createdAt <scanDir>, matched.id <scanDir> LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.createdAt <pageDir>, task_entity.id <pageDir>",
+        connectionType = POSTGRES)
+    List<String> listSearchPageByCreatedAt(
+        @Define("cond") String cond,
+        @BindMap Map<String, ?> params,
+        @Bind("limit") int limit,
+        @TaskListOrder.BindPage TaskListOrder.CreatedAtPage page);
 
     @ConnectionAwareSqlQuery(
         value =

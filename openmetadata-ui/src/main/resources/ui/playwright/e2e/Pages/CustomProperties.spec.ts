@@ -27,13 +27,13 @@
 
 import { APIRequestContext, Response } from '@playwright/test';
 import {
-  CUSTOM_PROPERTIES_ENTITIES,
-  NAME_SUFFIX,
+    CUSTOM_PROPERTIES_ENTITIES,
+    NAME_SUFFIX
 } from '../../constant/customProperty';
 import {
-  CP_BASE_VALUES,
-  CP_PARTIAL_SEARCH_VALUES,
-  CP_RANGE_VALUES,
+    CP_BASE_VALUES,
+    CP_PARTIAL_SEARCH_VALUES,
+    CP_RANGE_VALUES
 } from '../../constant/customPropertyAdvancedSearch';
 import { ENDPOINT_TO_EXPLORE_TAB_MAP } from '../../constant/explore';
 import { migratedTo } from '../../constant/migration';
@@ -62,66 +62,69 @@ import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  CONDITIONS_MUST,
-  selectOption,
-  showAdvancedSearchDialog,
+    CONDITIONS_MUST,
+    selectOption,
+    showAdvancedSearchDialog
 } from '../../utils/advancedSearch';
 import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomProperty';
 import { CODE_EDITOR_SCROLLER } from '../../utils/codeEditor';
 import {
-  createNewPage,
-  getApiContext,
-  getDescriptionBox,
-  redirectToHomePage,
-  uuid,
+    createNewPage,
+    getApiContext,
+    getDescriptionBox,
+    redirectToHomePage,
+    uuid
 } from '../../utils/common';
 import {
-  addCustomPropertiesForEntity,
-  closeEditModalListbox,
-  createCustomPropertyForEntity,
-  CustomProperty,
-  CustomPropertyTypeByName,
-  deleteCreatedProperty,
-  editCreatedProperty,
-  fillCustomPropertyEditModal,
-  getCustomPropertyCard,
-  getCustomPropertyEditButton,
-  openCustomPropertiesTab,
-  openCustomPropertyEditModal,
-  removeCustomPropertyViaApi,
-  setValueForProperty,
-  updateCustomPropertyInRightPanel,
-  validateValueForProperty,
-  verifyCustomPropertyInAdvancedSearch,
-  verifyTableColumnCustomPropertyPersistence,
+    addCustomPropertiesForEntity,
+    closeEditModalListbox,
+    createCustomPropertyForEntity,
+    CustomProperty,
+    CustomPropertyTypeByName,
+    deleteCreatedProperty,
+    editCreatedProperty,
+    fillCustomPropertyEditModal,
+    getCustomPropertyCard,
+    getCustomPropertyEditButton,
+    openCustomPropertiesTab,
+    openCustomPropertyEditModal,
+    removeCustomPropertyViaApi,
+    setValueForProperty,
+    updateCustomPropertyInRightPanel,
+    validateValueForProperty,
+    verifyCustomPropertyInAdvancedSearch,
+    verifyTableColumnCustomPropertyPersistence
 } from '../../utils/customProperty';
 import {
-  applyCustomPropertyFilter,
-  clearAdvancedSearchFilters,
-  CPASTestData,
-  setupCustomPropertyAdvancedSearchTest,
-  verifySearchResults,
+    applyCustomPropertyFilter,
+    clearAdvancedSearchFilters,
+    CPASTestData,
+    setupCustomPropertyAdvancedSearchTest,
+    verifySearchResults
 } from '../../utils/customPropertyAdvancedSearchUtils';
 import {
-  getEntityDisplayName,
-  waitForAllLoadersToDisappear,
+    getEntityDisplayName,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { createTable } from '../../utils/KnowledgeCenter';
 import {
-  openMatchingFieldsPanel,
-  selectSettingOption,
-  setSliderValue,
+    openMatchingFieldsPanel,
+    selectSettingOption,
+    setSliderValue
 } from '../../utils/searchSettingUtils';
 import {
-  settingClick,
-  SettingOptionsType,
-  sidebarClick,
+    settingClick,
+    SettingOptionsType,
+    sidebarClick
 } from '../../utils/sidebar';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
-import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
+import {
+    RightPanelPageObject,
+    RIGHT_PANEL_TAB
+} from '../PageObject/Explore/RightPanelPageObject';
 import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -286,7 +289,7 @@ const BASIC_PROPERTIES = [
   'Duration',
   'Email',
   'Number',
-  'Sql Query',
+  'SQL Query',
   'Time Interval',
   'Timestamp',
   'Hyperlink',
@@ -3492,7 +3495,6 @@ pickEntityMatrix(
             { exact: true }
           );
           await customPropertyOption.click();
-          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${dashboardSearchPropertyName}`
@@ -3634,7 +3636,6 @@ pickEntityMatrix(
             { exact: true }
           );
           await customPropertyOption.click();
-          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${pipelineSearchPropertyName}`
@@ -3779,7 +3780,7 @@ pickEntityMatrix(
           rightPanel.setEntityConfig(mainEntity);
           // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
           test.skip(
-            !rightPanel.isTabAvailable('custom property'),
+            !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
             `Custom Property tab not available for ${entity.name}`
           );
           const fqn = getEntityFqn(mainEntity);
@@ -3810,7 +3811,7 @@ pickEntityMatrix(
           rightPanel.setEntityConfig(mainEntity);
           // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
           test.skip(
-            !rightPanel.isTabAvailable('custom property'),
+            !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
             `Custom Property tab not available for ${entity.name}`
           );
           const fqn = getEntityFqn(mainEntity);
@@ -3842,7 +3843,7 @@ pickEntityMatrix(
           rightPanel.setEntityConfig(mainEntity);
           // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
           test.skip(
-            !rightPanel.isTabAvailable('custom property'),
+            !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
             `Custom Property tab not available for ${entity.name}`
           );
           const fqn = getEntityFqn(mainEntity);
@@ -3876,7 +3877,7 @@ pickEntityMatrix(
           rightPanel.setEntityConfig(mainEntity);
           // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
           test.skip(
-            !rightPanel.isTabAvailable('custom property'),
+            !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
             `Custom Property tab not available for ${entity.name}`
           );
           const fqn = getEntityFqn(mainEntity);

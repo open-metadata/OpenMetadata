@@ -36,7 +36,7 @@ jest.mock('@openmetadata/ui-core-components/icon', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  Tag: jest.fn(() => <span data-testid="tag-icon" />),
+  Tag01: jest.fn(() => <span data-testid="tag-icon" />),
 }));
 
 jest.mock('lodash', () => ({

@@ -4,7 +4,7 @@
 
 ## Semantic utilities (prefer these — they adapt to dark mode)
 
-**Background:** `tw:bg-page`, `tw:bg-canvas`, `tw:bg-surface`, `tw:bg-raised`, `tw:bg-overlay-surface`, `tw:bg-primary`, `tw:bg-secondary`, `tw:bg-tertiary`, `tw:bg-quaternary`, `tw:bg-disabled`, `tw:bg-overlay`, `tw:bg-brand-primary`, `tw:bg-brand-solid`, `tw:bg-error-primary`, `tw:bg-warning-primary`, `tw:bg-success-primary`
+**Background:** `tw:bg-page`, `tw:bg-canvas`, `tw:bg-surface`, `tw:bg-raised`, `tw:bg-floating`, `tw:bg-overlay-surface`, `tw:bg-primary`, `tw:bg-secondary`, `tw:bg-tertiary`, `tw:bg-quaternary`, `tw:bg-disabled`, `tw:bg-overlay`, `tw:bg-brand-primary`, `tw:bg-brand-solid`, `tw:bg-error-primary`, `tw:bg-warning-primary`, `tw:bg-success-primary`
 
 **Text:** `tw:text-primary`, `tw:text-secondary`, `tw:text-tertiary`, `tw:text-quaternary`, `tw:text-disabled`, `tw:text-placeholder`, `tw:text-link`, `tw:text-link-hover`, `tw:text-white`, `tw:text-brand-primary`, `tw:text-error-primary`, `tw:text-warning-primary`, `tw:text-success-primary`
 

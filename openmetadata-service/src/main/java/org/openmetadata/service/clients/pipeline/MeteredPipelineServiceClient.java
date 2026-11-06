@@ -177,6 +177,11 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
   }
 
   @Override
+  public boolean addressesPipelinesByName() {
+    return this.decoratedClient.addressesPipelinesByName();
+  }
+
+  @Override
   public URL validateServiceURL(String serviceURL) {
     return decoratedClient.validateServiceURL(serviceURL);
   }

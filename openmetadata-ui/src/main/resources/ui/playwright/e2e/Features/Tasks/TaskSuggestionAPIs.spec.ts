@@ -170,7 +170,7 @@ test.describe('Task Suggestion APIs', () => {
             assignees: [ownerUser.responseData.name],
             payload: {
               suggestionType: 'Description',
-              fieldPath: `columns::${table.entityResponseData?.columns?.[0]?.name}::description`,
+              fieldPath: `columns.${table.entityResponseData?.columns?.[0]?.name}.description`,
               suggestedValue: 'Column 1 description',
               source: 'Agent',
               confidence: 90,
@@ -187,7 +187,7 @@ test.describe('Task Suggestion APIs', () => {
             assignees: [ownerUser.responseData.name],
             payload: {
               suggestionType: 'Description',
-              fieldPath: `columns::${table.entityResponseData?.columns?.[1]?.name}::description`,
+              fieldPath: `columns.${table.entityResponseData?.columns?.[1]?.name}.description`,
               suggestedValue: 'Column 2 description',
               source: 'Agent',
               confidence: 88,

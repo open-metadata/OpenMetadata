@@ -53,6 +53,15 @@ describe('Test Searchbar Component', () => {
     expect(searchElement).toHaveValue('');
   });
 
+  it('turns off browser autocomplete on the search input', () => {
+    render(<Searchbar onSearch={jest.fn()} />);
+
+    expect(screen.getByTestId('searchbar')).toHaveAttribute(
+      'autocomplete',
+      'off'
+    );
+  });
+
   it('Renders the user typed text when a change event is fired', async () => {
     const onSearch = jest.fn();
 

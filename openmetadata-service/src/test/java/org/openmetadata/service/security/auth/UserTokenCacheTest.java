@@ -1,76 +1,86 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.security.auth;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.github.benmanes.caffeine.cache.Ticker;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.lang.reflect.Field;
 import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
-import org.openmetadata.schema.auth.PersonalAccessToken;
-import org.openmetadata.schema.auth.TokenType;
-import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.TokenRepository;
-import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.resources.teams.UserResource;
-import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.RequestEntityCache;
+import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.credentials.CredentialSubject;
+import org.openmetadata.service.security.credentials.CredentialVerificationConfig;
+import org.openmetadata.service.security.credentials.CredentialVerifier;
+import org.openmetadata.service.security.credentials.CredentialVerifierFixture;
+import org.openmetadata.service.security.credentials.Credentials;
+import org.openmetadata.service.security.credentials.OmCredential;
 
+/** What other distributions get from {@link UserTokenCache#invalidateToken}. */
 class UserTokenCacheTest {
-  private static final String USER_NAME = "alice";
-  private static final Fields FIELDS = new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS));
-  private static final RelationIncludes INCLUDES = RelationIncludes.fromInclude(NON_DELETED);
-  private static final UUID STALE_USER_ID = UUID.randomUUID();
-  private static final UUID CURRENT_USER_ID = UUID.randomUUID();
+  private static final String USER = "alice";
+  private static final String TOKEN = "pat-1";
 
+  private Object installedBefore;
+  private CredentialVerifierFixture fixture;
+
+  @BeforeEach
+  void installAVerifierOverAnInMemorySource() throws ReflectiveOperationException {
+    installedBefore = installedField().get(null);
+    fixture =
+        new CredentialVerifierFixture(
+                new SimpleMeterRegistry(),
+                Ticker.systemTicker(),
+                CredentialVerificationConfig.defaults())
+            .withPats(Map.of(USER, List.of(TOKEN)));
+    Credentials.install(fixture.verifier());
+  }
+
+  // Credentials offers no uninstall outside its package, and other tests expect none installed.
   @AfterEach
-  void cleanup() {
-    RequestEntityCache.clear();
+  void restoreTheInstalledVerifier() throws ReflectiveOperationException {
+    installedField().set(null, installedBefore);
+    fixture.close();
   }
 
   @Test
-  void tokenLoadIgnoresUserLeftOnThreadByEarlierRequest() {
-    // The user was deleted and recreated with the same name; an earlier request on this thread
-    // cached the old one.
-    RequestEntityCache.putByName(
-        Entity.USER, USER_NAME, FIELDS, INCLUDES, false, user(STALE_USER_ID), User.class);
-    UserRepository userRepository = mock(UserRepository.class);
-    when(userRepository.getByName(
-            isNull(), eq(USER_NAME), any(Fields.class), eq(NON_DELETED), eq(false)))
-        .thenAnswer(invocation -> requestCachedOr(user(CURRENT_USER_ID)));
-    TokenRepository tokenRepository = mock(TokenRepository.class);
-    String patType = TokenType.PERSONAL_ACCESS_TOKEN.value();
-    when(tokenRepository.findByUserIdAndType(STALE_USER_ID, patType))
-        .thenReturn(List.of(new PersonalAccessToken().withJwtToken("stale-user-token")));
-    when(tokenRepository.findByUserIdAndType(CURRENT_USER_ID, patType))
-        .thenReturn(List.of(new PersonalAccessToken().withJwtToken("current-user-token")));
+  @SuppressWarnings("deprecation")
+  void invalidatedUserIsCheckedAgainstTheStoredTokens() {
+    CredentialVerifier verifier = fixture.verifier();
+    assertDoesNotThrow(() -> require(verifier), "the PAT is current and now cached");
+    fixture.removeTokensSilently(USER);
+    int readsBefore = fixture.fullReadsOf(USER);
 
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      entity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
-      entity.when(Entity::getTokenRepository).thenReturn(tokenRepository);
+    UserTokenCache.invalidateToken(USER);
 
-      assertEquals(Set.of("current-user-token"), UserTokenCache.getToken(USER_NAME));
-    }
+    assertEquals(readsBefore + 1, fixture.fullReadsOf(USER), "the hint re-reads the user once");
+    assertThrows(AuthenticationException.class, () -> require(verifier));
   }
 
-  // Mirrors EntityRepository.getByName: the request cache answers before the database.
-  private static User requestCachedOr(User storedUser) {
-    User cached =
-        RequestEntityCache.getByName(Entity.USER, USER_NAME, FIELDS, INCLUDES, false, User.class);
-    return cached != null ? cached : storedUser;
+  private static void require(CredentialVerifier verifier) {
+    verifier.require(new OmCredential.Stored(CredentialSubject.of(USER)), TOKEN, "not current");
   }
 
-  private static User user(UUID id) {
-    return new User().withId(id).withName(USER_NAME);
+  private static Field installedField() throws NoSuchFieldException {
+    Field field = Credentials.class.getDeclaredField("installed");
+    field.setAccessible(true);
+    return field;
   }
 }
