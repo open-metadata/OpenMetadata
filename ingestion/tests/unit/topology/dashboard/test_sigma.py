@@ -15,10 +15,12 @@ Test sigma Dashboard using the topology
 
 import json
 from collections import Counter
+from fnmatch import fnmatch
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from urllib.parse import urlparse
+from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 import requests
@@ -43,6 +45,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
+)
+from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
+    LineageInformation,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -367,9 +372,14 @@ class SigmaUnitTest(TestCase):
         self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
+        self.sigma.source_config.lineageInformation = LineageInformation(dbServicePrefixes=["mock_mysql"])
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
         self.sigma.metadata.get_by_name = MagicMock(return_value=MOCK_DATABASE_SERVICE)
-        self.sigma.metadata.search_in_any_service = MagicMock(return_value=MOCK_TABLE_ENTITY)
+        self.sigma.metadata.es_search_from_fqn = MagicMock(
+            side_effect=lambda entity_type, **_: [
+                MOCK_DATABASE_SERVICE if entity_type is DatabaseService else MOCK_TABLE_ENTITY
+            ]
+        )
 
         # Execute
         results = list(
@@ -904,3 +914,112 @@ def test_a_failed_element_read_keeps_charts_and_data_models(sigma_over_http, rou
     routes["GET", failing_path] = 500
 
     assert stale_passes_run(source) == ["Dashboard"]
+
+
+def warehouse_table(service: str, table: str, database: str = "ANALYTICS") -> Table:
+    name = f"{service}.{database}.PUBLIC.{table}"
+    return Table(id=str(uuid5(NAMESPACE_URL, name)), name=table, fullyQualifiedName=name, columns=[])
+
+
+def warehouse_service(name: str, service_type: DatabaseServiceType) -> DatabaseService:
+    return DatabaseService(id=str(uuid5(NAMESPACE_URL, name)), name=name, serviceType=service_type)
+
+
+def lineage_sources(
+    source,
+    routes,
+    prefixes: list[str],
+    catalog: list[Table],
+    sql: str | None,
+    service_type: DatabaseServiceType = DatabaseServiceType.Snowflake,
+) -> list[str]:
+    """
+    FQNs of the tables wb-1's element is linked to, over every dbServicePrefixes entry as the base class
+    runs it. OpenMetadata's search answers from `catalog` with its wildcard matching; `sql` None takes
+    the fallback path (no queries, element lineage then /files).
+    """
+    services = {table.fullyQualifiedName.root.split(".")[0] for table in catalog}
+
+    def es_search_from_fqn(entity_type, fqn_search_string, **_):
+        if entity_type is DatabaseService:
+            return [warehouse_service(fqn_search_string, service_type)] if fqn_search_string in services else []
+        return [table for table in catalog if fnmatch(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())]
+
+    def get_by_name(entity, fqn, **_):
+        if entity is DatabaseService:
+            return warehouse_service(fqn, service_type) if fqn in services else None
+        return MOCK_DATA_MODEL if entity is DashboardDataModel else None
+
+    source.metadata.es_search_from_fqn = es_search_from_fqn
+    source.metadata.get_by_name = get_by_name
+    source.source_config.lineageInformation = LineageInformation(dbServicePrefixes=prefixes)
+    entries = [{"elementId": "el-wb-1", "name": "Revenue", "sql": sql}] if sql else []
+    routes["GET", "/v2/workbooks/wb-1/queries"] = {"entries": entries, "nextPage": None}
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+    list(source.yield_datamodel(details))
+    return [
+        either.right.edge.fromEntity.fullyQualifiedName
+        for prefix in prefixes or [None]
+        for either in source.yield_dashboard_lineage_details(details, prefix)
+    ]
+
+
+SIGMA_SQL = "SELECT * FROM ANALYTICS.PUBLIC.ORDERS"
+
+
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
+def test_a_table_found_in_one_configured_service_is_linked(sigma_over_http, routes, sql):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_b", "CUSTOMERS")]
+
+    assert lineage_sources(source, routes, ["wh_a", "wh_b"], catalog, sql) == ["wh_a.ANALYTICS.PUBLIC.ORDERS"]
+
+
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
+def test_a_table_found_in_two_configured_services_is_not_linked(sigma_over_http, routes, sql):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_b", "ORDERS")]
+
+    assert lineage_sources(source, routes, ["wh_a", "wh_b"], catalog, sql) == []
+
+
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
+def test_no_table_is_linked_without_db_service_prefixes(sigma_over_http, routes, sql):
+    source, _ = sigma_over_http
+
+    assert lineage_sources(source, routes, [], [warehouse_table("wh_a", "ORDERS")], sql) == []
+
+
+def test_a_table_matching_twice_in_one_service_is_not_linked(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_a", "ORDERS", database="SALES")]
+
+    assert lineage_sources(source, routes, ["wh_a"], catalog, "SELECT * FROM PUBLIC.ORDERS") == []
+
+
+def test_a_wildcard_table_the_service_cannot_resolve_is_not_linked(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("bq_sigma", "events_20240101")]
+    sql = "SELECT * FROM `ANALYTICS.PUBLIC.events_2024*`"
+
+    assert lineage_sources(source, routes, ["bq_sigma"], catalog, sql, DatabaseServiceType.BigQuery) == []
+
+
+def test_a_failed_table_search_links_nothing(sigma_over_http, routes):
+    source, _ = sigma_over_http
+
+    def search_down(*_, **__):
+        raise requests.ConnectionError("search is down")
+
+    lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], None)
+    source.metadata.es_search_from_fqn = search_down
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    assert list(source.yield_dashboard_lineage_details(details, "wh_a")) == []
+
+
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
+def test_a_table_outside_the_prefix_database_is_not_linked(sigma_over_http, routes, sql):
+    source, _ = sigma_over_http
+
+    assert lineage_sources(source, routes, ["wh_a.SALES"], [warehouse_table("wh_a", "ORDERS")], sql) == []

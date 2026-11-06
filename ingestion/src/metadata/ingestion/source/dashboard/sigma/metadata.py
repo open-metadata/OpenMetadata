@@ -12,7 +12,11 @@
 
 import traceback
 from collections.abc import Iterable
+from functools import cached_property
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup, UnsupportedTableReferenceError
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -47,6 +51,7 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Diale
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.sigma.models import (
     Elements,
@@ -57,7 +62,6 @@ from metadata.ingestion.source.dashboard.sigma.models import (
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
     get_database_name_for_lineage,
     get_standard_chart_type,
@@ -216,6 +220,53 @@ class SigmaSource(DashboardServiceSource):
             )
         return None
 
+    @cached_property
+    def _db_services(self) -> dict[str, DatabaseService | None]:
+        """The database service of each dbServicePrefixes entry, read once per run"""
+        return {
+            prefix: self.metadata.get_by_name(entity=DatabaseService, fqn=prefix.split(".")[0])
+            for prefix in self.get_db_service_prefixes()
+        }
+
+    def _get_table_entity(
+        self, database: str | None, schema: str | None, table: str | None, db_service_prefix: str | None
+    ) -> Table | None:
+        """
+        The one table the reference names across the dbServicePrefixes, returned on the call for the
+        prefix it was found under. Lineage must not guess, so a reference matching several tables, or
+        with no prefix configured, resolves to none.
+        """
+        if not (schema and table):
+            return None
+        matches: dict[str, tuple[Table, str]] = {}
+        for prefix in self.get_db_service_prefixes():
+            service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)
+            if any(
+                expected and actual and expected.lower() != actual.lower()
+                for expected, actual in ((prefix_database, database), (prefix_schema, schema), (prefix_table, table))
+            ):
+                continue
+            service_entity = self._db_services[prefix]
+            searched_database = (
+                get_database_name_for_lineage(service_entity, database) if database and service_entity else database
+            )
+            try:
+                found_tables = get_table_binding_resolution(self.metadata, service).resolve(
+                    TableReference(searched_database or prefix_database, schema, table),
+                    service_name=service,
+                    lookup=TableLookup.SEARCH,
+                )
+            except UnsupportedTableReferenceError as exc:
+                logger.debug(f"Skipping unsupported Sigma table reference {table} in {service}: {exc}")
+                continue
+            for found in found_tables:
+                matches.setdefault(model_str(found.id), (found, prefix))
+        if len(matches) != 1:
+            logger.debug(f"Skipping Sigma table reference {table}: it matches {len(matches)} tables")
+            return None
+        found, prefix = next(iter(matches.values()))
+        return found if prefix == db_service_prefix else None
+
     def _get_table_entity_from_node(
         self,
         node: NodeDetails,
@@ -224,47 +275,16 @@ class SigmaSource(DashboardServiceSource):
         """
         Get the table entity for lineage
         """
-        (
-            prefix_service_name,
-            prefix_database_name,
-            prefix_schema_name,
-            prefix_table_name,
-        ) = self.parse_db_service_prefix(db_service_prefix or "*")
-
-        if node.node_schema:
-            schema_parts = node.node_schema.split(".")
-            schema_name = schema_parts[-1]
-            database_name = schema_parts[0] if len(schema_parts) > 1 else None
-            table_name = node.name
-
-            if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
-                logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
-                return None
-
-            if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
-                logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")
-                return None
-
-            if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
-                return None
-
-            try:
-                fqn_search_string = build_es_fqn_search_string(
-                    service_name=prefix_service_name,
-                    database_name=prefix_database_name or database_name,
-                    schema_name=prefix_schema_name or schema_name,
-                    table_name=prefix_table_name or table_name,
-                )
-                table_result = self.metadata.search_in_any_service(
-                    entity_type=Table,
-                    fqn_search_string=fqn_search_string,
-                )
-                return table_result  # noqa: RET504, TRY300
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error occured while finding table fqn: {exc}")
-
+        if not node.node_schema:
+            return None
+        schema_parts = node.node_schema.split(".")
+        try:
+            return self._get_table_entity(
+                schema_parts[0] if len(schema_parts) > 1 else None, schema_parts[-1], node.name, db_service_prefix
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error occured while finding table fqn: {exc}")
         return None
 
     def _yield_lineage_from_files(
@@ -369,12 +389,7 @@ class SigmaSource(DashboardServiceSource):
             yield from self._yield_lineage_from_files(dashboard_details, db_service_prefix)
             return
 
-        db_service_name = None
-        db_service_entity = None
-        if db_service_prefix:
-            (db_service_name, _, _, _) = self.parse_db_service_prefix(db_service_prefix)
-            if db_service_name:
-                db_service_entity = self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name)
+        db_service_entity = self._db_services.get(db_service_prefix) if db_service_prefix else None
 
         queries_by_element = {q.elementId: q for q in queries_response.entries}
 
@@ -408,25 +423,12 @@ class SigmaSource(DashboardServiceSource):
 
                 for source_table in lineage_parser.source_tables or []:
                     database_schema_table = fqn.split_table_name(str(source_table))
-                    database_name = database_schema_table.get("database")
-                    schema_name = database_schema_table.get("database_schema")
-                    table_name = database_schema_table.get("table")
-
-                    if db_service_entity and database_name:
-                        database_name = get_database_name_for_lineage(db_service_entity, database_name)
-
-                    fqn_search_string = build_es_fqn_search_string(
-                        service_name=db_service_name or "*",
-                        database_name=database_name,
-                        schema_name=schema_name,
-                        table_name=table_name,
+                    table_entity = self._get_table_entity(
+                        database_schema_table.get("database"),
+                        database_schema_table.get("database_schema"),
+                        database_schema_table.get("table"),
+                        db_service_prefix,
                     )
-
-                    table_entity = self.metadata.search_in_any_service(
-                        entity_type=Table,
-                        fqn_search_string=fqn_search_string,
-                    )
-
                     if table_entity:
                         yield self._get_add_lineage_request(
                             to_entity=data_model_entity,
