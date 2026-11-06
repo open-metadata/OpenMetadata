@@ -170,9 +170,9 @@ public class McpServer implements McpServerProvider {
     return io.modelcontextprotocol.server.McpServer.sync(transport)
         .serverInfo("openmetadata-mcp-stateless", "1.1.0")
         .capabilities(capabilities)
-        // SDK 2.x checks tools/call arguments against the tool schema by default. Kept off so
-        // this upgrade does not change what clients get back; the tools parse their own
-        // arguments today. Turning it on is tracked in #37248.
+        // SDK 2.x checks tools/call arguments against the tool schema by default. Kept off: the
+        // tools accept looser shapes on purpose, see
+        // ADR:2026-11-06-mcp-tool-arguments-are-coerced-by-tools-not-validated-by-the-sdk.
         .validateToolInputs(false)
         .addToolFilter(toolFilter(mcpConfig))
         .build();

@@ -4,11 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.server.McpStatelessServerFeatures;
+import io.modelcontextprotocol.server.McpStatelessServerHandler;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpStatelessServerTransport;
@@ -16,6 +19,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
@@ -246,6 +251,40 @@ public class McpSdkUpgradeTest {
         .singleElement()
         .satisfies(
             tool -> assertThat(tool.inputSchema()).containsEntry("required", List.of("query")));
+  }
+
+  @Test
+  void looseArgumentsStillReachTheTool() {
+    McpStatelessServerTransport transport = mock(McpStatelessServerTransport.class);
+    McpStatelessSyncServer server =
+        McpServer.buildServer(
+            transport, new McpServer().buildServerCapabilities(), MCPConfiguration::new);
+    Map<String, Object> schema =
+        Map.of("type", "object", "properties", Map.of("size", Map.of("type", "integer")));
+    server.addTool(
+        new McpStatelessServerFeatures.SyncToolSpecification(
+            McpSchema.Tool.builder("sized", schema).build(),
+            (context, request) ->
+                McpSchema.CallToolResult.builder()
+                    .content(List.of(McpSchema.TextContent.builder("ran").build()))
+                    .isError(false)
+                    .build()));
+    ArgumentCaptor<McpStatelessServerHandler> handler =
+        ArgumentCaptor.forClass(McpStatelessServerHandler.class);
+    verify(transport).setMcpHandler(handler.capture());
+
+    McpSchema.JSONRPCResponse response =
+        handler
+            .getValue()
+            .handleRequest(
+                McpTransportContext.EMPTY,
+                new McpSchema.JSONRPCRequest(
+                    McpSchema.METHOD_TOOLS_CALL,
+                    1,
+                    Map.of("name", "sized", "arguments", Map.of("size", "5"))))
+            .block();
+
+    assertThat(((McpSchema.CallToolResult) response.result()).isError()).isFalse();
   }
 
   @Test
