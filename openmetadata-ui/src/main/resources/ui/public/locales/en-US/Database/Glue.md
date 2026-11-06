@@ -8,6 +8,8 @@ The Glue connector ingests metadata through AWS <a href="https://boto3.amazonaws
 
 The user must have `glue:GetDatabases` and `glue:GetTables` permissions for the ingestion to run successfully.
 
+To ingest AWS Glue Data Quality results, the user also needs `glue:ListDataQualityResults`, `glue:BatchGetDataQualityResult` and `glue:ListDataQualityRulesets`.
+
 You can find further information on the Glue connector in the <a href="https://docs.open-metadata.org/connectors/database/glue" target="_blank">docs</a>.
 
 ## Connection Details
@@ -108,4 +110,53 @@ Database Service > Database > Schema > Table
 ```
 
 In the case of Glue, we won't have a Database as such instead we use the <a href="https://docs.aws.amazon.com/glue/latest/dg/glue-specifying-resource-arns.html#data-catalog-resource-arns" target="_blank">Glue Catalog ID</a> as the database name. If you'd like to see your data in a database named something other than Catalog ID, you can specify the name in this field.
+$$
+
+$$section
+### Include Data Quality $(id="includeDataQuality")
+
+Imports <a href="https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.html" target="_blank">AWS Glue Data Quality</a> results into OpenMetadata.
+
+- Every DQDL rule becomes a test case under the `AWSGlue` platform. A single-column rule (e.g. `IsComplete "id"`) is attached to its column; every other rule is attached to the table.
+- Every evaluation run becomes a test case result, with its status, the evaluation message and the evaluated metrics.
+- Each ruleset also gets a `<ruleset>_score` test case holding the Glue score, and a logical test suite that groups its test cases.
+- Only results on tables the ingestion's database, schema and table filter patterns keep are imported; the others are reported as filtered.
+
+The results appear in the table's Data Observability tab and on the Data Quality page.
+$$
+
+$$section
+### Lookback Days $(id="lookbackDays")
+
+Only results of runs that started within this number of days are imported. Runs already in OpenMetadata are skipped, so the windows of consecutive ingestions can overlap.
+$$
+
+$$section
+### Target Database Service Name $(id="targetServiceName")
+
+Name of the OpenMetadata database service that holds the evaluated tables, for example an Athena service that catalogs the same Glue tables. Leave it empty to attach the test cases to the tables ingested by this Glue service.
+$$
+
+$$section
+### Target Database Name $(id="targetDatabaseName")
+
+Database of the Target Database Service that holds the evaluated tables, for example `awsdatacatalog` for Athena. Only used together with Target Database Service Name.
+
+Leave it empty to search every database of that service. If the same schema and table exist in more than one of its databases, those results are skipped and reported, since the right table cannot be told apart; set this field to pick it.
+$$
+
+$$section
+### Ruleset Filter Pattern $(id="rulesetFilterPattern")
+
+Regex to only include or exclude Data Quality rulesets by name. For ETL job results without a ruleset name, the pattern is matched against the evaluation context (the job's Data Quality node name) instead.
+$$
+
+$$section
+### ETL Job Mappings $(id="etlJobMappings")
+
+Results produced by the Evaluate Data Quality node of a Glue ETL job are not always linked to a Data Catalog table. Map them to an OpenMetadata table with:
+
+- **Job Name**: the Glue job name.
+- **Evaluation Context**: the name of the Data Quality node; leave empty to match every node of the job.
+- **Table FQN**: the fully qualified name of the OpenMetadata table, e.g. `glue_service.123456789012.sales.orders`.
 $$

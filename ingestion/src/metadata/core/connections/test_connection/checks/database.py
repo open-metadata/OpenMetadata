@@ -59,6 +59,7 @@ class DatabaseStep(StepName):
     GetColumnTags = "GetColumnTags"
     GetTableLineage = "GetTableLineage"
     GetColumnLineage = "GetColumnLineage"
+    GetDataQualityResults = "GetDataQualityResults"
 
 
 @contextmanager
