@@ -175,8 +175,7 @@ sagemaker_config = {
 
 class SagemakerTest(TestCase):
     @patch("metadata.ingestion.source.mlmodel.sagemaker.metadata.SagemakerSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = parse_workflow_config_gracefully(sagemaker_config)
         self.sagemaker_source = SagemakerSource.create(

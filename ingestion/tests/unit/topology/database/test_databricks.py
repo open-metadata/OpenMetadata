@@ -303,8 +303,7 @@ class DatabricksUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     @patch("metadata.ingestion.source.database.databricks.metadata.DatabricksSource._init_version")
-    def __init__(self, methodName, test_connection, db_init_version) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection, db_init_version) -> None:
         test_connection.return_value = False
         db_init_version.return_value = None
 

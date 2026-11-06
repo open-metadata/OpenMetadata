@@ -569,13 +569,7 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
 
     @patch("metadata.ingestion.source.database.unitycatalog.connection.get_sqlalchemy_connection")
     @patch("metadata.ingestion.source.database.unitycatalog.metadata.UnitycatalogSource.test_connection")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        test_connection,
-        mock_sqlalchemy_connection,
-    ) -> None:
-        super().__init__(methodName)
+    def setUp(self, test_connection, mock_sqlalchemy_connection) -> None:
         test_connection.return_value = False
 
         mock_engine = MagicMock()

@@ -21,8 +21,7 @@ from metadata.ingestion.models.topology import Queue
 class QueueTest(TestCase):
     """Validate queue ops"""
 
-    def __init__(self, methodName) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self) -> None:
         self.queue = Queue()
 
     def test_queue(self):

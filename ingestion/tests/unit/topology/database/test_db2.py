@@ -204,13 +204,7 @@ class Db2UnitTest(TestCase):
 
     @patch("metadata.ingestion.source.database.common_db_source.create_connection")
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        test_connection,
-        get_connection,
-    ) -> None:
-        super().__init__(methodName)
+    def setUp(self, test_connection, get_connection) -> None:
         test_connection.return_value = False
         get_connection.return_value = MagicMock()
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_db2_config)

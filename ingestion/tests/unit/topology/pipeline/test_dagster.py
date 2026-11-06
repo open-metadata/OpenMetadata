@@ -261,8 +261,7 @@ class DagsterUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("dagster_graphql.DagsterGraphQLClient")
     # @patch("metadata.ingestion.source.pipeline.dagster.get_tag_labels")
-    def __init__(self, methodName, graphql_client, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, graphql_client, test_connection) -> None:
         test_connection.return_value = False
         graphql_client.return_value = False
         config = OpenMetadataWorkflowConfig.model_validate(mock_dagster_config)
