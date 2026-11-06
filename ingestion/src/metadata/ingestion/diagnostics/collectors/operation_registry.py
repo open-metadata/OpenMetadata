@@ -35,8 +35,10 @@ OP_STACK_DEPTH_CAP = 20
 SLOW_OPS_CAP = 50
 
 # Structural/wrapper ops whose span is a whole phase, not a unit of work — excluded
-# from slow_ops so they don't crowd out the actual slow I/O calls (db/http/sink).
-_NON_LEAF_OPS = frozenset({"workflow.execute", "source.iter", "stage.run", "processor.run", "bulksink.run"})
+# from slow_ops so they don't crowd out the actual slow I/O calls (db/http/sink),
+# and from watchdog hang-judgment so a healthy long run whose phase wrapper has
+# accumulated a large cumulative age is not mistaken for a wedged thread.
+NON_LEAF_OPS = frozenset({"workflow.execute", "source.iter", "stage.run", "processor.run", "bulksink.run"})
 
 
 class OperationRegistry:
@@ -103,7 +105,7 @@ class OperationRegistry:
         outliers are rare, so the per-call cost stays a duration compare. Wrapper
         ops (whole-phase spans) are skipped so they don't bury the real slow
         work. Caller holds the lock."""
-        if name not in _NON_LEAF_OPS and (len(self._slow) < SLOW_OPS_CAP or duration > self._slow[0][0]):
+        if name not in NON_LEAF_OPS and (len(self._slow) < SLOW_OPS_CAP or duration > self._slow[0][0]):
             identity = op_identity(name, kwargs, sys._getframe())
             self._slow_seq += 1
             entry = (duration, self._slow_seq, name, identity)
