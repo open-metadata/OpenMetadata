@@ -159,7 +159,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                   justify="between">
                   <Box
                     align="center"
-                    className="tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:rounded tw:px-2 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
+                    className="tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:rounded tw:px-2 tw:focus-visible:bg-primary_hover"
                     gap={2}
                     role="button"
                     tabIndex={0}
@@ -173,7 +173,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                       className="tw:shrink-0 tw:text-quaternary"
                       size={16}
                     />
-                    <div className="tw:min-w-0">
+                    <div className="tw:flex tw:min-w-0">
                       <Typography
                         ellipsis
                         className="tw:flex-1 tw:min-w-0 tw:text-secondary"
@@ -202,7 +202,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                   <Tree.ItemContent className="tw:ml-6!" showExpandIcon={false}>
                     <Box
                       align="center"
-                      className="tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:rounded tw:px-2 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
+                      className="tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:rounded tw:px-2 tw:focus-visible:bg-primary_hover"
                       gap={2}
                       role="button"
                       tabIndex={0}

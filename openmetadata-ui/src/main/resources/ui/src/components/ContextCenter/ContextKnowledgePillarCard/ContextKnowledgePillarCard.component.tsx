@@ -67,7 +67,7 @@ function RecentItem({
         className="tw:min-w-0 tw:flex-1"
         gap={4}
         justify="between">
-        <div className="tw:min-w-0">
+        <div className="tw:flex tw:min-w-0">
           <Typography
             ellipsis
             className="tw:min-w-0 tw:flex-1 tw:text-secondary"
@@ -80,7 +80,7 @@ function RecentItem({
           {item.meta.map((metaItem, index) => (
             // eslint-disable-next-line react/no-array-index-key -- meta strings may repeat; index disambiguates
             <Fragment key={`${metaItem}-${index}`}>
-              <div className="tw:max-w-20">
+              <div className="tw:flex tw:max-w-20">
                 <Typography
                   ellipsis
                   className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
