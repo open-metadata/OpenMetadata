@@ -30,6 +30,7 @@ import {
   getStatusBadgeClassName,
   getStatusBadgeIcon,
 } from './PipelineDetailsUtils';
+import { getSafeHttpUrl } from './StringUtils';
 interface StatusIndicatorInterface {
   status: StatusType;
 }
@@ -44,6 +45,9 @@ export interface ViewDataInterface {
   startTime?: number;
   endTime?: number;
   duration?: string;
+  rowsRead?: number;
+  rowsWritten?: number;
+  logLink?: string;
 }
 
 const StatusBadge = ({ status }: { status?: StatusType }) => {
@@ -113,8 +117,16 @@ export const getTableViewData = (
     execution.taskStatus?.map((execute: TaskStatus) => {
       const startTime = execute.startTime;
       const endTime = execute.endTime;
-      const duration =
-        startTime && endTime ? formatDuration(endTime - startTime) : '--';
+      const executionTimeMs = execute.metrics?.executionTimeMs;
+      // Wall-clock duration wins; the producer-reported execution time only
+      // fills the gap when start/end are missing, so the two never compete for
+      // a column (ADR:2026-11-04-pipeline-execution-metric-columns-render-only-when-reported).
+      let duration = '--';
+      if (startTime && endTime) {
+        duration = formatDuration(endTime - startTime);
+      } else if (!isUndefined(executionTimeMs)) {
+        duration = formatDuration(executionTimeMs);
+      }
 
       viewData.push({
         name: execute.name,
@@ -126,6 +138,9 @@ export const getTableViewData = (
         startTime,
         endTime,
         duration,
+        rowsRead: execute.metrics?.rowsRead,
+        rowsWritten: execute.metrics?.rowsWritten,
+        logLink: getSafeHttpUrl(execute.logLink),
       });
     });
   });
