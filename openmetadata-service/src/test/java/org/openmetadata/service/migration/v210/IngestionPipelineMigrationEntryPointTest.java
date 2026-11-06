@@ -17,6 +17,7 @@ import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -29,6 +30,7 @@ import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -57,6 +59,7 @@ import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigra
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
+import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 
 class IngestionPipelineMigrationEntryPointTest {
 
@@ -104,6 +107,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(OntologyRolesMigration.class);
         MockedStatic<DestinationIdMigration> destinationIdMigration =
             mockStatic(DestinationIdMigration.class);
+        MockedStatic<WebhookSecretsMigration> webhookSecretsMigration =
+            mockStatic(WebhookSecretsMigration.class);
         MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
             mockStatic(DeltaLakeRetirementMigration.class);
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
@@ -141,6 +146,17 @@ class IngestionPipelineMigrationEntryPointTest {
       // 2.1.0 databases skip 2.0.8's data migration, so 2.1.0 repairs containment too.
       containmentRepair.verify(
           () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+      // Each destination's id owns its secrets, so ids are settled before secrets are bound.
+      InOrder idsThenSecrets = inOrder(DestinationIdMigration.class, WebhookSecretsMigration.class);
+      idsThenSecrets.verify(
+          destinationIdMigration,
+          () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
+      idsThenSecrets.verify(
+          webhookSecretsMigration,
+          () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, connectionType));
+      idsThenSecrets.verify(
+          webhookSecretsMigration,
+          () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, connectionType));
       // 2.1.0 databases skip 2.0.6's data migration, so 2.1.0 must apply the alert step too.
       v206MigrationUtil.verify(
           () ->
