@@ -1,7 +1,8 @@
 # A memory cites its supporting Queries, and retiring one holds the memory for review
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-03 (the held-Draft queue is the owner's and
+  admins')
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `MemoryEvidenceHoldsTest`, `ContextMemoryEvidenceAccessTest`, `ContextMemoryQueryEvidenceIT`
 - **Related:** open-metadata/ai-platform#1582; ADR:ai-platform/2026-10-15-a-captured-memory-links-the-saved-queries-that-support-it; ADR:2026-10-09-an-approved-memory-can-return-to-review-and-records-its-last-review; ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory
@@ -82,3 +83,11 @@ read the Query.
 - One race remains. A memory write that resolves a Query after the delete's lookup, but before the
   row removal, loses its link without a hold. Closing it needs Memory Reconciliation to re-verify
   evidence, which is a Collate change.
+
+## Amendment — 2026-11-03: the held-Draft queue is the owner's and admins'
+
+Item 8 still holds for who looks: the Memories list shows Draft by default, so an evidence hold,
+which opens no task, is visible where people look. But a Draft memory is now listed only to its
+owners and to admins (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+So the held-Draft queue is the owner's and the admins'. A reader of the memory still opens it by
+id under the share rules.
