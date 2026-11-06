@@ -24,9 +24,9 @@ import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../../rest/announcementsAPI';
+import { CRITICAL_ANNOUNCEMENTS_PAGE_SIZE } from '../../../rest/queries/criticalAnnouncementsQuery';
 import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import CriticalAnnouncements from './CriticalAnnouncements';
-import { CRITICAL_ANNOUNCEMENTS_PAGE_SIZE } from '../../../rest/queries/criticalAnnouncementsQuery';
 import {
   DismissedAnnouncementsScope,
   getDismissedAnnouncementsStorageKey,
