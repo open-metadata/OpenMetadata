@@ -915,6 +915,7 @@ const TagPage = () => {
         secondaryActions={haveAssetEditPermission ? manageDropdown : null}
         tabs={aiHeaderTabs}
         title={getEntityName(tagItem)}
+        variant="flat"
         onTabChange={activeTabHandler}
       />
     </div>

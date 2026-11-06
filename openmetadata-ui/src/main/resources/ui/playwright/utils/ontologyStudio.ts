@@ -236,10 +236,6 @@ export async function findEmptyCanvasPoint(
   page: Page,
   clearance = 160
 ): Promise<{ x: number; y: number }> {
-  const box = await page.locator(STUDIO_GRAPH_CONTAINER).boundingBox();
-  if (!box) {
-    throw new Error('The graph canvas is not rendered');
-  }
   // The graph re-fits when a side panel opens or closes, so measure only once
   // two reads agree.
   let previous = '';
@@ -257,6 +253,11 @@ export async function findEmptyCanvasPoint(
       { intervals: [300], timeout: 6000 }
     )
     .toBe(true);
+  // Measured after the settle: the panel that just closed resizes the canvas.
+  const box = await page.locator(STUDIO_GRAPH_CONTAINER).boundingBox();
+  if (!box) {
+    throw new Error('The graph canvas is not rendered');
+  }
   const nodes = Object.values(positions);
   const candidates = [];
   for (let x = box.x + 120; x < box.x + box.width - 120; x += 40) {
