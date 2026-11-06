@@ -80,6 +80,14 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+LEGACY_CHART_FIELDS = ["tags", "owners", "domains", "dataProducts", "extension", "lifeCycle"]
+
+
+def _fqns(references: EntityReferenceList | None) -> list[FullyQualifiedEntityName] | None:
+    if not references:
+        return None
+    return [FullyQualifiedEntityName(ref.fullyQualifiedName) for ref in references.root if ref.fullyQualifiedName]
+
 
 def chart_name(dossier_id: str, page_key: str, visualization_key: str) -> str:
     """
@@ -354,6 +362,13 @@ class MicrostrategySource(DashboardServiceSource):
         """
         One chart per visualization of every page
         """
+        existing = self.metadata.get_by_name(
+            entity=Dashboard, fqn=self._fqn(Dashboard, dashboard_name=dashboard_details.id), fields=["charts"]
+        )
+        legacy_charts = self._legacy_charts(existing)
+        # A chart update that leaves out its dashboards unlinks it from them, so a chart names its
+        # dashboard once that exists. A new dashboard is created after its charts and links them.
+        dashboards = [FullyQualifiedEntityName(existing.fullyQualifiedName.root)] if existing else None
         for chapter in dashboard_details.chapters:
             for page in chapter.pages:
                 for visualization in page.visualizations:
@@ -370,6 +385,8 @@ class MicrostrategySource(DashboardServiceSource):
                                 else None
                             ),
                             service=FullyQualifiedEntityName(self._service),
+                            dashboards=dashboards,
+                            **self._carried_over(legacy_charts.get(f"{page.key}{visualization.key}")),
                         )
                         yield Either(left=None, right=chart_request)
                         self.register_record_chart(chart_request=chart_request)
@@ -382,6 +399,38 @@ class MicrostrategySource(DashboardServiceSource):
                                 stackTrace=traceback.format_exc(),
                             ),
                         )
+
+    def _legacy_charts(self, existing: Dashboard | None) -> dict[str, Chart]:
+        """
+        The charts an existing dashboard still links under the names used before charts were
+        named by dossier (`<pageKey><vizKey>`), keyed by that name. Only a first run after the
+        upgrade finds any: that run relinks the dashboard to the new charts.
+        ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged
+        """
+        linked = existing.charts.root if existing and existing.charts else []
+        legacy = {}
+        for chart_ref in linked:
+            if not chart_ref.name or "_" in chart_ref.name:
+                continue
+            chart = self.metadata.get_by_id(entity=Chart, entity_id=chart_ref.id, fields=LEGACY_CHART_FIELDS)
+            if chart:
+                legacy[chart_ref.name] = chart
+        return legacy
+
+    @staticmethod
+    def _carried_over(legacy_chart: Chart | None) -> dict:
+        """The metadata users added to a chart under its old name, for its replacement"""
+        if legacy_chart is None:
+            return {}
+        return {
+            "description": legacy_chart.description,
+            "tags": legacy_chart.tags,
+            "owners": legacy_chart.owners,
+            "domains": _fqns(legacy_chart.domains),
+            "dataProducts": _fqns(legacy_chart.dataProducts),
+            "extension": legacy_chart.extension,
+            "lifeCycle": legacy_chart.lifeCycle,
+        }
 
     def _get_column_info(self, dataset: MstrDataset) -> list[Column]:
         """Attributes become columns with their forms as children; metrics are leaf columns"""

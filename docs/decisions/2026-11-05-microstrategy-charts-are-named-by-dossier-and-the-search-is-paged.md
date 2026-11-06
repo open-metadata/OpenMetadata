@@ -24,6 +24,13 @@ also asked for every result in one response (`limit=-1`).
 - The search is scoped by the `X-MSTR-ProjectID` header and paged 500 results at a time
   (`SEARCH_PAGE_SIZE`). Projects are filtered by `projectFilterPattern` before their dossiers are
   searched.
+- On the first run after the upgrade, a new chart takes the description, tags, glossary terms,
+  owners, domains, data products, custom properties and life cycle of the chart its dossier still
+  links under the old name. An old chart shared by several dossiers gives its metadata to each
+  of their new charts.
+- A chart request names its dashboard once that dashboard exists. A chart update without
+  `dashboards` deletes the dashboard → chart relationship server-side. A new dashboard is created
+  after its charts and links them itself.
 - `username` and `password` are optional in the connection schema. The login sends them only when
   they are set, so the Anonymous login mode (8) works without credentials. The login request times
   out after 10 s to connect and 60 s to read (`LOGIN_TIMEOUT`); every other call keeps the REST
@@ -42,7 +49,7 @@ also asked for every result in one response (`limit=-1`).
 ## Consequences
 - The upgrade renames every MicroStrategy chart. With `markDeletedCharts` on, the first run
   soft-deletes the charts named the old way, except those linked to a dossier whose definition
-  cannot be read, and creates the new ones; descriptions, tags or lineage added by hand to an old
-  chart are not carried over.
+  cannot be read. Their user-added metadata moves to the new charts. Followers, votes,
+  certification and manually drawn lineage stay on the soft-deleted chart.
 - A server that keeps failing to render some definitions keeps stale data models until it renders
   them. Reverting that needs a per-dossier stale scope, which `deleteStale` does not have.

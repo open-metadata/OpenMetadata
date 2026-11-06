@@ -29,7 +29,10 @@ from metadata.generated.schema.entity.data.table import DataType
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
     MicroStrategyConnection,
 )
+from metadata.generated.schema.type.basic import Markdown, Uuid
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import SourceListing
 from metadata.ingestion.source.dashboard.microstrategy.client import (
     MicroStrategyApiError,
@@ -59,6 +62,7 @@ TUTORIAL = {
 MOBILE = {"id": "EC70648611E7A2F962E90080EFD58751", "name": "MobileDashboards", "status": 0, "acg": 255}
 
 OWNER_ID = "54F3D26011D2896560009A8E67019608"
+USER_ID = "3f2a8a31-1c55-4f0e-9a1c-5f6e8f1f9a01"
 
 
 def _search_row(dossier_id: str, name: str, project_id: str, description: str | None = None) -> dict:
@@ -471,6 +475,48 @@ class TestSource:
             f"{OFFICE_ROYALE['id']}_K53_W64",
             f"{AIRLINE['id']}_K53_W63",
         ]
+
+    def test_charts_name_their_existing_dashboard_and_inherit_legacy_metadata(self, client):
+        # A chart update that leaves out its dashboards unlinks them, and the charts that
+        # existed under the old `<pageKey><vizKey>` names hold metadata users added by hand.
+        source = _source(client)
+        legacy = SimpleNamespace(
+            description=Markdown("Written by hand"),
+            tags=[TagLabel(tagFQN="PII.Sensitive", source="Classification", labelType="Manual", state="Confirmed")],
+            owners=EntityReferenceList(root=[EntityReference(id=Uuid(USER_ID), type="user")]),
+            domains=EntityReferenceList(
+                root=[EntityReference(id=Uuid(USER_ID), type="domain", fullyQualifiedName="Sales")]
+            ),
+            dataProducts=None,
+            extension=None,
+            lifeCycle=None,
+        )
+        existing = SimpleNamespace(
+            fullyQualifiedName=SimpleNamespace(root=f"mstr.{OFFICE_ROYALE['id']}"),
+            charts=SimpleNamespace(
+                root=[SimpleNamespace(name="K53W63", id=USER_ID), SimpleNamespace(name="other_new_name", id=USER_ID)]
+            ),
+        )
+        source.metadata.get_by_name.return_value = existing
+        source.metadata.get_by_id.return_value = legacy
+
+        w63, w64 = [either.right for either in source.yield_dashboard_chart(_details(source, OFFICE_ROYALE))]
+
+        assert [d.root for d in w63.dashboards] == [f"mstr.{OFFICE_ROYALE['id']}"]
+        assert w63.description.root == "Written by hand"
+        assert [t.tagFQN.root for t in w63.tags] == ["PII.Sensitive"]
+        assert w63.owners == legacy.owners
+        assert [d.root for d in w63.domains] == ["Sales"]
+        assert w64.description is None
+        assert w64.tags is None
+
+    def test_charts_of_a_new_dossier_name_no_dashboard(self, client):
+        source = _source(client)
+
+        charts = [either.right for either in source.yield_dashboard_chart(_details(source, OFFICE_ROYALE))]
+
+        assert all(chart.dashboards is None for chart in charts)
+        source.metadata.get_by_id.assert_not_called()
 
     def test_dashboard_carries_description_and_owner(self, client):
         source = _source(client)
