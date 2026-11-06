@@ -76,7 +76,7 @@ RUN ln -sf "${JAVA_HOME}/bin/java" /usr/bin/java
 # Maven 3.9.9 — the version `.devcontainer/dev/devcontainer.json` pins. Jammy's apt carries 3.6.3,
 # which is too old for this build.
 RUN curl -fsSL --retry 3 --retry-all-errors \
-        "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
+        "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
         -o /tmp/maven.tar.gz \
     && echo "${MAVEN_SHA512}  /tmp/maven.tar.gz" | sha512sum --check --strict - \
     && mkdir -p "${MAVEN_HOME}" \
