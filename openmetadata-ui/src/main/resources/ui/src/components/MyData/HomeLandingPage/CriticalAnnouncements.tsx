@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PaginationDot } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo } from 'react';
@@ -77,8 +78,8 @@ export interface CriticalAnnouncementsProps {
  * announcements rail below it — the same pager, the same slide — moved only by
  * the user, so an outage notice never slides away mid-read.
  *
- * This is the only place users see system announcements; the rail below lists
- * asset announcements alone.
+ * The rail below lists every other live announcement, system ones included,
+ * and leaves these out so none appears twice.
  *
  * The banner takes the page's top slot, so whatever normally sits there is
  * passed as `fallback` and shown whenever no critical announcement is live.
@@ -130,7 +131,11 @@ const CriticalAnnouncements = ({
     syncScrollState,
     goToPrevious,
     goToNext,
+    goToPage,
   } = useRailPager(count);
+  // One banner fills the rail, so its page is the banner's position. Clamped:
+  // a dismissal can shorten the rail before it re-measures.
+  const position = Math.min(pageIndex, count - 1);
 
   if (count === 0) {
     return <>{fallback}</>;
@@ -153,14 +158,12 @@ const CriticalAnnouncements = ({
               onPrevious={goToPrevious}
             />
           </div>
-          {/* One banner fills the rail, so its page is the banner's position.
-          Clamped: a dismissal can shorten the rail before it re-measures. */}
           <span
             aria-live="polite"
             className="tw:sr-only"
             data-testid="critical-announcement-position">
             {t('label.current-of-total', {
-              current: Math.min(pageIndex, count - 1) + 1,
+              current: position + 1,
               total: count,
             })}
           </span>
@@ -185,6 +188,19 @@ const CriticalAnnouncements = ({
           </li>
         ))}
       </ul>
+
+      {count > 1 && (
+        <div
+          className="tw:mt-3 tw:flex tw:justify-center"
+          data-testid="critical-announcement-dots">
+          <PaginationDot
+            page={position + 1}
+            size="sm"
+            total={count}
+            onPageChange={(page) => goToPage(page - 1)}
+          />
+        </div>
+      )}
     </section>
   );
 };

@@ -157,6 +157,10 @@ describe('SystemAnnouncementForm', () => {
 
     expect(screen.getByTestId('custom-type-name')).toBeInTheDocument();
     expect(screen.getByTestId('announcement-color-select')).toBeInTheDocument();
+    // Selected from the start: the preview already draws it in this colour.
+    expect(
+      screen.getByRole('radio', { name: 'label.color-pink' })
+    ).toBeChecked();
   });
 
   it('saves a duplicate as a new system announcement with no entity link', async () => {

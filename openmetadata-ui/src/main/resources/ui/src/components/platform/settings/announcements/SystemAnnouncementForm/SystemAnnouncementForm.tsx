@@ -24,7 +24,10 @@ import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../../../generated/entity/feed/announcement';
 import { useSaveSystemAnnouncement } from '../../../../../hooks/platform/useSystemAnnouncements';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
-import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../../../utils/AnnouncementsUtils';
+import {
+  CUSTOM_TYPE_NAME_MAX_LENGTH,
+  DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR,
+} from '../../../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../../../utils/BlockEditorPureUtils';
 import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';
 import {
@@ -110,6 +113,15 @@ const SystemAnnouncementForm = ({
     // Leaving Custom drops its colour and name requirements, so their errors go too.
     if (value !== AnnouncementType.Custom) {
       form.clearErrors(['color', 'customTypeName']);
+
+      return;
+    }
+    // A Custom with no colour already renders in the default one, so the swatch
+    // starts selected on it instead of showing nothing picked.
+    if (!form.getValues('color')) {
+      form.setValue('color', DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR, {
+        shouldValidate: true,
+      });
     }
   };
 

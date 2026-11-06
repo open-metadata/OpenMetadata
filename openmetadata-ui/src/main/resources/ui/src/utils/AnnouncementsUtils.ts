@@ -193,6 +193,9 @@ export const CUSTOM_ANNOUNCEMENT_COLORS: AnnouncementColor[] = [
   AnnouncementColor.Error,
 ];
 
+/** The colour a Custom announcement starts with: the type's own default. */
+export const DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR = AnnouncementColor.Pink;
+
 /** Mirrors `customTypeName.maxLength` in the announcement schema. */
 export const CUSTOM_TYPE_NAME_MAX_LENGTH = 64;
 
@@ -221,6 +224,15 @@ export const getAnnouncementTypeConfig = (
     customLabel: announcement.customTypeName?.trim() || undefined,
   };
 };
+
+/**
+ * A system announcement (no entity link) of the Critical type — the kind the
+ * Home page shows as its top banner rather than in the announcements rail.
+ */
+export const isCriticalSystemAnnouncement = (
+  announcement: Pick<AnnouncementEntity, 'entityLink' | 'type'>
+): boolean =>
+  !announcement.entityLink && announcement.type === AnnouncementType.Critical;
 
 /** The badge text: a Custom announcement's own name, else the type's label. */
 export const getAnnouncementTypeLabel = (

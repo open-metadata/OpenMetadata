@@ -26,10 +26,14 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Announcement02 } from '@openmetadata/ui-core-components/icons';
+import { Heading } from 'react-aria-components';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
-import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../utils/AnnouncementsUtils';
+import {
+  CUSTOM_TYPE_NAME_MAX_LENGTH,
+  DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR,
+} from '../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
   AnnouncementDateField,
@@ -86,6 +90,15 @@ const AnnouncementForm = ({
     // Leaving Custom drops its colour/name requirements, so their errors go too.
     if (value !== AnnouncementType.Custom) {
       form.clearErrors(['color', 'customTypeName']);
+
+      return;
+    }
+    // A Custom with no colour already renders in the default one, so the swatch
+    // starts selected on it instead of showing nothing picked.
+    if (!form.getValues('color')) {
+      form.setValue('color', DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR, {
+        shouldValidate: true,
+      });
     }
   };
 
@@ -96,11 +109,11 @@ const AnnouncementForm = ({
       isOpen={open}
       onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <Modal>
-        {/* Named here rather than through Dialog's `title`: that renders a
-            bare heading, and this header carries an icon and a subtitle. */}
+        {/* Titled here rather than through Dialog's `title`: that renders a
+            bare heading, and this header carries an icon and a subtitle. The
+            title-slot Heading still names the dialog. */}
         <Dialog
           showCloseButton
-          aria-label={title}
           data-testid={testId}
           width={600}
           onClose={onCancel}>
@@ -112,14 +125,14 @@ const AnnouncementForm = ({
               theme="modern"
             />
             <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
-              <Typography
-                as="h2"
-                className="tw:text-primary"
+              {/* A Heading, not Typography: Typography wraps an h2 in `.prose`,
+                  whose heading size and weight outrank the utilities. */}
+              <Heading
+                className="tw:m-0 tw:text-sm tw:font-medium tw:text-primary"
                 data-testid="announcement-form-title"
-                size="text-md"
-                weight="semibold">
+                slot="title">
                 {title}
-              </Typography>
+              </Heading>
               <Typography as="p" className="tw:text-tertiary" size="text-sm">
                 {description}
               </Typography>

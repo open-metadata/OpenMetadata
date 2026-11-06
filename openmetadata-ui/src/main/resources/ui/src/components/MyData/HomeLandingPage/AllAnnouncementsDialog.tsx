@@ -39,8 +39,9 @@ const ALL_ANNOUNCEMENTS_QUERY_KEY = [
 ] as const;
 const ALL_ANNOUNCEMENTS_TTL_MS = 60_000;
 
-// Every live announcement — the full version of the rail, which shows two at a
-// time. Expired and scheduled ones stay out: the section itself only appears
+// Every live announcement, asset and system alike — the full version of the
+// rail, which shows two at a time, and so the one list that also carries the
+// system criticals the banner shows. Expired and scheduled ones stay out: the section itself only appears
 // while something is live, so it is no place for them; each asset's
 // Announcements drawer lists those. Paged on the API's `after` cursor rather
 // than capped at one fetch, so a busy estate never silently loses the rest.
@@ -51,7 +52,6 @@ const fetchAnnouncementsPage = ({ pageParam }: { pageParam?: string }) =>
     active: true,
     limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
     after: pageParam,
-    system: false,
   });
 
 interface AllAnnouncementsDialogProps {

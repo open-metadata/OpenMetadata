@@ -228,6 +228,31 @@ describe('AnnouncementForm', () => {
     );
   });
 
+  it('should start a Custom announcement on the default colour, still changeable', async () => {
+    render(<Harness onSubmit={jest.fn()} />);
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`announcement-type-${AnnouncementType.Custom}`)
+      );
+    });
+
+    expect(
+      screen.getByRole('radio', { name: 'label.color-pink' })
+    ).toBeChecked();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('radio', { name: 'label.color-blue' }));
+    });
+
+    expect(
+      screen.getByRole('radio', { name: 'label.color-blue' })
+    ).toBeChecked();
+    expect(
+      screen.getByRole('radio', { name: 'label.color-pink' })
+    ).not.toBeChecked();
+  });
+
   it('should not keep a colour error after switching away from Custom', async () => {
     const onSubmit = jest.fn();
     render(<Harness onSubmit={onSubmit} />);

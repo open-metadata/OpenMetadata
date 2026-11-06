@@ -22,6 +22,7 @@ import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../../rest/announcementsAPI';
+import { isCriticalSystemAnnouncement } from '../../../utils/AnnouncementsUtils';
 import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import AllAnnouncementsDialog from './AllAnnouncementsDialog';
@@ -38,13 +39,13 @@ const ACTIVE_ANNOUNCEMENTS_TTL_MS = 60_000;
 const ACTIVE_ANNOUNCEMENTS_GC_TIME_MS =
   ACTIVE_ANNOUNCEMENTS_TTL_MS + 5 * 60 * 1000;
 
-// Asset announcements only: system ones reach users through the critical
-// banner above the rail, never here.
+// Asset and system announcements alike. The system criticals come back too but
+// are left out of the rail, not the request: the dismissals the rail prunes are
+// shared with the dialog, which does list them.
 const fetchActiveAnnouncements = async (): Promise<AnnouncementEntity[]> => {
   const response = await listAnnouncements({
     active: true,
     limit: 100,
-    system: false,
   });
 
   return response.data ?? [];
@@ -94,8 +95,12 @@ const AnnouncementsRail: React.FC = () => {
     void queryClient.prefetchQuery(getActiveAnnouncementsQueryOptions());
   });
 
+  // The critical banner above already shows the system criticals.
   const activeAnnouncements = useMemo(
-    () => (announcements ?? []).filter((a) => !dismissedIds.has(a.id)),
+    () =>
+      (announcements ?? []).filter(
+        (a) => !dismissedIds.has(a.id) && !isCriticalSystemAnnouncement(a)
+      ),
     [announcements, dismissedIds]
   );
   const count = activeAnnouncements.length;

@@ -280,16 +280,41 @@ describe('AnnouncementsRail cache integration', () => {
     mockListAnnouncements.mockResolvedValue({ data: [] } as never);
   });
 
-  it('lists only asset announcements, leaving system ones to the critical banner', async () => {
+  it('asks for asset and system announcements alike', async () => {
     renderWithQueryClient(<AnnouncementsRail />);
 
     await waitFor(() => {
       expect(mockGetActiveAnnouncements).toHaveBeenCalledWith({
         active: true,
         limit: 100,
-        system: false,
       });
     });
+  });
+
+  it('shows every system announcement but the criticals the banner already shows', async () => {
+    mockGetActiveAnnouncements.mockResolvedValue({
+      data: [
+        makeAnnouncement('asset-critical', { type: AnnouncementType.Critical }),
+        makeAnnouncement('system-notice', {
+          entityLink: undefined,
+          type: AnnouncementType.Notice,
+        }),
+        makeAnnouncement('system-critical', {
+          entityLink: undefined,
+          type: AnnouncementType.Critical,
+        }),
+      ],
+    } as never);
+
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    expect(
+      await screen.findByTestId(cardId('system-notice'))
+    ).toBeInTheDocument();
+    expect(screen.getByTestId(cardId('asset-critical'))).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(cardId('system-critical'))
+    ).not.toBeInTheDocument();
   });
 
   it('deduplicates concurrent active-announcement requests', async () => {
@@ -469,6 +494,21 @@ describe('AnnouncementsRail rail', () => {
 
     expect(screen.getByTestId(PREV_BTN)).not.toBeDisabled();
     expect(screen.getByTestId(NEXT_BTN)).toBeDisabled();
+  });
+
+  // Several cards show at once, so a dot would stand for a page, not an
+  // announcement; the dots are kept to the one-at-a-time carousels.
+  it('pages by its arrows alone, with no dots', async () => {
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(cardId('a1'))).toBeInTheDocument();
+    });
+
+    stubRailGeometry({ clientWidth: 400, scrollWidth: 1200 });
+
+    expect(screen.getByTestId(NEXT_BTN)).toBeEnabled();
+    expect(screen.queryByTestId('announcement-dots')).not.toBeInTheDocument();
   });
 
   it('hides the pager for a single announcement but keeps view all', async () => {
@@ -654,8 +694,9 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     await openDialog();
 
     expect(mockListAnnouncements).toHaveBeenCalledWith(
-      expect.objectContaining({ active: true, system: false })
+      expect.objectContaining({ active: true })
     );
+    expect(mockListAnnouncements.mock.calls[0][0]).not.toHaveProperty('system');
 
     const list = screen.getByTestId('all-announcements-list');
 
@@ -664,6 +705,26 @@ describe('AnnouncementsRail all-announcements dialog', () => {
       within(list).queryByTestId('announcement-status')
     ).not.toBeInTheDocument();
     expect(within(list).getAllByLabelText(DISMISS_LABEL)).toHaveLength(2);
+  });
+
+  it('lists system announcements too, the criticals among them', async () => {
+    mockListAnnouncements.mockResolvedValue({
+      data: [
+        makeAnnouncement('system-critical', {
+          entityLink: undefined,
+          type: AnnouncementType.Critical,
+        }),
+        makeAnnouncement('system-notice', { entityLink: undefined }),
+      ],
+    } as never);
+    await openDialog();
+
+    const list = screen.getByTestId('all-announcements-list');
+
+    expect(list).toContainElement(
+      screen.getByTestId(cardId('system-critical'))
+    );
+    expect(list).toContainElement(screen.getByTestId(cardId('system-notice')));
   });
 
   it('closes itself when an announcement in it is opened', async () => {
@@ -727,7 +788,6 @@ describe('AnnouncementsRail all-announcements dialog', () => {
       active: true,
       after: undefined,
       limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
-      system: false,
     });
     // The badge counts the whole list, not just the page on screen.
     expect(screen.getByTestId('all-announcements-count')).toHaveTextContent(
@@ -742,7 +802,6 @@ describe('AnnouncementsRail all-announcements dialog', () => {
       active: true,
       after: 'cursor-2',
       limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
-      system: false,
     });
     expect(
       screen.queryByTestId('all-announcements-load-more')

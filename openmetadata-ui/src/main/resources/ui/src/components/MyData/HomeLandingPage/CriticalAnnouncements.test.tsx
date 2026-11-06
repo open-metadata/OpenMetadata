@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import {
@@ -137,6 +138,7 @@ const stubRailGeometry = ({
     writable: true,
   });
   rail.scrollBy = jest.fn();
+  rail.scrollTo = jest.fn();
   // Re-run the scroll-state sync now that the box has a size.
   fireEvent.scroll(rail);
 
@@ -247,6 +249,9 @@ describe('CriticalAnnouncements', () => {
     expect(screen.getByText('label.critical')).toBeInTheDocument();
     expect(screen.queryByTestId(NEXT_BTN)).not.toBeInTheDocument();
     expect(screen.queryByTestId(PREV_BTN)).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('critical-announcement-dots')
+    ).not.toBeInTheDocument();
   });
 
   it('leaves the description out when the announcement has none', async () => {
@@ -333,6 +338,40 @@ describe('CriticalAnnouncements', () => {
     scrollRailTo(rail, 400);
 
     expect(position).toHaveTextContent('2 of 2');
+  });
+
+  it('marks the showing banner with a dot per banner, and jumps to the dot picked', async () => {
+    respondWith([
+      makeCritical('first', 1),
+      makeCritical('second', 2),
+      makeCritical('third', 3),
+    ]);
+
+    renderBanner();
+
+    await screen.findByText('Title first');
+    const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 1200 });
+    const dots = screen.getByTestId('critical-announcement-dots');
+
+    expect(within(dots).getAllByLabelText(/^Page \d$/)).toHaveLength(3);
+    expect(within(dots).getByLabelText('Page 1')).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
+
+    fireEvent.click(within(dots).getByLabelText('Page 3'));
+
+    expect(rail.scrollTo).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      left: 800,
+    });
+
+    scrollRailTo(rail, 800);
+
+    expect(within(dots).getByLabelText('Page 3')).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
   });
 
   it('hands focus to previous when next is disabled under it', async () => {
