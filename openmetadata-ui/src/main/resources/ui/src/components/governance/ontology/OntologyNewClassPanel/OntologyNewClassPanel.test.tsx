@@ -1576,17 +1576,74 @@ describe('mappings are picked by label', () => {
     ]);
   });
 
-  it('rejects text that is neither a concept label nor an absolute IRI', async () => {
+  it('shows no error while a partial label is typed', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'Acc');
+
+    expect(
+      screen.queryByText('message.invalid-concept-iri')
+    ).not.toBeInTheDocument();
+  });
+
+  it('rejects Add mapping on text that is neither a concept label nor an absolute IRI', async () => {
     setup();
     const picker = await mappingPicker();
     type(picker, 'no such concept');
 
-    expect(screen.getByText('message.invalid-concept-iri')).toBeVisible();
-    expect(screen.getByTestId('new-class-add-mapping')).toBeDisabled();
+    expect(
+      screen.queryByText('message.invalid-concept-iri')
+    ).not.toBeInTheDocument();
 
     addMapping();
 
+    expect(screen.getByText('message.invalid-concept-iri')).toBeVisible();
     expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
+  });
+
+  it('rejects Enter on text that is neither a concept label nor an absolute IRI', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'no such concept');
+    fireEvent.keyDown(picker, { key: 'Enter' });
+
+    expect(screen.getByText('message.invalid-concept-iri')).toBeVisible();
+    expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
+  });
+
+  it('rejects leaving the field with text that is neither a concept label nor an absolute IRI', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'no such concept');
+    fireEvent.blur(picker);
+
+    expect(screen.getByText('message.invalid-concept-iri')).toBeVisible();
+  });
+
+  it('clears the error when the text changes', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'no such concept');
+    addMapping();
+    type(picker, 'no such concept 2');
+
+    expect(
+      screen.queryByText('message.invalid-concept-iri')
+    ).not.toBeInTheDocument();
+  });
+
+  it('never shows the error for a pasted IRI or a picked label', async () => {
+    serveReadableConcepts();
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'https://schema.org/Payment');
+    fireEvent.blur(picker);
+    type(picker, 'Account');
+    fireEvent.blur(picker);
+
+    expect(
+      screen.queryByText('message.invalid-concept-iri')
+    ).not.toBeInTheDocument();
   });
 
   it('adds a pasted IRI when Enter is pressed and no option is focused', async () => {
@@ -1599,15 +1656,6 @@ describe('mappings are picked by label', () => {
       'Exact match · https://schema.org/Payment'
     );
     expect(picker).toHaveValue('');
-  });
-
-  it('does not add text that is not an absolute IRI when Enter is pressed', async () => {
-    setup();
-    const picker = await mappingPicker();
-    type(picker, 'no such concept');
-    fireEvent.keyDown(picker, { key: 'Enter' });
-
-    expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
   });
 
   it('selects the focused option on Enter instead of adding the mapping', async () => {
@@ -1633,7 +1681,7 @@ describe('mappings are picked by label', () => {
 
   it('shows a loading row, then the matches of concepts that arrive after typing', async () => {
     let release: () => void = () => undefined;
-    const arrival = new Promise((resolve) => {
+    const arrival = new Promise<void>((resolve) => {
       release = resolve;
     });
     const base = get.getMockImplementation();

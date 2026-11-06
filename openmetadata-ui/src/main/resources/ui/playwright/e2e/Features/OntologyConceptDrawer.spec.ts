@@ -101,27 +101,13 @@ const pasteMappingIri = async (page: Page, iri: string) => {
   await input.press('Tab');
 };
 
-// React Aria closes an open list when the drawer scrolls. The field sits under
-// the drawer's sticky footer, so Playwright's own scroll-to-focus would land
-// after the list opened; centring the field first leaves nothing to scroll.
-const centerMappingField = async (page: Page) => {
-  const input = page.getByTestId('new-class-mapping-iri').getByRole('combobox');
-  await input.evaluate((element) =>
-    element.scrollIntoView({ block: 'center', behavior: 'instant' })
-  );
-  await page.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(resolve))
-  );
-};
-
 const pickMappingByLabel = async (page: Page, label: string, iri: string) => {
   const input = page.getByTestId('new-class-mapping-iri').getByRole('combobox');
   const option = page
     .getByRole('option', { name: new RegExp(`^${label}`) })
     .filter({ hasText: iri });
-  await expect(input).toBeVisible();
-  await centerMappingField(page);
-  await input.fill(label);
+  await input.click();
+  await input.pressSequentially(label.slice(0, -1));
   await expect(option).toBeVisible();
   await option.click();
   await expect(input).toHaveValue(label);
@@ -388,7 +374,7 @@ for (const mode of ['classic', 'ai'] as const) {
             .getByTestId('new-class-mapping-iri')
             .getByRole('combobox');
 
-          await centerMappingField(page);
+          await input.click();
           await input.fill('https://schema.org/Invoice');
           await input.press('Enter');
 
@@ -397,8 +383,8 @@ for (const mode of ['classic', 'ai'] as const) {
           ]);
           await expect(input).toHaveValue('');
 
-          await centerMappingField(page);
-          await input.fill(target.name);
+          await input.click();
+          await input.pressSequentially(target.name.slice(0, -1));
           await expect(
             page.getByRole('option', { name: new RegExp(`^${target.name}`) })
           ).toBeVisible();
@@ -418,6 +404,56 @@ for (const mode of ['classic', 'ai'] as const) {
         }
       });
 
+      test('tabbing into the mapping field keeps the list open while a label from another ontology is typed and picked', async ({
+        isolatedUserPage: page,
+      }) => {
+        test.slow();
+        const elsewhere = await createOntology(api, 'concept_drawer_tab');
+        try {
+          const target = await createConcept(
+            api,
+            elsewhere,
+            `Tabbed${uuid().slice(0, 8)}`
+          );
+          await page.setViewportSize({ width: 1280, height: 520 });
+          await page.goto('/governance/ontology?ontology=' + owner.id);
+          await page.getByTestId('mode-tab-edit').click();
+          await page.getByTestId('ontology-add-concept').click();
+          const input = page
+            .getByTestId('new-class-mapping-iri')
+            .getByRole('combobox');
+          await page.getByRole('button', { name: /Mapping type$/ }).focus();
+          await page.keyboard.press('Tab');
+          await expect(input).toBeFocused();
+
+          const fieldBottom = (await input.boundingBox())?.y ?? Infinity;
+          const footerTop = (
+            await page.getByTestId('new-class-create').boundingBox()
+          )?.y;
+          expect(fieldBottom).toBeLessThan(footerTop ?? 0);
+
+          // The full label resolves to the concept and closes the list, so stop one character short.
+          await page.keyboard.type(target.name.slice(0, -1));
+          const option = page.getByRole('option', {
+            name: new RegExp(`^${target.name}`),
+          });
+          await expect(option).toBeVisible();
+          await expect(input).toHaveAttribute('aria-expanded', 'true');
+          await expect(
+            page.getByText('Enter a valid concept IRI.')
+          ).toHaveCount(0);
+          await option.click();
+
+          await expect(input).toHaveValue(target.name);
+          await page.getByTestId('new-class-add-mapping').click();
+          await expect(page.getByTestId('new-class-mapping')).toHaveText([
+            `Exact match · ${target.iri}`,
+          ]);
+        } finally {
+          await removeOntology(api, elsewhere);
+        }
+      });
+
       test('rejects text that is not an IRI or a concept label in the mapping row', async ({
         isolatedUserPage: page,
       }) => {
@@ -425,12 +461,27 @@ for (const mode of ['classic', 'ai'] as const) {
         await page.goto('/governance/ontology?ontology=' + owner.id);
         await page.getByTestId('mode-tab-edit').click();
         await page.getByTestId('ontology-add-concept').click();
-        await pasteMappingIri(page, 'no such concept');
+        const input = page
+          .getByTestId('new-class-mapping-iri')
+          .getByRole('combobox');
+        await input.fill('no such concept');
+
+        await expect(page.getByText('Enter a valid concept IRI.')).toHaveCount(
+          0
+        );
+
+        await page.getByTestId('new-class-add-mapping').click();
 
         await expect(
           page.getByText('Enter a valid concept IRI.')
         ).toBeVisible();
-        await expect(page.getByTestId('new-class-add-mapping')).toBeDisabled();
+        await expect(page.getByTestId('new-class-mapping')).toHaveCount(0);
+
+        await input.fill('no such concept 2');
+
+        await expect(page.getByText('Enter a valid concept IRI.')).toHaveCount(
+          0
+        );
       });
 
       test('blocks a duplicate name, a duplicate label and Spaced Name! with a message', async ({

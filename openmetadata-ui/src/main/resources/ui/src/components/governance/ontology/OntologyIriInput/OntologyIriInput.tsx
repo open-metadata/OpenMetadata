@@ -30,6 +30,8 @@ interface OntologyIriInputProps {
   onChange: (iri: string) => void;
   /** Enter on a typed absolute IRI with no option focused, as a pasted IRI is committed. */
   onSubmit?: () => void;
+  /** Enter or blur on text that is neither an option nor an absolute IRI, so a caller can show its error only now. */
+  onInvalidCommit?: () => void;
 }
 
 const LOADING_KEY = '\u0000loading';
@@ -46,6 +48,7 @@ const OntologyIriInput = ({
   isLoading,
   onChange,
   onSubmit,
+  onInvalidCommit,
 }: OntologyIriInputProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState<string>();
@@ -84,10 +87,17 @@ const OntologyIriInput = ({
   const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
     if (
       event.key !== 'Enter' ||
-      !onSubmit ||
-      event.currentTarget.getAttribute('aria-activedescendant') ||
-      !isAbsoluteOntologyIri(event.currentTarget.value.trim())
+      event.currentTarget.getAttribute('aria-activedescendant')
     ) {
+      return;
+    }
+    const text = event.currentTarget.value.trim();
+    if (text && !isAbsoluteOntologyIri(text) && !selected) {
+      onInvalidCommit?.();
+
+      return;
+    }
+    if (!onSubmit || !isAbsoluteOntologyIri(text)) {
       return;
     }
     event.preventDefault();
@@ -123,7 +133,12 @@ const OntologyIriInput = ({
       items={items}
       label={label}
       selectedKey={selected?.iri ?? null}
-      onBlur={() => setSearch(undefined)}
+      onBlur={() => {
+        setSearch(undefined);
+        if (value.trim() && !selected && !isAbsoluteOntologyIri(value.trim())) {
+          onInvalidCommit?.();
+        }
+      }}
       onInputChange={(text) => {
         setSearch(text);
         if (text === selected?.label) {
