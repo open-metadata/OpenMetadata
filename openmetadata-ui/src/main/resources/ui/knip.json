@@ -18,7 +18,10 @@
     // DashboardChart/DashboardDetails; useLogStream: collate useAutomationLogs.test.
     "src/components/Entity/EntityLineage/NodeSuggestions.component.tsx",
     "src/pages/DataInsightPage/DataInsightProvider.tsx",
-    "src/components/common/LogViewerModal/useLogStream.ts"
+    "src/components/common/LogViewerModal/useLogStream.ts",
+    // Type-only compat forward: collate CustomizeMyDataPageClassCollate imports
+    // AnnouncementsWidgetProps; the widget component itself was removed.
+    "src/components/MyData/RightSidebar/AnnouncementsWidget.tsx"
   ],
   "ignoreDependencies": [".*"]
 }
