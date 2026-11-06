@@ -61,7 +61,7 @@ import vertica from '../assets/img/service-icon-vertica.webp';
 import teradata from '../assets/svg/teradata.svg';
 
 // Messaging services
-import kafka from '../assets/img/service-icon-kafka.webp';
+import kafka from '../assets/img/service-icon-kafka.svg';
 import kinesis from '../assets/img/service-icon-kinesis.webp';
 import nats from '../assets/img/service-icon-nats.png';
 import redpanda from '../assets/img/service-icon-redpanda.webp';
