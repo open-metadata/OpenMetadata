@@ -3,13 +3,14 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-06 (initial)
 - **Deciders:** @Vishnuujain
-- **Guard:** `HttpServletStatelessServerTransportTest.doPost_nonJsonContentType_answers415WithoutReachingTheHandler`
+- **Guard:** `HttpServletStatelessServerTransportTest.doPost_nonJsonContentType_answers415WithoutReachingTheHandler`,
+  `HttpServletStatelessServerTransportTest.doPost_withoutAValidToken_answers401BeforeTheContentTypeCheck`
 - **Related:** #37248
 
 ## Context
 
-MCP clients send JSON-RPC as `application/json`, and since 2.1.0 the MCP Java SDK's servlet
-transport answers 415 to a POST with any other media type. `HttpServletStatelessServerTransport` is
+MCP clients send JSON-RPC as `application/json`, and the MCP Java SDK's own servlet transports
+answer 415 to a POST with any other media type. `HttpServletStatelessServerTransport` is
 our copy of that transport with our authentication added, so it did not get the rule: a POST with
 any body type reached the JSON-RPC handler.
 

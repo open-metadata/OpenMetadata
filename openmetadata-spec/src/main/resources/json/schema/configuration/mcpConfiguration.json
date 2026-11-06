@@ -7,12 +7,12 @@
   "javaType": "org.openmetadata.schema.api.configuration.MCPConfiguration",
   "properties": {
     "mcpServerName": {
-      "description": "Name of the MCP server",
+      "description": "Name of the MCP server, reported to clients in initialize. Applies after a restart.",
       "type": "string",
       "default": "openmetadata-mcp-server"
     },
     "mcpServerVersion": {
-      "description": "Version of the MCP server",
+      "description": "Version of the MCP server, reported to clients in initialize. Applies after a restart.",
       "type": "string",
       "default": "1.0.0"
     },

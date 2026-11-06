@@ -23,6 +23,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerHandler;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -319,6 +320,30 @@ class HttpServletStatelessServerTransportTest {
     transportWith(handler).doPost(request, response);
 
     verify(response).setStatus(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+    verify(handler, never()).handleRequest(any(), any());
+  }
+
+  @Test
+  void doPost_withoutAValidToken_answers401BeforeTheContentTypeCheck() throws Exception {
+    McpStatelessServerHandler handler = mock(McpStatelessServerHandler.class);
+    HttpServletStatelessServerTransport transport =
+        new HttpServletStatelessServerTransport(
+            new ObjectMapper(), MCP_ENDPOINT, request -> McpTransportContext.EMPTY) {
+          @Override
+          protected boolean authenticateRequest(
+              HttpServletRequest request, HttpServletResponse response) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
+          }
+        };
+    transport.setMcpHandler(handler);
+    HttpServletRequest request = requestFor("application/json", UNKNOWN_METHOD_REQUEST);
+    when(request.getContentType()).thenReturn("text/plain");
+
+    transport.doPost(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    verify(response, never()).setStatus(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
     verify(handler, never()).handleRequest(any(), any());
   }
 

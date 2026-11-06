@@ -302,7 +302,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
   }
 
   /**
-   * The rule the SDK's own servlet transport applies since 2.1.0: the media type must be
+   * The rule the SDK's own servlet transports apply: the media type must be
    * application/json, and parameters such as charset are allowed. A missing header fails.
    */
   static boolean isJsonContentType(String contentType) {

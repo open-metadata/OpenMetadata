@@ -49,11 +49,11 @@ export interface MCPConfiguration {
      */
     maxResponseChars?: number;
     /**
-     * Name of the MCP server
+     * Name of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerName?: string;
     /**
-     * Version of the MCP server
+     * Version of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerVersion?: string;
     /**
