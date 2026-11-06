@@ -241,17 +241,20 @@ test.describe(
         await expect(submit).toBeDisabled();
 
         await page.getByTestId('ontology-create-name').fill('Finance Core');
-        await expect(
-          page.getByTestId('ontology-create-iri-preview')
-        ).toHaveText(/\/onto\/financec#$/);
+        await page.getByTestId('ontology-create-advanced-toggle').click();
+        await expect(page.getByTestId('ontology-create-namespace')).toHaveValue(
+          /\/onto\/financec#$/
+        );
         await page.getByTestId('ontology-create-name').clear();
         await expect(submit).toBeDisabled();
 
         await page.getByTestId('ontology-create-name').fill(name);
-        await page.getByTestId('ontology-create-prefix').fill(prefix);
-        await expect(
-          page.getByTestId('ontology-create-iri-preview')
-        ).toHaveText(new RegExp(`/onto/${prefix}#$`));
+        await page
+          .getByTestId('ontology-create-iri')
+          .fill(`https://open-metadata.org/onto/${prefix}`);
+        await expect(page.getByTestId('ontology-create-namespace')).toHaveValue(
+          new RegExp(`/onto/${prefix}#$`)
+        );
 
         const response = page.waitForResponse(isOntologyCreate);
         await submit.click();

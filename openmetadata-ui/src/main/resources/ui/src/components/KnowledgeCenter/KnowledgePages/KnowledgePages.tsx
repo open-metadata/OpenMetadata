@@ -14,13 +14,15 @@
 import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
+import {
+  Article,
+  QuickLink as QuickLinkIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconArticle } from '../../../assets/svg/common/file.svg';
-import { ReactComponent as LinkIcon } from '../../../assets/svg/quick-link.svg';
 import Loader from '../../../components/common/Loader/Loader';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
@@ -102,18 +104,16 @@ const KnowledgePages: FC = () => {
               span={24}>
               <span>
                 {isQuickLink ? (
-                  <LinkIcon
+                  <QuickLinkIcon
                     data-testid="link-icon"
-                    height={16}
+                    size={16}
                     style={{ verticalAlign: 'middle' }}
-                    width={16}
                   />
                 ) : (
-                  <IconArticle
+                  <Article
                     data-testid="article-icon"
-                    height={16}
+                    size={16}
                     style={{ verticalAlign: 'middle' }}
-                    width={16}
                   />
                 )}
               </span>

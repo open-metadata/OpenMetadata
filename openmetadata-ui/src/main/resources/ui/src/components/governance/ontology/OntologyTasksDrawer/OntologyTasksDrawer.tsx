@@ -33,10 +33,12 @@ import {
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
 import { Task, TaskType } from '../../../../generated/entity/tasks/task';
+import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   activateOntologyRelease,
+  getOntology,
   getOntologyRelease,
   getOntologyReleaseEvents,
   getOntologyReleaseReview,
@@ -56,11 +58,15 @@ import {
   buildResolveBody,
   getTaskResolveActions,
 } from '../../../discovery/personal-space/InboxPage/taskResolve.utils';
+import OntologyOpenReviewsBanner from '../OntologyReviewBanner/OntologyOpenReviewsBanner';
 import OntologyReviewBanner from '../OntologyReviewBanner/OntologyReviewBanner';
 import OntologyTaskDetail from './OntologyTaskDetail';
+import { getOpenReviews } from './OntologyTasksDrawer.utils';
 import OntologyTaskThread from './OntologyTaskThread';
 
 type Props = {
+  /** The ontology in view; its latest decided review is announced to the requester. */
+  readonly ontologyId?: string;
   readonly taskId?: string;
   readonly onTaskChange: (taskId?: string) => void;
   readonly children: (parts: {
@@ -81,6 +87,7 @@ type Detail = {
 // ADR:2026-10-29-studio-tasks-drawer-pages-25-rows-and-keeps-page-one-in-a-40-cursor-history
 const PAGE_SIZE = 25;
 const CURSOR_HISTORY_LIMIT = 40;
+const BANNER_LIMIT = 100;
 
 // The trim keeps page 1 first, so Previous can still walk back to it.
 const pushCursor = (cursors: (string | undefined)[], after?: string) => {
@@ -89,7 +96,53 @@ const pushCursor = (cursors: (string | undefined)[], after?: string) => {
   return [first, ...rest.slice(1 - CURSOR_HISTORY_LIMIT)];
 };
 
-const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
+const DECIDED_STAGES: string[] = [Stage.Approved, Stage.ChangesRequested];
+
+/**
+ * The latest decided review of the ontology in view, when the caller asked for
+ * it, so the author sees the outcome without opening the Inbox.
+ */
+const useDecidedReview = ({
+  account,
+  ontologyId,
+  enabled,
+  queuesKey,
+}: {
+  account: string;
+  ontologyId?: string;
+  enabled: boolean;
+  queuesKey: string[];
+}) => {
+  const query = useQuery({
+    queryKey: [...queuesKey, account, 'decided', ontologyId],
+    gcTime: 0,
+    retry: false,
+    enabled: enabled && Boolean(ontologyId),
+    queryFn: async ({ signal }) => {
+      const ontology = await getOntology(
+        ontologyId ?? '',
+        'publicationStatus',
+        signal
+      );
+      const latest = ontology.publicationStatus?.latest;
+      if (!latest || !DECIDED_STAGES.includes(latest.stage)) {
+        return null;
+      }
+      const review = await getOntologyReleaseReview(latest.releaseId, signal);
+
+      return review.requester?.id === account ? review : null;
+    },
+  });
+
+  return query.data ?? undefined;
+};
+
+const OntologyTasksDrawer = ({
+  ontologyId,
+  taskId,
+  onTaskChange,
+  children,
+}: Props) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const queuesKey = ['ontology-review-queues'];
@@ -145,18 +198,31 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
     wasOpen.current = isOpen;
   }, [isOpen]);
   const pending = useQuery({
-    queryKey: [...queuesKey, account, 'pending'],
+    queryKey: [...queuesKey, account, 'pending', ontologyId],
+    gcTime: 0,
+    retry: false,
+    queryFn: ({ signal }) =>
+      getOntologyReleaseReviews(
+        { view: 'pending', ontologyId, limit: BANNER_LIMIT },
+        signal
+      ),
+  });
+  const pendingTotal = useQuery({
+    queryKey: [...queuesKey, account, 'pending-total'],
     gcTime: 0,
     retry: false,
     queryFn: ({ signal }) =>
       getOntologyReleaseReviews({ view: 'pending', limit: 1 }, signal),
   });
   const created = useQuery({
-    queryKey: [...queuesKey, account, 'created-banner'],
+    queryKey: [...queuesKey, account, 'created-banner', ontologyId],
     gcTime: 0,
     retry: false,
     queryFn: ({ signal }) =>
-      getOntologyReleaseReviews({ view: 'created', limit: 1 }, signal),
+      getOntologyReleaseReviews(
+        { view: 'created', ontologyId, limit: BANNER_LIMIT },
+        signal
+      ),
   });
   const queue = useQuery({
     queryKey: [
@@ -178,12 +244,22 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
         signal
       ),
   });
-  const bannerReview = pending.data?.data[0] ?? created.data?.data[0];
+  const openReviews = getOpenReviews(pending.data?.data, created.data?.data);
+  const openBannerReview = openReviews[0];
+  const decided = useDecidedReview({
+    account,
+    ontologyId,
+    enabled: [pending.isSuccess, created.isSuccess, !openBannerReview].every(
+      Boolean
+    ),
+    queuesKey,
+  });
+  const bannerReview = openBannerReview ?? decided;
   const bannerRelease = useQuery({
     queryKey: ['ontology-review-banner', account, bannerReview?.release.id],
     gcTime: 0,
     retry: false,
-    enabled: Boolean(bannerReview),
+    enabled: Boolean(bannerReview) && Boolean(ontologyId),
     queryFn: ({ signal }) =>
       getOntologyRelease(bannerReview?.release.id ?? '', signal),
   });
@@ -550,23 +626,35 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
       data-testid="ontology-tasks-trigger"
       iconTrailing={
         <Badge color="error" size="sm">
-          {pending.isError
+          {pendingTotal.isError
             ? t('label.unavailable')
-            : pending.data?.paging?.total ?? t('label.unavailable')}
+            : pendingTotal.data?.paging?.total ?? t('label.unavailable')}
         </Badge>
       }
       ref={taskButton}
       size="sm"
       onPress={() => {
         setListOpen(true);
+        void pendingTotal.refetch();
         void pending.refetch();
         void created.refetch();
       }}>
       {t('label.task-plural')}
     </Button>
   );
-  const renderBanner = () =>
-    bannerReview && bannerRelease.data ? (
+  const renderOpenReviews = () => (
+    <OntologyOpenReviewsBanner
+      reviews={openReviews}
+      onOpenList={() => setListOpen(true)}
+      onOpenTask={onTaskChange}
+    />
+  );
+  const renderBanner = () => {
+    if (!ontologyId) {
+      return renderOpenReviews();
+    }
+
+    return bannerReview && bannerRelease.data ? (
       <OntologyReviewBanner
         release={bannerRelease.data}
         review={bannerReview}
@@ -575,6 +663,7 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
         onOpenTask={onTaskChange}
       />
     ) : null;
+  };
   const renderQueue = () => (
     <Tabs
       selectedKey={view}
@@ -604,7 +693,7 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
                 key={entry.task.id}
                 onPress={() => onTaskChange(entry.task.id)}>
                 {entry.taskId ?? entry.task.id} ·{' '}
-                {getEntityName(entry.ontology)}
+                {entry.task.displayName ?? getEntityName(entry.ontology)}
               </Button>
             ))
           )}

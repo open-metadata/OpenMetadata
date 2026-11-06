@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
@@ -39,8 +40,8 @@ class OntologyPublicationStorageTest {
           fixture.releases.getDao().update(first.withEntityStatus(EntityStatus.REJECTED));
           final var legacy = fixture.capture(ignored -> {});
           assertNull(legacy.getSemanticVersion());
-          final var next = capture(fixture, request(fixture).withVersionBump(VersionBump.MINOR));
-          assertEquals("1.1.0", next.getSemanticVersion());
+          final var next = capture(fixture, request(fixture).withVersionBump(VersionBump.MAJOR));
+          assertEquals("1.0.0", next.getSemanticVersion());
           assertEquals(3L, next.getReleaseRevision());
           assertEquals(first.getContentDigest(), next.getContentDigest());
           assertEquals(first.getContentDigest(), legacy.getContentDigest());
@@ -57,6 +58,7 @@ class OntologyPublicationStorageTest {
         fixture -> {
           final var stale = request(fixture).withVersionBump(VersionBump.MAJOR);
           capture(fixture, stale);
+          fixture.addConcept("EditedAfterStaleRead");
           assertThrows(PreconditionFailedException.class, () -> capture(fixture, stale));
           assertEquals(
               1L, fixture.ontologies.getState(fixture.ontology.getId()).getLastReleaseRevision());
@@ -74,6 +76,7 @@ class OntologyPublicationStorageTest {
         dialect,
         fixture -> {
           for (int index = 0; index < 12; index++) {
+            fixture.addConcept("Edit" + index);
             fixture.capture(ignored -> {});
           }
           final var first =
@@ -82,6 +85,7 @@ class OntologyPublicationStorageTest {
           assertEquals(
               List.of(12L, 11L, 10L, 9L, 8L),
               first.getData().stream().map(OntologyRelease::getReleaseRevision).toList());
+          fixture.addConcept("Edit12");
           fixture.capture(ignored -> {});
           final var second =
               new OntologyReleaseHistory(fixture.releases.getDaoCollection().ontologyReleaseDAO())
@@ -109,6 +113,80 @@ class OntologyPublicationStorageTest {
                   new OntologyReleaseHistory(
                           fixture.releases.getDaoCollection().ontologyReleaseDAO())
                       .list(fixture.ontology.getId(), 101, null));
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void fiveCapturesAtOneRevisionAndVersionReturnOneRelease(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final var first = capture(fixture, request(fixture).withVersionBump(VersionBump.MAJOR));
+          for (int index = 0; index < 4; index++) {
+            final var again = capture(fixture, request(fixture).withVersionBump(VersionBump.MAJOR));
+            assertEquals(first.getId(), again.getId());
+            assertEquals("1.0.0", again.getSemanticVersion());
+          }
+          assertEquals(1, fixture.rowCount("ontology_release_entity"));
+          assertEquals(1, fixture.rowCount("ontology_release_event"));
+          assertEquals(
+              1L, fixture.ontologies.getState(fixture.ontology.getId()).getLastReleaseRevision());
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void aDifferentVersionCreatesANewDraft(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final var major = capture(fixture, request(fixture).withVersionBump(VersionBump.MAJOR));
+          final var minor = capture(fixture, request(fixture).withVersionBump(VersionBump.MINOR));
+          assertEquals("1.0.0", major.getSemanticVersion());
+          assertEquals("0.1.0", minor.getSemanticVersion());
+          assertEquals(2L, minor.getReleaseRevision());
+          assertEquals(
+              major.getId(),
+              capture(fixture, request(fixture).withVersionBump(VersionBump.MAJOR)).getId());
+          assertEquals(2, fixture.rowCount("ontology_release_entity"));
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void anEditedOntologyCapturesANewRelease(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final var first = capture(fixture, request(fixture).withVersionBump(VersionBump.MAJOR));
+          fixture.addConcept("Edited");
+          final var second = capture(fixture, request(fixture).withVersionBump(VersionBump.MAJOR));
+          assertNotEquals(first.getId(), second.getId());
+          assertEquals("1.0.0", second.getSemanticVersion());
+          assertEquals(2L, second.getReleaseRevision());
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void aRejectedReleaseIsNotReusedByTheNextCapture(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final var first = capture(fixture, request(fixture).withVersionBump(VersionBump.MAJOR));
+          fixture.releases.getDao().update(first.withEntityStatus(EntityStatus.REJECTED));
+          final var second = capture(fixture, request(fixture).withVersionBump(VersionBump.MAJOR));
+          assertNotEquals(first.getId(), second.getId());
+          assertEquals("1.0.0", second.getSemanticVersion());
         });
   }
 

@@ -12,12 +12,17 @@
  */
 import { Input, Select } from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
+import { OntologyIriOption } from './OntologyIriInput.types';
 
 interface OntologyIriInputProps {
   label: string;
   value: string;
-  options?: ReadonlyArray<{ iri: string; label: string }>;
+  options?: ReadonlyArray<OntologyIriOption>;
   isRequired?: boolean;
+  isDisabled?: boolean;
+  hint?: string;
+  error?: string;
+  testId?: string;
   onChange: (iri: string) => void;
 }
 
@@ -26,6 +31,10 @@ const OntologyIriInput = ({
   value,
   options,
   isRequired,
+  isDisabled,
+  hint,
+  error,
+  testId,
   onChange,
 }: OntologyIriInputProps) => {
   const [search, setSearch] = useState<string>();
@@ -44,13 +53,20 @@ const OntologyIriInput = ({
       .map((option) => ({
         id: option.iri,
         label: option.label,
-        supportingText: option.iri,
+        supportingText: option.context
+          ? `${option.context} · ${option.iri}`
+          : option.iri,
       }));
   }, [options, search]);
 
   if (!options?.length) {
     return (
       <Input
+        data-testid={testId}
+        hideRequiredIndicator={!isRequired}
+        hint={error ?? hint}
+        isDisabled={isDisabled}
+        isInvalid={Boolean(error)}
         isRequired={isRequired ?? false}
         label={label}
         value={value}
@@ -62,7 +78,11 @@ const OntologyIriInput = ({
   return (
     <Select.ComboBox
       allowsCustomValue
+      data-testid={testId}
+      hint={error ?? hint}
       inputValue={search ?? selected?.label ?? value}
+      isDisabled={isDisabled}
+      isInvalid={Boolean(error)}
       isRequired={isRequired ?? false}
       items={items}
       label={label}

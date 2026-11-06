@@ -48,6 +48,70 @@ export type ReleasePanelView = PublicationRead<
     assignees: OntologyReleaseReview['assignees'];
     canEditSettings: boolean;
     canRequestReview: boolean;
+    hasIndependentReviewer: boolean;
     unpublishedChanges: number;
   }
 >;
+
+export type PublicationState =
+  | 'published'
+  | 'cannotEdit'
+  | 'noChanges'
+  | 'noReviewers'
+  | 'noReviewersInvalid'
+  | 'reviewersSet'
+  | 'soloReviewer'
+  | 'inReview'
+  | 'approvedCanPublish'
+  | 'approvedCannotPublish'
+  | 'rejected';
+
+export type PublicationActionInput = {
+  stage: Stage;
+  /** The caller holds EditAll on the ontology. */
+  canEdit: boolean;
+  hasReviewers: boolean;
+  /** At least one reviewer other than the caller and the release author. */
+  hasIndependentReviewer: boolean;
+  hasChanges: boolean;
+  changedSinceRejection: boolean;
+  /** The captured release failed validation; the first messages. */
+  validationErrors: string[];
+  /** The working preview, version base and recovery state allow a write. */
+  isReady: boolean;
+  isRequester: boolean;
+  version: string;
+};
+
+export type PublicationActionKind =
+  | 'publish'
+  | 'requestReview'
+  | 'requestReviewAgain'
+  | 'saveDraft'
+  | 'withdraw';
+
+export type PublicationAction = {
+  kind: PublicationActionKind;
+  isDisabled: boolean;
+};
+
+export type PublicationText =
+  | 'message.ontology-publication-no-reviewers'
+  | 'message.ontology-publication-fix-to-publish'
+  | 'message.ontology-publication-draft-stays-editable'
+  | 'message.ontology-publication-solo-reviewer'
+  | 'message.ontology-publication-waiting-for'
+  | 'message.ontology-publication-approved-by'
+  | 'message.ontology-publication-only-author-publishes'
+  | 'message.ontology-publication-edit-then-request-again'
+  | 'message.ontology-publication-no-changes'
+  | 'message.ontology-publication-needs-author-role';
+
+export type PublicationActions = {
+  state: PublicationState;
+  primary: PublicationAction | null;
+  secondary: PublicationAction | null;
+  text: PublicationText;
+  /** Validation messages listed above the text in `noReviewersInvalid`. */
+  errors: string[];
+};
