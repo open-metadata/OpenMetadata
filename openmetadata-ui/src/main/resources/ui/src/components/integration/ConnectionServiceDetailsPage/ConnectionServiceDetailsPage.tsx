@@ -1004,6 +1004,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
         }
         icon={
           <FeaturedIcon
+            className="tw:bg-[linear-gradient(180deg,#ffffff_0%,#f5f5f5_100%)]"
             color="gray"
             icon={getServiceLogo(
               serviceDetails.serviceType,

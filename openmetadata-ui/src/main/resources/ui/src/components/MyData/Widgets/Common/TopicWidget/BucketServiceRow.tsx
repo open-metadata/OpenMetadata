@@ -20,6 +20,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFormattedDataAssetServiceType } from '../../../../../utils/DataAssetServiceUtils';
+import { getServiceLogoThemeClass } from '../../../../../utils/ServiceIconUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import {
   BucketService,
@@ -64,7 +65,10 @@ const BucketServiceRow: React.FC<BucketServiceRowProps> = ({
           icon={
             <img
               alt=""
-              className="tw:size-5 tw:object-contain"
+              className={classNames(
+                'tw:size-5 tw:object-contain',
+                getServiceLogoThemeClass(service.serviceType)
+              )}
               height={20}
               src={serviceUtilClassBase.getServiceLogo(service.serviceType)}
               width={20}

@@ -67,6 +67,7 @@ import {
 } from '../../../utils/ExplorePureUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { getServiceLogoThemeClass } from '../../../utils/ServiceIconUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -233,6 +234,7 @@ const getBucketTypeAndLogo = (
       logo: (
         <img
           alt={t('label.service')}
+          className={getServiceLogoThemeClass(bucket.key)}
           src={serviceIcon}
           style={{ width: 18, height: 18 }}
         />

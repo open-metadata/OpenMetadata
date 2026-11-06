@@ -45,6 +45,7 @@ import {
   SlotContribution,
 } from '../../../utils/ExtensionPointTypes';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
+import { getServiceLogoThemeClass } from '../../../utils/ServiceIconUtils';
 import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -727,7 +728,9 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
                 renderItemIcon={(serviceType) => (
                   <img
                     alt={serviceType}
-                    className="tw:size-4 tw:object-contain"
+                    className={`tw:size-4 tw:object-contain ${getServiceLogoThemeClass(
+                      serviceType
+                    )}`}
                     src={serviceUtilClassBase.getServiceLogo(serviceType)}
                   />
                 )}

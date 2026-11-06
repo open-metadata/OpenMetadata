@@ -303,3 +303,12 @@ export const getServiceIcon = (iconKey: string): string => {
 
   return icon;
 };
+
+// These connector assets are monochrome dark artwork. Inverting only those
+// assets preserves the colors of branded logos and leaves light mode unchanged.
+export const getServiceLogoThemeClass = (serviceType = '') =>
+  ['powerbi', 'kafka', 'kafkaconnect'].includes(
+    serviceType.toLowerCase().replaceAll(/[_-]/g, '')
+  )
+    ? 'tw:dark:brightness-0 tw:dark:invert'
+    : '';
