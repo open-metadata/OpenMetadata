@@ -373,6 +373,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/constant/migration.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/constant/nestedColumnUpdates.ts"
       ],
       "specs": [
