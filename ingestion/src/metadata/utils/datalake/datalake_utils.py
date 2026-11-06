@@ -124,6 +124,7 @@ def fetch_dataframe_generator(
                 config_source=config_source,
                 client=client,
                 separator=file_fqn.separator,
+                escapechar=file_fqn.escapechar,
                 session=session,
             )
             try:
@@ -173,6 +174,7 @@ def fetch_dataframe_first_chunk(
                 config_source=config_source,
                 client=client,
                 separator=file_fqn.separator,
+                escapechar=file_fqn.escapechar,
                 session=session,
             )
             try:

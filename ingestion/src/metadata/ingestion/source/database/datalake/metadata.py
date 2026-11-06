@@ -279,6 +279,7 @@ class DatalakeSource(DatabaseServiceSource):
                     file_extension=table_extension,
                     file_size=file_size,
                     separator=separator,
+                    escapechar=self.service_connection.csvEscapeChar or None,
                 ),
                 fetch_raw_data=True,
                 session=getattr(self.client, "session", None),

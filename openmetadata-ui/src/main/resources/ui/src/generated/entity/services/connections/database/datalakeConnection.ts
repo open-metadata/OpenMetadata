@@ -25,6 +25,11 @@ export interface DatalakeConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Escape character for CSV and TSV files. Defaults to backslash. Set to an empty string for
+     * files that use doubled quotes and literal backslashes.
+     */
+    csvEscapeChar?: string;
+    /**
      * Regex to only include/exclude databases that matches the pattern.
      */
     databaseFilterPattern?: FilterPattern;

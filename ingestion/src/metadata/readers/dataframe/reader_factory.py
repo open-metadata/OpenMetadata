@@ -81,15 +81,19 @@ def get_df_reader(
     client: Any | None,
     separator: str | None = None,
     session: Any | None = None,
+    escapechar: str | None = "\\",
 ) -> DataFrameReader:
     """
     Load the File Reader based on the Config Source
     """
     # If we have a DSV file, build a reader dynamically based on the received separator
-    if type_ in {SupportedTypes.CSV, SupportedTypes.CSVGZ, SupportedTypes.TSV} and separator:
-        return get_dsv_reader_by_separator(separator=separator)(
-            config_source=config_source, client=client, session=session
-        )
+    if type_.value in {
+        SupportedTypes.CSV.value,
+        SupportedTypes.CSVGZ.value,
+        SupportedTypes.TSV.value,
+    }:
+        reader = get_dsv_reader_by_separator(separator=separator) if separator else DF_READER_MAP[type_.value]
+        return reader(config_source=config_source, client=client, session=session, escapechar=escapechar)
 
     if type_.value in DF_READER_MAP:
         return DF_READER_MAP[type_.value](config_source=config_source, client=client, session=session)
