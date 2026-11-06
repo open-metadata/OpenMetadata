@@ -9,10 +9,11 @@
   `AgentSparqlQueryInspectorTest`, `AgentSparqlTransportTest`
 - **Issue:** [OpenMetadata #33384](https://github.com/open-metadata/OpenMetadata/issues/33384)
 - **Amended by:** [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231),
-  [OpenMetadata #34270](https://github.com/open-metadata/OpenMetadata/issues/34270),
+  [OpenMetadata #34270](https://github.com/open-metadata/OpenMetadata/issues/34270)
+  (MCP knowledge-graph tools — see "Amendment: MCP knowledge-graph tools"),
+  ADR:2026-10-14-fuseki-image-of-record (the test profile's image),
   [OpenMetadata #33436](https://github.com/open-metadata/OpenMetadata/issues/33436)
-  (MCP knowledge-graph tools — see the amendment before the Review log),
-  ADR:2026-10-14-fuseki-image-of-record (the test profile's image).
+  (one query walker for the inspector and the federation guard — see the 2026-11-06 amendment).
 - **Related:** ai-platform epic #224, ai-platform #1299, ai-platform PR #1310 (design, pinned at
   `0056ceb9`); OpenMetadata #33224 (asset-level RBAC — parallel work, explicitly **not** a
   prerequisite and **not** provided here).
