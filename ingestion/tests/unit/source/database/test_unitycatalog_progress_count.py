@@ -32,6 +32,7 @@ def unitycatalog_source():
         databaseFilterPattern=None,
         schemaFilterPattern=None,
     )
+    source.service_connection = SimpleNamespace(databaseSchema=None)
     source.metadata = MagicMock()
     source.status = MagicMock()
     source.context = MagicMock()
@@ -66,6 +67,15 @@ def test_declare_progress_totals_applies_schema_filter(unitycatalog_source):
     unitycatalog_source._filtered_database_names_for_totals = lambda: ["db1"]
     unitycatalog_source._schema_names_by_database = lambda: {"db1": ["keep", "drop"]}
     unitycatalog_source._is_schema_filtered = lambda db, sch: sch == "drop"
+    unitycatalog_source.declare_progress_totals(TotalsDeclarer(unitycatalog_source.progress_tracking.registry))
+    assert _counters(unitycatalog_source)["DatabaseSchema"] == (0, 1)
+
+
+def test_declare_progress_totals_counts_only_the_configured_schema(unitycatalog_source):
+    unitycatalog_source.service_connection = SimpleNamespace(databaseSchema="Keep")
+    unitycatalog_source._filtered_database_names_for_totals = lambda: ["db1"]
+    unitycatalog_source._schema_names_by_database = lambda: {"db1": ["keep", "other"]}
+    unitycatalog_source._is_schema_filtered = lambda db, sch: False
     unitycatalog_source.declare_progress_totals(TotalsDeclarer(unitycatalog_source.progress_tracking.registry))
     assert _counters(unitycatalog_source)["DatabaseSchema"] == (0, 1)
 

@@ -15,11 +15,11 @@ Databricks Unity Catalog Source source methods.
 import json
 import traceback
 from collections.abc import Callable, Iterable
-from functools import partial
+from functools import cached_property, partial
 from threading import RLock
 from typing import TYPE_CHECKING, Any, cast
 
-from databricks.sdk.service.catalog import ColumnInfo, TableInfo
+from databricks.sdk.service.catalog import ColumnInfo, SchemaInfo, TableInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -59,8 +59,9 @@ from metadata.generated.schema.type.basic import (
     Markdown,
 )
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.ingestion.api.delete import delete_entity_by_name
+from metadata.ingestion.api.delete import delete_entity_by_name, delete_entity_from_source
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -164,6 +165,11 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         # Caches to avoid redundant API calls (N+1 optimization)
         self._catalog_cache: dict[str, Any] = {}
         self._schema_cache: dict[tuple[str, str], Any] = {}
+        # Scopes whose listing failed this run: () for the catalogs, (catalog,) for a
+        # catalog's schemas, (catalog, schema) for a schema's tables. What such a listing
+        # did not reach was not seen, so stale-entity cleanup must leave the scope alone.
+        self._incomplete_listings: set[tuple[str, ...]] = set()
+        self._skipped_stale_cleanups: list[str] = []
         self.owner_resolver = DatabricksOwnerResolver(
             api_client=connection.api.client,
             metadata=self.metadata,
@@ -198,18 +204,47 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
 
             return self._sql_connection_map[thread_id]
 
-    def get_configured_database(self) -> str | None:
-        return self.service_connection.catalog
+    @cached_property
+    def _configured_catalog_name(self) -> str | None:
+        """
+        The configured catalog under the name Unity Catalog stores it with.
 
-    def _iterate_listing(self, list_call: Callable[[], Iterable[Any]], listing_name: str) -> Iterable[Any]:
+        Unity Catalog stores names lowercase and resolves them case-insensitively, so a
+        catalog typed as `Demo` is `demo`, the name the system tables report to lineage,
+        metric-view lineage and incremental extraction. Ingested as typed, the Database
+        would never match them (ADR:2026-11-05-unity-catalog-databases-take-the-name-unity-catalog-stores).
+        """
+        configured = self.service_connection.catalog
+        if not configured:
+            return None
+        try:
+            catalog = self.client.catalogs.get(configured)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch configured catalog [%s]: %s", configured, exc)
+            return configured.lower()
+        name = catalog.name or configured.lower()
+        with self._state_lock:
+            self._catalog_cache[name] = catalog
+        return name
+
+    def get_configured_database(self) -> str | None:
+        return self._configured_catalog_name
+
+    def _iterate_listing(
+        self, list_call: Callable[[], Iterable[Any]], listing_name: str, scope: tuple[str, ...]
+    ) -> Iterable[Any]:
         """
         Iterate a Databricks SDK listing, recording a failure and stopping gracefully
         instead of aborting the whole ingestion when the API call or its pagination
-        raises mid-iteration.
+        raises mid-iteration. The failed ``scope`` is remembered so that stale-entity
+        cleanup skips it.
         """
         try:
             yield from list_call()
         except Exception as exc:
+            with self._state_lock:
+                self._incomplete_listings.add(scope)
             self.status.failed(
                 StackTraceError(
                     name=listing_name,
@@ -219,7 +254,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             )
 
     def get_database_names_raw(self) -> Iterable[str]:
-        for catalog in self._iterate_listing(self.client.catalogs.list, "catalogs"):
+        for catalog in self._iterate_listing(self.client.catalogs.list, "catalogs", ()):
             catalog_name = catalog.name
             if not catalog_name:
                 continue
@@ -286,11 +321,13 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             # configured/SDK-listed casing while the view returns catalog_name in its
             # own casing, so match case-insensitively to avoid seeding a spurious 0.
             schemas_by_lower = {db.lower(): schemas for db, schemas in schemas_by_database.items()}
+            configured_schema = (self.service_connection.databaseSchema or "").lower()
             for database_name in database_names:
                 kept = [
                     schema_name
                     for schema_name in schemas_by_lower.get(database_name.lower(), [])
-                    if not self._is_schema_filtered(database_name, schema_name)
+                    if configured_schema in ("", schema_name.lower())
+                    and not self._is_schema_filtered(database_name, schema_name)
                 ]
                 totals.seed_scope_total(DatabaseSchema.__name__, database_name, len(kept))
 
@@ -305,16 +342,8 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
 
         Catalog ID -> Database
         """
-        if self.service_connection.catalog:
-            configured_catalog = self.service_connection.catalog
-            try:
-                logger.debug(f"Fetching configured catalog [{configured_catalog}] details to cache for later use")
-                catalog = self.client.catalogs.get(configured_catalog)
-                with self._state_lock:
-                    self._catalog_cache[configured_catalog] = catalog
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to fetch configured catalog [{configured_catalog}]: {exc}")
+        configured_catalog = self.get_configured_database()
+        if configured_catalog:
             self._set_incremental_table_processor(configured_catalog)
             yield configured_catalog
         else:
@@ -376,13 +405,21 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         yield Either(right=database_request)
         self.register_record_database_request(database_request=database_request)
 
+    def _list_schemas(self, catalog_name: str) -> Iterable[SchemaInfo]:
+        """The configured ``databaseSchema`` alone when one is set, else every schema of the catalog."""
+        configured_schema = self.service_connection.databaseSchema
+        if configured_schema:
+            yield self.client.schemas.get(f"{catalog_name}.{configured_schema}")
+        else:
+            yield from self.client.schemas.list(catalog_name=catalog_name)
+
     def get_database_schema_names(self) -> Iterable[str]:
         """
         return schema names
         """
         catalog_name = self.context.get().database
-        schema_listing = partial(self.client.schemas.list, catalog_name=catalog_name)
-        for schema in self._iterate_listing(schema_listing, f"schemas in catalog [{catalog_name}]"):
+        schema_listing = partial(self._list_schemas, catalog_name)
+        for schema in self._iterate_listing(schema_listing, f"schemas in catalog [{catalog_name}]", (catalog_name,)):
             try:
                 schema_name = schema.name
                 if not schema_name:
@@ -529,7 +566,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             table_with_constraints = self._get_tables_with_constraints()
             table_listing = partial(self._list_tables, catalog_name, schema_name)
             for table, securable_kind in self._iterate_listing(
-                table_listing, f"tables in schema [{catalog_name}.{schema_name}]"
+                table_listing, f"tables in schema [{catalog_name}.{schema_name}]", (catalog_name, schema_name)
             ):
                 detailed_table = table
                 if (table.catalog_name, table.schema_name, table.name) in table_with_constraints:
@@ -907,7 +944,72 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     recursive=self.source_config.markDeletedTables,
                 )
         else:
-            yield from super().mark_tables_as_deleted()
+            yield from self._mark_listed_tables_as_deleted()
+
+    def _iter(self) -> Iterable[Either]:
+        """
+        Fail a run that skipped a stale-entity cleanup, whatever the success threshold: what
+        the failed listing did not reach was neither refreshed nor reconciled. Raised once the
+        topology is done because the runner only records a producer's exception, then
+        reconciles anyway (ADR:2026-10-22-tableau-runs-stop-without-deleting-while-the-metadata-api-backfills).
+        """
+        yield from super()._iter()
+        if self._skipped_stale_cleanups:
+            message = (
+                f"Stale entities were not marked as deleted for {', '.join(self._skipped_stale_cleanups)}: a "
+                "listing there failed this run, so what it did not reach was not seen, not removed from Unity "
+                "Catalog. The run fails so that it is not reported as a success; re-run it once the listing succeeds."
+            )
+            self.status.failed(StackTraceError(name="Stale entity cleanup", error=message))
+            raise WorkflowFatalError(message)
+
+    def _skip_incomplete_listing(self, scope: tuple[str, ...], entities: str) -> bool:
+        """Whether the listing of ``scope`` failed this run, recording the stale cleanup it skips."""
+        if scope not in self._incomplete_listings:
+            return False
+        skipped = f"{entities} in [{'.'.join(scope) or self.context.get().database_service}]"  # pyright: ignore[reportAttributeAccessIssue]
+        logger.warning("Not marking %s as deleted: a listing there failed this run.", skipped)
+        self._skipped_stale_cleanups.append(skipped)
+        return True
+
+    def _mark_listed_tables_as_deleted(self) -> Iterable[Either]:
+        """The base stale-table cleanup, leaving out the scopes whose listing failed."""
+        catalog_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        if not self.source_config.markDeletedTables or self._skip_incomplete_listing((catalog_name,), "tables"):
+            return
+        logger.info("Mark Deleted Tables set to True. Processing database [%s]", catalog_name)
+        for schema_name in self._get_filtered_schema_names(add_to_status=False):
+            if self._skip_incomplete_listing((catalog_name, schema_name), "tables"):
+                continue
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Table,
+                entity_source_state=self.database_source_state,
+                recursive=self.source_config.markDeletedTables,
+                params={
+                    "databaseSchema": cast(
+                        "str",
+                        fqn.build(
+                            self.metadata,
+                            entity_type=DatabaseSchema,
+                            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                            database_name=catalog_name,
+                            schema_name=schema_name,
+                        ),
+                    )
+                },
+            )
+
+    def mark_schemas_as_deleted(self):
+        catalog_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        if self.source_config.markDeletedSchemas and self._skip_incomplete_listing((catalog_name,), "schemas"):
+            return
+        yield from super().mark_schemas_as_deleted()
+
+    def mark_databases_as_deleted(self):
+        if self.source_config.markDeletedDatabases and self._skip_incomplete_listing((), "databases"):
+            return
+        yield from super().mark_databases_as_deleted()
 
     def add_complex_datatype_descriptions(self, column: Column, column_json: ColumnJson):
         """
