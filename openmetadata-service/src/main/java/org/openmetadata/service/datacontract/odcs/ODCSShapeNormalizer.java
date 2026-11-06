@@ -55,13 +55,21 @@ public final class ODCSShapeNormalizer {
   private ODCSShapeNormalizer() {}
 
   public static void normalize(ObjectNode root, ODCSImportIssues issues) {
+    normalize(root, issues, true);
+  }
+
+  static void normalizePreserved(ObjectNode root) {
+    normalize(root, ODCSImportIssues.discarding(), false);
+  }
+
+  private static void normalize(ObjectNode root, ODCSImportIssues issues, boolean stringify) {
     normalizeDescription(root, issues);
     rewriteMapFormCustomProperties(root, "", issues);
     wrapScalarTags(root);
     wrapBareArrayTeam(root, issues);
     joinArrayApprovers(root, issues);
-    normalizeRules(root.get(QUALITY), QUALITY, issues);
-    normalizeElements(root.get(SCHEMA), SCHEMA, issues);
+    normalizeRules(root.get(QUALITY), QUALITY, issues, stringify);
+    normalizeElements(root.get(SCHEMA), SCHEMA, issues, stringify);
     normalizeHolders(root.get(ROLES), ROLES, issues);
     normalizeHolders(root.get(SERVERS), SERVERS, issues);
   }
@@ -141,27 +149,31 @@ public final class ODCSShapeNormalizer {
             field));
   }
 
-  private static void normalizeElements(JsonNode elements, String path, ODCSImportIssues issues) {
+  private static void normalizeElements(
+      JsonNode elements, String path, ODCSImportIssues issues, boolean stringify) {
     forEachIndexed(
         elements,
-        (index, element) -> normalizeElement(element, ODCSPaths.element(path, index), issues));
+        (index, element) ->
+            normalizeElement(element, ODCSPaths.element(path, index), issues, stringify));
   }
 
-  private static void normalizeElement(JsonNode element, String path, ODCSImportIssues issues) {
+  private static void normalizeElement(
+      JsonNode element, String path, ODCSImportIssues issues, boolean stringify) {
     if (!(element instanceof ObjectNode object)) return;
     wrapScalarTags(object);
-    normalizeRules(object.get(QUALITY), ODCSPaths.child(path, QUALITY), issues);
+    normalizeRules(object.get(QUALITY), ODCSPaths.child(path, QUALITY), issues, stringify);
     rewriteMapFormCustomProperties(object, path, issues);
-    normalizeElements(object.get(PROPERTIES), ODCSPaths.child(path, PROPERTIES), issues);
-    normalizeElement(object.get(ITEMS), ODCSPaths.child(path, ITEMS), issues);
+    normalizeElements(object.get(PROPERTIES), ODCSPaths.child(path, PROPERTIES), issues, stringify);
+    normalizeElement(object.get(ITEMS), ODCSPaths.child(path, ITEMS), issues, stringify);
   }
 
-  private static void normalizeRules(JsonNode rules, String path, ODCSImportIssues issues) {
+  private static void normalizeRules(
+      JsonNode rules, String path, ODCSImportIssues issues, boolean stringify) {
     forEachIndexed(
         rules,
         (index, rule) -> {
           if (!(rule instanceof ObjectNode object)) return;
-          stringifyImplementation(object);
+          if (stringify) stringifyImplementation(object);
           rewriteMapFormCustomProperties(object, ODCSPaths.element(path, index), issues);
         });
   }

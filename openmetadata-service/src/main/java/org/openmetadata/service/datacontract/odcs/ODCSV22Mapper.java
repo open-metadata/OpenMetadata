@@ -112,11 +112,34 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
       }
       table.remove("columns");
       table.set("properties", columns);
+      restoreQualityScopes(table);
       tables.add(table);
     }
     view.remove("dataset");
     view.set("schema", tables);
     return view;
+  }
+
+  private static void restoreQualityScopes(ObjectNode table) {
+    JsonNode rules = table.remove("quality");
+    if (rules == null) return;
+    for (JsonNode rule : rules) {
+      ObjectNode target = table;
+      if (rule.hasNonNull("column")) {
+        for (String segment : FullyQualifiedName.split(rule.path("column").asText())) {
+          String name = FullyQualifiedName.unquoteName(segment);
+          ObjectNode child = null;
+          JsonNode properties = target.path("properties");
+          if (!properties.isArray()) properties = target.path("items").path("properties");
+          for (JsonNode property : properties)
+            if (name.equals(property.path("name").asText())) child = (ObjectNode) property;
+          if (child == null)
+            throw new IllegalStateException("Missing exported ODCS column: " + name);
+          target = child;
+        }
+      }
+      target.withArray("quality").add(ODCSLegacyQuality.sourceDeclaration(rule));
+    }
   }
 
   @Override

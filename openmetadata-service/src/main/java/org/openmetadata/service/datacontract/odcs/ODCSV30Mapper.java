@@ -15,6 +15,7 @@ package org.openmetadata.service.datacontract.odcs;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.HashSet;
 import java.util.List;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
@@ -44,13 +45,18 @@ public final class ODCSV30Mapper implements ODCSVersionAdapter {
 
   @Override
   public JsonNode write(DataContract contract, List<ODCSQualityRule> nativeRules) {
-    ObjectNode document = (ObjectNode) new ODCSV31Mapper().write(contract, nativeRules);
+    ObjectNode canonical = (ObjectNode) new ODCSV31Mapper().write(contract, nativeRules);
+    ObjectNode document = canonical.deepCopy();
     document.put("apiVersion", version);
     ODCSLegacyQuality quality = new ODCSLegacyQuality(schema, contract);
     for (JsonNode table : document.path("schema")) convertElement((ObjectNode) table, "", quality);
     if (document.path("team").has("members"))
       document.set("team", document.path("team").path("members"));
-    return ODCSExportModelWriter.write(document, model);
+    ObjectNode result = ODCSExportModelWriter.write(document, model);
+    // Apply the overlay to the original declarations; decoding legacy metadata can confuse
+    // user-owned custom properties with the compatibility annotations added by this adapter.
+    ODCSLegacyQuality.restoreDeclarations(result, canonical);
+    return result;
   }
 
   private static void convertElement(ObjectNode element, String path, ODCSLegacyQuality quality) {
@@ -90,6 +96,7 @@ public final class ODCSV30Mapper implements ODCSVersionAdapter {
   @Override
   public JsonNode materialize(JsonNode view, DataContract contract) {
     ObjectNode document = view.deepCopy();
+    document.put("apiVersion", version);
     ODCSLegacyQuality quality = new ODCSLegacyQuality(schema, contract);
     // Preserved rules can still use the source version after the metadata overlay.
     for (JsonNode table : document.path("schema")) {
@@ -98,10 +105,21 @@ public final class ODCSV30Mapper implements ODCSVersionAdapter {
     JsonNode team = document.path("team");
     if (team.isObject() && team.size() == 1 && team.path("members").isArray())
       document.set("team", team.path("members"));
-    if (!schema.path("$defs").path("SchemaProperty").path("properties").has("physicalName")) {
+    if (!supportsPhysicalName()) {
       for (JsonNode table : document.path("schema")) omitRedundantPhysicalNames(table);
     }
     return document;
+  }
+
+  private boolean supportsPhysicalName() {
+    JsonNode definition = schema.path("$defs").path("SchemaProperty");
+    var visited = new HashSet<String>();
+    while (!definition.path("properties").has("physicalName")) {
+      String reference = definition.path("$ref").asText();
+      if (!reference.startsWith("#/") || !visited.add(reference)) return false;
+      definition = schema.at(reference.substring(1));
+    }
+    return true;
   }
 
   private static void omitRedundantPhysicalNames(JsonNode element) {

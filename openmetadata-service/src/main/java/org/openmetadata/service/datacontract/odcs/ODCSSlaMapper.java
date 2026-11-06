@@ -16,6 +16,7 @@ package org.openmetadata.service.datacontract.odcs;
 import static java.util.Map.entry;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -194,10 +195,11 @@ public final class ODCSSlaMapper {
     Object value = entry.property().getValue();
     Integer number = null;
     if (value instanceof Number numeric) {
-      double asDouble = numeric.doubleValue();
-      boolean fitsInt =
-          asDouble % 1 == 0 && asDouble >= Integer.MIN_VALUE && asDouble <= Integer.MAX_VALUE;
-      number = fitsInt ? numeric.intValue() : null;
+      try {
+        number = new BigDecimal(numeric.toString()).intValueExact();
+      } catch (ArithmeticException | NumberFormatException e) {
+        LOG.debug("ODCS SLA value '{}' cannot be represented as an integer", value);
+      }
     } else if (value instanceof String textual) {
       try {
         number = Integer.valueOf(textual.trim());

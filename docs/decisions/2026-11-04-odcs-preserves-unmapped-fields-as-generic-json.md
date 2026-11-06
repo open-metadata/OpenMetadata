@@ -1,7 +1,7 @@
 # ODCS preserves unmapped fields as generic JSON
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-04 (initial)
+- **Revisions:** v1 2026-11-04 (initial), v2 2026-11-06 (quality-rule baselines)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `ODCSGenericPreservationTest`, `DataContractResourceIT`
 - **Related:** [#33493](https://github.com/open-metadata/OpenMetadata/issues/33493), ADR:2026-11-03-odcs-io-follows-the-published-v3-1-0-schema
@@ -31,6 +31,17 @@ Matching never uses a column's array position. Deleted mapped entries are not re
 originally unapplied entries remain metadata and do not grant access or create executable checks.
 The selected table object's metadata follows the exported target table name. Unselected schema
 objects remain outside the one-table contract and are reported as not imported.
+
+Partially readable quality declarations retain both their original JSON and the native import-time
+projection inside the opaque remainder. Export compares the current rule with that baseline: native
+edits and deletions win, while unchanged values regain their original JSON type and precision.
+Rules match by ID or name, with unchanged SQL query content as a fallback for anonymous rules.
+Unique IDs or names are needed to distinguish otherwise identical anonymous declarations after edits.
+The alternatives declared by the published comparison-operator schema prevent a preserved assertion
+from conflicting with a newly selected native operator. Older export adapters restore their quality
+declarations to this common representation before applying the overlay, then convert them back to the
+requested format. An assertion the numeric reader cannot represent stays opaque rather than being
+advertised as an executable OpenMetadata check in a legacy export.
 
 The native contract owns identity, version and creation timestamp. New ODCS versions and new
 executable semantics still require explicit support; generic preservation does not certify unknown

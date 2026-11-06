@@ -26,6 +26,7 @@ import java.util.Set;
 final class ODCSExportModelWriter {
   static final ObjectMapper JSON =
       new ObjectMapper()
+          .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
           .setSerializationInclusion(JsonInclude.Include.NON_NULL)
           .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 

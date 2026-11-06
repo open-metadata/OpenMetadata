@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -149,12 +150,44 @@ final class ODCSLegacyQuality {
   }
 
   private Optional<TestCaseOutcome> nativeRule(JsonNode source, String column) {
-    ODCSQualityRule rule = ODCSExportModelWriter.JSON.convertValue(source, ODCSQualityRule.class);
-    rule.setColumn(column.isEmpty() ? null : column);
-    return ODCSQualityRuleMapper.map(List.of(rule), target).stream()
-        .filter(TestCaseOutcome.class::isInstance)
-        .map(TestCaseOutcome.class::cast)
-        .findFirst();
+    try {
+      ODCSQualityRule rule = ODCSExportModelWriter.JSON.convertValue(source, ODCSQualityRule.class);
+      if (!ODCSQualityMetadata.isProjection(source, ODCSExportModelWriter.JSON.valueToTree(rule)))
+        return Optional.empty();
+      rule.setColumn(column.isEmpty() ? null : column);
+      return ODCSQualityRuleMapper.map(List.of(rule), target).stream()
+          .filter(TestCaseOutcome.class::isInstance)
+          .map(TestCaseOutcome.class::cast)
+          .findFirst();
+    } catch (IllegalArgumentException exception) {
+      // Published SQL assertions accept JSON values beyond the legacy reader's numeric model.
+      return Optional.empty();
+    }
+  }
+
+  static ObjectNode sourceDeclaration(JsonNode rule) {
+    for (JsonNode property : rule.path("customProperties")) {
+      if ("odcsRule".equals(property.path("property").asText())
+          && property.path("value").isObject()) return property.path("value").deepCopy();
+    }
+    return rule.deepCopy();
+  }
+
+  static void restoreDeclarations(JsonNode element, JsonNode canonical) {
+    if (canonical.has("quality"))
+      ((ObjectNode) element).set("quality", canonical.path("quality").deepCopy());
+    else ((ObjectNode) element).remove("quality");
+    for (String collection : List.of("schema", "properties")) {
+      Map<String, JsonNode> properties = new HashMap<>();
+      for (JsonNode child : canonical.path(collection))
+        properties.put(child.path("name").asText(), child);
+      for (JsonNode child : element.path(collection)) {
+        JsonNode source = properties.get(child.path("name").asText());
+        if (source != null) restoreDeclarations(child, source);
+      }
+    }
+    if (element.path("items").isObject() && canonical.path("items").isObject())
+      restoreDeclarations(element.path("items"), canonical.path("items"));
   }
 
   private static ObjectNode readImplementation(TestCaseOutcome outcome) {

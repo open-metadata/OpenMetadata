@@ -549,7 +549,10 @@ public class ODCSConverter {
 
     if (odcs.getSchema() != null) {
       for (ODCSSchemaElement schemaObject : odcs.getSchema()) {
-        collectQualityRulesFromElement(schemaObject, allRules, null);
+        boolean table =
+            schemaObject.getLogicalType() == ODCSSchemaElement.LogicalType.OBJECT
+                || !nullOrEmpty(schemaObject.getProperties());
+        collectQualityRulesFromElement(schemaObject, allRules, table ? null : "");
       }
     }
 
@@ -559,9 +562,11 @@ public class ODCSConverter {
   private static void collectQualityRulesFromElement(
       ODCSSchemaElement element, List<ODCSQualityRule> allRules, String parentPath) {
     String columnPath =
-        nullOrEmpty(parentPath)
+        parentPath == null
             ? element.getName()
-            : FullyQualifiedName.add(parentPath, element.getName());
+            : parentPath.isEmpty()
+                ? FullyQualifiedName.quoteName(element.getName())
+                : FullyQualifiedName.add(parentPath, element.getName());
     if (element.getQuality() != null && !element.getQuality().isEmpty()) {
       for (ODCSQualityRule rule : element.getQuality()) {
         if (rule.getColumn() == null || rule.getColumn().isEmpty()) {
