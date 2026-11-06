@@ -22,7 +22,8 @@ import org.jdbi.v3.core.Handle;
  * Puts {@code entity_extension.extension} back on its table's default character set and collation
  * on MySQL. Until #37167, the 2.0.3 migration switched the column to {@code ascii_bin}, so databases
  * upgraded through 2.0.3 to 2.0.7 differ from the rest of the table and from databases that never
- * ran that statement. The target is the table's own default: OpenMetadata never set a collation, so
+ * ran that statement. The target is the table's own default, per
+ * ADR:2026-11-06-entity-extension-uses-its-tables-collation: OpenMetadata never set a collation, so
  * each table carries the server default of the day it was created.
  *
  * <p>MySQL copies the whole table to change a character set and blocks writes to it until the copy
