@@ -59,6 +59,11 @@ interface RowState {
   propertyId: string;
 }
 
+interface BindingKey {
+  propertyId: string;
+  columnPath: string[];
+}
+
 const NOT_MAPPED = 'not-mapped';
 const PAGE_SIZE = 100;
 // A table past this many columns is bound from its own page; the step stays one screen.
@@ -66,6 +71,7 @@ const MAX_COLUMNS = 1000;
 
 const fetchAllColumns = async (assetId: string) => {
   const columns = [];
+  let total = 0;
   while (columns.length < MAX_COLUMNS) {
     const page = await searchTableColumnsById(assetId, {
       limit: PAGE_SIZE,
@@ -73,12 +79,17 @@ const fetchAllColumns = async (assetId: string) => {
       include: Include.NonDeleted,
     });
     columns.push(...page.data);
-    if (page.data.length === 0 || columns.length >= page.paging.total) {
+    total = page.paging.total;
+    if (page.data.length === 0 || columns.length >= total) {
       break;
     }
   }
 
-  return columns;
+  return {
+    columns,
+    // Only the cap can leave columns unread: the loop otherwise runs to the total.
+    isTruncated: columns.length >= MAX_COLUMNS && total > columns.length,
+  };
 };
 
 const OntologyColumnMappingStep = ({
@@ -108,7 +119,7 @@ const OntologyColumnMappingStep = ({
         );
         const options = asset.fullyQualifiedName
           ? getOntologyColumnOptions(
-              columnQueries[index]?.data ?? [],
+              columnQueries[index]?.data?.columns ?? [],
               asset.fullyQualifiedName
             )
           : [];
@@ -117,11 +128,12 @@ const OntologyColumnMappingStep = ({
           asset,
           bound,
           options: options.map((option) => {
-            const existing = bound?.columns.find(
+            const resolved = (bound?.columns ?? []).filter(
               (column) =>
                 column.state === State.Resolved &&
                 JSON.stringify(column.columnPath) === option.id
             );
+            const existing = resolved[0];
             const suggestion = suggestPropertyForColumn(
               option.path[option.path.length - 1],
               properties
@@ -130,6 +142,7 @@ const OntologyColumnMappingStep = ({
             return {
               ...option,
               existingPropertyId: existing?.propertyId,
+              extraBindings: Math.max(resolved.length - 1, 0),
               suggestedPropertyId: suggestion?.id,
             };
           }),
@@ -159,7 +172,13 @@ const OntologyColumnMappingStep = ({
 
   const [isSaving, setIsSaving] = useState(false);
   const isLoading = columnQueries.some((query) => query.isPending);
-  const canSave = !isLoading && !isSaving && Boolean(bindings.editableSnapshot);
+  // A table whose columns did not load has no rows to review, so it is never written.
+  const hasLoadedTable = columnQueries.some((query) => query.isSuccess);
+  const canSave =
+    !isLoading &&
+    hasLoadedTable &&
+    !isSaving &&
+    Boolean(bindings.editableSnapshot);
 
   const save = async () => {
     let snapshot: BindingSnapshot | undefined = bindings.editableSnapshot;
@@ -168,7 +187,10 @@ const OntologyColumnMappingStep = ({
     }
     setIsSaving(true);
     try {
-      for (const { asset, bound, options } of tables) {
+      for (const { asset, bound, options, query } of tables) {
+        if (!query?.isSuccess) {
+          continue;
+        }
         const checked = options.flatMap((option) => {
           const row = stateOf(asset.id, option);
 
@@ -176,9 +198,26 @@ const OntologyColumnMappingStep = ({
             ? [{ propertyId: row.propertyId, columnPath: option.path }]
             : [];
         });
-        const unlisted = (bound?.columns ?? [])
-          .filter((column) => column.state === State.Unresolved)
-          .map(({ propertyId, columnPath }) => ({ propertyId, columnPath }));
+        // Only the binding a row shows (a column's first resolved one) is the row's to
+        // rewrite; every other existing binding is written back untouched.
+        const shown = new Set(
+          options.flatMap((option) =>
+            (bound?.columns ?? [])
+              .filter(
+                (column) =>
+                  column.state === State.Resolved &&
+                  JSON.stringify(column.columnPath) === option.id
+              )
+              .slice(0, 1)
+          )
+        );
+        const keyOfBinding = ({ propertyId, columnPath }: BindingKey) =>
+          JSON.stringify([propertyId, columnPath]);
+        const written = new Set(checked.map(keyOfBinding));
+        const kept = (bound?.columns ?? [])
+          .filter((column) => !shown.has(column))
+          .map(({ propertyId, columnPath }) => ({ propertyId, columnPath }))
+          .filter((binding) => !written.has(keyOfBinding(binding)));
         if (checked.length === 0 && !bound?.columns.length) {
           continue;
         }
@@ -187,7 +226,7 @@ const OntologyColumnMappingStep = ({
           asset: {
             assetId: asset.id,
             assetType: AssetType.Table,
-            columns: [...checked, ...unlisted],
+            columns: [...checked, ...kept],
           },
         });
         if (result.kind !== 'confirmed') {
@@ -250,6 +289,13 @@ const OntologyColumnMappingStep = ({
             </Button>
           </Alert>
         ) : null}
+        {query?.data?.isTruncated ? (
+          <Alert variant="warning">
+            {t('message.ontology-column-list-truncated', {
+              count: MAX_COLUMNS,
+            })}
+          </Alert>
+        ) : null}
         <ul className="tw:m-0 tw:flex tw:max-h-96 tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-y-auto tw:p-0">
           {options.map((option) => {
             const row = stateOf(asset.id, option);
@@ -306,6 +352,13 @@ const OntologyColumnMappingStep = ({
                     />
                   )}
                 </Select>
+                {option.extraBindings > 0 ? (
+                  <Typography as="span" color="secondary" size="text-xs">
+                    {t('message.ontology-column-extra-bindings', {
+                      count: option.extraBindings,
+                    })}
+                  </Typography>
+                ) : null}
                 {isSuggested ? (
                   <Badge color="brand" size="sm" type="pill-color">
                     {t('label.ontology-suggested-column')}

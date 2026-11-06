@@ -235,3 +235,258 @@ it('reports a conflict and stays open so the person can retry', async () => {
   expect(onClose).not.toHaveBeenCalled();
   expect(screen.getByTestId('ontology-column-mapping-step')).toBeVisible();
 });
+
+const putBody = () =>
+  http.put.mock.calls[0][1] as {
+    asset: { columns: { propertyId: string; columnPath: string[] }[] };
+  };
+
+it('keeps a column second bound property when an unrelated row changes', async () => {
+  const { onClose } = renderStep(
+    bindings(7, [
+      {
+        propertyId: 'p-key',
+        columnPath: ['patient_id'],
+        state: State.Resolved,
+      },
+      {
+        propertyId: 'p-name',
+        columnPath: ['patient_id'],
+        state: State.Resolved,
+      },
+    ])
+  );
+  http.put.mockResolvedValue({ data: {} });
+
+  const id = await row('patient_id');
+
+  expect(propertyButton(id)).toHaveTextContent('Patient Key');
+  expect(
+    within(id).getByText('message.ontology-column-extra-bindings')
+  ).toBeVisible();
+
+  fireEvent.click(within(await row('date_of_birth')).getByRole('checkbox'));
+  fireEvent.click(screen.getByTestId('ontology-column-mapping-save'));
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+  expect(putBody().asset.columns).toEqual(
+    expect.arrayContaining([
+      { propertyId: 'p-key', columnPath: ['patient_id'] },
+      { propertyId: 'p-name', columnPath: ['patient_id'] },
+    ])
+  );
+  expect(putBody().asset.columns).toHaveLength(3);
+});
+
+it('keeps a resolved binding on a column the step does not list', async () => {
+  const { onClose } = renderStep(
+    bindings(7, [
+      {
+        propertyId: 'p-dob',
+        columnPath: ['legacy_dob'],
+        state: State.Resolved,
+      },
+    ])
+  );
+  http.put.mockResolvedValue({ data: {} });
+  await row('patient_id');
+
+  fireEvent.click(screen.getByTestId('ontology-column-mapping-save'));
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+  expect(putBody().asset.columns).toEqual([
+    { propertyId: 'p-key', columnPath: ['patient_id'] },
+    { propertyId: 'p-dob', columnPath: ['date_of_birth'] },
+    { propertyId: 'p-name', columnPath: ['patient_name'] },
+    { propertyId: 'p-dob', columnPath: ['legacy_dob'] },
+  ]);
+});
+
+it('says so when the column cap cuts a table list, and still keeps bindings past it', async () => {
+  const page = (offset: number) => ({
+    data: Array.from({ length: 100 }, (_, i) => ({
+      name: `c${offset + i}`,
+      dataType: DataType.String,
+      fullyQualifiedName: `${TABLE_FQN}.c${offset + i}`,
+    })),
+    paging: { total: 5000 },
+  });
+  const snapshot = bindings(4, [
+    { propertyId: 'p-dob', columnPath: ['c4999'], state: State.Resolved },
+  ]);
+  http.get.mockImplementation(async (url, config) => ({
+    data: url.includes('/columns/search')
+      ? page((config?.params as { offset: number }).offset)
+      : snapshot,
+  }));
+  const view = renderWithQueryClient(<div />);
+  view.queryClient.setQueryData(['ontology-concept-bindings', 'concept'], {
+    kind: 'complete',
+    ...snapshot,
+  });
+  const onClose = jest.fn();
+  http.put.mockResolvedValue({ data: {} });
+  view.rerender(
+    <OntologyColumnMappingStep
+      assets={[table]}
+      conceptId="concept"
+      conceptName="Patient"
+      properties={properties}
+      onClose={onClose}
+    />
+  );
+
+  expect(
+    await screen.findByText('message.ontology-column-list-truncated')
+  ).toBeVisible();
+
+  fireEvent.click(screen.getByTestId('ontology-column-mapping-save'));
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+  expect(putBody().asset.columns).toContainEqual({
+    propertyId: 'p-dob',
+    columnPath: ['c4999'],
+  });
+}, 60_000);
+
+describe('when a table columns fail to load', () => {
+  const second = { id: 'table-2', type: 'table', name: 'visits' };
+  const snapshot: OntologyConceptBindingsResponse = {
+    revision: 9,
+    assets: [
+      {
+        assetId: 'table',
+        assetType: AssetType.Table,
+        asset: table,
+        columns: [
+          {
+            propertyId: 'p-key',
+            columnPath: ['patient_id'],
+            state: State.Resolved,
+          },
+        ],
+      },
+      {
+        assetId: 'table-2',
+        assetType: AssetType.Table,
+        asset: { ...second, fullyQualifiedName: 'service.db.schema.visits' },
+        columns: [
+          {
+            propertyId: 'p-dob',
+            columnPath: ['visit_date'],
+            state: State.Resolved,
+          },
+        ],
+      },
+    ],
+  };
+  const renderTwo = (failing: string, onClose = jest.fn()) => {
+    let failures = 1;
+    http.get.mockImplementation(async (url) => {
+      if (url.includes(`/${failing}/columns/search`) && failures-- > 0) {
+        throw new Error('boom');
+      }
+      if (url.includes('/table-2/columns/search')) {
+        return {
+          data: {
+            data: [
+              {
+                name: 'visit_date',
+                dataType: DataType.Date,
+                fullyQualifiedName: 'service.db.schema.visits.visit_date',
+              },
+            ],
+            paging: { total: 1 },
+          },
+        };
+      }
+
+      return { data: url.includes('/columns/search') ? columnPage : snapshot };
+    });
+    const view = renderWithQueryClient(<div />);
+    view.queryClient.setQueryData(['ontology-concept-bindings', 'concept'], {
+      kind: 'complete',
+      ...snapshot,
+    });
+    view.rerender(
+      <OntologyColumnMappingStep
+        assets={[
+          table,
+          { ...second, fullyQualifiedName: 'service.db.schema.visits' },
+        ]}
+        conceptId="concept"
+        conceptName="Patient"
+        properties={properties}
+        onClose={onClose}
+      />
+    );
+
+    return onClose;
+  };
+
+  it('shows an error with Retry, and writes only the table that loaded', async () => {
+    const onClose = renderTwo('table');
+    http.put.mockResolvedValue({ data: {} });
+    const failed = await screen.findByTestId(
+      'ontology-column-mapping-table-table'
+    );
+    await within(failed).findByText('message.temporary-error-try-reloading');
+    await row('visit_date');
+
+    fireEvent.click(screen.getByTestId('ontology-column-mapping-save'));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+    expect(http.put).toHaveBeenCalledTimes(1);
+    expect(putBody()).toEqual({
+      expectedRevision: 9,
+      asset: {
+        assetId: 'table-2',
+        assetType: 'table',
+        columns: [{ propertyId: 'p-dob', columnPath: ['visit_date'] }],
+      },
+    });
+  });
+
+  it('lists the columns once Retry succeeds', async () => {
+    renderTwo('table');
+    const failed = await screen.findByTestId(
+      'ontology-column-mapping-table-table'
+    );
+    await within(failed).findByText('message.temporary-error-try-reloading');
+    fireEvent.click(
+      within(failed).getByRole('button', { name: 'label.retry' })
+    );
+
+    expect(await row('patient_id')).toBeVisible();
+    expect(
+      within(failed).queryByText('message.temporary-error-try-reloading')
+    ).not.toBeInTheDocument();
+  });
+
+  it('disables Save when every table failed to load', async () => {
+    http.get.mockImplementation(async (url) => {
+      if (url.includes('/columns/search')) {
+        throw new Error('boom');
+      }
+
+      return { data: bindings(3) };
+    });
+    const view = renderWithQueryClient(<div />);
+    view.queryClient.setQueryData(['ontology-concept-bindings', 'concept'], {
+      kind: 'complete',
+      ...bindings(3),
+    });
+    view.rerender(
+      <OntologyColumnMappingStep
+        assets={[table]}
+        conceptId="concept"
+        conceptName="Patient"
+        properties={properties}
+        onClose={jest.fn()}
+      />
+    );
+    await screen.findByText('message.temporary-error-try-reloading');
+
+    expect(screen.getByTestId('ontology-column-mapping-save')).toBeDisabled();
+  });
+});
