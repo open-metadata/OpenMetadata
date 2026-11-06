@@ -44,6 +44,7 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
@@ -213,6 +214,13 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DataProductDomainContainmentRepair.STEP_NAME,
         () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+    // Same for the 2.0.8 entity_extension collation alignment. It only acts when the column
+    // differs from its table, so running it after 2.0.8 already did changes nothing.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        EntityExtensionCollationAlignment.STEP_NAME,
+        () -> EntityExtensionCollationAlignment.alignOnMySql(handle));
     // `migrate` runs data migrations before it starts Flowable, and this step deploys a workflow.
     runOnce(
         migrationDAO,

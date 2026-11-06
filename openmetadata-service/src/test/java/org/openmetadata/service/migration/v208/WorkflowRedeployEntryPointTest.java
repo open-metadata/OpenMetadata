@@ -34,6 +34,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
@@ -45,7 +46,7 @@ class WorkflowRedeployEntryPointTest {
   void runDataMigrationRewritesThenRedeploysTheWorkflows(
       String database,
       Function<MigrationFile, MigrationProcessImpl> createMigration,
-      int indexStepRuns)
+      int mySqlStepRuns)
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
     Handle handle = mock(Handle.class);
@@ -62,7 +63,9 @@ class WorkflowRedeployEntryPointTest {
             mockStatic(WorkflowRedeployMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
         MockedStatic<McpGrantUserNameIndexes> grantUserNameIndexes =
-            mockStatic(McpGrantUserNameIndexes.class)) {
+            mockStatic(McpGrantUserNameIndexes.class);
+        MockedStatic<EntityExtensionCollationAlignment> collationAlignment =
+            mockStatic(EntityExtensionCollationAlignment.class)) {
       migration.runDataMigration();
 
       migrationUtil.verify(MigrationUtil::rewriteWorkflowRules);
@@ -70,7 +73,9 @@ class WorkflowRedeployEntryPointTest {
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
       workflowRedeploy.verify(WorkflowRedeployMigration::redeploy);
       grantUserNameIndexes.verify(
-          () -> McpGrantUserNameIndexes.addOnMySql(handle), times(indexStepRuns));
+          () -> McpGrantUserNameIndexes.addOnMySql(handle), times(mySqlStepRuns));
+      collationAlignment.verify(
+          () -> EntityExtensionCollationAlignment.alignOnMySql(handle), times(mySqlStepRuns));
     }
   }
 
