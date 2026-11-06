@@ -49,6 +49,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
@@ -814,3 +815,19 @@ def test_dashboard_project_is_the_workbook_workspace(sigma_over_http, routes):
     routes["GET", "/v2/workbooks/wb-3"] = {**SIGMA_WORKBOOKS[2], "path": "My Documents"}
 
     assert ingested_projects(source) == {"wb-1": "Shared", "wb-2": "Shared", "wb-3": "My Documents"}
+
+
+@pytest.mark.parametrize(
+    "pattern, kept",
+    [
+        (FilterPattern(includes=["^Shared$"]), {"wb-1": "Shared", "wb-2": "Shared"}),
+        (FilterPattern(excludes=["^Shared$"]), {"wb-3": "My Documents"}),
+    ],
+    ids=["include", "exclude"],
+)
+def test_project_filter_pattern_keeps_or_drops_by_workspace(sigma_over_http, routes, pattern, kept):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-3"] = {**SIGMA_WORKBOOKS[2], "path": "My Documents"}
+    source.source_config.projectFilterPattern = pattern
+
+    assert ingested_projects(source) == kept
