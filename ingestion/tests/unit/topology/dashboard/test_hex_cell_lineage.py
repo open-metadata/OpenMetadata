@@ -325,6 +325,7 @@ class FakeOpenMetadata:
             name=request.name,
             fullyQualifiedName=model_fqn,
             dataModelType=request.dataModelType,
+            sql=request.sql,
             columns=columns,
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
         )
@@ -473,8 +474,11 @@ class TestHexCellLineage:
         # Columns are still known from the SQL, only their source tables are missing
         assert [child.name.root for child in data_models[0].columns[0].children] == ["region", "revenue", "segment"]
 
-    def test_unreadable_cells_fall_back_to_the_warehouse_queries(self, make_source):
-        source = make_source(None)
+    def test_unreadable_cells_link_the_warehouse_queries_to_the_existing_data_model(self, make_source):
+        source = make_source([REVENUE_CELL])
+        run(source)
+        source.client.get_project_cells.return_value = None
+        source._cell_lineage = None
         warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
         warehouse_lineage.add_table(ORDERS_TABLE)
         source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
@@ -483,8 +487,131 @@ class TestHexCellLineage:
 
         assert data_models == []
         assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
-            ("snowflake_prod.prod.sales.orders", "dashboard")
+            ("snowflake_prod.prod.sales.orders", "dashboardDataModel")
         ]
+        assert edges[0].lineageDetails.columnsLineage is None
+
+    def test_unreadable_cells_with_query_history_get_a_data_model_without_columns(self, make_source):
+        source = make_source(None)
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+
+        (request,), edges = run(source)
+
+        assert request.columns == []
+        assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
+            ("snowflake_prod.prod.sales.orders", "dashboardDataModel")
+        ]
+
+    def test_a_cell_whose_table_gives_no_columns_still_links_it_to_a_data_model(self, make_source):
+        source = make_source(
+            [sql_cell("c1", "select * from sales.orders", "orders")], tables=(make_table("orders", {}),)
+        )
+
+        (request,), edges = run(source)
+
+        assert request.columns == []
+        assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
+            ("snowflake_prod.prod.sales.orders", "dashboardDataModel")
+        ]
+
+    def test_a_data_model_without_columns_outlives_the_query_history_window(self, make_source):
+        source = make_source([MARKDOWN_CELL])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+        run(source)
+        # A later run whose seven days of query history hold no query of the project
+        source.hex_project_lineage = {}
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
+        data_models, edges = run(source)
+
+        assert (data_models, edges) == ([], [])
+        assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
+
+    def test_a_data_model_only_the_query_history_fills_outlives_its_window_beside_unresolved_cells(self, make_source):
+        # The cell reads a table not in OpenMetadata: SQL, but no tables and no columns
+        source = make_source([sql_cell("c1", "select * from other.missing", "missing")])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+        (request,), _ = run(source)
+        assert request.sql is None
+        source.hex_project_lineage = {}
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
+        data_models, _ = run(source)
+
+        assert data_models == []
+        assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
+
+    def test_a_data_model_without_columns_that_cant_be_looked_up_is_kept(self, make_source):
+        source = make_source([MARKDOWN_CELL])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+        run(source)
+        source.hex_project_lineage = {}
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+        lookup = source.metadata.get_by_name
+
+        def unavailable(entity, fqn, **kwargs):
+            if entity is DashboardDataModel and "fields" in kwargs:
+                raise ConnectionError("server unavailable")
+            return lookup(entity, fqn, **kwargs)
+
+        source.metadata.get_by_name = unavailable
+
+        run(source)
+
+        assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
+
+    def test_a_data_model_without_columns_from_a_deleted_cell_is_not_kept(self, make_source):
+        source = make_source(
+            [sql_cell("c1", "select * from sales.orders", "orders")], tables=(make_table("orders", {}),)
+        )
+        run(source)
+        source.client.get_project_cells.return_value = [MARKDOWN_CELL]
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
+        data_models, edges = run(source)
+
+        assert (data_models, edges) == ([], [])
+        assert source.datamodel_source_state == set()
+
+    def test_a_data_model_whose_cells_are_all_gone_is_not_kept(self, make_source):
+        source = make_source([REVENUE_CELL])
+        run(source)
+        source.client.get_project_cells.return_value = [MARKDOWN_CELL]
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
+        data_models, _ = run(source)
+
+        assert data_models == []
+        assert source.datamodel_source_state == set()
+
+    def test_a_project_only_the_query_history_reads_from_gets_a_data_model_without_columns(self, make_source):
+        source = make_source([MARKDOWN_CELL])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+
+        (request,), (edge,) = run(source)
+
+        assert request.columns == []
+        assert request.sql is None
+        assert (edge.fromEntity.fullyQualifiedName, edge.toEntity.type) == (
+            "snowflake_prod.prod.sales.orders",
+            "dashboardDataModel",
+        )
+        assert edge.lineageDetails.columnsLineage is None
 
     def test_cells_are_fetched_once_per_project(self, make_source):
         source = make_source([REVENUE_CELL])
@@ -632,9 +759,11 @@ class TestHexCellLineage:
 
         _, edges = run(source)
 
-        assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
-            ("snowflake_prod.prod.sales.orders", "dashboard")
-        ]
+        # Node level only: the query history doesn't say which cell read the table
+        assert [
+            (edge.fromEntity.fullyQualifiedName, edge.toEntity.type, edge.lineageDetails.columnsLineage)
+            for edge in edges
+        ] == [("snowflake_prod.prod.sales.orders", "dashboardDataModel", None)]
 
     def test_names_are_made_valid_column_names(self, make_source):
         cell = REVENUE_CELL.model_copy(

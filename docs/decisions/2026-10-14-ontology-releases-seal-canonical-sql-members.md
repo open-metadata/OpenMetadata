@@ -122,3 +122,10 @@ concept label its own `skosxl:Label` resource.
 `OntologyExportGateTest`, `IndependentOntologyReleaseExportFormatsIT`,
 `IndependentOntologyReleaseExportAssetsIT` and `IndependentOntologyReleaseExportGateIT` guard this
 amendment.
+
+## Amendment: direct publish and no-op activation (2026-11-02)
+
+A sealed Draft of an ontology with no reviewers becomes `APPROVED` with `approvalBasis`
+`NO_REVIEWERS_CONFIGURED` when an author activates it; see the review decision's 2026-11-02
+amendment. Activating the release that is already active returns the current state and appends no
+event, so the activation revision and history only move when the active pointer does.

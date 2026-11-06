@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as ExploreIcon } from '../../../assets/svg/explore.svg';
+import { Compass03 } from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../constants/constants';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
@@ -25,7 +25,7 @@ export const exploreModule: AppModule = {
   id: 'explore',
   navOrder: 10,
   labelKey: 'label.explore',
-  icon: ExploreIcon,
+  icon: Compass03,
   prefix: ROUTES.EXPLORE,
   defaultPath: ROUTES.EXPLORE,
   routes: [],

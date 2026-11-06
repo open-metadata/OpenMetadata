@@ -20,11 +20,13 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Archive,
+  Restore,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as RefreshIcon } from '../../../assets/svg/action-icons/refresh.svg';
-import { ReactComponent as ArchiveIcon } from '../../../assets/svg/sidebar-icons/archive.svg';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { ArchiveItem, ArchiveViewProps } from './ArchiveView.interface';
@@ -103,7 +105,7 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
         {canRestore && (
           <ButtonUtility
             data-testid="restore-btn"
-            icon={RefreshIcon}
+            icon={Restore}
             size="lg"
             tooltip={t('label.restore')}
             onClick={() => onRestore(item)}
@@ -163,7 +165,7 @@ const ArchiveView: FC<ArchiveViewProps> = ({
       <div className="tw:relative tw:flex-1 tw:min-h-0">
         <NoDataPlaceholder
           description={t('message.archived-items-appear-here')}
-          icon={<ArchiveIcon />}
+          icon={<Archive />}
           title={t('label.no-archived-item-plural-yet')}
         />
       </div>

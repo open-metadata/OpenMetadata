@@ -529,6 +529,26 @@ def test_bigquery_concrete_precedence_and_decorator(sdk):
     assert ids(resolve_bigquery(metadata, "events_20260101")) == [family.id]
 
 
+def test_bigquery_lowercased_reference_resolves_to_its_one_case_variant(sdk):
+    # A query parser that lower-cases names still finds the table BigQuery spells Account
+    metadata, transport = sdk
+    account = table("my_service.my_db.my_schema.Account")
+    other_schema = table("my_service.my_db.other_schema.account")
+    transport.entities = {item.fullyQualifiedName.root: item for item in (account, other_schema)}
+    transport.hits = [account.fullyQualifiedName.root, other_schema.fullyQualifiedName.root]
+    assert ids(resolve_bigquery(metadata, "account")) == [account.id]
+
+
+def test_bigquery_reference_matching_two_case_variants_resolves_to_none(sdk):
+    # BigQuery names are case-sensitive, so which one was meant can't be told
+    metadata, transport = sdk
+    upper = table("my_service.my_db.my_schema.Account")
+    shouting = table("my_service.my_db.my_schema.ACCOUNT")
+    transport.entities = {item.fullyQualifiedName.root: item for item in (upper, shouting)}
+    transport.hits = list(transport.entities)
+    assert resolve_bigquery(metadata, "account") == ()
+
+
 def test_bigquery_placeholder_without_descriptor_is_not_a_family(sdk):
     metadata, transport = sdk
     ordinary = table("my_service.my_db.my_schema.events_yyyymmdd")
@@ -720,6 +740,30 @@ def add_bigquery_service(transport):
         serviceType="BigQuery",
         connection={"config": {"type": "BigQuery", "credentials": {"gcpConfig": {}}}},
     )
+
+
+def test_hex_query_history_never_drops_a_schema_the_query_names(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    elsewhere = table("my_service.my_db.other_schema.account")
+    transport.entities[elsewhere.fullyQualifiedName.root] = elsewhere
+    transport.hits = [elsewhere.fullyQualifiedName.root]
+    fetcher = HexQueryFetcher(metadata=metadata, lookback_days=7)
+
+    def tables_read(sql, prefix=None):
+        return ids(fetcher._extract_tables_from_query(sql, "my_service", "my_db", "my_schema", prefix))
+
+    # The query says which schema: a table of the same name in another one isn't it
+    assert tables_read("select * from my_db.my_schema.account") == []
+    # A bare name only has the session's schema, which may not be the table's
+    assert tables_read("select * from account") == [elsewhere.id]
+    # ...but which of several same-named tables it read can't be told
+    same_named = [table("my_service.my_db.raw.orders"), table("my_service.my_db.staging.orders")]
+    transport.entities.update({item.fullyQualifiedName.root: item for item in same_named})
+    transport.hits = [item.fullyQualifiedName.root for item in same_named]
+    assert tables_read("select * from orders") == []
+    # ...unless the configured prefix leaves only one of them
+    assert tables_read("select * from orders", "my_service.my_db.raw") == [same_named[0].id]
 
 
 def test_bigquery_usage_counts_each_execution_once_and_preserves_sql(sdk, tmp_path):
