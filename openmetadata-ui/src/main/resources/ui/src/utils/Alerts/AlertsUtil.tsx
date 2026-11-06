@@ -13,20 +13,20 @@
 
 import { Divider, Skeleton } from '@openmetadata/ui-core-components';
 import {
+  Alert,
   AlertCircle,
+  Check,
   CheckCircle,
+  Clock02,
+  GridView,
+  Mail,
+  Webhook,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { uniq, uniqBy } from 'lodash';
 import { Fragment } from 'react';
-import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
-import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
-import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
-import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
-import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
-import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { InlineAlertType } from '../../components/common/InlineAlert/InlineAlert.interface';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { UUID_REGEX } from '../../constants/regex.constants';
@@ -56,12 +56,12 @@ export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
     case SubscriptionType.MSTeams:
       return <MSTeamsIcon height={16} width={16} />;
     case SubscriptionType.Email:
-      return <MailIcon height={16} width={16} />;
+      return <Mail className="tw:text-utility-gray-500" size={16} />;
     case SubscriptionType.ActivityFeed:
-      return <AllActivityIcon height={16} width={16} />;
+      return <GridView size={16} />;
     case SubscriptionType.Webhook:
     default:
-      return <WebhookIcon height={16} width={16} />;
+      return <Webhook className="tw:text-utility-gray-500" size={16} />;
   }
 };
 
@@ -281,11 +281,11 @@ export const getAlertRecentEventsFilterOptions = () =>
 export const getAlertStatusIcon = (status: Status): JSX.Element | null => {
   switch (status) {
     case Status.Successful:
-      return <CheckIcon className="status-icon successful-icon" />;
+      return <Check className="status-icon successful-icon" />;
     case Status.Failed:
-      return <AlertIcon className="status-icon failed-icon" />;
+      return <Alert className="status-icon failed-icon" />;
     case Status.Unprocessed:
-      return <ClockIcon className="status-icon unprocessed-icon" />;
+      return <Clock02 className="status-icon unprocessed-icon" />;
     default:
       return null;
   }
@@ -362,9 +362,9 @@ export const getDestinationStatusAlertData = (destinationStatus?: string) => {
       : 'destination-error-status';
   const alertIcon =
     destinationStatus === DestinationStatus.Success ? (
-      <CheckCircle height={14} width={14} />
+      <CheckCircle size={14} />
     ) : (
-      <AlertCircle height={14} width={14} />
+      <AlertCircle size={14} />
     );
 
   return {

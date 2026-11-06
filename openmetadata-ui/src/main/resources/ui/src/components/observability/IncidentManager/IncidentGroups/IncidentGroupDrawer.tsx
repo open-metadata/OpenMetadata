@@ -23,7 +23,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   ArrowRight,
   Calendar,
   Clock,
@@ -167,7 +167,7 @@ const IncidentGroupDrawer = ({
                   className="tw:flex tw:shrink-0 tw:divide-x tw:divide-secondary"
                   color="secondary">
                   <IncidentGroupStat
-                    icon={AlertTriangle}
+                    icon={Alert}
                     iconClassName="tw:text-fg-error-primary"
                     label={t('label.incident-plural')}
                     testId="incident-group-stat-count"

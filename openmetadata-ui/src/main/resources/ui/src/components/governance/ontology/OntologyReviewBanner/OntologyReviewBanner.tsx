@@ -19,13 +19,16 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import {
-  AssigneeStatus,
   EntityStatus,
   OntologyReleaseReview,
 } from '../../../../generated/api/data/ontologyReleaseReview';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { releaseChangeCount } from '../OntologyReleasePanel/OntologyReleasePanel.utils';
+import {
+  getReviewStatusMessage,
+  NO_REVIEWER_ASSIGNED_KEY,
+} from './OntologyReviewBanner.utils';
 
 type Props = {
   review: OntologyReleaseReview;
@@ -35,41 +38,92 @@ type Props = {
   onOpenTask: (taskId: string) => void;
 };
 
-const OntologyReviewBanner = ({
+const DecisionBanner = ({
+  review,
+  release,
+  onOpenTask,
+}: Pick<Props, 'review' | 'release' | 'onOpenTask'>) => {
+  const { t } = useTranslation();
+  const decision = review.latestDecision;
+  const approved = review.status === EntityStatus.Approved;
+  const version = release.semanticVersion
+    ? 'v' + release.semanticVersion
+    : release.name;
+
+  return (
+    <Alert
+      data-testid="ontology-review-decision-banner"
+      title={t(
+        approved
+          ? 'message.ontology-review-approved-banner'
+          : 'message.ontology-review-rejected-banner',
+        {
+          reviewer: getEntityName(decision?.user),
+          version,
+          reason: decision?.reason ?? '',
+        }
+      )}
+      variant={approved ? 'success' : 'error'}>
+      <Box align="center" gap={3} justify="between" wrap="wrap">
+        <Typography>
+          {getEntityName(review.ontology)} · {review.taskId ?? review.task.id}
+        </Typography>
+        <Button
+          color="secondary"
+          size="sm"
+          onPress={() => onOpenTask(review.task.id)}>
+          {t('label.view-request')}
+        </Button>
+      </Box>
+    </Alert>
+  );
+};
+
+const isDecided = (review: Props['review']) =>
+  Boolean(review.latestDecision) &&
+  (review.status === EntityStatus.Approved ||
+    review.status === EntityStatus.Rejected);
+
+const PendingBanner = ({
   review,
   release,
   viewerName,
-  viewerId,
+  isRequester,
   onOpenTask,
-}: Props) => {
+}: Pick<Props, 'review' | 'release' | 'viewerName' | 'onOpenTask'> & {
+  isRequester: boolean;
+}) => {
   const { t } = useTranslation();
-  const isRequester = review.requester?.id === viewerId;
-  if (
-    review.status !== EntityStatus.InReview ||
-    (!review.callerCanVote && !isRequester)
-  ) {
-    return null;
-  }
-  const pending = review.assignees
-    .filter((entry) => entry.status === AssigneeStatus.Pending)
-    .map((entry) => getEntityName(entry.assignee))
-    .join(', ');
+  const status = getReviewStatusMessage(
+    review,
+    Boolean(release.reviewers?.length)
+  );
+  const hasNoReviewerLeft =
+    isRequester &&
+    !review.callerCanVote &&
+    status.key === NO_REVIEWER_ASSIGNED_KEY;
 
   return (
     <Alert
       data-testid="ontology-review-banner"
-      title={t(
+      title={
         review.callerCanVote
-          ? 'message.ontology-review-waiting-for-you'
-          : 'message.ontology-review-waiting-on',
-        { name: viewerName, names: pending }
-      )}
+          ? t('message.ontology-review-waiting-for-you', { name: viewerName })
+          : t(status.key, status.values)
+      }
       variant={review.callerCanVote ? 'warning' : 'brand'}>
+      {hasNoReviewerLeft && (
+        <Typography data-testid="ontology-review-withdraw-hint">
+          {t('message.ontology-review-no-reviewer-withdraw-hint')}
+        </Typography>
+      )}
       <Box align="center" gap={3} justify="between" wrap="wrap">
         <Typography>
           {getEntityName(review.ontology)} ·{' '}
-          {release.semanticVersion ?? t('label.unavailable')} ·{' '}
-          {releaseChangeCount(release) ?? t('label.unavailable')}{' '}
+          {release.semanticVersion
+            ? 'v' + release.semanticVersion
+            : t('label.draft')}{' '}
+          · {releaseChangeCount(release) ?? t('label.unavailable')}{' '}
           {t('label.change-plural')} · {getEntityName(review.requester)} ·{' '}
           {review.taskId ?? review.task.id}
         </Typography>
@@ -81,6 +135,41 @@ const OntologyReviewBanner = ({
         </Button>
       </Box>
     </Alert>
+  );
+};
+
+const OntologyReviewBanner = ({
+  review,
+  release,
+  viewerName,
+  viewerId,
+  onOpenTask,
+}: Props) => {
+  const isRequester = review.requester?.id === viewerId;
+  if (isRequester && isDecided(review)) {
+    return (
+      <DecisionBanner
+        release={release}
+        review={review}
+        onOpenTask={onOpenTask}
+      />
+    );
+  }
+  if (
+    review.status !== EntityStatus.InReview ||
+    (!review.callerCanVote && !isRequester)
+  ) {
+    return null;
+  }
+
+  return (
+    <PendingBanner
+      isRequester={isRequester}
+      release={release}
+      review={review}
+      viewerName={viewerName}
+      onOpenTask={onOpenTask}
+    />
   );
 };
 

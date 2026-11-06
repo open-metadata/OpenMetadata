@@ -684,6 +684,12 @@ export interface PipelineServiceClientConfiguration {
      */
     connectTimeout?: number;
     /**
+     * Names of MCP tools to turn off for every user, admins included. A disabled tool is
+     * refused on every call right away and leaves tools/list after a restart; enabling it again
+     * applies after a restart. A name that matches no tool is ignored.
+     */
+    disabledTools?: string[];
+    /**
      * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
      * it bounds how much of the MCP client's context one call can use. A saved change applies
      * right away on the server that handled the save; other servers in a cluster pick it up on

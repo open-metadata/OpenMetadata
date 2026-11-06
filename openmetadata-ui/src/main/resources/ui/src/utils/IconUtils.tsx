@@ -25,6 +25,7 @@ import {
   Cube01,
   Database01,
   Dataflow04,
+  DataProduct,
   File01,
   FileSearch01,
   Folder,
@@ -166,7 +167,7 @@ export const OntologyStudioIcon = createIconWithStroke(
  */
 export const getDefaultIconForEntityType = (entityType?: string): FC => {
   if (entityType === 'dataProduct') {
-    return Cube01;
+    return DataProduct;
   }
 
   return Globe01;

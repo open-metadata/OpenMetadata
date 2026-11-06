@@ -37,7 +37,7 @@ jest.mock('axios', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  Tag: jest.fn(() => null),
+  Tag01: jest.fn(() => null),
 }));
 
 const makeRawResult = (fqn: string): RawTagResult => ({

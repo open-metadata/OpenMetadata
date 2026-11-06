@@ -20,7 +20,7 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlertTriangle, Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Alert, Copy01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -220,7 +220,7 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
                 data-testid="token-expiry"
                 direction="row"
                 gap={2}>
-                <AlertTriangle className="tw:size-4 tw:shrink-0" />
+                <Alert className="tw:size-4 tw:shrink-0" />
                 <Typography size="text-xs">{expiryMessage}</Typography>
               </Box>
               {tokenCreatedOn && (
