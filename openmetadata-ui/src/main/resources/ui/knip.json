@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": ["src/index.tsx"],
   "project": ["src/**/*.{ts,tsx}"],
   "ignore": [
@@ -7,7 +7,18 @@
     "src/locale/**",
     "**/*.test.{ts,tsx}",
     "**/mocks/**",
-    "**/__mocks__/**"
+    "**/__mocks__/**",
+    // Compatibility forwards for openmetadata-collate (see each file's docstring);
+    // delete the file and its entry here once Collate repoints its imports.
+    "src/rest/index.ts",
+    "src/styles/index.ts",
+    // Unused here but consumed by openmetadata-collate via the generated
+    // openmetadata-ui mirror — verify downstream before deleting:
+    // NodeSuggestions: collate ERDiagramProvider; DataInsightProvider: collate
+    // DashboardChart/DashboardDetails; useLogStream: collate useAutomationLogs.test.
+    "src/components/Entity/EntityLineage/NodeSuggestions.component.tsx",
+    "src/pages/DataInsightPage/DataInsightProvider.tsx",
+    "src/components/common/LogViewerModal/useLogStream.ts"
   ],
   "ignoreDependencies": [".*"]
 }
