@@ -38,7 +38,21 @@ _pii_column_name_regexes: Mapping[PIITag, str | list[str]] = {
     ],
     PIITag.EMAIL_ADDRESS: "^(email|e-mail|mail)(.*address)?$",
     PIITag.PERSON: "^.*(user|client|person|first|last|maiden|nick).*(name).*$",
-    PIITag.DATE_TIME: "^.*(date|time|dob|birthday|dod).*$",
+    # DATE_TIME content hits are suppressed entirely (see classifiers.py).  The only
+    # way a column gets a DATE_TIME PII tag is when its name explicitly signals a
+    # personal date.  Use an allowlist of known personal-date name fragments rather
+    # than a broad "anything with 'date'" match, so operational timestamps
+    # (event_timestamp, created_at, updated_at) are never tagged as PII.
+    PIITag.DATE_TIME: [
+        # Date of birth / age / death.  Separators may be "_", "-" or whitespace.
+        r"^.*(date[_\s-]?of[_\s-]?birth|birth[_\s-]?date|dob|birthday|date[_\s-]?of[_\s-]?death|death[_\s-]?date|dod).*$",
+        # Employment lifecycle dates
+        r"^.*(hire[_\s-]?date|employment[_\s-]?date|start[_\s-]?date|termination[_\s-]?date|retirement[_\s-]?date|resignation[_\s-]?date).*$",
+        # Medical / patient dates
+        r"^.*(admission[_\s-]?date|discharge[_\s-]?date|appointment[_\s-]?date|diagnosis[_\s-]?date|treatment[_\s-]?date|medical[_\s-]?test[_\s-]?date).*$",
+        # User / account lifecycle dates (registration, onboarding, deletion)
+        r"^.*(registration[_\s-]?date|signup[_\s-]?date|sign[_\s-]?up[_\s-]?date|account[_\s-]?date|onboarding[_\s-]?date|deletion[_\s-]?date|deactivation[_\s-]?date).*$",
+    ],
     PIITag.NRP: "^.*(gender|nationality).*$",
     PIITag.LOCATION: "^.*(address|city|state|county|country|zipcode|zip|postal|zone|borough).*$",
     PIITag.PHONE_NUMBER: "^.*(phone).*$",
