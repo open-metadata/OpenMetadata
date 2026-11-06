@@ -760,17 +760,26 @@ def sigma_routes() -> dict:
 
 
 @pytest.fixture
-def sigma_over_http():
-    """SigmaSource with its real client; HTTP is answered from sigma_routes() and counted per (method, path)"""
-    routes = sigma_routes()
+def routes() -> dict:
+    return sigma_routes()
+
+
+@pytest.fixture
+def sigma_over_http(routes):
+    """
+    SigmaSource with its real client; HTTP is answered from `routes` and counted per (method, path).
+    A `page` query parameter is part of the route key, and an int route answers with that error status.
+    """
     calls = Counter()
 
-    def request(method, url, **_):
+    def request(method, url, params=None, **_):
         path = urlparse(str(url)).path
         calls[method, path] += 1
+        page = (params or {}).get("page")
+        body = routes[(method, path, page) if page else (method, path)]
         response = requests.Response()
-        response.status_code = 200
-        response._content = json.dumps(routes[method, path]).encode()
+        response.status_code = body if isinstance(body, int) else 200
+        response._content = b"" if isinstance(body, int) else json.dumps(body).encode()
         return response
 
     with (
