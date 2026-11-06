@@ -25,6 +25,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.ingestion.source import sqa_types
+from metadata.profiler.metrics.core import add_props
+from metadata.profiler.metrics.static.column_names import ColumnNames
 from metadata.profiler.orm.converter.azuresql.converter import AzureSqlMapTypes
 from metadata.profiler.orm.converter.base import _safe_orm_attr, ometa_to_sqa_orm
 from metadata.profiler.orm.converter.common import CommonMapTypes
@@ -273,6 +275,11 @@ def test_dunder_prefixed_columns_are_mapped(mock_schema, mock_database):
 
     # Every column must appear in the underlying Table under its original name
     assert [col.name for col in orm_table.__table__.columns] == [name for name, _ in column_definition]
+    with sqlalchemy.create_engine("sqlite://").connect() as connection:
+        reported_names = connection.execute(
+            sqlalchemy.select(add_props(table=orm_table)(ColumnNames)().fn())
+        ).scalar_one()
+    assert reported_names.split(",") == [name for name, _ in column_definition]
     # The first column (dunder-prefixed) must be the primary key
     pk_cols = list(orm_table.__table__.primary_key)
     assert len(pk_cols) == 1
