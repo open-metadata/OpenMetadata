@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (CSV row and hierarchy authorization) · v3 2026-11-05 (checks run in the write path)
 - **Deciders:** Vishnu Jain
-- **Guard:** `McpMetricAuthorizationIT`, `MetricResourceIT#hierarchyWritesRequireEditPermissionOnParentAndGroupDestinations`, `MetricResourceTest#wholeDocumentReplaceCountsAsAHierarchyChange`, `MetricCsvAuthorizationIT`, `MetricRepositoryTest#admitRefusesMovingAMetricIntoAGroupTheAuthorCannotEdit`
+- **Guard:** `McpMetricAuthorizationIT`, `MetricResourceIT#hierarchyWritesRequireEditPermissionOnParentAndGroupDestinations`, `MetricResourceTest#wholeDocumentReplaceCountsAsAHierarchyChange`, `MetricCsvAuthorizationIT`, `MetricRepositoryTest#admitRefusesMovingAMetricIntoAGroupTheAuthorCannotEdit`, `MetricRepositoryTest#asyncBulkPutRefusesACreateIntoAGroupTheImpersonatedAuthorCannotEdit`
 - **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials
 
 ## Context
