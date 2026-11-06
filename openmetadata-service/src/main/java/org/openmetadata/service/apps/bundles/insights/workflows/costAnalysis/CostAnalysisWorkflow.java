@@ -219,8 +219,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
       }
 
       Optional<String> processRawCostAnalysisError =
-          processRawCostAnalysisReportData(
-              rawCostAnalysisReportDataList, contextData, source.getName());
+          processRawCostAnalysisReportData(rawCostAnalysisReportDataList, contextData);
 
       processRawCostAnalysisError.ifPresent(LOG::debug);
 
@@ -229,8 +228,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
       }
 
       Optional<String> processAggregatedCostAnalysisError =
-          processAggregatedCostAnalysisReportData(
-              aggregatedCostAnalysisDataMap, contextData, source.getName());
+          processAggregatedCostAnalysisReportData(aggregatedCostAnalysisDataMap, contextData);
 
       processAggregatedCostAnalysisError.ifPresent(LOG::debug);
     }
@@ -238,8 +236,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
 
   private Optional<String> processRawCostAnalysisReportData(
       List<RawCostAnalysisReportData> rawCostAnalysisReportDataList,
-      Map<String, Object> contextData,
-      String stepKeyQualifier) {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     CreateReportDataProcessor createReportdataProcessor =
@@ -261,9 +258,8 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                   "Failed Processing Raw Cost Analysis Report Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
-          stepName(createReportdataProcessor.getName(), stepKeyQualifier),
-          createReportdataProcessor.getStats());
+      accumulateWorkflowStats(
+          createReportdataProcessor.getName(), createReportdataProcessor.getStats());
     }
 
     if (rawCostAnalysisReportData.isPresent() && !stopped) {
@@ -280,8 +276,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                 String.format("Failed Sinking Raw Cost Analysis Report Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
       } finally {
-        updateWorkflowStats(
-            stepName(reportDataSink.getName(), stepKeyQualifier), reportDataSink.getStats());
+        accumulateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
       }
     }
 
@@ -291,8 +286,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
   private Optional<String> processAggregatedCostAnalysisReportData(
       Map<String, Map<String, Map<String, AggregatedCostAnalysisData>>>
           aggregatedCostAnalysisDataMap,
-      Map<String, Object> contextData,
-      String stepKeyQualifier) {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     AggregatedCostAnalysisReportDataAggregator aggregatedCostAnalysisReportDataAggregator =
@@ -312,8 +306,8 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
               String.format("Failed Aggregating Cost Analysis Report Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
-          stepName(aggregatedCostAnalysisReportDataAggregator.getName(), stepKeyQualifier),
+      accumulateWorkflowStats(
+          aggregatedCostAnalysisReportDataAggregator.getName(),
           aggregatedCostAnalysisReportDataAggregator.getStats());
     }
 
@@ -337,9 +331,8 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                     "Failed Processing Aggregated Cost Analysis Report Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
       } finally {
-        updateWorkflowStats(
-            stepName(createReportdataProcessor.getName(), stepKeyQualifier),
-            createReportdataProcessor.getStats());
+        accumulateWorkflowStats(
+            createReportdataProcessor.getName(), createReportdataProcessor.getStats());
       }
 
       if (aggregatedCostAnalysisReportData.isPresent() && !stopped) {
@@ -357,8 +350,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                       "Failed Sinking Aggregated Cost Analysis Report Data: %s", ex.getMessage()));
           workflowStats.addFailure(error.get());
         } finally {
-          updateWorkflowStats(
-              stepName(reportDataSink.getName(), stepKeyQualifier), reportDataSink.getStats());
+          accumulateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
         }
       }
     }
@@ -395,8 +387,10 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
         .deleteReportData(reportDataType);
   }
 
-  private static String stepName(String baseName, String stepKeyQualifier) {
-    return String.format("%s (%s)", baseName, stepKeyQualifier);
+  private void accumulateWorkflowStats(String stepName, StepStats completedStepStats) {
+    workflowStats.accumulateWorkflowStepStats(stepName, completedStepStats);
+    workflowStats.updateWorkflowStats(
+        completedStepStats.getSuccessRecords(), completedStepStats.getFailedRecords());
   }
 
   private void updateWorkflowStats(String stepName, StepStats newStepStats) {

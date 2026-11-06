@@ -165,7 +165,7 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
 
       // Process each Report.
       Optional<String> processEntityViewDataError =
-          processEntityViewData(entityViewReportData, contextData, source.getName());
+          processEntityViewData(entityViewReportData, contextData);
 
       processEntityViewDataError.ifPresent(LOG::debug);
 
@@ -174,8 +174,7 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
       }
 
       Optional<String> processUserActivityError =
-          processUserActivityData(
-              userActivityData, userActivityReportData, contextData, source.getName());
+          processUserActivityData(userActivityData, userActivityReportData, contextData);
 
       processUserActivityError.ifPresent(LOG::debug);
     }
@@ -223,8 +222,7 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
 
   private Optional<String> processEntityViewData(
       Map<String, WebAnalyticEntityViewReportData> entityViewReportData,
-      Map<String, Object> contextData,
-      String stepKeyQualifier) {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     CreateReportDataProcessor createReportDataProcessor =
@@ -245,9 +243,8 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
       error = Optional.of(String.format("Failed Processing Entity View Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
-          stepName(createReportDataProcessor.getName(), stepKeyQualifier),
-          createReportDataProcessor.getStats());
+      accumulateWorkflowStats(
+          createReportDataProcessor.getName(), createReportDataProcessor.getStats());
     }
 
     // Sink EntityView ReportData
@@ -264,8 +261,7 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
         error = Optional.of(String.format("Failed Sinking Entity View Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
       } finally {
-        updateWorkflowStats(
-            stepName(reportDataSink.getName(), stepKeyQualifier), reportDataSink.getStats());
+        accumulateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
       }
     }
 
@@ -275,8 +271,7 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
   private Optional<String> processUserActivityData(
       Map<UUID, UserActivityData> userActivityData,
       Map<UUID, WebAnalyticUserActivityReportData> userActivityReportData,
-      Map<String, Object> contextData,
-      String stepKeyQualifier) {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     WebAnalyticsUserActivityAggregator webAnalyticsUserActivityAggregator =
@@ -290,8 +285,8 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
           Optional.of(String.format("Failed Aggregating User Activity Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
-          stepName(webAnalyticsUserActivityAggregator.getName(), stepKeyQualifier),
+      accumulateWorkflowStats(
+          webAnalyticsUserActivityAggregator.getName(),
           webAnalyticsUserActivityAggregator.getStats());
     }
 
@@ -315,9 +310,8 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
               String.format("Failed Processing User Activity Report Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
-          stepName(createReportdataProcessor.getName(), stepKeyQualifier),
-          createReportdataProcessor.getStats());
+      accumulateWorkflowStats(
+          createReportdataProcessor.getName(), createReportdataProcessor.getStats());
     }
 
     if (userActivityReportDataList.isPresent() && !stopped) {
@@ -334,8 +328,7 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
                 String.format("Failed Sinking User Activity Report Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
       } finally {
-        updateWorkflowStats(
-            stepName(reportDataSink.getName(), stepKeyQualifier), reportDataSink.getStats());
+        accumulateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
       }
     }
 
@@ -361,8 +354,10 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
     }
   }
 
-  private static String stepName(String baseName, String stepKeyQualifier) {
-    return String.format("%s (%s)", baseName, stepKeyQualifier);
+  private void accumulateWorkflowStats(String stepName, StepStats completedStepStats) {
+    workflowStats.accumulateWorkflowStepStats(stepName, completedStepStats);
+    workflowStats.updateWorkflowStats(
+        completedStepStats.getSuccessRecords(), completedStepStats.getFailedRecords());
   }
 
   private void updateWorkflowStats(String stepName, StepStats newStepStats) {
