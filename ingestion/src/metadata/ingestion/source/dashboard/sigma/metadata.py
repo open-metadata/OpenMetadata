@@ -580,6 +580,7 @@ class SigmaSource(DashboardServiceSource):
                 dataModelType=DataModelType.SigmaDataModel,
                 serviceType=self.service_connection.type.value,
                 sourceUrl=SourceUrl(data_model.url) if data_model.url else None,
+                owners=self.get_owner_ref(data_model),
                 columns=[
                     Column(
                         name=ColumnName(truncate_column_name(element.elementId)),
@@ -603,7 +604,7 @@ class SigmaSource(DashboardServiceSource):
                 ),
             )
 
-    def get_owner_ref(self, dashboard_details: WorkbookDetails) -> EntityReferenceList | None:
+    def get_owner_ref(self, dashboard_details: WorkbookDetails | DataModel) -> EntityReferenceList | None:
         """
         Get owner from email
         """

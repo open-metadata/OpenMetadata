@@ -54,6 +54,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -804,6 +805,8 @@ def sigma_over_http(routes):
         source = SigmaSource.create(mock_config["source"], OpenMetadata(config.workflowConfig.openMetadataServerConfig))
     source.client = SigmaApiClient(source.service_connection)
     source.client.client._session.request = request
+    # OpenMetadata's user lookup is the other boundary: no user matches unless a test says so
+    source.metadata.get_reference_by_email = lambda email: None
     source.client.token_client._session.request = request
     source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
     return source, calls
@@ -1266,3 +1269,15 @@ def test_data_model_filter_pattern_applies_to_sigma_data_models(sigma_over_http,
 
     assert bulk_data_models(source) == []
     assert calls["GET", "/v2/dataModels/dm-1/elements"] == 0
+
+
+def test_a_sigma_data_model_is_owned_by_its_owner(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    # The data model's ownerId is member-1, whose email is ada@example.com
+    source.metadata.get_reference_by_email = lambda email: EntityReferenceList(
+        root=[EntityReference(id=str(uuid5(NAMESPACE_URL, email)), type="user", name=email)]
+    )
+
+    [data_model] = bulk_data_models(source)
+
+    assert [owner.name for owner in data_model.owners.root] == ["ada@example.com"]

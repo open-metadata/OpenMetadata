@@ -128,6 +128,7 @@ class DataModel(BaseModel):
     dataModelId: str  # noqa: N815
     name: str | None = None
     url: str | None = None
+    ownerId: str | None = None  # noqa: N815
 
 
 class DataModelsResponse(BaseModel):
