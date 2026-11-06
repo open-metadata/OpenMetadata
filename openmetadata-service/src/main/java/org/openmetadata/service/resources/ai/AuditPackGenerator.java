@@ -49,6 +49,12 @@ import org.openmetadata.service.util.EntityUtil;
  * document, encodes it as a data:application/json;base64 URL, and PATCHes the report
  * to Completed. Errors PATCH the report to Failed with the message.
  *
+ * <p>The job runs without the caller's {@code SecurityContext}, so it cannot lean on the request
+ * filters: it re-checks every in-scope asset as the report's {@code requestedBy} user ({@link
+ * #requesterVisibility}) and only packs the assets that user may view. A report with no recorded
+ * requester fails closed instead of falling back to {@code updatedBy}, which completion and
+ * recovery stamp with the admin user.
+ *
  * <p>Runs on the shared {@link AsyncService} rather than a private pool so it is not
  * capped per-pod and participates in server lifecycle. Because the AuditReport row is the
  * durable job record, jobs survive a pod restart: {@link #recoverInterruptedReports()}
@@ -120,7 +126,8 @@ public final class AuditPackGenerator {
     AuditReportRepository repository = auditReportRepository();
     AuditReport report;
     try {
-      report = repository.get(null, reportId, repository.getFields("id,name,scope,format"));
+      report =
+          repository.get(null, reportId, repository.getFields("id,name,scope,format,requestedBy"));
     } catch (Exception e) {
       LOG.warn(
           "Audit pack generator could not fetch claimed report {}: {}", reportId, e.getMessage());
@@ -366,14 +373,37 @@ public final class AuditPackGenerator {
     return message == null ? failure.getClass().getSimpleName() : message;
   }
 
+  /**
+   * The visibility the pack is assembled with: the requesting user's view of the AI estate, one
+   * {@code ViewBasic} check per in-scope asset. A report with no usable requester — only possible
+   * for rows written before {@code requestedBy} was recorded — is refused: the job fails closed
+   * rather than assembling an estate-wide pack, because {@code updatedBy} is not a safe fallback
+   * (recovery and completion stamp it with the admin user).
+   */
+  static AIAssetVisibility requesterVisibility(AuditReport report) {
+    EntityReference requestedBy = report.getRequestedBy();
+    String userName =
+        requestedBy == null
+            ? null
+            : requestedBy.getName() != null
+                ? requestedBy.getName()
+                : requestedBy.getFullyQualifiedName();
+    if (userName == null || userName.isBlank()) {
+      throw new IllegalStateException(
+          "Audit report " + report.getId() + " has no requester; refusing to assemble its pack");
+    }
+    return AIAssetVisibility.forUser(userName);
+  }
+
   private static AuditPackPayload assemble(AuditReport report) {
     AuditPackPayload payload = new AuditPackPayload();
     List<AuditPackAsset> assets = new ArrayList<>();
+    AIAssetVisibility visibility = requesterVisibility(report);
     AuditReportScope scope =
         report.getScope() == null ? AuditReportScope.Estate : report.getScope();
-    collectAssets(Entity.AI_APPLICATION, scope, report, assets);
-    collectAssets(Entity.LLM_MODEL, scope, report, assets);
-    collectAssets(Entity.MCP_SERVER, scope, report, assets);
+    collectAssets(Entity.AI_APPLICATION, scope, report, visibility, assets);
+    collectAssets(Entity.LLM_MODEL, scope, report, visibility, assets);
+    collectAssets(Entity.MCP_SERVER, scope, report, visibility, assets);
 
     payload.body =
         new AuditPackDocument(
@@ -400,11 +430,15 @@ public final class AuditPackGenerator {
   }
 
   private static void collectAssets(
-      String entityType, AuditReportScope scope, AuditReport report, List<AuditPackAsset> out) {
+      String entityType,
+      AuditReportScope scope,
+      AuditReport report,
+      AIAssetVisibility visibility,
+      List<AuditPackAsset> out) {
     try {
       ListFilter filter = new ListFilter(Include.NON_DELETED);
       List<? extends EntityInterface<?>> entities =
-          listAssets(entityType, filter, fieldsForScope(entityType, scope));
+          listAssets(entityType, filter, fieldsForScope(entityType, scope), visibility);
       for (EntityInterface<?> entity : entities) {
         if (scope == AuditReportScope.Asset && report.getScopeTarget() != null) {
           if (!report.getScopeTarget().getId().equals(entity.getId())) {
@@ -432,14 +466,17 @@ public final class AuditPackGenerator {
   }
 
   private static List<EntityInterface<?>> listAssets(
-      String entityType, ListFilter filter, EntityUtil.Fields fields) {
+      String entityType,
+      ListFilter filter,
+      EntityUtil.Fields fields,
+      AIAssetVisibility visibility) {
     List<EntityInterface<?>> result = new ArrayList<>();
     EntityRepository<? extends EntityInterface<?>> repo = Entity.getEntityRepository(entityType);
     String after = null;
     do {
       ResultList<? extends EntityInterface<?>> page =
           repo.listAfter(null, fields, filter, PAGE_SIZE, after);
-      result.addAll(page.getData());
+      result.addAll(visibility.filter(page.getData()));
       after = page.getPaging() == null ? null : page.getPaging().getAfter();
     } while (after != null);
 

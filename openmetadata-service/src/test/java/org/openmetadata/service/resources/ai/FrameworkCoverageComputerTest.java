@@ -13,10 +13,18 @@
 package org.openmetadata.service.resources.ai;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.ai.FrameworkControlCoverage;
 import org.openmetadata.schema.api.ai.FrameworkCoverageResponse;
@@ -30,8 +38,20 @@ import org.openmetadata.schema.type.ComplianceFramework;
 import org.openmetadata.schema.type.RemediationAction;
 import org.openmetadata.schema.type.RemediationStatus;
 import org.openmetadata.schema.type.Verification;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 class FrameworkCoverageComputerTest {
+
+  static {
+    // Entity.registerEntity populates this at server startup; unit tests have no registry.
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("aiapplication", Entity.AI_APPLICATION);
+  }
 
   @Test
   void computeReportsPerControlStatusFromMatchingRemediationActions() {
@@ -55,6 +75,54 @@ class FrameworkCoverageComputerTest {
     assertEquals(FrameworkControlCoverage.Status.MET, oversightControl.getStatus());
     assertEquals(0, oversightControl.getAffectedAssetCount());
     assertEquals(2, oversightControl.getEvidenceCount());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void computeNarrowsCountsToViewableAssets() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> authMock = mockStatic(DefaultAuthorizer.class)) {
+      UUID visibleId = UUID.randomUUID();
+      UUID hiddenId = UUID.randomUUID();
+      EntityRepository<AIApplication> repository = mock(EntityRepository.class);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.AI_APPLICATION))
+          .thenReturn(repository);
+      when(repository.getFields(anyString())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+      // ResourceContext#getEntity() resolves the entity through this get; hand back an asset
+      // carrying the requested id so the authorize answer below can tell the two apart.
+      when(repository.get(any(), any(), any(), any(RelationIncludes.class), anyBoolean()))
+          .thenAnswer(invocation -> application(invocation.getArgument(1, UUID.class)));
+      authMock
+          .when(() -> DefaultAuthorizer.authorizeUser(eq("mallory"), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                ResourceContextInterface context = invocation.getArgument(2);
+                EntityInterface<?> entity = context.getEntity();
+                if (entity != null && hiddenId.equals(entity.getId())) {
+                  throw new AuthorizationException("operation ViewBasic denied");
+                }
+                return null;
+              });
+
+      AIGovernanceFramework framework = new AIGovernanceFramework().withName("EU_AI_Act");
+      List<AIFrameworkControl> controls = List.of(control("art-10"));
+      AIApplication visible = compliantApplication("claimsCopilot");
+      visible.setId(visibleId);
+      AIApplication hidden = compliantApplication("financeCopilot");
+      hidden.setId(hiddenId);
+
+      FrameworkCoverageResponse coverage =
+          FrameworkCoverageComputer.compute(
+              framework, controls, List.of(visible, hidden), AIAssetVisibility.forUser("mallory"));
+
+      assertEquals(1, coverage.getAssetsInScope());
+      assertEquals(1, coverage.getSummary().getCompliant());
+    }
+  }
+
+  private AIApplication application(UUID id) {
+    return new AIApplication().withId(id).withName("app_" + id).withFullyQualifiedName("app_" + id);
   }
 
   private AIFrameworkControl control(String code) {

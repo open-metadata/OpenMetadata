@@ -16,7 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +31,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.schema.entity.ai.AuditReportArtifact;
 import org.openmetadata.schema.entity.ai.AuditReportFormat;
@@ -31,8 +41,21 @@ import org.openmetadata.schema.entity.ai.AuditReportManifest;
 import org.openmetadata.schema.entity.ai.AuditReportScope;
 import org.openmetadata.schema.entity.ai.AuditReportStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 class AuditPackGeneratorTest {
+
+  static {
+    // Entity.registerEntity populates this at server startup; unit tests have no registry.
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("aiapplication", Entity.AI_APPLICATION);
+  }
 
   private static final long NOW = 1_000_000_000L;
   private static final long STALE_MILLIS = 15 * 60 * 1000L;
@@ -211,6 +234,95 @@ class AuditPackGeneratorTest {
     private List<AuditReportFormat> formatsOf(List<AuditReportArtifact> artifacts) {
       return artifacts.stream().map(AuditReportArtifact::getFormat).toList();
     }
+  }
+
+  @Test
+  void requesterVisibilityFailsClosedWhenRequesterIsNotRecorded() {
+    AuditReport missing = new AuditReport().withId(UUID.randomUUID());
+    assertThrows(
+        IllegalStateException.class, () -> AuditPackGenerator.requesterVisibility(missing));
+
+    AuditReport blank =
+        new AuditReport()
+            .withId(UUID.randomUUID())
+            .withRequestedBy(new EntityReference().withType("user"));
+    assertThrows(IllegalStateException.class, () -> AuditPackGenerator.requesterVisibility(blank));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void requesterVisibilityPacksOnlyAssetsTheRequesterMayView() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> authMock = mockStatic(DefaultAuthorizer.class)) {
+      UUID visibleId = UUID.randomUUID();
+      UUID hiddenId = UUID.randomUUID();
+      EntityRepository<AIApplication> repository = mock(EntityRepository.class);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.AI_APPLICATION))
+          .thenReturn(repository);
+      when(repository.getFields(anyString())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+      // ResourceContext#getEntity() resolves the entity through this get; hand back an asset
+      // carrying the requested id so the authorize answer below can tell the two apart.
+      when(repository.get(any(), any(), any(), any(RelationIncludes.class), anyBoolean()))
+          .thenAnswer(invocation -> application(invocation.getArgument(1, UUID.class)));
+      authMock
+          .when(() -> DefaultAuthorizer.authorizeUser(anyString(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                ResourceContextInterface context = invocation.getArgument(2);
+                EntityInterface<?> entity = context.getEntity();
+                if (entity != null && hiddenId.equals(entity.getId())) {
+                  throw new AuthorizationException("operation ViewBasic denied");
+                }
+                return null;
+              });
+      AuditReport report =
+          new AuditReport()
+              .withId(UUID.randomUUID())
+              .withRequestedBy(
+                  new EntityReference().withType("user").withFullyQualifiedName("mallory"));
+
+      AIAssetVisibility visibility = AuditPackGenerator.requesterVisibility(report);
+      List<EntityInterface<?>> packed =
+          visibility.filter(List.of(application(visibleId), application(hiddenId)));
+
+      assertEquals(1, packed.size());
+      assertEquals(visibleId, packed.get(0).getId());
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void requesterVisibilityCoversTheEstateForAnAdminRequester() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<SubjectContext> subjectMock = mockStatic(SubjectContext.class)) {
+      EntityRepository<AIApplication> repository = mock(EntityRepository.class);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.AI_APPLICATION))
+          .thenReturn(repository);
+      when(repository.getFields(anyString())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+      SubjectContext adminSubject = mock(SubjectContext.class);
+      when(adminSubject.isAdmin()).thenReturn(true);
+      subjectMock.when(() -> SubjectContext.getSubjectContext("admin")).thenReturn(adminSubject);
+      AuditReport report =
+          new AuditReport()
+              .withId(UUID.randomUUID())
+              .withRequestedBy(
+                  new EntityReference().withType("user").withFullyQualifiedName("admin"));
+
+      // authorizeUser is the real method here: the mocked admin subject short-circuits the policy
+      // evaluation, which is exactly the estate-wide behavior an admin requester gets.
+      AIAssetVisibility visibility = AuditPackGenerator.requesterVisibility(report);
+      assertEquals(
+          2,
+          visibility
+              .filter(List.of(application(UUID.randomUUID()), application(UUID.randomUUID())))
+              .size());
+    }
+  }
+
+  private static AIApplication application(UUID id) {
+    return new AIApplication().withId(id).withName("app_" + id).withFullyQualifiedName("app_" + id);
   }
 
   private AuditReport report(AuditReportStatus status, Long startedAt) {

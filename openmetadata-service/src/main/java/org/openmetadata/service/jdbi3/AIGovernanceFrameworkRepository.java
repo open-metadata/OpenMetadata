@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.ai.AIAssetVisibility;
 import org.openmetadata.service.resources.ai.AIGovernanceFrameworkResource;
 import org.openmetadata.service.resources.ai.FrameworkCoverageComputer;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -77,6 +78,16 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
   }
 
   public FrameworkCoverageResponse getCoverage(UriInfo uriInfo, AIGovernanceFramework framework) {
+    return getCoverage(uriInfo, framework, AIAssetVisibility.unrestricted());
+  }
+
+  /**
+   * Coverage over the requesting caller's view of the estate: {@code assetsInScope}, {@code
+   * affectedAssetCount} and {@code evidenceCount} must not count assets the caller may not view, so
+   * the walk is narrowed with the caller's visibility before anything is counted.
+   */
+  public FrameworkCoverageResponse getCoverage(
+      UriInfo uriInfo, AIGovernanceFramework framework, AIAssetVisibility visibility) {
     AIFrameworkControlRepository controlRepo = controlRepository();
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     List<AIFrameworkControl> allControls = listControls(uriInfo, controlRepo, "", filter);
@@ -89,7 +100,7 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
       }
     }
 
-    return FrameworkCoverageComputer.compute(framework, controls);
+    return FrameworkCoverageComputer.compute(framework, controls, visibility);
   }
 
   public ForkAIGovernanceFrameworkResponse fork(
