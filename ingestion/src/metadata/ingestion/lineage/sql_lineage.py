@@ -882,6 +882,8 @@ def _view_target(view_entity: Table | None, target_table: object) -> list[Table]
     if view_entity is None:
         return None
     target_name = re.sub(r'[\[\]"`]', "", str(target_table)).lower()
+    # An unqualified target prints with the parser's placeholder schema.
+    target_name = target_name.removeprefix(f"{DEFAULT_SCHEMA_NAME}.")
     # Some parsers drop the qualifiers around a dotted leaf name entirely.
     if target_name == model_str(view_entity.name).lower():
         return [view_entity]
