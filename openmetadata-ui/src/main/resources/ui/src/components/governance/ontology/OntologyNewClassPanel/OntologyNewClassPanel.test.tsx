@@ -1726,5 +1726,49 @@ describe('mappings are picked by label', () => {
     type(picker, 'https://schema.org/Payment');
 
     expect(screen.getByTestId('new-class-add-mapping')).toBeDisabled();
+    expect(
+      screen.getByText('message.ontology-mapping-already-added')
+    ).toBeVisible();
+    expect(
+      screen.queryByText('message.invalid-concept-iri')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps typed mapping text that is not a concept when Create is pressed without a blur', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    const picker = await mappingPicker();
+    type(picker, 'no such concept');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+
+    expect(
+      within(screen.getByTestId('new-class-mapping-iri')).getByText(
+        'message.invalid-concept-iri'
+      )
+    ).toBeVisible();
+    expect(post).not.toHaveBeenCalledWith(
+      '/ontologyChangeSets',
+      expect.anything()
+    );
+    expect(picker).toHaveValue('no such concept');
+  });
+
+  it('creates the concept once with the mapping when the field repeats an added mapping', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    const picker = await mappingPicker();
+    type(picker, 'https://schema.org/Payment');
+    addMapping();
+    type(picker, 'https://schema.org/Payment');
+
+    const concept = await createdConcept();
+
+    expect(
+      concept.conceptMappings.map(
+        (mapping: { conceptIri: string }) => mapping.conceptIri
+      )
+    ).toEqual(['https://schema.org/Payment']);
   });
 });
