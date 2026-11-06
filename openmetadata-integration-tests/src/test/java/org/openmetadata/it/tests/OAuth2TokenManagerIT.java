@@ -20,6 +20,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.util.OAuth2TokenManager;
 import org.openmetadata.service.util.OAuth2TokenManager.OAuth2TokenException;
 
@@ -29,6 +30,7 @@ class OAuth2TokenManagerIT {
   private static int serverPort;
 
   private static final Map<String, ClientBehavior> clientBehaviors = new ConcurrentHashMap<>();
+  private static final Map<String, String> secretsReceived = new ConcurrentHashMap<>();
 
   private final OAuth2TokenManager tokenManager = OAuth2TokenManager.getInstance();
 
@@ -67,6 +69,7 @@ class OAuth2TokenManagerIT {
           String body =
               new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
           String clientId = extractFormParam(body, "client_id");
+          secretsReceived.put(clientId, extractFormParam(body, "client_secret"));
 
           ClientBehavior behavior = clientBehaviors.get(clientId);
           if (behavior == null) {
@@ -195,6 +198,19 @@ class OAuth2TokenManagerIT {
     assertNotEquals(tokenA, tokenB);
     assertEquals(1, clientBehaviors.get(clientIdA).requestCount().get());
     assertEquals(1, clientBehaviors.get(clientIdB).requestCount().get());
+  }
+
+  // The credentials reach the token manager as their destination decrypted them, so whatever
+  // they read, ciphertext included, is sent as it reads.
+  @Test
+  void getAccessToken_sendsTheCredentialsAsGiven() {
+    String clientId = uniqueClientId();
+    clientBehaviors.put(clientId, ClientBehavior.ok("as-given", 3600));
+    String ciphertext = Fernet.getInstance().encrypt("a value held elsewhere");
+
+    tokenManager.getAccessToken(buildConfig(clientId).withClientSecret(ciphertext));
+
+    assertEquals(ciphertext, secretsReceived.get(clientId));
   }
 
   private static String uniqueClientId() {
