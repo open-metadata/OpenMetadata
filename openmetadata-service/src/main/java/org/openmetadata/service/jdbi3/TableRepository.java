@@ -1703,7 +1703,73 @@ public class TableRepository extends EntityRepository<Table> {
               TABLE,
               Relationship.CONTAINS));
     }
+    // Re-add the FK/ER (RELATED_TO) edges that clearEntitySpecificRelationshipsForMany removed. The
+    // single-entity store path does this via storeEntity() -> addConstraintRelationship(); the bulk
+    // path (recursive CSV import, bulk create) only restored CONTAINS, so a table's foreign-key
+    // relationship disappeared even though its tableConstraints JSON was preserved.
+    relationships.addAll(buildConstraintRelationships(entities));
     bulkInsertRelationships(relationships);
+  }
+
+  /**
+   * Build the FK RELATED_TO edges for a batch of tables, folded into the caller's bulk insert (no
+   * per-foreign-key lookup or insert). A referred table that is not persisted yet (e.g. created in a
+   * later bulk chunk) is skipped rather than failing the whole request.
+   */
+  private List<CollectionDAO.EntityRelationshipObject> buildConstraintRelationships(
+      List<Table> entities) {
+    Map<UUID, Set<String>> referredByTable = collectReferredTables(entities);
+    if (referredByTable.isEmpty()) {
+      return List.of();
+    }
+    Map<String, UUID> fqnToId = resolveTableIds(entities, referredByTable);
+    List<CollectionDAO.EntityRelationshipObject> edges = new ArrayList<>();
+    referredByTable.forEach(
+        (fromId, referredFqns) ->
+            referredFqns.stream()
+                .map(fqnToId::get)
+                .filter(Objects::nonNull)
+                .forEach(
+                    toId ->
+                        edges.add(
+                            newRelationship(fromId, toId, TABLE, TABLE, Relationship.RELATED_TO))));
+    return edges;
+  }
+
+  /** Referred parent-table FQNs per table, deduplicated (a composite FK yields one entry). */
+  private Map<UUID, Set<String>> collectReferredTables(List<Table> entities) {
+    Map<UUID, Set<String>> referredByTable = new HashMap<>();
+    for (Table table : entities) {
+      Set<String> referredFqns =
+          listOrEmpty(table.getTableConstraints()).stream()
+              .flatMap(constraint -> listOrEmpty(constraint.getReferredColumns()).stream())
+              .map(FullyQualifiedName::getParentFQN)
+              .collect(Collectors.toSet());
+      if (!referredFqns.isEmpty()) {
+        referredByTable.put(table.getId(), referredFqns);
+      }
+    }
+    return referredByTable;
+  }
+
+  /**
+   * Resolve referred table ids from the batch first and query only the rest, since a recursive
+   * import usually carries the referred table in the same batch (no need to reload its JSON).
+   */
+  private Map<String, UUID> resolveTableIds(
+      List<Table> batch, Map<UUID, Set<String>> referredByTable) {
+    Set<String> wanted =
+        referredByTable.values().stream().flatMap(Set::stream).collect(Collectors.toSet());
+    Map<String, UUID> fqnToId = new HashMap<>();
+    batch.stream()
+        .filter(table -> wanted.contains(table.getFullyQualifiedName()))
+        .forEach(table -> fqnToId.put(table.getFullyQualifiedName(), table.getId()));
+    List<String> missing = wanted.stream().filter(fqn -> !fqnToId.containsKey(fqn)).toList();
+    if (!missing.isEmpty()) {
+      findByNames(missing, ALL)
+          .forEach(table -> fqnToId.put(table.getFullyQualifiedName(), table.getId()));
+    }
+    return fqnToId;
   }
 
   @Override
