@@ -909,7 +909,6 @@ const GlossaryHeader = ({
             name={selectedData.name}
           />
         }
-        variant={isAiMode ? 'gradient' : 'flat'}
       />
       <GlossaryHeaderModals
         handleDelete={handleDelete}
