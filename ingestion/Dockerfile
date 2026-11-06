@@ -1,6 +1,14 @@
 ARG BASE_IMAGE=apache/airflow:3.3.2-python3.12
 FROM mysql:8.3 AS mysql
 
+# Rebuilds the Go library bundled in adbc-driver-flightsql against patched modules;
+# see ingestion/scripts/rebuild_adbc_flightsql.sh. Cross-compiled on the build host,
+# and on bookworm so the library needs no newer glibc than any of these images ship.
+FROM --platform=$BUILDPLATFORM golang:1.26.10-bookworm AS adbc-flightsql
+ARG TARGETARCH
+RUN --mount=type=bind,source=ingestion/scripts/rebuild_adbc_flightsql.sh,target=/rebuild.sh \
+    bash /rebuild.sh build /out
+
 FROM ${BASE_IMAGE}
 
 # gRPC ships a separate CA bundle that can lag behind OS distrust updates.
@@ -178,6 +186,12 @@ RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture
 # spaCy strip -- after the final pip install, or a later install restores them.
 COPY --chown=airflow:0 ingestion/scripts/strip_teradatasql_arch_libs.sh /tmp/strip_teradatasql_arch_libs.sh
 RUN bash /tmp/strip_teradatasql_arch_libs.sh && rm -f /tmp/strip_teradatasql_arch_libs.sh
+
+# Swap in the rebuilt FlightSQL driver. Must run after the final pip install, or a
+# later install restores the wheel's library.
+RUN --mount=type=bind,source=ingestion/scripts/rebuild_adbc_flightsql.sh,target=/tmp/rebuild_adbc_flightsql.sh \
+    --mount=type=bind,from=adbc-flightsql,source=/out,target=/tmp/adbc-flightsql \
+    bash /tmp/rebuild_adbc_flightsql.sh install /tmp/adbc-flightsql
 
 # Native Python extensions still need their shared libraries after header/tool cleanup.
 USER root

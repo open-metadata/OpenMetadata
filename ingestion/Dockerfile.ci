@@ -1,5 +1,13 @@
 FROM mysql:8.3 AS mysql
 
+# Rebuilds the Go library bundled in adbc-driver-flightsql against patched modules;
+# see ingestion/scripts/rebuild_adbc_flightsql.sh. Cross-compiled on the build host,
+# and on bookworm so the library needs no newer glibc than any of these images ship.
+FROM --platform=$BUILDPLATFORM golang:1.26.10-bookworm AS adbc-flightsql
+ARG TARGETARCH
+RUN --mount=type=bind,source=ingestion/scripts/rebuild_adbc_flightsql.sh,target=/rebuild.sh \
+    bash /rebuild.sh build /out
+
 FROM apache/airflow:3.3.2-python3.12
 # gRPC ships a separate CA bundle that can lag behind OS distrust updates.
 ENV GRPC_DEFAULT_SSL_ROOTS_FILE_PATH=/etc/ssl/certs/ca-certificates.crt
@@ -206,6 +214,12 @@ RUN python -c "import MySQLdb, psycopg2"
 # final pip install, or a later install restores the fixture.
 COPY --chown=airflow:0 ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
 RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh
+
+# Swap in the rebuilt FlightSQL driver. Must run after the final pip install, or a
+# later install restores the wheel's library.
+RUN --mount=type=bind,source=ingestion/scripts/rebuild_adbc_flightsql.sh,target=/tmp/rebuild_adbc_flightsql.sh \
+    --mount=type=bind,from=adbc-flightsql,source=/out,target=/tmp/adbc-flightsql \
+    bash /tmp/rebuild_adbc_flightsql.sh install /tmp/adbc-flightsql
 
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
