@@ -44,7 +44,11 @@ describe('FieldDocPopover variant', () => {
   it('uses the raised overlay surface by default', async () => {
     const card = await renderPopover();
 
-    expect(card).toHaveClass('tw:bg-raised');
+    expect(card).toHaveClass(
+      'tw:bg-raised',
+      'tw:shadow-raised',
+      'tw:outline-secondary_alt'
+    );
   });
 
   it('muted variant sits on primary_alt like a muted Card', async () => {

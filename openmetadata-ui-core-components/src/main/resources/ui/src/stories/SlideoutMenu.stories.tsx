@@ -345,7 +345,10 @@ export const WithSelect: Story = {
                 label="Classification"
                 placeholder="Select a classification">
                 {(item) => (
-                  <Select.Item id={item.id} key={item.id} textValue={item.label}>
+                  <Select.Item
+                    id={item.id}
+                    key={item.id}
+                    textValue={item.label}>
                     {item.label}
                   </Select.Item>
                 )}

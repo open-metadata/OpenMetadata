@@ -23,9 +23,7 @@ describe('Dropdown theme roles', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
 
-    const surface = screen
-      .getByRole('menu')
-      .closest('.tw\\:bg-raised');
+    const surface = screen.getByRole('menu').closest('.tw\\:bg-raised');
 
     expect(surface).not.toBeNull();
     expect(surface).toHaveClass('tw:bg-raised', 'tw:shadow-raised');
