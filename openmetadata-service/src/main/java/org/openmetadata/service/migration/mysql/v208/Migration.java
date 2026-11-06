@@ -20,7 +20,9 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
 import org.openmetadata.service.migration.utils.v208.LifeCycleCreatedSentinelMigration;
+import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
 
@@ -32,6 +34,11 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        EntityExtensionCollationAlignment.STEP_NAME,
+        () -> EntityExtensionCollationAlignment.alignOnMySql(handle));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -79,5 +86,10 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DataProductDomainContainmentRepair.STEP_NAME,
         () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        McpGrantUserNameIndexes.STEP_NAME,
+        () -> McpGrantUserNameIndexes.addOnMySql(handle));
   }
 }

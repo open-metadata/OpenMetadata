@@ -68,7 +68,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private volatile URI resourceMetadataUrl;
 
-  private final JwtFilter jwtFilter;
+  private volatile JwtFilter jwtFilter;
 
   private volatile List<String> allowedOrigins;
 
@@ -115,6 +115,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private static final int REGISTRATION_MAX_PER_HOUR = 10;
   private static final int TOKEN_MAX_PER_MINUTE = 30;
   private static final int MAX_RATE_LIMIT_ENTRIES = 10_000;
+  // Client metadata that passes RegistrationHandler's field limits is at most about 31 KB (ten
+  // 2048-character redirect URIs alone are 20 KiB); 64 KiB leaves room for an inline jwks.
+  // ADR:2026-11-02-mcp-request-bodies-are-bounded-before-parsing
+  static final int MAX_REGISTRATION_BODY_BYTES = 64 * 1024;
   private static final java.util.regex.Pattern IP_PATTERN =
       java.util.regex.Pattern.compile("[0-9a-fA-F.:]+");
   private final java.util.concurrent.ConcurrentHashMap<
@@ -243,6 +247,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       org.openmetadata.schema.api.security.AuthenticationConfiguration authConfig,
       org.openmetadata.schema.api.security.AuthorizerConfiguration authzConfig,
       org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig) {
+    // Tokens must be checked against the reloaded security settings, not the ones at startup.
+    this.jwtFilter = new JwtFilter(authConfig, authzConfig);
     if (mcpConfig != null) {
       if (mcpConfig.getAllowedOrigins() != null) {
         updateAllowedOrigins(mcpConfig.getAllowedOrigins());
@@ -1019,9 +1025,22 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       LOG.info("Client registration request received");
 
+      // Registration needs no credentials and RegistrationHandler only checks the parsed object,
+      // so the body is bounded before Jackson reads it.
+      byte[] body = readBody(request, MAX_REGISTRATION_BODY_BYTES);
+      if (body == null) {
+        LOG.warn("Registration request body exceeds {} bytes", MAX_REGISTRATION_BODY_BYTES);
+        sendOAuthError(
+            request,
+            response,
+            HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE,
+            "invalid_client_metadata",
+            "Registration request is too large");
+        return;
+      }
+
       // Parse registration request
-      OAuthClientMetadata metadata =
-          getObjectMapper().readValue(request.getInputStream(), OAuthClientMetadata.class);
+      OAuthClientMetadata metadata = getObjectMapper().readValue(body, OAuthClientMetadata.class);
 
       // Register client
       OAuthClientInformation clientInfo = registrationHandler.handle(metadata).join();

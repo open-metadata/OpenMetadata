@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { get } from 'lodash';
+import { escapeRegExp, get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
@@ -103,6 +103,13 @@ test(
     await expect(
       page.locator(`[data-testid="lineage-node-${nodeFqn}"]`)
     ).toBeVisible();
+
+    // The tab title names the entity the page is centred on.
+    const tableName =
+      table.entityResponseData.displayName ?? table.entityResponseData.name;
+    await expect(page).toHaveTitle(
+      new RegExp(`^${escapeRegExp(`${tableName} Lineage`)} \\|`)
+    );
 
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.LINEAGE);

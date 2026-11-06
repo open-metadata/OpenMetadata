@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -73,41 +74,47 @@ const LineageConfigPage = () => {
     setActiveField(event.target.id);
   }, []);
 
-  const handleSave = useCallback(async (values: LineageSettings) => {
-    try {
-      setIsUpdating(true);
+  const handleSave = useCallback(
+    async (values: LineageSettings) => {
+      try {
+        setIsUpdating(true);
 
-      const configData = {
-        config_type: SettingType.LineageSettings,
-        config_value: {
-          upstreamDepth: Number(values.upstreamDepth),
-          downstreamDepth: Number(values.downstreamDepth),
-          lineageLayer: values.lineageLayer,
-          pipelineViewMode: values.pipelineViewMode,
-        },
-      };
+        // The settings PUT replaces the whole value, so send back the fields
+        // this form does not edit (graphPerformanceConfig) or the save drops them.
+        const configData = {
+          config_type: SettingType.LineageSettings,
+          config_value: {
+            ...lineageConfig,
+            upstreamDepth: Number(values.upstreamDepth),
+            downstreamDepth: Number(values.downstreamDepth),
+            lineageLayer: values.lineageLayer,
+            pipelineViewMode: values.pipelineViewMode,
+          },
+        };
 
-      const { data } = await updateSettingsConfig(configData as Settings);
-      showSuccessToast(
-        t('server.update-entity-success', {
-          entity: t('label.lineage-config'),
-        })
-      );
+        const { data } = await updateSettingsConfig(configData as Settings);
+        showSuccessToast(
+          t('server.update-entity-success', {
+            entity: t('label.lineage-config'),
+          })
+        );
 
-      const lineageConfig = data.config_value as LineageSettings;
-      setLineageConfig(lineageConfig);
+        const savedConfig = data.config_value as LineageSettings;
+        setLineageConfig(savedConfig);
 
-      // Update lineage config in store
-      setAppPreferences({
-        ...appPreferences,
-        lineageConfig,
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsUpdating(false);
-    }
-  }, []);
+        // Update lineage config in store
+        setAppPreferences({
+          ...appPreferences,
+          lineageConfig: savedConfig,
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [lineageConfig, appPreferences, setAppPreferences, t]
+  );
 
   useEffect(() => {
     fetchSearchConfig();
@@ -115,6 +122,16 @@ const LineageConfigPage = () => {
 
   if (isLoading) {
     return <Loader />;
+  }
+
+  // The settings PUT replaces the whole value, so saving a form that never
+  // loaded the stored settings would wipe the ones it does not edit.
+  if (!lineageConfig) {
+    return (
+      <div className="tw:relative tw:min-h-80">
+        <SomethingWentWrongPlaceholder onReload={fetchSearchConfig} />
+      </div>
+    );
   }
 
   return (

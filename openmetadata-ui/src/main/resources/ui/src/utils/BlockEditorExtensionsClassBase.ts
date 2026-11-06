@@ -14,7 +14,7 @@
 import Document from '@tiptap/extension-document';
 import Paragraph from '@tiptap/extension-paragraph';
 import Placeholder from '@tiptap/extension-placeholder';
-import Table from '@tiptap/extension-table';
+import { Table } from '@tiptap/extension-table';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
@@ -62,6 +62,13 @@ export class BlockEditorExtensionsClassBase {
     return [
       StarterKit.configure({
         codeBlock: disableCodeBlock ? false : undefined,
+        // StarterKit v3 bundles these. Link and TrailingNode are registered
+        // below with our own configuration; Underline and ListKeymap stay off so
+        // the editor's marks and list keys behave as they did on v2.
+        link: false,
+        trailingNode: false,
+        underline: false,
+        listKeymap: false,
         heading: {
           levels: [1, 2, 3, 4, 5, 6],
         },

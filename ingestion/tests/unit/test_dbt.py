@@ -3951,7 +3951,9 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
 
         source.metadata.add_test_case_results.assert_called_once()
         test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
-        self.assertEqual(test_case_result.result, "Got 1 result, configured to warn if != 0")
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert test_case_result.testResultValue[0].value == "0"
+        assert test_case_result.result == "Got 1 result, configured to warn if != 0"
 
 
 class TestAddDbtTestResultNullMessage:
@@ -4060,7 +4062,8 @@ class TestAddDbtTestResultNullMessage:
     def test_warning_test_with_null_message_is_ingested(self):
         test_case_result = self._sent_call(self._ingest(status="warn", message=None))["test_results"]
 
-        assert test_case_result.testCaseStatus == TestCaseStatus.Aborted
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert test_case_result.testResultValue[0].value == "0"
 
 
 class TestRemoveManifestNonRequiredKeys(TestCase):
@@ -4537,9 +4540,8 @@ class TestAddDbtSourceFreshnessResults:
     def test_freshness_warn_is_ingested_with_staleness_detail(self):
         test_case_result = self._ingest("warn")
 
-        # `warn` is neither a dbt success nor a dbt failure status, so it keeps the
-        # pre-1.13.0 fall-through to Aborted.
-        assert test_case_result.testCaseStatus == TestCaseStatus.Aborted
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert test_case_result.testResultValue[0].value == "0"
         assert "18.0 hours old" in test_case_result.result
         assert "warn_after=12 hour" in test_case_result.result
 
