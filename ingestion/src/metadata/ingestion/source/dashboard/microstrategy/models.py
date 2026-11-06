@@ -41,8 +41,6 @@ class MstrProject(MstrModel):
 
     id: str
     name: str
-    description: str | None = None
-    status: int | None = None
 
 
 class MstrSearchResult(MstrModel):
@@ -52,14 +50,8 @@ class MstrSearchResult(MstrModel):
 
     id: str
     name: str
-    type: int | None = None
-    subtype: int | None = None
     description: str | None = None
-    dateCreated: str | None = None  # noqa: N815
-    dateModified: str | None = None  # noqa: N815
     owner: MstrOwner | None = None
-    certifiedInfo: dict[str, Any] | None = None  # noqa: N815
-    projectId: str | None = None  # noqa: N815
 
 
 class MstrSearchPage(MstrModel):
