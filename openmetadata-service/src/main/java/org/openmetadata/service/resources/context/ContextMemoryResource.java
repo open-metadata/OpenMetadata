@@ -52,6 +52,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.IntSupplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.CreateContextMemory;
@@ -62,8 +63,10 @@ import org.openmetadata.schema.entity.context.MemoryDerivation;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -83,6 +86,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 @Tag(name = "Context Memories", description = "APIs for managing reusable Context Center memories.")
@@ -98,6 +102,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   static final String COUNTED_AT_REQUIRED = "countedAt is required: it orders the recounts";
   static final String COUNTED_AT_AHEAD = "countedAt %d is ahead of the server clock";
   static final Duration COUNTED_AT_CLOCK_SKEW = Duration.ofMinutes(1);
+
+  /** Rows read to count a list page's visible total; a judgment call between cost and accuracy. */
+  static final int MAX_VISIBLE_COUNT_SCAN = 10_000;
+
   private static final String PIN_UPDATE_FIELDS =
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
 
@@ -255,19 +263,57 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
             listInternal(
                 uriInfo,
                 securityContext,
-                ContextMemoryVisibility.guardFields(entityType, fieldsParam),
+                ContextMemoryVisibility.listingFields(entityType, fieldsParam),
                 filter,
                 limitParam,
                 before,
                 after));
-    List<ContextMemory> visible =
-        ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
-    // Keep the cursor so clients can page past hidden rows.
+    List<ContextMemory> listed =
+        ContextMemoryVisibility.filterListed(memories.getData(), securityContext);
+    Paging paging = memories.getPaging();
+    if (paging != null
+        && paging.getTotal() != null
+        && !ContextMemoryVisibility.seesEveryMemory(securityContext)) {
+      paging.setTotal(
+          listedTotal(
+              paging.getTotal(),
+              listed.size(),
+              () -> listedCount(uriInfo, securityContext, filter)));
+    }
+    // Keep the cursor so clients can page past hidden rows, but never count them.
     return withVisibleEvidence(
         securityContext,
-        visible.size() == memories.getData().size()
+        listed.size() == memories.getData().size()
             ? memories
-            : new ResultList<>(visible).setPaging(memories.getPaging()));
+            : new ResultList<>(listed).setPaging(paging));
+  }
+
+  /**
+   * The total a list page reports. The database counted every row under the filter, so it stands
+   * only when the page shows that many; otherwise rows may be hidden on this page or another, and
+   * the rows the caller may list are recounted. Never less than the page itself
+   * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+   */
+  static int listedTotal(int total, int listedOnPage, IntSupplier recount) {
+    return total > listedOnPage ? Math.max(recount.getAsInt(), listedOnPage) : total;
+  }
+
+  /**
+   * How many memories under {@code filter} the caller may list, counted over at most {@link
+   * #MAX_VISIBLE_COUNT_SCAN} rows: past that it is a lower bound, never a count of hidden rows.
+   */
+  private int listedCount(UriInfo uriInfo, SecurityContext securityContext, ListFilter filter) {
+    List<ContextMemory> scanned =
+        listInternal(
+                uriInfo,
+                securityContext,
+                ContextMemoryVisibility.listingFields(entityType, null),
+                filter,
+                MAX_VISIBLE_COUNT_SCAN,
+                null,
+                null)
+            .getData();
+    return ContextMemoryVisibility.filterListed(scanned, securityContext).size();
   }
 
   private ResultList<ContextMemory> withVisibleEvidence(
@@ -758,10 +804,26 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     repository.setFullyQualifiedName(memory);
     ContextMemory existing =
         repository.findByNameOrNull(memory.getFullyQualifiedName(), Include.ALL);
-    if (existing != null) {
+    Response response;
+    if (existing == null) {
+      response = createForPut(uriInfo, securityContext, memory);
+    } else {
       enforceCurrentVisibility(securityContext, existing.getId());
+      response = createOrUpdate(uriInfo, securityContext, memory);
     }
-    return withVisibleEvidence(securityContext, createOrUpdate(uriInfo, securityContext, memory));
+    return withVisibleEvidence(securityContext, response);
+  }
+
+  /**
+   * A PUT that creates runs the POST create, which prepares the memory once, so the create rule
+   * runs before the server holds a memory for retired evidence; it still answers as a PUT
+   * (ADR:2026-10-09-data-consumers-create-context-memories).
+   */
+  private Response createForPut(
+      UriInfo uriInfo, SecurityContext securityContext, ContextMemory memory) {
+    ContextMemory created = (ContextMemory) create(uriInfo, securityContext, memory).getEntity();
+    return new PutResponse<>(Response.Status.CREATED, created, EventType.ENTITY_CREATED)
+        .toResponse();
   }
 
   @PATCH
