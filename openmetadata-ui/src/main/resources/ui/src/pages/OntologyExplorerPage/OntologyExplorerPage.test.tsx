@@ -2237,10 +2237,19 @@ describe('OntologyExplorerPage', () => {
     );
     expect(draftExplorerProps?.defaultConceptGlossaryId).toBeUndefined();
     expect(addConceptButton).toBeDisabled();
+    expect(screen.getByTestId('ontology-add-concept-reason')).toHaveTextContent(
+      'message.ontology-finish-open-concept-first'
+    );
+    expect(addConceptButton).toHaveAccessibleDescription(
+      'message.ontology-finish-open-concept-first'
+    );
 
     act(() => draftExplorerProps?.onConceptDraftClose?.());
 
     expect(screen.getByTestId('ontology-add-concept')).toBeEnabled();
+    expect(
+      screen.queryByTestId('ontology-add-concept-reason')
+    ).not.toBeInTheDocument();
   });
 
   it('prefills the inline draft with the selected Edit graph glossary', () => {

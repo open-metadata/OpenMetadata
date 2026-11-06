@@ -5817,6 +5817,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "Showing {{shown}} of {{total}} findings.",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "An ontology defines the concepts in your organization, how they relate, and which data assets represent them.",
     "ontology-first-run-import": "OWL, Turtle, JSON-LD or CSV. A dry run shows the counts before anything is written.",
     "ontology-first-run-library": "Start from a standard model. Pick modules, then install.",

@@ -1651,6 +1651,7 @@ const OntologyExplorerContent: React.FC = () => {
   }
 
   const publishReasonId = useId();
+  const addConceptReasonId = useId();
   const headerActionSize = getHeaderActionSize(isAiMode);
 
   function renderPrimaryAction() {
@@ -1667,16 +1668,30 @@ const OntologyExplorerContent: React.FC = () => {
     })();
 
     if (mode === 'edit' && canAddConcept) {
+      const isDraftOpen = !isNativeOntology && Boolean(conceptDraft);
+
       return (
-        <Button
-          color="primary"
-          data-testid="ontology-add-concept"
-          iconLeading={Plus}
-          isDisabled={!isNativeOntology && Boolean(conceptDraft)}
-          size={headerActionSize}
-          onPress={() => guard(handleAddConcept)}>
-          {t('label.add-entity', { entity: t('label.concept') })}
-        </Button>
+        <>
+          <Button
+            aria-describedby={isDraftOpen ? addConceptReasonId : undefined}
+            color="primary"
+            data-testid="ontology-add-concept"
+            iconLeading={Plus}
+            isDisabled={isDraftOpen}
+            size={headerActionSize}
+            onPress={() => guard(handleAddConcept)}>
+            {t('label.add-entity', { entity: t('label.concept') })}
+          </Button>
+          {isDraftOpen && (
+            <Typography
+              as="span"
+              className="tw:font-body tw:text-xs tw:text-tertiary"
+              data-testid="ontology-add-concept-reason"
+              id={addConceptReasonId}>
+              {t('message.ontology-finish-open-concept-first')}
+            </Typography>
+          )}
+        </>
       );
     }
 
