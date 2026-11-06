@@ -268,7 +268,7 @@ def test_ingestion_fingerprint_covers_every_dockerfile_ci_copy_input(
         "ingestion/setup.py": "NAME = 'ingestion'\n",
         "openmetadata-spec/schema.json": "{}",
         "scripts/datamodel_generation.py": "print('generate')\n",
-        "scripts/prepare_model_schemas.py": "print('prepare')\n",
+        "openmetadata-spec/scripts/prepare_model_schemas.py": "print('prepare')\n",
         "openmetadata-airflow-apis/setup.py": "NAME = 'airflow-apis'\n",
     }
     for relative, content in inputs.items():
@@ -282,7 +282,7 @@ def test_ingestion_fingerprint_covers_every_dockerfile_ci_copy_input(
 
 
 def test_distribution_fingerprint_tracks_shared_schema_preparation(tmp_path: Path) -> None:
-    relative = "scripts/prepare_model_schemas.py"
+    relative = "openmetadata-spec/scripts/prepare_model_schemas.py"
     write(tmp_path, "pom.xml", "<project />")
     write(tmp_path, relative, "VERSION = 1\n")
     initialize_repository(tmp_path)

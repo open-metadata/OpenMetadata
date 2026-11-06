@@ -106,7 +106,7 @@ COPY --chown=airflow:0 --chmod=775 ingestion/ingestion_dependency.sh /opt/airflo
 # Required for Ingesting Sample Data
 COPY --chown=airflow:0 ingestion /home/airflow/ingestion
 COPY --chown=airflow:0 openmetadata-spec /home/airflow/openmetadata-spec
-COPY --chown=airflow:0 scripts/datamodel_generation.py scripts/prepare_model_schemas.py /home/airflow/scripts/
+COPY --chown=airflow:0 scripts/datamodel_generation.py /home/airflow/scripts/datamodel_generation.py
 
 COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airflow-apis
 # Required for Airflow DAGs of Sample Data

@@ -71,7 +71,9 @@ if [ "$#" -eq 0 ]; then
     exit 1
 fi
 
-prepared_schema_directory=$(python3 scripts/prepare_model_schemas.py) || exit 1
+temporary_directory=$(mktemp -d) || exit 1
+trap 'rm -rf "$temporary_directory"' EXIT
+prepared_schema_directory=$(python3 openmetadata-spec/scripts/prepare_model_schemas.py --output-dir "$temporary_directory/model-schemas") || exit 1
 
 # quicktype is fetched on demand at an exact pin (ADR:2026-10-19-ts-codegen-runs-quicktype-via-npx-at-one-exact-pin);
 # keep the version identical to json2ts-generate-all.sh.

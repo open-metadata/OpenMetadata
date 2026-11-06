@@ -22,7 +22,9 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("model_schemas", ROOT / "scripts/prepare_model_schemas.py")
+SPEC = importlib.util.spec_from_file_location(
+    "model_schemas", ROOT / "openmetadata-spec/scripts/prepare_model_schemas.py"
+)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
@@ -116,7 +118,12 @@ def test_preparation_rejects_output_overlapping_source_inputs(schema_inputs):
 
 def test_cli_prepares_all_profiles_from_another_working_directory(tmp_path):
     output = tmp_path / "schemas"
-    command = [sys.executable, str(ROOT / "scripts/prepare_model_schemas.py"), "--output-dir", str(output)]
+    command = [
+        sys.executable,
+        str(ROOT / "openmetadata-spec/scripts/prepare_model_schemas.py"),
+        "--output-dir",
+        str(output),
+    ]
 
     result = subprocess.run(command, cwd=tmp_path, check=True, capture_output=True, text=True)
 
@@ -134,3 +141,16 @@ def test_cli_prepares_all_profiles_from_another_working_directory(tmp_path):
     checked = subprocess.run([*command, "--check"], cwd=tmp_path, check=False, capture_output=True, text=True)
     assert checked.returncode == 0
     assert checked.stdout == ""
+
+
+def test_cli_requires_an_explicit_output_directory(tmp_path):
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "openmetadata-spec/scripts/prepare_model_schemas.py")],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 2
+    assert "--output-dir" in result.stderr

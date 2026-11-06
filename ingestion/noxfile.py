@@ -251,14 +251,17 @@ def lint(session):
     parser = argparse.ArgumentParser()
     parser.add_argument("--fix", action="store_true")
     args = parser.parse_args(session.posargs)
-    sources = [str(INGESTION_ROOT), str(ROOT / "openmetadata-airflow-apis")]
+    sources = [
+        str(INGESTION_ROOT),
+        str(ROOT / "openmetadata-airflow-apis"),
+        str(ROOT / "openmetadata-spec/scripts/prepare_model_schemas.py"),
+    ]
     sources.extend(
         str(ROOT / "scripts" / name)
         for name in (
             "generate_ingestion_models.py",
             "check_generated_models.py",
             "datamodel_generation.py",
-            "prepare_model_schemas.py",
             "update_version.py",
         )
     )

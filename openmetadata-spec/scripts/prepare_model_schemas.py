@@ -26,10 +26,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-VENDOR = ROOT / "openmetadata-spec/src/main/resources/odcs"
-SOURCE_SCHEMAS = ROOT / "openmetadata-spec/src/main/resources/json/schema"
-MODEL_SCHEMAS = ROOT / "openmetadata-spec/target/model-schemas"
+SPEC_ROOT = Path(__file__).resolve().parents[1]
+VENDOR = SPEC_ROOT / "src/main/resources/odcs"
+SOURCE_SCHEMAS = SPEC_ROOT / "src/main/resources/json/schema"
 
 
 def _reference(root: dict, reference: str) -> dict:
@@ -172,7 +171,7 @@ def _write_schema(target: Path, content: bytes) -> None:
 
 
 def prepare(
-    output_directory: Path = MODEL_SCHEMAS,
+    output_directory: Path,
     *,
     source_directory: Path = SOURCE_SCHEMAS,
     vendor_directory: Path = VENDOR,
@@ -208,7 +207,7 @@ def prepare(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
-    parser.add_argument("--output-dir", type=Path, default=MODEL_SCHEMAS)
+    parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     if not prepare(args.output_dir, check=args.check):
         return 1

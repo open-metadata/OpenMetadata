@@ -17,7 +17,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("odcs_models", ROOT / "scripts/prepare_model_schemas.py")
+SPEC = importlib.util.spec_from_file_location(
+    "odcs_models", ROOT / "openmetadata-spec/scripts/prepare_model_schemas.py"
+)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 

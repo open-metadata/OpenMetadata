@@ -40,7 +40,7 @@ INPUT_FILES = (
     ROOT / "ingestion/noxfile.py",
     ROOT / "ingestion/Makefile",
     ROOT / "scripts/datamodel_generation.py",
-    ROOT / "scripts/prepare_model_schemas.py",
+    ROOT / "openmetadata-spec/scripts/prepare_model_schemas.py",
     ROOT / "scripts/generate_ingestion_models.py",
     Path(__file__).resolve(),
 )

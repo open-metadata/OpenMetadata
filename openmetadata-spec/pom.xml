@@ -134,7 +134,7 @@
                         <configuration>
                             <executable>python3</executable>
                             <arguments>
-                                <argument>${project.basedir}/../scripts/prepare_model_schemas.py</argument>
+                                <argument>${project.basedir}/scripts/prepare_model_schemas.py</argument>
                                 <argument>--output-dir</argument>
                                 <argument>${project.build.directory}/model-schemas</argument>
                             </arguments>

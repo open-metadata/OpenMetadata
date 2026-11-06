@@ -1,7 +1,7 @@
 # ODCS exports use versioned schema-backed mappers
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-05 (centralized schema provenance and attribution) · v3 2026-11-05 (published historical export profiles) · v4 2026-11-05 (shared build-time model schemas)
+- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-05 (centralized schema provenance and attribution) · v3 2026-11-05 (published historical export profiles) · v4 2026-11-05 (shared build-time model schemas) · v5 2026-11-05 (caller-owned generation workspaces)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** ODCSNativeExportTest, ODCSNativeCustomPropertiesTest, ODCSExportServiceTest, scripts/tests/test_generate_odcs_export_models.py, scripts/tests/test_prepare_model_schemas.py
 - **Related:** [PR #36877](https://github.com/open-metadata/OpenMetadata/pull/36877), ADR:2026-11-04-odcs-native-exports-follow-published-schema, ADR:2026-11-04-odcs-preserves-unmapped-fields-as-generic-json
@@ -121,3 +121,11 @@ obsolete schema inputs so subsequent generators do not read deleted definitions 
 `--check` verifies the prepared tree without writing it. Model freshness hashes the checked-in sources
 and preparation script rather than the disposable tree. Runtime export validation continues to load
 the unchanged upstream schemas from `odcs/<version>/schema.json`.
+
+## Amendment — caller-owned preparation workspaces (v5)
+
+ADR:2026-11-05-model-generators-own-prepared-schema-workspaces supersedes the shared output
+location in v4. The helper moves to `openmetadata-spec/scripts/prepare_model_schemas.py`,
+requires an explicit output directory, and remains one implementation used by all three languages.
+Maven retains its own target directory; Python and TypeScript own temporary workspaces. Existing
+ingestion image copy instructions include the helper, so both CI Dockerfiles match the base branch.
