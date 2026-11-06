@@ -24,7 +24,6 @@ from sqlalchemy.sql.type_api import TypeEngine
 from metadata.generated.schema.entity.data.table import SystemProfile, TableType
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.database.bigquery.utils import bind_connection_to_table
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -33,6 +32,7 @@ from metadata.profiler.metrics.system.bigquery.system import (
 )
 from metadata.profiler.metrics.system.system import System
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.bigquery_table_context import bind_connection_to_table
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 

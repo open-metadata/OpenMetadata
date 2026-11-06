@@ -14,9 +14,9 @@ from typing import Any
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.iometeConnection import IometeConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.iomete.utils import copy_connection_for_table
 from metadata.sampler.sampler_config import SamplerConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.utils.iomete_table_context import copy_connection_for_table
 
 
 class IometeSampler(SQASampler):

@@ -267,7 +267,7 @@ def test_observability_queries_preserve_target_and_billing(table_context, auth, 
 
 @pytest.mark.parametrize("existing_config", [False, True])
 def test_target_binding_copies_job_configuration_and_resolves_database(table_context, existing_config):
-    from metadata.ingestion.source.database.bigquery.utils import bind_connection_to_table
+    from metadata.utils.bigquery_table_context import bind_connection_to_table
 
     table, _, metadata = table_context
     table.database.name = "stale-decoy"
@@ -307,7 +307,7 @@ def test_target_binding_copies_job_configuration_and_resolves_database(table_con
 
 @pytest.mark.parametrize("missing", ["table", "reference", "lookup"])
 def test_target_binding_rejects_unresolved_project(table_context, missing):
-    from metadata.ingestion.source.database.bigquery.utils import bind_connection_to_table
+    from metadata.utils.bigquery_table_context import bind_connection_to_table
 
     table, _, metadata = table_context
     if missing == "table":
@@ -327,7 +327,7 @@ def test_target_binding_rejects_unresolved_project(table_context, missing):
 
 
 def test_target_binding_isolates_connections_and_other_target_engines(table_context):
-    from metadata.ingestion.source.database.bigquery.utils import bind_connection_to_table
+    from metadata.utils.bigquery_table_context import bind_connection_to_table
 
     table, database, metadata = table_context
     template = QueryJobConfig(labels={"original": "setting"})
@@ -356,7 +356,7 @@ def test_target_binding_isolates_connections_and_other_target_engines(table_cont
 
 
 def test_interleaved_dbapi_requests_keep_independent_bound_values(table_context, monkeypatch):
-    from metadata.ingestion.source.database.bigquery.utils import bind_connection_to_table
+    from metadata.utils.bigquery_table_context import bind_connection_to_table
 
     monkeypatch.setattr(
         "metadata.utils.bigquery_utils.get_gcp_impersonate_credentials", lambda **_: AnonymousCredentials()
@@ -391,7 +391,7 @@ def test_interleaved_dbapi_requests_keep_independent_bound_values(table_context,
 
 @pytest.mark.parametrize("supplied_client", [False, True])
 def test_minimal_target_configuration_preserves_client_job_defaults(table_context, monkeypatch, supplied_client):
-    from metadata.ingestion.source.database.bigquery.utils import bind_connection_to_table
+    from metadata.utils.bigquery_table_context import bind_connection_to_table
 
     monkeypatch.setattr("google.auth.default", lambda **_: (AnonymousCredentials(), "target"))
     queries = []
@@ -442,7 +442,7 @@ def test_minimal_target_configuration_preserves_client_job_defaults(table_contex
 def test_target_binding_preserves_effective_client_connection_properties(
     table_context, monkeypatch, execution_setting, warm_pool
 ):
-    from metadata.ingestion.source.database.bigquery.utils import bind_connection_to_table
+    from metadata.utils.bigquery_table_context import bind_connection_to_table
 
     requests = []
 

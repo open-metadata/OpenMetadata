@@ -12,7 +12,7 @@
 
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.ingestion.connections.session import create_and_bind_session
-from metadata.ingestion.source.database.bigquery.utils import bind_connection_to_table
+from metadata.utils.bigquery_table_context import bind_connection_to_table
 from metadata.utils.ssl_manager import get_ssl_connection
 
 

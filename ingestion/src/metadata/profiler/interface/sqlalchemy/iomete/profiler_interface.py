@@ -15,9 +15,9 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.iometeConnection import IometeConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import DatabaseServiceProfilerPipeline
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.iomete.utils import copy_connection_for_table
 from metadata.profiler.interface.sqlalchemy.profiler_interface import SQAProfilerInterface
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.iomete_table_context import copy_connection_for_table
 
 
 class IometeProfilerInterface(SQAProfilerInterface):

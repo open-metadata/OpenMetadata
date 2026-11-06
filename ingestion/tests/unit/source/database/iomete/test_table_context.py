@@ -26,8 +26,8 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import DatabaseServiceProfilerPipeline
 from metadata.ingestion.source.database.iomete.connection import IometeConnection as IometeSourceConnection
 from metadata.ingestion.source.database.iomete.service_spec import ServiceSpec
-from metadata.ingestion.source.database.iomete.utils import copy_connection_for_table
 from metadata.utils.importer import import_from_module
+from metadata.utils.iomete_table_context import copy_connection_for_table
 from metadata.utils.profiler_utils import database_entities_cache
 
 

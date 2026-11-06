@@ -25,8 +25,8 @@ from metadata.generated.schema.type.basic import EntityName, ProfileSampleType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.source.database.bigquery.sharding import get_table_sharding
-from metadata.ingestion.source.database.bigquery.utils import bind_connection_to_table
 from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.utils.bigquery_table_context import bind_connection_to_table
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 
