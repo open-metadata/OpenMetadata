@@ -230,7 +230,7 @@ class McpServerRequestContextTest {
             invocation -> {
               cachedAtEntry.add(isPolicyCached());
               cachePolicy();
-              return new McpSchema.GetPromptResult("ok", new ArrayList<>());
+              return McpSchema.GetPromptResult.builder(new ArrayList<>()).description("ok").build();
             });
     McpServer server = new McpServer(mock(DefaultToolContext.class), promptsContext);
     server.jwtFilter = jwtFilterFor("alice");
@@ -274,8 +274,9 @@ class McpServerRequestContextTest {
     McpServer server = new McpServer(mock(DefaultToolContext.class), new DefaultPromptsContext());
     server.jwtFilter = jwtFilter;
     McpSchema.GetPromptRequest request =
-        new McpSchema.GetPromptRequest(
-            "search_metadata", Map.of("query", "customer", "Authorization", "token-bob"));
+        McpSchema.GetPromptRequest.builder("search_metadata")
+            .arguments(Map.of("query", "customer", "Authorization", "token-bob"))
+            .build();
 
     McpSchema.GetPromptResult result =
         server
@@ -323,7 +324,7 @@ class McpServerRequestContextTest {
   private static DefaultToolContext.CallToolOutcome successfulOutcome() {
     McpSchema.CallToolResult result =
         McpSchema.CallToolResult.builder()
-            .content(List.of(new McpSchema.TextContent("{}")))
+            .content(List.of(McpSchema.TextContent.builder("{}").build()))
             .isError(false)
             .build();
     return new DefaultToolContext.CallToolOutcome(result, 0L, null);
@@ -348,7 +349,8 @@ class McpServerRequestContextTest {
       Map<String, Object> arguments,
       Map<String, Object> extraContext,
       String token) {
-    McpSchema.Tool tool = McpSchema.Tool.builder().name(toolName).description("desc").build();
+    McpSchema.Tool tool =
+        McpSchema.Tool.builder(toolName, Map.of("type", "object")).description("desc").build();
     Map<String, Object> context = new HashMap<>(extraContext);
     context.put(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER, token);
     return server
@@ -356,7 +358,7 @@ class McpServerRequestContextTest {
         .callHandler()
         .apply(
             transportContext(context),
-            McpSchema.CallToolRequest.builder().name(toolName).arguments(arguments).build());
+            McpSchema.CallToolRequest.builder(toolName).arguments(arguments).build());
   }
 
   private static McpTransportContext transportContext(Map<String, Object> values) {
@@ -368,11 +370,11 @@ class McpServerRequestContextTest {
   }
 
   private static McpSchema.Prompt promptNamed(String name) {
-    return new McpSchema.Prompt(name, "desc", List.of());
+    return McpSchema.Prompt.builder(name).description("desc").arguments(List.of()).build();
   }
 
   private static McpSchema.GetPromptRequest promptRequest() {
-    return new McpSchema.GetPromptRequest("p", Map.of());
+    return McpSchema.GetPromptRequest.builder("p").arguments(Map.of()).build();
   }
 
   private <T> T onWorker(Callable<T> action) throws Exception {

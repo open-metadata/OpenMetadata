@@ -67,10 +67,8 @@ public class McpSdkUpgradeTest {
         """;
 
     McpSchema.Tool tool =
-        McpSchema.Tool.builder()
-            .name("test_tool")
+        McpSchema.Tool.builder("test_tool", jsonMapper, schemaJson)
             .description("A test tool")
-            .inputSchema(jsonMapper, schemaJson)
             .build();
 
     assertThat(tool).isNotNull();
@@ -90,7 +88,7 @@ public class McpSdkUpgradeTest {
   void testMcpSchemaPromptCreation() {
     // Verify Prompt can still be created (no breaking changes here)
     McpSchema.Prompt prompt =
-        new McpSchema.Prompt("test_prompt", "A test prompt description", null);
+        McpSchema.Prompt.builder("test_prompt").description("A test prompt description").build();
 
     assertThat(prompt).isNotNull();
     assertThat(prompt.name()).isEqualTo("test_prompt");

@@ -133,7 +133,10 @@ public class McpUtils {
                 List<McpSchema.PromptArgument> arguments =
                     JsonUtils.readOrConvertValues(
                         promptDef.get("arguments"), McpSchema.PromptArgument.class);
-                return new McpSchema.Prompt(name, description, arguments);
+                return McpSchema.Prompt.builder(name)
+                    .description(description)
+                    .arguments(arguments)
+                    .build();
               })
           .toList();
     } catch (Exception e) {

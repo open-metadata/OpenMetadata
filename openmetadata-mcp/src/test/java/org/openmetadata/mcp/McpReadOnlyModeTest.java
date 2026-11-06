@@ -61,7 +61,7 @@ class McpReadOnlyModeTest {
 
   private static final McpSchema.CallToolResult SUCCESS =
       McpSchema.CallToolResult.builder()
-          .content(List.of(new McpSchema.TextContent("{}")))
+          .content(List.of(McpSchema.TextContent.builder("{}").build()))
           .isError(false)
           .build();
 
@@ -78,7 +78,8 @@ class McpReadOnlyModeTest {
 
   @Test
   void aToolWithoutAReadOnlyHintIsWithheld() {
-    McpSchema.Tool unannotated = McpSchema.Tool.builder().name("unannotated").build();
+    McpSchema.Tool unannotated =
+        McpSchema.Tool.builder("unannotated", Map.of("type", "object")).build();
 
     assertTrue(exposed(List.of(unannotated), READ_ONLY).isEmpty());
   }
@@ -194,7 +195,7 @@ class McpReadOnlyModeTest {
     McpServer server = new McpServer(toolContext, new DefaultPromptsContext());
     server.jwtFilter = jwtFilterFor("alice");
     McpSchema.CallToolRequest request =
-        McpSchema.CallToolRequest.builder().name(toolName).arguments(Map.of()).build();
+        McpSchema.CallToolRequest.builder(toolName).arguments(Map.of()).build();
 
     try (MockedStatic<SecurityConfigurationManager> config =
             mockStatic(SecurityConfigurationManager.class);
