@@ -3,8 +3,8 @@ package org.openmetadata.service.audit;
 import static org.openmetadata.service.jdbi3.AppRepository.RUNTIME_SECRET_FIELDS;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.util.Iterator;
 import java.util.List;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -47,18 +47,28 @@ final class AppAuditProjection {
 
   private static void projectChanges(ObjectNode node) {
     for (String description : DESCRIPTIONS) {
-      for (String changes : CHANGES) {
-        final JsonNode fields = node.path(description).path(changes);
-        if (fields.isArray()) {
-          final Iterator<JsonNode> iterator = fields.elements();
-          while (iterator.hasNext()) {
-            if (isRuntimeField(iterator.next().path("name").asText())) {
-              iterator.remove();
-            }
-          }
-        }
+      if (node.path(description) instanceof ObjectNode changeDescription) {
+        projectChangeDescription(changeDescription);
       }
     }
+  }
+
+  private static void projectChangeDescription(ObjectNode description) {
+    for (String changes : CHANGES) {
+      if (description.path(changes) instanceof ArrayNode fields) {
+        description.set(changes, projectFields(fields));
+      }
+    }
+  }
+
+  private static ArrayNode projectFields(ArrayNode fields) {
+    final ArrayNode projected = fields.arrayNode(fields.size());
+    for (JsonNode field : fields) {
+      if (!isRuntimeField(field.path("name").asText())) {
+        projected.add(field);
+      }
+    }
+    return projected;
   }
 
   private static boolean isRuntimeField(String name) {
