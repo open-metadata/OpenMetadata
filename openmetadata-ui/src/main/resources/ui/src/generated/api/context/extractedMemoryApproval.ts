@@ -16,6 +16,12 @@
  */
 export interface ExtractedMemoryApproval {
     /**
+     * On a preview, the memories approval would approve, each with when its claim last changed
+     * as read. A request to approve sends this list back, and only the memories it names are
+     * approved.
+     */
+    approvable?: ComparedMemory[];
+    /**
      * Unprocessed extracted memories approved; on a preview, those approval would approve.
      */
     approved: number;
@@ -25,10 +31,26 @@ export interface ExtractedMemoryApproval {
      */
     failed?: number;
     /**
-     * Unprocessed extracted memories left pending because another pending or Approved memory of
-     * the same document answers the same question.
+     * Unprocessed extracted memories left pending for a person to decide: a second value of a
+     * question another pending or Approved memory of the same document asks, or a value held
+     * beside a decided memory of the document, which may be that decision reworded.
      */
     needsDecision: EntityReference[];
+}
+
+/**
+ * A memory the reviewer compared.
+ */
+export interface ComparedMemory {
+    /**
+     * When the memory's claim last changed, as the reviewer read it. Absent when the reviewer
+     * could not read the memory.
+     */
+    contentUpdatedAt?: number;
+    /**
+     * The compared context memory.
+     */
+    id: string;
 }
 
 /**

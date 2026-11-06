@@ -15,9 +15,30 @@
  */
 export interface ApproveExtractedMemories {
     /**
+     * The memories to approve, as the preview listed them. A memory that changed since, or that
+     * approval would no longer approve, is not approved; a memory the list does not name is
+     * left untouched.
+     */
+    approvable: ComparedMemory[];
+    /**
      * The document, a context file or a page, whose Unprocessed extracted memories to approve.
      */
     source: EntityReference;
+}
+
+/**
+ * A memory the reviewer compared.
+ */
+export interface ComparedMemory {
+    /**
+     * When the memory's claim last changed, as the reviewer read it. Absent when the reviewer
+     * could not read the memory.
+     */
+    contentUpdatedAt?: number;
+    /**
+     * The compared context memory.
+     */
+    id: string;
 }
 
 /**

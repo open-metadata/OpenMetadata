@@ -20,10 +20,13 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
 import jakarta.ws.rs.core.Response;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -34,6 +37,7 @@ import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
@@ -53,7 +57,9 @@ class ExtractedMemoryApproverTest {
         .withQuestion(question)
         .withAnswer("An answer")
         .withEntityStatus(status)
-        .withSourceType(sourceType);
+        .withSourceType(sourceType)
+        .withVersion(0.1)
+        .withUpdatedAt(1L);
   }
 
   private static ContextMemory extracted(String question, ContextMemoryStatus status) {
@@ -85,6 +91,22 @@ class ExtractedMemoryApproverTest {
 
     assertEquals(List.of(), plan.approvable());
     assertEquals(ids(List.of(fifteen, twenty)), ids(plan.needsDecision()));
+  }
+
+  /** "What's" asks what "What is" asks: two values of the refund window both need a decision. */
+  @Test
+  void questionsDifferingOnlyInPunctuationOrAContractionAreOneQuestion() {
+    ContextMemory thirty =
+        extracted("What is the refund window?", ContextMemoryStatus.UNPROCESSED)
+            .withAnswer("30 days");
+    ContextMemory fortyFive =
+        extracted("What's the refund window", ContextMemoryStatus.UNPROCESSED)
+            .withAnswer("45 days");
+
+    ExtractedMemoryApprover.Plan plan = ExtractedMemoryApprover.plan(List.of(thirty, fortyFive));
+
+    assertEquals(List.of(), plan.approvable());
+    assertEquals(ids(List.of(thirty, fortyFive)), ids(plan.needsDecision()));
   }
 
   /** An Approved value, a correction's included, or one in conflict review, contests the pill. */
@@ -169,13 +191,8 @@ class ExtractedMemoryApproverTest {
   @Test
   void aPillReleasedMeanwhileCountsAsFailedAndTheOthersAreApproved() {
     ContextMemory released =
-        extracted("What is the refund window?", ContextMemoryStatus.UNPROCESSED)
-            .withVersion(0.1)
-            .withUpdatedAt(1L);
-    ContextMemory kept =
-        extracted("What is the refund fee?", ContextMemoryStatus.UNPROCESSED)
-            .withVersion(0.1)
-            .withUpdatedAt(1L);
+        extracted("What is the refund window?", ContextMemoryStatus.UNPROCESSED);
+    ContextMemory kept = extracted("What is the refund fee?", ContextMemoryStatus.UNPROCESSED);
     ContextMemoryRepository writes = mock(ContextMemoryRepository.class);
     when(writes.patch(
             isNull(), eq(released.getId()), eq("alice"), any(), any(), any(), eq(GOVERNANCE_BOT)))
@@ -184,21 +201,110 @@ class ExtractedMemoryApproverTest {
             isNull(), eq(kept.getId()), eq("alice"), any(), any(), any(), eq(GOVERNANCE_BOT)))
         .thenReturn(new PatchResponse<>(Response.Status.OK, kept, EventType.ENTITY_UPDATED));
 
-    ExtractedMemoryApproval result = approveWriting(writes, List.of(released, kept));
+    ExtractedMemoryApproval result =
+        approveWriting(writes, List.of(released, kept), asRead(released, kept));
 
     assertEquals(1, result.getApproved());
     assertEquals(1, result.getFailed());
   }
 
+  /** Approval takes only what the person was shown: a pill extracted since stays pending. */
+  @Test
+  void aPillThePreviewDidNotListIsLeftUntouched() {
+    ContextMemory shown = extracted("What is the refund fee?", ContextMemoryStatus.UNPROCESSED);
+    ContextMemory extractedSince =
+        extracted("What is the refund window?", ContextMemoryStatus.UNPROCESSED);
+    ContextMemoryRepository writes = approvingEverything(shown, extractedSince);
+
+    ExtractedMemoryApproval result =
+        approveWriting(writes, List.of(shown, extractedSince), asRead(shown));
+
+    assertEquals(1, result.getApproved());
+    assertEquals(0, result.getFailed());
+    verify(writes, never())
+        .patch(any(), eq(extractedSince.getId()), any(), any(), any(), any(), any());
+  }
+
+  /** A pill whose claim changed after the preview read it is not approved as it now reads. */
+  @Test
+  void aListedPillWhoseClaimChangedSinceThePreviewFails() {
+    ContextMemory read = extracted("What is the refund fee?", ContextMemoryStatus.UNPROCESSED);
+    List<ComparedMemory> shown = asRead(read);
+    ContextMemory rewritten = read.withAnswer("Another answer").withLastContentUpdatedAt(2L);
+    ContextMemoryRepository writes = approvingEverything(rewritten);
+
+    ExtractedMemoryApproval result = approveWriting(writes, List.of(rewritten), shown);
+
+    assertEquals(0, result.getApproved());
+    assertEquals(1, result.getFailed());
+    verify(writes, never()).patch(any(), any(UUID.class), any(), any(), any(), any(), any());
+  }
+
+  /** A listed pill another value now contests needs a decision, not the approval it was shown. */
+  @Test
+  void aListedPillThatNoLongerQualifiesFails() {
+    ContextMemory listed =
+        extracted("What is the refund window?", ContextMemoryStatus.UNPROCESSED)
+            .withAnswer("30 days");
+    ContextMemory secondValue =
+        extracted("What is the refund window?", ContextMemoryStatus.UNPROCESSED)
+            .withAnswer("45 days");
+    ContextMemoryRepository writes = approvingEverything(listed, secondValue);
+
+    ExtractedMemoryApproval result =
+        approveWriting(writes, List.of(listed, secondValue), asRead(listed));
+
+    assertEquals(0, result.getApproved());
+    assertEquals(1, result.getFailed());
+    assertEquals(ids(List.of(listed, secondValue)), refIds(result.getNeedsDecision()));
+    verify(writes, never()).patch(any(), any(UUID.class), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void aPillListedTwiceIsApprovedOnce() {
+    ContextMemory window = extracted("What is the refund window?", ContextMemoryStatus.UNPROCESSED);
+    ContextMemoryRepository writes = approvingEverything(window);
+
+    ExtractedMemoryApproval result =
+        approveWriting(writes, List.of(window), asRead(window, window));
+
+    assertEquals(1, result.getApproved());
+    assertEquals(1, result.getFailed());
+    verify(writes).patch(any(), eq(window.getId()), any(), any(), any(), any(), any());
+  }
+
+  private static ContextMemoryRepository approvingEverything(ContextMemory... pills) {
+    ContextMemoryRepository writes = mock(ContextMemoryRepository.class);
+    for (ContextMemory pill : pills) {
+      when(writes.patch(isNull(), eq(pill.getId()), any(), any(), any(), any(), any()))
+          .thenReturn(new PatchResponse<>(Response.Status.OK, pill, EventType.ENTITY_UPDATED));
+    }
+    return writes;
+  }
+
+  private static List<ComparedMemory> asRead(ContextMemory... pills) {
+    return Arrays.stream(pills)
+        .map(
+            pill ->
+                new ComparedMemory()
+                    .withId(pill.getId())
+                    .withContentUpdatedAt(MemoryConflictDecision.contentTime(pill)))
+        .toList();
+  }
+
+  private static List<UUID> refIds(List<EntityReference> references) {
+    return references.stream().map(EntityReference::getId).toList();
+  }
+
   private static ExtractedMemoryApproval approveWriting(
-      ContextMemoryRepository writes, List<ContextMemory> pills) {
+      ContextMemoryRepository writes, List<ContextMemory> pills, List<ComparedMemory> shown) {
     EntityReference file =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
     ContextMemoryRepository listing = mock(ContextMemoryRepository.class);
     when(listing.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE)).thenReturn(pills);
     try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entities.when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(writes);
-      return new ExtractedMemoryApprover(listing).approve(file, "alice");
+      return new ExtractedMemoryApprover(listing).approve(file, shown, "alice");
     }
   }
 
@@ -217,8 +323,7 @@ class ExtractedMemoryApproverTest {
 
     assertEquals(1, preview.getApproved());
     assertEquals(0, preview.getFailed());
-    assertEquals(
-        List.of(fifteen.getId(), twenty.getId()),
-        preview.getNeedsDecision().stream().map(EntityReference::getId).toList());
+    assertEquals(asRead(window), preview.getApprovable());
+    assertEquals(List.of(fifteen.getId(), twenty.getId()), refIds(preview.getNeedsDecision()));
   }
 }

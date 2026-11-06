@@ -304,7 +304,15 @@ describe('ExtractedMemoriesCard — approving the document’s memories', () => 
   const preview = (
     approved: number,
     needsDecision = [contested]
-  ): ExtractedMemoryApproval => ({ approved, needsDecision, failed: 0 });
+  ): ExtractedMemoryApproval => ({
+    approved,
+    needsDecision,
+    failed: 0,
+    approvable: Array.from({ length: approved }, (_, index) => ({
+      id: `m${index + 1}`,
+      contentUpdatedAt: 1767225600000 + index,
+    })),
+  });
   const approveButton = () =>
     screen.queryByTestId('approve-extracted-memories-btn');
 
@@ -434,10 +442,11 @@ describe('ExtractedMemoriesCard — approving the document’s memories', () => 
 
     expect(approveExtractedMemories).toHaveBeenCalledWith({
       source: { id: 'page-1', type: 'page' },
+      approvable: preview(2).approvable,
     });
     expect(showSuccessToast).toHaveBeenCalledWith('Memories approved: 1');
     expect(showInfoToast).toHaveBeenCalledWith(
-      'Memories that need a decision: 1. Each answers the same question as another memory of this document.'
+      'Memories that need a decision: 1. Each answers a question another memory of this document answers, or resembles a memory already decided.'
     );
     expect(showErrorToast).toHaveBeenCalledWith(
       'Memories not approved: 1. They stay pending.'

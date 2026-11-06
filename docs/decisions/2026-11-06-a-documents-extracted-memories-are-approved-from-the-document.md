@@ -5,8 +5,9 @@
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ExtractedMemoryApproverTest`, `ContextMemoryReconcilerTest`,
   `ContextMemoryRepositoryTest#aDocumentOwnersApprovalPassesReviewOnlyAsTheApproverWritesIt`,
-  `ContextMemoryExtractedApprovalIT`, and the Jest tests of `CreateMemoryModal`,
-  `ContextCenterMemoriesPage` and `ExtractedMemoriesCard`
+  `ContextMemoryExtractedApprovalIT`, the Jest tests of `CreateMemoryModal`,
+  `ContextCenterMemoriesPage` and `ExtractedMemoriesCard`, and the Playwright specs
+  `ContextCenterMemoryLifecycle` and `ContextCenterDocument`
 - **Related:** ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values,
   ADR:2026-11-05-oss-memories-are-approved-without-reconciliation,
   ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory,
@@ -27,7 +28,8 @@ a non-admin's manual memory under review, and in OSS for the values extraction h
   (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
   Each PATCHes `/entityStatus` to `Approved` or `Rejected`, moves `ContextMemoryRepository.LIFECYCLE`
   allows from both stages, after a `test` of `/updatedAt` against the memory the admin saw, so a
-  memory edited or reviewed meanwhile fails the decision instead of being overwritten. The
+  memory edited or reviewed meanwhile fails the decision instead of being overwritten; the panel
+  reads it again and, finding its `updatedAt` changed, says so instead of the patch error. The
   Memories list lets an admin approve the `Unprocessed` memories it shows in one action, one such
   PATCH each, and reports those that fail; Draft memories are left to the panel or their review.
 - A document's extracted memories are approved from the document, its preview in Documents or an
@@ -38,28 +40,40 @@ a non-admin's manual memory under review, and in OSS for the values extraction h
   `GET /v1/contextCenter/memories/extractedApproval?sourceId&sourceType` previews what approval
   would do and `PUT` with `ApproveExtractedMemories` does it; both answer anyone else with 403 and
   accept only a context file or a page as the source.
-- Approval writes each of the document's `Unprocessed` extracted memories as a review decision
-  does: as the person, impersonated by `governance-bot` and guarded on the version read, so a
-  distribution that requires review accepts an owner's decision. A memory refused, changed or
-  released meanwhile is not approved and is counted as failed; the others are still approved.
-- A memory whose normalized question (`ContextMemoryExtractor.questionKey`) another `Unprocessed`,
-  `Draft` or `Approved` memory of the same document shares is a second value of that question, as
-  extraction keeps two pills for one question only when their values conflict. So is one that
-  re-extraction would hold for review beside a decided pill, by the predicate both share
-  (`MemoryReviewHolds.holds`): a value agreeing with a Rejected or Superseded pill, or beside a
-  correction a changed number whose question alone clears the bar, may be a value a reviewer
-  rejected or a person replaced, reworded. Approval leaves such memories pending and returns them as
-  needing a decision. It never touches a `Draft` memory, which is under conflict review, nor any
-  other stage.
+- A person approves only what they were shown. The preview lists each memory approval would
+  approve with when its claim last changed, as a conflict review records what its reviewer read
+  (`comparedMemory`), and `PUT` carries that list back. Approval takes only the listed memories that
+  are still approvable and unchanged since: a listed memory that changed, or that approval would no
+  longer take, fails, and a memory the list does not name, one extracted after the preview included,
+  is never touched.
+- Approval writes each memory it takes as a review decision does: as the person, impersonated by
+  `governance-bot` and guarded on the version read, so a distribution that requires review accepts
+  an owner's decision. A memory refused, changed or released meanwhile is not approved and is
+  counted as failed; the others are still approved.
+- A memory asking the question another `Unprocessed`, `Draft` or `Approved` memory of the same
+  document asks is a second value of that question, as extraction keeps two pills for one question
+  only when their values conflict. Questions are compared pair by pair as re-extraction compares a
+  correction's own question (`MemoryReviewHolds.sameQuestion`): case, punctuation and filler words
+  aside, so "What's the refund window?" asks what "What is the refund window?" asks, and "UK" is not
+  "US". So is one that re-extraction would hold for review beside a decided pill, by the predicate
+  both share (`MemoryReviewHolds.holds`): a value agreeing with a Rejected or Superseded pill, or
+  beside a correction a changed number whose question alone clears the bar, may be a value a
+  reviewer rejected or a person replaced, reworded. Approval leaves such memories pending and
+  returns them as needing a decision. It never touches a `Draft` memory, which is under conflict
+  review, nor any other stage.
 - This is the product path for approving a memory held for review that the earlier records
   pointed to the API for.
 
 ## Consequences
 
-- A document's owner approves its memories without an admin and without the AI platform; values
-  in conflict still need a person to choose one, in the memory panel or a conflict review.
+- A document's owner approves its extracted memories without an admin and without the AI platform,
+  except the ones approval leaves for a decision. A held value needs an admin: a second value of a
+  question, or a value held beside a decided memory, stays pending however often the document
+  action runs, until an admin approves or rejects it in its memory panel.
+- A memory extracted after the preview stays pending until a later preview lists it, and one that
+  changed since the preview is counted as failed rather than approved as it now reads.
 - Bulk approval in the Memories list treats the memories an admin sees as decided, including two
   values of one question; the document action is the one that leaves those for a decision.
-- An owner of a memory under review who is not an admin approves it through its document or a
-  conflict review only: the panel offers Approve and Reject to admins, as a distribution that
-  requires review refuses an owner's own approval.
+- The panel offers Approve and Reject to admins only, as a distribution that requires review
+  refuses an owner's own approval. An owner who is not an admin grounds a memory under review only
+  through the document action, when approval takes it, or through its conflict review.

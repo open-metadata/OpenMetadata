@@ -83,8 +83,8 @@ search admits only `Approved` memories (`ContextMemorySearchVisibility.SEARCHABL
 except a memory's pending ones to its own owners when a caller asks for them
 (ADR:2026-10-15-search-admits-a-subjects-own-pending-memories-on-request). The Context Center lists
 it as Unprocessed to its owners and admins, and it grounds answers once an admin approves it in
-its memory panel, or an admin or the document's owner approves the document's extracted memories
-from the document (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).
+its memory panel. Approving the document's extracted memories from the document leaves it pending
+for that decision (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).
 A look-alike for another question (a US rate equal to a rejected UK one) is held
 the same way. A rewording too loose to clear the similarity bar is still a new fact, created in its
 derived stage. OSS otherwise keeps its behavior, except that conflicting numbers are no longer
@@ -92,7 +92,7 @@ dropped.
 
 ## Amendment
 
-v2 (2026-11-06): a held value no longer waits for a PATCH through the API. Admins approve or reject
-it in the memory panel, and an admin or the document's owner approves a document's extracted
-memories from the document, leaving two values of one question for a decision
-(ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).
+v2 (2026-11-06): a held value no longer waits for a PATCH through the API: an admin approves or
+rejects it in the memory panel. An admin or the document's owner approves the document's other
+extracted memories from the document, which leaves a held value, and a second value of a question,
+pending for that admin (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).

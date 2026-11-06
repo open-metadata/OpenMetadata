@@ -963,10 +963,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       operationId = "previewExtractedMemoryApproval",
       summary = "Preview approving a document's extracted memories",
       description =
-          "Count the Unprocessed memories extracted from a context file or page that approval would"
-              + " approve, and list those it would leave for a decision because another pending or"
-              + " Approved memory of the document answers the same question. Admins and the"
-              + " document's owners only.",
+          "List the Unprocessed memories extracted from a context file or page that approval would"
+              + " approve, each as read, and those it leaves for a decision: a second value of a"
+              + " question another pending or Approved memory of the document asks, or a value held"
+              + " beside a decided memory of the document. Admins and the document's owners only.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1003,10 +1003,12 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       operationId = "approveExtractedMemories",
       summary = "Approve a document's extracted memories",
       description =
-          "Approve the Unprocessed memories extracted from a context file or page, as a review"
-              + " decision does. A memory whose question another pending or Approved memory of the"
-              + " document answers stays pending and is returned for a decision; Draft memories and"
-              + " other stages are untouched. Admins and the document's owners only.",
+          "Approve, as a review decision does, the memories of a context file or page that the"
+              + " request lists as its preview read them. A listed memory that changed since, or that"
+              + " approval would no longer approve, fails; a memory the request does not list is"
+              + " untouched. A second value of a question another pending or Approved memory of the"
+              + " document asks, and a value held beside a decided memory of the document, stay"
+              + " pending and are returned for a decision. Admins and the document's owners only.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1026,7 +1028,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   public ExtractedMemoryApproval approveExtracted(
       @Context SecurityContext securityContext, @Valid @NotNull ApproveExtractedMemories request) {
     EntityReference source = requireDecidesExtractedMemories(securityContext, request.getSource());
-    return extractedMemoryApprover.approve(source, securityContext.getUserPrincipal().getName());
+    return extractedMemoryApprover.approve(
+        source, request.getApprovable(), securityContext.getUserPrincipal().getName());
   }
 
   /**

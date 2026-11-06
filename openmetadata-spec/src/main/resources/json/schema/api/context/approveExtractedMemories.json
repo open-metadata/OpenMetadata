@@ -9,8 +9,15 @@
     "source": {
       "description": "The document, a context file or a page, whose Unprocessed extracted memories to approve.",
       "$ref": "../../type/entityReference.json"
+    },
+    "approvable": {
+      "description": "The memories to approve, as the preview listed them. A memory that changed since, or that approval would no longer approve, is not approved; a memory the list does not name is left untouched.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/memoryConflictReviewResolution.json#/definitions/comparedMemory"
+      }
     }
   },
-  "required": ["source"],
+  "required": ["source", "approvable"],
   "additionalProperties": false
 }

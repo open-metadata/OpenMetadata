@@ -81,13 +81,16 @@ describe('contextMemoryAPI', () => {
     );
   });
 
-  it('approves a document’s extracted memories by its reference', async () => {
+  it('approves the memories a document’s preview listed', async () => {
     const approval = {
       approved: 1,
       needsDecision: [{ id: 'memory-2', type: 'contextMemory' }],
       failed: 0,
     };
-    const request = { source: { id: 'page-1', type: 'page' } };
+    const request = {
+      source: { id: 'page-1', type: 'page' },
+      approvable: [{ id: 'memory-1', contentUpdatedAt: 1767225600000 }],
+    };
     mockedApiClient.put.mockResolvedValue({ data: approval });
 
     expect(await approveExtractedMemories(request)).toEqual(approval);

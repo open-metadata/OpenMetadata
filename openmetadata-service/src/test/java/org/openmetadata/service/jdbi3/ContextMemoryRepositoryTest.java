@@ -54,6 +54,7 @@ import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -385,7 +386,11 @@ class ContextMemoryRepositoryTest {
         .thenReturn(new PatchResponse<>(Response.Status.OK, pill, EventType.ENTITY_UPDATED));
     try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entities.when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(writes);
-      new ExtractedMemoryApprover(listing).approve(file, user);
+      new ExtractedMemoryApprover(listing)
+          .approve(
+              file,
+              List.of(new ComparedMemory().withId(pill.getId()).withContentUpdatedAt(101L)),
+              user);
     }
     ArgumentCaptor<String> impersonatedBy = ArgumentCaptor.forClass(String.class);
     verify(writes)

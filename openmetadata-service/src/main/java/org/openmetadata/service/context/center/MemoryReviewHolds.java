@@ -45,6 +45,11 @@ public final class MemoryReviewHolds {
     return !isEngineManaged(pill) && (agrees(pill, value) || mayHaveBeenReplaced(pill, value));
   }
 
+  /** One question in other words: "What's" is "What is", and "UK" is not "US". */
+  public static boolean sameQuestion(ContextMemory a, ContextMemory b) {
+    return MemoryTextSimilarity.sameQuestion(a.getQuestion(), b.getQuestion());
+  }
+
   private static boolean agrees(ContextMemory pill, ContextMemory value) {
     return MemoryTextSimilarity.weighted(
                 pill.getQuestion(), pill.getAnswer(), value.getQuestion(), value.getAnswer())

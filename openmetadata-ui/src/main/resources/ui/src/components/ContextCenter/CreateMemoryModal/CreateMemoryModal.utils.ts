@@ -28,6 +28,7 @@ import {
 import { queryClient } from '../../../queryClient';
 import {
   createContextMemory,
+  getContextMemoryById,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -319,4 +320,20 @@ export const buildMemoryFormState = (
   ];
 
   return { formValues, tags: memoryToEdit.tags ?? [], assets };
+};
+
+/**
+ * Whether the stored memory moved on from the copy the panel read, which the decision's updatedAt
+ * test refuses. Read again rather than parsed from the error, whose message is the patch library's.
+ */
+export const hasMemoryChangedSince = async (
+  memory: ContextMemory
+): Promise<boolean> => {
+  try {
+    const stored = await getContextMemoryById(memory.id);
+
+    return stored.updatedAt !== memory.updatedAt;
+  } catch {
+    return false;
+  }
 };

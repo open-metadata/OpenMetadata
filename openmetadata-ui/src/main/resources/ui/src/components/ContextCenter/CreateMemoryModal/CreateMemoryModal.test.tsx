@@ -36,6 +36,7 @@ import {
 } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
+  getContextMemoryById,
   getContextMemoryVersions,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
@@ -93,6 +94,7 @@ jest.mock('../../../rest/contextMemoryAPI', () => ({
   createContextMemory: jest.fn(),
   updateContextMemory: jest.fn(),
   deleteContextMemory: jest.fn(),
+  getContextMemoryById: jest.fn(),
   getContextMemoryVersions: jest.fn(),
 }));
 
@@ -1008,6 +1010,9 @@ describe('CreateMemoryModal', () => {
       const error = new Error('Draft cannot move to Approved');
       const onUpdated = jest.fn();
       (updateContextMemory as jest.Mock).mockRejectedValue(error);
+      (getContextMemoryById as jest.Mock).mockResolvedValue(
+        awaiting(ContextMemoryStatus.Draft)
+      );
       renderMemory(awaiting(ContextMemoryStatus.Draft), {
         isAdminUser: true,
         onUpdated,
@@ -1022,6 +1027,30 @@ describe('CreateMemoryModal', () => {
       expect(showErrorToast).toHaveBeenCalledWith(error);
       expect(showSuccessToast).not.toHaveBeenCalled();
       expect(onUpdated).not.toHaveBeenCalled();
+      expect(defaultProps.onClose).not.toHaveBeenCalled();
+    });
+
+    it('says a memory changed since it was opened instead of the patch library’s message', async () => {
+      (updateContextMemory as jest.Mock).mockRejectedValue(
+        new Error('Test operation failed')
+      );
+      (getContextMemoryById as jest.Mock).mockResolvedValue({
+        ...awaiting(ContextMemoryStatus.Unprocessed),
+        updatedAt: 1767225600001,
+      });
+      renderMemory(awaiting(ContextMemoryStatus.Unprocessed), {
+        isAdminUser: true,
+      });
+
+      fireEvent.click(screen.getByTestId('memory-approve-btn'));
+
+      await waitFor(() =>
+        expect(showErrorToast).toHaveBeenCalledWith(
+          'message.memory-changed-since-opened'
+        )
+      );
+
+      expect(getContextMemoryById).toHaveBeenCalledWith('memory-id');
       expect(defaultProps.onClose).not.toHaveBeenCalled();
     });
 

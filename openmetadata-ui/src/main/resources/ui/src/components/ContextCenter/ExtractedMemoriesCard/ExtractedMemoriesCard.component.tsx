@@ -145,8 +145,10 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
   const handleApproveExtracted = useCallback(async () => {
     setApprovingSourceId(sourceId);
     try {
+      // Only what the preview showed is approved, so one extracted since stays pending.
       const result = await approveExtractedMemories({
         source: { id: sourceId, type: sourceType },
+        approvable: approval?.approvable ?? [],
       });
       const failedCount = result.failed ?? 0;
       if (result.approved > 0) {
@@ -175,7 +177,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
       );
       setRefreshCount((count) => count + 1);
     }
-  }, [sourceId, sourceType, t]);
+  }, [approval, sourceId, sourceType, t]);
 
   const canDeleteMemory =
     (memoryToView?.owners?.some((o) => o.name === currentUser?.name) ??

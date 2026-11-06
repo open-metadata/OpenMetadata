@@ -19,15 +19,16 @@ import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.context.center.ContextMemoryExtractor;
 import org.openmetadata.service.context.center.MemoryReviewHolds;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
@@ -38,9 +39,9 @@ import org.openmetadata.service.security.AuthorizationException;
 /**
  * Approves a document's Unprocessed extracted memories for a person who decides them, written as a
  * review decision is (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).
- * A pill sharing its question with another pending or Approved pill of the document is a second
- * value, and one re-extraction would hold beside a decided pill may be that decision reworded: both
- * stay pending for a person to decide.
+ * Only the pills the person was shown are approved, and only as they were read. A pill asking the
+ * question of another Unprocessed, Draft or Approved pill of the document is a second value, and one
+ * re-extraction would hold beside a decided pill may be that decision reworded: both stay pending.
  */
 @Slf4j
 public final class ExtractedMemoryApprover {
@@ -58,58 +59,69 @@ public final class ExtractedMemoryApprover {
     this.repository = repository;
   }
 
-  /** The pills approval may take, and those that share their question with another value. */
+  /** The pills approval may take, and those it leaves for a person to decide. */
   record Plan(List<ContextMemory> approvable, List<ContextMemory> needsDecision) {
-    ExtractedMemoryApproval result(int approved) {
-      return new ExtractedMemoryApproval()
-          .withApproved(approved)
-          .withFailed(approvable.size() - approved)
-          .withNeedsDecision(
-              needsDecision.stream().map(ContextMemory::getEntityReference).toList());
+    List<EntityReference> needsDecisionReferences() {
+      return needsDecision.stream().map(ContextMemory::getEntityReference).toList();
     }
   }
 
-  /** What approving {@code source}'s extracted memories would do; writes nothing. */
+  /** What approving {@code source}'s extracted memories would do, as read now; writes nothing. */
   public ExtractedMemoryApproval preview(EntityReference source) {
     Plan plan = plan(extractedFrom(source));
-    return plan.result(plan.approvable().size());
+    return new ExtractedMemoryApproval()
+        .withApproved(plan.approvable().size())
+        .withFailed(0)
+        .withNeedsDecision(plan.needsDecisionReferences())
+        .withApprovable(plan.approvable().stream().map(ExtractedMemoryApprover::asRead).toList());
   }
 
-  /** Approves each pill {@link #preview} names on its own, as {@code user} decided it. */
-  public ExtractedMemoryApproval approve(EntityReference source, String user) {
+  /**
+   * Approves, as {@code user} decided it, each pill of {@code shown} still approvable as it was read:
+   * a shown pill that changed or is no longer approvable fails, and one never shown is untouched.
+   */
+  public ExtractedMemoryApproval approve(
+      EntityReference source, List<ComparedMemory> shown, String user) {
     Plan plan = plan(extractedFrom(source));
+    Map<UUID, ContextMemory> approvable =
+        plan.approvable().stream().collect(Collectors.toMap(ContextMemory::getId, pill -> pill));
     int approved = 0;
-    for (ContextMemory pill : plan.approvable()) {
-      if (approveOne(pill, user)) {
+    for (ComparedMemory read : shown) {
+      // Taken once: a pill listed twice is no longer approvable the second time.
+      ContextMemory pill = approvable.remove(read.getId());
+      if (isAsRead(pill, read) && approveOne(pill, user)) {
         approved++;
       }
     }
-    return plan.result(approved);
+    return new ExtractedMemoryApproval()
+        .withApproved(approved)
+        .withFailed(shown.size() - approved)
+        .withNeedsDecision(plan.needsDecisionReferences());
   }
 
   static Plan plan(List<ContextMemory> memories) {
-    Map<String, Long> valuesByQuestion =
-        memories.stream()
-            .filter(memory -> STATING.contains(memory.getEntityStatus()))
-            .collect(
-                Collectors.groupingBy(ExtractedMemoryApprover::questionKey, Collectors.counting()));
     Map<Boolean, List<ContextMemory>> contested =
         memories.stream()
             .filter(ExtractedMemoryApprover::awaitsApproval)
-            .collect(
-                Collectors.partitioningBy(
-                    memory -> isContested(memory, memories, valuesByQuestion)));
+            .collect(Collectors.partitioningBy(memory -> isContested(memory, memories)));
     return new Plan(contested.get(false), contested.get(true));
   }
 
   /**
-   * Another value of its question needs a person to choose, and so does a value re-extraction would
-   * hold beside a decided pill: it may be a value a reviewer rejected or replaced, reworded.
+   * Another Unprocessed, Draft or Approved value of its question needs a person to choose, and so
+   * does a value re-extraction would hold beside a decided pill: it may be one a reviewer rejected
+   * or replaced, reworded.
    */
-  private static boolean isContested(
-      ContextMemory memory, List<ContextMemory> memories, Map<String, Long> valuesByQuestion) {
-    return valuesByQuestion.get(questionKey(memory)) > 1
-        || memories.stream().anyMatch(decided -> MemoryReviewHolds.holds(decided, memory));
+  private static boolean isContested(ContextMemory memory, List<ContextMemory> memories) {
+    return memories.stream()
+        .filter(other -> !other.getId().equals(memory.getId()))
+        .anyMatch(
+            other -> isAnotherValueOf(other, memory) || MemoryReviewHolds.holds(other, memory));
+  }
+
+  private static boolean isAnotherValueOf(ContextMemory other, ContextMemory memory) {
+    return STATING.contains(other.getEntityStatus())
+        && MemoryReviewHolds.sameQuestion(other, memory);
   }
 
   /** Only an Unprocessed pill extraction made: a Draft awaits its conflict review. */
@@ -118,8 +130,16 @@ public final class ExtractedMemoryApprover {
         && ContextMemoryWriteAccess.isAutomatedSource(memory.getSourceType());
   }
 
-  private static String questionKey(ContextMemory memory) {
-    return ContextMemoryExtractor.questionKey(memory.getQuestion());
+  private static ComparedMemory asRead(ContextMemory pill) {
+    return new ComparedMemory()
+        .withId(pill.getId())
+        .withContentUpdatedAt(MemoryConflictDecision.contentTime(pill));
+  }
+
+  private static boolean isAsRead(ContextMemory pill, ComparedMemory read) {
+    return pill != null
+        && read.getContentUpdatedAt() != null
+        && MemoryConflictDecision.contentTime(pill) == read.getContentUpdatedAt();
   }
 
   private List<ContextMemory> extractedFrom(EntityReference source) {

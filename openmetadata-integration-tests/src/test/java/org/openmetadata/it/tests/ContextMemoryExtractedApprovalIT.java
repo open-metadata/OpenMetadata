@@ -47,6 +47,7 @@ import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -56,10 +57,11 @@ import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.util.RequestEntityCache;
 
 /**
- * Admins and a document's owners approve its extracted memories in one request, which leaves two
- * values of one question for a decision
+ * Admins and a document's owners approve, in one request, the extracted memories its preview
+ * listed, leaving a second value of a question for a decision
  * (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).
  */
 @Execution(ExecutionMode.CONCURRENT)
@@ -78,16 +80,35 @@ public class ContextMemoryExtractedApprovalIT {
         stored(ns, file, "Who approves refunds?", "Finance", ContextMemoryStatus.DRAFT);
 
     ExtractedMemoryApproval preview = preview(SdkClients.adminClient(), file);
-    ExtractedMemoryApproval result = approve(SdkClients.adminClient(), file);
+    assertEquals(ContextMemoryStatus.UNPROCESSED, status(window), "a preview writes nothing");
+    ExtractedMemoryApproval result =
+        approve(SdkClients.adminClient(), file, preview.getApprovable());
 
-    assertEquals(1, preview.getApproved(), "a preview counts without writing");
-    assertEquals(ContextMemoryStatus.APPROVED, status(window));
+    assertEquals(Set.of(window.getId()), comparedIds(preview.getApprovable()));
     assertEquals(1, result.getApproved());
     assertEquals(0, result.getFailed());
     assertEquals(Set.of(fifteen.getId(), twenty.getId()), ids(result.getNeedsDecision()));
+    assertEquals(ContextMemoryStatus.APPROVED, status(window));
     assertEquals(ContextMemoryStatus.UNPROCESSED, status(fifteen));
     assertEquals(ContextMemoryStatus.UNPROCESSED, status(twenty));
     assertEquals(ContextMemoryStatus.DRAFT, status(draft));
+  }
+
+  /** Approval takes only what the person was shown: a pill extracted after the preview waits. */
+  @Test
+  void aPillExtractedAfterThePreviewStaysPending(TestNamespace ns) {
+    EntityReference file = file(ns, "extracted-since", null);
+    ContextMemory window = stored(ns, file, "What is the refund window?", "30 days", pending());
+    ExtractedMemoryApproval preview = preview(SdkClients.adminClient(), file);
+    ContextMemory fee = stored(ns, file, "What is the refund fee?", "5%", pending());
+
+    ExtractedMemoryApproval result =
+        approve(SdkClients.adminClient(), file, preview.getApprovable());
+
+    assertEquals(preview.getApprovable().size(), result.getApproved());
+    assertEquals(0, result.getFailed());
+    assertEquals(ContextMemoryStatus.APPROVED, status(window));
+    assertEquals(ContextMemoryStatus.UNPROCESSED, status(fee));
   }
 
   @Test
@@ -96,7 +117,7 @@ public class ContextMemoryExtractedApprovalIT {
     stored(ns, file, "Commission rate?", "15%", ContextMemoryStatus.APPROVED);
     ContextMemory twenty = stored(ns, file, "commission rate? ", "20%", pending());
 
-    ExtractedMemoryApproval result = approve(SdkClients.adminClient(), file);
+    ExtractedMemoryApproval result = approveAsPreviewed(SdkClients.adminClient(), file);
 
     assertEquals(0, result.getApproved());
     assertEquals(Set.of(twenty.getId()), ids(result.getNeedsDecision()));
@@ -109,7 +130,8 @@ public class ContextMemoryExtractedApprovalIT {
     ContextMemory window = stored(ns, file, "What is the refund window?", "30 days", pending());
 
     ExtractedMemoryApproval preview = preview(SdkClients.user1Client(), file);
-    ExtractedMemoryApproval result = approve(SdkClients.user1Client(), file);
+    ExtractedMemoryApproval result =
+        approve(SdkClients.user1Client(), file, preview.getApprovable());
 
     assertEquals(1, preview.getApproved());
     assertEquals(1, result.getApproved());
@@ -121,7 +143,7 @@ public class ContextMemoryExtractedApprovalIT {
     EntityReference page = page(ns, shared().USER1_REF);
     ContextMemory window = stored(ns, page, "What is the refund window?", "30 days", pending());
 
-    ExtractedMemoryApproval result = approve(SdkClients.user1Client(), page);
+    ExtractedMemoryApproval result = approveAsPreviewed(SdkClients.user1Client(), page);
 
     assertEquals(1, result.getApproved());
     assertEquals(ContextMemoryStatus.APPROVED, status(window));
@@ -132,8 +154,10 @@ public class ContextMemoryExtractedApprovalIT {
     EntityReference file = file(ns, "foreign", shared().USER1_REF);
     ContextMemory window = stored(ns, file, "What is the refund window?", "30 days", pending());
 
+    List<ComparedMemory> shown = preview(SdkClients.adminClient(), file).getApprovable();
+
     assertEquals(403, statusOf(() -> preview(SdkClients.user2Client(), file)));
-    assertEquals(403, statusOf(() -> approve(SdkClients.user2Client(), file)));
+    assertEquals(403, statusOf(() -> approve(SdkClients.user2Client(), file, shown)));
     assertEquals(ContextMemoryStatus.UNPROCESSED, status(window));
   }
 
@@ -156,7 +180,7 @@ public class ContextMemoryExtractedApprovalIT {
     ContextMemory window = stored(ns, file, "What is the refund window?", "30 days", pending());
 
     ExtractedMemoryApproval result =
-        approve(SdkClients.createClient(email, email, new String[] {}), file);
+        approveAsPreviewed(SdkClients.createClient(email, email, new String[] {}), file);
 
     assertEquals(1, result.getApproved());
     assertEquals(ContextMemoryStatus.APPROVED, status(window));
@@ -169,7 +193,9 @@ public class ContextMemoryExtractedApprovalIT {
     ContextMemory window =
         stored(ns, file, "What is the refund window?", "30 days", pending(), shared().USER2_REF);
 
-    assertEquals(403, statusOf(() -> approve(SdkClients.user2Client(), file)));
+    List<ComparedMemory> shown = preview(SdkClients.adminClient(), file).getApprovable();
+
+    assertEquals(403, statusOf(() -> approve(SdkClients.user2Client(), file, shown)));
     assertEquals(ContextMemoryStatus.UNPROCESSED, status(window));
   }
 
@@ -177,7 +203,16 @@ public class ContextMemoryExtractedApprovalIT {
   void onlyAContextFileOrAPageIsASource() {
     EntityReference table = new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
 
-    assertEquals(400, statusOf(() -> approve(SdkClients.adminClient(), table)));
+    assertEquals(400, statusOf(() -> approve(SdkClients.adminClient(), table, List.of())));
+  }
+
+  @Test
+  void aMissingDocumentIsNotFound() {
+    EntityReference missing =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+
+    assertEquals(404, statusOf(() -> preview(SdkClients.adminClient(), missing)));
+    assertEquals(404, statusOf(() -> approve(SdkClients.adminClient(), missing, List.of())));
   }
 
   private static ExtractedMemoryApproval preview(
@@ -189,14 +224,19 @@ public class ContextMemoryExtractedApprovalIT {
   }
 
   private static ExtractedMemoryApproval approve(
-      OpenMetadataClient client, EntityReference source) {
+      OpenMetadataClient client, EntityReference source, List<ComparedMemory> shown) {
     return client
         .getHttpClient()
         .execute(
             HttpMethod.PUT,
             APPROVAL,
-            new ApproveExtractedMemories().withSource(source),
+            new ApproveExtractedMemories().withSource(source).withApprovable(shown),
             ExtractedMemoryApproval.class);
+  }
+
+  private static ExtractedMemoryApproval approveAsPreviewed(
+      OpenMetadataClient client, EntityReference source) {
+    return approve(client, source, preview(client, source).getApprovable());
   }
 
   private static int statusOf(Executable request) {
@@ -207,7 +247,9 @@ public class ContextMemoryExtractedApprovalIT {
     return ContextMemoryStatus.UNPROCESSED;
   }
 
+  /** Read as a new request reads: this thread's request cache keeps what it read before a write. */
   private static ContextMemoryStatus status(ContextMemory memory) {
+    RequestEntityCache.clear();
     return memoryRepository()
         .get(null, memory.getId(), memoryRepository().getFields(""), Include.NON_DELETED, false)
         .getEntityStatus();
@@ -215,6 +257,10 @@ public class ContextMemoryExtractedApprovalIT {
 
   private static Set<UUID> ids(List<EntityReference> references) {
     return references.stream().map(EntityReference::getId).collect(Collectors.toSet());
+  }
+
+  private static Set<UUID> comparedIds(List<ComparedMemory> memories) {
+    return memories.stream().map(ComparedMemory::getId).collect(Collectors.toSet());
   }
 
   /** A pill as extraction stores it: linked to its document, written by the engine as admin. */

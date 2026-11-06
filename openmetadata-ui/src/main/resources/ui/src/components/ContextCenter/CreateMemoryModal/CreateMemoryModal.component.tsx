@@ -121,6 +121,7 @@ import {
   getPrimaryAndRelatedEntities,
   getQueryTableFqn,
   getSuccessorSearch,
+  hasMemoryChangedSince,
   removeAssetByKey,
   submitMemoryCreate,
   submitMemoryUpdate,
@@ -1155,7 +1156,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       onUpdated?.();
       handleClose();
     } catch (err) {
-      showErrorToast(err as AxiosError);
+      const isChanged = await hasMemoryChangedSince(memoryToEdit);
+      showErrorToast(
+        isChanged
+          ? t('message.memory-changed-since-opened')
+          : (err as AxiosError)
+      );
     } finally {
       setDecidingStatus(undefined);
     }
