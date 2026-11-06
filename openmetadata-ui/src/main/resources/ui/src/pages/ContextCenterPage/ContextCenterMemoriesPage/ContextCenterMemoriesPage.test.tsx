@@ -310,6 +310,10 @@ describe('ContextCenterMemoriesPage — permissions', () => {
         );
       });
 
+      expect(screen.getByTestId('memory-status-filter')).not.toHaveClass(
+        'tw:after:outline-brand'
+      );
+
       fireEvent.click(screen.getByTestId('memory-status-filter'));
       fireEvent.click(await screen.findByText(label));
 
@@ -328,6 +332,10 @@ describe('ContextCenterMemoriesPage — permissions', () => {
           })
         );
       });
+
+      expect(screen.getByTestId('memory-status-filter')).toHaveClass(
+        'tw:after:outline-brand'
+      );
 
       fireEvent.click(screen.getByTestId('memory-count-card-created-by-me'));
       await waitFor(() => {
