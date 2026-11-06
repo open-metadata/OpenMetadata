@@ -83,11 +83,11 @@ test.describe(
 
     /** All memory IDs created in beforeAll — cleaned up in afterAll. */
     const globalMemoryIds: string[] = [];
-    // 11 memories forces 2 pages (page size = 10)
-    const PAGINATION_COUNT = 11;
+    // 16 memories forces 2 pages (page size = 15)
+    const PAGINATION_COUNT = 16;
 
     test.beforeAll(async ({ browser }, testInfo) => {
-      // Seeds a table, ~16 memories and two search-index waits; give the hook the same
+      // Seeds a table, ~21 memories and two search-index waits; give the hook the same
       // headroom as the test.slow() tests it serves, or a slow server fails every test here.
       testInfo.setTimeout(testInfo.timeout * 3);
       globalMemoryIds.length = 0;
@@ -115,7 +115,7 @@ test.describe(
       await dataConsumerSetupPage.close();
 
       // Independent creates: run them together so the hook stays inside its timeout on a
-      // slow server instead of paying for 11 sequential round trips.
+      // slow server instead of paying for 16 sequential round trips.
       const paginationMemories = await Promise.all(
         Array.from({ length: PAGINATION_COUNT }, (_, i) =>
           createMemoryViaApi(apiContext, {
@@ -813,7 +813,7 @@ test.describe(
             return (
               url.pathname === MEMORIES_API &&
               !url.searchParams.has('q') &&
-              url.searchParams.get('limit') === '10' &&
+              url.searchParams.get('limit') === '15' &&
               res.request().method() === 'GET'
             );
           },
@@ -2247,14 +2247,14 @@ test.describe(
     // ─── 14. Pagination ──────────────────────────────────────────────────────
 
     test.describe('Pagination', () => {
-      test('pagination controls are visible when more than 10 memories exist', async ({
+      test('pagination controls are visible when more than 15 memories exist', async ({
         page,
       }) => {
         test.slow();
 
         await navigateToMemories(page);
 
-        // With 11+ shared memories the next-page button must be visible
+        // With 16+ shared memories the next-page button must be visible
         const nextBtn = page.getByRole('button', { name: /next/i });
         await expect(nextBtn).toBeVisible();
         await expect(nextBtn).toBeEnabled();
