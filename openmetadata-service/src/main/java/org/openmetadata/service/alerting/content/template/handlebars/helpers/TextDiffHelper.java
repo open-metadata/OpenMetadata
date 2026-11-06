@@ -314,6 +314,7 @@ public class TextDiffHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{textDiff }}")
-                    .withExample("{{textDiff entity.oldDescription entity.newDescription}}")));
+                    .withExample(
+                        "{{#with (groupEventChanges event.changeDescription) as |changes|}}{{#each changes.updates}}{{#if (eq name \"description\")}}{{textDiff oldValue newValue}}{{/if}}{{/each}}{{/with}}")));
   }
 }

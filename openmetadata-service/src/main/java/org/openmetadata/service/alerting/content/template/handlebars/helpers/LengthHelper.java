@@ -55,6 +55,6 @@ public class LengthHelper implements HandlebarsHelper {
                 new HandlebarsHelperUsage()
                     .withSyntax("{{length }}")
                     .withExample(
-                        "{{#if (gt (length failedTests) 0)}}Found {{length failedTests}} failures{{/if}}")));
+                        "{{#if (gt (length entity.tags) 0)}}{{length entity.tags}} tags{{/if}}")));
   }
 }
