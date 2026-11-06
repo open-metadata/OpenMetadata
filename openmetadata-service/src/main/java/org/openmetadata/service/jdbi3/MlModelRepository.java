@@ -254,6 +254,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     // Patch can't make changes to following fields. Ignore the changes
     super.restorePatchAttributes(original, updated);
     updated.withService(original.getService());
+    // Child FQNs were derived from the patched name; re-derive them from the restored FQN.
+    if (!nullOrEmpty(updated.getMlFeatures())) {
+      setMlFeatureFQN(updated.getFullyQualifiedName(), updated.getMlFeatures());
+    }
   }
 
   private void setMlFeatureSourcesFQN(List<MlFeatureSource> mlSources) {

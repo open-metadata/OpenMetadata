@@ -457,6 +457,10 @@ public class ContainerRepository extends EntityRepository<Container> {
     // is validated in ContainerUpdater.validateParent).
     super.restorePatchAttributes(original, updated);
     updated.withService(original.getService());
+    // Child FQNs were derived from the patched name; re-derive them from the restored FQN.
+    if (updated.getDataModel() != null) {
+      setColumnFQN(updated.getFullyQualifiedName(), updated.getDataModel().getColumns());
+    }
   }
 
   // ----------------------------------------------------------------------------------------

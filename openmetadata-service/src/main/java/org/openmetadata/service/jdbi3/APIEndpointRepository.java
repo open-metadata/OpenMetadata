@@ -91,6 +91,17 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     apiEndpoint.setFullyQualifiedName(
         FullyQualifiedName.add(
             apiEndpoint.getApiCollection().getFullyQualifiedName(), apiEndpoint.getName()));
+    setSchemaFieldFqns(apiEndpoint);
+  }
+
+  @Override
+  public void restorePatchAttributes(APIEndpoint original, APIEndpoint updated) {
+    super.restorePatchAttributes(original, updated);
+    // Child FQNs were derived from the patched name; re-derive them from the restored FQN.
+    setSchemaFieldFqns(updated);
+  }
+
+  private void setSchemaFieldFqns(APIEndpoint apiEndpoint) {
     if (apiEndpoint.getRequestSchema() != null) {
       setFieldFQN(
           apiEndpoint.getFullyQualifiedName() + ".requestSchema",

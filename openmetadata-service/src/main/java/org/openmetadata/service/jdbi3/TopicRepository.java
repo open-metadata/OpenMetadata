@@ -102,6 +102,15 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
+  public void restorePatchAttributes(Topic original, Topic updated) {
+    super.restorePatchAttributes(original, updated);
+    // Child FQNs were derived from the patched name; re-derive them from the restored FQN.
+    if (updated.getMessageSchema() != null) {
+      setFieldFQN(updated.getFullyQualifiedName(), updated.getMessageSchema().getSchemaFields());
+    }
+  }
+
+  @Override
   public void prepare(Topic topic, boolean update) {
     var messagingService = (MessagingService) getCachedParentOrLoad(topic.getService(), "", ALL);
     topic.setService(messagingService.getEntityReference());

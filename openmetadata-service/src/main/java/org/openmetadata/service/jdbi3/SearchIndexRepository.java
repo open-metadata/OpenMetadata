@@ -95,6 +95,15 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
+  public void restorePatchAttributes(SearchIndex original, SearchIndex updated) {
+    super.restorePatchAttributes(original, updated);
+    // Child FQNs were derived from the patched name; re-derive them from the restored FQN.
+    if (updated.getFields() != null) {
+      setFieldFQN(updated.getFullyQualifiedName(), updated.getFields());
+    }
+  }
+
+  @Override
   public void prepare(SearchIndex searchIndex, boolean update) {
     var searchService = (SearchService) getCachedParentOrLoad(searchIndex.getService(), "", ALL);
     searchIndex.setService(searchService.getEntityReference());
