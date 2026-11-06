@@ -65,6 +65,7 @@ import {
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
+import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import {
   buildNewClassChangeSet,
   NewClassDraft,
@@ -339,6 +340,13 @@ const OntologyNewClassPanel = ({
   };
   const mappingRowValid = isValidMapping(mappings, pendingMapping);
   const mappingRowInvalid = Boolean(mappingIri.trim()) && !mappingRowValid;
+  const isDuplicateMapping =
+    isAbsoluteOntologyIri(mappingIri.trim()) && !mappingRowValid;
+  const [mappingCommitTried, setMappingCommitTried] = useState(false);
+  const changeMappingIri = (iri: string) => {
+    setMappingIri(iri);
+    setMappingCommitTried(false);
+  };
   const [restoring, setRestoring] = useState(false);
   const [restoreFailed, setRestoreFailed] = useState(false);
   const deletedConcept = useDeletedConceptNamed(ontology, model, localName);
@@ -375,7 +383,7 @@ const OntologyNewClassPanel = ({
         name: localName.trim(),
       });
     }
-    if (mappingRowInvalid) {
+    if (mappingRowInvalid && mappingCommitTried) {
       return t('message.invalid-concept-iri');
     }
 
@@ -433,7 +441,7 @@ const OntologyNewClassPanel = ({
     setSynonym('');
     setMappings([]);
     setMappingType(ConceptMappingType.ExactMatch);
-    setMappingIri('');
+    changeMappingIri('');
     setProperties([]);
     setPropertyName('');
     setDatatype('string');
@@ -541,14 +549,19 @@ const OntologyNewClassPanel = ({
     setIdentifier(false);
   };
   const addMapping = () => {
-    if (!mappingRowValid || locked) {
+    if (locked) {
+      return;
+    }
+    if (!mappingRowValid) {
+      setMappingCommitTried(true);
+
       return;
     }
     setMappings((previous) => [
       ...previous,
       { mappingType, conceptIri: mappingIri.trim() },
     ]);
-    setMappingIri('');
+    changeMappingIri('');
   };
   const restoreDeleted = async () => {
     if (!deletedConcept || restoring) {
@@ -778,20 +791,25 @@ const OntologyNewClassPanel = ({
         {(item) => <Select.Item id={item.id} label={item.label} />}
       </Select>
       <OntologyIriInput
-        error={mappingRowInvalid ? t('message.invalid-concept-iri') : undefined}
+        error={
+          mappingRowInvalid && mappingCommitTried
+            ? t('message.invalid-concept-iri')
+            : undefined
+        }
         isDisabled={locked}
         isLoading={mappingTargetsLoading}
         label={t('label.concept-iri')}
         options={mappingTargets}
         testId="new-class-mapping-iri"
         value={mappingIri}
-        onChange={setMappingIri}
+        onChange={changeMappingIri}
+        onInvalidCommit={() => setMappingCommitTried(true)}
         onSubmit={addMapping}
       />
       <Button
         color="secondary"
         data-testid="new-class-add-mapping"
-        isDisabled={!mappingRowValid || locked}
+        isDisabled={!mappingIri.trim() || isDuplicateMapping || locked}
         size="sm"
         onPress={addMapping}>
         {t('label.add-mapping')}
