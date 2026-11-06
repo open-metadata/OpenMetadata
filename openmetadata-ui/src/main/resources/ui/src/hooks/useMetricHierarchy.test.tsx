@@ -12,7 +12,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Kind } from '../generated/api/data/metricHierarchyItem';
 import { getMetricGroupMetrics } from '../rest/metricGroupsAPI';
 import {
