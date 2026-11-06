@@ -43,6 +43,7 @@ import {
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
@@ -235,14 +236,17 @@ const WorkflowHistory = memo(
             <Box direction="col" gap={1}>
               <Typography
                 as="span"
-                className="tw:text-quaternary"
+                color="quaternary"
                 size="text-sm"
                 weight="semibold">
                 {workflowHistoryLabel}
               </Typography>
-              <Typography as="span" className="tw:text-tertiary" size="text-xs">
-                {t('label.no-entity-found', { entity: workflowHistoryLabel })}
-              </Typography>
+              <NoDataPlaceholder
+                size="sm"
+                title={t('label.no-entity-found', {
+                  entity: workflowHistoryLabel,
+                })}
+              />
             </Box>
           </WorkflowHistoryContainer>
         );
