@@ -74,6 +74,10 @@ import {
   Point,
 } from './utils/dataGraphLayout';
 import {
+  DATA_PANEL_RESERVED_WIDTH,
+  panXClearOfPanel,
+} from './utils/dataPanelView';
+import {
   ASSET_RELATION_TYPE,
   isDataAssetLikeNode,
   isTermNode,
@@ -94,6 +98,8 @@ interface OntologyDataGraphProps {
   isLoadingMoreTerms: boolean;
   limitMessage?: string;
   relationTypes: RelationshipType[];
+  /** The asset node the open side panel describes; the graph pans its card and column lane left of the panel. */
+  selectedAssetNodeId?: string;
   /** `columnNodeKey` of the selected column node. */
   selectedColumnKey?: string;
   selectedNodeId?: string;
@@ -815,6 +821,7 @@ const OntologyDataGraph = ({
   isLoadingMoreTerms,
   limitMessage,
   relationTypes,
+  selectedAssetNodeId,
   selectedColumnKey,
   selectedNodeId,
   variant = 'glossary',
@@ -1352,6 +1359,70 @@ const OntologyDataGraph = ({
       zoom,
     });
   }, [canvasHeight, canvasWidth, getTopInset, layoutKey]);
+
+  const panelExtent = useMemo(() => {
+    const card = selectedAssetNodeId
+      ? rowsInView.get(selectedAssetNodeId)
+      : undefined;
+    if (!card) {
+      return undefined;
+    }
+    const lane = columnNodes.slots.filter(
+      ({ assetId }) => assetId === selectedAssetNodeId
+    );
+
+    return {
+      left:
+        lane.length > 0 ? Math.min(...lane.map(({ left }) => left)) : card.left,
+      right: Math.max(
+        card.left + card.width,
+        ...lane.map(({ left, width }) => left + width)
+      ),
+    };
+  }, [columnNodes.slots, rowsInView, selectedAssetNodeId]);
+  const panelExtentLeft = panelExtent?.left;
+  const panelExtentRight = panelExtent?.right;
+  const panelInset = selectedAssetNodeId ? DATA_PANEL_RESERVED_WIDTH : 0;
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const panShiftRef = useRef<{ from: number; to: number }>();
+  // Pans on each selection so a panel opened over a lane never hides it, and
+  // puts the canvas back when the panel closes unless the person moved it since.
+  useEffect(() => {
+    const element = containerRef.current;
+    const shift = panShiftRef.current;
+    const current = viewRef.current;
+    if (panelInset === 0) {
+      panShiftRef.current = undefined;
+      if (shift && shift.to === current.x) {
+        setView({ ...current, x: shift.from });
+      }
+
+      return;
+    }
+    if (
+      !element ||
+      panelExtentLeft === undefined ||
+      panelExtentRight === undefined
+    ) {
+      return;
+    }
+    const x = panXClearOfPanel({
+      containerWidth: element.clientWidth,
+      extentLeft: panelExtentLeft,
+      extentRight: panelExtentRight,
+      panelWidth: panelInset,
+      x: current.x,
+      zoom: current.zoom,
+    });
+    if (x !== current.x) {
+      panShiftRef.current = {
+        from: shift?.to === current.x ? shift.from : current.x,
+        to: x,
+      };
+      setView({ ...current, x });
+    }
+  }, [panelExtentLeft, panelExtentRight, panelInset, selectedColumnKey]);
 
   const zoomAtCenter = (factor: number) => {
     const element = containerRef.current;

@@ -559,6 +559,7 @@ const OntologyNativeDataMode = ({
           hasMoreTerms={false}
           isLoadingMoreTerms={false}
           relationTypes={NO_RELATION_TYPES}
+          selectedAssetNodeId={panelNode?.id}
           selectedColumnKey={panelColumnKey}
           selectedNodeId={selectedConceptId}
           variant="native"

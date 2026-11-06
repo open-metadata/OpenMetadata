@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, Locator, Page } from '@playwright/test';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
@@ -24,6 +24,7 @@ import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
 const APP_MODES = ['classic', 'ai'] as const;
 const CAP = 5;
 const WIDE_COLUMN_COUNT = 7;
+const NARROW_VIEWPORT = { width: 1280, height: 800 };
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -151,6 +152,26 @@ const columnEdge = (page: Page, column: string) =>
 const openColumns = (page: Page) =>
   page.getByTestId(/^ontology-data-asset-columns-toggle-/);
 
+const expectClearOfPanel = async (
+  page: Page,
+  panel: Locator,
+  columns: string[]
+) => {
+  const panelBox = await panel.boundingBox();
+  expect(panelBox).not.toBeNull();
+  for (const column of columns) {
+    const box = await columnNode(page, column).boundingBox();
+    expect(box, `${column} has a box`).not.toBeNull();
+    expect(
+      (box?.x ?? 0) + (box?.width ?? 0),
+      `${column} ends left of the panel`
+    ).toBeLessThanOrEqual(panelBox?.x ?? 0);
+    expect(box?.x ?? -1, `${column} starts on screen`).toBeGreaterThanOrEqual(
+      0
+    );
+  }
+};
+
 test.describe(
   'Native ontology Data mode column nodes',
   { tag: ['@Features', '@Governance'] },
@@ -241,6 +262,119 @@ test.describe(
 
           await expect(columnNodes(page)).toHaveCount(0);
           await expect(columnEdges(page)).toHaveCount(0);
+        } finally {
+          await cleanUp(api, ontology, [table]);
+        }
+      });
+    }
+
+    for (const mode of APP_MODES) {
+      test(`${mode}: at 1280 by 800 the panel stays clear of the selected column and its siblings`, async ({
+        isolatedUserPage: page,
+      }) => {
+        await page.setViewportSize(NARROW_VIEWPORT);
+        const api = await getWorkerAdminAPIContext();
+        const ontology = await createOntology(api);
+        const table = new TableClass({ name: `pw_cols_${uuid()}` });
+        await table.create(api);
+        try {
+          const concept = await createConcept(api, ontology);
+          const [first, second, third] = (
+            table.entityResponseData.columns ?? []
+          ).map((column) => column.name);
+          const properties = await Promise.all(
+            ['rxNumber', 'doseMg', 'refills'].map((name) =>
+              createProperty(api, ontology, concept, name)
+            )
+          );
+          await bindColumns(
+            api,
+            concept,
+            table.entityResponseData.id ?? '',
+            [first, second, third].map((column, index) => ({
+              property: properties[index],
+              column,
+            }))
+          );
+          await setMode(page, mode);
+          await openData(page, ontology, concept);
+          await openColumns(page).click();
+          await expect(columnNodes(page)).toHaveCount(3);
+
+          await columnNode(page, first).click();
+
+          const panel = page.getByTestId('ontology-data-column-panel');
+
+          await expect(panel).toBeVisible();
+          await expectClearOfPanel(page, panel, [first, second, third]);
+
+          await columnNode(page, second).click();
+
+          await expect(
+            panel.getByTestId('ontology-data-column-panel-column')
+          ).toContainText(second);
+          await expectClearOfPanel(page, panel, [first, second, third]);
+
+          await columnNode(page, third).click();
+
+          await expect(
+            panel.getByTestId('ontology-data-column-panel-column')
+          ).toContainText(third);
+        } finally {
+          await cleanUp(api, ontology, [table]);
+        }
+      });
+
+      test(`${mode}: at 1280 by 800 the asset panel stays clear of the column lane`, async ({
+        isolatedUserPage: page,
+      }) => {
+        await page.setViewportSize(NARROW_VIEWPORT);
+        const api = await getWorkerAdminAPIContext();
+        const ontology = await createOntology(api);
+        const table = new TableClass({ name: `pw_cols_${uuid()}` });
+        await table.create(api);
+        try {
+          const concept = await createConcept(api, ontology);
+          const [first, second, third] = (
+            table.entityResponseData.columns ?? []
+          ).map((column) => column.name);
+          const properties = await Promise.all(
+            ['rxNumber', 'doseMg', 'refills'].map((name) =>
+              createProperty(api, ontology, concept, name)
+            )
+          );
+          await bindColumns(
+            api,
+            concept,
+            table.entityResponseData.id ?? '',
+            [first, second, third].map((column, index) => ({
+              property: properties[index],
+              column,
+            }))
+          );
+          await setMode(page, mode);
+          await openData(page, ontology, concept);
+          await openColumns(page).click();
+          await expect(columnNodes(page)).toHaveCount(3);
+
+          await page
+            .locator(
+              `[data-testid^="ontology-data-asset-asset:"][data-testid$="${table.entityResponseData.id}"]`
+            )
+            .click();
+
+          const panel = page.getByTestId('ontology-data-asset-panel');
+
+          await expect(panel).toBeVisible();
+          await expectClearOfPanel(page, panel, [first, second, third]);
+
+          await columnNode(page, second).click();
+
+          await expect(
+            page
+              .getByTestId('ontology-data-column-panel')
+              .getByTestId('ontology-data-column-panel-column')
+          ).toContainText(second);
         } finally {
           await cleanUp(api, ontology, [table]);
         }
