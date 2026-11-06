@@ -21,7 +21,9 @@ import {
 import {
   ChevronDown,
   Download01,
+  Expand05,
   FilterLines,
+  Minimize02,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -39,8 +41,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exit-fullscreen.svg';
-import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
 import { getLineageDropdownItems } from '../../../constants/AdvancedSearch.constants';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
@@ -435,7 +435,7 @@ const CustomControls: FC<{
   );
 
   const fullScreenIcon = useMemo(
-    () => (isFullScreen ? ExitFullScreenIcon : FullscreenIcon),
+    () => (isFullScreen ? Minimize02 : Expand05),
     [isFullScreen]
   );
 
