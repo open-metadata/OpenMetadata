@@ -38,7 +38,6 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.lineage.NodeInformation;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
@@ -122,10 +121,9 @@ public class SearchLineagePermissionFilter {
   }
 
   /**
-   * {@code lineage} as the caller may see it. The graph builders cache the graph they return and
-   * hand the same one to the next caller, so the caller's view is cut from a copy and {@code
-   * lineage} is left as it was. {@code rootFqn} is the node the caller asked about, which the caller
-   * has already been authorized to view; without one, nodes are kept by visibility alone.
+   * {@code lineage} as the caller may see it, cut in place: the graph cache hands every caller its
+   * own copy. {@code rootFqn} is the node the caller asked about, which the caller has already been
+   * authorized to view; without one, nodes are kept by visibility alone.
    */
   public SearchLineageResult filter(
       SecurityContext securityContext,
@@ -135,9 +133,9 @@ public class SearchLineagePermissionFilter {
     if (!needsFiltering(subjectContext) || isEmpty(lineage)) {
       return lineage;
     }
-    SearchLineageResult view = JsonUtils.deepCopy(lineage, SearchLineageResult.class);
-    retainOnly(securityContext, view, reachableThroughViewable(securityContext, view, rootFqn));
-    return view;
+    retainOnly(
+        securityContext, lineage, reachableThroughViewable(securityContext, lineage, rootFqn));
+    return lineage;
   }
 
   /**
@@ -160,9 +158,8 @@ public class SearchLineagePermissionFilter {
             : reachableThroughViewable(securityContext, wholeGraph, request.getFqn());
     // The caller was authorized to view the root before the page was read.
     keep.add(request.getFqn());
-    SearchLineageResult view = JsonUtils.deepCopy(page, SearchLineageResult.class);
-    retainOnly(securityContext, view, keep);
-    return view;
+    retainOnly(securityContext, page, keep);
+    return page;
   }
 
   /** The depth-based request for the graph an entity-count page is cut from. */

@@ -12,11 +12,11 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
+import { Teams } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { Team } from '../../../generated/entity/teams/team';
 import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
@@ -78,7 +78,7 @@ export const TeamPopoverContent = React.memo(
         {!isEmpty(team?.parents) && (
           <div className="m-t-xs" data-testid="team-parents">
             <p className="d-flex items-center">
-              <IconTeams height={16} width={16} />
+              <Teams size={16} />
               <span className="m-r-xs m-l-xss align-middle font-medium">
                 {t('label.parent')}
               </span>

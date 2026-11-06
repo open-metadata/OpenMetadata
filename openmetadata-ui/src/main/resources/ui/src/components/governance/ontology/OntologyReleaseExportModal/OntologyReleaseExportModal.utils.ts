@@ -12,17 +12,19 @@
  */
 
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
+import { ONTOLOGY_DRAFT_EXPORT_SCOPE } from '../../../../hooks/governance/ontology/useOntologyReleaseExport';
 import type {
   OntologyReleaseExportContentState,
+  OntologyReleaseExportScopeOption,
   OntologyReleaseExportSelection,
 } from './OntologyReleaseExportModal.types';
 
 interface OntologyReleasePreviewState {
+  readonly error?: unknown;
   readonly content?: string;
-  readonly isActiveReleaseLoading: boolean;
   readonly isError: boolean;
   readonly isPreviewLoading: boolean;
-  readonly release?: OntologyRelease | null;
+  readonly isScopesLoading: boolean;
   readonly retry: () => void;
 }
 
@@ -34,22 +36,71 @@ export const resolveContentOptions = (
   includeInverses: selection.options.includeInverses,
 });
 
+/**
+ * The export endpoint is requested as text, so axios leaves an error body
+ * unparsed; the server's reason is the `message` of that JSON.
+ */
+export const resolveExportFailureReason = (error: unknown): string => {
+  const data = (error as { response?: { data?: unknown } } | undefined)
+    ?.response?.data;
+  if (typeof data !== 'string') {
+    return (data as { message?: string } | undefined)?.message ?? '';
+  }
+  try {
+    const message = (JSON.parse(data) as { message?: unknown }).message;
+
+    return typeof message === 'string' ? message : '';
+  } catch {
+    return data;
+  }
+};
+
 export const resolveContentState = ({
   content,
-  isActiveReleaseLoading,
+  error,
   isError,
   isPreviewLoading,
-  release,
+  isScopesLoading,
   retry,
 }: OntologyReleasePreviewState): OntologyReleaseExportContentState => {
-  if (isActiveReleaseLoading) {
+  if (isScopesLoading) {
     return { kind: 'loading' };
   }
-  if (isError) {
-    return { kind: 'error', onRetry: retry };
-  }
 
-  return release
-    ? { content, isPreviewLoading, kind: 'ready' }
-    : { kind: 'empty' };
+  return isError
+    ? {
+        kind: 'error',
+        onRetry: retry,
+        reason: resolveExportFailureReason(error) || undefined,
+      }
+    : { content, isPreviewLoading, kind: 'ready' };
 };
+
+interface ScopeLabels {
+  readonly active: string;
+  readonly draft: string;
+  readonly draftHint: string;
+  readonly releaseHint: string;
+  readonly releaseName: (release: OntologyRelease) => string;
+}
+
+/** The draft first, then each captured release; the active one says so. */
+export const resolveScopeOptions = (
+  releases: readonly OntologyRelease[],
+  activeReleaseId: string | undefined,
+  labels: ScopeLabels
+): readonly OntologyReleaseExportScopeOption[] => [
+  {
+    hint: labels.draftHint,
+    key: ONTOLOGY_DRAFT_EXPORT_SCOPE,
+    label: labels.draft,
+  },
+  ...releases.map((release) => ({
+    hint: labels.releaseHint,
+    key: release.id,
+    label:
+      release.id === activeReleaseId
+        ? `${labels.releaseName(release)} · ${labels.active}`
+        : labels.releaseName(release),
+  })),
+];

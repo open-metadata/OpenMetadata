@@ -1,7 +1,7 @@
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { Dot } from '@/components/foundations/dot-icon';
 import { cx } from '@/utils/cx';
-import { X as CloseX } from '../../../icons';
+import { XClose } from '../../../icons';
 import type {
   CSSProperties,
   HTMLAttributes,
@@ -29,7 +29,7 @@ export const filledColors: Record<
     root: 'tw:bg-utility-gray-50 tw:text-utility-gray-700 tw:outline-utility-gray-200',
     addon: 'tw:text-utility-gray-500',
     addonButton:
-      'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
+      'tw:hover:bg-utility-gray-100 tw:text-utility-gray-500 tw:hover:text-utility-gray-600',
   },
   brand: {
     root: 'tw:bg-utility-brand-50 tw:text-utility-brand-700 tw:outline-utility-brand-200',
@@ -131,7 +131,7 @@ const withPillTypes = {
         root: 'tw:bg-surface tw:text-secondary tw:outline-subtle',
         addon: 'tw:text-utility-gray-500',
         addonButton:
-          'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
+          'tw:hover:bg-utility-gray-100 tw:text-utility-gray-500 tw:hover:text-utility-gray-600',
       },
     },
   },
@@ -597,7 +597,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     color = 'gray',
     type = 'pill-color',
     bordered = true,
-    icon: Icon = CloseX,
+    icon: Icon = XClose,
     buttonLabel,
     buttonTestId,
     children,
@@ -672,7 +672,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
         type="button"
         onClick={onButtonClick}
         onKeyDown={onButtonKeyDown}>
-        <Icon className="tw:size-3 tw:stroke-[3px] tw:transition-inherit-all" />
+        <Icon className="tw:p-[0.5px] tw:transition-inherit-all" size={16} />
       </button>
     </span>
   );

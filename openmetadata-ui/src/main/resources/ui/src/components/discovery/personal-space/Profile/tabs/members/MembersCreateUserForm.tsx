@@ -488,7 +488,6 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                               direction="row">
                               <ButtonUtility
                                 className="tw:h-full tw:rounded-none tw:hover:bg-transparent"
-                                color="tertiary"
                                 data-testid="toggle-password-visibility"
                                 icon={showGeneratedPassword ? EyeOff : Eye}
                                 size="sm"
@@ -503,7 +502,6 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                               />
                               <ButtonUtility
                                 className="tw:h-full tw:rounded-none tw:border-l tw:border-primary tw:hover:bg-transparent"
-                                color="tertiary"
                                 data-testid="password-generator"
                                 icon={RefreshCw01}
                                 isDisabled={isPasswordGenerating}
@@ -513,7 +511,6 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                               />
                               <ButtonUtility
                                 className="tw:h-full tw:rounded-none tw:border-l tw:border-primary tw:hover:bg-transparent"
-                                color="tertiary"
                                 data-testid="copy-password"
                                 icon={Copy01}
                                 size="sm"
