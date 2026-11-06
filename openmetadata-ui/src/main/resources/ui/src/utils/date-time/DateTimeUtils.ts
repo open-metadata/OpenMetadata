@@ -512,21 +512,6 @@ export const convertSecondsToHumanReadableFormat = (
   );
 };
 
-export const formatDuration = (ms: number) => {
-  const seconds = ms / 1000;
-  const minutes = seconds / 60;
-  const hours = minutes / 60;
-  const pluralize = (value: number, unit: string) =>
-    `${value.toFixed(2)} ${unit}${value === 1 ? '' : 's'}`;
-  if (seconds < 60) {
-    return pluralize(seconds, 'second');
-  } else if (minutes < 60) {
-    return pluralize(minutes, 'minute');
-  } else {
-    return pluralize(hours, 'hour');
-  }
-};
-
 export const formatIsoDuration = (iso: string): string => {
   const d = Duration.fromISO(iso);
   if (!d.isValid) {
@@ -536,13 +521,8 @@ export const formatIsoDuration = (iso: string): string => {
   return d.toHuman() || iso;
 };
 
-export const formatDurationToHHMMSS = (ms: number) => {
-  if (ms > 0 && ms < 1000) {
-    return `${Math.floor(ms)} ms`;
-  }
-
-  return Duration.fromMillis(ms).toFormat('hh:mm:ss');
-};
+export const formatRunDuration = (ms: number) =>
+  convertMillisecondsToHumanReadableFormat(ms, 2, ms > 0 && ms < 1000);
 
 export const getStartOfDayInMillis = (timestamp: number) =>
   DateTime.fromMillis(timestamp).toUTC().startOf('day').toMillis();
