@@ -645,7 +645,7 @@ const ContextCenterDashboardPage: FC = () => {
                           className="tw:min-w-0 tw:flex-1"
                           gap={4}
                           justify="between">
-                          <div className="tw:min-w-0">
+                          <div className="tw:flex tw:min-w-0">
                             <Typography
                               ellipsis
                               className="tw:min-w-0 tw:flex-1 tw:text-secondary"
@@ -655,7 +655,7 @@ const ContextCenterDashboardPage: FC = () => {
                             </Typography>
                           </div>
 
-                          <div className="tw:max-w-20">
+                          <div className="tw:flex tw:max-w-20">
                             <Typography
                               ellipsis
                               className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
@@ -713,7 +713,7 @@ const ContextCenterDashboardPage: FC = () => {
                           gap={4}
                           justify="between">
                           <div
-                            className="tw:min-w-0"
+                            className="tw:flex tw:min-w-0"
                             data-testid="most-cited-memory">
                             <Typography
                               ellipsis
@@ -723,7 +723,9 @@ const ContextCenterDashboardPage: FC = () => {
                               {item.title}
                             </Typography>
                           </div>
-                          <div data-testid="most-cited-count">
+                          <div
+                            className="tw:flex"
+                            data-testid="most-cited-count">
                             <Typography
                               ellipsis
                               className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
