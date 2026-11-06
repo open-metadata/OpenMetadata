@@ -166,6 +166,8 @@ public class HttpServletStatelessServerTransport extends HttpServlet
 
     McpTransportContext transportContext = this.contextExtractor.extract(request);
 
+    // After authentication, so a client without a token still gets the 401 that starts OAuth
+    // discovery. See ADR:2026-11-06-mcp-post-requires-a-json-content-type.
     if (!isJsonContentType(request.getContentType())) {
       responseError(
           response,

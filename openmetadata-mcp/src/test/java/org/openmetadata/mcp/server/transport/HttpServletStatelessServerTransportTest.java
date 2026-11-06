@@ -38,6 +38,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import reactor.core.publisher.Mono;
 
 class HttpServletStatelessServerTransportTest {
@@ -305,11 +307,14 @@ class HttpServletStatelessServerTransportTest {
     assertThat(body.toString()).contains("\"code\":-32603");
   }
 
-  @Test
-  void doPost_nonJsonContentType_answers415WithoutReachingTheHandler() throws Exception {
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"text/plain", "text/plain; a=application/json", "application/jsonx"})
+  void doPost_nonJsonContentType_answers415WithoutReachingTheHandler(String contentType)
+      throws Exception {
     McpStatelessServerHandler handler = mock(McpStatelessServerHandler.class);
     HttpServletRequest request = requestFor("application/json", UNKNOWN_METHOD_REQUEST);
-    when(request.getContentType()).thenReturn("text/plain");
+    when(request.getContentType()).thenReturn(contentType);
 
     transportWith(handler).doPost(request, response);
 

@@ -259,11 +259,14 @@ public class McpSdkUpgradeTest {
     McpStatelessSyncServer server =
         McpServer.buildServer(
             transport, new McpServer().buildServerCapabilities(), MCPConfiguration::new);
-    Map<String, Object> schema =
-        Map.of("type", "object", "properties", Map.of("size", Map.of("type", "integer")));
+    McpSchema.Tool searchMetadata =
+        McpUtils.getToolProperties("json/data/mcp/tools.json").stream()
+            .filter(tool -> "search_metadata".equals(tool.name()))
+            .findFirst()
+            .orElseThrow();
     server.addTool(
         new McpStatelessServerFeatures.SyncToolSpecification(
-            McpSchema.Tool.builder("sized", schema).build(),
+            searchMetadata,
             (context, request) ->
                 McpSchema.CallToolResult.builder()
                     .content(List.of(McpSchema.TextContent.builder("ran").build()))
@@ -281,7 +284,17 @@ public class McpSdkUpgradeTest {
                 new McpSchema.JSONRPCRequest(
                     McpSchema.METHOD_TOOLS_CALL,
                     1,
-                    Map.of("name", "sized", "arguments", Map.of("size", "5"))))
+                    Map.of(
+                        "name",
+                        "search_metadata",
+                        "arguments",
+                        Map.of(
+                            "size",
+                            "5",
+                            "includeDeleted",
+                            "true",
+                            "queryFilter",
+                            Map.of("term", Map.of("entityType", "table"))))))
             .block();
 
     assertThat(((McpSchema.CallToolResult) response.result()).isError()).isFalse();
