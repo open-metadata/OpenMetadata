@@ -317,6 +317,7 @@ class TestClient:
         assert [s.params["offset"] for s in searches] == [0, 2]
         assert all(s.headers["X-MSTR-ProjectID"] == TUTORIAL["id"] for s in searches)
         assert all("project_id" not in s.params for s in searches)
+        assert all(s.params["result.hidden"] is False for s in searches)
 
     def test_paging_without_total_items_stops_on_a_short_page(self, server, client):
         rows = [OFFICE_ROYALE, AIRLINE, BROKEN]

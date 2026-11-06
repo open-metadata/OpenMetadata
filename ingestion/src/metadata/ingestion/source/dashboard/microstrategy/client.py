@@ -196,6 +196,9 @@ class MicroStrategyClient:
                 "offset": offset,
                 "limit": page_size,
                 "certifiedStatus": "ALL",
+                "isCrossCluster": False,
+                # Hidden dossiers are not ingested.
+                "result.hidden": False,
             }
             page = MstrSearchPage.model_validate(self._get("/searches/results", params=params, project_id=project_id))
             results = page.result or []
