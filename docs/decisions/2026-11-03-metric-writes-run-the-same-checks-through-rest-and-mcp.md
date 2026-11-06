@@ -89,10 +89,12 @@ endpoint or tool cannot leave them out.
 
 The write path is now the only place the checks run. `MetricAuthorization` is gone, so a new
 endpoint or tool needs nothing, and a new metric check goes into the repository's
-`authorizeWrite`. This replaces the v1 rules on where the checks live and how a patch is checked.
+`authorizeWrite`, or `authorizePatch` when it must run before a patch is applied. This replaces the v1 rules on where the checks live and how a patch is checked.
 
-- `MetricRepository.validatePatch` refuses a patch to `assets`, `children` or `childrenCount`, on
-  every PATCH and patch preview.
+- `MetricRepository.authorizePatch` refuses a patch to `assets`, `children` or `childrenCount`
+  before the patch is applied, on every user PATCH and patch preview, so a `test` of them can't
+  tell whether a guess matches. The checks #36909 added run there too
+  (ADR:2026-11-03-metric-hierarchy-and-membership-patches-are-authorized-before-they-apply v2).
 - A patch to the document root no longer counts as a hierarchy change: every type refuses it with
   a 400 before any check (ADR:2026-11-03-input-parsing-is-bounded).
 - Bulk PUT refuses a metric on its own with a 403 and saves the rest; the endpoint refused the

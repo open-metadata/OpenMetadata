@@ -29,7 +29,9 @@ import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.USER;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -122,6 +124,8 @@ public class MetricRepository extends EntityRepository<Metric> {
       Set.of(FIELD_PARENT, FIELD_METRIC_GROUP);
   private static final Set<String> READ_ONLY_PATCH_FIELDS =
       Set.of(FIELD_ASSETS, FIELD_CHILDREN, FIELD_CHILDREN_COUNT);
+  private static final List<String> RELATION_FIELDS =
+      List.of(FIELD_PARENT, FIELD_METRIC_GROUP, FIELD_CHILDREN, "relatedMetrics");
   private static final int ASSET_SCAN_BATCH_SIZE = 200;
   private static final int HIERARCHY_SCAN_BATCH_SIZE = 200;
   static final int MAX_OBSERVABILITY_ASSET_DETAILS = 1_000;
@@ -185,14 +189,55 @@ public class MetricRepository extends EntityRepository<Metric> {
     }
   }
 
+  // Before the patch is applied: a test of a read-only field or a relation would otherwise fail or
+  // pass on what the stored metric holds, and answer a guess about what the caller may not view.
   @Override
-  protected void validatePatch(final Metric original, final Metric updated, final JsonPatch patch) {
+  protected void authorizePatch(
+      final Metric original, final JsonPatch patch, final ChangeActor actor) {
+    if (readsRelationElsewhere(patch)) {
+      throw new IllegalArgumentException(
+          "A metric patch can't test the document root or "
+              + String.join(", ", RELATION_FIELDS)
+              + ", or copy or move a value out of them into another field");
+    }
     for (final String field : JsonUtils.extractPatchedFields(patch)) {
       if (READ_ONLY_PATCH_FIELDS.contains(field)) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.readOnlyAttribute(METRIC, field));
       }
     }
+  }
+
+  // Responses drop the relation references the caller may not view, but an operation is authorized
+  // by its path only (e.g. copy /parent/description into /description needs EditDescription, and a
+  // test of /parent/name answers whether a guess is right).
+  private static boolean readsRelationElsewhere(final JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .map(JsonValue::asJsonObject)
+        .anyMatch(MetricRepository::readsRelationElsewhere);
+  }
+
+  private static boolean readsRelationElsewhere(final JsonObject operation) {
+    final String path = operation.getString("path", "");
+    boolean readsRelation;
+    if ("test".equals(operation.getString("op", ""))) {
+      readsRelation = path.isEmpty() || RELATION_FIELDS.contains(topLevelField(path));
+    } else if (operation.containsKey("from")) {
+      final String from = operation.getString("from", "");
+      final String fromField = topLevelField(from);
+      readsRelation =
+          from.isEmpty()
+              || (RELATION_FIELDS.contains(fromField) && !fromField.equals(topLevelField(path)));
+    } else {
+      readsRelation = false;
+    }
+    return readsRelation;
+  }
+
+  private static String topLevelField(final String pointer) {
+    final String stripped = pointer.startsWith("/") ? pointer.substring(1) : pointer;
+    final int slash = stripped.indexOf('/');
+    return slash < 0 ? stripped : stripped.substring(0, slash);
   }
 
   @Override

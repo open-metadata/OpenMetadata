@@ -39,6 +39,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import jakarta.json.Json;
+import jakarta.json.JsonPatch;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -867,6 +868,7 @@ class MetricRepositoryTest {
   @Test
   void aPatchMayNotSetAssetsChildrenOrChildrenCount() {
     final Metric metric = new Metric().withId(UUID.randomUUID()).withName("revenue");
+    final ChangeActor actor = ChangeActor.user("alice", null);
     try (RepositoryFixture fixture = repositoryFixture()) {
       for (final String field : List.of("assets", "children", "childrenCount")) {
         final IllegalArgumentException error =
@@ -875,22 +877,76 @@ class MetricRepositoryTest {
                 () ->
                     fixture
                         .repository()
-                        .validatePatch(
-                            metric,
+                        .authorizePatch(
                             metric,
                             Json.createPatchBuilder()
                                 .add("/" + field, Json.createArrayBuilder().build())
-                                .build()));
+                                .build(),
+                            actor));
         assertTrue(error.getMessage().contains(field));
       }
+      // Refused before the patch is applied, so whether a guess matches a linked asset is not told.
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              fixture
+                  .repository()
+                  .authorizePatch(
+                      metric,
+                      Json.createPatchBuilder().test("/assets/0/name", "guess").build(),
+                      actor));
       assertDoesNotThrow(
           () ->
               fixture
                   .repository()
-                  .validatePatch(
+                  .authorizePatch(
                       metric,
-                      metric,
-                      Json.createPatchBuilder().replace("/description", "updated").build()));
+                      Json.createPatchBuilder().replace("/description", "updated").build(),
+                      actor));
+    }
+  }
+
+  @Test
+  void metricPatchRejectsReadingARelationIntoAnotherFieldOrATest() {
+    final Metric metric = new Metric().withId(UUID.randomUUID()).withName("revenue");
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      final MetricRepository repository = fixture.repository();
+      for (final String from :
+          List.of(
+              "/parent/description",
+              "/metricGroup/name",
+              "/relatedMetrics/0/description",
+              "/children/0/name",
+              "")) {
+        final JsonPatch copy = Json.createPatchBuilder().copy("/description", from).build();
+        final JsonPatch move = Json.createPatchBuilder().move("/displayName", from).build();
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> repository.authorizePatch(metric, copy, actor),
+            from);
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> repository.authorizePatch(metric, move, actor),
+            from);
+      }
+      for (final String path :
+          List.of("", "/parent/name", "/metricGroup", "/relatedMetrics/0/name")) {
+        final JsonPatch test =
+            Json.createPatchBuilder().test(path, "guess").add("/description", "x").build();
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> repository.authorizePatch(metric, test, actor),
+            path);
+      }
+      // Reordering within a relation (as jsonpatch diff tools emit) and copying plain fields still
+      // pass.
+      repository.authorizePatch(
+          metric,
+          Json.createPatchBuilder().move("/relatedMetrics/0", "/relatedMetrics/1").build(),
+          actor);
+      repository.authorizePatch(
+          metric, Json.createPatchBuilder().copy("/displayName", "/description").build(), actor);
     }
   }
 

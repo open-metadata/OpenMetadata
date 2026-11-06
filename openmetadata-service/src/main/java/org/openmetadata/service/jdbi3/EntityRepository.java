@@ -5262,6 +5262,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       ChangeSource changeSource,
       boolean useOptimisticLocking,
       ApprovedApplication approval) {
+    // An approved change was checked when it was requested, as admitOrVerify does below.
+    if (approval == null) {
+      authorizeUserPatch(original, patch, actor);
+    }
     T updated = preparePatched(original, patch, actor.userName(), actor.impersonatedBy());
     Optional<StagedChange> staged =
         admitOrVerify(original, updated, actor, approval, patchedFieldNames);
@@ -5305,6 +5309,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * runs, and saves nothing.
    */
   final Optional<StagedChange> previewPatch(T original, JsonPatch patch, ChangeActor actor) {
+    authorizeUserPatch(original, patch, actor);
     T updated = preparePatched(original, patch, actor.userName(), actor.impersonatedBy());
     authorizeDomainWrite(original, updated, actor, Edit.Kind.PATCH);
     final Edit edit = Edit.patch(JsonUtils.extractPatchedFields(patch));
@@ -10203,6 +10208,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       final T original, final T updated, final ChangeActor actor, final Edit edit) {
     if (!actor.system()) {
       authorizeWrite(original, updated, actor, edit);
+    }
+  }
+
+  /**
+   * The checks a repository adds to a user's patch before the patch is applied. Applying it reads
+   * {@code original}, the entity as stored with the patch fields, so a check on what an operation
+   * may read, which a failed {@code test} or a JSON-P error would otherwise answer, runs here rather
+   * than in {@link #authorizeWrite}. PATCH, bulk edits and the patch preview run it; a system write
+   * and the publishing of an approved change are not checked. See
+   * ADR:2026-11-03-metric-hierarchy-and-membership-patches-are-authorized-before-they-apply.
+   */
+  protected void authorizePatch(final T original, final JsonPatch patch, final ChangeActor actor) {}
+
+  private void authorizeUserPatch(
+      final T original, final JsonPatch patch, final ChangeActor actor) {
+    if (!actor.system()) {
+      authorizePatch(original, patch, actor);
     }
   }
 
