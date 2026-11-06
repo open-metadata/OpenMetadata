@@ -119,3 +119,6 @@ class MstrDashboardDetails(MstrModel):
     # False when the definition could not be read: the dossier is still ingested from its
     # listing, but its charts and data models are unknown for this run.
     definition_read: bool = True
+    # False when the dossier's current charts could not be read from OpenMetadata: its charts
+    # and dashboard are left as they are in this run.
+    charts_known: bool = True

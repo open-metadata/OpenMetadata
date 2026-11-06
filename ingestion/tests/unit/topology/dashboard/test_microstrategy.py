@@ -34,6 +34,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import SourceListing
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.source.dashboard.microstrategy.client import (
     MicroStrategyApiError,
     MicroStrategyClient,
@@ -300,6 +301,7 @@ def _source(client: MicroStrategyClient, **source_config: Any) -> MicrostrategyS
     source.datamodel_listing = SourceListing()
     source.listing_failed = False
     source.definition_failed = False
+    source.charts_unknown = False
     source.context = MagicMock()
     source.context.get.return_value = SimpleNamespace(dashboard_service="mstr", charts=[])
     return source
@@ -509,6 +511,45 @@ class TestSource:
         assert [d.root for d in w63.domains] == ["Sales"]
         assert w64.description is None
         assert w64.tags is None
+
+    def test_a_failed_dashboard_lookup_leaves_the_dossier_and_its_charts_as_they_are(self, client):
+        # A failed OpenMetadata read must not turn into an empty chart list, which would unlink
+        # the dossier's charts and let stale deletion remove them.
+        source = _source(client)
+        source.dashboard_source_state = set()
+        source.metadata.get_by_name.side_effect = APIError({"code": 503, "message": "unavailable"})
+        details = _details(source, OFFICE_ROYALE)
+
+        assert list(source.yield_dashboard_chart(details)) == []
+        assert list(source.yield_dashboard(details)) == []
+
+        assert source.charts_unknown
+        assert source.dashboard_source_state == {f"mstr.{OFFICE_ROYALE['id']}"}
+        with patch("metadata.ingestion.source.dashboard.dashboard_service.delete_entity_from_source") as delete:
+            assert list(source.mark_charts_as_deleted()) == []
+        delete.assert_not_called()
+
+    def test_a_failed_legacy_chart_read_only_skips_its_metadata(self, client):
+        source = _source(client)
+        source.metadata.get_by_name.return_value = SimpleNamespace(
+            fullyQualifiedName=SimpleNamespace(root=f"mstr.{OFFICE_ROYALE['id']}"),
+            charts=SimpleNamespace(root=[SimpleNamespace(name="K53W63", id=USER_ID)]),
+        )
+        source.metadata.get_by_id.side_effect = APIError({"code": 500, "message": "boom"})
+
+        charts = [either.right for either in source.yield_dashboard_chart(_details(source, OFFICE_ROYALE))]
+
+        assert len(charts) == 2
+        assert all(chart.description is None for chart in charts)
+        assert not source.charts_unknown
+
+    def test_a_failed_lookup_for_an_unreadable_dossier_keeps_its_dashboard(self, client):
+        source = _source(client)
+        source.dashboard_source_state = set()
+        source.metadata.get_by_name.side_effect = APIError({"code": 503, "message": "unavailable"})
+
+        assert list(source.yield_dashboard(_details(source, BROKEN))) == []
+        assert source.dashboard_source_state == {f"mstr.{BROKEN['id']}"}
 
     def test_charts_of_a_new_dossier_name_no_dashboard(self, client):
         source = _source(client)

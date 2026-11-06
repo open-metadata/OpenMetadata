@@ -111,6 +111,8 @@ class MicrostrategySource(DashboardServiceSource):
         self.listing_failed = False
         # A dossier whose definition could not be read hides charts and data models that still exist.
         self.definition_failed = False
+        # A dossier whose existing charts could not be read from OpenMetadata produced no charts.
+        self.charts_unknown = False
 
     @property
     def _service(self) -> str:
@@ -227,6 +229,16 @@ class MicrostrategySource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
+        charts = None
+        if dashboard_details.charts_known:
+            try:
+                charts = self._chart_fqns(dashboard_details)
+            except Exception as exc:
+                self._charts_unknown(dashboard_details, exc)
+        if charts is None:
+            # Left as it is, and seen, so it is not deleted as stale.
+            self.dashboard_source_state.add(self._fqn(Dashboard, dashboard_name=dashboard_details.id))
+            return
         try:
             dashboard_url = (
                 f"{clean_uri(str(self.service_connection.hostPort))}/MicroStrategyLibrary/app/"
@@ -238,7 +250,7 @@ class MicrostrategySource(DashboardServiceSource):
                 description=Markdown(dashboard_details.description) if dashboard_details.description else None,
                 sourceUrl=SourceUrl(dashboard_url),
                 project=dashboard_details.projectName,
-                charts=self._chart_fqns(dashboard_details),
+                charts=charts,
                 service=FullyQualifiedEntityName(self._service),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
@@ -362,9 +374,15 @@ class MicrostrategySource(DashboardServiceSource):
         """
         One chart per visualization of every page
         """
-        existing = self.metadata.get_by_name(
-            entity=Dashboard, fqn=self._fqn(Dashboard, dashboard_name=dashboard_details.id), fields=["charts"]
-        )
+        try:
+            existing = self.metadata.get_by_name(
+                entity=Dashboard, fqn=self._fqn(Dashboard, dashboard_name=dashboard_details.id), fields=["charts"]
+            )
+        except Exception as exc:
+            # Without the existing dashboard, new charts could not name it and a chart update
+            # would unlink them, so the dossier's charts and dashboard are left as they are.
+            self._charts_unknown(dashboard_details, exc)
+            return
         legacy_charts = self._legacy_charts(existing)
         # A chart update that leaves out its dashboards unlinks it from them, so a chart names its
         # dashboard once that exists. A new dashboard is created after its charts and links them.
@@ -400,6 +418,16 @@ class MicrostrategySource(DashboardServiceSource):
                             ),
                         )
 
+    def _charts_unknown(self, dashboard_details: MstrDashboardDetails, exc: Exception) -> None:
+        logger.debug(traceback.format_exc())
+        self.charts_unknown = True
+        dashboard_details.charts_known = False
+        self.status.warning(
+            dashboard_details.name,
+            f"Could not read the charts of dossier [{dashboard_details.id}] from OpenMetadata; its dashboard and "
+            f"charts are left as they are and stale charts are kept in this run: {exc}",
+        )
+
     def _legacy_charts(self, existing: Dashboard | None) -> dict[str, Chart]:
         """
         The charts an existing dashboard still links under the names used before charts were
@@ -412,7 +440,11 @@ class MicrostrategySource(DashboardServiceSource):
         for chart_ref in linked:
             if not chart_ref.name or "_" in chart_ref.name:
                 continue
-            chart = self.metadata.get_by_id(entity=Chart, entity_id=chart_ref.id, fields=LEGACY_CHART_FIELDS)
+            try:
+                chart = self.metadata.get_by_id(entity=Chart, entity_id=chart_ref.id, fields=LEGACY_CHART_FIELDS)
+            except Exception as exc:
+                logger.warning("Could not read chart [%s]; its metadata is not carried over: %s", chart_ref.name, exc)
+                continue
             if chart:
                 legacy[chart_ref.name] = chart
         return legacy
@@ -495,7 +527,7 @@ class MicrostrategySource(DashboardServiceSource):
 
     def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         # A dossier whose definition failed reports the charts it already had as seen.
-        if self._keep_stale("charts", self.listing_failed):
+        if self._keep_stale("charts", self.listing_failed or self.charts_unknown):
             return
         yield from super().mark_charts_as_deleted()
 

@@ -24,6 +24,9 @@ also asked for every result in one response (`limit=-1`).
 - The search is scoped by the `X-MSTR-ProjectID` header and paged 500 results at a time
   (`SEARCH_PAGE_SIZE`). Projects are filtered by `projectFilterPattern` before their dossiers are
   searched.
+- When a dossier's existing dashboard or charts cannot be read from OpenMetadata, its dashboard
+  and charts are left as they are and stale charts are not deleted in that run. A chart list
+  built without that read would unlink them.
 - On the first run after the upgrade, a new chart takes the description, tags, glossary terms,
   owners, domains, data products, custom properties and life cycle of the chart its dossier still
   links under the old name. An old chart shared by several dossiers gives its metadata to each
