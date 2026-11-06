@@ -16,7 +16,6 @@ import {
   BadgeWithDot,
   Box,
   Button,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -32,6 +31,7 @@ import { TFunction } from 'i18next';
 import React, {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -1650,6 +1650,7 @@ const OntologyExplorerContent: React.FC = () => {
     });
   }
 
+  const publishReasonId = useId();
   const headerActionSize = getHeaderActionSize(isAiMode);
 
   function renderPrimaryAction() {
@@ -1764,22 +1765,28 @@ const OntologyExplorerContent: React.FC = () => {
 
     return (
       <>
-        <Tooltip
-          isDisabled={!isAllOntologies}
-          title={t('message.ontology-choose-ontology-to-publish')}>
-          <Button
-            color={isAiMode ? 'secondary-brand' : 'primary'}
-            data-testid="ontology-publication-trigger"
-            iconLeading={GitBranch01}
-            isDisabled={isAllOntologies}
-            size={headerActionSize}
-            onPress={() => {
-              setPublicationTab('changes');
-              setIsPublicationOpen(true);
-            }}>
-            {renderPublicationLabel()}
-          </Button>
-        </Tooltip>
+        <Button
+          aria-describedby={isAllOntologies ? publishReasonId : undefined}
+          color={isAiMode ? 'secondary-brand' : 'primary'}
+          data-testid="ontology-publication-trigger"
+          iconLeading={GitBranch01}
+          isDisabled={isAllOntologies}
+          size={headerActionSize}
+          onPress={() => {
+            setPublicationTab('changes');
+            setIsPublicationOpen(true);
+          }}>
+          {renderPublicationLabel()}
+        </Button>
+        {isAllOntologies && (
+          <Typography
+            as="span"
+            className="tw:font-body tw:text-xs tw:text-tertiary"
+            data-testid="ontology-publication-reason"
+            id={publishReasonId}>
+            {t('message.ontology-choose-ontology-to-publish')}
+          </Typography>
+        )}
         {isolatedCount > 0 && (
           <BadgeWithDot color="warning" size="sm">
             {isolatedCount} {t('label.isolated')}
