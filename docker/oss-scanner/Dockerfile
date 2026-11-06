@@ -51,10 +51,21 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL --retry 3 --retry-all-errors \
+# Google's Maven Central mirror first (not rate-limited for CI), then Maven Central, then the Apache archive.
+# The SHA-512 check runs per mirror, so a partial or bad download falls through to the next one.
+RUN for url in \
+        "https://maven-central.storage-download.googleapis.com/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
         "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
-        -o /tmp/maven.tar.gz \
-    && echo "${MAVEN_SHA512}  /tmp/maven.tar.gz" | sha512sum --check --strict - \
+        "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz"; do \
+      if curl -fsSL --connect-timeout 20 --max-time 300 --retry 3 --retry-all-errors "$url" -o /tmp/maven.tar.gz \
+          && echo "${MAVEN_SHA512}  /tmp/maven.tar.gz" | sha512sum --check --strict -; then \
+        MAVEN_OK=1; \
+        break; \
+      fi; \
+      echo "Maven ${MAVEN_VERSION} download failed from $url, trying next mirror"; \
+      rm -f /tmp/maven.tar.gz; \
+    done \
+    && [ -n "${MAVEN_OK:-}" ] \
     && mkdir -p "${MAVEN_HOME}" \
     && tar -xzf /tmp/maven.tar.gz -C "${MAVEN_HOME}" --strip-components=1 \
     && rm /tmp/maven.tar.gz \

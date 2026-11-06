@@ -59,8 +59,25 @@ jobs:
         # Central reject the bundle ("Bundle has content that does NOT have a .pom file").
         run: |
           MVN=apache-maven-3.9.16
-          curl -fsSLO "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.16/$MVN-bin.tar.gz"
-          echo "831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6  $MVN-bin.tar.gz" | sha512sum -c -
+          MAVEN_SHA512="831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6"
+          # Google's Maven Central mirror first (not rate-limited for CI), then Maven Central, then the Apache archive.
+          # The SHA-512 check runs per mirror, so a partial or bad download falls through to the next one.
+          for url in \
+            "https://maven-central.storage-download.googleapis.com/maven2/org/apache/maven/apache-maven/3.9.16/$MVN-bin.tar.gz" \
+            "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.16/$MVN-bin.tar.gz" \
+            "https://archive.apache.org/dist/maven/maven-3/3.9.16/binaries/$MVN-bin.tar.gz"; do
+            if curl -fsSL --connect-timeout 20 --max-time 300 --retry 2 "$url" -o "$MVN-bin.tar.gz" \
+              && echo "$MAVEN_SHA512  $MVN-bin.tar.gz" | sha512sum -c -; then
+              MAVEN_OK=1
+              break
+            fi
+            echo "::warning::Maven 3.9.16 download failed from $url, trying next mirror"
+            rm -f "$MVN-bin.tar.gz"
+          done
+          if [ -z "${MAVEN_OK:-}" ]; then
+            echo "::error::Could not download Maven 3.9.16 from any mirror"
+            exit 1
+          fi
           tar xzf "$MVN-bin.tar.gz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/$MVN/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/$MVN/bin/mvn" -v
