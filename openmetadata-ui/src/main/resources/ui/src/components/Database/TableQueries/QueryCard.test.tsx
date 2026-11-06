@@ -148,13 +148,13 @@ describe('Test QueryCard Component', () => {
     render(
       <QueryCard
         {...mockProps}
-        query={{ ...mockQueryData, duration: 4_500 }}
+        query={{ ...mockQueryData, duration: 4_050 }}
       />,
       { wrapper: MemoryRouter }
     );
 
     expect(
-      await screen.findByText('label.runs-for 4.500 sec')
+      await screen.findByText('label.runs-for 4.050 sec')
     ).toBeInTheDocument();
   });
 });

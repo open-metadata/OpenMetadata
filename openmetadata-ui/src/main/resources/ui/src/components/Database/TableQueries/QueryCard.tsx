@@ -122,7 +122,7 @@ const QueryCard: FC<QueryCardProp> = ({
 
     return Duration.fromObject({
       milliseconds: durationInMilliSeconds,
-    }).toFormat(`'${t('label.runs-for')}' s.S 'sec'`);
+    }).toFormat(`'${t('label.runs-for')}' s.SSS 'sec'`);
   }, [query]);
 
   const updateSqlQuery = async () => {

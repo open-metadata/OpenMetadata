@@ -33,7 +33,6 @@ import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
 import { getLoginConfig } from '../../../rest/settingConfigAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
-import { convertSecondsToHumanReadableFormat } from '../../../utils/date-time/DateTimeUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -186,12 +185,8 @@ const LoginConfigurationPage = () => {
             </Grid.Item>
             <Grid.Item className="layout-column" span={24}>
               <Typography data-testid="jwt-token-expiry-time">
-                {loginConfig?.jwtTokenExpiryTime === undefined
-                  ? NO_DATA_PLACEHOLDER
-                  : convertSecondsToHumanReadableFormat(
-                      loginConfig.jwtTokenExpiryTime,
-                      2
-                    )}
+                {loginConfig?.jwtTokenExpiryTime ?? NO_DATA_PLACEHOLDER}{' '}
+                {t('label.second-plural')}
               </Typography>
             </Grid.Item>
           </Grid>

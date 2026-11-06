@@ -83,11 +83,11 @@ describe('DateTimeUtils tests', () => {
     );
   });
 
-  it(`formatRunDuration should show milliseconds for short runs`, () => {
-    expect(formatRunDuration(0)).toBe('0s');
+  it(`formatRunDuration should keep sub-minute precision`, () => {
+    expect(formatRunDuration(0)).toBe('<1ms');
     expect(formatRunDuration(210)).toBe('210ms');
-    expect(formatRunDuration(999.6)).toBe('999ms');
-    expect(formatRunDuration(1000)).toBe('1s');
+    expect(formatRunDuration(1999)).toBe('2.0s');
+    expect(formatRunDuration(42_300)).toBe('42.3s');
   });
 
   it(`formatRunDuration should roll long runs up into hours and minutes`, () => {

@@ -514,8 +514,29 @@ export const formatIsoDuration = (iso: string): string => {
   return d.toHuman() || iso;
 };
 
-export const formatRunDuration = (ms: number) =>
-  convertMillisecondsToHumanReadableFormat(ms, 2, ms > 0 && ms < 1000);
+export const formatRunDuration = (milliseconds: number) => {
+  // Only clock skew between the runner and the server makes a negative duration.
+  if (milliseconds < 0) {
+    return '—';
+  }
+  if (milliseconds < 1) {
+    return '<1ms';
+  }
+  // Fast queries finish in a few milliseconds, which one decimal of a second would show as 0.0s.
+  if (Math.round(milliseconds) < 1000) {
+    return `${Math.round(milliseconds)}ms`;
+  }
+
+  // Rounded before the unit is chosen, so 59,950 ms reads as a minute rather than "60.0s".
+  const seconds = Math.round(milliseconds / 100) / 10;
+
+  return seconds < 60
+    ? `${seconds.toFixed(1)}s`
+    : convertMillisecondsToHumanReadableFormat(
+        Math.round(milliseconds / 1000) * 1000,
+        2
+      );
+};
 
 export const getStartOfDayInMillis = (timestamp: number) =>
   DateTime.fromMillis(timestamp).toUTC().startOf('day').toMillis();
