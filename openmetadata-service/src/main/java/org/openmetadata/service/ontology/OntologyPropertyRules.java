@@ -59,6 +59,33 @@ public final class OntologyPropertyRules {
         .orElse(null);
   }
 
+  /**
+   * The datatype rules a data property meets before a draft applies. {@link
+   * OntologyClassHierarchy} enforces the same {@link OwlDatatypeSupport} map when the draft
+   * applies, so the import preview runs this first and names the reason instead of listing a
+   * property that apply refuses.
+   */
+  public static Violation datatypeViolation(final OntologyProperty property) {
+    if (property.getKind() != OntologyPropertyKind.DATA) {
+      return null;
+    }
+    final URI unsupported =
+        listOrEmpty(property.getRange()).stream()
+            .filter(iri -> !OwlDatatypeSupport.isSupported(iri))
+            .findFirst()
+            .orElse(null);
+    if (unsupported != null) {
+      return new Violation(
+          "range", "Data property ranges require supported OWL 2 datatypes: " + unsupported);
+    }
+    return listOrEmpty(property.getEnumValues()).stream()
+            .allMatch(OwlDatatypeSupport::isValidLiteral)
+        ? null
+        : new Violation(
+            "enumValues",
+            "Enum literals require supported OWL 2 datatypes and valid lexical values");
+  }
+
   /** The message for an IRI that is missing or relative, or null when it is absolute. */
   public static String relativeIriMessage(final URI iri, final String name) {
     return iri == null || !iri.isAbsolute()

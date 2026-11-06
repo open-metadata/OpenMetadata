@@ -111,6 +111,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
   ThumbsDown: jest.fn(() => <svg />),
   ThumbsUp: jest.fn(() => <svg />),
 }));

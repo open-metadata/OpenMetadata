@@ -12,18 +12,20 @@
  */
 
 import { Skeleton, Typography } from '@openmetadata/ui-core-components';
+import {
+  AutoClassification,
+  AutoTiering,
+  CheckCircle02,
+  Database,
+  File04,
+  InheritedRoles,
+  Loading01,
+  PendingChanges,
+  StackQuality,
+  StackSearch,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isUndefined, reduce } from 'lodash';
-import { ReactComponent as AutoClassificationIcon } from '../assets/svg/ic-auto-classification.svg';
-import { ReactComponent as AutoTieringIcon } from '../assets/svg/ic-auto-tiering.svg';
-import { ReactComponent as CheckIcon } from '../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as ErrorIcon } from '../assets/svg/ic-close-circle.svg';
-import { ReactComponent as UsageIcon } from '../assets/svg/ic-database.svg';
-import { ReactComponent as MetadataIcon } from '../assets/svg/ic-empty-doc.svg';
-import { ReactComponent as LineageIcon } from '../assets/svg/ic-inherited-roles.svg';
-import { ReactComponent as PendingIcon } from '../assets/svg/ic-pending.svg';
-import { ReactComponent as RunningIcon } from '../assets/svg/ic-running.svg';
-import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-stack-quality.svg';
-import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.svg';
 import type { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
 import type {
   AgentsLiveInfo,
@@ -62,37 +64,37 @@ export const getAgentIconFromType = (agentType: string) => {
 
   switch (agentType) {
     case PipelineType.Metadata:
-      Icon = MetadataIcon;
+      Icon = File04;
 
       break;
     case PipelineType.Lineage:
-      Icon = LineageIcon;
+      Icon = InheritedRoles;
 
       break;
     case PipelineType.Usage:
-      Icon = UsageIcon;
+      Icon = Database;
 
       break;
     case PipelineType.AutoClassification:
-      Icon = AutoClassificationIcon;
+      Icon = AutoClassification;
 
       break;
     case PipelineType.Profiler:
-      Icon = ProfilerIcon;
+      Icon = StackSearch;
 
       break;
     case DOCUMENTATION_AUTOMATION_TEMPLATE:
-      Icon = MetadataIcon;
+      Icon = File04;
       className = COLLATE_AGENT_ICON;
 
       break;
     case DATA_QUALITY_AUTOMATION_TEMPLATE:
-      Icon = DataQualityIcon;
+      Icon = StackQuality;
       className = COLLATE_AGENT_ICON;
 
       break;
     case TIER_AUTOMATION_TEMPLATE:
-      Icon = AutoTieringIcon;
+      Icon = AutoTiering;
       className = COLLATE_AGENT_ICON;
 
       break;
@@ -221,19 +223,19 @@ export const getIconFromStatus = (status?: string) => {
 
   switch (status) {
     case AgentStatus.Successful:
-      Icon = CheckIcon;
+      Icon = CheckCircle02;
 
       break;
     case AgentStatus.Failed:
-      Icon = ErrorIcon;
+      Icon = XCircle;
 
       break;
     case AgentStatus.Running:
-      Icon = RunningIcon;
+      Icon = Loading01;
 
       break;
     case AgentStatus.Pending:
-      Icon = PendingIcon;
+      Icon = PendingChanges;
 
       break;
   }
@@ -261,22 +263,22 @@ export const getAgentRunningStatusMessage = (
   switch (status) {
     case WorkflowStatus.Running:
       message = t('message.auto-pilot-agents-running-message');
-      Icon = RunningIcon;
+      Icon = Loading01;
 
       break;
     case WorkflowStatus.Failure:
       message = t('message.auto-pilot-agents-failed-message');
-      Icon = ErrorIcon;
+      Icon = XCircle;
 
       break;
     case WorkflowStatus.Finished:
       message = t('message.auto-pilot-agents-finished-message');
-      Icon = CheckIcon;
+      Icon = CheckCircle02;
 
       break;
     case WorkflowStatus.Exception:
       message = t('message.auto-pilot-agents-exception-message');
-      Icon = ErrorIcon;
+      Icon = XCircle;
 
       break;
   }
