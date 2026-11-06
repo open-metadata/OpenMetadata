@@ -521,17 +521,17 @@ export const formatIsoDuration = (iso: string): string => {
   return d.toHuman() || iso;
 };
 
-export const formatElapsedTime = (milliseconds: number) => {
+export const formatRunDuration = (milliseconds: number) => {
   // Only clock skew between the runner and the server makes a negative duration.
   if (milliseconds < 0) {
     return '—';
   }
   if (milliseconds < 1) {
-    return '<1 ms';
+    return '<1ms';
   }
   // Fast queries finish in a few milliseconds, which one decimal of a second would show as 0.0s.
   if (Math.round(milliseconds) < 1000) {
-    return `${Math.round(milliseconds)} ms`;
+    return `${Math.round(milliseconds)}ms`;
   }
 
   // Rounded before the unit is chosen, so 59,950 ms reads as a minute rather than "60.0s".

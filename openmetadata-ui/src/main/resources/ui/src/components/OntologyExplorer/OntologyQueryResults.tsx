@@ -30,7 +30,7 @@ import { RDFTerm } from '../../generated/api/rdf/sparqlResponse';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { useClipboard } from '../../hooks/useClipBoard';
 import { SparqlPlaygroundResult } from '../../rest/rdfAPI';
-import { formatElapsedTime } from '../../utils/date-time/DateTimeUtils';
+import { formatRunDuration } from '../../utils/date-time/DateTimeUtils';
 import { downloadCsv } from '../../utils/Export/ExportUtils';
 import { getTermDisplayText } from '../../utils/Sparql/SparqlTerm.utils';
 import { generateUUID } from '../../utils/StringUtils';
@@ -224,11 +224,11 @@ function getResultSummary(
   rowLabel: string
 ): string {
   if (typeof result.parsed?.boolean === 'boolean') {
-    return formatElapsedTime(result.durationMs);
+    return formatRunDuration(result.durationMs);
   }
   const subject = result.parsed ? `${rowCount} ${rowLabel}` : result.format;
 
-  return `${subject}${META_SEPARATOR}${formatElapsedTime(result.durationMs)}`;
+  return `${subject}${META_SEPARATOR}${formatRunDuration(result.durationMs)}`;
 }
 
 const OntologyQueryResults = ({
