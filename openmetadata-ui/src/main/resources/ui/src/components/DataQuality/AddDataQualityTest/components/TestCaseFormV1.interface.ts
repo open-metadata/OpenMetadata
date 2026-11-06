@@ -119,6 +119,7 @@ export interface FormValues {
   // Holds the name of the selected dimension entity, system or custom.
   dataQualityDimension?: string | FormSelectItem;
   // Scheduler fields
+  createPipeline?: boolean;
   pipelineName?: string;
   cron?: string;
   enableDebugLog?: boolean;

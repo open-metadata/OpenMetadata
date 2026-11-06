@@ -50,6 +50,7 @@ import {
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getJSONEditorValue } from '../../../utils/SchemaEditor.utils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
@@ -422,8 +423,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       queryViewerTab: (
         <QueryViewer
           isActive={activeTab === EntityTabs.CONFIG}
-          sqlQuery={JSON.stringify(topicDetails.topicConfig)}
-          title={t('label.config')}
+          sqlQuery={getJSONEditorValue(topicDetails.topicConfig)}
         />
       ),
       lineageTab: (

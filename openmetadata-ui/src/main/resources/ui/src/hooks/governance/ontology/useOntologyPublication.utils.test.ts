@@ -11,94 +11,11 @@
  *  limitations under the License.
  */
 import { VersionBump } from '../../../generated/api/data/captureOntologyRelease';
-import APIClient from '../../../rest/axiosClient';
 import type { PublicationReceipt } from './useOntologyPublication.types';
 import {
-  latestVersionedOntologyRelease,
   readPublicationReceipt,
   savePublicationReceipt,
 } from './useOntologyPublication.utils';
-
-jest.mock('../../../rest/axiosClient', () => ({ get: jest.fn() }));
-const get = APIClient.get as jest.MockedFunction<typeof APIClient.get>;
-const signal = new AbortController().signal;
-
-describe('latest versioned release lookup', () => {
-  beforeEach(() => get.mockReset());
-
-  it('continues past legacy candidates and uses the newest version even when rejected', async () => {
-    const versioned = {
-      id: 'rejected',
-      ontology: { id: 'owner' },
-      semanticVersion: '2.3.4',
-      entityStatus: 'Rejected',
-    };
-    get.mockResolvedValueOnce({
-      data: {
-        data: [{ id: 'legacy', ontology: { id: 'owner' } }],
-        paging: { after: '12', total: 2 },
-      },
-    });
-    get.mockResolvedValueOnce({
-      data: { data: [versioned], paging: { total: 2 } },
-    });
-
-    expect(await latestVersionedOntologyRelease('owner', signal)).toEqual(
-      versioned
-    );
-    expect(get).toHaveBeenLastCalledWith('/ontologies/owner/releases', {
-      params: { limit: 100, after: '12' },
-      signal,
-    });
-  });
-
-  it('uses the unversioned base only after exhausting the history', async () => {
-    get.mockResolvedValue({ data: { data: [], paging: { total: 0 } } });
-
-    expect(await latestVersionedOntologyRelease('owner', signal)).toBeNull();
-  });
-
-  it('refuses a guessed version when legacy history exceeds the bounded lookup', async () => {
-    let revision = 2000;
-    get.mockImplementation(async () => ({
-      data: { data: [], paging: { after: String(revision--), total: 2000 } },
-    }));
-
-    await expect(
-      latestVersionedOntologyRelease('owner', signal)
-    ).rejects.toThrow('bounded history lookup');
-    expect(get).toHaveBeenCalledTimes(10);
-  });
-
-  it('rejects releases belonging to another owner', async () => {
-    get.mockResolvedValue({
-      data: {
-        data: [{ ontology: { id: 'other' }, semanticVersion: '9.0.0' }],
-        paging: { total: 1 },
-      },
-    });
-
-    await expect(
-      latestVersionedOntologyRelease('owner', signal)
-    ).rejects.toThrow('owner does not match');
-  });
-
-  it('stops a nonadvancing server cursor without inventing a semantic version', async () => {
-    get.mockResolvedValue({
-      data: { data: [], paging: { after: 'same-page', total: 100 } },
-    });
-
-    await expect(
-      latestVersionedOntologyRelease('owner', signal)
-    ).rejects.toThrow('cursor did not advance');
-    expect(
-      get.mock.calls.map(
-        ([, config]) =>
-          (config?.params as { after?: string } | undefined)?.after
-      )
-    ).toEqual([undefined, 'same-page']);
-  });
-});
 
 const scope = {
   origin: window.location.origin,

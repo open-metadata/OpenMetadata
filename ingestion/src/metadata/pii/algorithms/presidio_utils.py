@@ -1095,6 +1095,9 @@ class ValidatedFiPersonalIdentityCodeRecognizer(FiPersonalIdentityCodeRecognizer
         # Presidio's upstream uses strptime("%d%m%y") which applies POSIX 2-digit-year
         # rules and ignores the century separator, accepting e.g. 290200- (29 Feb 1900,
         # which never existed) as valid because 2000 *is* a leap year.
+        # Uppercasing can turn non-ASCII checksum characters into valid ASCII letters.
+        if not pattern_text.isascii():
+            return False
         text = pattern_text.upper()
         if len(text) != 11:
             return None

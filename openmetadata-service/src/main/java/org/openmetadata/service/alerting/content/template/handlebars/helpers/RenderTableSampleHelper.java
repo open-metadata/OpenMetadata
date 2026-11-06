@@ -225,7 +225,7 @@ public class RenderTableSampleHelper implements HandlebarsHelper {
         .withName("renderTableSample")
         .withDescription(
             "Render a table sample with column limiting, target column highlighting, and row limiting")
-        .withCursorOffset(21)
+        .withCursorOffset(20)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()

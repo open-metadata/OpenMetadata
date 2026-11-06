@@ -70,7 +70,7 @@ const MOCK_TASK: Task = {
   ],
   payload: {
     field: 'tags',
-    fieldPath: 'columns::shop_id::tags',
+    fieldPath: 'columns.shop_id.tags',
     currentValue: '[]',
     suggestedValue: JSON.stringify([
       {

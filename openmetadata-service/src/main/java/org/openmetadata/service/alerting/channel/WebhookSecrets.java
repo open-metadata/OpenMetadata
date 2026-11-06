@@ -26,9 +26,10 @@ import java.util.List;
 public final class WebhookSecrets {
   private static final JsonPointer ENDPOINT = JsonPointer.compile("/endpoint");
   private static final JsonPointer HEADERS = JsonPointer.compile("/headers");
+  private static final JsonPointer SIGNING_KEY = JsonPointer.compile("/authType/secretKey");
   private static final List<JsonPointer> AUTHENTICATION =
       List.of(
-          JsonPointer.compile("/authType/secretKey"),
+          SIGNING_KEY,
           JsonPointer.compile("/authType/clientId"),
           JsonPointer.compile("/authType/clientSecret"));
 

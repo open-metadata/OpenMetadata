@@ -12,13 +12,15 @@
  */
 
 import { Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Automated,
+  CheckCircleFilled,
+  Propagated,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AISuggestionIcon } from '../../../assets/svg/ic-ai-suggestion.svg';
-import { ReactComponent as AutomatedIcon } from '../../../assets/svg/ic-automated.svg';
-import { ReactComponent as CheckCircleIcon } from '../../../assets/svg/ic-check-circle.svg';
-import { ReactComponent as PropagatedIcon } from '../../../assets/svg/ic-propagated.svg';
 import { ChangeSource } from '../../../generated/type/changeSummaryMap';
 import {
   formatDate,
@@ -50,7 +52,7 @@ const BADGE_CONFIG: Partial<Record<ChangeSource, BadgeConfig>> = {
   [ChangeSource.Automated]: {
     labelKey: 'label.automated',
     tooltipKey: 'label.automated-description',
-    icon: <AutomatedIcon height={16} width={16} />,
+    icon: <Automated className="tw:text-utility-gray-500" size={16} />,
     className: 'badge-automated',
     testId: 'automated-badge',
     iconOnly: true,
@@ -58,7 +60,7 @@ const BADGE_CONFIG: Partial<Record<ChangeSource, BadgeConfig>> = {
   [ChangeSource.Propagated]: {
     labelKey: 'label.propagated',
     tooltipKey: 'label.description-inherited-from-parent-entity',
-    icon: <PropagatedIcon height={16} width={16} />,
+    icon: <Propagated className="tw:text-utility-gray-500" size={16} />,
     className: 'badge-propagated',
     testId: 'propagated-badge',
     iconOnly: true,
@@ -97,11 +99,7 @@ const ActorInfo = ({
       })}
       data-testid="source-actor">
       {config ? (
-        <CheckCircleIcon
-          className="tw:text-fg-brand-primary"
-          height={12}
-          width={12}
-        />
+        <CheckCircleFilled className="tw:text-fg-brand-primary" size={12} />
       ) : null}
       <span className="d-flex items-center gap-1">
         <span className="text-grey-500">{actorLabel}</span>

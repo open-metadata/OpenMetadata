@@ -11,19 +11,21 @@
  *  limitations under the License.
  */
 
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  AlertsFilled,
+  DataObservability,
+  DataQuality,
+  DataQualityAlarm,
+  DataQualityFilled,
+  IncidentManager,
+  IncidentManager02,
+  ObservabilityFilled,
+  Plus,
+  TestLibrary,
+  TestLibraryFilled,
+} from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { ReactComponent as AlertsActiveIcon } from '../../../assets/svg/alerts-active.svg';
-import { ReactComponent as AlertsIcon } from '../../../assets/svg/alerts-default.svg';
-import { ReactComponent as DataQualityActiveIcon } from '../../../assets/svg/data-quality-active.svg';
-import { ReactComponent as DataQualityIcon } from '../../../assets/svg/data-quality-default.svg';
-import { ReactComponent as IncidentActiveIcon } from '../../../assets/svg/incident-active.svg';
-import { ReactComponent as IncidentIcon } from '../../../assets/svg/incident-default.svg';
-import { ReactComponent as ObservabilityActiveIcon } from '../../../assets/svg/observability-active.svg';
-import { ReactComponent as ObservabilityIcon } from '../../../assets/svg/observability-default.svg';
-import { ReactComponent as TestLibraryActiveIcon } from '../../../assets/svg/test-library-active.svg';
-import { ReactComponent as TestLibraryIcon } from '../../../assets/svg/test-library-default.svg';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -73,8 +75,8 @@ export const observabilityModule: AppModule = {
   id: 'observability',
   navOrder: 40,
   labelKey: 'label.observability',
-  icon: ObservabilityIcon,
-  activeIcon: ObservabilityActiveIcon,
+  icon: DataObservability,
+  activeIcon: ObservabilityFilled,
   prefix: OBSERVABILITY_ROUTES.OBSERVABILITY,
   defaultPath: OBSERVABILITY_ROUTES.OBSERVABILITY,
   routes: [
@@ -249,8 +251,8 @@ export const observabilityModule: AppModule = {
         items: [
           {
             key: 'data-quality',
-            icon: DataQualityIcon,
-            activeIcon: DataQualityActiveIcon,
+            icon: DataQuality,
+            activeIcon: DataQualityFilled,
             labelKey: 'label.data-quality',
             path: OBSERVABILITY_ROUTES.OBSERVABILITY_DATA_QUALITY_BASE,
             activePaths: [
@@ -264,15 +266,15 @@ export const observabilityModule: AppModule = {
           },
           {
             key: 'incidents',
-            icon: IncidentIcon,
-            activeIcon: IncidentActiveIcon,
+            icon: IncidentManager02,
+            activeIcon: IncidentManager,
             labelKey: 'label.incident-plural',
             path: OBSERVABILITY_ROUTES.OBSERVABILITY_INCIDENT_MANAGER,
           },
           {
             key: 'alerts',
-            icon: AlertsIcon,
-            activeIcon: AlertsActiveIcon,
+            icon: DataQualityAlarm,
+            activeIcon: AlertsFilled,
             labelKey: 'label.alert-plural',
             path: OBSERVABILITY_ROUTES.OBSERVABILITY_ALERTS,
             activePaths: [
@@ -281,8 +283,8 @@ export const observabilityModule: AppModule = {
           },
           {
             key: 'test-library',
-            icon: TestLibraryIcon,
-            activeIcon: TestLibraryActiveIcon,
+            icon: TestLibrary,
+            activeIcon: TestLibraryFilled,
             labelKey: 'label.test-library',
             path: OBSERVABILITY_ROUTES.OBSERVABILITY_TEST_LIBRARY,
           },

@@ -928,7 +928,7 @@ describe('Test GlossaryTermTab component', () => {
 
       const dragIcons = document.querySelectorAll('.drag-icon');
 
-      expect(dragIcons).toHaveLength(0);
+      expect(dragIcons).toHaveLength(mockedGlossaryTerms.length);
     });
   });
 
@@ -1188,6 +1188,39 @@ describe('Test GlossaryTermTab component', () => {
 
       await waitFor(() => {
         expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalled();
+      });
+    });
+
+    it('reloads the terms with the page size picked in the pager', async () => {
+      mockUseGlossaryStore.glossaryChildTerms = mockedGlossaryTerms;
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: mockedGlossaryTerms,
+        paging: { after: null },
+      });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const pageSizeButton = await screen.findByTestId(
+        'page-size-selection-dropdown'
+      );
+      fireEvent.keyDown(pageSizeButton, { key: 'Enter' });
+      fireEvent.keyUp(pageSizeButton, { key: 'Enter' });
+      fireEvent.click(
+        await screen.findByRole('menuitem', { name: '50 / label.page' })
+      );
+
+      await waitFor(() => {
+        expect(
+          mockGetFirstLevelGlossaryTermsPaginated
+        ).toHaveBeenLastCalledWith(
+          expect.anything(),
+          50,
+          undefined,
+          expect.anything(),
+          undefined
+        );
       });
     });
 

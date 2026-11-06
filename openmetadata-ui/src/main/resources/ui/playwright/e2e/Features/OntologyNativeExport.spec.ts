@@ -312,5 +312,53 @@ test.describe(
         );
       }
     });
+
+    test('previews a draft whose ontology IRI is a bare urn as RDF/XML', async ({
+      isolatedUserPage: page,
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      const name = `pw_urn_export_${uuid()}`;
+      const iri = `urn:${name}`;
+      const ontology = await okJson<Ontology>(
+        await api.post('/api/v1/ontologies', {
+          data: { name, iri, namespace: `${iri}:` },
+        }),
+        'Create urn ontology'
+      );
+      try {
+        await okJson(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Order',
+              ontology: ontology.fullyQualifiedName,
+              iri: `${iri}:Order`,
+              conceptType: 'OWL_CLASS',
+            },
+          }),
+          'Create Order'
+        );
+        const draftExport = page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname ===
+              `/api/v1/ontologies/${ontology.id}/export` &&
+            new URL(response.url()).searchParams.get('format') === 'rdfxml'
+        );
+        await openExport(page, ontology);
+
+        expect((await draftExport).status()).toBe(200);
+        await expect(page.getByTestId('ontology-export-scope')).toContainText(
+          'Current draft'
+        );
+        const preview = page.getByTestId('ontology-release-export-preview');
+        await expect(preview).toContainText('rdf:RDF');
+        await expect(preview).toContainText(`rdf:about="${iri}"`);
+        await expect(preview).toContainText(`${iri}:Order`);
+      } finally {
+        await deleteFixtureEntity(
+          api,
+          `/api/v1/ontologies/${ontology.id}?recursive=true`
+        );
+      }
+    });
   }
 );
