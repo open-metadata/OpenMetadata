@@ -45,6 +45,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.sigma.models import (
@@ -64,6 +65,8 @@ from metadata.utils.helpers import (
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+SIGMA_BADGE_CLASSIFICATION = "SigmaBadge"
 
 
 class SigmaSource(DashboardServiceSource):
@@ -110,7 +113,20 @@ class SigmaSource(DashboardServiceSource):
         """
         get dashboard details
         """
-        return self.client.get_dashboard_detail(dashboard.workbookId)
+        dashboard_details = self.client.get_dashboard_detail(dashboard.workbookId)
+        if dashboard_details and self.source_config.includeTags:
+            dashboard_details.badge = self.client.get_badge(dashboard.workbookId)
+        return dashboard_details
+
+    def yield_tags(self, dashboard_details: WorkbookDetails) -> Iterable[Either[OMetaTagAndClassification]]:
+        """The workbook's certification badge (Endorsed, Warning, Deprecated) as a tag"""
+        if dashboard_details and dashboard_details.badge:
+            yield from self.yield_tag_definitions(
+                tags=[dashboard_details.badge],
+                classification_name=SIGMA_BADGE_CLASSIFICATION,
+                classification_description="Certification badges of Sigma documents",
+                tag_description="Sigma certification badge",
+            )
 
     def yield_dashboard(self, dashboard_details: WorkbookDetails) -> Iterable[Either[CreateDashboardRequest]]:
         """
@@ -151,6 +167,11 @@ class SigmaSource(DashboardServiceSource):
                 else None,
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(dashboard_details.url),
+                tags=self.get_tag_labels(
+                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.workbookId),
+                    tags=[dashboard_details.badge] if dashboard_details.badge else None,
+                    classification_name=SIGMA_BADGE_CLASSIFICATION,
+                ),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)

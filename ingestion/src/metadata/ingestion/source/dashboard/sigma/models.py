@@ -37,6 +37,8 @@ class WorkbookDetails(BaseModel):
     ownerId: str | None = None  # noqa: N815
     isArchived: bool | None = None  # noqa: N815
     description: str | None = None
+    # Not in the workbook response: Sigma returns the badge on the workbook's /files entry.
+    badge: str | None = None
 
 
 class WorkBookResponseDetails(BaseModel):
@@ -106,6 +108,7 @@ class NodeDetails(BaseModel):
     name: str | None
     node_type: str = Field(alias="type")
     path: str | None = ""
+    badge: str | None = None
 
     @property
     def node_schema(self):
