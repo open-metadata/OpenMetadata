@@ -24,7 +24,7 @@ import {
 } from '../generated/entity/data/pipeline';
 import { TreeNode } from '../interface/tree.interface';
 import { getLayoutGutter } from './common/layout.utils';
-import { formatDateTime, formatRunDuration } from './date-time/DateTimeUtils';
+import { formatDateTime, formatElapsedTime } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
 import {
   getStatusBadgeClassName,
@@ -114,7 +114,7 @@ export const getTableViewData = (
       const startTime = execute.startTime;
       const endTime = execute.endTime;
       const duration =
-        startTime && endTime ? formatRunDuration(endTime - startTime) : '--';
+        startTime && endTime ? formatElapsedTime(endTime - startTime) : '--';
 
       viewData.push({
         name: execute.name,

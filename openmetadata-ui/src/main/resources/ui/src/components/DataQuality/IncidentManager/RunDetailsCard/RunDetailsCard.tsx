@@ -36,10 +36,7 @@ import {
   tableQueryFn,
   tableQueryKey,
 } from '../../../../rest/queries/tableQuery';
-import {
-  formatDateTime,
-  formatRunDuration,
-} from '../../../../utils/date-time/DateTimeUtils';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   getRunScopeBadges,
@@ -63,6 +60,7 @@ import {
 } from './RunDetailsCard.constants';
 import {
   ComparisonBar,
+  formatRunDuration,
   getRunDetails,
   getSelectedRun,
   isTimeoutError,

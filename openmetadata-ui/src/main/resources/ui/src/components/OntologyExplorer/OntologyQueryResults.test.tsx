@@ -85,7 +85,7 @@ describe('OntologyQueryResults', () => {
 
     expect(
       screen.getByTestId('ontology-sparql-result-status')
-    ).toHaveTextContent(/^3 label\.row-plural\s*·\s*38ms$/);
+    ).toHaveTextContent(/^3 label\.row-plural\s*·\s*38 ms$/);
     expect(
       screen.getByTestId('ontology-sparql-result-scope')
     ).toHaveTextContent('clinical · v1.0.0');
@@ -158,7 +158,7 @@ describe('OntologyQueryResults', () => {
     );
     expect(
       screen.getByTestId('ontology-sparql-result-status')
-    ).toHaveTextContent(/5ms/);
+    ).toHaveTextContent(/5 ms/);
     expect(
       screen.queryByTestId('ontology-sparql-result-table')
     ).not.toBeInTheDocument();

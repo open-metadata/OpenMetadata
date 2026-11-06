@@ -24,8 +24,8 @@ import {
   formatDateTime,
   formatDateTimeLong,
   formatDurationToHHMMSS,
+  formatElapsedTime,
   formatMonth,
-  formatRunDuration,
   formatTimeDurationFromSeconds,
   getActiveTimeFormat,
   getElapsedTime,
@@ -96,17 +96,17 @@ describe('DateTimeUtils tests', () => {
     expect(formatDurationToHHMMSS(1000)).toBe('00:00:01');
   });
 
-  it(`formatRunDuration should keep sub-minute precision`, () => {
-    expect(formatRunDuration(0)).toBe('<1ms');
-    expect(formatRunDuration(210)).toBe('210ms');
-    expect(formatRunDuration(1999)).toBe('2.0s');
-    expect(formatRunDuration(42_300)).toBe('42.3s');
+  it(`formatElapsedTime should keep sub-minute precision`, () => {
+    expect(formatElapsedTime(0)).toBe('<1 ms');
+    expect(formatElapsedTime(210)).toBe('210 ms');
+    expect(formatElapsedTime(1999)).toBe('2.0s');
+    expect(formatElapsedTime(42_300)).toBe('42.3s');
   });
 
-  it(`formatRunDuration should roll long runs up into hours and minutes`, () => {
-    expect(formatRunDuration(125_000)).toBe('2m 5s');
-    expect(formatRunDuration(9_936_000)).toBe('2h 45m 36s');
-    expect(formatRunDuration(90_000_000)).toBe('1d 1h');
+  it(`formatElapsedTime should roll long runs up into hours and minutes`, () => {
+    expect(formatElapsedTime(125_000)).toBe('2m 5s');
+    expect(formatElapsedTime(9_936_000)).toBe('2h 45m 36s');
+    expect(formatElapsedTime(90_000_000)).toBe('1d 1h');
   });
 
   it(`customFormatDateTime should formate date and time both`, () => {

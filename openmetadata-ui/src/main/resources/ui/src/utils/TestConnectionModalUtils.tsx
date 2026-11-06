@@ -51,7 +51,7 @@ import {
   TestConnectionStepResult,
 } from '../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../generated/entity/services/connections/testConnectionDefinition';
-import { formatRunDuration } from './date-time/DateTimeUtils';
+import { formatElapsedTime } from './date-time/DateTimeUtils';
 
 const TEXT_UTILITY_SUCCESS_300_CLASS = 'tw:text-utility-success-300';
 const TEXT_UTILITY_ERROR_300_CLASS = 'tw:text-utility-error-300';
@@ -658,7 +658,7 @@ function renderCapabilityStepLog(
           renderColoredLines(
             `  ${result.resultSummary || result.message}${
               result.durationMs
-                ? ` (${formatRunDuration(result.durationMs)})`
+                ? ` (${formatElapsedTime(result.durationMs)})`
                 : ''
             }`,
             getSummaryColorClass(result.passed),
@@ -927,7 +927,7 @@ export function ConnectionRawLogSection(
           {testConnectionStepResult.flatMap((result, stepIdx) => {
             const summary = result.resultSummary || result.message;
             const timing = result.durationMs
-              ? ` (${formatRunDuration(result.durationMs)})`
+              ? ` (${formatElapsedTime(result.durationMs)})`
               : '';
             const parts: JSX.Element[] = [];
 
