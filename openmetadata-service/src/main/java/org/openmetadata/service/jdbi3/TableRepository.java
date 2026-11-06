@@ -1713,45 +1713,64 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   /**
-   * Build the FK RELATED_TO edges for a batch of tables. Referred tables are resolved in a single
-   * findByNames() query (not one lookup per foreign key), and the edges are folded into the caller's
-   * bulk insert (not one insert per foreign key) so the bulk path stays free of the N+1 the
-   * per-table addConstraintRelationship() would introduce. A referred table that is not yet
-   * persisted -- e.g. it is created later in another bulk chunk -- is skipped rather than throwing,
-   * so a forward reference cannot fail the whole request; the edge is best-effort in the bulk path
-   * and is created whenever the target already exists (always true for a recursive re-import of
-   * existing tables, the case that regressed).
+   * Build the FK RELATED_TO edges for a batch of tables, folded into the caller's bulk insert (no
+   * per-foreign-key lookup or insert). A referred table that is not persisted yet (e.g. created in a
+   * later bulk chunk) is skipped rather than failing the whole request.
    */
   private List<CollectionDAO.EntityRelationshipObject> buildConstraintRelationships(
       List<Table> entities) {
-    Set<String> referredParentFqns = new HashSet<>();
-    for (Table table : entities) {
-      for (TableConstraint constraint : listOrEmpty(table.getTableConstraints())) {
-        for (String referredColumn : listOrEmpty(constraint.getReferredColumns())) {
-          referredParentFqns.add(FullyQualifiedName.getParentFQN(referredColumn));
-        }
-      }
-    }
-    if (referredParentFqns.isEmpty()) {
+    Map<UUID, Set<String>> referredByTable = collectReferredTables(entities);
+    if (referredByTable.isEmpty()) {
       return List.of();
     }
-    Map<String, UUID> fqnToId = new HashMap<>();
-    for (Table referred : findByNames(new ArrayList<>(referredParentFqns), ALL)) {
-      fqnToId.put(referred.getFullyQualifiedName(), referred.getId());
-    }
-    List<CollectionDAO.EntityRelationshipObject> constraintRelationships = new ArrayList<>();
+    Map<String, UUID> fqnToId = resolveTableIds(entities, referredByTable);
+    List<CollectionDAO.EntityRelationshipObject> edges = new ArrayList<>();
+    referredByTable.forEach(
+        (fromId, referredFqns) ->
+            referredFqns.stream()
+                .map(fqnToId::get)
+                .filter(Objects::nonNull)
+                .forEach(
+                    toId ->
+                        edges.add(
+                            newRelationship(fromId, toId, TABLE, TABLE, Relationship.RELATED_TO))));
+    return edges;
+  }
+
+  /** Referred parent-table FQNs per table, deduplicated (a composite FK yields one entry). */
+  private Map<UUID, Set<String>> collectReferredTables(List<Table> entities) {
+    Map<UUID, Set<String>> referredByTable = new HashMap<>();
     for (Table table : entities) {
-      for (TableConstraint constraint : listOrEmpty(table.getTableConstraints())) {
-        for (String referredColumn : listOrEmpty(constraint.getReferredColumns())) {
-          UUID toId = fqnToId.get(FullyQualifiedName.getParentFQN(referredColumn));
-          if (toId != null) {
-            constraintRelationships.add(
-                newRelationship(table.getId(), toId, TABLE, TABLE, Relationship.RELATED_TO));
-          }
-        }
+      Set<String> referredFqns =
+          listOrEmpty(table.getTableConstraints()).stream()
+              .flatMap(constraint -> listOrEmpty(constraint.getReferredColumns()).stream())
+              .map(FullyQualifiedName::getParentFQN)
+              .collect(Collectors.toSet());
+      if (!referredFqns.isEmpty()) {
+        referredByTable.put(table.getId(), referredFqns);
       }
     }
-    return constraintRelationships;
+    return referredByTable;
+  }
+
+  /**
+   * Resolve referred table ids from the batch first and query only the rest, since a recursive
+   * import usually carries the referred table in the same batch (no need to reload its JSON).
+   */
+  private Map<String, UUID> resolveTableIds(
+      List<Table> batch, Map<UUID, Set<String>> referredByTable) {
+    Set<String> wanted =
+        referredByTable.values().stream().flatMap(Set::stream).collect(Collectors.toSet());
+    Map<String, UUID> fqnToId = new HashMap<>();
+    batch.stream()
+        .filter(table -> wanted.contains(table.getFullyQualifiedName()))
+        .forEach(table -> fqnToId.put(table.getFullyQualifiedName(), table.getId()));
+    List<String> missing = wanted.stream().filter(fqn -> !fqnToId.containsKey(fqn)).toList();
+    if (!missing.isEmpty()) {
+      findByNames(missing, ALL)
+          .forEach(table -> fqnToId.put(table.getFullyQualifiedName(), table.getId()));
+    }
+    return fqnToId;
   }
 
   @Override
