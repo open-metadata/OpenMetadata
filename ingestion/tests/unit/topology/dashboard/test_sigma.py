@@ -49,6 +49,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
@@ -56,6 +57,7 @@ from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
 from metadata.ingestion.source.dashboard.sigma.models import (
     Elements,
     NodeDetails,
+    Workbook,
     WorkbookDetails,
     WorkbookQueriesResponse,
     WorkbookQuery,
@@ -150,7 +152,7 @@ MOCK_DASHBOARD_DETAILS = WorkbookDetails(
     workbookId="1",
     name="test_db",
     description="SAMPLE DESCRIPTION",
-    createdAt="today",
+    createdAt="2026-01-01T00:00:00Z",
     url="http://url.com/to/dashboard",
     isArchived=False,
 )
@@ -165,6 +167,7 @@ EXPECTED_DASHBOARD = [
         charts=[],
         dataModels=[],
         service=FullyQualifiedEntityName("mock_sigma"),
+        lifeCycle=LifeCycle(created=AccessDetails(timestamp=1767225600000)),
     )
 ]
 
@@ -797,3 +800,20 @@ def sigma_over_http(routes):
     source.client.token_client._session.request = request
     source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
     return source, calls
+
+
+def test_dashboard_records_when_the_workbook_was_created_and_updated(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    # The timestamps of DataHub's mocked workbook, whose golden file holds them as 1713188691477 and 1713189117302
+    routes["GET", "/v2/workbooks/wb-1"] = {
+        **SIGMA_WORKBOOKS[0],
+        "createdAt": "2024-04-15T13:44:51.477Z",
+        "updatedAt": "2024-04-15T13:51:57.302Z",
+    }
+    source.source_config.includeOwners = False
+
+    dashboard = next(source.yield_dashboard(source.get_dashboard_details(Workbook(workbookId="wb-1")))).right
+
+    assert dashboard.lifeCycle == LifeCycle(
+        created=AccessDetails(timestamp=1713188691477), updated=AccessDetails(timestamp=1713189117302)
+    )
