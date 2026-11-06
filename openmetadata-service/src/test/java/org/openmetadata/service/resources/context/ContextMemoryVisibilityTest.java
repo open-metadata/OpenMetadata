@@ -40,12 +40,15 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -319,6 +322,111 @@ class ContextMemoryVisibilityTest {
 
     assertTrue(visible.isEmpty());
     assertEquals(1, checks.get());
+  }
+
+  /**
+   * Release testing: a reader listed another user's Shared memory awaiting review, and an admin
+   * another user's Draft. A pending memory lists to its owners and admins only; a read by id keeps
+   * the share rules, which is how a review task's assignees open it.
+   */
+  @Test
+  void aListingShowsAPendingMemoryToItsOwnersAndAdminsOnly() {
+    for (ContextMemoryStatus stage :
+        List.of(ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT)) {
+      ContextMemory pending = sharedWith(principalRef(BOB)).withEntityStatus(stage);
+
+      assertTrue(listed(List.of(pending), ALICE, false).contains(pending), "its owner");
+      assertTrue(listed(List.of(pending), "root", true).contains(pending), "an admin");
+      assertTrue(listed(List.of(pending), BOB, false).isEmpty(), "a reader, in " + stage);
+      assertTrue(ContextMemoryVisibility.isVisibleToUser(pending, BOB, false), "read by id");
+    }
+    ContextMemory approved =
+        sharedWith(principalRef(BOB)).withEntityStatus(ContextMemoryStatus.APPROVED);
+    assertTrue(listed(List.of(approved), BOB, false).contains(approved), "share rules");
+  }
+
+  /**
+   * A document's pills are written by the extractor, so its uploader owns none of them: a pending
+   * pill lists to the document's owners as well, and to no other reader of the document.
+   */
+  @Test
+  void aListingShowsADocumentsPendingPillToTheDocumentsOwners() {
+    EntityReference document = ref(Entity.CONTEXT_FILE, "handbook", "handbook");
+    ContextMemory pill =
+        memoryOwnedBy("admin", MemoryVisibility.ENTITY)
+            .withPrimaryEntity(document)
+            .withSourceEntity(document)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    ContextMemory note =
+        memoryOwnedBy(ALICE, MemoryVisibility.ENTITY)
+            .withSourceEntity(document)
+            .withSourceType(ContextMemorySourceType.MANUAL)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    AtomicInteger lookups = new AtomicInteger();
+    ContextMemoryVisibility.SourceOwnership bobOwnsIt =
+        (userName, source) -> {
+          lookups.incrementAndGet();
+          return BOB.equals(userName);
+        };
+
+    assertEquals(
+        List.of(pill),
+        ContextMemoryVisibility.filterListed(
+                List.of(pill, note, pill), BOB, false, (u, a) -> true, bobOwnsIt)
+            .stream()
+            .distinct()
+            .toList(),
+        "the document's owner gets its pills, not a person's note that cites it");
+    assertEquals(1, lookups.get(), "each document is asked about once per page");
+    assertTrue(
+        ContextMemoryVisibility.filterListed(
+                List.of(pill), "charlie", false, (u, a) -> true, bobOwnsIt)
+            .isEmpty(),
+        "another reader of the document");
+    assertFalse(ContextMemoryVisibility.isPending(new ContextMemory()), "no stage is not pending");
+  }
+
+  /** A document a team owns: its members are its owners, as policies count owners. */
+  @Test
+  void aTeamThatOwnsTheDocumentSeesItsPendingPills() {
+    EntityReference team = ref(Entity.TEAM, "analytics", "analytics");
+    EntityReference document = ref(Entity.CONTEXT_FILE, "handbook", "handbook");
+    ContextMemory pill =
+        memoryOwnedBy("admin", MemoryVisibility.ENTITY)
+            .withSourceEntity(document)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    entityStaticMock
+        .when(() -> Entity.getEntity(document, Entity.FIELD_OWNERS, Include.NON_DELETED))
+        .thenReturn(new Table().withName("handbook").withOwners(List.of(team)));
+    SecurityContext bob = securityContextFor(BOB);
+    SecurityContext charlie = securityContextFor("charlie");
+    try (MockedStatic<SubjectContext> subjects = Mockito.mockStatic(SubjectContext.class)) {
+      subjects
+          .when(() -> SubjectContext.getSubjectContext(BOB))
+          .thenReturn(new SubjectContext(new User().withName(BOB).withTeams(List.of(team)), null));
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("charlie"))
+          .thenReturn(new SubjectContext(new User().withName("charlie"), null));
+
+      withSubject(
+          bob,
+          BOB,
+          () ->
+              assertEquals(
+                  List.of(pill), ContextMemoryVisibility.filterListed(List.of(pill), bob)));
+      withSubject(
+          charlie,
+          "charlie",
+          () -> assertTrue(ContextMemoryVisibility.filterListed(List.of(pill), charlie).isEmpty()));
+    }
+  }
+
+  private static List<ContextMemory> listed(
+      List<ContextMemory> memories, String userName, boolean isAdmin) {
+    return ContextMemoryVisibility.filterListed(
+        memories, userName, isAdmin, (u, anchor) -> true, (u, source) -> false);
   }
 
   @Test

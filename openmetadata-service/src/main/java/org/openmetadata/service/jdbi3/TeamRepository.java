@@ -747,7 +747,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   protected Team createNewEntity(Team team) {
-    team.setProfile(ProfileWebhookSecrets.ofANewEntity(team.getProfile()));
+    team.setProfile(ProfileWebhookSecrets.ofANewEntity(holderOf(team), team.getProfile()));
     return super.createNewEntity(team);
   }
 
@@ -771,7 +771,12 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private static Team withNewProfileEncrypted(Team team) {
     Team stored = JsonUtils.deepCopy(team, Team.class);
-    return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
+    return stored.withProfile(
+        ProfileWebhookSecrets.ofANewEntity(holderOf(stored), stored.getProfile()));
+  }
+
+  private static ProfileWebhookSecrets.Holder holderOf(Team team) {
+    return new ProfileWebhookSecrets.Holder(Entity.TEAM, team.getId());
   }
 
   @Override
@@ -840,13 +845,16 @@ public class TeamRepository extends EntityRepository<Team> {
   public EntityRepository<Team>.EntityUpdater getUpdater(
       Team original, Team updated, Operation operation, ChangeSource changeSource) {
     // Before the diff, so the change description and the stored row carry ciphertext only.
-    updated.setProfile(ProfileWebhookSecrets.updated(original.getProfile(), updated.getProfile()));
+    updated.setProfile(
+        ProfileWebhookSecrets.updated(
+            holderOf(original), original.getProfile(), updated.getProfile()));
     return new TeamUpdater(original, updated, operation);
   }
 
   @Override
   protected void validatePatch(Team original, Team updated, JsonPatch patch) {
-    ProfileWebhookSecrets.validatePatch(original.getProfile(), updated.getProfile(), patch);
+    ProfileWebhookSecrets.validatePatch(
+        holderOf(original), original.getProfile(), updated.getProfile(), patch);
   }
 
   @Override

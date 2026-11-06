@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
@@ -149,6 +150,44 @@ class MetricObservabilityBuilderTest {
 
     assertEquals(MetricHealth.UNKNOWN, result.getHealth());
     verify(repository, never()).getAssetsWithDirection(metricId);
+  }
+
+  @Test
+  void buildListsAViewableTableButWithholdsItsDataQualityWithoutTestVisibility() {
+    UUID metricId = UUID.randomUUID();
+    MetricRepository repository = mock(MetricRepository.class);
+    Fields fields = new Fields(Set.of("id"));
+    when(repository.getFields("id")).thenReturn(fields);
+    when(repository.get(null, metricId, fields))
+        .thenReturn(new Metric().withId(metricId).withName("revenue"));
+    EntityReference source = table("source");
+    List<MetricAssetDirection> linked =
+        List.of(
+            new MetricAssetDirection()
+                .withAsset(source)
+                .withDirection(MetricAssetDirection.Direction.UPSTREAM));
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    MetricObservabilityBuilder builder =
+        new MetricObservabilityBuilder(repository, new SimpleMeterRegistry());
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      entity
+          .when(() -> Entity.getEntityReferencesByIds(any(), anyList(), any()))
+          .thenReturn(List.of());
+
+      MetricObservability withheld =
+          builder.build(metricId, linked, Set.of(source.getId()), Set.of());
+      MetricObservability detailed =
+          builder.build(metricId, linked, Set.of(source.getId()), Set.of(source.getId()));
+
+      assertEquals(1, withheld.getLinkedAssets().size());
+      assertEquals(1, withheld.getSourceCoverage().getRestrictedTables());
+      assertEquals(0, detailed.getSourceCoverage().getRestrictedTables());
+    }
   }
 
   @Test

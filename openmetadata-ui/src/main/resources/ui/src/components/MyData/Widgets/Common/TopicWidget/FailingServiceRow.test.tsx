@@ -107,13 +107,13 @@ describe('FailingServiceRow', () => {
     );
   });
 
-  // Power BI's logo is dark artwork: drawn as-is it vanished on a dark card.
-  it('inverts dark connector artwork in dark mode only', () => {
+  // Power BI's logo was redrawn to read on dark, so it renders as authored.
+  it('renders the Power BI logo without the dark-mode invert', () => {
     renderRow({ serviceType: 'PowerBI' });
 
     expect(
       screen.getByTestId('failing-service-svc-1').querySelector('img')
-    ).toHaveClass('tw:dark:invert');
+    ).not.toHaveClass('tw:dark:invert');
   });
 
   it('keeps a branded logo in its own colours', () => {

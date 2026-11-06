@@ -192,6 +192,58 @@ class SemanticMemoryDuplicateFinderTest {
   }
 
   @Test
+  void oppositeSignsCannotReuseAnApprovedFact() throws Exception {
+    ContextMemory candidate =
+        memory(UUID.randomUUID(), "What is the growth rate?", "The growth rate is -15%.");
+    ContextMemory derived =
+        memory(UUID.randomUUID(), "What is the growth rate?", "The growth rate is +15%.");
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    when(searchRepository.getIndexOrAliasName("contextMemory"))
+        .thenReturn("context_memory_search_index");
+    when(searchClient.searchForExport(
+            any(SearchRequest.class), eq(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT)))
+        .thenReturn(new SearchResultListMapper(List.of(), 0));
+
+    assertNull(finderWithCandidate(candidate).findEquivalent(derived));
+    verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
+  }
+
+  /** An added number, a year here, rewords a value; only a replaced number changes it. */
+  @Test
+  void anAddedYearDoesNotPreventReusingTheSameApprovedValue() {
+    ContextMemory candidate =
+        memory(UUID.randomUUID(), "What is the retention window?", "Data is kept for 90 days.");
+    ContextMemory derived =
+        memory(
+            UUID.randomUUID(), "What is the retention window?", "Data is kept for 90 days (2025).");
+    when(completionClient.completeStructured(
+            anyString(), anyString(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
+        .thenReturn(List.of(new SemanticMemoryDuplicateFinder.MatchChoice(0)));
+
+    assertEquals(candidate, finderWithCandidate(candidate).findEquivalent(derived));
+  }
+
+  /** A citation is no value: renumbering "(section 3)" to "(section 4)" keeps the fact reusable. */
+  @Test
+  void aRenumberedCitationDoesNotPreventReusingTheSameApprovedValue() {
+    ContextMemory candidate =
+        memory(
+            UUID.randomUUID(),
+            "What is the retention window?",
+            "Data is kept for 90 days (section 3).");
+    ContextMemory derived =
+        memory(
+            UUID.randomUUID(),
+            "What is the retention window?",
+            "Data is kept for 90 days (section 4).");
+    when(completionClient.completeStructured(
+            anyString(), anyString(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
+        .thenReturn(List.of(new SemanticMemoryDuplicateFinder.MatchChoice(0)));
+
+    assertEquals(candidate, finderWithCandidate(candidate).findEquivalent(derived));
+  }
+
+  @Test
   void relatedButConflictingFactIsNotReused() throws Exception {
     ContextMemory candidate =
         memory(UUID.randomUUID(), "What is the retention window?", "Data is kept for 90 days.");
