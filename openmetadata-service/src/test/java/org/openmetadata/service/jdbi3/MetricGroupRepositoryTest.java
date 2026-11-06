@@ -17,10 +17,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -52,7 +54,10 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RequestEntityCache;
 
@@ -639,8 +644,44 @@ class MetricGroupRepositoryTest {
     }
   }
 
+  @Test
+  void aWriteChecksEditAllOnTheMetricsItAddsToOrRemovesFromTheGroup() {
+    final EntityReference kept = member("revenue");
+    final MetricGroup original = group("finance").withMetrics(List.of(kept, member("cost")));
+    final MetricGroup renamed =
+        JsonUtils.deepCopy(original, MetricGroup.class).withDisplayName("Finance");
+    final MetricGroup reassigned =
+        JsonUtils.deepCopy(original, MetricGroup.class)
+            .withMetrics(List.of(kept, member("profit")));
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    final Authorizer authorizer = mock(Authorizer.class);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC))
+          .thenReturn(mock(MetricRepository.class));
+
+      repository.authorizeWrite(original, renamed, actor, Edit.patch(Set.of("displayName")));
+      verify(authorizer, never()).authorizeActor(any(), any(), any());
+
+      // The removed and the added metric are checked; the one that stays is not.
+      repository.authorizeWrite(original, reassigned, actor, Edit.patch(Set.of("metrics")));
+      verify(authorizer, times(2))
+          .authorizeActor(
+              eq(actor), any(), argThat(resource -> Entity.METRIC.equals(resource.getResource())));
+    }
+  }
+
   private MetricGroup group(String name) {
     return new MetricGroup().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(name);
+  }
+
+  private EntityReference member(String name) {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(Entity.METRIC)
+        .withName(name)
+        .withFullyQualifiedName(name);
   }
 
   private Metric metric(String name) {

@@ -285,6 +285,7 @@ import org.openmetadata.service.secrets.masker.MaskedFields;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.ViewPermissionFilter;
@@ -3553,6 +3554,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     // Always set impersonatedBy to clear it when null (regular user operations)
     entity.setImpersonatedBy(impersonatedBy);
+    authorizeUserWrite(
+        null, entity, ChangeActor.recorded(entity.getUpdatedBy(), impersonatedBy), null);
 
     return createNewEntity(entity);
   }
@@ -4495,6 +4498,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (original == null) { // If an original entity does not exist then create it, else update
       // Always set impersonatedBy to clear it when null (regular user operations)
       updated.setImpersonatedBy(impersonatedBy);
+      authorizeUserWrite(null, updated, ChangeActor.recorded(updatedBy, impersonatedBy), null);
       T created;
       try (var ignored = phase("upsertCreate")) {
         created = withHref(uriInfo, createNewEntity(updated));
@@ -5303,8 +5307,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   final Optional<StagedChange> previewPatch(T original, JsonPatch patch, ChangeActor actor) {
     T updated = preparePatched(original, patch, actor.userName(), actor.impersonatedBy());
     authorizeDomainWrite(original, updated, actor, Edit.Kind.PATCH);
-    return ApprovalGate.preview(
-        original, updated, actor.userName(), Edit.patch(JsonUtils.extractPatchedFields(patch)));
+    final Edit edit = Edit.patch(JsonUtils.extractPatchedFields(patch));
+    authorizeUserWrite(original, updated, actor, edit);
+    return ApprovalGate.preview(original, updated, actor.userName(), edit);
   }
 
   /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
@@ -10172,14 +10177,53 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
+  private static final Set<Edit.Kind> CSV_IMPORT_KINDS =
+      Set.of(Edit.Kind.IMPORT_UPDATE, Edit.Kind.IMPORT_ROW);
+
   /**
-   * Admits a write of {@code original}, loaded with the fields policies read: its domain move is
-   * authorized, then an approval workflow may hold it.
+   * Admits a write of {@code original}, loaded with the fields policies read: its domain move and
+   * the repository's own write checks are authorized, then an approval workflow may hold it.
    */
   public final Optional<StagedChange> admit(
       final T original, final T updated, final ChangeActor actor, final Edit edit) {
     authorizeDomainWrite(original, updated, actor, edit.kind());
+    if (!CSV_IMPORT_KINDS.contains(edit.kind())) {
+      authorizeUserWrite(original, updated, actor, edit);
+    }
     return ApprovalGate.admit(original, updated, actor.userName(), actor.impersonatedBy(), edit);
+  }
+
+  /**
+   * The checks a repository adds to a user's write of one of its entities, on top of the request's
+   * policy check and the domain move check. {@code original} is the entity as stored, with the
+   * fields the write loads, and {@code edit} the kind of write; both are null for a create. {@code
+   * updated} is the prepared entity the write stores. {@code createInternal}, the create branch of
+   * {@code createOrUpdate}, {@code admit} (PUT and PATCH), the patch preview and bulk PUT run it;
+   * {@code createMany} does not, and a CSV row is checked by the entity's {@code EntityCsv}
+   * instead, because a dry run checks rows against earlier rows that are not stored. A system write
+   * is not checked. See ADR:2026-11-03-metric-writes-run-the-same-checks-through-rest-and-mcp.
+   */
+  protected void authorizeWrite(
+      final T original, final T updated, final ChangeActor actor, final Edit edit) {}
+
+  private void authorizeUserWrite(
+      final T original, final T updated, final ChangeActor actor, final Edit edit) {
+    if (!actor.system()) {
+      authorizeWrite(original, updated, actor, edit);
+    }
+  }
+
+  /** Authorizes the author of a write; without a registered authorizer the write is refused. */
+  protected static void authorizeAuthor(
+      final ChangeActor actor,
+      final OperationContext operation,
+      final ResourceContextInterface resource) {
+    final Authorizer authorizer = Entity.getAuthorizer();
+    if (authorizer == null) {
+      throw new IllegalStateException(
+          "No authorizer is registered to check the write by " + actor.userName());
+    }
+    authorizer.authorizeActor(actor, operation, resource);
   }
 
   /**
@@ -15067,11 +15111,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     LOG.info(
         "Submitting async bulk operation with jobId: {} for {} entities", jobId, entities.size());
 
+    // Policy conditions such as isImpersonated() read the impersonation from the thread, so the
+    // job carries the request's into the write checks it runs and clears it when it ends.
+    final String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     CompletableFuture<BulkOperationResult> job;
     try {
       job =
           CompletableFuture.supplyAsync(
               () -> {
+                ImpersonationContext.setImpersonatedBy(impersonatedBy);
                 try {
                   return bulkCreateOrUpdateEntitiesSequential(
                       uriInfo, entities, userName, existingByFqn, overrideMetadata);
@@ -15082,6 +15130,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                   errorResult.setNumberOfRowsFailed(entities.size());
                   errorResult.setNumberOfRowsPassed(0);
                   return errorResult;
+                } finally {
+                  ImpersonationContext.clear();
                 }
               },
               BulkExecutor.getInstance().getExecutor());
@@ -15266,8 +15316,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                   : hydratedOriginal;
           entity.setUpdatedBy(userName);
           entity.setUpdatedAt(System.currentTimeMillis());
-          authorizeDomainWrite(
-              original, entity, ChangeActor.recorded(userName, null), Edit.Kind.PUT);
+          final ChangeActor actor = ChangeActor.recorded(userName, null);
+          authorizeDomainWrite(original, entity, actor, Edit.Kind.PUT);
+          authorizeUserWrite(original, entity, actor, Edit.bulkPut(overrideMetadata));
 
           evaluatePutRulesDeferredUntilInherited(original, entity);
           if (Boolean.TRUE.equals(original.getDeleted())) {
@@ -15432,6 +15483,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         newEntities.add(entity);
       }
     }
+
+    // A refused create fails alone, with the 403 a refused update in this request gets.
+    newEntities.removeIf(entity -> refusesBulkCreate(entity, userName, failedRequests));
 
     // Batch create new entities
     if (!newEntities.isEmpty()) {
@@ -15637,6 +15691,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
     return staged;
+  }
+
+  private boolean refusesBulkCreate(
+      final T entity, final String userName, final List<BulkResponse> failedRequests) {
+    boolean refused = false;
+    try {
+      authorizeUserWrite(null, entity, ChangeActor.recorded(userName, null), null);
+    } catch (AuthorizationException e) {
+      failedRequests.add(failedBulkItem(entity, Status.FORBIDDEN.getStatusCode(), e.getMessage()));
+      refused = true;
+    } catch (EntityNotFoundException | IllegalArgumentException e) {
+      // A parent or group deleted since the request was prepared fails this item, not the batch.
+      failedRequests.add(
+          failedBulkItem(entity, Status.BAD_REQUEST.getStatusCode(), e.getMessage()));
+      refused = true;
+    }
+    return refused;
   }
 
   private BulkResponse failedBulkItem(T entity, int status, String message) {
