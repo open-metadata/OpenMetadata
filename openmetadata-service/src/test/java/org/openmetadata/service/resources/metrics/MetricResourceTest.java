@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
@@ -220,6 +221,97 @@ class MetricResourceTest {
   }
 
   @Test
+  void metricPatchRejectsReadingARelationIntoAnotherFieldOrATest() {
+    for (String from :
+        List.of(
+            "/parent/description",
+            "/metricGroup/name",
+            "/relatedMetrics/0/description",
+            "/children/0/name",
+            "")) {
+      jakarta.json.JsonPatch copy = Json.createPatchBuilder().copy("/description", from).build();
+      jakarta.json.JsonPatch move = Json.createPatchBuilder().move("/displayName", from).build();
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> MetricAuthorization.validateMetricPatch(copy),
+          from);
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> MetricAuthorization.validateMetricPatch(move),
+          from);
+    }
+    for (String path : List.of("", "/parent/name", "/metricGroup", "/relatedMetrics/0/name")) {
+      jakarta.json.JsonPatch test =
+          Json.createPatchBuilder().test(path, "guess").add("/description", "x").build();
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> MetricAuthorization.validateMetricPatch(test),
+          path);
+    }
+    // Reordering within a relation (as jsonpatch diff tools emit) and copying plain fields still
+    // pass.
+    MetricAuthorization.validateMetricPatch(
+        Json.createPatchBuilder().move("/relatedMetrics/0", "/relatedMetrics/1").build());
+    MetricAuthorization.validateMetricPatch(
+        Json.createPatchBuilder().copy("/displayName", "/description").build());
+  }
+
+  @Test
+  void metricPatchRejectsOperationsOnTheDocumentRoot() {
+    jakarta.json.JsonObject wholeMetric =
+        Json.createObjectBuilder()
+            .add("name", "scratch")
+            .add("parent", Json.createObjectBuilder().add("id", UUID.randomUUID().toString()))
+            .build();
+    jakarta.json.JsonPatch add = Json.createPatchBuilder().add("", wholeMetric).build();
+    jakarta.json.JsonPatch replace =
+        Json.createPatchBuilder().add("/description", "scratch").replace("", wholeMetric).build();
+    jakarta.json.JsonPatch description =
+        Json.createPatchBuilder().add("/description", "scratch").build();
+
+    assertThrows(
+        IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(add));
+    assertThrows(
+        IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(replace));
+    MetricAuthorization.validateMetricPatch(description);
+  }
+
+  @Test
+  void hierarchyPatchIsAuthorizedOnTheMetricBeforeItIsSimulated() {
+    UUID metricId = UUID.randomUUID();
+    SecurityContext securityContext = securityContext("alice");
+    AuthorizationException denied = new AuthorizationException("denied");
+    // Cannot be applied to any metric: the JSON-P error would print the stored document.
+    jakarta.json.JsonPatch copyIntoParent =
+        Json.createPatchBuilder().copy("/parent", "/x/y").build();
+    try (ResourceFixture fixture = resourceFixture()) {
+      doThrow(denied)
+          .when(fixture.authorizer())
+          .authorize(eq(securityContext), any(OperationContext.class), any());
+
+      assertEquals(
+          denied,
+          assertThrows(
+              AuthorizationException.class,
+              () ->
+                  fixture
+                      .resource()
+                      .updateMetric(null, securityContext, metricId, copyIntoParent)));
+      assertEquals(
+          denied,
+          assertThrows(
+              AuthorizationException.class,
+              () ->
+                  fixture
+                      .resource()
+                      .updateMetric(null, securityContext, "revenue", copyIntoParent)));
+
+      verify(fixture.repository(), never()).get(any(), any(UUID.class), any());
+      verify(fixture.repository(), never()).getByName(any(), anyString(), any());
+    }
+  }
+
+  @Test
   void hierarchyEndpointsPreserveIndependentZeroSizedPages() throws Exception {
     Method hierarchy =
         MetricResource.class.getMethod(
@@ -405,7 +497,7 @@ class MetricResourceTest {
 
       assertEquals(missing, thrown);
       verify(fixture.repository(), never()).getAssetsWithDirection(metricId);
-      verify(fixture.repository(), never()).getObservability(eq(metricId), any(), any());
+      verify(fixture.repository(), never()).getObservability(eq(metricId), any(), any(), any());
     }
   }
 
@@ -428,7 +520,10 @@ class MetricResourceTest {
       when(fixture.repository().get(any(), eq(metricId), any()))
           .thenReturn(new Metric().withId(metricId).withName("revenue"));
       when(fixture.repository().getAssetsWithDirection(metricId)).thenReturn(linkedAssets);
-      when(fixture.repository().getObservability(metricId, linkedAssets, Set.of(table.getId())))
+      when(fixture
+              .repository()
+              .getObservability(
+                  metricId, linkedAssets, Set.of(table.getId()), Set.of(table.getId())))
           .thenReturn(expected);
 
       MetricObservability actual =
@@ -436,7 +531,44 @@ class MetricResourceTest {
 
       assertEquals(expected, actual);
       verify(fixture.repository(), times(1)).getAssetsWithDirection(metricId);
-      verify(fixture.repository()).getObservability(metricId, linkedAssets, Set.of(table.getId()));
+      verify(fixture.repository())
+          .getObservability(metricId, linkedAssets, Set.of(table.getId()), Set.of(table.getId()));
+    }
+  }
+
+  @Test
+  void observabilityWithholdsTestDetailsOfTablesWithoutViewTests() {
+    UUID metricId = UUID.randomUUID();
+    SecurityContext securityContext = securityContext("alice");
+    EntityReference table =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.TABLE)
+            .withName("orders")
+            .withFullyQualifiedName("service.database.schema.orders");
+    List<MetricAssetDirection> linkedAssets =
+        List.of(
+            new MetricAssetDirection()
+                .withAsset(table)
+                .withDirection(MetricAssetDirection.Direction.UPSTREAM));
+    try (ResourceFixture fixture = resourceFixture()) {
+      when(fixture.repository().get(any(), eq(metricId), any()))
+          .thenReturn(new Metric().withId(metricId).withName("revenue"));
+      when(fixture.repository().getAssetsWithDirection(metricId)).thenReturn(linkedAssets);
+      doThrow(new AuthorizationException("denied"))
+          .when(fixture.authorizer())
+          .authorize(
+              eq(securityContext),
+              argThat(
+                  context ->
+                      Entity.TABLE.equals(context.getResource())
+                          && context.getOperations(null).contains(MetadataOperation.VIEW_TESTS)),
+              any());
+
+      fixture.resource().getObservability(null, securityContext, metricId);
+
+      verify(fixture.repository())
+          .getObservability(metricId, linkedAssets, Set.of(table.getId()), Set.of());
     }
   }
 

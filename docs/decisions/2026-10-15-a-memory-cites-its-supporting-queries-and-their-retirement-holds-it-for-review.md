@@ -1,7 +1,9 @@
 # A memory cites its supporting Queries, and retiring one holds the memory for review
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-03 (a deleted Query reads in full only to admins; the UI names it at view time)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-03 (the held-Draft queue is the owner's and
+  admins') · v3 2026-11-03 (a deleted Query reads in full only to admins; the UI names it at view
+  time)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `MemoryEvidenceHoldsTest`, `ContextMemoryEvidenceAccessTest`, `ContextMemoryQueryEvidenceIT`,
   `useMemoryStatusReason.test.ts`
@@ -83,6 +85,14 @@ read the Query.
 - One race remains. A memory write that resolves a Query after the delete's lookup, but before the
   row removal, loses its link without a hold. Closing it needs Memory Reconciliation to re-verify
   evidence, which is a Collate change.
+
+## Amendment — 2026-11-03: the held-Draft queue is the owner's and admins'
+
+Item 8 still holds for who looks: the Memories list shows Draft by default, so an evidence hold,
+which opens no task, is visible where people look. But a Draft memory is now listed only to its
+owners and to admins (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+So the held-Draft queue is the owner's and the admins'. A reader of the memory still opens it by
+id under the share rules.
 
 ## Amendment — 2026-11-03: a deleted Query reads in full only to admins, who see it named
 

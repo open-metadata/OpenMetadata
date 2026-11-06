@@ -301,12 +301,19 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
       updated.setMetrics(restoredMembers);
       publishMembershipChange(
           new MembershipChange(restoredMembers, Set.of(updated.getEntityReference())));
+    } else {
+      // The member list is loaded only to diff relationships. Task approvals, async jobs and bulk
+      // updates record the returned entity in a change event as is, and the audit log hands that
+      // event to anyone who may view the group - so the members must not leave the repository.
+      updated.setMetrics(null);
     }
   }
 
   @Override
   protected void postRestoreFromSearch(MetricGroup metricGroup) {
     refreshMembersAfterGroupLifecycle(metricGroup);
+    // The restore branch of postUpdate kept the members for this refresh only; see there.
+    metricGroup.setMetrics(null);
   }
 
   @Override
