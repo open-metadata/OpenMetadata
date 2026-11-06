@@ -23,6 +23,7 @@ import pytest
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 
 SERVICE = "bq"
@@ -231,17 +232,17 @@ def test_field_path_skips_a_same_named_column_that_is_not_a_struct():
 @pytest.mark.parametrize(
     "query",
     [
-        "CREATE VIEW ds.v AS SELECT customer.email AS e FROM (SELECT billing AS customer FROM ds.users) s",
-        "CREATE VIEW ds.v AS SELECT s.customer.email AS e FROM (SELECT billing AS customer FROM ds.users) s",
-        "CREATE VIEW ds.v AS WITH c AS (SELECT billing AS customer FROM ds.users) SELECT customer.email AS e FROM c",
+        "CREATE VIEW ds.v AS SELECT id, customer.email AS e FROM (SELECT id, billing AS customer FROM ds.users) s",
+        "CREATE VIEW ds.v AS SELECT s.id, s.customer.email AS e FROM (SELECT id, billing AS customer FROM ds.users) s",
+        "CREATE VIEW ds.v AS WITH c AS (SELECT id, billing AS customer FROM ds.users) SELECT id, customer.email AS e FROM c",
     ],
     ids=["subquery", "qualified-subquery", "cte"],
 )
 def test_struct_name_a_subquery_could_define_gets_no_lineage(query):
-    users = _table("users", [_customer("users"), _customer("users", "billing")])
-    view = _table("v", [_column("v", "e")])
+    users = _table("users", [_column("users", "id", "INT"), _customer("users"), _customer("users", "billing")])
+    view = _table("v", [_column("v", "id", "INT"), _column("v", "e")])
 
-    assert _column_edges(query, [users, view]) == set()
+    assert _column_edges(query, [users, view]) == {("users.id", "v.id")}
 
 
 def test_struct_path_in_a_multi_statement_query_gets_no_lineage():
@@ -254,6 +255,7 @@ def test_struct_path_in_a_multi_statement_query_gets_no_lineage():
         [USERS, inter, target],
     )
 
+    assert ("users.customer.email", "inter.customer.email") in edges
     assert not {edge for edge in edges if edge[1] == "tgt.e"}
 
 
@@ -277,3 +279,14 @@ def test_join_gives_struct_paths_no_lineage_rather_than_the_wrong_table():
         ("users.customer.address.zip", "v.customer.address.zip"),
         ("users.customer.address.city", "v.customer.address.city"),
     }
+
+
+def test_a_query_whose_subqueries_cannot_be_read_counts_as_having_them():
+    unparsed = LineageParser("SELECT id FROM ds.users", Dialect.BIGQUERY)
+    unparsed.parser = None
+    unreadable = LineageParser("SELECT id FROM ds.users", Dialect.BIGQUERY)
+    unreadable.parser._sql_holder = None
+
+    assert unparsed.has_subqueries
+    assert unreadable.has_subqueries
+    assert not LineageParser("SELECT id FROM ds.users", Dialect.BIGQUERY).has_subqueries
