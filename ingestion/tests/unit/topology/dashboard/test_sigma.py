@@ -369,6 +369,7 @@ class SigmaUnitTest(TestCase):
         """
         # Setup mocks
         self.sigma.client.get_workbook_queries = lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
+        self.sigma.client.get_workbook_connection_ids = lambda *_: set()
         self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
@@ -734,6 +735,7 @@ def sigma_routes() -> dict:
     routes = {
         ("POST", "/v2/auth/token"): {"access_token": "token", "token_type": "bearer", "expires_in": 3600},
         ("GET", "/v2/workbooks"): {"entries": SIGMA_WORKBOOKS, "nextPage": None},
+        ("GET", "/v2/connections"): {"entries": [], "nextPage": None},
         ("GET", "/v2/members/member-1"): sigma_member("member-1", "ada@example.com"),
         ("GET", "/v2/members/member-2"): sigma_member("member-2", "grace@example.com"),
         ("GET", "/v2/files/T1"): {
@@ -758,6 +760,7 @@ def sigma_routes() -> dict:
         element_id = f"el-{workbook['workbookId']}"
         routes["GET", workbook_path] = workbook
         routes["GET", f"{workbook_path}/pages"] = {"entries": [{"pageId": "page-1"}], "nextPage": None}
+        routes["GET", f"{workbook_path}/lineage"] = {"entries": [], "nextPage": None}
         routes["GET", f"{workbook_path}/pages/page-1/elements"] = {
             "entries": [{"elementId": element_id, "name": "Revenue", "vizualizationType": "bar"}],
             "nextPage": None,
@@ -1131,3 +1134,46 @@ def test_a_failed_connection_listing_leaves_types_unknown_without_relisting(sigm
 
     assert [source.client.get_connection_type("conn-sf") for _ in range(2)] == [None, None]
     assert calls["GET", "/v2/connections"] == 1
+
+
+# Parses to the table only in BigQuery's dialect; Snowflake's (the test prefix service's) finds none
+BIGQUERY_ONLY_SQL = "SELECT * EXCEPT (AMOUNT) FROM `ANALYTICS.PUBLIC.ORDERS`"
+
+
+def workbook_on_connections(routes, connection_types: dict[str, str]) -> None:
+    routes["GET", "/v2/workbooks/wb-1/lineage"] = {
+        "entries": [
+            {"type": "table", "connectionId": connection, "name": "ORDERS", "inodeId": f"inode-{connection}"}
+            for connection in connection_types
+        ],
+        "nextPage": None,
+    }
+    routes["GET", "/v2/connections"] = {
+        "entries": [sigma_connection(connection, kind) for connection, kind in connection_types.items()],
+        "nextPage": None,
+    }
+
+
+def test_sql_is_parsed_in_the_dialect_of_the_workbook_connection(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    workbook_on_connections(routes, {"conn-bq": "bigQuery"})
+
+    linked = lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], BIGQUERY_ONLY_SQL)
+
+    assert linked == ["wh_a.ANALYTICS.PUBLIC.ORDERS"]
+
+
+def test_a_workbook_on_several_connections_keeps_the_prefix_service_dialect(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    workbook_on_connections(routes, {"conn-bq": "bigQuery", "conn-sf": "snowflake"})
+
+    assert lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], BIGQUERY_ONLY_SQL) == []
+
+
+def test_a_partly_read_workbook_lineage_keeps_the_prefix_service_dialect(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    workbook_on_connections(routes, {"conn-bq": "bigQuery"})
+    routes["GET", "/v2/workbooks/wb-1/lineage"] = {**routes["GET", "/v2/workbooks/wb-1/lineage"], "nextPage": "2"}
+    routes["GET", "/v2/workbooks/wb-1/lineage", "2"] = 500
+
+    assert lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], BIGQUERY_ONLY_SQL) == []

@@ -33,6 +33,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
     OwnerDetails,
     Workbook,
     WorkbookDetails,
+    WorkbookLineageResponse,
     WorkBookPageResponse,
     WorkbookQueriesResponse,
     WorkBookResponseDetails,
@@ -165,6 +166,27 @@ class SigmaApiClient:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to list Sigma connections: {exc}")
         return self._connection_types.get(connection_id)
+
+    def get_workbook_connection_ids(self, workbook_id: str) -> set[str]:
+        """
+        The connections the workbook's sources run on, from its lineage rows. Empty when the read fails, so a
+        partial read never looks like a workbook on a single connection.
+        """
+        connection_ids = set()
+        try:
+            data = None
+            while True:
+                result = WorkbookLineageResponse.model_validate(
+                    self.client.get(f"/workbooks/{workbook_id}/lineage", data=data)
+                )
+                connection_ids.update(entry.connectionId for entry in result.entries if entry.connectionId)
+                if not result.nextPage:
+                    return connection_ids
+                data = {"page": result.nextPage}
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch the lineage of workbook {workbook_id}: {exc}")
+        return set()
 
     def get_owner_detail(self, owner_id: str) -> OwnerDetails | None:
         """

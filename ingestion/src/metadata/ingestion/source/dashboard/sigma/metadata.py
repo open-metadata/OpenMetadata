@@ -70,6 +70,18 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# Sigma connection types, lower-cased, as the spec names them for the warehouses OpenMetadata parses
+SIGMA_CONNECTION_DIALECTS = {
+    "bigquery": Dialect.BIGQUERY,
+    "databricks": Dialect.DATABRICKS,
+    "mysql": Dialect.MYSQL,
+    "postgres": Dialect.POSTGRES,
+    "redshift": Dialect.REDSHIFT,
+    "snowflake": Dialect.SNOWFLAKE,
+    "azuresql": Dialect.TSQL,
+    "sqlserver": Dialect.TSQL,
+}
+
 
 class SigmaSource(DashboardServiceSource):
     """
@@ -390,6 +402,7 @@ class SigmaSource(DashboardServiceSource):
             return
 
         db_service_entity = self._db_services.get(db_service_prefix) if db_service_prefix else None
+        dialect = None
 
         queries_by_element = {q.elementId: q for q in queries_response.entries}
 
@@ -413,13 +426,16 @@ class SigmaSource(DashboardServiceSource):
                     )
                     continue
 
-                lineage_parser = LineageParser(
-                    query_obj.sql,
-                    ConnectionTypeDialectMapper.dialect_of(db_service_entity.serviceType.value)
-                    if db_service_entity
-                    else Dialect.ANSI,
-                    parser_type=self.get_query_parser_type(),
+                dialect = (
+                    dialect
+                    or self._workbook_dialect(dashboard_details)
+                    or (
+                        ConnectionTypeDialectMapper.dialect_of(db_service_entity.serviceType.value)
+                        if db_service_entity
+                        else Dialect.ANSI
+                    )
                 )
+                lineage_parser = LineageParser(query_obj.sql, dialect, parser_type=self.get_query_parser_type())
 
                 for source_table in lineage_parser.source_tables or []:
                     database_schema_table = fqn.split_table_name(str(source_table))
@@ -446,6 +462,17 @@ class SigmaSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def _workbook_dialect(self, dashboard_details: WorkbookDetails) -> Dialect | None:
+        """The dialect of the warehouse Sigma runs the workbook's SQL on, when all its sources use one connection"""
+        connection_ids = dashboard_details.connection_ids
+        if connection_ids is None:
+            connection_ids = self.client.get_workbook_connection_ids(dashboard_details.workbookId)
+            dashboard_details.connection_ids = connection_ids
+        if len(connection_ids) != 1:
+            return None
+        connection_type = self.client.get_connection_type(next(iter(connection_ids)))
+        return SIGMA_CONNECTION_DIALECTS.get((connection_type or "").lower())
 
     def get_column_info(self, element: Elements) -> list[Column] | None:
         """Build data model columns"""
