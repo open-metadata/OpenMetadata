@@ -1341,7 +1341,9 @@
     --color-bg-canvas: theme(--color-gray-900);
     --color-bg-surface: theme(--color-gray-800);
     --color-bg-raised: theme(--color-gray-700);
-    /* Modal/slideout panel matches bg-surface (gray-800, rgb(34,38,47)). */
+    /* Modal/slideout panel matches bg-surface (gray-800, rgb(34,38,47)). Floating
+       overlays (popover, menu, select, date picker) use bg-raised (gray-700) so they
+       stay distinct when opened from a drawer. */
     --color-bg-overlay-surface: theme(--color-gray-800);
     --color-bg-brand-section: theme(--color-bg-secondary);
     --color-bg-brand-section_subtle: theme(--color-bg-primary);
