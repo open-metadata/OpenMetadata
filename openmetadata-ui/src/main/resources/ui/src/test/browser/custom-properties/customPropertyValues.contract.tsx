@@ -179,7 +179,7 @@ export const describeCustomPropertyValues = (
 
       await userEvent.click(result);
       await userEvent.click(
-        panel().getByRole('tab', { name: /custom property/i })
+        panel().getByRole('tab', { name: /custom propert(y|ies)/i })
       );
       const section = page.getByCSS('.custom-properties-section-container');
 
