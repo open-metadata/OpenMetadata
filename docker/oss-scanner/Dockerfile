@@ -1,3 +1,8 @@
+# Maven comes from the official image, so the build does not depend on a public download host.
+# Pinned by multi-arch index digest, like the JDK base. Bump with:
+#   docker buildx imagetools inspect maven:3.9.9-eclipse-temurin-21 --format '{{.Manifest.Digest}}'
+FROM maven:3.9.9-eclipse-temurin-21@sha256:3a4ab3276a087bf276f79cae96b1af04f53731bec53fb2e651aca79e4b10211e AS maven-dist
+
 # Build image for Anthropic's OSS Scanner (https://github.com/anthropics/oss-scanner).
 #
 # anthropics/oss-scanner's projects/openmetadata/project.yaml reads this file and
@@ -38,8 +43,6 @@ RUN set -eu; \
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-ARG MAVEN_VERSION=3.9.9
-ARG MAVEN_SHA512=a555254d6b53d267965a3404ecb14e53c3827c09c3b94b5678835887ab404556bfaf78dcfe03ba76fa2508649dca8531c74bca4d5846513522404d48e8c4ac8b
 
 ENV DEBIAN_FRONTEND=noninteractive \
     MAVEN_HOME=/opt/maven \
@@ -51,25 +54,8 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Google's Maven Central mirror first (not rate-limited for CI), then Maven Central, then the Apache archive.
-# The SHA-512 check runs per mirror, so a partial or bad download falls through to the next one.
-RUN for url in \
-        "https://maven-central.storage-download.googleapis.com/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
-        "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
-        "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz"; do \
-      if curl -fsSL --connect-timeout 20 --max-time 300 --retry 3 --retry-all-errors "$url" -o /tmp/maven.tar.gz \
-          && echo "${MAVEN_SHA512}  /tmp/maven.tar.gz" | sha512sum --check --strict -; then \
-        MAVEN_OK=1; \
-        break; \
-      fi; \
-      echo "Maven ${MAVEN_VERSION} download failed from $url, trying next mirror"; \
-      rm -f /tmp/maven.tar.gz; \
-    done \
-    && [ -n "${MAVEN_OK:-}" ] \
-    && mkdir -p "${MAVEN_HOME}" \
-    && tar -xzf /tmp/maven.tar.gz -C "${MAVEN_HOME}" --strip-components=1 \
-    && rm /tmp/maven.tar.gz \
-    && mvn --version
+COPY --from=maven-dist /usr/share/maven ${MAVEN_HOME}
+RUN mvn --version
 
 # Scanner contract: the checkout lives inside the image, at /src.
 COPY . /src
