@@ -83,6 +83,7 @@ import {
   ShareVisibility,
   TagLabel,
 } from '../../../generated/entity/context/contextMemory';
+import { useMemoryStatusReason } from '../../../hooks/discovery/context-center/useMemoryStatusReason';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { queryClient } from '../../../queryClient';
 import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
@@ -91,6 +92,7 @@ import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { navigatesThisTab } from '../../../utils/LinkClickUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
@@ -109,7 +111,9 @@ import {
 import {
   buildMemoryFormState,
   getAssetKey,
+  getLinkedAssetPath,
   getPrimaryAndRelatedEntities,
+  getQueryTableFqn,
   getSuccessorSearch,
   removeAssetByKey,
   submitMemoryCreate,
@@ -131,8 +135,10 @@ const DEFAULT_FORM_VALUES: MemoryFormValues = {
 
 const LinkedAssetCard: FC<{
   asset: DataAssetOption;
+  href?: string;
+  onNavigate?: () => void;
   onRemove?: (fqn: string) => void;
-}> = ({ asset, onRemove }) => {
+}> = ({ asset, href, onNavigate, onRemove }) => {
   const { t } = useTranslation();
   const displayName =
     asset.displayName || (typeof asset.label === 'string' ? asset.label : '');
@@ -161,7 +167,22 @@ const LinkedAssetCard: FC<{
             className="tw:leading-tight"
             size="text-xs"
             weight="medium">
-            {displayName}
+            {href ? (
+              <Link
+                className="tw:text-brand-secondary tw:hover:underline"
+                data-testid="linked-asset-link"
+                to={href}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (navigatesThisTab(event)) {
+                    onNavigate?.();
+                  }
+                }}>
+                {displayName}
+              </Link>
+            ) : (
+              displayName
+            )}
           </Typography>
           <Typography
             ellipsis
@@ -217,19 +238,25 @@ const EmptyTags: FC = () => {
   );
 };
 
-const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
-  assets,
-}) => {
+// The modal outlives a route change in AI mode, so following a link closes it.
+const LinkedAssetsReadOnly: FC<{
+  assets: DataAssetOption[];
+  onNavigate: () => void;
+}> = ({ assets, onNavigate }) => {
   if (assets.length === 0) {
     return <EmptyLinkedAssets />;
   }
+
+  const tableFqn = getQueryTableFqn(assets);
 
   return (
     <div className="tw:flex tw:flex-col tw:gap-2">
       {assets.map((asset) => (
         <LinkedAssetCard
           asset={asset}
+          href={getLinkedAssetPath(asset.reference, tableFqn)}
           key={asset.reference?.fullyQualifiedName ?? String(asset.value ?? '')}
+          onNavigate={onNavigate}
         />
       ))}
     </div>
@@ -247,6 +274,7 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
   memoryToEdit,
   memorySource,
   memorySourceLink,
+  onNavigate,
   t,
 }) => (
   <div className="tw:flex tw:items-center tw:gap-3 tw:pt-5 tw:pb-4 tw:shrink-0 tw:px-6">
@@ -295,7 +323,12 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
           <Link
             className="tw:text-xs tw:font-medium tw:text-brand-secondary tw:hover:underline tw:truncate"
             data-testid="memory-source-file-link"
-            to={memorySourceLink}>
+            to={memorySourceLink}
+            onClick={(event) => {
+              if (navigatesThisTab(event)) {
+                onNavigate();
+              }
+            }}>
             {getEntityName(memorySource)}
           </Link>
         </div>
@@ -350,6 +383,7 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
   linkedAssets,
   setLinkedAssets,
   handleAssetChange,
+  onNavigate,
   t,
 }) => (
   <div className="tw:flex tw:flex-col tw:gap-2">
@@ -380,7 +414,7 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
     </Box>
 
     {isViewOnly ? (
-      <LinkedAssetsReadOnly assets={linkedAssets} />
+      <LinkedAssetsReadOnly assets={linkedAssets} onNavigate={onNavigate} />
     ) : (
       <>
         {linkedAssets.length === 0 ? (
@@ -695,6 +729,12 @@ const MemorySuccessor: FC<{
   );
 };
 
+const MemoryStatusReasonText: FC<{ memory: ContextMemory }> = ({ memory }) => {
+  const reason = useMemoryStatusReason(memory);
+
+  return <>{reason}</>;
+};
+
 const MemoryLifecycleRows: FC<{
   memoryToEdit?: ContextMemory;
   isViewOnly: boolean;
@@ -730,7 +770,7 @@ const MemoryLifecycleRows: FC<{
           className="tw:text-tertiary tw:whitespace-pre-wrap"
           data-testid="memory-lifecycle-reason"
           size="text-sm">
-          {memoryToEdit.statusReason}
+          <MemoryStatusReasonText memory={memoryToEdit} />
         </Typography>
       </div>
     )}
@@ -875,6 +915,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   memoryToEdit,
   isOpen,
   onClose,
+  onNavigate,
   onCreated,
   onUpdated,
   onDeleted,
@@ -909,7 +950,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       ? contextCenterClassBase.getArticlePath(
           memorySource.fullyQualifiedName ?? ''
         )
-      : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
+      : contextCenterClassBase.getDocumentPath(memorySource.id);
   }, [memorySource]);
 
   const submitLabel = isEditMode
@@ -976,7 +1017,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     setIsEditingVisibility(false);
   }, [memoryToEdit, form, t]);
 
-  const handleClose = () => {
+  const resetModal = () => {
     form.reset(DEFAULT_FORM_VALUES);
     setLinkedAssets([]);
     setSelectedTags([]);
@@ -984,7 +1025,18 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     setModalError('');
     setIsEditingVisibility(false);
     setIsViewOnly(viewOnly);
+  };
+
+  const handleClose = () => {
+    resetModal();
     onClose();
+  };
+
+  // In AI mode the modal outlives a route change, so a followed link closes it. A host that keeps
+  // the memory in the URL closes it in place, so Back from the linked page reopens the memory.
+  const handleNavigate = () => {
+    resetModal();
+    (onNavigate ?? onClose)();
   };
 
   const isSubmitDisabled = !watchedMemory?.trim();
@@ -1172,6 +1224,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 memoryToEdit={memoryToEdit}
                 modalTitle={modalTitle}
                 t={t}
+                onNavigate={handleNavigate}
               />
 
               {/* Scrollable body */}
@@ -1267,6 +1320,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   linkedAssets={linkedAssets}
                   setLinkedAssets={setLinkedAssets}
                   t={t}
+                  onNavigate={handleNavigate}
                 />
 
                 {/* Section 5: Metadata */}
@@ -1289,7 +1343,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   <MemoryDerivedTerm
                     isViewOnly={isViewOnly}
                     memory={memoryToEdit}
-                    onNavigate={handleClose}
+                    onNavigate={handleNavigate}
                   />
                 )}
               </div>

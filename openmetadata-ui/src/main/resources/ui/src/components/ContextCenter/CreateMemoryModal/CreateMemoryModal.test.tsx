@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import React from 'react';
 import {
   Control,
@@ -28,8 +28,25 @@ import {
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getContextMemoryVersions } from '../../../rest/contextMemoryAPI';
 import { getUserByName } from '../../../rest/userAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import CreateMemoryModal from './CreateMemoryModal.component';
+import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
+
+jest.mock('react-i18next', () => {
+  // One object across renders, like the global mock; echoes the Query a translated reason names.
+  const translation = {
+    t: (key: string, options?: { query?: string }) =>
+      options?.query === undefined ? key : `${key}:${options.query}`,
+    i18n: { language: 'en-US', dir: () => 'ltr' },
+  };
+
+  return {
+    ...jest.requireActual('react-i18next'),
+    useTranslation: () => translation,
+  };
+});
 
 const DISPLAY_NAMES: Record<string, string> = {
   admin: 'Admin User',
@@ -65,6 +82,7 @@ jest.mock('../../../rest/contextMemoryAPI', () => ({
   createContextMemory: jest.fn(),
   updateContextMemory: jest.fn(),
   deleteContextMemory: jest.fn(),
+  getContextMemoryVersions: jest.fn(),
 }));
 
 jest.mock('../../../rest/userAPI', () => ({
@@ -79,6 +97,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../utils/SearchClassBase', () => ({
   getEntityIcon: jest.fn(() => null),
+  getEntityIconWithBg: jest.fn(() => null),
 }));
 
 jest.mock('../../../utils/TagClassBase', () => ({
@@ -339,20 +358,20 @@ describe('CreateMemoryModal', () => {
   });
 
   const renderViewOnly = (memory: ContextMemory) =>
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
       </MemoryRouter>
     );
 
   it('renders the content input', () => {
-    render(<CreateMemoryModal {...defaultProps} />);
+    renderWithQueryClient(<CreateMemoryModal {...defaultProps} />);
 
     expect(screen.getByTestId('memory-content-input')).toBeInTheDocument();
   });
 
   it('renders title and type inputs', () => {
-    render(<CreateMemoryModal {...defaultProps} />);
+    renderWithQueryClient(<CreateMemoryModal {...defaultProps} />);
 
     expect(screen.getByTestId('memory-title-input')).toBeInTheDocument();
     expect(screen.getByTestId('memory-type-select')).toBeInTheDocument();
@@ -489,7 +508,7 @@ describe('CreateMemoryModal', () => {
       ],
     } as ContextMemory;
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
       </MemoryRouter>
@@ -518,6 +537,195 @@ describe('CreateMemoryModal', () => {
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
 
+  const expensesTable = {
+    id: 'table-id',
+    type: 'table',
+    name: 'fct_expenses',
+    fullyQualifiedName: 'svc.db.sch.fct_expenses',
+  };
+  const expensesQuery = {
+    id: 'query-id',
+    type: 'query',
+    name: 'monthly_expenses',
+    displayName: 'Monthly expenses',
+    fullyQualifiedName: 'svc.48f70df04c8bc43ab75a5da5da4f95f7',
+  };
+  const linkedMemory = {
+    id: 'memory-id',
+    name: 'expense-limit',
+    title: 'Expense limit',
+    memory: 'Meals are reimbursed up to 50 EUR.',
+    primaryEntity: expensesTable,
+    relatedEntities: [
+      {
+        id: 'file-id',
+        type: 'contextFile',
+        name: 'expense_policy.pdf',
+        fullyQualifiedName: 'policies.expense_policy.pdf',
+      },
+      {
+        id: 'other-memory-id',
+        type: 'contextMemory',
+        name: 'refund-window',
+        displayName: 'Refund window',
+        fullyQualifiedName: 'refund-window',
+      },
+    ],
+  } as ContextMemory;
+
+  const renderMemory = (
+    memory: ContextMemory,
+    props: Partial<CreateMemoryModalProps> = {}
+  ) =>
+    renderWithQueryClient(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          memoryToEdit={memory}
+          {...props}
+        />
+      </MemoryRouter>
+    );
+
+  // In AI mode the modal outlives a route change, so following a link closes it.
+  it('opens linked assets where they live and closes on the way', () => {
+    renderMemory(linkedMemory);
+
+    const links = screen.getAllByTestId('linked-asset-link');
+
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/table/svc.db.sch.fct_expenses',
+      '/context-center/documents?document=file-id',
+    ]);
+    expect(screen.getByText('Refund window').closest('a')).toBeNull();
+
+    fireEvent.click(links[1]);
+
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // The Memories page keeps the memory in the URL; it closes it in place so Back reopens it.
+  it('hands a followed link to onNavigate and ignores a new-tab click', () => {
+    const onNavigate = jest.fn();
+    renderMemory(linkedMemory, { onNavigate });
+
+    const [tableLink] = screen.getAllByTestId('linked-asset-link');
+    fireEvent.click(tableLink, { ctrlKey: true });
+    fireEvent.click(tableLink, { metaKey: true });
+    fireEvent.click(tableLink, { button: 1 });
+
+    expect(onNavigate).not.toHaveBeenCalled();
+
+    fireEvent.click(tableLink);
+
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+    expect(defaultProps.onClose).not.toHaveBeenCalled();
+  });
+
+  it('opens a linked query on the one table the memory links', () => {
+    renderMemory({
+      ...linkedMemory,
+      relatedEntities: [expensesQuery],
+    } as ContextMemory);
+
+    expect(
+      screen.getByRole('link', { name: 'Monthly expenses' })
+    ).toHaveAttribute('href', '/query-view/svc.db.sch.fct_expenses/query-id');
+  });
+
+  it.each([true, false])(
+    'labels a restricted query without linking it when viewOnly is %s',
+    (viewOnly) => {
+      const restrictedQuery = { id: 'restricted-query-id', type: 'query' };
+      renderMemory(
+        { ...linkedMemory, relatedEntities: [restrictedQuery] },
+        { viewOnly }
+      );
+
+      const label = screen.getByText('message.no-permission-to-view');
+
+      expect(label).toBeVisible();
+      expect(label.closest('a')).toBeNull();
+      expect(screen.queryByText(restrictedQuery.id)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(expensesQuery.displayName)
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('query')).toBeVisible();
+    }
+  );
+
+  it('leaves a linked query unlinked when the memory links several tables', () => {
+    renderMemory({
+      ...linkedMemory,
+      relatedEntities: [
+        expensesQuery,
+        {
+          id: 'other-table-id',
+          type: 'table',
+          name: 'dim_employee',
+          fullyQualifiedName: 'svc.db.sch.dim_employee',
+        },
+      ],
+    } as ContextMemory);
+
+    expect(screen.getByText('Monthly expenses').closest('a')).toBeNull();
+  });
+
+  // The stored reason names the Query by id; its name shows only where the history shows it.
+  it('names the deleted Query a memory is held for', async () => {
+    (getContextMemoryVersions as jest.Mock).mockResolvedValue({
+      entityType: 'contextMemory',
+      versions: [
+        JSON.stringify({ ...linkedMemory, relatedEntities: [expensesQuery] }),
+      ],
+    });
+
+    renderMemory({
+      ...linkedMemory,
+      entityStatus: ContextMemoryStatus.Draft,
+      statusReason:
+        'Supporting query query-id was deleted; review whether this memory still holds without it',
+    } as ContextMemory);
+
+    expect(
+      await screen.findByText(
+        'message.memory-supporting-query-deleted:Monthly expenses'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('closes when the document a memory came from is opened', () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'expense-limit',
+      memory: 'Meals are reimbursed up to 50 EUR.',
+      sourceEntity: {
+        id: 'file-id',
+        type: 'contextFile',
+        name: 'expense_policy.pdf',
+        fullyQualifiedName: 'policies.expense_policy.pdf',
+      },
+    } as ContextMemory;
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
+      </MemoryRouter>
+    );
+
+    const source = screen.getByTestId('memory-source-file-link');
+
+    expect(source).toHaveAttribute(
+      'href',
+      '/context-center/documents?document=file-id'
+    );
+
+    fireEvent.click(source);
+
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('does not offer derived-term navigation while the memory is being edited', () => {
     const memory = {
       id: 'memory-id',
@@ -535,7 +743,7 @@ describe('CreateMemoryModal', () => {
       ],
     } as ContextMemory;
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal {...defaultProps} canEdit memoryToEdit={memory} />
       </MemoryRouter>
@@ -567,7 +775,7 @@ describe('CreateMemoryModal', () => {
       ],
     } as ContextMemory;
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
       </MemoryRouter>
@@ -583,7 +791,7 @@ describe('CreateMemoryModal', () => {
   ])(
     'shows why a %s memory was replaced and links to its successor',
     (status, label) => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <CreateMemoryModal
             {...defaultProps}
@@ -615,7 +823,7 @@ describe('CreateMemoryModal', () => {
   );
 
   it('keeps the other Context Center parameters when opening the successor', () => {
-    render(
+    renderWithQueryClient(
       <MemoryRouter
         initialEntries={['/context-center/memories?memory=old-memory&tab=all']}>
         <CreateMemoryModal
@@ -642,7 +850,7 @@ describe('CreateMemoryModal', () => {
   });
 
   it('does not offer successor navigation while the memory is being edited', () => {
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal
           {...defaultProps}
