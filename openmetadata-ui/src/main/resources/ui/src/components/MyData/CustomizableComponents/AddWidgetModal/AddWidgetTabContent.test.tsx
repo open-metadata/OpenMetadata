@@ -27,7 +27,10 @@ const mockProps: AddWidgetTabContentProps = {
 };
 
 jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
-  getWidgetImageFromKey: jest.fn().mockImplementation(() => ''),
+  __esModule: true,
+  default: {
+    getWidgetImageFromKey: jest.fn().mockImplementation(() => ''),
+  },
 }));
 
 describe('AddWidgetTabContent component', () => {

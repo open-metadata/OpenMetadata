@@ -83,7 +83,7 @@ Schema file names use `lowerCamelCase`:
 ### Required Fields
 Every connection schema must have:
 - `$id` with full URI path
-- `$schema`: `http://json-schema.org/draft-07/schema#`
+- `$schema`: `https://json-schema.org/draft/2020-12/schema`
 - `title`: PascalCase connection name
 - `javaType`: Full Java class path
 - `type`: `"object"`
@@ -125,9 +125,9 @@ All Python files must start with:
 
 ## Formatting
 
-- Python: `black` + `isort` + `pycln` (run `make py_format`)
+- Python: `ruff` (lint + format, run `make py_format` to apply, `make py_format_check` to verify)
 - Java: `spotless` (run `mvn spotless:apply`)
-- Line length: 88 (black default)
+- Line length: 120
 
 **Always run formatting before committing**:
 ```bash

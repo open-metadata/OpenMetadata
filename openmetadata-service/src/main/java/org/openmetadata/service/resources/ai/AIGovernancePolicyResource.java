@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.UUID;
 import org.openmetadata.schema.api.ai.CreateAIGovernancePolicy;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -38,12 +39,14 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.AIGovernancePolicyRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Path("/v1/aiGovernancePolicies")
 @Tag(
@@ -67,6 +70,14 @@ public class AIGovernancePolicyResource
 
   public AIGovernancePolicyResource(Authorizer authorizer, Limits limits) {
     super(Entity.AI_GOVERNANCE_POLICY, authorizer, limits);
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
+    PolicySeedLoader.loadFromResources(repository);
   }
 
   public static class AIGovernancePolicyList extends ResultList<AIGovernancePolicy> {
@@ -353,9 +364,7 @@ public class AIGovernancePolicyResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -384,9 +393,7 @@ public class AIGovernancePolicyResource
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, userId);
   }
 
   @GET
@@ -409,24 +416,8 @@ public class AIGovernancePolicyResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the AI Governance Policy", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET

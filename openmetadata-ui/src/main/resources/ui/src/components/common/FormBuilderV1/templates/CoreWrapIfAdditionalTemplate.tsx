@@ -1,0 +1,73 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { ButtonUtility, Input } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  ADDITIONAL_PROPERTY_FLAG,
+  WrapIfAdditionalTemplateProps,
+} from '@rjsf/utils';
+import { FunctionComponent, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+export const CoreWrapIfAdditionalTemplate: FunctionComponent<
+  WrapIfAdditionalTemplateProps
+> = ({
+  id,
+  label,
+  onKeyChange,
+  onDropPropertyClick,
+  disabled,
+  readonly,
+  schema,
+  children,
+}) => {
+  const { t } = useTranslation();
+  const [keyValue, setKeyValue] = useState(label);
+  const additional = ADDITIONAL_PROPERTY_FLAG in schema;
+
+  if (!additional) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div className="core-wrap-if-additional-template tw:w-full tw:min-w-0 tw:rounded-lg">
+      <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:min-w-0 tw:items-center tw:gap-2.5 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_36px]">
+        <div className="core-wrap-if-additional-key tw:min-w-0">
+          <Input
+            aria-label={t('label.key')}
+            id={`${id}-key`}
+            placeholder={t('label.key').toLowerCase()}
+            value={keyValue}
+            onBlur={() => onKeyChange(keyValue)}
+            onChange={setKeyValue}
+          />
+        </div>
+        <span className="core-wrap-if-additional-separator tw:text-sm tw:font-medium tw:text-tertiary">
+          =
+        </span>
+        <div className="core-wrap-if-additional-value tw:min-w-0">
+          {children}
+        </div>
+        <ButtonUtility
+          className="core-wrap-if-additional-remove-button tw:shrink-0"
+          icon={Trash01}
+          isDisabled={disabled || readonly}
+          size="lg"
+          tooltip={t('label.remove')}
+          onClick={onDropPropertyClick(label)}
+        />
+      </div>
+    </div>
+  );
+};

@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 
-import Icon, { PlusOutlined } from '@ant-design/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { Fragment, FunctionComponent } from 'react';
-import { ReactComponent as DeleteIcon } from '../../../../../assets/svg/ic-delete.svg';
+import { Fragment, FunctionComponent, MouseEvent } from 'react';
+import { t } from '../../../../../utils/i18next/LocalUtil';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
@@ -27,14 +27,14 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   return (
     <Fragment>
       <div className="d-flex justify-between items-center">
-        <label className="control-label">{title}</label>
+        <Typography className="control-label">{title}</Typography>
         {canAdd && (
-          <Button
+          <ButtonUtility
+            color="primary"
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            icon={Plus}
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
+            tooltip={t('label.add')}
             onClick={onAddClick}
             onFocus={() => {
               if (!isUndefined(formContext.handleFocus)) {
@@ -49,13 +49,15 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
           className={classNames('d-flex items-center w-full', {
             'm-t-sm': index > 0,
           })}
-          key={`${element.key}-${index}`}>
+          key={element.key}>
           <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
-            <Icon
-              className="w-7 h-0 m-l-sm"
-              component={DeleteIcon}
-              onClick={(event) => {
+            <ButtonUtility
+              className="tw:ml-3"
+              icon={Trash01}
+              size="sm"
+              tooltip={t('label.remove')}
+              onClick={(event: MouseEvent<HTMLButtonElement>) => {
                 element.onDropIndexClick(element.index)(event);
               }}
             />

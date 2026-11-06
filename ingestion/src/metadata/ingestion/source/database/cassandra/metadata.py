@@ -13,7 +13,7 @@ Cassandra source methods.
 """
 
 import traceback
-from typing import Iterable, List, Optional
+from collections.abc import Iterable
 
 from metadata.generated.schema.entity.data.table import Column, TableType
 from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
@@ -51,14 +51,14 @@ class CassandraSource(CommonNoSQLSource):
         self.cassandra = self.connection_obj
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CassandraConnection = config.serviceConnection.root.config
         if not isinstance(connection, CassandraConnection):
             raise InvalidSourceException(f"Expected CassandraConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_name_list(self) -> List[str]:
+    def get_schema_name_list(self) -> list[str]:
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
@@ -106,7 +106,7 @@ class CassandraSource(CommonNoSQLSource):
 
         return materialized_views
 
-    def get_table_columns(self, schema_name: str, table_name: str) -> List[Column]:
+    def get_table_columns(self, schema_name: str, table_name: str) -> list[Column]:
         try:
             data = self.cassandra.execute(CASSANDRA_GET_TABLE_COLUMNS, [schema_name, table_name])
             return [CassandraColumnParser.parse(field=field) for field in data]

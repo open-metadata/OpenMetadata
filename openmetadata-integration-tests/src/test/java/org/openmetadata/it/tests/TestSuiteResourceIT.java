@@ -1,12 +1,17 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.DataQualitySearchFixtures.RESERVED_CHARACTER_QUERIES;
+import static org.openmetadata.it.util.DataQualitySearchFixtures.SEARCH_CONVERGENCE_TIMEOUT;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
@@ -24,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -38,20 +44,29 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
+import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.DataQualityReportBatchRequest;
+import org.openmetadata.schema.tests.DataQualityReportBatchResponse;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.DataQualityReportRequest;
+import org.openmetadata.schema.tests.type.DataQualityReportResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 
 /**
@@ -66,6 +81,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
   // Disable tests that don't apply to TestSuite
   {
+    supportsEntityStatus = false;
     supportsFollowers = false; // TestSuite doesn't support followers
     supportsDataProducts = false; // TestSuite doesn't support dataProducts
     supportsListHistoryByTimestamp = true;
@@ -179,17 +195,6 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().testSuites().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().testSuites().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  @Override
   protected TestSuite getVersion(UUID id, Double version) {
     return SdkClients.adminClient().testSuites().getVersion(id.toString(), version);
   }
@@ -298,6 +303,45 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Test
+  void test_restoreLogicalTestSuiteKeepsDeletedTestCasesDeleted(TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Table table = createTableForBasicTestSuite(ns, "logical_restore_table");
+    final TestCase liveTest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("live_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    final TestCase deletedTest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("deleted_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    final TestSuite suite = createEntity(createMinimalRequest(ns));
+    addTestCasesToLogicalTestSuite(suite.getId(), List.of(liveTest.getId(), deletedTest.getId()));
+
+    client.testCases().delete(deletedTest.getId().toString());
+    deleteEntity(suite.getId().toString());
+    restoreEntity(suite.getId().toString());
+
+    final TestSuite restoredSuite = client.testSuites().get(suite.getId().toString(), "tests");
+    assertFalse(restoredSuite.getDeleted());
+    assertTrue(
+        client
+            .testCases()
+            .get(deletedTest.getId().toString(), null, Include.ALL.value())
+            .getDeleted(),
+        "Logical suites group tests without owning their deletion state");
+    assertFalse(client.testCases().get(liveTest.getId().toString()).getDeleted());
+    assertEquals(
+        List.of(liveTest.getId()),
+        restoredSuite.getTests().stream().map(EntityReference::getId).toList());
+  }
+
+  @Test
   void test_testSuiteHardDelete(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -387,6 +431,109 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     TestSuite fetched = client.testSuites().get(testSuite.getId().toString(), "owners");
     assertNotNull(fetched.getOwners());
     assertFalse(fetched.getOwners().isEmpty());
+  }
+
+  @Test
+  void get_byName_honorsIncludeRelations_hidesSoftDeletedOwner(TestNamespace ns) {
+    // The Test Suite detail page fetches getByName with includeRelations=owners:non-deleted so a
+    // soft-deleted owner is hidden and the owner-edit diff stays aligned with the server's
+    // NON_DELETED PATCH base - otherwise a positional patch throws "array item index out of range".
+    // getByName previously ignored includeRelations (unlike getById); this guards that wiring.
+    // See issue #30117.
+    OpenMetadataClient client = SdkClients.adminClient();
+    User active = UserTestFactory.createUser(ns, "aaa_active");
+    User doomed = UserTestFactory.createUser(ns, "zzz_doomed");
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_getbyname_includerel"));
+    request.setOwners(List.of(active.getEntityReference(), doomed.getEntityReference()));
+    String fqn = createEntity(request).getFullyQualifiedName();
+    client.users().delete(doomed.getId().toString());
+
+    // include=all with no includeRelations still surfaces the soft-deleted owner...
+    assertTrue(
+        ownerIdsByName(fqn, "").contains(doomed.getId()),
+        "include=all should surface the soft-deleted owner");
+
+    // ...but getByName must honor includeRelations=owners:non-deleted and filter it out.
+    List<UUID> filtered = ownerIdsByName(fqn, "&includeRelations=owners:non-deleted");
+    assertFalse(
+        filtered.contains(doomed.getId()),
+        "getByName must hide the soft-deleted owner when includeRelations=owners:non-deleted");
+    assertTrue(filtered.contains(active.getId()), "the active owner must remain");
+  }
+
+  /**
+   * Regression: Lucene reserved characters in {@code q} produced a query_shard_exception. The
+   * display name deliberately carries reserved characters so the test proves the term still
+   * <em>matches</em>, not merely that the request stopped throwing.
+   */
+  @Test
+  void test_searchListWithLuceneReservedCharactersInQuery(TestNamespace ns) {
+    // A single lowercase alphanumeric token plus reserved characters. Because the reserved
+    // characters are the only thing separating the token from "v2", a parser that dropped them
+    // instead of matching them literally would search for `<token>v2` and stop matching this
+    // entity.
+    String reservedDisplayName = "dq" + ns.uniqueShortId() + "(v2)";
+    String reservedSuite = ns.prefix("reserved_hit");
+
+    createTestSuiteWithDisplayName(reservedSuite, reservedDisplayName);
+
+    Awaitility.await("search matches a display name containing reserved characters")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchTestSuiteNames(reservedDisplayName).contains(reservedSuite),
+                    "A reserved-character term must still match, not just avoid a 500"));
+
+    for (String reservedQuery : RESERVED_CHARACTER_QUERIES) {
+      assertDoesNotThrow(
+          () -> searchTestSuiteNames(reservedQuery),
+          "search/list must not fail for the query " + reservedQuery);
+    }
+  }
+
+  private void createTestSuiteWithDisplayName(String name, String displayName) {
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(name);
+    request.setDisplayName(displayName);
+    request.setDescription("Test suite for Lucene reserved character search");
+    createEntity(request);
+  }
+
+  private List<String> searchTestSuiteNames(String query) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testSuites/search/list",
+                null,
+                RequestOptions.builder().queryParam("q", query).queryParam("limit", "50").build());
+    List<String> names = new ArrayList<>();
+    for (JsonNode suite : JsonUtils.readTree(response).path("data")) {
+      names.add(suite.path("name").asText());
+    }
+    return names;
+  }
+
+  private List<UUID> ownerIdsByName(String fqn, String extraQuery) {
+    String body =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testSuites/name/"
+                    + fqn
+                    + "?fields=owners&include=all"
+                    + extraQuery,
+                null);
+    List<UUID> ids = new ArrayList<>();
+    for (JsonNode owner : JsonUtils.readTree(body).path("owners")) {
+      ids.add(UUID.fromString(owner.path("id").asText()));
+    }
+    return ids;
   }
 
   @Test
@@ -507,6 +654,25 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Test
+  void list_basicSuiteInheritsTableOwner(TestNamespace ns) {
+    TestSuite testSuite = createBasicTestSuiteForOwnedTable(ns, "list_owner_table");
+
+    assertInheritedTableOwner(findInBasicSuiteList(testSuite));
+  }
+
+  @Test
+  void searchList_basicSuiteInheritsTableOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestSuite testSuite = createBasicTestSuiteForOwnedTable(ns, "search_list_owner_table");
+
+    Awaitility.await("search list returns the basic suite with its table's owner")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> assertInheritedTableOwner(searchBasicTestSuiteWithOwners(client, testSuite)));
+  }
+
+  @Test
   void test_inheritDomainFromTable(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -600,17 +766,31 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
     TestSuite testSuite = createBasicTestSuite(createTestSuite);
 
+    final TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("basic_restore_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
     // Delete the basic test suite
     deleteBasicTestSuite(testSuite.getId());
 
     // Verify it's soft deleted
     TestSuite deletedSuite = getEntityIncludeDeleted(testSuite.getId().toString());
     assertTrue(deletedSuite.getDeleted());
+    assertTrue(
+        client
+            .testCases()
+            .get(testCase.getId().toString(), null, Include.ALL.value())
+            .getDeleted());
 
     // Restore it
     restoreEntity(testSuite.getId().toString());
     TestSuite restoredSuite = getEntity(testSuite.getId().toString());
     assertFalse(restoredSuite.getDeleted());
+    assertFalse(client.testCases().get(testCase.getId().toString()).getDeleted());
 
     // Hard delete
     hardDeleteBasicTestSuite(testSuite.getId());
@@ -668,6 +848,51 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     List<UUID> fetchedTestCaseIds =
         fetchedLogical.getTests().stream().map(EntityReference::getId).collect(Collectors.toList());
     assertTrue(fetchedTestCaseIds.containsAll(testCaseIds));
+  }
+
+  @Test
+  void test_summaryTotalIncludesUnexecutedAndExcludesDeletedTests(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTableForBasicTestSuite(ns, "table_partial_results");
+    List<TestCase> testCases = createTestCases(client, ns, table, 3);
+
+    TestSuite logicalSuite =
+        createEntity(
+            new CreateTestSuite()
+                .withName(ns.prefix("logical_suite_partial_results"))
+                .withDescription("Logical suite with partially executed tests"));
+    addTestCasesToLogicalTestSuite(
+        logicalSuite.getId(), testCases.stream().map(TestCase::getId).toList());
+    recordTestCaseResults(client, testCases, 1, 0);
+
+    TestSuite fetched = client.testSuites().get(logicalSuite.getId().toString(), "summary");
+    assertSummaryCounts(fetched, 3, 1);
+
+    Awaitility.await("search list summary includes unexecuted tests")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(() -> assertSummaryCounts(searchTestSuite(client, logicalSuite), 3, 1));
+
+    client.testCases().delete(testCases.get(2).getId().toString());
+
+    TestSuite afterDelete = client.testSuites().get(logicalSuite.getId().toString(), "summary");
+    assertSummaryCounts(afterDelete, 2, 1);
+
+    Awaitility.await("search list summary excludes soft-deleted tests")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(() -> assertSummaryCounts(searchTestSuite(client, logicalSuite), 2, 1));
+
+    TestSuite emptySuite =
+        createEntity(
+            new CreateTestSuite()
+                .withName(ns.prefix("logical_suite_without_tests"))
+                .withDescription("Empty logical suite"));
+    Awaitility.await("search list returns a zero summary for an empty suite")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(() -> assertSummaryCounts(searchTestSuite(client, emptySuite), 0, 0));
   }
 
   @Test
@@ -824,6 +1049,51 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     }
   }
 
+  /**
+   * An update to a logical suite whose search doc is missing (e.g. dropped by an earlier reindex)
+   * creates the doc from the update's upsert. That upsert used to serialize every field as {@code
+   * {}}, and the relationship-preserving script kept {@code tests: {}}, so search/list failed with
+   * a 400 deserializing {@code TestSuite["tests"]} (#33492).
+   */
+  @Test
+  void test_updateLogicalSuiteWithMissingSearchDocKeepsTestsList(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTableForBasicTestSuite(ns, "missing_doc");
+    UUID testCaseId = createTestCases(client, ns, table, 1).getFirst().getId();
+    TestSuite logicalSuite =
+        createEntity(new CreateTestSuite().withName(ns.prefix("logical_missing_doc")));
+    addTestCasesToLogicalTestSuite(logicalSuite.getId(), List.of(testCaseId));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("logical suite indexed with its test case")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      queryTestSuiteSearchIndex(searchClient, logicalSuite.getId())
+                          .contains(testCaseId.toString())));
+      deleteTestSuiteSearchDoc(searchClient, logicalSuite.getId());
+
+      TestSuite toPatch = getEntity(logicalSuite.getId().toString());
+      toPatch.setDescription("edited while its search doc is missing");
+      patchEntity(logicalSuite.getId().toString(), toPatch);
+
+      Awaitility.await("search doc recreated with tests as a list")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                JsonNode tests =
+                    testSuiteSearchSource(searchClient, logicalSuite.getId()).path("tests");
+                assertTrue(tests.isArray(), "tests must be indexed as a list, was: " + tests);
+                assertEquals(testCaseId.toString(), tests.path(0).path("id").asText());
+              });
+    }
+    assertTrue(searchTestSuiteNames(logicalSuite.getName()).contains(logicalSuite.getName()));
+  }
+
   // ===================================================================
   // TEST SUITE FILTERING AND LISTING TESTS
   // ===================================================================
@@ -920,8 +1190,145 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   // ===================================================================
+  // DATA QUALITY REPORT BATCH TESTS
+  // ===================================================================
+
+  @Test
+  void test_dataQualityReportBatch_matchesSingleEndpoint(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTableForBasicTestSuite(ns, "dq_batch_parity");
+    TestSuite testSuite = createBasicTestSuiteForTable(table);
+    List<TestCase> testCases = createTestCases(client, ns, table, 4);
+    recordTestCaseResults(client, testCases, 2, 2);
+
+    String scopedQuery = scopedTestCaseQuery(testSuite.getId());
+    String statusAgg = "bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus";
+    String coverageAgg = "bucketName=entityWithTests:aggType=cardinality:field=originEntityFQN";
+
+    Awaitility.await("test case results indexed for data quality report")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertFalse(
+                    getDataQualityReport(scopedQuery, "testCase", statusAgg).getData().isEmpty(),
+                    "Expected status aggregation to return data"));
+
+    DataQualityReportBatchRequest request =
+        new DataQualityReportBatchRequest()
+            .withRequests(
+                List.of(
+                    reportRequest("status", scopedQuery, "testCase", statusAgg),
+                    reportRequest("coverage", scopedQuery, "testCase", coverageAgg)));
+
+    DataQualityReportBatchResponse response = getDataQualityReportBatch(request);
+    Map<String, DataQualityReportResult> byKey = resultsByKey(response);
+
+    assertEquals(2, byKey.size());
+    assertEquals(
+        JsonUtils.pojoToJson(getDataQualityReport(scopedQuery, "testCase", statusAgg)),
+        JsonUtils.pojoToJson(byKey.get("status").getReport()),
+        "Batch status report should match the single endpoint result");
+    assertEquals(
+        JsonUtils.pojoToJson(getDataQualityReport(scopedQuery, "testCase", coverageAgg)),
+        JsonUtils.pojoToJson(byKey.get("coverage").getReport()),
+        "Batch coverage report should match the single endpoint result");
+  }
+
+  @Test
+  void test_dataQualityReportBatch_isolatesPerItemFailures(TestNamespace ns) {
+    Table table = createTableForBasicTestSuite(ns, "dq_batch_isolation");
+    TestSuite testSuite = createBasicTestSuiteForTable(table);
+    String scopedQuery = scopedTestCaseQuery(testSuite.getId());
+    String statusAgg = "bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus";
+
+    DataQualityReportBatchRequest request =
+        new DataQualityReportBatchRequest()
+            .withRequests(
+                List.of(
+                    reportRequest("ok", scopedQuery, "testCase", statusAgg),
+                    reportRequest("bad", scopedQuery, "index_that_does_not_exist", statusAgg)));
+
+    DataQualityReportBatchResponse response = getDataQualityReportBatch(request);
+    Map<String, DataQualityReportResult> byKey = resultsByKey(response);
+
+    assertNotNull(byKey.get("ok").getReport(), "Valid item should return a report");
+    assertNull(byKey.get("bad").getReport(), "Failed item should not return a report");
+    assertNotNull(byKey.get("bad").getError(), "Failed item should carry an error message");
+  }
+
+  @Test
+  void test_dataQualityReportBatch_validation_400(TestNamespace ns) {
+    assertThrows(
+        Exception.class,
+        () ->
+            getDataQualityReportBatch(new DataQualityReportBatchRequest().withRequests(List.of())),
+        "Empty batch should be rejected");
+
+    DataQualityReportBatchRequest missingAggregation =
+        new DataQualityReportBatchRequest()
+            .withRequests(
+                List.of(new DataQualityReportRequest().withKey("k").withIndex("testCase")));
+    assertThrows(
+        Exception.class,
+        () -> getDataQualityReportBatch(missingAggregation),
+        "Batch item without aggregationQuery should be rejected");
+  }
+
+  // ===================================================================
   // HELPER METHODS
   // ===================================================================
+
+  private String scopedTestCaseQuery(UUID testSuiteId) {
+    return """
+        {"query":{"bool":{"must":[{"term":{"testSuite.id":"%s"}},{"term":{"deleted":false}}]}}}"""
+        .formatted(testSuiteId);
+  }
+
+  private DataQualityReportRequest reportRequest(
+      String key, String q, String index, String aggregationQuery) {
+    return new DataQualityReportRequest()
+        .withKey(key)
+        .withQ(q)
+        .withIndex(index)
+        .withAggregationQuery(aggregationQuery);
+  }
+
+  private Map<String, DataQualityReportResult> resultsByKey(
+      DataQualityReportBatchResponse response) {
+    return response.getResults().stream()
+        .collect(Collectors.toMap(DataQualityReportResult::getKey, result -> result));
+  }
+
+  private DataQualityReport getDataQualityReport(String q, String index, String aggregationQuery) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("q", q)
+            .queryParam("index", index)
+            .queryParam("aggregationQuery", aggregationQuery)
+            .build();
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/dataQuality/testSuites/dataQualityReport",
+            null,
+            DataQualityReport.class,
+            options);
+  }
+
+  private DataQualityReportBatchResponse getDataQualityReportBatch(
+      DataQualityReportBatchRequest request) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/dataQuality/testSuites/dataQualityReport/batch",
+            request,
+            DataQualityReportBatchResponse.class);
+  }
 
   private Table createTableForBasicTestSuite(TestNamespace ns, String suffix) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1075,6 +1482,72 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     }
   }
 
+  private TestSuite createBasicTestSuiteForOwnedTable(TestNamespace ns, String tableName) {
+    Table table = createTableForBasicTestSuite(ns, tableName);
+    table.setOwners(List.of(testUser1Ref()));
+    Table ownedTable = SdkClients.adminClient().tables().update(table.getId().toString(), table);
+    return createBasicTestSuiteForTable(ownedTable);
+  }
+
+  /** The DB list has no name filter, so page through basic suites until this one shows up. */
+  private TestSuite findInBasicSuiteList(TestSuite testSuite) {
+    ListParams params =
+        new ListParams()
+            .setFields("owners")
+            .setLimit(100)
+            .addFilter("testSuiteType", "basic")
+            .addFilter("includeEmptyTestSuites", "true");
+    while (true) {
+      ListResponse<TestSuite> page = SdkClients.adminClient().testSuites().list(params);
+      for (TestSuite suite : page.getData()) {
+        if (suite.getId().equals(testSuite.getId())) {
+          return suite;
+        }
+      }
+      String after = page.getPaging() == null ? null : page.getPaging().getAfter();
+      if (after == null) {
+        throw new AssertionError("Basic suite missing from list: " + testSuite.getId());
+      }
+      params.setAfter(after);
+    }
+  }
+
+  private TestSuite searchBasicTestSuiteWithOwners(OpenMetadataClient client, TestSuite testSuite)
+      throws Exception {
+    String encodedFqn =
+        java.net.URLEncoder.encode(testSuite.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    TestSuiteResource.TestSuiteList result =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/dataQuality/testSuites/search/list"
+                    + "?fields=owners&limit=10&offset=0&includeEmptyTestSuites=true"
+                    + "&testSuiteType=basic&fullyQualifiedName="
+                    + encodedFqn,
+                null,
+                TestSuiteResource.TestSuiteList.class,
+                RequestOptions.builder().build());
+    return result.getData().stream()
+        .filter(suite -> suite.getId().equals(testSuite.getId()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private void assertInheritedTableOwner(TestSuite listedSuite) {
+    List<EntityReference> owners = listedSuite.getOwners();
+    assertNotNull(owners, "basic suite should carry its table's owners");
+    assertAll(
+        () ->
+            assertTrue(
+                owners.stream().anyMatch(owner -> testUser1().getId().equals(owner.getId())),
+                "table owner missing from " + owners),
+        () ->
+            assertTrue(
+                owners.stream().allMatch(owner -> Boolean.TRUE.equals(owner.getInherited())),
+                "owners should be marked inherited: " + owners));
+  }
+
   private TestSuite createBasicTestSuiteForTable(Table table) {
     CreateTestSuite request = new CreateTestSuite();
     request.setName(table.getFullyQualifiedName());
@@ -1094,6 +1567,35 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
                     .parameter("value", "100")
                     .create())
         .toList();
+  }
+
+  private TestSuite searchTestSuite(OpenMetadataClient client, TestSuite testSuite)
+      throws Exception {
+    String encodedFqn =
+        java.net.URLEncoder.encode(testSuite.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    TestSuiteResource.TestSuiteList result =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/dataQuality/testSuites/search/list"
+                    + "?fields=summary&limit=10&offset=0&q="
+                    + encodedFqn
+                    + "&includeEmptyTestSuites=true&testSuiteType=logical",
+                null,
+                TestSuiteResource.TestSuiteList.class,
+                RequestOptions.builder().build());
+    return result.getData().stream()
+        .filter(suite -> suite.getId().equals(testSuite.getId()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private void assertSummaryCounts(TestSuite testSuite, int total, int success) {
+    assertNotNull(testSuite.getSummary());
+    assertAll(
+        () -> assertEquals(total, testSuite.getSummary().getTotal()),
+        () -> assertEquals(success, testSuite.getSummary().getSuccess()));
   }
 
   private void recordTestCaseResults(
@@ -1145,6 +1647,24 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   private void refreshTestSuiteSearchIndex(Rest5Client searchClient) throws Exception {
     Request request = new Request("POST", "/" + getTestSuiteSearchIndexName() + "/_refresh");
     searchClient.performRequest(request);
+  }
+
+  private void deleteTestSuiteSearchDoc(Rest5Client searchClient, UUID testSuiteId)
+      throws Exception {
+    Request request =
+        new Request("DELETE", "/" + getTestSuiteSearchIndexName() + "/_doc/" + testSuiteId);
+    request.addParameter("refresh", "true");
+    searchClient.performRequest(request);
+  }
+
+  private JsonNode testSuiteSearchSource(Rest5Client searchClient, UUID testSuiteId)
+      throws Exception {
+    JsonNode hits =
+        JsonUtils.readTree(queryTestSuiteSearchIndex(searchClient, testSuiteId))
+            .path("hits")
+            .path("hits");
+    assertEquals(1, hits.size(), "expected the test suite doc to be indexed");
+    return hits.path(0).path("_source");
   }
 
   private String queryTestSuiteSearchIndex(Rest5Client searchClient, UUID testSuiteId)

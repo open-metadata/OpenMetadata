@@ -12,12 +12,6 @@
 
 import pytest
 from sqlalchemy import types as sqltypes
-
-sqlalchemy_vertica = pytest.importorskip(
-    "sqlalchemy_vertica",
-    reason="sqlalchemy_vertica not installed — skipping Vertica type-mapping tests",
-)
-
 from sqlalchemy_vertica.base import ischema_names as vertica_ischema_names
 
 # Importing this module triggers the ischema_names.update(...) side-effect

@@ -86,4 +86,83 @@ describe('getSanitizeContent', () => {
       expect(result).toContain('<#E::team::Accounting|@Accounting>');
     });
   });
+
+  describe('Math equations', () => {
+    it('should preserve a block-math-equation tag', () => {
+      const input =
+        '<block-math-equation math_equation="x^2"></block-math-equation>';
+      const result = getSanitizeContent(input);
+
+      expect(result).toBe(input);
+    });
+
+    it('should preserve math equations mixed with HTML content', () => {
+      const input =
+        '<p>Formula</p><block-math-equation math_equation="x^2"></block-math-equation>';
+      const result = getSanitizeContent(input);
+
+      expect(result).toContain(
+        '<block-math-equation math_equation="x^2"></block-math-equation>'
+      );
+      expect(result).toContain('<p>Formula</p>');
+    });
+
+    it('should sanitize payloads nested inside a block-math-equation tag', () => {
+      const input =
+        '<block-math-equation math_equation="x^2"><img src="x" onerror="alert(1)"></block-math-equation>';
+      const result = getSanitizeContent(input);
+
+      expect(result).not.toContain('onerror');
+      expect(result).toContain('math_equation="x^2"');
+    });
+
+    it('should sanitize event-handler attributes on the block-math-equation tag itself', () => {
+      const input =
+        '<block-math-equation math_equation="x^2" onclick="alert(1)"></block-math-equation>';
+      const result = getSanitizeContent(input);
+
+      expect(result).not.toContain('onclick');
+      expect(result).toContain('math_equation="x^2"');
+    });
+
+    it('should preserve math equations alongside entity links', () => {
+      const input =
+        '<block-math-equation math_equation="y=mx+b"></block-math-equation><#E::team::Accounting|@Accounting>';
+      const result = getSanitizeContent(input);
+
+      expect(result).toContain(
+        '<block-math-equation math_equation="y=mx+b"></block-math-equation>'
+      );
+      expect(result).toContain('<#E::team::Accounting|@Accounting>');
+    });
+  });
+
+  describe('Preserve inline styling and classes', () => {
+    it('should preserve span elements with class attributes', () => {
+      const input =
+        'Contains metrics which can be calculated instantly, or have <span class="text-highlighter">a</span> current value.';
+      const result = getSanitizeContent(input);
+
+      expect(result).toContain('<span class="text-highlighter">a</span>');
+    });
+
+    it('should preserve span elements with data attributes', () => {
+      const input =
+        'Some text with <span data-highlight="true" class="text-highlighter">highlighted</span> content.';
+      const result = getSanitizeContent(input);
+
+      expect(result).toContain('data-highlight="true"');
+      expect(result).toContain('class="text-highlighter"');
+      expect(result).toContain('<span');
+    });
+
+    it('should verify DOMPurify preserves span and class by default', () => {
+      const input = '<span class="text-highlighter">test</span>';
+      const defaultResult = getSanitizeContent(input);
+
+      // Default DOMPurify preserves both span tags and class attributes
+      expect(defaultResult).toContain('<span');
+      expect(defaultResult).toContain('class="text-highlighter"');
+    });
+  });
 });

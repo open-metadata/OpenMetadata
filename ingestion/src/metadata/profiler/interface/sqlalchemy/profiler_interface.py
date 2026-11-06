@@ -23,9 +23,10 @@ import time
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any
 
 from sqlalchemy import Column, inspect, text
+from sqlalchemy import column as sa_column
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.sql.elements import Label
@@ -48,7 +49,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.metrics.core import HybridMetric, MetricTypes
+from metadata.profiler.metrics.core import HybridMetric, MetricTypes, StaticMetric
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.mean import Mean
@@ -56,6 +57,7 @@ from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
 from metadata.profiler.metrics.system.system import System, SystemMetricsRegistry
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
+from metadata.profiler.orm.functions.unique_count import UNIQUE_COUNT_GROUP_ALIAS
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.runner import QueryRunner
@@ -91,12 +93,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: DatabaseConnection | DatalakeConnection,
         ometa_client: OpenMetadata,
         entity: Table,
         source_config: DatabaseServiceProfilerPipeline,
         sampler: SamplerInterface,
-        thread_count: Optional[int],
+        thread_count: int | None,
         timeout_seconds: int = 43200,
         **kwargs,
     ):
@@ -126,7 +128,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     def table(self):
         return self._table
 
-    def _get_effective_thread_count(self, metric_funcs: List[ThreadPoolMetrics]) -> int:
+    def _get_effective_thread_count(self, metric_funcs: list[ThreadPoolMetrics]) -> int:
         """Given the number of tasks to perform return a dynamic thread count.
         If the thread count is explicitly set by the user, we will use that.
 
@@ -163,7 +165,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     @staticmethod
     def _compute_static_metrics_wo_sum(
-        metrics: List[Metrics],
+        metrics: list[type[StaticMetric]],
         runner: QueryRunner,
         session,
         column: Column,
@@ -179,7 +181,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 *[
                     metric(column).fn()
                     for metric in metrics
-                    if not metric.is_window_metric() and metric not in {Sum, StdDev, Mean}
+                    # issubclass, not identity: injected registries (e.g. Collate) subclass these
+                    if not metric.is_window_metric() and not issubclass(metric, (Sum, StdDev, Mean))
                 ]
             )
             return row._asdict()
@@ -190,12 +193,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     def _compute_table_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: list[Metrics],
         runner: QueryRunner,
         session,
         *args,
         **kwargs,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -217,7 +220,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             row = table_metric_computer.compute()
             if row:
                 return row._asdict()
-            return None
+            return None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -225,11 +228,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 f"Error trying to compute profile for {runner.table_name}: {exc}"  # type: ignore
             )
             session.rollback()
-            raise RuntimeError(exc)
+            raise RuntimeError(exc)  # noqa: B904
 
     def _compute_static_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: list[Metrics],
         runner: QueryRunner,
         column,
         session,
@@ -282,21 +285,28 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             metric_query = col_metric.query(sample=sample, session=session)
             if metric_query is None:
                 return None
-            if col_metric.metric_type == dict:
+            if col_metric.metric_type == dict:  # noqa: E721
                 results = runner.select_all_from_query(metric_query)
                 data = {k: [result[k] for result in results] for k in results[0]._asdict()}
                 return {metric.name(): data}
             if isinstance(metric_query, Label):
                 # hotfix to handle transition of unique count implementation
-                sample_column = sample.__table__.c[column.key] if hasattr(sample, "__table__") else sample.c[column.key]
+                sample_columns = sample.__table__.c if hasattr(sample, "__table__") else sample.c
+                # A BigQuery STRUCT subfield (`parent.child`) is sampled through its parent, so it is not a
+                # sample column; address it by path, as the metric query itself does.
+                sample_column = (
+                    sample_columns[column.key] if column.key in sample_columns else sa_column(column.name, column.type)
+                )
                 subquery = (
-                    self.session.query(Count(sample_column).fn().label(column.name))
+                    session.query(
+                        Count(sample_column).fn().label(UNIQUE_COUNT_GROUP_ALIAS)  # pyright: ignore[reportArgumentType]
+                    )
                     .select_from(sample)
                     .group_by(sample_column)
                     .subquery()
                 )
 
-                metric_query = self.session.query(metric_query).select_from(subquery)
+                metric_query = session.query(metric_query).select_from(subquery)
 
             row = runner.select_first_from_query(metric_query)
             return row._asdict()
@@ -315,7 +325,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     def _compute_window_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: list[Metrics],
         runner: QueryRunner,
         column,
         session,
@@ -347,7 +357,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             handle_query_exception(msg, exc, session)
         return None
 
-    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner, session, *args, **kwargs):
+    def _compute_custom_metrics(self, metrics: list[CustomMetric], runner, session, *args, **kwargs):
         """Compute custom metrics
 
         Args:
@@ -362,7 +372,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         for metric in metrics:
             try:
                 if not is_safe_sql_query(metric.expression):
-                    raise RuntimeError(f"SQL expression is not safe\n\n{metric.expression}")
+                    raise RuntimeError(f"SQL expression is not safe\n\n{metric.expression}")  # noqa: TRY301
 
                 crs = session.execute(text(metric.expression))
                 row = crs.scalar()  # raise MultipleResultsFound if more than one row is returned
@@ -378,11 +388,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     def _compute_system_metrics(
         self,
-        metrics: Type[System],
+        metrics: type[System],
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:
+    ) -> list[SystemProfile]:
         """Get system metric for tables. Override this in the interface if you want to use a metric source with
         for other sources.
 
@@ -417,7 +427,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     ):
         """Run metrics in processor worker"""
         logger.debug(f"Running profiler for {metric_func.table.__tablename__} on thread {threading.current_thread()}")
-        Session = self.session_factory  # pylint: disable=invalid-name
+        Session = self.session_factory  # pylint: disable=invalid-name  # noqa: N806
         max_retries = 3
         retry_count = 0
         initial_backoff = 5
@@ -426,7 +436,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         while retry_count < max_retries:
             with Session() as session:
-                self.set_session_tag(session)
                 self.set_catalog(session)
                 runner = self._create_thread_safe_runner(session, metric_func.column)
                 try:
@@ -452,7 +461,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                         self.status.scanned(f"{metric_func.table.__tablename__}__{metric_func.metric_type.value}")
                         column = None
 
-                    return row, column, metric_func.metric_type.value
+                    return row, column, metric_func.metric_type.value  # noqa: TRY300
 
                 except Exception as exc:
                     dialect = session.get_bind().dialect
@@ -483,7 +492,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         return None, None, None
 
     @staticmethod
-    def _validate_nulls(row: Dict[str, Any]) -> Dict[str, Any]:
+    def _validate_nulls(row: dict[str, Any]) -> dict[str, Any]:
         """Detect if we are computing NaNs and replace them with None"""
         for k, v in row.items():
             if isinstance(v, float) and math.isnan(v):
@@ -499,7 +508,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         """get all profiler metrics"""
         thread_count = self._get_effective_thread_count(metric_funcs)
         logger.debug(f"Computing metrics with {thread_count} threads.")
-        profile_results = {"table": dict(), "columns": defaultdict(dict)}
+        profile_results = {"table": dict(), "columns": defaultdict(dict)}  # noqa: C408
         with CustomThreadPoolExecutor(max_workers=thread_count) as pool:
             futures = [
                 pool.submit(
@@ -516,7 +525,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 try:
                     profile, column, metric_type = future.result(timeout=self.timeout_seconds)
                     if metric_type != MetricTypes.System.value and not isinstance(profile, dict):
-                        profile = dict()
+                        profile = dict()  # noqa: C408
                     if metric_type == MetricTypes.Table.value:
                         profile_results["table"].update(profile)
                     elif metric_type == MetricTypes.System.value:
@@ -535,14 +544,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     pool.shutdown39(wait=True, cancel_futures=True)
                     logger.debug(traceback.format_exc())
                     logger.error(f"Operation was cancelled due to TimeoutError - {exc}")
-                    raise concurrent.futures.TimeoutError
+                    raise concurrent.futures.TimeoutError  # noqa: B904
                 except KeyboardInterrupt:
                     pool.shutdown39(wait=True, cancel_futures=True)
                     raise
 
         return profile_results
 
-    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict):
+    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: dict):
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -563,8 +572,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     def get_hybrid_metrics(
         self,
         column: Column,
-        metric: Type[HybridMetric],
-        column_results: Dict[str, Any],
+        metric: type[HybridMetric],
+        column_results: dict[str, Any],
     ):
         """Given a list of metrics, compute the given results
         and returns the values

@@ -1,4 +1,5 @@
-from typing import Any, Mapping, Union
+from collections.abc import Mapping
+from typing import Any
 
 import factory.fuzzy
 import pytest
@@ -19,7 +20,7 @@ class Bar(BaseModel):
 
 
 class FooBar(BaseModel):
-    foo_or_bar: Union[Foo, Bar]
+    foo_or_bar: Foo | Bar
 
 
 class FooFactory(factory.Factory):

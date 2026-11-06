@@ -23,13 +23,24 @@ export interface QueryRunnerResponse {
      */
     errorLog?: string;
     /**
-     * The actual query that was executed (may be transpiled or modified from the original)
+     * The query that was executed, post-transpile but without the guardrail row LIMIT. If the
+     * user supplied their own LIMIT in the original query, it is preserved here.
      */
     executedQuery?: string;
+    /**
+     * Row LIMIT injected by the query runner as a guardrail when the original query had no
+     * LIMIT. Null when the user's query already contained a LIMIT or when no cap was applied.
+     */
+    executionLimit?: number;
     /**
      * Error message in case of failure
      */
     message?: string;
+    /**
+     * S3 or GCS key path where the query results CSV is stored. Present when storage mode is
+     * enabled; mutually exclusive with 'results'.
+     */
+    resultPath?: string;
     /**
      * Results of the query execution
      */
@@ -49,11 +60,22 @@ export interface TableData {
     /**
      * List of local column names (not fully qualified column names) of the table.
      */
-    columns?: string[];
+    columns?:         string[];
+    executionSource?: TableExecutionSource;
     /**
      * Data for multiple rows of the table.
      */
     rows?: Array<any[]>;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 /**

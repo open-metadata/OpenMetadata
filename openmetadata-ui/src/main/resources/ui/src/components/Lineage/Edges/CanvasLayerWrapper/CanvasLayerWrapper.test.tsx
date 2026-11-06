@@ -25,38 +25,29 @@ jest.mock('../../../Entity/EntityLineage/CanvasEdgeRenderer.component', () => ({
     hoverEdge: Edge | null;
     onEdgeClick?: (edge: Edge, event: MouseEvent) => void;
     onEdgeHover?: (edge: Edge | null) => void;
-  }) => (
-    <div
-      data-dq-edges={dqHighlightedEdges.size}
-      data-hover-edge={hoverEdge?.id || 'none'}
-      data-testid="canvas-edge-renderer"
-      onClick={() => onEdgeClick?.(hoverEdge!, new MouseEvent('click'))}
-      onMouseEnter={() => onEdgeHover?.(hoverEdge)}
-    />
-  ),
-}));
+  }) => {
+    const handleEdgeClick = () =>
+      onEdgeClick?.(hoverEdge as Edge, new MouseEvent('click'));
 
-jest.mock(
-  '../../../Entity/EntityLineage/EdgeInteractionOverlay.component',
-  () => ({
-    EdgeInteractionOverlay: ({
-      onPipelineClick,
-      onEdgeRemove,
-    }: {
-      hoveredEdge?: Edge | null;
-      onPipelineClick?: () => void;
-      onEdgeRemove?: () => void;
-    }) => (
+    return (
       <div
-        data-testid="edge-interaction-overlay"
-        onClick={() => {
-          onPipelineClick?.();
-          onEdgeRemove?.();
+        aria-label={hoverEdge?.id}
+        data-dq-edges={dqHighlightedEdges.size}
+        data-hover-edge={hoverEdge?.id || 'none'}
+        data-testid="canvas-edge-renderer"
+        role="button"
+        tabIndex={0}
+        onClick={handleEdgeClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            handleEdgeClick();
+          }
         }}
+        onMouseEnter={() => onEdgeHover?.(hoverEdge)}
       />
-    ),
-  })
-);
+    );
+  },
+}));
 
 describe('CanvasLayerWrapper', () => {
   const mockEdge: Edge = {
@@ -69,8 +60,6 @@ describe('CanvasLayerWrapper', () => {
     dqHighlightedEdges: new Set<string>(),
     onEdgeClick: jest.fn(),
     onEdgeHover: jest.fn(),
-    onPipelineClick: jest.fn(),
-    onEdgeRemove: jest.fn(),
     hoverEdge: null,
   };
 
@@ -82,12 +71,6 @@ describe('CanvasLayerWrapper', () => {
     const { getByTestId } = render(<CanvasLayerWrapper {...defaultProps} />);
 
     expect(getByTestId('canvas-edge-renderer')).toBeInTheDocument();
-  });
-
-  it('renders EdgeInteractionOverlay component', () => {
-    const { getByTestId } = render(<CanvasLayerWrapper {...defaultProps} />);
-
-    expect(getByTestId('edge-interaction-overlay')).toBeInTheDocument();
   });
 
   it('passes dqHighlightedEdges to CanvasEdgeRenderer', () => {
@@ -159,32 +142,6 @@ describe('CanvasLayerWrapper', () => {
     expect(onEdgeHover).toHaveBeenCalled();
   });
 
-  it('passes onPipelineClick callback to EdgeInteractionOverlay', () => {
-    const onPipelineClick = jest.fn();
-
-    const { getByTestId } = render(
-      <CanvasLayerWrapper {...defaultProps} onPipelineClick={onPipelineClick} />
-    );
-
-    const overlay = getByTestId('edge-interaction-overlay');
-    overlay.click();
-
-    expect(onPipelineClick).toHaveBeenCalled();
-  });
-
-  it('passes onEdgeRemove callback to EdgeInteractionOverlay', () => {
-    const onEdgeRemove = jest.fn();
-
-    const { getByTestId } = render(
-      <CanvasLayerWrapper {...defaultProps} onEdgeRemove={onEdgeRemove} />
-    );
-
-    const overlay = getByTestId('edge-interaction-overlay');
-    overlay.click();
-
-    expect(onEdgeRemove).toHaveBeenCalled();
-  });
-
   it('handles null hoverEdge correctly', () => {
     const { getByTestId } = render(
       <CanvasLayerWrapper {...defaultProps} hoverEdge={null} />
@@ -248,12 +205,5 @@ describe('CanvasLayerWrapper', () => {
         <CanvasLayerWrapper dqHighlightedEdges={new Set()} hoverEdge={null} />
       );
     }).not.toThrow();
-  });
-
-  it('renders both components simultaneously', () => {
-    const { getByTestId } = render(<CanvasLayerWrapper {...defaultProps} />);
-
-    expect(getByTestId('canvas-edge-renderer')).toBeInTheDocument();
-    expect(getByTestId('edge-interaction-overlay')).toBeInTheDocument();
   });
 });

@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
-import { compare } from 'fast-json-patch';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
@@ -25,11 +27,10 @@ import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
-import {
-  asyncNoop,
-  getDummyDataByPage,
-} from '../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
+import { asyncNoop } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
+import { isSameDetailsPageLayout } from '../../utils/CustomizePage/GridLayoutDragUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './customize-details-page.less';
 import { PageTypeToEntityTypeMap } from './CustomizeDetailPage.interface';
@@ -67,9 +68,7 @@ export const CustomizeDetailsPage = ({
     const editedPage = (currentPage ??
       ({ pageType: currentPageType } as Page)) as Page;
 
-    const jsonPatch = compare(originalPage, editedPage);
-
-    return jsonPatch.length === 0;
+    return isSameDetailsPageLayout(originalPage, editedPage);
   }, [currentPageType, currentPage, getPage]);
 
   if (!currentPageType) {
@@ -77,37 +76,41 @@ export const CustomizeDetailsPage = ({
   }
 
   return (
-    <PageLayoutV1
-      className="bg-grey"
-      pageTitle={t('label.customize-entity', {
-        entity: t('label.' + kebabCase(currentPageType)),
-      })}>
-      <Row className="customize-details-page" gutter={[0, 20]}>
-        <Col span={24}>
-          <CustomizablePageHeader
-            disableSave={disableSave}
-            personaName={getEntityName(personaDetails)}
-            onReset={handleReset}
-            onSave={handleSave}
-          />
-        </Col>
-        <Col span={24}>
-          <DataAssetsHeader
-            isCustomizedView
-            dataAsset={entityDummyData as Table}
-            entityType={
-              PageTypeToEntityTypeMap[currentPageType] as EntityType.TABLE
-            }
-            permissions={{} as OperationPermission}
-            onDisplayNameUpdate={asyncNoop}
-            onOwnerUpdate={asyncNoop}
-            onRestoreDataAsset={asyncNoop}
-            onTierUpdate={asyncNoop}
-          />
-        </Col>
-        {/* It will render cols inside the row */}
-        <CustomizeTabWidget />
-      </Row>
-    </PageLayoutV1>
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.' + kebabCase(currentPageType)),
+        })}>
+        <Grid
+          className="layout-row layout-grid customize-details-page"
+          style={getLayoutGutter(0, 20)}>
+          <Grid.Item className="layout-column" span={24}>
+            <CustomizablePageHeader
+              disableSave={disableSave}
+              personaName={getEntityName(personaDetails)}
+              onReset={handleReset}
+              onSave={handleSave}
+            />
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
+            <DataAssetsHeader
+              isCustomizedView
+              dataAsset={entityDummyData as Table}
+              entityType={
+                PageTypeToEntityTypeMap[currentPageType] as EntityType.TABLE
+              }
+              permissions={{} as OperationPermission}
+              onDisplayNameUpdate={asyncNoop}
+              onOwnerUpdate={asyncNoop}
+              onRestoreDataAsset={async () => true}
+              onTierUpdate={asyncNoop}
+            />
+          </Grid.Item>
+          {/* It will render cols inside the row */}
+          <CustomizeTabWidget />
+        </Grid>
+      </PageLayoutV1>
+    </NavigationBlocker>
   );
 };

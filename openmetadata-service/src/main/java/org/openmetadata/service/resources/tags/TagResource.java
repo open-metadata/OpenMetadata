@@ -65,6 +65,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.aicontext.AIContextFinderAccess;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -73,9 +74,14 @@ import org.openmetadata.service.jdbi3.TagRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -123,6 +129,9 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     super.initialize(config);
     // Find tag definitions and load classifications from the json file, if necessary
     ClassificationRepository classificationRepository =
@@ -150,6 +159,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       for (Tag tag : tagsToCreate) {
         repository.initializeEntity(tag);
       }
+
+      // initializeEntity() is create-only, so an existing Tag that drifted from the seed - or one
+      // predating a newly seeded recognizer - is reconciled separately
+      repository.reconcileSeededTags(tagsToCreate);
     }
   }
 
@@ -329,24 +342,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -664,7 +661,14 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getTagAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getTagAssets(
+                id, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -704,7 +708,14 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getTagAssetsByName(fqn, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(fqn));
+    return Response.ok(
+            repository.getTagAssetsByName(
+                fqn, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @Override
@@ -736,6 +747,13 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @PathParam("fqn")
           String fqn,
       @Valid RecognizerFeedback feedback) {
+    // Feedback disputes a tag on an asset and opens a review task, so it takes the right to edit
+    // that asset's tags.
+    MessageParser.EntityLink asset = MessageParser.EntityLink.parse(feedback.getEntityLink());
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(asset.getEntityType(), MetadataOperation.EDIT_TAGS),
+        new ResourceContext<>(asset.getEntityType(), null, asset.getEntityFQN()));
     Tag tag = repository.getByName(uriInfo, fqn, repository.getFields("recognizers"));
     feedback.setTagFQN(tag.getFullyQualifiedName());
     String userName = securityContext.getUserPrincipal().getName();
@@ -763,8 +781,13 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Parameter(description = "ID of the feedback", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-
-    return feedbackRepository.get(id);
+    RecognizerFeedback feedback = feedbackRepository.get(id);
+    authorizeRecognizerView(securityContext, getResourceContextByName(feedback.getTagFQN()));
+    if (!canViewLinkedAsset(securityContext, feedback)) {
+      throw new AuthorizationException(
+          String.format("Not allowed to view the asset feedback [%s] refers to", id));
+    }
+    return feedback;
   }
 
   @GET
@@ -782,12 +805,11 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-
-    // Verify the tag exists
+    authorizeRecognizerView(securityContext, getResourceContextByName(fqn));
     Tag tag = repository.getByName(uriInfo, fqn, repository.getFields("id"));
-
-    // Get feedback for this tag
-    return feedbackRepository.getFeedbackByTagFQN(tag.getFullyQualifiedName());
+    return feedbackRepository.getFeedbackByTagFQN(tag.getFullyQualifiedName()).stream()
+        .filter(feedback -> canViewLinkedAsset(securityContext, feedback))
+        .toList();
   }
 
   @GET
@@ -803,7 +825,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       })
   public List<RecognizerFeedback> getPendingFeedback(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-
+    // The org-wide review queue spans every tag and asset.
+    authorizer.authorizeAdmin(securityContext);
     return feedbackRepository.getPendingFeedback();
   }
 
@@ -822,6 +845,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       })
   public Response getAllTagsWithAssetsCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContext());
     java.util.Map<String, Integer> result = repository.getAllTagsWithAssetsCount();
     return Response.ok(result).build();
   }
@@ -921,5 +948,20 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     limits.enforceLimits(securityContext, resourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.getRecognizersOfTagByFQN(fqn, before, after, limitParam);
+  }
+
+  /** The same view a caller needs to list the tag's recognizers. */
+  private void authorizeRecognizerView(
+      SecurityContext securityContext, ResourceContextInterface tagContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, getViewOperations(getFields("recognizers"))),
+        tagContext);
+  }
+
+  private boolean canViewLinkedAsset(SecurityContext securityContext, RecognizerFeedback feedback) {
+    MessageParser.EntityLink asset = MessageParser.EntityLink.parse(feedback.getEntityLink());
+    return AIContextFinderAccess.canView(
+        asset.getEntityType(), asset.getEntityFQN(), authorizer, securityContext);
   }
 }

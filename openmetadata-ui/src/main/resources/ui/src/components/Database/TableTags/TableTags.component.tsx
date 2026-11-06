@@ -16,11 +16,13 @@ import { lowerCase } from 'lodash';
 import { TAG_LIST_SIZE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { TableTagsComponentProps, TableUnion } from './TableTags.interface';
 
-const TableTags = <T extends TableUnion>({
+const TableTags = <
+  T extends Pick<Partial<TableUnion>, 'name' | 'fullyQualifiedName' | 'tags'>
+>({
   tags,
   record,
   index,
@@ -31,7 +33,6 @@ const TableTags = <T extends TableUnion>({
   showInlineEditTagButton,
   handleTagSelection,
   entityType,
-  newLook = false,
   multiSelect,
 }: TableTagsComponentProps<T>) => {
   const { onThreadLinkSelect, updateActiveTagDropdownKey } =
@@ -58,7 +59,6 @@ const TableTags = <T extends TableUnion>({
           selectedTags={tags}
           showInlineEditButton={showInlineEditTagButton}
           sizeCap={TAG_LIST_SIZE}
-          tagNewLook={newLook}
           tagType={type}
           onSelectionChange={async (selectedTags) => {
             await handleTagSelection(selectedTags, record);

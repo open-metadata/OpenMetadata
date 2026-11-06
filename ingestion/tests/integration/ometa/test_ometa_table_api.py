@@ -15,7 +15,6 @@ OpenMetadata high-level API Table test
 
 from copy import deepcopy
 from datetime import datetime, timezone
-from typing import List
 from unittest.mock import patch
 
 import pytest
@@ -29,7 +28,7 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
-from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.query import Query  # noqa: TC001
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnJoins,
@@ -59,7 +58,7 @@ from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingCo
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 
-from ..integration_base import get_create_entity
+from ..integration_base import get_create_entity  # noqa: TID252
 
 BAD_RESPONSE = {
     "data": [
@@ -271,7 +270,7 @@ class TestOMetaTableAPI:
         Validate generator utility to fetch all tables
         """
         fake_create = deepcopy(table_request)
-        for i in range(0, 10):
+        for i in range(0, 10):  # noqa: PIE808
             fake_create.name = EntityName(table_request.name.root + str(i))
             create_table(fake_create)
 
@@ -422,7 +421,7 @@ class TestOMetaTableAPI:
         assert table.profile.columnCount == table_profile.columnCount
         assert table.profile.rowCount == table_profile.rowCount
 
-        res_column_profile = next((col.profile for col in table.columns if col.name.root == "id"))
+        res_column_profile = next((col.profile for col in table.columns if col.name.root == "id"))  # noqa: UP034
         assert res_column_profile == column_profile[0]
 
     def test_publish_table_usage(self, metadata, table_request, expected_fqn, create_table):
@@ -509,7 +508,7 @@ class TestOMetaTableAPI:
         )
 
         metadata.ingest_entity_queries_data(entity=res, queries=[query_no_user])
-        table_with_query: List[Query] = metadata.get_entity_queries(res.id, fields=["*"])
+        table_with_query: list[Query] = metadata.get_entity_queries(res.id, fields=["*"])
 
         assert len(table_with_query) == 1
         assert table_with_query[0].query == query_no_user.query
@@ -524,7 +523,7 @@ class TestOMetaTableAPI:
         )
 
         metadata.ingest_entity_queries_data(entity=res, queries=[query_with_user])
-        table_with_query: List[Query] = metadata.get_entity_queries(res.id, fields=["*"])
+        table_with_query: list[Query] = metadata.get_entity_queries(res.id, fields=["*"])
 
         assert len(table_with_query) == 2
         query_with_owner = next(
@@ -533,6 +532,46 @@ class TestOMetaTableAPI:
         )
         assert len(query_with_owner.users) == 1
         assert query_with_owner.users[0].id == user.id
+
+    def test_same_query_on_second_table_attaches_usage(
+        self,
+        metadata,
+        database_service,
+        test_schema,
+        create_table,
+    ):
+        """Same SQL on two tables shares one Query (service.hash) and both get usage. Issue #32030."""
+        table_a = create_table(
+            CreateTableRequest(
+                name="query_usage_a",
+                databaseSchema=test_schema.fullyQualifiedName,
+                columns=[Column(name="id", dataType=DataType.BIGINT)],
+            )
+        )
+        table_b = create_table(
+            CreateTableRequest(
+                name="query_usage_b",
+                databaseSchema=test_schema.fullyQualifiedName,
+                columns=[Column(name="id", dataType=DataType.BIGINT)],
+            )
+        )
+        shared_sql = SqlQuery("select * from query_fqn_second_table")
+        shared_query = CreateQueryRequest(
+            query=shared_sql,
+            service=FullyQualifiedEntityName(database_service.name.root),
+        )
+
+        metadata.ingest_entity_queries_data(entity=table_a, queries=[shared_query])
+        metadata.ingest_entity_queries_data(entity=table_b, queries=[shared_query])
+
+        queries_a: list[Query] = metadata.get_entity_queries(table_a.id, fields=["*"])
+        queries_b: list[Query] = metadata.get_entity_queries(table_b.id, fields=["*"])
+
+        assert len(queries_a) == 1
+        assert len(queries_b) == 1
+        assert queries_a[0].id == queries_b[0].id
+        assert queries_a[0].query == shared_sql
+        assert str(queries_a[0].fullyQualifiedName.root).startswith(f"{database_service.name.root}.")
 
     def test_list_versions(self, metadata, table_request, create_table):
         """
@@ -587,7 +626,7 @@ class TestOMetaTableAPI:
         We can list all our Tables even when some of them are broken
         """
         # First validate that exception is raised when skip_on_failure is False
-        with patch.object(REST, "get", return_value=BAD_RESPONSE):
+        with patch.object(REST, "get", return_value=BAD_RESPONSE):  # noqa: SIM117
             with pytest.raises(ValidationError):
                 metadata.list_entities(entity=Table)
 
@@ -602,7 +641,7 @@ class TestOMetaTableAPI:
         Validate generator utility to fetch all tables even when some of them are broken
         """
         # First validate that exception is raised when skip_on_failure is False
-        with patch.object(REST, "get", return_value=BAD_RESPONSE):
+        with patch.object(REST, "get", return_value=BAD_RESPONSE):  # noqa: SIM117
             with pytest.raises(ValidationError):
                 res = metadata.list_all_entities(entity=Table, limit=1)
                 list(res)

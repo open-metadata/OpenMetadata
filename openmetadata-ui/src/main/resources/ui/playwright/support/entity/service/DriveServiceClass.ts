@@ -13,12 +13,19 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
+import type { ParentNode, ParentSnapshot } from '../ParentChain';
 
-export class DriveServiceClass extends EntityClass {
+export class DriveServiceClass extends EntityClass implements ParentNode {
   entity = {
     name: `pw-drive-service-${uuid()}`,
     serviceType: 'GoogleDrive',
@@ -48,6 +55,7 @@ export class DriveServiceClass extends EntityClass {
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
+  readonly parentLevel = 'service' as const;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.DriveService);
@@ -56,14 +64,12 @@ export class DriveServiceClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      `/api/v1/${EntityTypeEndpoint.DriveService}`,
-      {
-        data: this.entity,
-      }
-    );
-
-    const service = await serviceResponse.json();
+    const service = await createOrFetch(apiContext, {
+      label: 'DriveServiceClass.create',
+      createPath: `/api/v1/${EntityTypeEndpoint.DriveService}`,
+      fqnSegments: [this.entity.name],
+      data: this.entity,
+    });
 
     this.entityResponseData = service;
 
@@ -71,17 +77,19 @@ export class DriveServiceClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/${EntityTypeEndpoint.DriveService}/${this.entityResponseData?.['id']}`,
-      {
-        data: payload,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/${EntityTypeEndpoint.DriveService}/${this.entityResponseData?.['id']}`,
+        {
+          data: payload,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    const service = await serviceResponse.json();
+    const service = await okJson(serviceResponse, 'DriveServiceClass.patch');
 
     this.entityResponseData = service;
 
@@ -107,8 +115,27 @@ export class DriveServiceClass extends EntityClass {
     );
   }
 
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
+
+  forget() {
+    this.entityResponseData = {} as ResponseDataType;
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return { service: this.entityResponseData };
+  }
+
+  rootDeletePath() {
+    return `/api/v1/services/driveServices/name/${encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    )}`;
+  }
+
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/${EntityTypeEndpoint.DriveService}/name/${encodeURIComponent(
         this.entityResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`

@@ -1,27 +1,34 @@
 # Standalone Apache Jena Fuseki for RDF/Knowledge Graph storage
 services:
   fuseki:
-    image: stain/jena-fuseki:5.0.0
+    # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
+    # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
+    image: openmetadata/fuseki:6.2.0-318ff87
     container_name: fuseki-standalone
     hostname: fuseki
     ports:
       - "3030:3030"
     environment:
-      # Admin credentials
-      - ADMIN_PASSWORD=admin
-      # JVM memory settings - adjust based on your system
-      - JVM_ARGS=-Xmx4g -Xms2g
-      # Fuseki configuration
-      - FUSEKI_BASE=/fuseki
+      # The image's environment contract, set as OpenMetadata needs it: the serving dataset and
+      # its two blue/green rebuild targets, the union default graph (OpenMetadata writes every
+      # entity into a named graph), server-side deadlines below the 60 s client deadline, and the
+      # bounded Graph Store extension. docs/rdf-production-setup.md explains each one.
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      # JVM_ARGS replaces the image's FUSEKI_HEAP flags. It caps direct buffers until the pinned
+      # image applies that cap itself (open-metadata/jena#6).
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-2g} -Xmx${FUSEKI_HEAP:-2g} -XX:MaxDirectMemorySize=256m
     volumes:
-      # Mount directory for persistent storage (configurable via .env)
-      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki:/fuseki
+      # A new host path: fuseki-tdb2-data holds the retired in-repo image's layout.
+      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki-store:/fuseki
     networks:
       - fuseki-net
-    # Create openmetadata dataset on startup
-    entrypoint: /bin/sh -c "mkdir -p /fuseki/databases/openmetadata && exec /docker-entrypoint.sh /jena-fuseki/fuseki-server --update --loc=/fuseki/databases/openmetadata /openmetadata"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3030/$/ping"]
+      test: ["CMD", "/healthcheck.sh"]
       interval: 15s
       timeout: 10s
       retries: 5

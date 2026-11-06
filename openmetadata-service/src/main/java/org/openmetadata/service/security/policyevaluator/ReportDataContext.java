@@ -25,7 +25,7 @@ public class ReportDataContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityInterface getEntity() {
+  public EntityInterface<?> getEntity() {
     return null;
   }
 

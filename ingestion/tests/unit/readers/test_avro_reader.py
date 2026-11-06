@@ -110,7 +110,7 @@ class TestAvroReader(unittest.TestCase):
         def create_fresh_file():
             return self._create_mock_avro_file()
 
-        mock_gcs.open.return_value.__enter__ = Mock(side_effect=lambda: create_fresh_file())
+        mock_gcs.open.return_value.__enter__ = Mock(side_effect=lambda: create_fresh_file())  # noqa: PLW0108
         mock_gcs.open.return_value.__exit__ = Mock(return_value=False)
 
         config = GCSConfig()
@@ -134,7 +134,7 @@ class TestAvroReader(unittest.TestCase):
         def create_fresh_file():
             return self._create_mock_avro_file()
 
-        mock_fs.open.return_value.__enter__ = Mock(side_effect=lambda: create_fresh_file())
+        mock_fs.open.return_value.__enter__ = Mock(side_effect=lambda: create_fresh_file())  # noqa: PLW0108
         mock_fs.open.return_value.__exit__ = Mock(return_value=False)
 
         config = AzureConfig(securityConfig=AzureCredentials(accountName="test", clientId="test", tenantId="test"))
@@ -183,7 +183,7 @@ class TestAvroReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
 
 if __name__ == "__main__":

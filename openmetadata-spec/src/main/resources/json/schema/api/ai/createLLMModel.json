@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/ai/createLLMModel.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateLLMModelRequest",
   "description": "Create LLM Model entity request",
   "type": "object",
@@ -23,6 +23,21 @@
     "baseModel": {
       "description": "Base model name",
       "type": "string"
+    },
+    "modelType": {
+      "description": "Type of LLM model",
+      "$ref": "../../entity/ai/llmModel.json#/definitions/modelType"
+    },
+    "providerModelId": {
+      "description": "Provider's internal model ID",
+      "type": "string"
+    },
+    "capabilities": {
+      "description": "Capabilities of this model",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/ai/llmModel.json#/definitions/modelCapability"
+      }
     },
     "modelVersion": {
       "description": "Version of the model",
@@ -56,6 +71,21 @@
       "description": "Governance status - tracks unauthorized/shadow AI models",
       "type": "string",
       "enum": ["Approved", "PendingReview", "Rejected", "Unauthorized"]
+    },
+    "detection": {
+      "$ref": "../../type/aiCompliance.json#/definitions/aiDetection",
+      "description": "Origin of Shadow AI detection — auto-discovered from outbound API traffic, SSO logs, connector audits, etc."
+    },
+    "evidence": {
+      "$ref": "../../type/aiCompliance.json#/definitions/aiEvidence",
+      "description": "Supporting documentation URLs (DPIA, model card, fairness analysis, technical docs)"
+    },
+    "remediationActions": {
+      "type": "array",
+      "description": "Structured remediation actions with assignee, due date, priority, and status",
+      "items": {
+        "$ref": "../../type/aiCompliance.json#/definitions/remediationAction"
+      }
     },
     "certifications": {
       "description": "Certifications this model has received",

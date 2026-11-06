@@ -1,0 +1,187 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  BrandUrl,
+  DataAssetRules,
+  DataQuality,
+  DefaultAppMode,
+  DefaultTime,
+  GlossaryTerm,
+  HealthCheck,
+  LearningResources,
+  Lock01,
+  Mail,
+  PlatformLineage,
+  ProfilerConfiguration,
+  SearchSettings,
+  Table,
+  Theme,
+} from '@openmetadata/ui-core-components/icons';
+import { startCase } from 'lodash';
+import { ENTITY_PATH } from '../../../../../../constants/constants';
+import { DefaultTimeFormat } from '../../../../../../generated/api/configuration/appConfiguration';
+// eslint-disable-next-line openmetadata-imports/no-lower-layer-page-imports -- profiler extension point lives there
+import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
+import { isLoginConfigurationApplicable } from '../../../../../../utils/AuthProvider.util';
+import type { PlatformSettingsPage } from './PlatformSettings.types';
+import { parseFieldValueBoostItemId } from './search/SearchSettings.utils';
+
+export const PLATFORM_SETTINGS_HASH_TAB = 'platform-settings';
+
+export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
+  {
+    id: 'glossary',
+    icon: GlossaryTerm,
+    titleKey: 'label.glossary',
+    descriptionKey: 'message.glossary-tag-propagation-description',
+  },
+  {
+    id: 'theme',
+    icon: Theme,
+    titleKey: 'label.theme',
+    descriptionKey: 'message.appearance-configuration-message',
+    hasEditView: true,
+  },
+  {
+    id: 'email',
+    icon: Mail,
+    titleKey: 'label.email',
+    descriptionKey: 'message.email-configuration-message',
+    hasEditView: true,
+  },
+  {
+    id: 'login-configuration',
+    icon: Lock01,
+    titleKey: 'label.login-configuration',
+    descriptionKey: 'message.page-sub-header-for-login-configuration',
+    hasEditView: true,
+    isVisible: isLoginConfigurationApplicable,
+  },
+  {
+    id: 'health-check',
+    icon: HealthCheck,
+    titleKey: 'label.health-check',
+    descriptionKey: 'message.page-sub-header-for-om-health-configuration',
+  },
+  {
+    id: 'profiler-configuration',
+    icon: ProfilerConfiguration,
+    titleKey: 'label.profiler-configuration',
+    descriptionKey: 'message.page-sub-header-for-profiler-configuration',
+    hasEditView: true,
+    hasFieldHints: false,
+    // An item id is a downstream sub-page, titled by its owner.
+    getEditTitle: (t, itemId) =>
+      (itemId &&
+        profilerConfigurationClassBase.getSettingsItemFormTitle(t, itemId)) ||
+      t('label.edit-entity', { entity: t('label.profiler-configuration') }),
+  },
+  {
+    id: 'data-quality',
+    icon: DataQuality,
+    titleKey: 'label.data-quality',
+    descriptionKey: 'message.page-sub-header-for-data-quality-settings',
+    hasEditView: true,
+    getEditTitle: (t, itemId) =>
+      t(itemId ? 'label.edit-entity' : 'label.add-entity', {
+        entity: t('label.dimension'),
+      }),
+  },
+  {
+    id: 'lineage',
+    icon: PlatformLineage,
+    titleKey: 'label.lineage',
+    descriptionKey: 'message.page-sub-header-for-lineage-config-setting',
+    hasEditView: true,
+  },
+  {
+    id: 'search',
+    icon: SearchSettings,
+    titleKey: 'label.search',
+    descriptionKey: 'message.page-sub-header-for-search-setting',
+    hasItemViews: true,
+    getItemTitle: (_t, itemId) =>
+      startCase(ENTITY_PATH[itemId as keyof typeof ENTITY_PATH] ?? itemId),
+    // The edit view is the field value boost form, global or per entity.
+    hasEditView: true,
+    hasFieldHints: false,
+    getEditTitle: (t, itemId) =>
+      t(
+        parseFieldValueBoostItemId(itemId).field
+          ? 'label.edit-entity'
+          : 'label.add-entity',
+        { entity: t('label.field-value-boost') }
+      ),
+  },
+  {
+    id: 'brand-url',
+    icon: BrandUrl,
+    titleKey: 'label.brand-name-url',
+    descriptionKey: 'message.om-url-configuration-message',
+    hasEditView: true,
+  },
+  {
+    id: 'data-asset-rules',
+    icon: DataAssetRules,
+    titleKey: 'label.data-asset-rules',
+    descriptionKey: 'message.data-asset-rules-message',
+    isBeta: true,
+  },
+  {
+    id: 'learning-resources',
+    icon: LearningResources,
+    titleKey: 'label.learning-resources',
+    descriptionKey: 'message.learning-resources-management-description',
+    hasEditView: true,
+    hasFieldHints: false,
+    hasItemViews: true,
+    getItemTitle: (t) => t('label.preview'),
+    getEditTitle: (t, itemId) =>
+      t(itemId ? 'label.edit-resource' : 'label.add-resource'),
+  },
+  {
+    id: 'app-mode',
+    icon: DefaultAppMode,
+    titleKey: 'label.default-app-mode',
+    descriptionKey: 'message.default-app-mode-description',
+    hasEditView: true,
+    hasFieldHints: false,
+  },
+  {
+    id: 'table-schema',
+    icon: Table,
+    titleKey: 'label.table-and-schema',
+    descriptionKey: 'message.table-and-schema-settings-description',
+    hasEditView: true,
+    hasFieldHints: false,
+  },
+  {
+    id: 'time-format',
+    icon: DefaultTime,
+    titleKey: 'label.default-time-format',
+    descriptionKey: 'message.default-time-format-description',
+    hasEditView: true,
+    hasFieldHints: false,
+  },
+];
+
+/** The fields of each deployment-backed setting that its page shows. */
+export const BRAND_URL_FIELDS = ['openMetadataUrl'] as const;
+
+export const APP_MODE_FIELDS = ['defaultAppMode'] as const;
+
+export const TIME_FORMAT_OPTIONS = [
+  { value: DefaultTimeFormat.The12H, labelKey: 'label.12-hour-format' },
+  { value: DefaultTimeFormat.The24H, labelKey: 'label.24-hour-format' },
+];

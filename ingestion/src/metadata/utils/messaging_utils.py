@@ -15,14 +15,14 @@ Helpers module for messaging sources
 
 import re
 import traceback
-from typing import Optional
+from collections.abc import Collection
 
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
 
-def merge_and_clean_protobuf_schema(schema_text: Optional[str]) -> Optional[str]:
+def merge_and_clean_protobuf_schema(schema_text: str | None) -> str | None:
     """
     Remove the import and extra syntax lines for a schema with references
     """
@@ -30,7 +30,9 @@ def merge_and_clean_protobuf_schema(schema_text: Optional[str]) -> Optional[str]
         lines = schema_text.splitlines() if schema_text else []
         new_lines = []
         for i, line in enumerate(lines):
-            if not re.search(r'import ".*";', line) and not re.search(r"option .*;", line):
+            is_import = re.search(r'import ".*";', line)
+            is_well_known_type_import = re.search(r'import "google/protobuf/.*\.proto";', line)
+            if (not is_import or is_well_known_type_import) and not re.search(r"option .*;", line):
                 if re.search(r'\s*syntax\s*=\s*"proto\d+";\s*', line) and i != 0:
                     continue
                 new_lines.append(line)
@@ -39,3 +41,21 @@ def merge_and_clean_protobuf_schema(schema_text: Optional[str]) -> Optional[str]
         logger.debug(traceback.format_exc())
         logger.warning(f"Failed to merge and clean protobuf schema: {exc}")
     return None
+
+
+def clean_protobuf_schema(schema_text: str, imports: Collection[str]) -> str:
+    """
+    Drop the lines of one Protobuf file that protoc cannot resolve on its own: option lines, and
+    imports that are neither in `imports` nor well-known types.
+    """
+    lines = []
+    for line in schema_text.splitlines():
+        imported = re.match(r'\s*import\s+(?:public\s+|weak\s+)?"(.*)";', line)
+        is_unresolved_import = (
+            imported is not None
+            and imported.group(1) not in imports
+            and not imported.group(1).startswith("google/protobuf/")
+        )
+        if not is_unresolved_import and not re.match(r"\s*option\s.*;", line):
+            lines.append(line)
+    return "\n".join(lines)

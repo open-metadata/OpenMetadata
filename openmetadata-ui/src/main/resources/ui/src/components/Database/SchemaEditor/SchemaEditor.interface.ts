@@ -11,25 +11,43 @@
  *  limitations under the License.
  */
 
+import { Extension } from '@codemirror/state';
 import { ReactNode } from 'react';
-import { CSMode } from '../../../enums/codemirror.enum';
+import {
+  CodeMirrorOptions,
+  Mode,
+} from '../../../interface/codemirror.interface';
 
-export type Mode = {
-  name: CSMode;
-  json?: boolean;
-};
+export type { Mode };
 
 export interface SchemaEditorProps {
   value?: string;
+  autoFormat?: boolean;
+  /**
+   * @deprecated No longer needed and ignored. It existed to stop the caret
+   * jumping when a reformatted value was pushed back into CodeMirror 5 on every
+   * keystroke; the editor never reformats the buffer mid-edit any more, so both
+   * modes now behave the way this flag asked for.
+   */
+  uncontrolled?: boolean;
+  /**
+   * @deprecated No longer needed and ignored. CodeMirror 6 measures itself when
+   * its container becomes visible or changes size.
+   */
   refreshEditor?: boolean;
   className?: string;
   mode?: Mode;
   readOnly?: boolean;
-  options?: {
-    [key: string]: string | boolean | Array<string>;
-  };
+  options?: CodeMirrorOptions;
+  /**
+   * Extra CodeMirror extensions (completion sources, update listeners, …).
+   * Memoize this at the call site — a new array on every render reconfigures
+   * the editor.
+   */
+  extensions?: Extension[];
   editorClass?: string;
   showCopyButton?: boolean;
+  copyButtonClassName?: string;
   onChange?: (value: string) => void;
   onFocus?: () => void;
   title?: ReactNode;

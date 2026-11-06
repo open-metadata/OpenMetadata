@@ -11,36 +11,41 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { ReactNode } from 'react';
-import { CurveType } from 'recharts/types/shape/Curve';
+import type { TestCaseDeletionMode } from '../../../../constants/DataQuality.constants';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Thread } from '../../../../generated/entity/feed/thread';
+import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { ProfileExecutionSourceProps } from '../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 
 export type MetricChartType = {
   information: {
     title: string;
     dataKey: string;
     stackId?: string;
-    color: string;
-    fill?: string;
+    /** Chart colour that carries meaning, e.g. a delete; else the next palette colour. */
+    status?: ChartStatus;
     latestValue?: string | number;
     extra?: string;
   }[];
   data: Record<string, string | number | undefined>[];
 };
 
-export interface ProfilerDetailsCardProps {
+export interface ProfilerDetailsCardProps
+  extends Pick<ProfileExecutionSourceProps, 'profiles' | 'isSharded'> {
   showYAxisCategory?: boolean;
   chartCollection: MetricChartType;
   name: string;
   title?: string;
   tickFormatter?: string;
-  curveType?: CurveType;
   isLoading?: boolean;
   noDataPlaceholderText?: ReactNode;
   children?: ReactNode;
@@ -75,6 +80,12 @@ export interface DataQualityTabProps {
   tableHeader?: ReactNode;
   removeTableBorder?: boolean;
   enableBulkActions?: boolean;
+  hasActiveFilters?: boolean;
+  emptyStateAction?: EmptyPlaceholderAction;
+  // Per-entity permissions keyed by test-case id, supplied by the list API when
+  // includePermissions=true. When present, the tab skips per-row permission calls.
+  entityPermissions?: Record<string, ResourcePermission>;
+  deletionMode?: TestCaseDeletionMode;
 }
 
 export interface TestSummaryProps {
@@ -90,17 +101,17 @@ export interface ProfilerLatestValueProps {
 
 export type TestCaseAction = {
   data: TestCase;
-  action: 'UPDATE' | 'DELETE' | 'UPDATE_STATUS';
+  action: 'UPDATE' | 'DELETE' | 'RESTORE' | 'UPDATE_STATUS';
 };
 
 export type TestCaseChartDataType = {
   information: { label: string; color: string }[];
-  data: Record<string, string | number | undefined | Thread | number[]>[];
+  data: Record<
+    string,
+    // string[] carries the keys a run's placed values sit under.
+    string | number | undefined | Task | Thread | number[] | string[]
+  >[];
 };
-
-export interface LineChartRef {
-  container: HTMLElement;
-}
 
 export type TestCasePermission = OperationPermission & {
   fullyQualifiedName?: string;

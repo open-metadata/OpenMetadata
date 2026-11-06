@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/llm/huggingFaceConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HuggingFaceConnection",
   "description": "HuggingFace LLM Service Connection Config",
   "type": "object",
@@ -30,7 +30,7 @@
       "title": "Base URL",
       "description": "Optional custom base URL (for HuggingFace Inference Endpoints)",
       "type": "string",
-      "default": "https://api-inference.huggingface.co"
+      "default": "https://router.huggingface.co/v1"
     },
     "timeout": {
       "title": "Timeout",

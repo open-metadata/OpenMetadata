@@ -10,15 +10,76 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { textEditor } from 'react-data-grid';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { FC } from 'react';
+import { RenderEditCellProps } from 'react-data-grid';
+import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
+import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import {
+  AI_APP_MODE,
+  DEFAULT_APP_MODE,
+} from '../../constants/appMode.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import { useAppModeStore } from '../../hooks/useAppMode';
+import { getCSVStringFromColumnsAndDataSource } from './CSVPureUtils';
 import csvUtilsClassBase, { CSVUtilsClassBase } from './CSVUtilsClassBase';
 
+const mockSelectedReferenceOption: DataAssetOption = {
+  displayName: 'Admin User',
+  label: 'Admin User',
+  reference: {
+    fullyQualifiedName: 'admin',
+    id: 'user-id',
+    name: 'admin',
+    type: EntityType.USER,
+  },
+  value: 'admin',
+};
+
+const mockDataAssetAsyncSelectList = jest.fn();
+
 jest.mock(
-  '../../components/common/AsyncSelectList/TreeAsyncSelectList',
+  '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList',
   () => ({
     __esModule: true,
-    default: jest.fn(),
+    default: jest.fn(
+      (props: {
+        multiple?: boolean;
+        onChange?: (option?: DataAssetOption | DataAssetOption[]) => void;
+        searchIndex?: SearchIndex;
+      }) => {
+        mockDataAssetAsyncSelectList(props);
+
+        return (
+          <button
+            data-testid={
+              props.multiple
+                ? 'asset-select-list-multiple'
+                : 'asset-select-list-single'
+            }
+            type="button"
+            onClick={() =>
+              props.onChange?.(
+                props.multiple
+                  ? [mockSelectedReferenceOption]
+                  : mockSelectedReferenceOption
+              )
+            }>
+            asset-select-list
+          </button>
+        );
+      }
+    ),
   })
 );
 
@@ -34,6 +95,36 @@ jest.mock('../../components/common/InlineEdit/InlineEdit.component', () => ({
   __esModule: true,
   default: jest.fn(),
 }));
+
+jest.mock(
+  '../../components/common/ClassificationTagPicker/ClassificationTagPicker',
+  () => ({
+    __esModule: true,
+    default: jest.fn(
+      (props: {
+        value: { tagFQN: string; source: string }[];
+        onChange: (tags: { tagFQN: string }[]) => void;
+        onOpenChange: (open: boolean) => void;
+      }) => (
+        <div>
+          <span data-testid="picker-value">
+            {props.value.map((tag) => `${tag.source}:${tag.tagFQN}`).join(',')}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              props.onChange([...props.value, { tagFQN: 'PII.Sensitive' }])
+            }>
+            pick
+          </button>
+          <button type="button" onClick={() => props.onOpenChange(false)}>
+            close
+          </button>
+        </div>
+      )
+    ),
+  })
+);
 
 jest.mock('../../components/common/TierCard/TierCard', () => ({
   __esModule: true,
@@ -65,6 +156,46 @@ jest.mock(
   })
 );
 
+const mockGetTypeByFQN = jest.fn();
+jest.mock('../../rest/metadataTypeAPI', () => ({
+  getTypeByFQN: (typeFQN: string) => mockGetTypeByFQN(typeFQN),
+}));
+
+const mockGetMetrics = jest.fn();
+jest.mock('../../rest/metricsAPI', () => ({
+  getMetrics: (params: unknown) => mockGetMetrics(params),
+}));
+
+const mockSearchQuery = jest.fn();
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: (params: unknown) => mockSearchQuery(params),
+}));
+
+const mockFetchDataProductsElasticSearch = jest.fn();
+jest.mock('../../rest/dataProductAPI', () => ({
+  fetchDataProductsElasticSearch: (searchText: string, domains: string[]) =>
+    mockFetchDataProductsElasticSearch(searchText, domains),
+}));
+
+const mockGetDomainList = jest.fn();
+jest.mock('../../rest/domainAPI', () => ({
+  getDomainList: (params: unknown) => mockGetDomainList(params),
+}));
+
+const mockGetGlossariesList = jest.fn();
+const mockGetGlossaryTerms = jest.fn();
+jest.mock('../../rest/glossaryAPI', () => ({
+  getGlossariesList: (params: unknown) => mockGetGlossariesList(params),
+  getGlossaryTerms: (params: unknown) => mockGetGlossaryTerms(params),
+}));
+
+const mockGetAllClassifications = jest.fn();
+const mockGetTags = jest.fn();
+jest.mock('../../rest/tagAPI', () => ({
+  getAllClassifications: (params: unknown) => mockGetAllClassifications(params),
+  getTags: (params: unknown) => mockGetTags(params),
+}));
+
 const multipleOwner = {
   user: true,
   team: false,
@@ -74,7 +205,63 @@ describe('CSV utils ClassBase', () => {
   let csvUtils: CSVUtilsClassBase;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     csvUtils = new CSVUtilsClassBase();
+    mockGetTypeByFQN.mockResolvedValue({
+      customProperties: [
+        {
+          name: 'costCenter',
+          displayName: 'Cost Center',
+          description: '',
+          propertyType: { name: 'string' },
+        },
+        {
+          name: 'reviewCadence',
+          displayName: 'Review Cadence',
+          description: '',
+          propertyType: { name: 'enum' },
+          customPropertyConfig: {
+            config: {
+              values: ['Monthly', 'Quarterly', 'Annually'],
+            },
+          },
+        },
+      ],
+    });
+    mockFetchDataProductsElasticSearch.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockGetDomainList.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockGetGlossariesList.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockGetGlossaryTerms.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockGetAllClassifications.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockGetTags.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockGetMetrics.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockSearchQuery.mockResolvedValue({
+      hits: {
+        hits: [],
+        total: { value: 0 },
+      },
+    });
   });
 
   describe('hideImportsColumnList', () => {
@@ -151,6 +338,316 @@ describe('CSV utils ClassBase', () => {
   });
 
   describe('getEditor', () => {
+    it.each([
+      EntityType.DATABASE_SERVICE,
+      EntityType.DATABASE,
+      EntityType.DATABASE_SCHEMA,
+      EntityType.TABLE,
+    ])('should commit bulk tags atomically for %s', async (entityType) => {
+      mockGetTags.mockResolvedValue({
+        data: [
+          { name: 'Sensitive', fullyQualifiedName: 'PII.Sensitive' },
+          { name: 'Critical', fullyQualifiedName: 'Business.Critical' },
+        ],
+        paging: { total: 2 },
+      });
+      const editor = csvUtils.getEditor('tags', entityType, multipleOwner, {
+        usePlainTextEditor: true,
+      });
+      const TagEditor = editor as FC<
+        RenderEditCellProps<Record<string, unknown>, unknown>
+      >;
+      const row = { name: 'asset', tags: 'Business.Critical' };
+      let committedRow = row;
+      const onRowChange = jest.fn((nextRow: typeof row, commit?: boolean) => {
+        if (commit) {
+          committedRow = nextRow;
+        }
+      });
+      const onClose = jest.fn();
+
+      render(
+        <TagEditor
+          {...({
+            row,
+            rowIdx: 0,
+            column: { key: 'tags' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof TagEditor>[0])}
+        />
+      );
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Sensitive' }));
+
+      expect(onRowChange).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { ...row, tags: 'Business.Critical;PII.Sensitive' },
+        true
+      );
+      expect(onClose).toHaveBeenCalledWith(true);
+      expect(
+        getCSVStringFromColumnsAndDataSource(
+          [{ key: 'name' }, { key: 'tags' }],
+          [committedRow]
+        )
+      ).toBe('name,tags\nasset,Business.Critical;PII.Sensitive');
+    });
+
+    it('should edit tags through the classification picker and close on dismiss', () => {
+      const TagEditor = csvUtils.getEditor(
+        'tags',
+        EntityType.GLOSSARY_TERM,
+        multipleOwner
+      ) as FC<RenderEditCellProps<Record<string, unknown>, unknown>>;
+      const row = { name: 'term', tags: 'Business.Critical' };
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      render(
+        <TagEditor
+          {...({
+            row,
+            rowIdx: 0,
+            column: { key: 'tags' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof TagEditor>[0])}
+        />
+      );
+
+      expect(screen.getByTestId('picker-value')).toHaveTextContent(
+        'Classification:Business.Critical'
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'pick' }));
+
+      expect(onRowChange).toHaveBeenCalledWith({
+        ...row,
+        tags: 'Business.Critical;PII.Sensitive',
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'close' }));
+
+      expect(onClose).toHaveBeenCalledWith(true, true);
+    });
+
+    it('should find bulk tags outside the initial page and discard cancelled changes', async () => {
+      mockSearchQuery.mockResolvedValue({
+        hits: {
+          hits: [
+            {
+              _source: {
+                name: 'Sensitive',
+                fullyQualifiedName: 'PII.Sensitive',
+              },
+            },
+          ],
+          total: { value: 1 },
+        },
+      });
+      const editor = csvUtils.getEditor(
+        'tags',
+        EntityType.DATABASE,
+        multipleOwner,
+        {
+          usePlainTextEditor: true,
+        }
+      );
+      const TagEditor = editor as FC<
+        RenderEditCellProps<Record<string, unknown>, unknown>
+      >;
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      render(
+        <TagEditor
+          {...({
+            row: { tags: '' },
+            rowIdx: 0,
+            column: { key: 'tags' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof TagEditor>[0])}
+        />
+      );
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'PII.Sensitive' },
+      });
+      fireEvent.click(await screen.findByRole('button', { name: 'Sensitive' }));
+
+      expect(mockSearchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageSize: 50,
+          searchIndex: SearchIndex.TAG,
+        })
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+
+      expect(onRowChange).not.toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalledWith(false);
+    });
+
+    it('should keep bulk tag actions available when a search has no matches', async () => {
+      mockGetTags.mockResolvedValue({
+        data: [{ name: 'Sensitive', fullyQualifiedName: 'PII.Sensitive' }],
+        paging: { total: 1 },
+      });
+      mockSearchQuery.mockResolvedValue({
+        hits: { hits: [], total: { value: 0 } },
+      });
+      const editor = csvUtils.getEditor(
+        'tags',
+        EntityType.DATABASE,
+        multipleOwner,
+        {
+          usePlainTextEditor: true,
+        }
+      );
+      const TagEditor = editor as FC<
+        RenderEditCellProps<Record<string, unknown>, unknown>
+      >;
+      const onRowChange = jest.fn();
+      const row = { name: 'asset', tags: '' };
+
+      render(
+        <TagEditor
+          {...({
+            row,
+            rowIdx: 0,
+            column: { key: 'tags' },
+            onRowChange,
+            onClose: jest.fn(),
+          } as unknown as Parameters<typeof TagEditor>[0])}
+        />
+      );
+      fireEvent.click(await screen.findByRole('button', { name: 'Sensitive' }));
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'missing' },
+      });
+      await screen.findByText('message.bulk-edit-no-tags-yet');
+      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { ...row, tags: 'PII.Sensitive' },
+        true
+      );
+    });
+
+    it('should commit clearing bulk tags without dropping other row fields', async () => {
+      mockGetTags.mockResolvedValue({
+        data: [{ name: 'Sensitive', fullyQualifiedName: 'PII.Sensitive' }],
+        paging: { total: 1 },
+      });
+      const editor = csvUtils.getEditor(
+        'tags',
+        EntityType.DATABASE,
+        multipleOwner,
+        {
+          usePlainTextEditor: true,
+        }
+      );
+      const TagEditor = editor as FC<
+        RenderEditCellProps<Record<string, unknown>, unknown>
+      >;
+      const onRowChange = jest.fn();
+      const row = { name: 'asset', tags: 'PII.Sensitive', tiers: 'Tier.Tier1' };
+
+      render(
+        <TagEditor
+          {...({
+            row,
+            rowIdx: 0,
+            column: { key: 'tags' },
+            onRowChange,
+            onClose: jest.fn(),
+          } as unknown as Parameters<typeof TagEditor>[0])}
+        />
+      );
+      await screen.findByRole('button', { name: 'Sensitive' });
+      fireEvent.click(screen.getByRole('button', { name: 'label.clear-all' }));
+
+      expect(onRowChange).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+
+      expect(onRowChange).toHaveBeenCalledWith({ ...row, tags: '' }, true);
+    });
+
+    // Classic opens the users page in a new tab. AI mode serves no settings
+    // pages, so the button opens the settings modal over the grid instead.
+    it.each([
+      [
+        'owners',
+        'message.bulk-edit-open-users-and-teams',
+        '/settings/members',
+        '#members',
+      ],
+      [
+        'reviewers',
+        'message.bulk-edit-open-users',
+        '/settings/members/users',
+        '#members/users',
+      ],
+    ])(
+      'opens the users list from the empty %s picker',
+      async (column, actionLabel, classicPage, aiHash) => {
+        mockSearchQuery.mockResolvedValue({
+          hits: { hits: [], total: { value: 0 } },
+        });
+        const openSpy = jest
+          .spyOn(window, 'open')
+          .mockImplementation(() => null);
+        const Editor = csvUtils.getEditor(
+          column,
+          EntityType.METRIC,
+          multipleOwner,
+          {
+            usePlainTextEditor: true,
+          }
+        ) as FC<RenderEditCellProps<Record<string, unknown>, unknown>>;
+        const renderEditor = () =>
+          render(
+            <Editor
+              {...({
+                row: { name: 'asset', [column]: '' },
+                rowIdx: 0,
+                column: { key: column },
+                onRowChange: jest.fn(),
+                onClose: jest.fn(),
+              } as unknown as Parameters<typeof Editor>[0])}
+            />
+          );
+
+        const { unmount } = renderEditor();
+        fireEvent.click(
+          await screen.findByRole('button', { name: actionLabel })
+        );
+        unmount();
+        const classicCalls = openSpy.mock.calls.map(([url]) => url);
+
+        globalThis.history.replaceState(null, '', '/bulk/edit/metric/*');
+        useAppModeStore.getState().setMode(AI_APP_MODE);
+        renderEditor();
+        fireEvent.click(
+          await screen.findByRole('button', { name: actionLabel })
+        );
+        useAppModeStore.getState().setMode(DEFAULT_APP_MODE);
+        const aiLocation = `${globalThis.location.pathname}${globalThis.location.hash}`;
+        globalThis.history.replaceState(null, '', '/');
+
+        expect(classicCalls).toEqual([classicPage]);
+        expect(openSpy).toHaveBeenCalledTimes(1);
+        expect(aiLocation).toBe(`/bulk/edit/metric/*${aiHash}`);
+
+        openSpy.mockRestore();
+      }
+    );
+
     it('should return the editor component for the specified column', () => {
       const column = 'owner';
       const editor = csvUtilsClassBase.getEditor(
@@ -162,7 +659,7 @@ describe('CSV utils ClassBase', () => {
       expect(editor).toBeDefined();
     });
 
-    it('should return default textEditor for unknown columns', () => {
+    it('should return default lazyTextEditor for unknown columns', () => {
       const column = 'unknown';
       const editor = csvUtilsClassBase.getEditor(
         column,
@@ -170,7 +667,18 @@ describe('CSV utils ClassBase', () => {
         multipleOwner
       );
 
-      expect(editor).toBe(textEditor);
+      expect(editor).toBe(lazyTextEditor);
+    });
+
+    it('should return the unified code editor (not plain text) for expressionCode', () => {
+      const editor = csvUtilsClassBase.getEditor(
+        'expressionCode',
+        EntityType.METRIC,
+        multipleOwner
+      );
+
+      expect(editor).toBeDefined();
+      expect(editor).not.toBe(lazyTextEditor);
     });
 
     it('should return the editor component for the "description" column', () => {
@@ -215,6 +723,34 @@ describe('CSV utils ClassBase', () => {
       );
 
       expect(editor).toBeDefined();
+    });
+
+    it('should use compact select for metric tier rich grid cells', () => {
+      const editor = csvUtils.getEditor(
+        'tiers',
+        EntityType.METRIC,
+        multipleOwner,
+        {
+          usePlainTextEditor: true,
+        }
+      );
+
+      if (!editor) {
+        throw new Error('Expected tiers editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { tiers: 'Tier.Tier1' },
+            column: { key: 'tiers' },
+            onRowChange: jest.fn(),
+            onClose: jest.fn(),
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      expect(screen.getByTestId('tiers-select')).toBeInTheDocument();
     });
 
     it('should return the editor component for the "extension" column', () => {
@@ -271,14 +807,102 @@ describe('CSV utils ClassBase', () => {
       expect(editor).toBeDefined();
     });
 
-    it('should return editor for entityType* column', () => {
+    it('should commit the picked entity type and close the cell', async () => {
       const editor = csvUtils.getEditor(
         'entityType*',
         EntityType.TABLE,
         multipleOwner
       );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
 
-      expect(editor).toBeDefined();
+      if (!editor) {
+        throw new Error('Expected entityType* editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { 'entityType*': EntityType.DATABASE },
+            column: { key: 'entityType*' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      fireEvent.click(
+        await screen.findByRole('option', { name: 'label.database-schema' })
+      );
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { 'entityType*': EntityType.DATABASE_SCHEMA },
+        true
+      );
+      expect(screen.queryByTestId('inline-save-btn')).not.toBeInTheDocument();
+    });
+
+    it('should end the enum edit when the list closes without a new pick', async () => {
+      const editor = csvUtils.getEditor(
+        'entityType*',
+        EntityType.TABLE,
+        multipleOwner
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected entityType* editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { 'entityType*': EntityType.DATABASE },
+            column: { key: 'entityType*' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      fireEvent.click(
+        await screen.findByRole('option', { name: 'label.database' })
+      );
+
+      expect(onRowChange).not.toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalledWith(false);
+    });
+
+    it('should commit the picked metric enum value and close the cell', async () => {
+      const editor = csvUtils.getEditor(
+        'metricType',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected metricType editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { metricType: 'COUNT' },
+            column: { key: 'metricType' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      fireEvent.click(await screen.findByRole('option', { name: 'SUM' }));
+
+      expect(onRowChange).toHaveBeenCalledWith({ metricType: 'SUM' }, true);
+      expect(onClose).toHaveBeenCalledWith(true);
     });
 
     it('should return editor for code column', () => {
@@ -290,6 +914,1110 @@ describe('CSV utils ClassBase', () => {
 
       expect(editor).toBeDefined();
     });
+
+    it('should use inline editors for metric bulk edit rich fields', () => {
+      const descriptionEditor = csvUtils.getEditor(
+        'description',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const codeEditor = csvUtils.getEditor(
+        'code',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+
+      expect(descriptionEditor).toBeDefined();
+      expect(descriptionEditor).not.toBe(lazyTextEditor);
+      expect(codeEditor).toBeDefined();
+      expect(codeEditor).not.toBe(lazyTextEditor);
+    });
+
+    it.each([EntityType.METRIC, EntityType.TABLE])(
+      'should commit %s bulk edit description changes from the inline editor',
+      (entityType) => {
+        const editor = csvUtils.getEditor(
+          'description',
+          entityType,
+          multipleOwner,
+          { usePlainTextEditor: true }
+        );
+        const onRowChange = jest.fn();
+        const onClose = jest.fn();
+
+        if (!editor) {
+          throw new Error('Expected description editor to be defined');
+        }
+
+        render(
+          <>
+            {editor({
+              row: { description: 'Current description' },
+              column: { key: 'description' },
+              onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+
+        const textarea = screen.getByRole('textbox');
+
+        expect(
+          screen.getByTestId('bulk-edit-description-editor')
+        ).toBeInTheDocument();
+
+        fireEvent.change(textarea, {
+          target: { value: 'Updated description' },
+        });
+        fireEvent.blur(textarea);
+
+        expect(onRowChange).toHaveBeenCalledWith(
+          { description: 'Updated description' },
+          true
+        );
+        expect(onClose).toHaveBeenCalledWith(true);
+      }
+    );
+
+    it('should format selected description text without committing until the save shortcut', () => {
+      const editor = csvUtils.getEditor(
+        'description',
+        EntityType.TABLE,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected description editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { description: 'Important update' },
+            column: { key: 'description' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+      textarea.setSelectionRange(0, 9);
+      const bold = screen.getByRole('button', { name: 'label.bold' });
+      fireEvent.mouseDown(bold);
+      fireEvent.click(bold);
+
+      expect(textarea).toHaveValue('**Important** update');
+      expect(onRowChange).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { description: '**Important** update' },
+        true
+      );
+      expect(onClose).toHaveBeenCalledWith(true);
+    });
+
+    it('should cancel a changed bulk description with Escape', () => {
+      const editor = csvUtils.getEditor(
+        'description',
+        EntityType.TABLE,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected description editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { description: 'Original' },
+            column: { key: 'description' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: 'Discard this' } });
+      fireEvent.keyDown(textarea, { key: 'Escape' });
+
+      expect(onRowChange).not.toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalledWith(false);
+    });
+
+    it('should use a normal text input for metric bulk edit text cells', () => {
+      const editor = csvUtils.getEditor(
+        'displayName',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected displayName editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { displayName: 'Current display name' },
+            column: { key: 'displayName' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      const input = screen.getByTestId(
+        'bulk-edit-text-cell-editor'
+      ) as HTMLInputElement;
+
+      expect(input).toHaveValue('Current display name');
+      expect(input.selectionStart).toBe('Current display name'.length);
+
+      fireEvent.change(input, {
+        target: { value: 'Updated display name' },
+      });
+      fireEvent.blur(input);
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { displayName: 'Updated display name' },
+        true
+      );
+      expect(onClose).toHaveBeenCalledWith(true);
+    });
+
+    it('should retain metric text edits when the grid closes the editor before blur', async () => {
+      const editor = csvUtils.getEditor(
+        'displayName',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected displayName editor to be defined');
+      }
+
+      const { unmount } = render(
+        <>
+          {editor({
+            row: { displayName: 'Current display name' },
+            column: { key: 'displayName' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      fireEvent.change(screen.getByTestId('bulk-edit-text-cell-editor'), {
+        target: { value: 'Updated display name' },
+      });
+
+      unmount();
+
+      await waitFor(() => {
+        expect(onRowChange).toHaveBeenCalledWith(
+          { displayName: 'Updated display name' },
+          true
+        );
+      });
+
+      expect(onClose).toHaveBeenCalledWith(true);
+    });
+
+    it('should use an inline custom properties editor for metric bulk edit extension cells', async () => {
+      const editor = csvUtils.getEditor(
+        'extension',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected extension editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: {
+                extension: 'costCenter:FIN-204;reviewCadence:Quarterly',
+              },
+              column: { key: 'extension' },
+              onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      expect(
+        await screen.findByTestId('bulk-edit-custom-property-editor')
+      ).toBeInTheDocument();
+      expect(await screen.findByText('Cost Center')).toBeInTheDocument();
+      expect(screen.getByText('Review Cadence')).toBeInTheDocument();
+
+      fireEvent.change(await screen.findByDisplayValue('FIN-204'), {
+        target: { value: 'FIN-205' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /update/i }));
+
+      await waitFor(() => {
+        expect(onRowChange).toHaveBeenCalledWith(
+          {
+            extension: 'costCenter:FIN-205;reviewCadence:Quarterly',
+          },
+          true
+        );
+      });
+
+      expect(onClose).toHaveBeenCalledWith(true);
+    });
+
+    it('falls back to startCase(name) for custom properties without a displayName', async () => {
+      // A property edited through the custom-property edit form can end up
+      // with displayName: "" (or none) stored on the server. The bulk-edit
+      // editor's label must fall back to startCase(name) instead of rendering
+      // a blank label (the `??` operator kept "" as the label).
+      mockGetTypeByFQN.mockResolvedValueOnce({
+        customProperties: [
+          {
+            name: 'costCenter',
+            description: '',
+            propertyType: { name: 'string' },
+          },
+          {
+            name: 'reviewCadence',
+            displayName: '',
+            description: '',
+            propertyType: { name: 'string' },
+          },
+        ],
+      });
+
+      const editor = csvUtils.getEditor(
+        'extension',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected extension editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { extension: '' },
+              column: { key: 'extension' },
+              onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      expect(await screen.findByText('Cost Center')).toBeInTheDocument();
+      expect(screen.getByText('Review Cadence')).toBeInTheDocument();
+    });
+
+    it.each([
+      ['', undefined, undefined],
+      [
+        'approver:user:existing;reviewers:user:existing',
+        'existing',
+        ['existing'],
+      ],
+    ] as const)(
+      'loads and updates entity references from CSV %s',
+      async (extension, singleValue, multipleValue) => {
+        mockGetTypeByFQN.mockResolvedValueOnce({
+          customProperties: [
+            {
+              name: 'approver',
+              displayName: 'Approver',
+              description: '',
+              propertyType: { name: 'entityReference' },
+              customPropertyConfig: {
+                config: [SearchIndex.USER],
+              },
+            },
+            {
+              name: 'reviewers',
+              displayName: 'Reviewers',
+              description: '',
+              propertyType: { name: 'entityReferenceList' },
+              customPropertyConfig: {
+                config: [SearchIndex.USER],
+              },
+            },
+          ],
+        });
+
+        const editor = csvUtils.getEditor(
+          'extension',
+          EntityType.METRIC,
+          multipleOwner,
+          { usePlainTextEditor: true }
+        );
+        const onRowChange = jest.fn();
+        const onClose = jest.fn();
+
+        if (!editor) {
+          throw new Error('Expected extension editor to be defined');
+        }
+
+        await act(async () => {
+          render(
+            <>
+              {editor({
+                row: {
+                  extension,
+                },
+                column: { key: 'extension' },
+                onRowChange,
+                onClose,
+              } as unknown as Parameters<typeof editor>[0])}
+            </>
+          );
+        });
+
+        expect(await screen.findByText('Approver')).toBeInTheDocument();
+        expect(screen.getByText('Reviewers')).toBeInTheDocument();
+        expect(mockDataAssetAsyncSelectList).toHaveBeenCalledWith(
+          expect.objectContaining({
+            searchIndex: SearchIndex.USER,
+            value: singleValue,
+          })
+        );
+        expect(mockDataAssetAsyncSelectList).toHaveBeenCalledWith(
+          expect.objectContaining({
+            multiple: true,
+            searchIndex: SearchIndex.USER,
+            value: multipleValue,
+          })
+        );
+
+        fireEvent.click(screen.getByTestId('asset-select-list-single'));
+        fireEvent.click(screen.getByTestId('asset-select-list-multiple'));
+        fireEvent.click(screen.getByRole('button', { name: /update/i }));
+
+        await waitFor(() => {
+          expect(onRowChange).toHaveBeenCalledWith(
+            {
+              extension: 'approver:user:admin;reviewers:user:admin',
+            },
+            true
+          );
+        });
+
+        expect(onClose).toHaveBeenCalledWith(true);
+      }
+    );
+
+    it('should render enum custom properties as single or multi select from config', async () => {
+      mockGetTypeByFQN.mockResolvedValueOnce({
+        customProperties: [
+          {
+            name: 'status',
+            displayName: 'Status',
+            description: '',
+            propertyType: { name: 'enum' },
+            customPropertyConfig: {
+              config: {
+                multiSelect: false,
+                values: ['Draft', 'Approved'],
+              },
+            },
+          },
+          {
+            name: 'markets',
+            displayName: 'Markets',
+            description: '',
+            propertyType: { name: 'enum' },
+            customPropertyConfig: {
+              config: {
+                multiSelect: true,
+                values: ['US', 'EU', 'APAC'],
+              },
+            },
+          },
+        ],
+      });
+
+      const editor = csvUtils.getEditor(
+        'extension',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+
+      if (!editor) {
+        throw new Error('Expected extension editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: {
+                extension: 'status:Draft;markets:US|EU',
+              },
+              column: { key: 'extension' },
+              onRowChange: jest.fn(),
+              onClose: jest.fn(),
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      expect(await screen.findByText('Status')).toBeInTheDocument();
+      expect(screen.getByText('Markets')).toBeInTheDocument();
+      expect(screen.getByTestId('status-enum-select')).toBeInTheDocument();
+      expect(screen.getByTestId('markets-enum-select')).toBeInTheDocument();
+      // A multi-select enum shows each stored value as a chip.
+      expect(screen.getByText('US')).toBeInTheDocument();
+      expect(screen.getByText('EU')).toBeInTheDocument();
+      expect(
+        document.querySelector('.bulk-edit-custom-property-option')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should replace a single-value enum with the newly picked option', async () => {
+      mockGetTypeByFQN.mockResolvedValueOnce({
+        customProperties: [
+          {
+            name: 'status',
+            displayName: 'Status',
+            description: '',
+            propertyType: { name: 'enum' },
+            customPropertyConfig: {
+              config: { multiSelect: false, values: ['Draft', 'Approved'] },
+            },
+          },
+        ],
+      });
+      const editor = csvUtils.getEditor(
+        'extension',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected extension editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { extension: 'status:Draft' },
+              column: { key: 'extension' },
+              onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      // userEvent sends the mousedown that the editor's outside-press guard
+      // listens for; fireEvent.click would skip it.
+      await user.click(
+        within(await screen.findByTestId('status-enum-select')).getByRole(
+          'button'
+        )
+      );
+      await user.click(await screen.findByRole('option', { name: 'Approved' }));
+
+      // Picking inside the portalled list must not count as an outside press.
+      expect(onClose).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole('button', { name: /update/i }));
+
+      await waitFor(() => {
+        expect(onRowChange).toHaveBeenCalledWith(
+          { extension: 'status:Approved' },
+          true
+        );
+      });
+    });
+
+    it('should clear a single-value enum on its own', async () => {
+      mockGetTypeByFQN.mockResolvedValueOnce({
+        customProperties: [
+          {
+            name: 'status',
+            displayName: 'Status',
+            description: '',
+            propertyType: { name: 'enum' },
+            customPropertyConfig: {
+              config: { multiSelect: false, values: ['Draft', 'Approved'] },
+            },
+          },
+          {
+            name: 'priority',
+            displayName: 'Priority',
+            description: '',
+            propertyType: { name: 'string' },
+          },
+        ],
+      });
+      const editor = csvUtils.getEditor(
+        'extension',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected extension editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { extension: 'status:Draft;priority:High' },
+              column: { key: 'extension' },
+              onRowChange,
+              onClose: jest.fn(),
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await user.click(await screen.findByTestId('status-enum-clear'));
+
+      expect(screen.queryByTestId('status-enum-clear')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /update/i }));
+
+      await waitFor(() => {
+        expect(onRowChange).toHaveBeenCalledWith(
+          { extension: 'priority:High' },
+          true
+        );
+      });
+    });
+
+    it('should refetch metric custom properties after an empty response', async () => {
+      const editor = csvUtils.getEditor(
+        'extension',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected extension editor to be defined');
+      }
+
+      mockGetTypeByFQN
+        .mockResolvedValueOnce({ customProperties: [] })
+        .mockResolvedValueOnce({
+          customProperties: [
+            {
+              name: 'priority',
+              displayName: 'Priority',
+              description: '',
+              propertyType: { name: 'string' },
+            },
+          ],
+        });
+
+      const renderEditor = () =>
+        render(
+          <>
+            {editor({
+              row: { extension: '' },
+              column: { key: 'extension' },
+              onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+
+      const firstRender = renderEditor();
+
+      expect(
+        await screen.findByText('label.no-custom-properties-defined')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('label.add-custom-properties-placeholder')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('label.custom-property-plural')
+      ).not.toBeInTheDocument();
+
+      firstRender.unmount();
+
+      renderEditor();
+
+      expect(await screen.findByText('Priority')).toBeInTheDocument();
+      expect(mockGetTypeByFQN).toHaveBeenCalledTimes(2);
+      expect(mockGetTypeByFQN).toHaveBeenNthCalledWith(1, EntityType.METRIC);
+      expect(mockGetTypeByFQN).toHaveBeenNthCalledWith(2, EntityType.METRIC);
+    });
+
+    it('should render the metric domains picker empty state from the design', async () => {
+      const editor = csvUtils.getEditor(
+        'domains',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected domains editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { domains: '' },
+              column: { key: 'domains' },
+              onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      expect(
+        await screen.findByTestId('bulk-edit-domains-picker-editor')
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByText('message.bulk-edit-no-domains-available')
+      ).toBeInTheDocument();
+      expect(
+        screen.getAllByText('message.bulk-edit-domains-placeholder')
+      ).toHaveLength(1);
+      expect(
+        screen.getByPlaceholderText(
+          'message.bulk-edit-domains-search-placeholder'
+        )
+      ).toBeVisible();
+      expect(
+        screen.getByText('message.bulk-edit-domains-empty-description')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('message.bulk-edit-open-domains-settings')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('message.bulk-edit-domains-empty-hint')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /update/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it.each([
+      [
+        'dataProducts',
+        'message.bulk-edit-data-products-placeholder',
+        'message.bulk-edit-data-products-search-placeholder',
+        'message.bulk-edit-no-data-products-available',
+        'message.bulk-edit-open-data-products',
+      ],
+      [
+        'tags',
+        'message.bulk-edit-tags-placeholder',
+        'message.bulk-edit-tags-search-placeholder',
+        'message.bulk-edit-no-tags-yet',
+        'message.bulk-edit-create-a-tag',
+      ],
+      [
+        'glossaryTerms',
+        'message.bulk-edit-glossary-terms-placeholder',
+        'message.bulk-edit-glossary-terms-search-placeholder',
+        'message.bulk-edit-no-glossary-terms-yet',
+        'message.bulk-edit-create-glossary-term',
+      ],
+    ])(
+      'should render the metric %s picker empty state',
+      async (
+        column,
+        placeholder,
+        searchPlaceholder,
+        emptyTitle,
+        actionLabel
+      ) => {
+        const editor = csvUtils.getEditor(
+          column,
+          EntityType.METRIC,
+          multipleOwner,
+          { usePlainTextEditor: true }
+        );
+        const onRowChange = jest.fn();
+        const onClose = jest.fn();
+
+        if (!editor) {
+          throw new Error(`Expected ${column} editor to be defined`);
+        }
+
+        await act(async () => {
+          render(
+            <>
+              {editor({
+                row: { [column]: '' },
+                column: { key: column },
+                onRowChange,
+                onClose,
+              } as unknown as Parameters<typeof editor>[0])}
+            </>
+          );
+        });
+
+        expect(await screen.findByText(emptyTitle)).toBeInTheDocument();
+        expect(screen.getAllByText(placeholder)).toHaveLength(1);
+        expect(screen.getByPlaceholderText(searchPlaceholder)).toBeVisible();
+        expect(screen.getByText(actionLabel)).toBeInTheDocument();
+        expect(
+          screen.queryByRole('button', { name: /update/i })
+        ).not.toBeInTheDocument();
+      }
+    );
+
+    it('should not show tier or certification tags in the metric tags picker', async () => {
+      mockGetAllClassifications.mockResolvedValueOnce({
+        data: [{ name: 'Business' }],
+        paging: { total: 1 },
+      });
+      mockGetTags.mockResolvedValueOnce({
+        data: [
+          {
+            description: 'Critical business tag.',
+            displayName: 'Business Critical',
+            fullyQualifiedName: 'Business.Critical',
+            id: 'business-critical',
+            name: 'Critical',
+            style: { color: '#5925dc' },
+          },
+          {
+            classification: { name: 'Certification' },
+            description: 'Gold certified Data Asset.',
+            displayName: 'Gold',
+            id: 'certification-gold',
+            name: 'Gold',
+            style: { color: '#f79009' },
+          },
+          {
+            description: 'Tier one.',
+            displayName: 'Tier1',
+            fullyQualifiedName: 'Tier.Tier1',
+            id: 'tier-one',
+            name: 'Tier1',
+            style: { color: '#7a5af8' },
+          },
+        ],
+        paging: { total: 3 },
+      });
+
+      const editor = csvUtils.getEditor(
+        'tags',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+
+      if (!editor) {
+        throw new Error('Expected tags editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { tags: '' },
+              column: { key: 'tags' },
+              onClose: jest.fn(),
+              onRowChange: jest.fn(),
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      expect(await screen.findByText('Business Critical')).toBeInTheDocument();
+      expect(screen.queryByText('Gold')).not.toBeInTheDocument();
+      expect(screen.queryByText('Tier1')).not.toBeInTheDocument();
+    });
+
+    it('should show metric glossary terms as hierarchy paths in the picker', async () => {
+      mockGetGlossariesList.mockResolvedValueOnce({
+        data: [{ name: 'BusinessGlossary' }],
+        paging: { total: 1 },
+      });
+      mockGetGlossaryTerms.mockResolvedValueOnce({
+        data: [
+          {
+            displayName: 'Net Sales',
+            fullyQualifiedName: 'BusinessGlossary.Revenue.NetSales',
+            glossary: {
+              displayName: 'Business Glossary',
+              name: 'BusinessGlossary',
+            },
+            name: 'NetSales',
+            style: { color: '#1570ef' },
+          },
+        ],
+        paging: { total: 1 },
+      });
+
+      const editor = csvUtils.getEditor(
+        'glossaryTerms',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected glossaryTerms editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { glossaryTerms: '' },
+              column: { key: 'glossaryTerms' },
+              onClose,
+              onRowChange,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: /BusinessGlossary \/ Revenue \/ NetSales/i,
+        })
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { glossaryTerms: 'BusinessGlossary.Revenue.NetSales' },
+        true
+      );
+      expect(onClose).toHaveBeenCalledWith(true);
+    });
+
+    it('should keep the glossary cell search in the popover, not in the cell', async () => {
+      const editor = csvUtils.getEditor(
+        'relatedTerms',
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
+
+      if (!editor) {
+        throw new Error('Expected relatedTerms editor to be defined');
+      }
+
+      // Rendered, not called: this editor owns hooks of its own.
+      const GlossaryCellEditor = editor as unknown as FC<Record<string, never>>;
+
+      await act(async () => {
+        render(
+          <GlossaryCellEditor
+            {...({
+              row: { relatedTerms: 'BusinessGlossary.Revenue' },
+              column: { key: 'relatedTerms' },
+              rowIdx: 0,
+              onClose: jest.fn(),
+              onRowChange: jest.fn(),
+            } as unknown as Record<string, never>)}
+          />
+        );
+      });
+
+      // The cell shows the value it is editing; nothing to type into.
+      const trigger = screen.getByTestId('csv-glossary-terms-picker');
+
+      expect(trigger).toHaveTextContent('Revenue');
+      expect(trigger.querySelector('input')).toBeNull();
+
+      const popover = await screen.findByTestId(
+        'csv-glossary-terms-picker-popover'
+      );
+
+      expect(within(popover).getByRole('textbox')).toBeInTheDocument();
+    });
+
+    it('should commit selected metric domains from the picker', async () => {
+      mockGetDomainList.mockResolvedValueOnce({
+        data: [
+          {
+            displayName: 'Marketing',
+            fullyQualifiedName: 'Marketing',
+            name: 'Marketing',
+          },
+        ],
+        paging: { total: 1 },
+      });
+
+      const editor = csvUtils.getEditor(
+        'domains',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected domains editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { domains: '' },
+              column: { key: 'domains' },
+              onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: /Marketing/i })
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { domains: '"Marketing"' },
+        true
+      );
+      expect(onClose).toHaveBeenCalledWith(true);
+    });
+
+    it('should commit selected metric reviewers from the compact picker', async () => {
+      mockSearchQuery.mockResolvedValueOnce({
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Aiden Brooks',
+                email: 'aiden@example.com',
+                entityType: EntityType.USER,
+                id: 'aiden-id',
+                name: 'aiden',
+              },
+            },
+          ],
+          total: { value: 1 },
+        },
+      });
+
+      const editor = csvUtils.getEditor(
+        'reviewers',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected reviewers editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { reviewers: '' },
+              column: { key: 'reviewers' },
+              onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: /Aiden Brooks/i })
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { reviewers: 'user:aiden' },
+        true
+      );
+      expect(onClose).toHaveBeenCalledWith(true);
+    });
+
+    it.each(['owner', 'reviewers'])(
+      'should preselect no %s when the cell is missing or empty',
+      (column) => {
+        const editor = csvUtils.getEditor(
+          column,
+          EntityType.GLOSSARY_TERM,
+          multipleOwner
+        );
+
+        if (!editor) {
+          throw new Error(`Expected ${column} editor to be defined`);
+        }
+
+        for (const row of [{}, { [column]: '' }]) {
+          (UserTeamSelectableList as jest.Mock).mockClear();
+          render(
+            <>
+              {editor({
+                row,
+                column: { key: column },
+                onRowChange: jest.fn(),
+                onClose: jest.fn(),
+              } as unknown as Parameters<typeof editor>[0])}
+            </>
+          );
+
+          expect(UserTeamSelectableList).toHaveBeenCalledWith(
+            expect.objectContaining({ owner: [] }),
+            expect.anything()
+          );
+        }
+      }
+    );
 
     it('should handle different entity types', () => {
       const tableEditor = csvUtils.getEditor(

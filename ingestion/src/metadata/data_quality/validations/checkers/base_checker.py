@@ -15,7 +15,8 @@ Should be extended to implement different validation checkers that are used to d
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, List, Mapping
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from sqlalchemy.sql.elements import ClauseElement
@@ -29,11 +30,13 @@ class BaseValidationChecker(ABC):
         """Return True if the provided Pandas metric values violate the condition."""
 
     @abstractmethod
-    def build_violation_sqa(self, metrics: List["ClauseElement"]) -> "ClauseElement":
+    def build_violation_sqa(self, metrics: list["ClauseElement"]) -> "ClauseElement":
         """Build SQLAlchemy Failed Rows expression"""
 
     def build_agg_level_violation_sqa(
-        self, metric_expressions: List["ClauseElement"], row_count_expr: str
+        self,
+        metric_expressions: list["ClauseElement"],
+        row_count_expr: str,
     ) -> "ClauseElement":
         """
         Default builder: map CTE columns to metric keys, use violation predicate, and

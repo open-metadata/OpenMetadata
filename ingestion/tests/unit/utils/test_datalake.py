@@ -12,13 +12,18 @@
 Test datalake utils
 """
 
+import io
 import json
 import os
+import random
 from unittest import TestCase
 
+import fastavro
 import pandas as pd
+import pytest
 
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.dsv import DSVDataFrameReader
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils.datalake.datalake_utils import (
@@ -28,6 +33,7 @@ from metadata.utils.datalake.datalake_utils import (
     ParquetDataFrameColumnParser,
     get_file_format_type,
 )
+from metadata.utils.schema_inference import InferenceLimits, InferenceReport
 
 STRUCTURE = {
     "a": "w",
@@ -164,8 +170,65 @@ class TestDatalakeUtils(TestCase):
         ]
         actual = GenericDataFrameColumnParser.construct_json_column_children(STRUCTURE)
 
-        for el in zip(expected, actual):
+        for el in zip(expected, actual):  # noqa: B905
             self.assertDictEqual(el[0], el[1])
+
+    def test_unique_json_structure_with_list_of_dicts(self):
+        """list-of-dicts values are merged into a struct shape (e.g. Iceberg `schema.fields`)."""
+        sample_data = [
+            {
+                "schema": {
+                    "fields": [
+                        {"id": 1, "name": "customer_id", "type": "string"},
+                        {"id": 2, "name": "customer_type_cd", "type": "string"},
+                    ]
+                }
+            }
+        ]
+
+        actual = GenericDataFrameColumnParser.unique_json_structure(sample_data)
+        fields_value = actual["schema"]["fields"]
+
+        from metadata.utils.datalake.datalake_utils import _ArrayOfStruct
+
+        assert isinstance(fields_value, _ArrayOfStruct)
+        assert set(fields_value.struct.keys()) == {"id", "name", "type"}
+
+    def test_unique_json_structure_merges_list_of_dicts_across_samples(self):
+        """list-of-dicts values across multiple samples are unioned, not overwritten."""
+        from metadata.utils.datalake.datalake_utils import _ArrayOfStruct
+
+        sample_data = [
+            {"schema": {"fields": [{"id": 1, "name": "customer_id", "type": "string"}]}},
+            {"schema": {"fields": [{"id": 2, "required": False, "type": "string"}]}},
+            {"schema": {"fields": [{"description": "ciam id"}]}},
+        ]
+
+        actual = GenericDataFrameColumnParser.unique_json_structure(sample_data)
+        fields_value = actual["schema"]["fields"]
+
+        assert isinstance(fields_value, _ArrayOfStruct)
+        assert set(fields_value.struct.keys()) == {"id", "name", "type", "required", "description"}
+
+    def test_construct_column_with_array_of_struct(self):
+        """list-of-dicts values render as ARRAY<STRUCT<...>> with children for the struct fields."""
+        structure = {
+            "schema": {
+                "fields": [
+                    {"id": 1, "name": "customer_id", "type": "string"},
+                    {"id": 2, "name": "ciam_id", "type": "string"},
+                ]
+            }
+        }
+        merged = GenericDataFrameColumnParser.unique_json_structure([structure])
+        children = GenericDataFrameColumnParser.construct_json_column_children(merged)
+
+        schema_col = children[0]
+        fields_col = next(c for c in schema_col["children"] if c["name"] == "fields")
+
+        assert fields_col["dataType"] == DataType.ARRAY.value
+        assert fields_col["arrayDataType"] == DataType.STRUCT
+        assert {child["name"] for child in fields_col["children"]} == {"id", "name", "type"}
 
     def test_create_column_object(self):
         """test create column object fn"""
@@ -178,7 +241,34 @@ class TestDatalakeUtils(TestCase):
             "children": formatted_column,
         }
         column_obj = Column(**column)
-        assert len(column_obj.children) == 3
+        assert column_obj.children is not None and len(column_obj.children) == 3
+
+    def test_fetch_col_types_majority_wins(self):
+        """Majority type wins; a handful of date-parseable tokens must not flip a string column."""
+        cases = [
+            # Overwhelmingly strings with a few month-name values — must stay STRING.
+            # This is the dvdrental last_name bug: "May" parses as a date via dateutil
+            # but the column is a string column.
+            (
+                "last_name_with_month_surnames",
+                ["Smith", "Gonzalez", "Brown", "May", "Jones", "Williams", "Davis"],
+                DataType.STRING,
+            ),
+            # Minority of ambiguous month tokens mixed in a long list of plain strings.
+            ("mostly_strings_few_month_tokens", ["foo", "bar", "baz", "May", "qux", "quux", "March"], DataType.STRING),
+            # All values are unambiguous ISO dates — must be DATETIME.
+            ("pure_iso_dates", ["2024-01-01", "2024-06-15", "2025-03-20"], DataType.DATETIME),
+            # Natural-language date phrases — all parse as dates — must be DATETIME.
+            ("natural_language_dates", ["May 2025", "June 2026", "March 2024", "January 2023"], DataType.DATETIME),
+            # Pure strings, no date-parseable values at all.
+            ("pure_strings", ["hello", "world", "foo", "bar"], DataType.STRING),
+            # All plain integers stored as strings — must be INT.
+            ("integer_strings", ["1", "2", "3", "42"], DataType.INT),
+        ]
+        for name, values, expected in cases:
+            with self.subTest(name):
+                df = pd.DataFrame({"col": values})
+                self.assertEqual(GenericDataFrameColumnParser.fetch_col_types(df, "col"), expected)
 
 
 class TestParquetDataFrameColumnParser(TestCase):
@@ -186,8 +276,8 @@ class TestParquetDataFrameColumnParser(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        resources_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources")
-        cls.parquet_path = os.path.join(resources_path, "datalake", "example.parquet")
+        resources_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources")  # noqa: PTH118, PTH120
+        cls.parquet_path = os.path.join(resources_path, "datalake", "example.parquet")  # noqa: PTH118
 
         cls.df = pd.read_parquet(cls.parquet_path)
 
@@ -207,7 +297,7 @@ class TestParquetDataFrameColumnParser(TestCase):
         ]
         other_types = [typ for typ in SupportedTypes if typ not in parquet_types]
         for other_type in other_types:
-            with self.subTest(other_type=other_type):
+            with self.subTest(other_type=other_type.value):
                 generic_parser = DataFrameColumnParser.create(self.df, other_type)
                 self.assertIsInstance(generic_parser.parser, GenericDataFrameColumnParser)
 
@@ -425,9 +515,8 @@ class TestParquetDataFrameColumnParser(TestCase):
             ),  # type: ignore
         ]
         actual = self.parquet_parser.get_columns()
-        for validation in zip(expected, actual):
-            with self.subTest(validation=validation):
-                expected_col, actual_col = validation
+        for expected_col, actual_col in zip(expected, actual):  # noqa: B905
+            with self.subTest(column=expected_col.name.root):
                 self.assertEqual(expected_col.name, actual_col.name)
                 self.assertEqual(expected_col.displayName, actual_col.displayName)
                 self.assertEqual(expected_col.dataType, actual_col.dataType)
@@ -439,9 +528,8 @@ class TestParquetDataFrameColumnParser(TestCase):
         self.assertEqual(expected.displayName, actual.displayName)
         if expected.children:
             self.assertEqual(len(expected.children), len(actual.children))
-            for validation in zip(expected.children, actual.children):
-                with self.subTest(validation=validation):
-                    expected_col, actual_col = validation
+            for expected_col, actual_col in zip(expected.children, actual.children):  # noqa: B905
+                with self.subTest(column=expected_col.name.root):
                     self._validate_parsed_column(expected_col, actual_col)
 
     def test_get_file_format_type_csv_gz(self):
@@ -753,6 +841,294 @@ class TestIcebergDeltaLakeMetadataParsing(TestCase):
         # This test ensures we don't break existing JSON Schema parsing
         self.assertIsNotNone(columns)
 
+    def test_read_json_object_propagates_raw_data_for_iceberg(self):
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        content = json.dumps(
+            {
+                "format-version": 1,
+                "schema": {"fields": [{"id": 1, "name": "customer_id", "required": False, "type": "string"}]},
+            }
+        )
+        _gen, raw = JSONDataFrameReader._read_json_object(content.encode("utf-8"))
+        self.assertEqual(raw, content)
+
+    def test_read_json_object_returns_none_for_plain_object(self):
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        content = json.dumps({"a": 1, "b": 2})
+        _gen, raw = JSONDataFrameReader._read_json_object(content.encode("utf-8"))
+        self.assertIsNone(raw)
+
+    def test_read_json_object_propagates_raw_data_for_json_schema(self):
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        content = json.dumps({"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"})
+        _gen, raw = JSONDataFrameReader._read_json_object(content.encode("utf-8"))
+        self.assertEqual(raw, content)
+
+    def test_is_json_lines_returns_false_for_minified_iceberg(self):
+        """Single-line (minified) Iceberg metadata.json must NOT be treated as JSON Lines,
+        otherwise it bypasses _read_json_object and raw_data is never set."""
+        import io
+
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        minified = json.dumps(
+            {
+                "format-version": 1,
+                "schema": {"fields": [{"id": 1, "name": "customer_id", "required": False, "type": "string"}]},
+            }
+        )
+        self.assertFalse(JSONDataFrameReader._is_json_lines(io.BytesIO(minified.encode("utf-8"))))
+
+    def test_is_json_lines_returns_false_for_minified_json_schema(self):
+        import io
+
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        minified = json.dumps({"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"})
+        self.assertFalse(JSONDataFrameReader._is_json_lines(io.BytesIO(minified.encode("utf-8"))))
+
+    def test_is_json_lines_returns_true_for_real_jsonl(self):
+        import io
+
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        jsonl = b'{"a": 1, "b": 2}\n{"a": 3, "b": 4}\n'
+        self.assertTrue(JSONDataFrameReader._is_json_lines(io.BytesIO(jsonl)))
+
+
+class TestFetchColTypesWithParsedObjects:
+    """fetch_col_types must correctly type object-dtype columns whose values are already
+    parsed Python dicts or lists, including falsy containers ({}, [])."""
+
+    def test_empty_dict_typed_as_json(self):
+        df = pd.DataFrame({"col": [{}]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_empty_list_typed_as_array(self):
+        df = pd.DataFrame({"col": [[]]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.ARRAY
+
+    def test_multiple_empty_dicts_typed_as_json(self):
+        df = pd.DataFrame({"col": [{}, {}, {}]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_dict_with_data_typed_as_json(self):
+        df = pd.DataFrame({"col": [{"k": "v"}]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_list_with_data_typed_as_array(self):
+        df = pd.DataFrame({"col": [[1, 2, 3]]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.ARRAY
+
+    def test_large_already_parsed_dict_typed_as_json(self):
+        large = {str(i): i for i in range(500)}
+        df = pd.DataFrame({"col": [large]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_null_column_typed_as_string(self):
+        df = pd.DataFrame({"col": [None]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+
+    def test_string_column_typed_as_string(self):
+        df = pd.DataFrame({"col": ["hello"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+
+    def test_int_column_typed_as_int(self):
+        df = pd.DataFrame({"col": [42]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.INT
+
+
+class TestFetchColTypesMixedTypes:
+    """fetch_col_types must resolve the dominant type via explicit precedence, not
+    lexicographic max(). The old max() would return 'str' whenever a string value appeared
+    in the column because 'str' > 'dict' and 'str' > 'list' lexicographically."""
+
+    def test_dict_and_string_mix_typed_as_json(self):
+        # Previously: max(["dict", "str"]) == "str" → STRING (wrong)
+        # Now: precedence picks "dict" → JSON (correct)
+        df = pd.DataFrame({"col": [{"a": 1}, "fallback_string"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_list_and_string_mix_typed_as_array(self):
+        # Previously: max(["list", "str"]) == "str" → STRING (wrong)
+        # Now: precedence picks "list" → ARRAY (correct)
+        df = pd.DataFrame({"col": [[1, 2], "fallback_string"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.ARRAY
+
+    def test_int_and_float_mix_typed_as_float(self):
+        # float64 beats int64 in precedence — a column with mixed numeric types resolves to FLOAT
+        df = pd.DataFrame({"col": ["42", "3.14"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.FLOAT
+
+    def test_pure_string_column_typed_as_string(self):
+        # Control: no structured types present → still STRING
+        df = pd.DataFrame({"col": ["hello", "world"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+
+    def test_pure_dict_column_typed_as_json(self):
+        # Control: all dicts → JSON with no ambiguity
+        df = pd.DataFrame({"col": [{"a": 1}, {"b": 2}]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_dict_beats_list_in_mixed_column(self):
+        # dict > list in precedence
+        df = pd.DataFrame({"col": [{"a": 1}, [1, 2]]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+
+class TestGetChildrenWithParsedDicts:
+    """get_children must correctly extract children regardless of whether the Series
+    values are already-parsed Python dicts, JSON strings, or a mix of both."""
+
+    def test_already_parsed_dict_returns_children(self):
+        col = pd.Series([{"name": "Alice", "age": 30}])
+        children = GenericDataFrameColumnParser.get_children(col)
+        assert {c["name"] for c in children} == {"name", "age"}
+
+    def test_empty_dict_returns_no_children(self):
+        col = pd.Series([{}])
+        assert GenericDataFrameColumnParser.get_children(col) == []
+
+    def test_all_null_returns_no_children(self):
+        col = pd.Series([None, None])
+        assert GenericDataFrameColumnParser.get_children(col) == []
+
+    def test_string_json_returns_children(self):
+        col = pd.Series(['{"name": "Bob", "score": 99}'])
+        children = GenericDataFrameColumnParser.get_children(col)
+        assert {c["name"] for c in children} == {"name", "score"}
+
+    def test_mixed_string_and_dict_values_returns_union_of_children(self):
+        col = pd.Series(['{"a": 1, "b": 2}', {"b": 2, "c": 3}])
+        children = GenericDataFrameColumnParser.get_children(col)
+        assert {c["name"] for c in children} == {"a", "b", "c"}
+
+    def test_malformed_string_values_are_skipped(self):
+        col = pd.Series(["not-json", {"key": "val"}])
+        children = GenericDataFrameColumnParser.get_children(col)
+        assert {c["name"] for c in children} == {"key"}
+
+    def test_nested_dict_structure_returns_children(self):
+        nodes = {"model.Project.my_model": {"name": "my_model", "unique_id": "x", "description": "test"}}
+        col = pd.Series([nodes])
+        children = GenericDataFrameColumnParser.get_children(col)
+        assert len(children) == 1
+        assert children[0]["name"] == "model.Project.my_model"
+
+
+class TestSingleObjectJsonFileIngestion:
+    """End-to-end column parsing for single-object JSON files.
+
+    Reads fixture files with json.loads → DataFrame.from_records → _get_columns → Column objects.
+    A single top-level JSON object is wrapped into a 1-row DataFrame. Every top-level key
+    becomes a column whose value is the Python object returned by json.loads — typically a
+    dict, list, or None. All columns must be typed correctly and children extracted without
+    errors.
+    """
+
+    RESOURCES = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "datalake")  # noqa: PTH118, PTH120
+
+    def _load_fixture_as_dataframe(self, filename):
+        path = os.path.join(self.RESOURCES, filename)  # noqa: PTH118
+        with open(path, "rb") as f:  # noqa: PTH123
+            data = json.loads(f.read())
+        if isinstance(data, dict):
+            data = [data]
+        return pd.DataFrame.from_records(data)
+
+    def _parsed_columns(self, filename):
+        df = self._load_fixture_as_dataframe(filename)
+        return {col.name.root: col for col in GenericDataFrameColumnParser._get_columns(df)}
+
+    def test_dict_valued_columns_typed_as_json(self):
+        cols = self._parsed_columns("dbt_catalog.json")
+        assert cols["metadata"].dataType == DataType.JSON
+        assert cols["nodes"].dataType == DataType.JSON
+        assert cols["sources"].dataType == DataType.JSON
+
+    def test_null_column_typed_as_string(self):
+        cols = self._parsed_columns("dbt_catalog.json")
+        assert cols["errors"].dataType == DataType.STRING
+
+    def test_non_empty_dict_column_has_children(self):
+        cols = self._parsed_columns("dbt_catalog.json")
+        assert cols["nodes"].children is not None and len(cols["nodes"].children) > 0
+
+    def test_empty_dict_columns_typed_as_json_not_string(self):
+        cols = self._parsed_columns("dbt_manifest.json")
+        for name in ("metrics", "groups", "disabled", "group_map", "saved_queries", "semantic_models", "unit_tests"):
+            assert cols[name].dataType == DataType.JSON, f"column '{name}': expected JSON, got {cols[name].dataType}"
+
+    def test_empty_dict_columns_have_no_children(self):
+        cols = self._parsed_columns("dbt_manifest.json")
+        for name in ("metrics", "groups", "disabled", "group_map", "saved_queries", "semantic_models", "unit_tests"):
+            children = cols[name].children
+            assert not children, f"column '{name}' should have no children"
+
+
+class TestDbtSingleObjectJsonIngestion:
+    """Single-object JSON files (e.g. dbt artifacts) are wrapped into a 1-row DataFrame
+    where every top-level key becomes a column with a Python dict value. The column parser
+    must correctly type all columns — including empty-dict columns — without errors."""
+
+    @staticmethod
+    def _make_catalog_df():
+        return pd.DataFrame(
+            [
+                {
+                    "metadata": {"dbt_version": "1.5.0", "generated_at": "2024-01-01"},
+                    "nodes": {"model.Project.tbl": {"name": "tbl", "description": "test"}},
+                    "sources": {},
+                    "errors": None,
+                }
+            ]
+        )
+
+    @staticmethod
+    def _make_manifest_df():
+        return pd.DataFrame(
+            [
+                {
+                    "metadata": {"dbt_version": "1.5.0"},
+                    "nodes": {"model.Project.tbl": {"name": "tbl"}},
+                    "sources": {},
+                    "metrics": {},
+                    "groups": {},
+                    "disabled": {},
+                    "group_map": {},
+                    "saved_queries": {},
+                    "semantic_models": {},
+                    "unit_tests": {},
+                }
+            ]
+        )
+
+    def test_catalog_column_types(self):
+        df = self._make_catalog_df()
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "metadata") == DataType.JSON
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "nodes") == DataType.JSON
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "sources") == DataType.JSON
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "errors") == DataType.STRING
+
+    def test_manifest_empty_dict_columns_typed_as_json(self):
+        df = self._make_manifest_df()
+        for col in ("metrics", "groups", "disabled", "group_map", "saved_queries", "semantic_models", "unit_tests"):
+            assert GenericDataFrameColumnParser.fetch_col_types(df, col) == DataType.JSON, f"{col} should be JSON"
+
+    def test_catalog_nodes_children_extracted_without_error(self):
+        df = self._make_catalog_df()
+        nodes_col = df["nodes"].dropna()[:100]
+        children = GenericDataFrameColumnParser.get_children(nodes_col)
+        assert len(children) > 0
+
+    def test_catalog_sources_empty_dict_returns_no_children(self):
+        df = self._make_catalog_df()
+        sources_col = df["sources"].dropna()[:100]
+        assert GenericDataFrameColumnParser.get_children(sources_col) == []
+
 
 class TestCSVQuotedHeaderFix(TestCase):
     """Test CSV parsing with quoted header fix for malformed CSV files"""
@@ -851,3 +1227,195 @@ class TestCSVQuotedHeaderFix(TestCase):
         """Test that empty chunk list returns empty list"""
         result = self.csv_reader._fix_malformed_quoted_chunk([], ",")
         self.assertEqual(result, [])
+
+
+class TestSchemaInferenceLimits:
+    """Issue #29832: children inferred from sampled JSON stay within maxSchemaInferenceDepth
+    and maxChildrenPerColumn. A bounded tree is the unbounded tree with nodes removed, never
+    reordered or retyped, and the kept children do not depend on the order of the records.
+    """
+
+    @staticmethod
+    def _records(seed: int = 0) -> list[dict]:
+        rng = random.Random(seed)
+        records = []
+        for idx in range(6):
+            keys = [f"k{n:02d}" for n in range(12)]
+            rng.shuffle(keys)
+            deep = {"leaf": idx}
+            for level in range(5, 0, -1):
+                deep = {f"l{level}": deep}
+            records.append(
+                {
+                    "id": idx,
+                    "payload": {key: {"x": idx, "y": idx} for key in keys[: 8 + idx % 4]},
+                    "deep": deep,
+                    "items": [{f"f{n:02d}": n for n in range(6)}, {"g": idx}],
+                    "meta": {"lines": [{f"c{n:02d}": n for n in range(idx, idx + 5)}]},
+                }
+            )
+        rng.shuffle(records)
+        return records
+
+    @staticmethod
+    def _columns(records, file_type=SupportedTypes.JSONL, report=None, **limits) -> list[Column]:
+        parser = DataFrameColumnParser.create(
+            pd.DataFrame.from_records(records), file_type, limits=InferenceLimits(**limits), report=report
+        )
+        return parser.get_columns()
+
+    @classmethod
+    def _shape(cls, columns) -> dict:
+        return {
+            col.name.root: (col.dataType, col.arrayDataType, cls._shape(col.children or [])) for col in columns or []
+        }
+
+    @classmethod
+    def _depth(cls, column) -> int:
+        return max((1 + cls._depth(child) for child in column.children or []), default=0)
+
+    @classmethod
+    def _widest(cls, column) -> int:
+        children = column.children or []
+        return max([len(children), *(cls._widest(child) for child in children)])
+
+    @classmethod
+    def _assert_pruned_copy(cls, bounded, unbounded):
+        source_by_name = {col.name.root: col for col in unbounded or []}
+        kept = [col.name.root for col in bounded or []]
+        assert kept == [name for name in source_by_name if name in set(kept)]
+        for col in bounded or []:
+            source = source_by_name[col.name.root]
+            assert (col.dataType, col.arrayDataType) == (source.dataType, source.arrayDataType)
+            cls._assert_pruned_copy(col.children, source.children)
+
+    @staticmethod
+    def _by_name(columns) -> dict[str, Column]:
+        return {col.name.root: col for col in columns}
+
+    def test_limits_that_are_not_reached_keep_the_unbounded_output(self):
+        records = self._records()
+        unbounded = self._columns(records)
+
+        assert self._columns(records, max_depth=100, max_children=100) == unbounded
+        payload = self._by_name(unbounded)["payload"]
+        assert len(payload.children) == 12
+        assert self._depth(self._by_name(unbounded)["deep"]) == 6
+
+    def test_children_limit_keeps_the_smallest_names_at_every_level(self):
+        columns = self._by_name(self._columns(self._records(), max_children=3))
+
+        assert {child.name.root for child in columns["payload"].children} == {"k00", "k01", "k02"}
+        assert {child.name.root for child in columns["items"].children} == {"f00", "f01", "f02"}
+        lines = columns["meta"].children[0]
+        assert lines.arrayDataType == DataType.STRUCT
+        assert {child.name.root for child in lines.children} == {"c00", "c01", "c02"}
+        assert all(self._widest(col) <= 3 for col in columns.values())
+
+    def test_kept_children_do_not_depend_on_record_order(self):
+        records = self._records()
+        orders = [records, list(reversed(records))]
+        for seed in (1, 2):
+            shuffled = list(records)
+            random.Random(seed).shuffle(shuffled)
+            orders.append(shuffled)
+
+        shapes = [self._shape(self._columns(order, max_children=4, max_depth=3)) for order in orders]
+
+        assert all(shape == shapes[0] for shape in shapes)
+        assert set(shapes[0]["payload"][2]) == {"k00", "k01", "k02", "k03"}
+
+    def test_depth_limit_cuts_deeper_children_and_keeps_types(self):
+        columns = self._by_name(self._columns(self._records(), max_depth=2))
+
+        assert self._depth(columns["deep"]) == 2
+        level_two = columns["deep"].children[0].children[0]
+        assert (level_two.name.root, level_two.dataType, level_two.children) == ("l2", DataType.JSON, [])
+        assert self._depth(columns["payload"]) == 2
+        assert self._depth(columns["meta"]) == 2
+
+    @pytest.mark.parametrize("limits", [{"max_depth": 0}, {"max_children": 0}])
+    def test_zero_keeps_no_inferred_children(self, limits):
+        columns = self._by_name(self._columns(self._records(), **limits))
+
+        assert (columns["payload"].dataType, columns["payload"].children) == (DataType.JSON, [])
+        assert (columns["deep"].dataType, columns["deep"].children) == (DataType.JSON, [])
+        items = columns["items"]
+        assert (items.dataType, items.arrayDataType, items.children) == (DataType.ARRAY, DataType.STRUCT, [])
+
+    def test_both_limits_apply_together(self):
+        records = self._records()
+        bounded = self._columns(records, max_depth=2, max_children=2)
+
+        self._assert_pruned_copy(bounded, self._columns(records))
+        assert all(self._depth(col) <= 2 and self._widest(col) <= 2 for col in bounded)
+
+    @pytest.mark.parametrize("file_type", [SupportedTypes.JSON, SupportedTypes.JSONL, SupportedTypes.CSV])
+    def test_every_dataframe_format_is_bounded(self, file_type):
+        records = [{"payload": json.dumps(record["payload"])} for record in self._records()]
+        if file_type != SupportedTypes.CSV:
+            records = self._records()
+
+        payload = self._by_name(self._columns(records, file_type, max_children=2))["payload"]
+
+        assert payload.dataType == DataType.JSON
+        assert [child.name.root for child in payload.children] in (["k00", "k01"], ["k01", "k00"])
+
+    def test_declared_json_schema_is_not_limited(self):
+        schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": "order",
+            "type": "object",
+            "properties": {f"p{n}": {"type": "string"} for n in range(5)},
+        }
+        parser = DataFrameColumnParser.create(
+            pd.DataFrame(), SupportedTypes.JSON, raw_data=json.dumps(schema), limits=InferenceLimits(max_children=1)
+        )
+
+        assert len(parser.get_columns()[0].children) == 5
+
+    def test_report_names_the_cut_columns(self):
+        report = InferenceReport()
+        limits = InferenceLimits(max_depth=2, max_children=3)
+
+        self._columns(self._records(), report=report, max_depth=2, max_children=3)
+
+        assert report.warning(limits) == (
+            "Schema inference limits dropped nested columns. "
+            "maxSchemaInferenceDepth=2 cut the children of 1 column(s): deep.l1.l2. "
+            "maxChildrenPerColumn=3 cut the children of 3 column(s): items, meta.lines, payload."
+        )
+
+    def test_avro_records_keep_their_declared_fields(self):
+        """Avro reaches the generic parser too, but its nested records come from the file's schema."""
+        schema = {
+            "type": "record",
+            "name": "event",
+            "fields": [
+                {"name": "id", "type": "long"},
+                {
+                    "name": "address",
+                    "type": {
+                        "type": "record",
+                        "name": "address",
+                        "fields": [{"name": f"f{n}", "type": "string"} for n in range(5)],
+                    },
+                },
+            ],
+        }
+        buffer = io.BytesIO()
+        fastavro.writer(buffer, fastavro.parse_schema(schema), [{"id": 1, "address": {f"f{n}": "x" for n in range(5)}}])
+        buffer.seek(0)
+        frame = next(AvroDataFrameReader._stream_avro_records(buffer))
+
+        columns = DataFrameColumnParser.create(
+            frame, SupportedTypes.AVRO, limits=InferenceLimits(max_depth=0, max_children=1)
+        ).get_columns()
+
+        address = self._by_name(columns)["address"]
+        assert [child.name.root for child in address.children] == [f"f{n}" for n in range(5)]
+
+    def test_mf4_frames_are_not_limited(self):
+        payload = self._by_name(self._columns(self._records(), SupportedTypes.MF4, max_children=1))["payload"]
+
+        assert len(payload.children) == 12

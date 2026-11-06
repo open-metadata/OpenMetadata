@@ -1,9 +1,4 @@
-ALTER TABLE entity_extension
-  ADD COLUMN versionNum DOUBLE NULL,
-  ADD COLUMN changedFieldKeys JSON NULL;
-
-CREATE INDEX idx_entity_extension_version_order
-  ON entity_extension (id, versionNum);
-
-CREATE INDEX idx_entity_extension_changed_field_keys
-  ON entity_extension ((CAST(changedFieldKeys->'$' AS CHAR(512) ARRAY)));
+-- Placeholder for 1.12.7 MySQL schema changes
+-- The Postgres-side fix for #27158 has no MySQL counterpart: MySQL's
+-- 1.11.0 indexes were already non-partial (no partial-index syntax in
+-- MySQL), so the regression that hit Postgres did not affect MySQL.

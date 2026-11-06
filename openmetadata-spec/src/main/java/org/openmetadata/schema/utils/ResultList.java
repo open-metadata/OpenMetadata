@@ -20,11 +20,13 @@ import jakarta.validation.constraints.NotNull;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.Paging;
+import org.openmetadata.schema.type.ResourcePermission;
 
 /**
  * Class used for generating JSON response for APIs returning list of objects in the following format: { "data" : [ {
@@ -46,6 +48,22 @@ public class ResultList<T> {
 
   @JsonProperty("warningsCount")
   private Integer warningsCount;
+
+  /**
+   * Records read but not indexed for a non-failure reason (e.g. stale-relationship orphans).
+   * Carried separately from {@link #errors} so callers can surface them as warnings — and record
+   * them — without failing the batch.
+   */
+  @JsonProperty("warnings")
+  private List<EntityError> warnings;
+
+  /**
+   * Per-entity permissions for the current user, keyed by entity id. Populated only when a list
+   * request opts in with {@code ?includePermissions=true} so the UI can render row-level actions
+   * without firing one permission call per listed entity. Null (and omitted from JSON) otherwise.
+   */
+  @JsonProperty("entityPermissions")
+  private Map<String, ResourcePermission> entityPermissions;
 
   public ResultList() {}
 
@@ -201,5 +219,25 @@ public class ResultList<T> {
   @JsonProperty("warningsCount")
   public void setWarningsCount(Integer warningsCount) {
     this.warningsCount = warningsCount;
+  }
+
+  @JsonProperty("warnings")
+  public List<EntityError> getWarnings() {
+    return warnings;
+  }
+
+  @JsonProperty("warnings")
+  public void setWarnings(List<EntityError> warnings) {
+    this.warnings = warnings;
+  }
+
+  @JsonProperty("entityPermissions")
+  public Map<String, ResourcePermission> getEntityPermissions() {
+    return entityPermissions;
+  }
+
+  @JsonProperty("entityPermissions")
+  public void setEntityPermissions(Map<String, ResourcePermission> entityPermissions) {
+    this.entityPermissions = entityPermissions;
   }
 }

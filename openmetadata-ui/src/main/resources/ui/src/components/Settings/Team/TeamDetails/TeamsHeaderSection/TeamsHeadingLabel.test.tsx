@@ -114,4 +114,24 @@ describe('TeamsHeadingLabel', () => {
 
     expect(editButton).not.toBeInTheDocument();
   });
+
+  // Task 8 Batch 3: hasEditDisplayNamePermission's raw
+  // `entityPermissions.EditDisplayName || entityPermissions.EditAll` -> canEditDisplayName
+  // (getDerivedPermissionFlags). Documented explicit-deny-wins behavior change (Task 6
+  // Finding 1 / Task 8 Batch 2 precedent): an explicit `EditDisplayName: false` now wins over
+  // a bare `EditAll: true` grant, where the old raw OR granted regardless.
+  it('disables the edit-team-name button when EditDisplayName is explicitly false, even with EditAll true', () => {
+    (useAuth as jest.Mock).mockReturnValue({ isAdminUser: true });
+    render(
+      <TeamsHeadingLabel
+        {...teamProps}
+        entityPermissions={{
+          ...ENTITY_PERMISSIONS,
+          EditDisplayName: false,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('edit-team-name')).toBeDisabled();
+  });
 });

@@ -21,13 +21,19 @@ import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.service.Entity.DIRECTORY;
+import static org.openmetadata.service.Entity.FIELD_CHILDREN;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FILE;
 import static org.openmetadata.service.Entity.SPREADSHEET;
+import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -55,6 +61,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DirectoryRepository extends EntityRepository<Directory> {
+  private static final String NUMBER_OF_FILES = "numberOfFiles";
+  private static final String NUMBER_OF_SUB_DIRECTORIES = "numberOfSubDirectories";
+  private static final String TOTAL_SIZE = "totalSize";
+
   public DirectoryRepository() {
     super(
         DirectoryResource.COLLECTION_PATH,
@@ -64,6 +74,11 @@ public class DirectoryRepository extends EntityRepository<Directory> {
         "",
         "");
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix (FQNs are service-nested). See
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -172,61 +187,189 @@ public class DirectoryRepository extends EntityRepository<Directory> {
       Directory directory, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     directory.withService(getService(directory));
     directory.withParent(getParentDirectory(directory));
+    fetchAndSetStatistics(List.of(directory), fields);
+  }
 
-    // Calculate and set directory statistics
-    if (fields.contains("children")
-        || fields.contains("numberOfFiles")
-        || fields.contains("numberOfSubDirectories")
-        || fields.contains("totalSize")) {
-      List<EntityReference> children = getChildrenRefs(directory);
-      directory.withChildren(fields.contains("children") ? children : null);
-
-      // Calculate statistics from children
-      if (children != null && !children.isEmpty()) {
-        int fileCount = 0;
-        int dirCount = 0;
-        long totalSize = 0L;
-
-        for (EntityReference child : children) {
-          if (FILE.equals(child.getType())) {
-            fileCount++;
-            // Get file size if available
-            try {
-              org.openmetadata.schema.entity.data.File file =
-                  Entity.getEntity(child, "", Include.NON_DELETED);
-              if (file.getSize() != null) {
-                totalSize += file.getSize();
-              }
-            } catch (Exception e) {
-              // Ignore if file can't be loaded
-            }
-          } else if (DIRECTORY.equals(child.getType())) {
-            dirCount++;
-          } else if (SPREADSHEET.equals(child.getType())) {
-            fileCount++; // Count spreadsheets as files
-            try {
-              org.openmetadata.schema.entity.data.Spreadsheet spreadsheet =
-                  Entity.getEntity(child, "", Include.NON_DELETED);
-              if (spreadsheet.getSize() != null) {
-                totalSize += spreadsheet.getSize();
-              }
-            } catch (Exception e) {
-              // Ignore if spreadsheet can't be loaded
-            }
-          }
-        }
-
-        directory.withNumberOfFiles(fileCount);
-        directory.withNumberOfSubDirectories(dirCount);
-        // Convert long to Integer, checking for overflow
-        directory.withTotalSize(
-            totalSize > 0
-                ? (totalSize > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalSize)
-                : null);
-      }
-    } else {
-      directory.withChildren(null);
+  @Override
+  public void setFieldsInBulk(EntityUtil.Fields fields, List<Directory> entities) {
+    if (nullOrEmpty(entities)) {
+      return;
     }
+    fetchAndSetServiceAndParent(entities);
+    fetchAndSetStatistics(entities, fields);
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (Directory entity : entities) {
+      clearFieldsInternal(entity, fields);
+      if (!fields.contains(FIELD_PARENT)) {
+        entity.withParent(null);
+      }
+    }
+  }
+
+  /**
+   * Resolves both the drive service and the parent directory from a single CONTAINS batch query.
+   * Every directory has a service->directory edge, and nested directories additionally have a
+   * parent->directory edge, so one findFromBatch returns both; they are partitioned by the from
+   * entity type. Parent is always resolved (not only when requested) because setInheritedFields
+   * needs it to inherit a nested directory's domain from its parent directory instead of the drive
+   * service, matching the single-entity setFields path. It is nulled out after inheritance if not
+   * requested.
+   */
+  private void fetchAndSetServiceAndParent(List<Directory> directories) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(directories), Relationship.CONTAINS.ordinal());
+    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    Map<UUID, EntityReference> parentMap = new HashMap<>();
+    Map<UUID, EntityReference> refById = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      String fromType = record.getFromEntity();
+      Map<UUID, EntityReference> target =
+          switch (fromType) {
+            case Entity.DRIVE_SERVICE -> serviceMap;
+            case DIRECTORY -> parentMap;
+            default -> null;
+          };
+      if (target != null) {
+        UUID directoryId = UUID.fromString(record.getToId());
+        UUID fromId = UUID.fromString(record.getFromId());
+        EntityReference ref =
+            refById.computeIfAbsent(
+                fromId, id -> getEntityReferenceById(fromType, id, Include.NON_DELETED));
+        target.put(directoryId, ref);
+      }
+    }
+    directories.forEach(
+        directory ->
+            directory
+                .withService(serviceMap.get(directory.getId()))
+                .withParent(parentMap.get(directory.getId())));
+  }
+
+  private void fetchAndSetStatistics(List<Directory> directories, EntityUtil.Fields fields) {
+    boolean wantsChildren = fields.contains(FIELD_CHILDREN);
+    boolean wantsStats = wantsChildren || wantsAnyStat(fields);
+    if (!wantsStats) {
+      directories.forEach(directory -> directory.withChildren(null));
+      return;
+    }
+    Map<UUID, List<EntityReference>> childrenMap = batchFetchChildren(directories);
+    Map<UUID, Integer> sizeByChildId = batchFetchChildSizes(childrenMap);
+    for (Directory directory : directories) {
+      List<EntityReference> children = childrenMap.getOrDefault(directory.getId(), List.of());
+      directory.withChildren(wantsChildren ? children : null);
+      applyStatistics(directory, children, sizeByChildId);
+    }
+  }
+
+  private boolean wantsAnyStat(EntityUtil.Fields fields) {
+    return fields.contains(NUMBER_OF_FILES)
+        || fields.contains(NUMBER_OF_SUB_DIRECTORIES)
+        || fields.contains(TOTAL_SIZE);
+  }
+
+  private void applyStatistics(
+      Directory directory, List<EntityReference> children, Map<UUID, Integer> sizeByChildId) {
+    if (children.isEmpty()) {
+      return;
+    }
+    int fileCount = 0;
+    int dirCount = 0;
+    long totalSize = 0L;
+    for (EntityReference child : children) {
+      if (DIRECTORY.equals(child.getType())) {
+        dirCount++;
+      } else {
+        fileCount++;
+        totalSize += sizeByChildId.getOrDefault(child.getId(), 0);
+      }
+    }
+    directory.withNumberOfFiles(fileCount);
+    directory.withNumberOfSubDirectories(dirCount);
+    directory.withTotalSize(toBoundedSize(totalSize));
+  }
+
+  private Integer toBoundedSize(long totalSize) {
+    Integer result = null;
+    if (totalSize > 0) {
+      result = totalSize > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalSize;
+    }
+    return result;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchChildren(List<Directory> directories) {
+    Map<UUID, List<EntityReference>> childrenMap = new HashMap<>();
+    directories.forEach(directory -> childrenMap.put(directory.getId(), new ArrayList<>()));
+    List<String> parentIds = entityListToStrings(directories);
+    addChildRecords(childrenMap, parentIds, DIRECTORY);
+    addChildRecords(childrenMap, parentIds, FILE);
+    addChildRecords(childrenMap, parentIds, SPREADSHEET);
+    return childrenMap;
+  }
+
+  private void addChildRecords(
+      Map<UUID, List<EntityReference>> childrenMap, List<String> parentIds, String childType) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                parentIds,
+                DIRECTORY,
+                childType,
+                Relationship.CONTAINS.ordinal(),
+                Include.NON_DELETED);
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID parentId = UUID.fromString(record.getFromId());
+      EntityReference childRef = resolveChildRef(childType, UUID.fromString(record.getToId()));
+      if (childRef != null) {
+        childrenMap.get(parentId).add(childRef);
+      }
+    }
+  }
+
+  private EntityReference resolveChildRef(String childType, UUID childId) {
+    EntityReference childRef = null;
+    try {
+      childRef = getEntityReferenceById(childType, childId, Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      // A soft delete flips only the entity row's deleted flag, not the CONTAINS relationship row,
+      // so findToBatch(NON_DELETED) still returns the row for a soft-deleted child. Skip it instead
+      // of letting the not-found throw abort the whole list response.
+      LOG.debug("Skipping soft-deleted {} child {} for directory statistics", childType, childId);
+    }
+    return childRef;
+  }
+
+  private Map<UUID, Integer> batchFetchChildSizes(Map<UUID, List<EntityReference>> childrenMap) {
+    List<UUID> fileIds = collectChildIds(childrenMap, FILE);
+    List<UUID> spreadsheetIds = collectChildIds(childrenMap, SPREADSHEET);
+    Map<UUID, Integer> sizeByChildId = new HashMap<>();
+    Entity.getCollectionDAO()
+        .fileDAO()
+        .findEntitiesByIds(fileIds, Include.NON_DELETED)
+        .forEach(file -> putSize(sizeByChildId, file.getId(), file.getSize()));
+    Entity.getCollectionDAO()
+        .spreadsheetDAO()
+        .findEntitiesByIds(spreadsheetIds, Include.NON_DELETED)
+        .forEach(sheet -> putSize(sizeByChildId, sheet.getId(), sheet.getSize()));
+    return sizeByChildId;
+  }
+
+  private void putSize(Map<UUID, Integer> sizeByChildId, UUID id, Integer size) {
+    if (size != null) {
+      sizeByChildId.put(id, size);
+    }
+  }
+
+  private List<UUID> collectChildIds(
+      Map<UUID, List<EntityReference>> childrenMap, String childType) {
+    return childrenMap.values().stream()
+        .flatMap(List::stream)
+        .filter(ref -> childType.equals(ref.getType()))
+        .map(EntityReference::getId)
+        .toList();
   }
 
   @Override
@@ -247,54 +390,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
 
   private EntityReference getService(Directory directory) {
     return getFromEntityRef(directory.getId(), Relationship.CONTAINS, Entity.DRIVE_SERVICE, true);
-  }
-
-  private List<EntityReference> getChildrenRefs(Directory directory) {
-    List<EntityReference> children = new ArrayList<>();
-
-    // Get subdirectories - we stored parent as "from" and child as "to"
-    // So to find children, we use findTo with parent as "from"
-    List<CollectionDAO.EntityRelationshipRecord> subDirs =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .findTo(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), DIRECTORY);
-    LOG.debug(
-        "Found {} subdirectory relationships for directory {}", subDirs.size(), directory.getId());
-    for (CollectionDAO.EntityRelationshipRecord rel : subDirs) {
-      EntityReference ref =
-          Entity.getEntityReferenceById(DIRECTORY, rel.getId(), Include.NON_DELETED);
-      if (ref != null) {
-        children.add(ref);
-      }
-    }
-
-    // Get files
-    List<CollectionDAO.EntityRelationshipRecord> files =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .findTo(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), FILE);
-    for (CollectionDAO.EntityRelationshipRecord rel : files) {
-      EntityReference ref = Entity.getEntityReferenceById(FILE, rel.getId(), Include.NON_DELETED);
-      if (ref != null) {
-        children.add(ref);
-      }
-    }
-
-    // Get spreadsheets
-    List<CollectionDAO.EntityRelationshipRecord> spreadsheets =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .findTo(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), SPREADSHEET);
-    for (CollectionDAO.EntityRelationshipRecord rel : spreadsheets) {
-      EntityReference ref =
-          Entity.getEntityReferenceById(SPREADSHEET, rel.getId(), Include.NON_DELETED);
-      if (ref != null) {
-        children.add(ref);
-      }
-    }
-
-    LOG.debug("Total children found for directory {}: {}", directory.getId(), children.size());
-    return children;
   }
 
   @Override
@@ -412,7 +507,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                   List.of(
                       Pair.of(8, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(9, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 10))
+          .withDomains(getDomains(printer, csvRecord, 10, newDirectory.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 11));
 
       if (processRecord) {

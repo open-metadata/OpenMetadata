@@ -501,8 +501,10 @@ export interface EntityReference {
 /**
  * Status of the StoredProcedure.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -571,14 +573,16 @@ export enum DatabaseServiceType {
     BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Clickzetta = "Clickzetta",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
+    Data360 = "Data360",
+    Databend = "Databend",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",
     Dbt = "Dbt",
-    DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
     Dremio = "Dremio",
@@ -598,15 +602,18 @@ export enum DatabaseServiceType {
     MongoDB = "MongoDB",
     Mssql = "Mssql",
     Mysql = "Mysql",
+    Neo4J = "Neo4j",
     Oracle = "Oracle",
     PinotDB = "PinotDB",
     Postgres = "Postgres",
     Presto = "Presto",
     QueryLog = "QueryLog",
+    QuestDB = "QuestDB",
     Redshift = "Redshift",
     SAS = "SAS",
     SQLite = "SQLite",
     Salesforce = "Salesforce",
+    SapBw4Hana = "SapBw4Hana",
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapSuccessFactors = "SapSuccessFactors",

@@ -59,16 +59,34 @@ class KafkaIngestionClass extends ServiceBaseClass {
 
     await page.fill('#root\\/bootstrapServers', kafkaBootstrapServers);
     await checkServiceFieldSectionHighlighting(page, 'bootstrapServers');
+
+    await page.getByTestId('connection-section-scope').click();
     await page.fill('#root\\/schemaRegistryURL', kafkaSchemaRegistryUrl);
     await checkServiceFieldSectionHighlighting(page, 'schemaRegistryURL');
   }
 
   async fillIngestionDetails(page: Page) {
-    await page
-      .locator('#root\\/topicFilterPattern\\/includes')
-      .fill(this.entityName);
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-topicFilterPattern').click();
 
-    await page.locator('#root\\/topicFilterPattern\\/includes').press('Enter');
+    // Since we need to ingest `__transaction_state` topic, the exclude rule startsWith:^__.* needs to be removed.
+    await page
+      .getByTestId('exclude-chip-startsWith:^__.*')
+      .getByTestId('remove-button')
+      .click();
+
+    await page.getByTestId('topicFilterPattern-only-specific-button').click();
+
+    await page
+      .getByTestId('filter-section-topicFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .fill(this.entityName);
+    await page
+      .getByTestId('filter-section-topicFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
   }
 
   async deleteService(page: Page) {

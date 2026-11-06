@@ -14,7 +14,7 @@ import { act, renderHook } from '@testing-library/react';
 import { Edge, Node } from 'reactflow';
 import { useMapBasedNodesEdges } from './useMapBasedNodesEdges';
 
-jest.mock('../utils/EntityLineageUtils', () => ({
+jest.mock('../utils/EntityLineageEdgeUtils', () => ({
   getClassifiedEdge: jest.fn((edges: Edge[]) => ({
     normalEdge: edges.filter((e) => !e.data?.isColumnLineage),
     columnEdge: edges.filter((e) => e.data?.isColumnLineage),
@@ -330,6 +330,35 @@ describe('useMapBasedNodesEdges', () => {
 
     expect(result.current.nodes[0].position).toEqual({ x: 100, y: 100 });
   });
+
+  it.each([true, false])(
+    'updates dimensions with updateStyle=%s',
+    (updateStyle) => {
+      const node = {
+        ...createNode('node1'),
+        style: { width: 20, color: 'red' },
+      };
+      const { result } = renderHook(() => useMapBasedNodesEdges([node]));
+
+      act(() => {
+        result.current.onNodesChange([
+          {
+            type: 'dimensions',
+            id: 'node1',
+            dimensions: { width: 100, height: 50 },
+            updateStyle,
+          },
+        ]);
+      });
+
+      expect(result.current.nodes[0]).toMatchObject({ width: 100, height: 50 });
+      expect(result.current.nodes[0].style).toEqual(
+        updateStyle
+          ? { width: 100, height: 50, color: 'red' }
+          : { width: 20, color: 'red' }
+      );
+    }
+  );
 
   it('handles onNodesChange with select', () => {
     const { result } = renderHook(() =>

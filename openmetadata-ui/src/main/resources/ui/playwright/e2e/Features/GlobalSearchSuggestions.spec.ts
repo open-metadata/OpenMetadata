@@ -34,9 +34,14 @@ test.describe('Global Search Column Suggestions', () => {
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test('Navigate to column from column suggestion', async ({ page }) => {
+    await page
+      .getByTestId('KnowledgePanel.ActivityFeed')
+      .waitFor({ state: 'visible' });
+    await waitForAllLoadersToDisappear(page);
     const column = table.entityResponseData?.columns?.[0];
     const columnName = column?.name;
     const columnSelector = `[data-testid="${table.service.name}-${columnName}"]`;
@@ -44,9 +49,17 @@ test.describe('Global Search Column Suggestions', () => {
     const searchInput = page.getByTestId('searchBox');
     await searchInput.click();
 
+    // Set up the response waiter before typing so we don't miss it.
+    // Filter to only the request that actually carries the typed query,
+    // because the 400ms debounce can fire an earlier request with an empty string.
+    const suggestionsRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(encodeURIComponent(columnName))
+    );
+
     await searchInput.fill(columnName);
 
-    const suggestionsRes = page.waitForResponse('/api/v1/search/query?*');
     await suggestionsRes;
 
     const suggestionsContainer = page.locator(
@@ -73,8 +86,9 @@ test.describe('Global Search Column Suggestions', () => {
     await columnListAPI;
     await waitForAllLoadersToDisappear(page);
 
+    // The column detail panel opens as a slideout dialog.
     await expect(
-      page.locator('.ant-drawer-open [data-testid="entity-link"]', {
+      page.getByRole('dialog').getByTestId('entity-link').filter({
         hasText: columnName,
       })
     ).toBeVisible();

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Operation } from 'fast-json-patch';
 import { ServiceTypes } from 'Models';
 import DisplayName from '../components/common/DisplayName/DisplayName';
+import { ColumnsType } from '../components/common/Table/Table.interface';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
@@ -24,7 +24,7 @@ import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
 import { Directory } from '../generated/entity/data/directory';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { ServicePageData } from '../interface/platform/service.interface';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import { patchDatabaseDetails } from '../rest/databaseAPI';
@@ -34,10 +34,13 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
-import { getColumnSorter, highlightSearchText } from './EntityUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from './EntitySearchUtils';
+import { getColumnSorter } from './EntitySortUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
-import { stringToHTML } from './StringsUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -47,7 +50,7 @@ import {
   tagTableObject,
   tierTableObject,
 } from './TableColumn.util';
-import { getUsagePercentile } from './TableUtils';
+import { getUsagePercentile } from './TablePureUtils';
 
 export const getServiceMainTabColumns = (
   serviceCategory: ServiceTypes,
@@ -66,14 +69,16 @@ export const getServiceMainTabColumns = (
     sorter: getColumnSorter<ServicePageData, 'name'>('name'),
     render: (_, record: ServicePageData) => (
       <DisplayName
-        displayName={stringToHTML(
+        displayName={renderHighlightedText(
           highlightSearchText(record.displayName, searchValue)
         )}
         hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}
         link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}
-        name={stringToHTML(highlightSearchText(record.name, searchValue))}
+        name={renderHighlightedText(
+          highlightSearchText(record.name, searchValue)
+        )}
         onEditDisplayName={handleDisplayNameUpdate}
       />
     ),
@@ -90,7 +95,9 @@ export const getServiceMainTabColumns = (
             scheduleInterval ? (
               <span>{scheduleInterval}</span>
             ) : (
-              <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
+              <Typography className="tw:text-primary">
+                {NO_DATA_PLACEHOLDER}
+              </Typography>
             ),
         },
       ]
@@ -109,11 +116,11 @@ export const getServiceMainTabColumns = (
           key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           width: 200,
           render: (usageSummary: Database['usageSummary']) => (
-            <Typography.Text>
+            <Typography className="tw:text-primary">
               {getUsagePercentile(
                 usageSummary?.weeklyStats?.percentileRank ?? 0
               )}
-            </Typography.Text>
+            </Typography>
           ),
         },
       ]

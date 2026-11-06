@@ -1,0 +1,13 @@
+{
+  "name": "BotImpersonationRole",
+  "displayName": "Bot role with impersonation",
+  "description": "Role for bots that are allowed to impersonate users. Grants only the Impersonate operation, scoped by BotImpersonationPolicy; the bot keeps its other roles for regular permissions.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "BotImpersonationPolicy"
+    }
+  ]
+}

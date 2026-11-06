@@ -52,6 +52,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 @Slf4j
 @Path("/v1/kpi")
@@ -161,24 +162,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -535,6 +520,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @DefaultValue("DESC")
           OrderBy orderBy)
       throws IOException {
+    authorizeKpiView(securityContext, name);
     return repository.getKpiResults(name, startTs, endTs, orderBy);
   }
 
@@ -558,6 +544,14 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    authorizeKpiView(securityContext, name);
     return repository.getKpiResult(name);
+  }
+
+  private void authorizeKpiView(SecurityContext securityContext, String name) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(name));
   }
 }

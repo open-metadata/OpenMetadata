@@ -41,7 +41,7 @@ def _run_classifier_with_retry(
             )
             run_workflow(MetadataWorkflow, ingestion_config)
             run_workflow(AutoClassificationWorkflow, classifier_config)
-            return
+            return  # noqa: TRY300
         except Exception as e:
             last_error = e
             if attempt < max_retries - 1:
@@ -67,6 +67,7 @@ def run_classifier(
     return ingestion_config
 
 
+@pytest.mark.profiler
 @pytest.mark.flaky(reruns=3, reruns_delay=30)
 @pytest.mark.parametrize(
     "table_name",
@@ -86,6 +87,7 @@ def test_auto_classification_workflow(
     assert metadata.get_sample_data(table) is not None
 
 
+@pytest.mark.profiler
 @pytest.mark.flaky(reruns=3, reruns_delay=30)
 def test_bytes_column_sample_data(
     run_classifier,
@@ -94,7 +96,7 @@ def test_bytes_column_sample_data(
 ):
     table = metadata.get_by_name(
         Table,
-        "{database_service}.roach.public.kv".format(database_service=db_service.fullyQualifiedName.root),
+        "{database_service}.roach.public.kv".format(database_service=db_service.fullyQualifiedName.root),  # noqa: UP032
     )
     assert table is not None
     sample_data = metadata.get_sample_data(table)

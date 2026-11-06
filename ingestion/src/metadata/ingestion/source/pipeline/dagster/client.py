@@ -14,7 +14,6 @@ Wrapper module of DagsterGraphQLClient client
 """
 
 import traceback
-from typing import List, Optional
 
 from dagster_graphql import DagsterGraphQLClient
 from gql.transport.requests import RequestsHTTPTransport
@@ -60,7 +59,7 @@ class DagsterClient:
             ),
         )
 
-    def get_run_list(self) -> Optional[List[Node]]:
+    def get_run_list(self) -> list[Node] | None:
         """
         List all the pipeline runs
         """
@@ -69,7 +68,7 @@ class DagsterClient:
                 DAGSTER_PIPELINE_DETAILS_GRAPHQL
             )
             result = RepositoriesOrErrorModel.model_validate(result)
-            return result.repositoriesOrError.nodes
+            return result.repositoriesOrError.nodes  # noqa: TRY300
         except ConnectionError as conerr:
             logger.debug(f"Failed due to: {traceback.format_exc()}")
             logger.error(f"Cannot connect to dagster client {conerr}")
@@ -85,7 +84,7 @@ class DagsterClient:
         pipeline_name: str,
         repository_name: str,
         repository_location: str,
-    ) -> Optional[DagsterPipeline]:
+    ) -> DagsterPipeline | None:
         """
         Get all the runs details
         """
@@ -103,14 +102,14 @@ class DagsterClient:
             )
             runs = PipelineOrErrorModel.model_validate(runs)
 
-            return runs.pipelineOrError
+            return runs.pipelineOrError  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Error while getting runs for {job_id} - {pipeline_name} - {err}")
 
         return None
 
-    def get_jobs(self, pipeline_name, repository_name: str, repository_location: str) -> Optional[GraphOrError]:
+    def get_jobs(self, pipeline_name, repository_name: str, repository_location: str) -> GraphOrError | None:
         """
         Get all the jobs for a pipeline
         """
@@ -126,14 +125,14 @@ class DagsterClient:
                 query=GRAPHQL_QUERY_FOR_JOBS, variables=parameters
             )
             jobs = GraphOrErrorModel.model_validate(jobs)
-            return jobs.graphOrError
+            return jobs.graphOrError  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Error while getting jobs {pipeline_name} - {err}")
 
         return None
 
-    def get_assets(self, repository_name: str, repository_location: str) -> Optional[List[DagsterAssetNode]]:
+    def get_assets(self, repository_name: str, repository_location: str) -> list[DagsterAssetNode] | None:
         """
         Retrieve all assets from a repository with their dependencies.
         """
@@ -153,7 +152,7 @@ class DagsterClient:
                 return response.repositoryOrError.assetNodes
 
             logger.warning(f"Failed to fetch assets: {response.repositoryOrError.typename}")
-            return None
+            return None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

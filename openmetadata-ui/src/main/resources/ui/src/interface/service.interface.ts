@@ -12,52 +12,25 @@
  */
 
 import { ServicesUpdateRequest } from 'Models';
-import { FormSubmitType } from '../enums/form.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   Pipeline,
   PipelineType,
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { APIService } from '../generated/entity/services/apiService';
-import {
-  DashboardConnection,
-  DashboardService,
-} from '../generated/entity/services/dashboardService';
+import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
-import {
-  DriveConnection,
-  DriveService,
-} from '../generated/entity/services/driveService';
-import {
-  MessagingConnection,
-  MessagingService,
-} from '../generated/entity/services/messagingService';
-import {
-  MetadataConnection,
-  MetadataService,
-} from '../generated/entity/services/metadataService';
-import {
-  MlModelConnection,
-  MlmodelService,
-} from '../generated/entity/services/mlmodelService';
-import {
-  PipelineConnection,
-  PipelineService,
-} from '../generated/entity/services/pipelineService';
-import {
-  SearchConnection,
-  SearchService,
-} from '../generated/entity/services/searchService';
-import {
-  SecurityConnection,
-  SecurityService,
-} from '../generated/entity/services/securityService';
-import {
-  StorageConnection,
-  StorageService,
-} from '../generated/entity/services/storageService';
+import { DriveService } from '../generated/entity/services/driveService';
+import { MessagingService } from '../generated/entity/services/messagingService';
+import { MetadataService } from '../generated/entity/services/metadataService';
+import { MlmodelService } from '../generated/entity/services/mlmodelService';
+import { PipelineService } from '../generated/entity/services/pipelineService';
+import { SearchService } from '../generated/entity/services/searchService';
+import { SecurityService } from '../generated/entity/services/securityService';
+import { StorageService } from '../generated/entity/services/storageService';
 import { EntityReference } from '../generated/entity/type';
 import { Paging } from '../generated/type/paging';
+import type { FieldFocusMeta } from '../hooks/useFieldFocusManagement';
 
 export interface IngestionSchedule {
   repeatFrequency: string;
@@ -121,17 +94,15 @@ export interface ServiceResponse {
   paging: Paging;
 }
 
-export type ConfigData =
-  | DatabaseConnection
-  | MessagingConnection
-  | DashboardConnection
-  | PipelineConnection
-  | MlModelConnection
-  | MetadataConnection
-  | StorageConnection
-  | SearchConnection
-  | SecurityConnection
-  | DriveConnection;
+export type ConfigData = Partial<
+  Exclude<
+    Extract<
+      NonNullable<NonNullable<ServicesType['connection']>['config']>,
+      object
+    >,
+    readonly unknown[]
+  >
+>;
 
 export type IngestionWorkflowData = Pipeline & {
   name: string;
@@ -145,15 +116,22 @@ export interface IngestionWorkflowFormProps {
   pipeLineType: PipelineType;
   serviceCategory: ServiceCategory;
   workflowData: IngestionWorkflowData;
-  operationType: FormSubmitType;
   cancelText?: string;
   okText?: string;
   className?: string;
+  hideFooter?: boolean;
   onCancel: () => void;
-  onFocus: (fieldId: string) => void;
+  onFocus: (fieldId: string, schemaMeta?: FieldFocusMeta) => void;
   onSubmit: (data: IngestionWorkflowData) => void;
   onChange?: (data: IngestionWorkflowData) => void;
+  // Fired once the lazily loaded RJSF templates have resolved and the form is
+  // mounted, i.e. the imperative `submit()` handle is safe to call.
+  onReady?: () => void;
   serviceData?: ServicesUpdateRequest;
+}
+
+export interface IngestionWorkflowFormHandle {
+  submit: () => void;
 }
 
 export type ExtraInfoType = {

@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import org.junit.jupiter.api.Test;
@@ -143,5 +144,11 @@ public class SystemRepositoryLdapConfigTest {
     assertEquals("", ldapConfig.getRoleAdminName());
     assertEquals("", ldapConfig.getAllAttributeName());
     assertEquals("", ldapConfig.getAuthRolesMapping());
+  }
+
+  @Test
+  void testRecursiveGroupMembershipDefaultsToFalse() {
+    LdapConfiguration ldapConfig = new LdapConfiguration();
+    assertFalse(ldapConfig.getRecursiveGroupMembership());
   }
 }

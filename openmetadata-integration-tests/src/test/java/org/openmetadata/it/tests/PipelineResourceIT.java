@@ -1,15 +1,27 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -27,17 +39,31 @@ import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.PipelineRepository;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * Integration tests for Pipeline entity operations.
@@ -50,8 +76,11 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
 
+  private static final String CERTIFICATION_GOLD = "Certification.Gold";
+
   {
     supportsLifeCycle = true;
+    supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
     supportsDataContract = true;
@@ -166,17 +195,6 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().pipelines().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().pipelines().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  @Override
   protected Pipeline getVersion(UUID id, Double version) {
     return SdkClients.adminClient().pipelines().getVersion(id.toString(), version);
   }
@@ -222,6 +240,21 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     assertNotNull(pipeline);
     assertNotNull(pipeline.getTasks());
     assertEquals(2, pipeline.getTasks().size());
+  }
+
+  @Test
+  void post_pipelineWithInvalidTaskName_4xx(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_invalid_task"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("task>invalid")));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating pipeline with invalid task name should fail");
   }
 
   @Test
@@ -632,6 +665,70 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Test
+  void get_pipelineSummariesFiltersAndPaginates_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    String namePrefix = ns.prefix("pipeline_summary_page");
+    Set<UUID> expectedIds = new HashSet<>();
+
+    for (int i = 0; i < 3; i++) {
+      CreatePipeline request = new CreatePipeline();
+      request.setName(namePrefix + "_" + i);
+      request.setService(service.getFullyQualifiedName());
+      expectedIds.add(createEntity(request).getId());
+    }
+
+    ResultList<PipelineSummary> firstPage =
+        listPipelineSummaries(client, service.getName(), namePrefix, 2, null);
+
+    assertEquals(3, firstPage.getPaging().getTotal());
+    assertEquals(2, firstPage.getData().size());
+    assertNotNull(firstPage.getPaging().getAfter());
+
+    ResultList<PipelineSummary> secondPage =
+        listPipelineSummaries(
+            client, service.getName(), namePrefix, 2, firstPage.getPaging().getAfter());
+
+    assertEquals(3, secondPage.getPaging().getTotal());
+    assertEquals(1, secondPage.getData().size());
+    Set<UUID> actualIds = new HashSet<>();
+    firstPage.getData().forEach(summary -> actualIds.add(summary.getPipelineId()));
+    secondPage.getData().forEach(summary -> actualIds.add(summary.getPipelineId()));
+    assertEquals(expectedIds, actualIds);
+  }
+
+  @Test
+  void listPipelineSummaries_serviceTypeFilterIsBound(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_summary_service_type"));
+    request.setService(service.getFullyQualifiedName());
+    Pipeline pipeline = createEntity(request);
+    PipelineRepository repository =
+        (PipelineRepository) Entity.getEntityRepository(Entity.PIPELINE);
+
+    ListFilter validFilter =
+        new ListFilter(Include.NON_DELETED)
+            .addQueryParam("search", pipeline.getName())
+            .addQueryParam("serviceType", "Airflow");
+    ResultList<PipelineSummary> validResult =
+        repository.listPipelineSummaries(
+            null, null, Fields.EMPTY_FIELDS, validFilter, 10, null, null);
+    assertEquals(1, validResult.getPaging().getTotal());
+    assertEquals(pipeline.getId(), validResult.getData().get(0).getPipelineId());
+
+    ListFilter injectionFilter =
+        new ListFilter(Include.NON_DELETED)
+            .addQueryParam("search", pipeline.getName())
+            .addQueryParam("serviceType", "Airflow' OR '1'='1");
+    ResultList<PipelineSummary> injectionResult =
+        repository.listPipelineSummaries(
+            null, null, Fields.EMPTY_FIELDS, injectionFilter, 10, null, null);
+    assertEquals(0, injectionResult.getPaging().getTotal());
+    assertTrue(injectionResult.getData().isEmpty());
+  }
+
+  @Test
   void test_pipelineWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
@@ -912,6 +1009,30 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Test
+  void test_taskWithADotInItsName_recordsItsChangeUnderTheQuotedName(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_dotted_task"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("extract.load").withDescription("Original")));
+    Pipeline pipeline = createEntity(request);
+
+    pipeline.setTasks(List.of(new Task().withName("extract.load").withDescription("Updated")));
+    Pipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+
+    assertTrue(
+        changedFieldNames(updated.getChangeDescription())
+            .contains("tasks.\"extract.load\".description"));
+  }
+
+  private static List<String> changedFieldNames(ChangeDescription change) {
+    return Stream.of(change.getFieldsAdded(), change.getFieldsUpdated(), change.getFieldsDeleted())
+        .flatMap(List::stream)
+        .map(FieldChange::getName)
+        .toList();
+  }
+
+  @Test
   void test_pipelineMultipleStatusUpdates(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
@@ -1189,6 +1310,66 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
         6, statusList.getData().size(), "Should be 6: 5 original + 1 new, overlap upserted");
   }
 
+  /**
+   * A bulk status write emits one change event per written status, even when the events of one
+   * request span several inserts.
+   */
+  @Test
+  void put_bulkPipelineStatus_emitsOneChangeEventPerStatus_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_bulk_events"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("task1").withDescription("Task 1")));
+    Pipeline pipeline = createEntity(request);
+    long since = System.currentTimeMillis();
+    long baseTime = since - 3600000;
+    List<PipelineStatus> statuses = new ArrayList<>();
+    for (int run = 0; run < 150; run++) {
+      statuses.add(successfulStatus(baseTime + run * 1000L));
+    }
+
+    client.pipelines().addBulkPipelineStatus(pipeline.getFullyQualifiedName(), statuses);
+
+    List<Long> eventStatusTimestamps =
+        pipelineUpdateEvents(client, pipeline.getId(), since).stream()
+            .map(PipelineResourceIT::eventStatusTimestamp)
+            .sorted()
+            .toList();
+    assertEquals(
+        statuses.stream().map(PipelineStatus::getTimestamp).toList(), eventStatusTimestamps);
+  }
+
+  /** Every pipeline update event about one pipeline since a time, read through the cursor. */
+  private static List<JsonNode> pipelineUpdateEvents(
+      OpenMetadataClient client, UUID pipelineId, long since) {
+    String window =
+        "/v1/events?entityUpdated=pipeline&limit=1000&timestamp=%d&endTs=%d"
+            .formatted(since, System.currentTimeMillis());
+    List<JsonNode> events = new ArrayList<>();
+    String after = null;
+    do {
+      String path =
+          after == null
+              ? window
+              : window + "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8);
+      JsonNode page =
+          JsonUtils.readTree(client.getHttpClient().executeForString(HttpMethod.GET, path, null));
+      page.path("data").forEach(events::add);
+      after = page.path("paging").path("after").textValue();
+    } while (after != null);
+    return events.stream()
+        .filter(event -> pipelineId.toString().equals(event.path("entityId").asText()))
+        .toList();
+  }
+
+  private static long eventStatusTimestamp(JsonNode event) {
+    JsonNode entity = event.path("entity");
+    JsonNode pipeline = entity.isTextual() ? JsonUtils.readTree(entity.asText()) : entity;
+    return pipeline.path("pipelineStatus").path("timestamp").asLong();
+  }
+
   @Test
   void put_bulkPipelineStatus_invalidTask_4xx(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1216,6 +1397,149 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
             client
                 .pipelines()
                 .addBulkPipelineStatus(pipeline.getFullyQualifiedName(), Arrays.asList(ps)));
+  }
+
+  /**
+   * The status list always pages: without a limit it answers one default page, a limit above the
+   * maximum is refused, and 0 returns only the total. A whole range is read through the cursor.
+   */
+  @Test
+  void list_pipelineStatuses_pagedByDefault_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_status_pages"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("task1").withDescription("Task 1")));
+    String fqn = createEntity(request).getFullyQualifiedName();
+    long baseTime = System.currentTimeMillis() - 3600000;
+    List<PipelineStatus> statuses =
+        LongStream.range(0, 12).mapToObj(run -> successfulStatus(baseTime + run * 1000)).toList();
+    client.pipelines().addBulkPipelineStatus(fqn, statuses);
+    long startTs = baseTime - 1;
+    long endTs = baseTime + 12000;
+
+    ResultList<PipelineStatus> firstPage = listPipelineStatuses(client, fqn, startTs, endTs, "");
+    assertEquals(10, firstPage.getData().size());
+    assertEquals(12, firstPage.getPaging().getTotal());
+    assertEquals(baseTime + 11000, firstPage.getData().getFirst().getTimestamp());
+    String after = encodeQueryValue(firstPage.getPaging().getAfter());
+    assertEquals(
+        List.of(baseTime + 1000, baseTime),
+        listPipelineStatuses(client, fqn, startTs, endTs, "&after=" + after).getData().stream()
+            .map(PipelineStatus::getTimestamp)
+            .toList());
+
+    ResultList<PipelineStatus> totalOnly =
+        listPipelineStatuses(client, fqn, startTs, endTs, "&limit=0");
+    assertTrue(totalOnly.getData().isEmpty());
+    assertEquals(12, totalOnly.getPaging().getTotal());
+
+    InvalidRequestException tooLarge =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> listPipelineStatuses(client, fqn, startTs, endTs, "&limit=1001"));
+    assertEquals(400, tooLarge.getStatusCode());
+    assertTrue(
+        tooLarge.getResponseBody().contains("must be less than or equal to 1000"),
+        tooLarge.getResponseBody());
+
+    assertEquals(12, client.pipelines().listPipelineStatuses(fqn, startTs, endTs).getData().size());
+  }
+
+  /**
+   * A status push loads the pipeline without its relationship fields, so it must refresh only the
+   * status in search. The bulk endpoint used to rebuild the whole document from that bare entity,
+   * blanking owners, domains, tags and certification until the next reindex (#34044).
+   */
+  @Test
+  void put_pipelineStatus_keepsRelationshipsInSearchDoc(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Pipeline pipeline = createPipelineWithRelationships(ns);
+    awaitPipelineSearchDoc(pipeline.getId(), this::assertRelationshipsIndexed);
+
+    long baseTime = System.currentTimeMillis() - 3600000;
+    PipelineStatus bulkLatest = successfulStatus(baseTime + 60000);
+    client
+        .pipelines()
+        .addBulkPipelineStatus(
+            pipeline.getFullyQualifiedName(), List.of(successfulStatus(baseTime), bulkLatest));
+    awaitStatusIndexedWithRelationships(pipeline.getId(), bulkLatest);
+
+    PipelineStatus single = successfulStatus(baseTime + 120000);
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), single);
+    awaitStatusIndexedWithRelationships(pipeline.getId(), single);
+  }
+
+  private Pipeline createPipelineWithRelationships(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request =
+        new CreatePipeline()
+            .withName(ns.prefix("pipeline_status_search_doc"))
+            .withService(service.getFullyQualifiedName())
+            .withOwners(List.of(testUser1Ref()))
+            .withDomains(List.of(testDomain().getFullyQualifiedName()))
+            .withTags(List.of(personalDataTagLabel(), glossaryTermLabel()));
+    Pipeline pipeline = createEntity(request);
+    pipeline.setCertification(
+        new AssetCertification()
+            .withTagLabel(
+                new TagLabel()
+                    .withTagFQN(CERTIFICATION_GOLD)
+                    .withSource(TagLabel.TagSource.CLASSIFICATION)
+                    .withLabelType(TagLabel.LabelType.MANUAL)));
+    return patchEntity(pipeline.getId().toString(), pipeline);
+  }
+
+  private static PipelineStatus successfulStatus(long timestamp) {
+    return new PipelineStatus().withExecutionStatus(StatusType.Successful).withTimestamp(timestamp);
+  }
+
+  private void awaitStatusIndexedWithRelationships(UUID pipelineId, PipelineStatus status) {
+    awaitPipelineSearchDoc(
+        pipelineId,
+        doc -> {
+          assertEquals(
+              status.getTimestamp(), doc.path("pipelineStatus").path("timestamp").asLong());
+          assertRelationshipsIndexed(doc);
+        });
+  }
+
+  private void awaitPipelineSearchDoc(UUID pipelineId, Consumer<JsonNode> assertion) {
+    String docPath = "/v1/search/get/" + getSearchIndex() + "/doc/" + pipelineId;
+    Awaitility.await("pipeline " + pipelineId + " search doc")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () ->
+                assertion.accept(
+                    JsonUtils.readTree(
+                        SdkClients.adminClient()
+                            .getHttpClient()
+                            .executeForString(HttpMethod.GET, docPath, null))));
+  }
+
+  private void assertRelationshipsIndexed(JsonNode doc) {
+    Set<String> tagFqns = new HashSet<>();
+    doc.path("tags").forEach(tag -> tagFqns.add(tag.path("tagFQN").asText()));
+    assertAll(
+        () ->
+            assertEquals(
+                testUser1Ref().getId().toString(), doc.path("owners").path(0).path("id").asText()),
+        () -> assertEquals(testUser1Ref().getName(), doc.path("ownerName").path(0).asText()),
+        () ->
+            assertEquals(
+                testDomain().getFullyQualifiedName(),
+                doc.path("domains").path(0).path("fullyQualifiedName").asText()),
+        () ->
+            assertTrue(
+                tagFqns.containsAll(
+                    Set.of(personalDataTagLabel().getTagFQN(), glossaryTermLabel().getTagFQN())),
+                "indexed tags: " + tagFqns),
+        () ->
+            assertEquals(
+                CERTIFICATION_GOLD,
+                doc.path("certification").path("tagLabel").path("tagFQN").asText()));
   }
 
   @Test
@@ -1327,10 +1651,58 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     return SdkClients.adminClient().pipelines().bulkCreateOrUpdateAsync(createRequests);
   }
 
+  private ResultList<PipelineSummary> listPipelineSummaries(
+      OpenMetadataClient client, String service, String search, int limit, String after) {
+    StringBuilder path =
+        new StringBuilder("/v1/pipelines/summary?service=")
+            .append(encodeQueryValue(service))
+            .append("&search=")
+            .append(encodeQueryValue(search))
+            .append("&limit=")
+            .append(limit);
+    if (after != null) {
+      path.append("&after=").append(encodeQueryValue(after));
+    }
+    String response =
+        client.getHttpClient().executeForString(HttpMethod.GET, path.toString(), null);
+    return JsonUtils.readValue(response, new TypeReference<ResultList<PipelineSummary>>() {});
+  }
+
+  private ResultList<PipelineStatus> listPipelineStatuses(
+      OpenMetadataClient client, String fqn, long startTs, long endTs, String query) {
+    String path =
+        "/v1/pipelines/%s/status?startTs=%d&endTs=%d%s"
+            .formatted(encodeQueryValue(fqn), startTs, endTs, query);
+    String response = client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+    return JsonUtils.readValue(response, new TypeReference<ResultList<PipelineStatus>>() {});
+  }
+
+  private String encodeQueryValue(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
+  }
+
   @Override
   protected CreatePipeline createInvalidRequestForBulk(TestNamespace ns) {
     CreatePipeline request = new CreatePipeline();
     request.setName(ns.prefix("invalid_pipeline"));
     return request;
+  }
+
+  @Test
+  void patch_rejectedRenameKeepsTaskFqns(TestNamespace ns) {
+    Pipeline created =
+        createEntity(
+            createMinimalRequest(ns)
+                .withTasks(List.of(new Task().withName("task1"), new Task().withName("task2"))));
+    Pipeline patch = getEntity(created.getId().toString());
+    patch.setName(created.getName() + "_renamed");
+
+    Pipeline updated = patchEntity(created.getId().toString(), patch);
+
+    String fqn = created.getFullyQualifiedName();
+    List<String> taskFqns = updated.getTasks().stream().map(Task::getFullyQualifiedName).toList();
+    assertEquals(fqn, updated.getFullyQualifiedName());
+    assertEquals(2, taskFqns.size());
+    assertTrue(taskFqns.stream().allMatch(f -> f.startsWith(fqn + ".")), taskFqns::toString);
   }
 }

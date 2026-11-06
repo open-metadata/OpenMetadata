@@ -1,10 +1,14 @@
 package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.search.SearchUtils.mapEntityTypesToIndexNames;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
@@ -12,16 +16,26 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.McpParams;
+import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.PageCursor;
+import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.mask.TestCaseSearchMasker;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
@@ -29,8 +43,46 @@ public class SearchMetadataTool implements McpTool {
 
   private static final int DEFAULT_MAX_AGGREGATION_BUCKETS = 10;
   private static final int MAX_ALLOWED_AGGREGATION_BUCKETS = 50;
-  private static final int DESCRIPTION_MAX_LENGTH = 500;
-  private static final int DESCRIPTION_TRUNCATE_LENGTH = 450;
+
+  private static final Set<String> REFERENCE_FIELDS =
+      Set.of("service", "database", "databaseSchema", "parent", "metricGroup");
+  private static final Set<String> REFERENCE_LIST_FIELDS = Set.of("owners", "domains");
+  private static final Set<String> TAG_FIELDS = Set.of("tier", "tags");
+  private static final String CERTIFICATION_FIELD = "certification";
+  private static final String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
+  private static final String FROM_ENTITY_KEY = "fromEntity";
+  private static final String PIPELINE_KEY = "pipeline";
+  private static final String PIPELINE_ENTITY_TYPE_KEY = "pipelineEntityType";
+  private static final String FQN_KEY = "fullyQualifiedName";
+  private static final String TYPE_KEY = "type";
+  private static final Map<String, UnaryOperator<Object>> SINGLE_FIELD_SLIMMERS =
+      Map.of(
+          CERTIFICATION_FIELD,
+          value -> McpResponseTrim.slimCertification(value, System.currentTimeMillis()),
+          UPSTREAM_LINEAGE_FIELD,
+          SearchMetadataTool::slimLineageEdges);
+  private static final Set<String> BULK_FIELDS =
+      Set.of("columns", "columnNames", "charts", "tasks", UPSTREAM_LINEAGE_FIELD);
+  private static final int MAX_BULK_ITEMS = 60;
+  private static final String METRIC_EXPRESSION_FIELD = "metricExpression";
+  private static final String DESCRIPTION_TRUNCATED_KEY = "descriptionTruncated";
+  private static final String TEST_CASE_ENTITY = "testCase";
+  private static final String NEVER_RUN_KEY = "neverRun";
+
+  /** AI governance types the dataAsset alias leaves out; the default search adds them back. */
+  private static final List<String> AI_GOVERNANCE_TYPES =
+      List.of(Entity.LLM_MODEL, Entity.MCP_SERVER, Entity.AI_APPLICATION);
+
+  private final PersonaSearchScope.Provider personaSearchScopeProvider;
+
+  public SearchMetadataTool() {
+    this(PersonaSearchScope::resolve);
+  }
+
+  @VisibleForTesting
+  SearchMetadataTool(PersonaSearchScope.Provider personaSearchScopeProvider) {
+    this.personaSearchScopeProvider = personaSearchScopeProvider;
+  }
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =
       List.of(
@@ -49,53 +101,83 @@ public class SearchMetadataTool implements McpTool {
           "tier",
           "tableType",
           "columnNames",
-          "deleted");
+          "deleted",
+          "entityFQN",
+          "originEntityFQN",
+          "testCaseStatus",
+          "testCaseType",
+          "dataQualityDimensionName",
+          "testPlatforms",
+          "basic",
+          "lastResultTimestamp",
+          // ADR:2026-10-29-search-metadata-hits-show-their-place-in-a-hierarchy
+          "parent",
+          "childrenCount",
+          "metricGroup");
+
+  // Latest-result subset kept in test case search results; the full testCaseResult object
+  // (testResultValue, sample row counts, ...) is available via the 'fields' parameter.
+  private static final List<String> TEST_CASE_RESULT_SLIM_FIELDS =
+      List.of("testCaseStatus", "timestamp", "result");
 
   private static final List<String> DETAILED_EXCLUDE_KEYS =
-      List.of(
-          "id",
-          "version",
-          "updatedAt",
-          "updatedBy",
-          "usageSummary",
-          "followers",
-          "votes",
-          "lifeCycle",
-          "sourceHash",
-          "processedLineage",
-          "totalVotes",
-          "fqnParts",
-          "service_suggest",
-          "column_suggest",
-          "schema_suggest",
-          "database_suggest",
-          "upstreamLineage",
-          "entityRelationship",
-          "changeSummary",
-          "fqnHash",
-          "columns",
-          "schemaDefinition",
-          "queries",
-          "sourceUrl",
-          "locationPath",
-          "customMetrics",
-          "tierSources",
-          "tagSources",
-          "descriptionSources",
-          "columnDescriptionStatus",
-          "columnNamesFuzzy",
-          "descriptionStatus",
-          "domains",
-          "embeddings");
+      Stream.concat(
+              Stream.of(
+                  "id",
+                  "version",
+                  "updatedAt",
+                  "updatedBy",
+                  "usageSummary",
+                  "followers",
+                  "votes",
+                  "lifeCycle",
+                  "sourceHash",
+                  "processedLineage",
+                  "totalVotes",
+                  "fqnParts",
+                  "service_suggest",
+                  "column_suggest",
+                  "schema_suggest",
+                  "database_suggest",
+                  "upstreamLineage",
+                  "entityRelationship",
+                  "changeSummary",
+                  "fqnHash",
+                  "columns",
+                  "schemaDefinition",
+                  "queries",
+                  "sourceUrl",
+                  "locationPath",
+                  "customMetrics",
+                  "tierSources",
+                  "tagSources",
+                  "descriptionSources",
+                  "columnDescriptionStatus",
+                  "columnNamesFuzzy",
+                  "descriptionStatus",
+                  "domains"),
+              McpResponseTrim.VECTOR_NOISE_FIELDS.stream())
+          .toList();
+
+  private static final String JSON_NULL_LITERAL = "null";
+
+  /** The OpenSearch DSL wrapper key, distinct from the "query" search-text parameter. */
+  private static final String QUERY_KEY = "query";
+
+  private static final String QUERY_FILTER_EXAMPLE =
+      "{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}}";
+
+  /** Lucene match-anything query, mirroring the {@code @DefaultValue("*")} on the REST search API. */
+  private static final String MATCH_ANY_QUERY = "*";
 
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    LOG.info("Executing searchMetadata with params: {}", params);
-    String query = params.containsKey("query") ? (String) params.get("query") : "*";
-    String entityType = params.containsKey("entityType") ? (String) params.get("entityType") : null;
-    String index = entityType == null ? "dataAsset" : mapEntityTypesToIndexNames(entityType);
+    LOG.debug("Executing searchMetadata with params: {}", params);
+    String query = stringParam(params, "query", MATCH_ANY_QUERY);
+    String entityType = stringParam(params, "entityType", null);
+    String index = resolveIndex(entityType);
 
     int size = 10;
     if (params.containsKey("size")) {
@@ -124,8 +206,15 @@ public class SearchMetadataTool implements McpTool {
         }
       }
     }
+    Optional<PageCursor.Cursor> cursor = PageCursor.decode(stringParam(params, "cursor", null));
+    if (cursor.isPresent() && cursor.get().isOffset()) {
+      from = cursor.get().offset();
+    }
 
     size = Math.min(size, 50);
+    requireWithinResultWindow(from);
+    // The engine refuses from + size past its result window, so the last page is shortened.
+    size = Math.min(size, MAX_RESULT_HITS - from);
 
     boolean includeDeleted = false;
     if (params.containsKey("includeDeleted")) {
@@ -165,73 +254,78 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
+    Set<String> excludedTypes =
+        new java.util.HashSet<>(McpParams.getStringList(params, "excludeEntityTypes"));
     List<String> requestedFields = new ArrayList<>();
-    if (params.containsKey("fields")) {
-      String fieldsParam = (String) params.get("fields");
-      if (fieldsParam != null && !fieldsParam.trim().isEmpty()) {
-        requestedFields =
-            List.of(fieldsParam.split(",")).stream()
-                .map(String::trim)
-                .filter(field -> !field.isEmpty())
-                .collect(Collectors.toList());
-      }
+    String fieldsParam = stringParam(params, "fields", null);
+    if (fieldsParam != null && !fieldsParam.trim().isEmpty()) {
+      requestedFields =
+          List.of(fieldsParam.split(",")).stream()
+              .map(String::trim)
+              .filter(field -> !field.isEmpty())
+              .collect(Collectors.toList());
     }
 
     String queryFilter = null;
-    if (params.containsKey("queryFilter")) {
-      queryFilter = (String) params.get("queryFilter");
-      JsonNode queryNode = JsonUtils.getObjectMapper().readTree(queryFilter);
-
-      if (!queryNode.has("query")) {
+    JsonNode queryNode = queryFilterClause(params.get("queryFilter"));
+    if (queryNode != null) {
+      if (!queryNode.has(QUERY_KEY)) {
         ObjectNode queryWrapper = JsonUtils.getObjectMapper().createObjectNode();
-        queryWrapper.set("query", queryNode);
+        queryWrapper.set(QUERY_KEY, excludeTypesFrom(queryNode, excludedTypes));
         queryFilter = JsonUtils.pojoToJson(queryWrapper);
       } else {
-        queryFilter = JsonUtils.pojoToJson(queryNode);
+        ObjectNode wrapped = (ObjectNode) queryNode;
+        wrapped.set(QUERY_KEY, excludeTypesFrom(wrapped.get(QUERY_KEY), excludedTypes));
+        queryFilter = JsonUtils.pojoToJson(wrapped);
       }
       LOG.debug("Applied query filter to query: {}", queryFilter);
     }
 
-    LOG.info(
+    // With no caller-supplied queryFilter there is nothing to fold the exclusion into, so build a
+    // filter carrying only the exclusion. The standard search path ANDs it with the text query
+    // (OpenSearchSearchManager.applyQueryFilter), so the engine applies it and the page backfills.
+    String exclusionFilter = queryFilter == null ? excludeOnlyFilter(excludedTypes) : null;
+
+    LOG.debug(
         "Search query: {}, index: {}, limit: {}, includeDeleted: {}",
         queryFilter,
         index,
         size,
         includeDeleted);
 
-    SearchRequest searchRequest;
-    if (!nullOrEmpty(queryFilter)) {
-      // When queryFilter is provided, use it directly as it's already a transformed OpenSearch
-      // query
-      searchRequest =
-          new SearchRequest()
-              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-              .withQueryFilter(queryFilter)
-              .withSize(size)
-              .withFrom(from)
-              .withFetchSource(true)
-              .withDeleted(includeDeleted);
-    } else {
-      // Fallback to basic query when no queryFilter is provided
-      searchRequest =
-          new SearchRequest()
-              .withQuery(query)
-              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-              .withSize(size)
-              .withFrom(from)
-              .withFetchSource(true)
-              .withDeleted(includeDeleted);
+    // One request shape for both cases. A caller-supplied queryFilter used to be sent through
+    // searchWithDirectQuery, which reads neither the text query nor the deleted flag, so both were
+    // silently dropped whenever a filter was present. The standard search path ANDs the filter
+    // under
+    // the text query (OpenSearchSearchManager#applyQueryFilter) and additionally applies the
+    // deleted
+    // filter, ranked scoring, and the search preference.
+    String effectiveQueryFilter = nullOrEmpty(queryFilter) ? exclusionFilter : queryFilter;
+    if (GLOBAL_SEARCH_ALIAS.equals(index)) {
+      effectiveQueryFilter = withDefaultScope(effectiveQueryFilter);
     }
+    Optional<PersonaSearchScope> personaScope = personaSearchScope(securityContext, params);
+    if (personaScope.isPresent()) {
+      effectiveQueryFilter = personaScope.orElseThrow().applyTo(effectiveQueryFilter);
+    }
+    SearchRequest searchRequest =
+        new SearchRequest()
+            .withQuery(nullOrEmpty(query) ? MATCH_ANY_QUERY : query)
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .withQueryFilter(effectiveQueryFilter)
+            .withSize(size)
+            .withFrom(from)
+            .withFetchSource(true)
+            .withDeleted(includeDeleted)
+            // Callers count with totalFound; without this the engine stops counting at 10,000.
+            // ADR:2026-11-05-search-metadata-counts-exactly-and-pages-within-the-result-window
+            .withTrackTotalHits(true);
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    Response response;
-    if (!nullOrEmpty(queryFilter)) {
-      // Use direct query method when queryFilter is provided since it's already a transformed query
-      response = Entity.getSearchRepository().searchWithDirectQuery(searchRequest, subjectContext);
-    } else {
-      // Use regular search for basic queries
-      response = Entity.getSearchRepository().search(searchRequest, subjectContext);
-    }
+    Response response = Entity.getSearchRepository().search(searchRequest, subjectContext);
+    response =
+        TestCaseSearchMasker.maskSearch(
+            response, authorizer, securityContext, Entity.getSearchRepository(), searchRequest);
 
     Map<String, Object> searchResponse;
     if (response.getEntity() instanceof String responseStr) {
@@ -243,8 +337,55 @@ public class SearchMetadataTool implements McpTool {
       searchResponse = JsonUtils.convertValue(response.getEntity(), Map.class);
     }
 
-    return buildEnhancedSearchResponse(
-        searchResponse, query, size, requestedFields, includeAggregations, maxAggregationBuckets);
+    Map<String, Object> enhanced =
+        buildEnhancedSearchResponse(
+            searchResponse,
+            query,
+            size,
+            from,
+            requestedFields,
+            includeAggregations,
+            maxAggregationBuckets);
+    Map<String, Object> result = dropExcludedTypes(enhanced, excludedTypes);
+    personaScope.ifPresent(scope -> scope.annotate(result));
+    return result;
+  }
+
+  private Optional<PersonaSearchScope> personaSearchScope(
+      CatalogSecurityContext securityContext, Map<String, Object> params) {
+    return McpParams.getBoolean(params, "ignorePersonaScope", false)
+        ? Optional.empty()
+        : personaSearchScopeProvider.resolve(securityContext);
+  }
+
+  /**
+   * Backstop removal of excluded hits. The real exclusion happens in {@link #excludeTypesFrom}.
+   *
+   * <p>Post-filtering alone is not enough: it strips hits from a page already fetched, so a page
+   * that happened to be all columns came back empty - which reads as "no such assets exist" when
+   * hundreds do.
+   */
+  private static Map<String, Object> dropExcludedTypes(
+      Map<String, Object> response, Set<String> excluded) {
+    if (!excluded.isEmpty() && response.get("results") instanceof List<?> results) {
+      List<Object> kept =
+          results.stream()
+              .filter(hit -> !isExcluded(hit, excluded))
+              .collect(Collectors.toCollection(ArrayList::new));
+      int removed = results.size() - kept.size();
+      response.put("results", kept);
+      response.put("returnedCount", kept.size());
+      if (removed > 0) {
+        response.put("excludedByType", removed);
+      }
+    }
+    return response;
+  }
+
+  private static boolean isExcluded(Object hit, Set<String> excluded) {
+    Map<String, Object> map = safeGetMap(hit);
+    Object type = map == null ? null : map.get("entityType");
+    return type != null && excluded.contains(type.toString());
   }
 
   @Override
@@ -265,6 +406,24 @@ public class SearchMetadataTool implements McpTool {
       List<String> requestedFields,
       boolean includeAggregations,
       int maxAggregationBuckets) {
+    return buildEnhancedSearchResponse(
+        searchResponse,
+        query,
+        requestedLimit,
+        0,
+        requestedFields,
+        includeAggregations,
+        maxAggregationBuckets);
+  }
+
+  static Map<String, Object> buildEnhancedSearchResponse(
+      Map<String, Object> searchResponse,
+      String query,
+      int requestedLimit,
+      int from,
+      List<String> requestedFields,
+      boolean includeAggregations,
+      int maxAggregationBuckets) {
     if (searchResponse == null) {
       return createEmptyResponse();
     }
@@ -276,18 +435,9 @@ public class SearchMetadataTool implements McpTool {
 
     List<Object> hits = safeGetList(topHits.get("hits"));
     List<Map<String, Object>> cleanedResults = new ArrayList<>();
-    int totalResults = 0;
+    int totalResults = totalHitCount(topHits);
     if (hits != null && !hits.isEmpty()) {
-
-      if (topHits.get("total") instanceof Map) {
-        Map<String, Object> totalObj = safeGetMap(topHits.get("total"));
-        if (totalObj != null && totalObj.get("value") instanceof Number) {
-          totalResults = ((Number) totalObj.get("value")).intValue();
-        }
-      } else if (topHits.get("total") instanceof Number) {
-        totalResults = ((Number) topHits.get("total")).intValue();
-      }
-
+      boolean scoresVary = scoresDiscriminate(hits);
       for (Object hitObj : hits) {
         Map<String, Object> hit = safeGetMap(hitObj);
         if (hit == null) continue;
@@ -296,6 +446,12 @@ public class SearchMetadataTool implements McpTool {
         if (source == null) continue;
 
         Map<String, Object> cleanedSource = cleanSearchResult(source, requestedFields);
+        // A pure queryFilter lookup runs no scoring query, so every hit carries the same constant
+        // _score. Publishing that as "similarityScore" presents a filter match as a ranking, so
+        // emit it only when the scores actually differ.
+        if (hit.containsKey("_score") && scoresVary) {
+          cleanedSource.put("similarityScore", hit.get("_score"));
+        }
         cleanedResults.add(cleanedSource);
       }
     }
@@ -328,16 +484,109 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
-    if (totalResults > requestedLimit) {
+    boolean moreInIndex = (long) from + cleanedResults.size() < totalResults;
+    if (moreInIndex) {
       result.put(
           "message",
           String.format(
-              "Found %d total results, showing first %d. Use pagination or refine your search for more specific results, you can call these 3 times by yourself with pagination , and then only if the user ask for more paginate.",
+              "Found %d total results, showing first %d. "
+                  + "There are many matching assets. Are you looking for something specific? "
+                  + "Try narrowing with a service name, schema name, or more specific search term.",
               totalResults, cleanedResults.size()));
       result.put("hasMore", true);
     }
 
+    fitResultsToBudget(result, cleanedResults, totalResults, query);
+    attachPagingContract(result, from, totalResults);
+
     return result;
+  }
+
+  /** Read even when the page is empty, so a size-0 count reports the real total and not 0. */
+  private static int totalHitCount(Map<String, Object> topHits) {
+    Object total = topHits.get("total");
+    Object value = total instanceof Map<?, ?> totalObject ? totalObject.get("value") : total;
+    return value instanceof Number number ? number.intValue() : 0;
+  }
+
+  /**
+   * Past the engine's result window a request fails, or comes back empty and reads as no matches.
+   * Naming the limit tells the caller to narrow the query instead of paging on.
+   * ADR:2026-11-05-search-metadata-counts-exactly-and-pages-within-the-result-window
+   */
+  private static void requireWithinResultWindow(int from) {
+    if (from >= MAX_RESULT_HITS) {
+      throw new IllegalArgumentException(
+          String.format(
+              "'from' must be below %d: search pages through the first %d matches only. Narrow"
+                  + " the query (a service, schema, tag or queryFilter) to reach the rest.",
+              MAX_RESULT_HITS, MAX_RESULT_HITS));
+    }
+  }
+
+  /**
+   * Sets the unified paging markers. {@code total} is the real ES hit count; {@code nextCursor}
+   * advances by the count actually returned this page (after any budget trim) so the next call never
+   * skips rows. Emitted only when {@code hasMore} was set — either the total exceeds this page or the
+   * size budget trimmed it.
+   */
+  private static void attachPagingContract(
+      Map<String, Object> result, int from, long totalResults) {
+    result.put(McpResponseTrim.TOTAL_KEY, totalResults);
+    int returned = result.get("returnedCount") instanceof Number number ? number.intValue() : 0;
+    // totalFound is exact, but the engine cannot page past its result window: no cursor there,
+    // and the message already asks to narrow the query.
+    boolean withinWindow = (long) from + returned < MAX_RESULT_HITS;
+    if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY))
+        && returned > 0
+        && withinWindow) {
+      result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
+    } else if (returned == 0) {
+      result.remove(McpResponseTrim.HAS_MORE_KEY);
+      result.remove(McpResponseTrim.MESSAGE_KEY);
+    } else {
+      result.remove(McpResponseTrim.HAS_MORE_KEY);
+    }
+  }
+
+  /**
+   * Ensures the response stays under the dispatch-level size cap by returning fewer <em>results</em>
+   * (never mangling the ones kept), so search never falls through to the empty-stub nuke. Uses
+   * {@link ResponseBudget} to fit results to the budget by measuring each result's real serialized
+   * size, which the previous single proportional estimate could undershoot on heavy `fields=`
+   * responses, leaving the payload above the cap.
+   */
+  private static void fitResultsToBudget(
+      Map<String, Object> result,
+      List<Map<String, Object>> cleanedResults,
+      long totalResults,
+      String query) {
+    long overhead = overheadWithoutResults(result);
+    int fit = ResponseBudget.fitCount(cleanedResults, overhead);
+    if (fit < cleanedResults.size()) {
+      List<Map<String, Object>> trimmed = new ArrayList<>(cleanedResults.subList(0, fit));
+      LOG.warn(
+          "[MCP] search_metadata fit {} of {} results to size budget for query '{}'",
+          trimmed.size(),
+          cleanedResults.size(),
+          query);
+      result.put("results", trimmed);
+      result.put("returnedCount", trimmed.size());
+      result.put("hasMore", true);
+      result.put(
+          "message",
+          String.format(
+              "Returning %d of %d results to stay within the response size budget. "
+                  + "Pass 'nextCursor' to fetch the next page, or narrow the query.",
+              trimmed.size(), totalResults));
+    }
+  }
+
+  private static long overheadWithoutResults(Map<String, Object> result) {
+    Object savedResults = result.remove("results");
+    long overhead = McpResponseTrim.serializedLength(result);
+    result.put("results", savedResults);
+    return overhead;
   }
 
   public static Map<String, Object> cleanSearchResult(
@@ -347,25 +596,67 @@ public class SearchMetadataTool implements McpTool {
     // Always include essential fields
     for (String field : ESSENTIAL_FIELDS_ONLY) {
       if (source.containsKey(field)) {
-        result.put(field, source.get(field));
+        result.put(field, slimField(field, source.get(field)));
       }
     }
 
-    // Add any specifically requested additional fields
+    // Slim requested fields too: `fields=certification` used to bypass slimField and return the
+    // whole nested label, with expiry as epoch millis, on every hit.
     for (String field : requestedFields) {
       if (source.containsKey(field)) {
-        result.put(field, source.get(field));
+        result.put(field, slimField(field, capBulkField(field, source.get(field), result)));
       }
     }
 
-    // Truncate long descriptions to optimize LLM context usage
-    if (result.containsKey("description")) {
-      Object descObj = result.get("description");
-      if (descObj instanceof String description && description.length() > DESCRIPTION_MAX_LENGTH) {
-        result.put("description", description.substring(0, DESCRIPTION_TRUNCATE_LENGTH) + "...");
+    addSlimTestCaseResult(source, result);
+
+    // Truncate long descriptions, and say so. A silent cut is worse than a short field: the caller
+    // reads it as the complete text. Columns were already flagged this way; descriptions were not.
+    if (result.get("description") instanceof String description) {
+      String trimmed = McpResponseTrim.truncateDescription(description);
+      result.put("description", trimmed);
+      if (trimmed.length() < description.length()) {
+        result.put(DESCRIPTION_TRUNCATED_KEY, Boolean.TRUE);
       }
     }
+    markNeverRunTestCase(result);
     return result;
+  }
+
+  /**
+   * Distinguishes a test that has never executed from a field that was simply not returned.
+   *
+   * <p>{@code testCaseStatus} is accurate once a test has run, so its absence is genuine - but
+   * absence alone is ambiguous, and callers spent extra calls just to learn that "no status" meant
+   * "never ran".
+   *
+   * <p>Reported as a separate {@code neverRun} flag, not as a {@code testCaseStatus} value:
+   * {@code testCaseStatus} is a closed schema enum (Success, Failed, Aborted, Queued) with a
+   * generated parser behind it, so writing {@code "NeverRun"} into it invents a value that exists
+   * nowhere in OpenMetadata and throws in any client that parses the field.
+   */
+  private static void markNeverRunTestCase(Map<String, Object> result) {
+    boolean isTestCase = TEST_CASE_ENTITY.equals(result.get("entityType"));
+    if (isTestCase && result.get("testCaseStatus") == null) {
+      result.put(NEVER_RUN_KEY, Boolean.TRUE);
+    }
+  }
+
+  private static void addSlimTestCaseResult(
+      Map<String, Object> source, Map<String, Object> result) {
+    if (result.containsKey("testCaseResult")
+        || !(source.get("testCaseResult") instanceof Map<?, ?> testCaseResult)) {
+      return;
+    }
+    Map<String, Object> slim = new HashMap<>();
+    for (String field : TEST_CASE_RESULT_SLIM_FIELDS) {
+      if (testCaseResult.containsKey(field)) {
+        slim.put(field, testCaseResult.get(field));
+      }
+    }
+    if (!slim.isEmpty()) {
+      result.put("testCaseResult", slim);
+    }
   }
 
   public static Map<String, Object> createEmptyResponse() {
@@ -377,10 +668,276 @@ public class SearchMetadataTool implements McpTool {
     return result;
   }
 
-  @SuppressWarnings("unused")
+  /**
+   * The caller's {@code queryFilter} as a usable query clause, or null when they supplied none.
+   *
+   * <p>Tool-calling models fill every optional string the schema lists, sending {@code ""} or {@code
+   * "null"} for the ones they have no value for. Those carry no clause, so they have to read as an
+   * omitted filter: wrapped instead they become {@code {"query": null}}, which the engine rejects,
+   * failing the search the model actually asked for. A filter that is present but cannot be a clause
+   * at all is the caller's to correct, so it is named rather than sent on as an opaque backend
+   * rejection.
+   */
+  private static JsonNode queryFilterClause(Object queryFilterParam) {
+    String rawFilter = rawQueryFilter(queryFilterParam);
+    JsonNode clause = null;
+    if (!nullOrEmpty(rawFilter) && !JSON_NULL_LITERAL.equalsIgnoreCase(rawFilter)) {
+      clause = parsedQueryFilter(rawFilter);
+    }
+    return clause;
+  }
+
+  private static String rawQueryFilter(Object queryFilterParam) {
+    // LLM callers occasionally send the filter as a JSON object instead of a string; serialize
+    // non-string input back to JSON rather than failing on a cast.
+    String rawFilter = null;
+    if (queryFilterParam instanceof String stringValue) {
+      rawFilter = stringValue.trim();
+    } else if (queryFilterParam != null) {
+      rawFilter = JsonUtils.pojoToJson(queryFilterParam);
+    }
+    return rawFilter;
+  }
+
+  private static JsonNode parsedQueryFilter(String rawFilter) {
+    JsonNode parsed = readQueryFilter(rawFilter);
+    // A model that has seen one {"query": {...}} example sends the degenerate value pre-wrapped, so
+    // the clause is checked where it actually sits. Validating only the outer node lets
+    // {"query": null} straight through - the very payload the engine rejects.
+    JsonNode clause = parsed.has(QUERY_KEY) ? parsed.get(QUERY_KEY) : parsed;
+    boolean absent = carriesNoClause(clause);
+    if (!absent && !clause.isObject()) {
+      throw new IllegalArgumentException(
+          "queryFilter must be a JSON object holding an OpenSearch query clause, e.g. "
+              + QUERY_FILTER_EXAMPLE
+              + " - got: "
+              + rawFilter);
+    }
+    return absent ? null : parsed;
+  }
+
+  private static JsonNode readQueryFilter(String rawFilter) {
+    try {
+      return JsonUtils.getObjectMapper().readTree(rawFilter);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException(
+          "queryFilter is not valid JSON: " + e.getOriginalMessage(), e);
+    }
+  }
+
+  /**
+   * True when the node holds no query clause at all: a JSON null, a missing node, an empty object,
+   * or blank text. An array or a number is the wrong type rather than an absent value, so it is left
+   * for the caller to correct.
+   */
+  private static boolean carriesNoClause(JsonNode node) {
+    return node.isMissingNode()
+        || node.isNull()
+        || (node.isObject() && node.isEmpty())
+        || (node.isTextual() && node.asText().isBlank());
+  }
+
+  /**
+   * A queryFilter whose only job is to exclude entity types, for the path where the caller supplied
+   * no filter of their own. Null when there is nothing to exclude, so the request is unchanged.
+   */
+  @VisibleForTesting
+  static String excludeOnlyFilter(Set<String> excluded) {
+    String filter = null;
+    if (!excluded.isEmpty()) {
+      ObjectNode wrapper = JsonUtils.getObjectMapper().createObjectNode();
+      wrapper.set(QUERY_KEY, excludeTypesFrom(null, excluded));
+      filter = JsonUtils.pojoToJson(wrapper);
+    }
+    return filter;
+  }
+
+  /**
+   * Wraps a query so excluded entity types never match, letting the engine backfill the page.
+   *
+   * <p>{@code tableColumn} documents sit inside the default {@code dataAsset} scope, so a broad
+   * sweep can return mostly columns inheriting their parent's tags or certification.
+   */
+  private static JsonNode excludeTypesFrom(JsonNode query, Set<String> excluded) {
+    JsonNode result = query;
+    if (!excluded.isEmpty()) {
+      ObjectNode bool = JsonUtils.getObjectMapper().createObjectNode();
+      ObjectNode inner = bool.putObject("bool");
+      // A null query means there is nothing to exclude *from* - the caller supplied no filter - so
+      // the bool carries must_not alone and matches everything else.
+      if (query != null) {
+        inner.set("must", query);
+      }
+      ArrayNode mustNot = inner.putArray("must_not");
+      for (String type : excluded) {
+        mustNot.addObject().putObject("term").put("entityType", type);
+      }
+      result = bool;
+    }
+    return result;
+  }
+
+  /** True when hit scores vary, i.e. something actually ranked them. */
+  private static boolean scoresDiscriminate(List<?> hits) {
+    Object first = null;
+    boolean varies = false;
+    for (Object hitObj : hits) {
+      Map<String, Object> hit = safeGetMap(hitObj);
+      Object score = hit == null ? null : hit.get("_score");
+      if (score == null) {
+        continue;
+      }
+      if (first == null) {
+        first = score;
+      } else if (!first.equals(score)) {
+        varies = true;
+        break;
+      }
+    }
+    return varies;
+  }
+
+  /**
+   * Caps a hydrated bulk field on a search hit.
+   *
+   * <p>{@code fields=columns} hydrates every column with its full description, so one wide table can
+   * dominate a page. A search hit exists to be chosen between; {@code get_entity_details} is where
+   * the full detail lives. A requested metric expression is capped the same way every other metric
+   * summary caps it, so one long SQL body cannot push the other hits out of the response budget.
+   */
+  private static Object capBulkField(String field, Object value, Map<String, Object> result) {
+    Object capped = value;
+    if (BULK_FIELDS.contains(field)
+        && value instanceof List<?> items
+        && items.size() > MAX_BULK_ITEMS) {
+      capped = new ArrayList<>(items.subList(0, MAX_BULK_ITEMS));
+      result.put(field + "Total", items.size());
+      result.put(field + "Truncated", Boolean.TRUE);
+    }
+    if (METRIC_EXPRESSION_FIELD.equals(field) && value instanceof Map<?, ?> expression) {
+      capped = McpResponseTrim.cappedMetricExpression(expression);
+    }
+    return capped;
+  }
+
+  /**
+   * Entity references and tag labels are collapsed to the identifier a caller can act on.
+   *
+   * <p>{@code tier}, {@code service}, {@code database} and {@code databaseSchema} each repeat a full
+   * descriptor on every hit, which on a 10-hit response was most of the payload. Every MCP tool is
+   * addressed by {@code (entityType, fqn)}, so the FQN is the actionable part.
+   */
+  private static Object slimField(String field, Object value) {
+    Object result = value;
+    if (REFERENCE_FIELDS.contains(field)) {
+      result = McpResponseTrim.slimRef(value);
+    } else if (REFERENCE_LIST_FIELDS.contains(field)) {
+      result = McpResponseTrim.slimRefs(value);
+    } else if (TAG_FIELDS.contains(field)) {
+      result = McpResponseTrim.slimTag(value);
+    } else {
+      result = SINGLE_FIELD_SLIMMERS.getOrDefault(field, UnaryOperator.identity()).apply(value);
+    }
+    return result;
+  }
+
+  /**
+   * A requested upstreamLineage keeps each edge's source asset, and its pipeline when there is one,
+   * as FQN and type. {@code fromEntity.fullyQualifiedName} stays where a queryFilter finds it.
+   * Column mappings and SQL were most of each edge; get_entity_lineage returns them, and pages every
+   * edge. ADR:2026-11-06-search-metadata-returns-requested-lineage-as-edge-ends
+   */
+  private static Object slimLineageEdges(Object value) {
+    Object result = value;
+    if (value instanceof List<?> edges) {
+      result = edges.stream().map(SearchMetadataTool::slimLineageEdge).toList();
+    }
+    return result;
+  }
+
+  private static Object slimLineageEdge(Object edge) {
+    Object result = edge;
+    if (edge instanceof Map<?, ?> fields) {
+      Map<String, Object> slim = new LinkedHashMap<>();
+      if (fields.get(FROM_ENTITY_KEY) instanceof Map<?, ?> from) {
+        slim.put(FROM_ENTITY_KEY, edgeEnd(from.get(FQN_KEY), from.get(TYPE_KEY)));
+      }
+      // The pipeline is indexed as its whole entity, which has no type; the edge carries it.
+      if (fields.get(PIPELINE_KEY) instanceof Map<?, ?> pipeline) {
+        slim.put(
+            PIPELINE_KEY, edgeEnd(pipeline.get(FQN_KEY), fields.get(PIPELINE_ENTITY_TYPE_KEY)));
+      }
+      result = slim;
+    }
+    return result;
+  }
+
+  private static Map<String, Object> edgeEnd(Object fullyQualifiedName, Object type) {
+    Map<String, Object> end = new LinkedHashMap<>();
+    end.put(FQN_KEY, fullyQualifiedName);
+    if (type != null) {
+      end.put(TYPE_KEY, type);
+    }
+    return end;
+  }
+
   public static Map<String, Object> cleanSearchResponseObject(Map<String, Object> object) {
     DETAILED_EXCLUDE_KEYS.forEach(object::remove);
     return object;
+  }
+
+  /**
+   * Reads a parameter as a string without assuming the caller sent a string. LLM callers sometimes
+   * send numbers or other scalars (e.g. {@code "entityType": 123}); {@code toString} keeps the tool
+   * tolerant instead of failing on a class cast.
+   */
+  private static String stringParam(Map<String, Object> params, String key, String defaultValue) {
+    Object value = params.get(key);
+    return value == null ? defaultValue : value.toString();
+  }
+
+  /**
+   * Resolves the search index from the requested entity type using the authoritative index registry
+   * instead of a hand-maintained switch. A registered entity type resolves to its own single-type
+   * index, so results are correctly scoped (fixing #27796, where unlisted types fell back to the
+   * broad dataAsset alias and leaked other types). Null, unregistered, wildcard, or comma-separated
+   * input is not a registry key and falls back to the default scope ({@link #withDefaultScope}),
+   * preserving the prior graceful default rather than erroring or widening the search.
+   */
+  @VisibleForTesting
+  static String resolveIndex(String entityType) {
+    String index = GLOBAL_SEARCH_ALIAS;
+    if (!nullOrEmpty(entityType)
+        && Entity.getSearchRepository().getIndexMapping(entityType) != null) {
+      index = entityType;
+    }
+    return index;
+  }
+
+  /**
+   * Narrows a search of the {@code all} alias to the default scope: the dataAsset types plus the AI
+   * governance types. The dataAsset alias stays unchanged because Explore reads it. The search goes
+   * through {@code all} and not an index list because ranking is picked by index name: only {@code
+   * all} and {@code dataAsset} get the data asset ranking, and a list falls back to generic ranking.
+   * ADR:2026-11-05-search-metadata-default-scope-includes-ai-governance-assets
+   */
+  @VisibleForTesting
+  static String withDefaultScope(String filter) {
+    List<String> types =
+        new ArrayList<>(
+            Entity.getSearchRepository().getEntityTypesForIndex(DATA_ASSET_SEARCH_ALIAS));
+    types.addAll(AI_GOVERNANCE_TYPES);
+    ObjectNode root =
+        nullOrEmpty(filter)
+            ? JsonUtils.getObjectMapper().createObjectNode()
+            : (ObjectNode) JsonUtils.readTree(filter);
+    ArrayNode clauses = JsonUtils.getObjectMapper().createArrayNode();
+    if (root.has(QUERY_KEY)) {
+      clauses.add(root.get(QUERY_KEY));
+    }
+    clauses.addObject().putObject("terms").set("entityType", JsonUtils.valueToTree(types));
+    root.putObject(QUERY_KEY).putObject("bool").set("filter", clauses);
+    return JsonUtils.pojoToJson(root);
   }
 
   /**

@@ -40,6 +40,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -89,9 +90,10 @@ public class DatabaseServiceRepository
     List<Database> databases =
         repository.listAllForCSV(
             repository.getFields("name,owners,tags,domains,extension"),
-            databaseService.getFullyQualifiedName());
+            databaseService.getFullyQualifiedName(),
+            user);
 
-    databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    databases.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new DatabaseServiceCsv(databaseService, user, recursive)
         .exportAllCsv(databases, recursive, callback);
   }
@@ -167,7 +169,8 @@ public class DatabaseServiceRepository
               // Convert the CSV record to a List<String>
               List<String> recordList = new ArrayList<>();
               for (int i = 0; i < record.size(); i++) {
-                recordList.add(record.get(i));
+                // Child export cells are already escaped; restore so formatCsv escapes once.
+                recordList.add(CsvUtil.restoreFormula(record.get(i)));
               }
               // Add the record to the CSV file using the overridden addRecord method
               this.addRecord(csvFile, recordList);
@@ -195,7 +198,7 @@ public class DatabaseServiceRepository
     /**
      * Add entity to CSV file with entity type
      */
-    public <E extends EntityInterface> void addEntityToCSV(
+    public <E extends EntityInterface<?>> void addEntityToCSV(
         CsvFile csvFile, E entity, String entityType) {
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());
@@ -287,7 +290,7 @@ public class DatabaseServiceRepository
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withCertification(certification)
-          .withDomains(getDomains(printer, csvRecord, 8))
+          .withDomains(getDomains(printer, csvRecord, 8, database.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 9));
 
       if (processRecord) {
@@ -371,7 +374,7 @@ public class DatabaseServiceRepository
           .withTags(tagLabels)
           .withCertification(certification)
           .withSourceUrl(csvRecord.get(9))
-          .withDomains(getDomains(printer, csvRecord, 10))
+          .withDomains(getDomains(printer, csvRecord, 10, database.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
@@ -448,7 +451,7 @@ public class DatabaseServiceRepository
           .withCertification(certification)
           .withRetentionPeriod(csvRecord.get(8))
           .withSourceUrl(csvRecord.get(9))
-          .withDomains(getDomains(printer, csvRecord, 10))
+          .withDomains(getDomains(printer, csvRecord, 10, schema.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 11))
           .withUpdatedAt(System.currentTimeMillis())
           .withUpdatedBy(importedBy);

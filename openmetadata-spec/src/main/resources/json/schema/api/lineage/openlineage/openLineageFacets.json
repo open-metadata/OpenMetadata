@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/lineage/openlineage/openLineageFacets.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenLineageFacets",
   "description": "OpenLineage facet definitions for datasets, jobs, and runs.",
   "definitions": {
@@ -249,7 +249,7 @@
       }
     },
     "ownershipFacet": {
-      "description": "Ownership facet providing owner information for the dataset.",
+      "description": "Ownership facet providing owner information for the dataset or job.",
       "type": "object",
       "allOf": [
         { "$ref": "#/definitions/baseFacet" }
@@ -386,6 +386,9 @@
       "properties": {
         "sql": {
           "$ref": "#/definitions/sqlJobFacet"
+        },
+        "ownership": {
+          "$ref": "#/definitions/ownershipFacet"
         }
       },
       "additionalProperties": true

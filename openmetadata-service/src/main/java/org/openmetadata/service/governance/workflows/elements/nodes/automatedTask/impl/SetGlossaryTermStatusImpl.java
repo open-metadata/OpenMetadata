@@ -7,7 +7,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RU
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import jakarta.json.JsonPatch;
-import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -20,7 +19,9 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -29,35 +30,48 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public class SetGlossaryTermStatusImpl implements JavaDelegate {
   private Expression statusExpr;
   private Expression inputNamespaceMapExpr;
+  private Expression batchExecutionExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
-      MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
-      GlossaryTerm glossaryTerm = Entity.getEntity(entityLink, "*", Include.ALL);
-
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       String status = (String) statusExpr.getValue(execution);
       String user =
           Optional.ofNullable(
                   (String)
                       varHandler.getNamespacedVariable(
-                          inputNamespaceMap.get(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE))
+                          inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE))
               .orElse("governance-bot");
-
-      setStatus(glossaryTerm, user, status);
+      BatchEntities.applyAction(
+          new BatchEntities.NodeExecution(
+              batchExecutionExpr, execution, varHandler, inputNamespaces),
+          entityLink -> setStatus(entityLink, user, status),
+          () ->
+              setStatus(
+                  (String)
+                      varHandler.getNamespacedVariable(
+                          inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                          RELATED_ENTITY_VARIABLE),
+                  user,
+                  status));
+    } catch (BpmnError batchFailure) {
+      // Raised by a batch the action failed on entirely, after it recorded the per-entity summary
+      // and the first cause in global_exception.
+      throw batchFailure;
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
+  }
+
+  private void setStatus(String entityLinkValue, String user, String status) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkValue);
+    GlossaryTerm glossaryTerm = Entity.getEntity(entityLink, "", Include.ALL);
+    setStatus(glossaryTerm, user, status);
   }
 
   private void setStatus(GlossaryTerm glossaryTerm, String user, String status) {
@@ -72,7 +86,8 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
 
       GlossaryTermRepository entityRepository =
           (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-      entityRepository.patch(null, glossaryTerm.getId(), user, patch);
+      entityRepository.patch(
+          null, glossaryTerm.getId(), user, patch, null, WorkflowEventConsumer.GOVERNANCE_BOT);
     }
   }
 }

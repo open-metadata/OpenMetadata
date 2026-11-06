@@ -56,9 +56,48 @@ describe('Test FQN', () => {
     expect('"a.b"').toStrictEqual(Fqn.quoteName('a.b')); // Add quotes when "." exists in the name
     expect('"a.b"').toStrictEqual(Fqn.quoteName('"a.b"')); // Leave existing valid quotes
     expect('a').toStrictEqual(Fqn.quoteName('"a"')); // Remove quotes when not needed
+  });
 
-    expect(() => Fqn.quoteName('"a')).toThrow('label.invalid-name "a'); // Error when ending quote is missing
-    expect(() => Fqn.quoteName('a"')).toThrow('label.invalid-name a"'); // Error when beginning quote is missing
-    expect(() => Fqn.quoteName('a"b')).toThrow('label.invalid-name a"b'); // Error when invalid quote is present in the middle of the string
+  it('should encode names containing double quotes by doubling them', () => {
+    expect(Fqn.quoteName('a"b')).toStrictEqual('"a""b"');
+    expect(Fqn.quoteName('"a')).toStrictEqual('"""a"');
+    expect(Fqn.quoteName('a"')).toStrictEqual('"a"""');
+    expect(Fqn.quoteName('"a""b"')).toStrictEqual('"a""b"');
+  });
+
+  it('should unquote names', () => {
+    expect(Fqn.unquoteName('a')).toStrictEqual('a');
+    expect(Fqn.unquoteName('"a.b"')).toStrictEqual('a.b');
+    expect(Fqn.unquoteName('"a""b"')).toStrictEqual('a"b');
+  });
+
+  it('should split and round-trip an FQN whose segment contains an escaped quote', () => {
+    const taskName = 'si_l\'agent_existe_dans_la_base_"agents"_alors';
+    const fqn = Fqn.build('svc', 'pipeline', taskName);
+
+    expect(fqn).toStrictEqual(
+      'svc.pipeline."si_l\'agent_existe_dans_la_base_""agents""_alors"'
+    );
+
+    const parts = Fqn.split(fqn);
+
+    expect(parts).toHaveLength(3);
+    expect(Fqn.unquoteName(parts[2])).toStrictEqual(taskName);
+  });
+
+  it('should round-trip a column name containing quote characters', () => {
+    const columnName = '12345\'"\\\'\\"';
+    const fqn = Fqn.build(
+      'egdp_prod',
+      '112945290135',
+      'marketing',
+      'tagging_bex_omgpixel_error_v1',
+      columnName
+    );
+
+    const parts = Fqn.split(fqn);
+
+    expect(parts).toHaveLength(5);
+    expect(Fqn.unquoteName(parts[4])).toStrictEqual(columnName);
   });
 });

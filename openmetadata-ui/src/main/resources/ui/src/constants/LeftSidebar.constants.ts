@@ -11,46 +11,70 @@
  *  limitations under the License.
  */
 
-import { Cube01 } from '@untitledui/icons';
-import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
-import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
-import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
-import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
-import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
-import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
-import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column.svg';
-import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
-import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketplace.svg';
-import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
-import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
-import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
-import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
-import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
-import { ReactComponent as OverviewIcon } from '../assets/svg/ic-overview.svg';
-import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
-import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
-import { ReactComponent as WorkflowsNavIcon } from '../assets/svg/ic-workflows.svg';
-import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
-import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import {
+  Alerts,
+  Archive,
+  Article,
+  Building01,
+  Classification,
+  Column,
+  Compass03,
+  ContextCenter,
+  DataContract,
+  DataObservability,
+  DataProduct,
+  DataQualityRules,
+  FolderCheck02,
+  Globe01,
+  Glossary,
+  Grid01,
+  Home02,
+  IncidentManager02,
+  Lightbulb01,
+  LogOut01,
+  Marketplace,
+  Memories,
+  Metric,
+  Persona,
+  PlatformLineage,
+  Settings01,
+  Workflow,
+} from '@openmetadata/ui-core-components/icons';
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
-import { createIconWithStroke } from '../utils/IconUtils';
-import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
+import { createIconWithStroke, OntologyStudioIcon } from '../utils/IconUtils';
+import { ENTITY_PATH, PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
+
+type UntitledIconType = React.ComponentType<{
+  size?: number;
+  strokeWidth?: number;
+  style?: React.CSSProperties;
+}>;
 
 const DataProductIcon = createIconWithStroke(
-  Cube01 as React.ComponentType<{
-    size?: number;
-    strokeWidth?: number;
-    style?: React.CSSProperties;
-  }>,
+  DataProduct as UntitledIconType,
   1.2
 );
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
   [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
+  [ROUTES.CONTEXT_CENTER_OVERVIEW]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_ARTICLES]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_DOCUMENTS]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_MEMORIES]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_INTEGRATIONS]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_AI_CONTEXT]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_ARCHIVE]: ROUTES.CONTEXT_CENTER,
+};
+
+export const SIDEBAR_ENTITY_PATH_ALIASES: Record<string, string> = {
+  [`/${ENTITY_PATH.metrics}`]: ROUTES.METRICS,
+  [`/${ENTITY_PATH.tags}`]: ROUTES.TAGS,
+  '/glossary-term': ROUTES.GLOSSARY,
+  '/observability/alert': ROUTES.OBSERVABILITY_ALERTS,
+  '/test-case': ROUTES.INCIDENT_MANAGER,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
@@ -58,55 +82,55 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     key: ROUTES.MY_DATA,
     title: 'label.home',
     redirect_url: ROUTES.MY_DATA,
-    icon: HomeIcon,
+    icon: Home02,
     dataTestId: `app-bar-item-${SidebarItem.HOME}`,
   },
   {
     key: ROUTES.EXPLORE,
     title: 'label.explore',
     redirect_url: ROUTES.EXPLORE,
-    icon: ExploreIcon,
+    icon: Compass03,
     dataTestId: `app-bar-item-${SidebarItem.EXPLORE}`,
   },
   {
     key: ROUTES.PLATFORM_LINEAGE,
     title: 'label.lineage',
     redirect_url: ROUTES.PLATFORM_LINEAGE,
-    icon: PlatformLineageIcon,
+    icon: PlatformLineage,
     dataTestId: `app-bar-item-${SidebarItem.LINEAGE}`,
   },
   {
     key: ROUTES.OBSERVABILITY,
     title: 'label.observability',
-    icon: ObservabilityIcon,
+    icon: DataObservability,
     dataTestId: SidebarItem.OBSERVABILITY,
     children: [
       {
         key: ROUTES.DATA_QUALITY,
         title: 'label.data-quality',
         redirect_url: ROUTES.DATA_QUALITY,
-        icon: DataQualityIcon,
+        icon: DataContract,
         dataTestId: `app-bar-item-${SidebarItem.DATA_QUALITY}`,
       },
       {
         key: ROUTES.INCIDENT_MANAGER,
         title: 'label.incident-manager',
         redirect_url: ROUTES.INCIDENT_MANAGER,
-        icon: IncidentMangerIcon,
+        icon: IncidentManager02,
         dataTestId: `app-bar-item-${SidebarItem.INCIDENT_MANAGER}`,
       },
       {
         key: ROUTES.OBSERVABILITY_ALERTS,
         title: 'label.alert-plural',
         redirect_url: ROUTES.OBSERVABILITY_ALERTS,
-        icon: AlertIcon,
+        icon: Alerts,
         dataTestId: `app-bar-item-${SidebarItem.OBSERVABILITY_ALERT}`,
       },
       {
         key: ROUTES.TEST_LIBRARY,
         title: 'label.test-library',
         redirect_url: ROUTES.TEST_LIBRARY,
-        icon: DataQualityRulesIcon,
+        icon: DataQualityRules,
         dataTestId: `app-bar-item-test-library`,
       },
     ],
@@ -118,19 +142,19 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
       PLACEHOLDER_ROUTE_TAB,
       DataInsightTabs.DATA_ASSETS
     ),
-    icon: InsightsIcon,
+    icon: Lightbulb01,
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
     key: ROUTES.DATA_MARKETPLACE_SECTION,
     title: 'label.data-marketplace-section',
-    icon: MarketplaceIcon,
+    icon: Marketplace,
     dataTestId: SidebarItem.DATA_MARKETPLACE_SECTION,
     children: [
       {
         key: ROUTES.DATA_MARKETPLACE,
         title: 'label.overview',
-        icon: OverviewIcon,
+        icon: Grid01,
         redirect_url: ROUTES.DATA_MARKETPLACE,
         dataTestId: `app-bar-item-${SidebarItem.DATA_MARKETPLACE}`,
       },
@@ -138,7 +162,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.DOMAIN,
         title: 'label.domain-plural',
         redirect_url: ROUTES.DOMAIN,
-        icon: DomainsIcon,
+        icon: Globe01,
         dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
       },
       {
@@ -153,51 +177,100 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
   {
     key: 'governance',
     title: 'label.govern',
-    icon: GovernIcon,
+    icon: Building01,
     dataTestId: SidebarItem.GOVERNANCE,
     children: [
       {
         key: ROUTES.GLOSSARY,
         title: 'label.glossary',
         redirect_url: ROUTES.GLOSSARY,
-        icon: GlossaryIcon,
+        icon: Glossary,
         dataTestId: `app-bar-item-${SidebarItem.GLOSSARY}`,
       },
       {
         key: ROUTES.ONTOLOGY_EXPLORER,
-        title: 'label.ontology-explorer',
+        title: 'label.ontology-studio',
         redirect_url: ROUTES.ONTOLOGY_EXPLORER,
-        icon: LineageIcon,
+        icon: OntologyStudioIcon,
         dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
       },
       {
         key: ROUTES.TAGS,
         title: 'label.classification',
         redirect_url: ROUTES.TAGS,
-        icon: ClassificationIcon,
+        icon: Classification,
         dataTestId: `app-bar-item-${SidebarItem.TAGS}`,
       },
       {
         key: ROUTES.METRICS,
         title: 'label.metric-plural',
         redirect_url: ROUTES.METRICS,
-        icon: MetricIcon,
+        icon: Metric,
         dataTestId: `app-bar-item-${SidebarItem.METRICS}`,
       },
       {
         key: ROUTES.COLUMN_BULK_OPERATIONS,
         title: 'label.column-bulk-operations',
         redirect_url: ROUTES.COLUMN_BULK_OPERATIONS,
-        icon: ColumnBulkIcon,
+        icon: Column,
         dataTestId: `app-bar-item-${SidebarItem.COLUMN_BULK_OPERATIONS}`,
-        isBeta: true,
       },
       {
         key: ROUTES.WORKFLOWS,
         title: 'label.workflow-plural',
         redirect_url: ROUTES.WORKFLOWS,
-        icon: WorkflowsNavIcon,
+        icon: Workflow,
         dataTestId: `app-bar-item-${SidebarItem.WORKFLOWS}`,
+      },
+    ],
+  },
+  {
+    key: ROUTES.CONTEXT_CENTER,
+    title: 'label.context-center',
+    icon: ContextCenter,
+    dataTestId: SidebarItem.CONTEXT_CENTER,
+    children: [
+      {
+        key: ROUTES.CONTEXT_CENTER_OVERVIEW,
+        title: 'label.overview',
+        redirect_url: ROUTES.CONTEXT_CENTER_OVERVIEW,
+        icon: Grid01,
+        dataTestId: `app-bar-item-${SidebarItem.OVERVIEW}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
+        title: 'label.ai-context',
+        redirect_url: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
+        icon: Persona,
+        dataTestId: `app-bar-item-${SidebarItem.AI_CONTEXT}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_ARTICLES,
+        title: 'label.article-plural',
+        redirect_url: ROUTES.CONTEXT_CENTER_ARTICLES,
+        icon: Article,
+        dataTestId: `app-bar-item-${SidebarItem.ARTICLES}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_DOCUMENTS,
+        title: 'label.document-plural',
+        redirect_url: ROUTES.CONTEXT_CENTER_DOCUMENTS,
+        icon: FolderCheck02,
+        dataTestId: `app-bar-item-${SidebarItem.DOCUMENTS}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_MEMORIES,
+        title: 'label.memory-plural',
+        redirect_url: ROUTES.CONTEXT_CENTER_MEMORIES,
+        icon: Memories,
+        dataTestId: `app-bar-item-${SidebarItem.MEMORIES}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_ARCHIVE,
+        title: 'label.archive',
+        redirect_url: ROUTES.CONTEXT_CENTER_ARCHIVE,
+        icon: Archive,
+        dataTestId: `app-bar-item-context-center-archive`,
       },
     ],
   },
@@ -207,13 +280,13 @@ export const SETTING_ITEM = {
   key: ROUTES.SETTINGS,
   title: 'label.setting-plural',
   redirect_url: ROUTES.SETTINGS,
-  icon: SettingsIcon,
+  icon: Settings01,
   dataTestId: `app-bar-item-${SidebarItem.SETTINGS}`,
 };
 
 export const LOGOUT_ITEM = {
   key: SidebarItem.LOGOUT,
   title: 'label.logout',
-  icon: LogoutIcon,
+  icon: LogOut01,
   dataTestId: `app-bar-item-${SidebarItem.LOGOUT}`,
 };

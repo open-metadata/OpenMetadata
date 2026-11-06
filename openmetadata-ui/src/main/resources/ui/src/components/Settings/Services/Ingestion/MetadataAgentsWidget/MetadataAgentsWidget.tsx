@@ -10,12 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+
+import { Card, Typography } from '@openmetadata/ui-core-components';
+
+import { Application } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as MetadataAgentIcon } from '../../../../../assets/svg/application.svg';
+import { useNavigate } from 'react-router-dom';
 import { DISABLED } from '../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { ServiceCategory } from '../../../../../enums/service.enum';
@@ -24,16 +27,24 @@ import {
   enableDisableIngestionPipelineById,
   triggerIngestionPipelineById,
 } from '../../../../../rest/ingestionPipelineAPI';
+import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../../utils/useRequiredParams';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import AddIngestionButton from '../AddIngestionButton.component';
-import IngestionListTable from '../IngestionListTable/IngestionListTable';
 import './metadata-agents-widget.less';
 import { MetadataAgentsWidgetProps } from './MetadataAgentsWidget.interface';
+
+const IngestionListTable = withSuspenseFallback(
+  lazy(() => import('../IngestionListTable/IngestionListTable'))
+);
+
+const AddIngestionButton = withSuspenseFallback(
+  lazy(() => import('../AddIngestionButton.component'))
+);
 
 function MetadataAgentsWidget({
   serviceName,
@@ -49,6 +60,7 @@ function MetadataAgentsWidget({
   searchText,
 }: Readonly<MetadataAgentsWidgetProps>) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
   }>();
@@ -70,6 +82,17 @@ function MetadataAgentsWidget({
   const showAddIngestionButton = useMemo(
     () => ingestionPermissions.Create && platform !== DISABLED,
     [ingestionPermissions, platform]
+  );
+
+  const extraMenuItems = useMemo(
+    () =>
+      serviceUtilClassBase.getExtraIngestionMenuItems(
+        serviceCategory as ServiceCategory,
+        serviceName,
+        navigate,
+        serviceDetails
+      ),
+    [navigate, serviceCategory, serviceDetails, serviceName]
   );
 
   const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {
@@ -151,9 +174,10 @@ function MetadataAgentsWidget({
       return <ButtonSkeleton size="default" />;
     }
 
-    if (showAddIngestionButton) {
+    if (showAddIngestionButton || !isEmpty(extraMenuItems)) {
       return (
         <AddIngestionButton
+          extraMenuItems={extraMenuItems}
           ingestionList={ingestionPipelineList}
           pipelineType={pipelineType}
           serviceCategory={serviceCategory}
@@ -167,6 +191,7 @@ function MetadataAgentsWidget({
   }, [
     isFetchingStatus,
     showAddIngestionButton,
+    extraMenuItems,
     ingestionPipelineList,
     pipelineType,
     serviceCategory,
@@ -179,15 +204,15 @@ function MetadataAgentsWidget({
       <div className="p-md flex items-center justify-between">
         <div className="flex gap-4 items-center">
           <div className="agent-icon-container">
-            <MetadataAgentIcon height={16} width={16} />
+            <Application className="tw:text-utility-gray-500" size={16} />
           </div>
           <div className="flex flex-col gap-1">
-            <Typography.Text className="font-medium text-md">
+            <Typography className="font-medium text-md">
               {t('label.metadata-agent-plural')}
-            </Typography.Text>
-            <Typography.Text className="text-grey-muted text-sm">
+            </Typography>
+            <Typography className="text-sm" color="secondary">
               {t('message.metadata-agents-table-description')}
-            </Typography.Text>
+            </Typography>
           </div>
         </div>
         <div className="flex-center">{renderAddIngestionButton}</div>

@@ -30,7 +30,7 @@ from
 on	s.datasource_id  = t.id and s.datasource_type = 'table' 
 	left join "dbs" db 
 on  db.id = t.database_id
-"""
+"""  # noqa: E101, W291
 
 
 FETCH_DASHBOARDS = """
@@ -46,7 +46,7 @@ LEFT JOIN
 	ab_user au
 ON
 	d.created_by_fk = au.id
-"""
+"""  # noqa: E101, W291
 
 FETCH_PUBLISHED_DASHBOARDS = """
 select
@@ -63,7 +63,7 @@ ON
 	d.created_by_fk = au.id
 where 
 	d.published=true
-"""
+"""  # noqa: E101, W291
 
 FETCH_ALL_CHARTS_TEST = """
 select 
@@ -74,7 +74,7 @@ on	s.datasource_id  = t.id and s.datasource_type = 'table'
 	left join "dbs" db 
 on  db.id = t.database_id
 LIMIT 1
-"""
+"""  # noqa: W291
 
 
 FETCH_DASHBOARDS_TEST = """
@@ -87,17 +87,18 @@ LEFT JOIN
 ON
 	d.created_by_fk = au.id
 LIMIT 1
-"""
+"""  # noqa: W291
 
 FETCH_COLUMN = """
-select 
-	tc.id, 
+select
+	tc.id,
     	t.table_name ,
-    	tc.column_name, 
-		tc.table_id, 
+    	tc.column_name,
+		tc.table_id,
     	tc.type,
-    	tc.description 
-from 
+    	tc.description,
+    	tc.expression
+from
 	table_columns  tc  
 inner join 
 	tables t 
@@ -105,4 +106,4 @@ on
 	t.id=tc.table_id  
 where 
 	tc.table_id=:table_id
-"""
+"""  # noqa: E101, W291

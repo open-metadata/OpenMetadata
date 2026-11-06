@@ -44,7 +44,7 @@ class QueryParserTests(TestCase):
         JOIN db.random d
           ON a.col2 = d.col2
         WHERE a.col3 = 'abc'
-    """
+    """  # noqa: W291
 
     parser = LineageParser(col_lineage)
     parser_with_dialect = LineageParser(col_lineage, dialect=Dialect.TSQL)
@@ -62,6 +62,14 @@ class QueryParserTests(TestCase):
         self.assertEqual(clean_tables, expected_tables)
         clean_tables = set(self.parser_with_dialect.clean_table_list)
         self.assertEqual(clean_tables, expected_tables)
+
+    def test_clean_parser_table_list_drops_names_without_table(self):
+        """
+        An empty identifier in the query (`db.schema.""`) makes the parser return a
+        reference with no table part, which cannot be resolved into an entity later on
+        """
+        parser = LineageParser('insert into tgt.t1 select * from "my_db"."my_schema".""')
+        self.assertEqual(set(parser.clean_table_list), {"tgt.t1"})
 
     def test_bracketed_parser_table_list(self):
         expected_tables = {"test_schema.test_view", "test_table"}
@@ -181,7 +189,7 @@ class QueryParserTests(TestCase):
         query = """
             /* comment */ merge into table_1 using (select a, b from table_2) when matched update set t.a = 'value' 
             when not matched then insert (table_1.a, table_2.b) values ('value1', 'value2')
-        """
+        """  # noqa: W291
         self.assertEqual(
             LineageParser.clean_raw_query(query),
             "/* comment */ merge into table_1 using (select a, b from table_2)",
@@ -221,7 +229,7 @@ class QueryParserTests(TestCase):
           NAME
         FROM cte_table2
         ;
-        """
+        """  # noqa: W291
 
         expected_lineage = [
             (

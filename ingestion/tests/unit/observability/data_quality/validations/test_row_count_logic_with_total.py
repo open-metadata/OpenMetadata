@@ -10,7 +10,7 @@ def calculate_passed_failed_rows_with_total(
     operator: str,
     threshold: int,
     actual_rows: int,
-    total_rows: int = None,
+    total_rows: int = None,  # noqa: RUF013
 ):
     """
     Calculate passed and failed rows considering total row count.
@@ -30,7 +30,7 @@ def calculate_passed_failed_rows_with_total(
         else:
             passed_rows = len_rows
             failed_rows = 0
-    else:
+    else:  # noqa: PLR5501
         if operator in (">", ">="):
             passed_rows = len_rows
             failed_rows = (row_count - len_rows) if row_count else 0

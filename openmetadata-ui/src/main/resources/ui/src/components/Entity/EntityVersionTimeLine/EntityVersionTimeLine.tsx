@@ -11,123 +11,21 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
-  Col,
-  Divider,
-  Drawer,
-  Row,
-  Spin,
+  ButtonUtility,
   Tooltip,
   Typography,
-} from 'antd';
-import classNames from 'classnames';
-import { isEmpty, toString } from 'lodash';
-import { forwardRef, useEffect, useMemo, useRef } from 'react';
+} from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityHistory } from '../../../generated/type/entityHistory';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
-import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  getSummary,
-  renderVersionButton,
-} from '../../../utils/EntityVersionUtils';
-import { getUserPath } from '../../../utils/RouterUtils';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import CloseIcon from '../../Modals/CloseIcon.component';
+import { renderVersionButton } from '../../../utils/EntityVersionUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import './entity-version-timeline.less';
-import {
-  EntityVersionButtonProps,
-  EntityVersionTimelineProps,
-} from './EntityVersionTimeline.interface';
-
-export const VersionButton = forwardRef<
-  HTMLDivElement,
-  EntityVersionButtonProps
->(({ version, onVersionSelect, selected, isMajorVersion, className }, ref) => {
-  const { t } = useTranslation();
-
-  const {
-    updatedBy,
-    version: versionNumber,
-    changeDescription,
-    updatedAt,
-    glossary,
-  } = version;
-  const [, , user] = useUserProfile({
-    permission: true,
-    name: updatedBy,
-  });
-
-  const versionText = `v${parseFloat(versionNumber).toFixed(1)}`;
-
-  return (
-    <div
-      className={classNames(
-        'timeline-content p-b-md cursor-pointer',
-        className
-      )}
-      data-testid={`version-entry-${versionText}`}
-      ref={ref}
-      onClick={() => onVersionSelect(toString(versionNumber))}>
-      <div className="timeline-wrapper">
-        <span
-          className={classNames(
-            'timeline-rounder',
-            {
-              selected,
-            },
-            {
-              major: isMajorVersion,
-            }
-          )}
-          data-testid={`version-selector-${versionText}`}
-        />
-        <span className={classNames('timeline-line')} />
-      </div>
-      <div>
-        <Typography.Text
-          className={classNames('d-flex font-medium', {
-            'text-primary': selected,
-          })}>
-          <span>{versionText}</span>
-          {isMajorVersion ? (
-            <span
-              className="m-l-xs text-xs font-medium text-grey-body tw-bg-tag p-x-xs p-y-xss bg-grey rounded-4"
-              style={{ backgroundColor: '#EEEAF8' }}>
-              {t('label.major')}
-            </span>
-          ) : null}
-        </Typography.Text>
-        <div
-          className={classNames('text-xs font-normal break-all', {
-            'diff-description': selected,
-          })}
-          data-testid="version-change-description">
-          {getSummary({
-            changeDescription: changeDescription,
-            isGlossaryTerm: !isEmpty(glossary),
-          })}
-        </div>
-        <div className="text-xs d-flex gap-1 items-center flex-wrap">
-          <UserPopOverCard
-            className="font-italic"
-            profileWidth={16}
-            userName={updatedBy}>
-            <Link className="thread-author m-r-xss" to={getUserPath(updatedBy)}>
-              {getEntityName(user)}
-            </Link>
-          </UserPopOverCard>
-          <span className="font-medium font-italic version-timestamp">
-            {formatDateTime(updatedAt)}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-});
+import { EntityVersionTimelineProps } from './EntityVersionTimeline.interface';
 
 const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
   versionList = {} as EntityHistory,
@@ -135,46 +33,14 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
   versionHandler,
   onBack,
   entityType,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
 }) => {
   const { t } = useTranslation();
 
   const { resourceLimit, getResourceLimit } = useLimitStore();
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     entityType && getResourceLimit(entityType);
   }, [entityType]);
-
-  useEffect(() => {
-    const node = sentinelRef.current;
-    if (
-      !node ||
-      !onLoadMore ||
-      !hasMore ||
-      isLoadingMore ||
-      typeof IntersectionObserver === 'undefined'
-    ) {
-      return;
-    }
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          // Stop observing after the first intersect so a sentinel that stays
-          // in view does not fire onLoadMore repeatedly for the same page.
-          // The effect re-runs when isLoadingMore flips back to false and a
-          // fresh observer is attached for the next page.
-          observer.unobserve(entry.target);
-          onLoadMore();
-        }
-      }
-    });
-    observer.observe(node);
-
-    return () => observer.disconnect();
-  }, [onLoadMore, hasMore, isLoadingMore]);
 
   const { configuredLimit: { maxVersions } = { maxVersions: -1 } } =
     resourceLimit[entityType ?? ''] ?? {};
@@ -203,22 +69,12 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         {versions?.map((v) => {
           return renderVersionButton(v, currentVersion, versionHandler);
         })}
-        {onLoadMore && hasMore ? (
-          <div
-            className="version-load-more-sentinel"
-            data-testid="version-load-more-sentinel"
-            ref={sentinelRef}
-            style={{ minHeight: '24px' }}>
-            {isLoadingMore ? (
-              <div className="tw:flex tw:justify-center tw:p-2">
-                <Spin size="small" />
-              </div>
-            ) : null}
-          </div>
-        ) : null}
         {hiddenVersions?.length > 0 ? (
           <>
-            <Tooltip title={`+${hiddenVersions.length} more versions`}>
+            <Tooltip
+              excludeTriggerFromTabOrder
+              title={`+${hiddenVersions.length} more versions`}
+              triggerClassName="tw:block">
               <div className="version-hidden">
                 {hiddenVersions.map((v) =>
                   renderVersionButton(v, currentVersion, versionHandler)
@@ -226,62 +82,47 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               </div>
             </Tooltip>
             <div className="version-pricing-reached">
-              <Typography.Title className="font-medium" level={4}>
-                Unlock all of your version history
-              </Typography.Title>
-              <Typography.Text className="text-grey-muted font-normal">
-                Upgrade to paid plan for access to all of your version history.
-              </Typography.Text>
+              <Typography as="h4" className="font-medium">
+                {t('message.unlock-all-version-history')}
+              </Typography>
+              <Typography className="font-normal" color="secondary">
+                {t('message.upgrade-to-paid-plan-for-version-history')}
+              </Typography>
 
               <Button
-                block
-                className="m-t-lg"
-                href="/settings/billing/plans"
-                type="primary">
-                See Upgrade Options
+                className="m-t-lg tw:w-full"
+                color="primary"
+                href={getSettingsLink('/settings/billing/plans')}>
+                {t('label.see-upgrade-option-plural')}
               </Button>
             </div>
           </>
         ) : null}
       </div>
     );
-  }, [
-    versionList,
-    currentVersion,
-    versionHandler,
-    maxVersions,
-    onLoadMore,
-    hasMore,
-    isLoadingMore,
-  ]);
+  }, [versionList, currentVersion, versionHandler]);
 
   return (
-    <Drawer
-      destroyOnClose
-      open
+    <aside
+      aria-label={t('label.version-plural-history')}
       className="versions-list-container"
-      closable={false}
-      getContainer={false}
-      mask={false}
-      maskClosable={false}
-      title={
-        <>
-          <Row className="p-b-xss" justify="space-between">
-            <Col>
-              <Typography.Text className="font-medium">
-                {t('label.version-plural-history')}
-              </Typography.Text>
-            </Col>
-            <Col>
-              <CloseIcon handleCancel={onBack} />
-            </Col>
-          </Row>
-          <Divider className="m-0" />
-        </>
-      }
-      width={330}>
-      {versions}
-    </Drawer>
+      data-testid="versions-list-container"
+      role="dialog">
+      <div className="versions-list-header">
+        <Box align="center" className="p-b-xss" justify="between">
+          <Typography className="font-medium tw:text-primary">
+            {t('label.version-plural-history')}
+          </Typography>
+          <ButtonUtility
+            icon={XClose}
+            size="lg"
+            tooltip={t('label.close')}
+            onClick={onBack}
+          />
+        </Box>
+      </div>
+      <div className="versions-list-body">{versions}</div>
+    </aside>
   );
 };
 

@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
+import { Badge, Button } from '@openmetadata/ui-core-components';
+import { Column as ColumnIcon } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { Column } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getNestedSectionTitle } from '../../../utils/TableUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getNestedSectionTitle } from '../../../utils/TablePureUtils';
 import { NestedColumnsSectionProps } from './NestedColumnsSection.interface';
 
 const NestedColumnItem: React.FC<{
@@ -32,19 +31,15 @@ const NestedColumnItem: React.FC<{
       <p
         className="tw:group tw:flex tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:py-1 tw:text-left"
         style={{ paddingLeft: `${depth * 8}px` }}>
-        <ColumnIcon
-          className="tw:text-brand-700"
-          style={{
-            width: 11,
-            height: 11,
-            strokeWidth: '1.2px',
-          }}
-        />
-        <Typography.Link
-          className="nested-column-name tw:text-sm tw:font-normal group-hover:tw:underline"
+        <ColumnIcon className="tw:text-brand-700" size={11} />
+        <Button
+          noTextPadding
+          className="nested-column-name tw:text-sm tw:font-normal"
+          color="link-color"
+          size="sm"
           onClick={() => onColumnClick(column)}>
           {getEntityName(column)}
-        </Typography.Link>
+        </Button>
       </p>
       {hasChildren && (
         <div className="tw:pl-2">
@@ -76,7 +71,7 @@ export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
   return (
     <div className="tw:border-b-[0.6px] tw:border-tertiary tw:px-4 tw:pb-4">
       <div className="tw:mb-3 tw:flex tw:items-center tw:gap-2">
-        <span className="tw:text-[13px] tw:font-semibold tw:text-primary">
+        <span className="tw:text-sm tw:font-semibold tw:text-primary">
           {t(getNestedSectionTitle(entityType))}
         </span>
 

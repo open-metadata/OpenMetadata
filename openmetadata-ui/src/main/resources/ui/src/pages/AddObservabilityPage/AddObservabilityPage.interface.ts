@@ -11,41 +11,30 @@
  *  limitations under the License.
  */
 
-import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
-import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
-import {
-  Destination,
-  EventSubscription,
-  SubscriptionCategory,
-  SubscriptionType,
-  Webhook,
-} from '../../generated/events/eventSubscription';
+import { AlertType } from '../../generated/events/eventSubscription';
+import type {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+  ModifiedWebhookConfig,
+} from '../../utils/AlertsClassBase.interface';
 
-export interface ModifiedWebhookConfig extends Webhook {
-  headers?: { key: string; value: string }[];
-  queryParams?: { key: string; value: string }[];
-}
+export type {
+  UseAlertFormDataOptions,
+  UseAlertFormDataReturn,
+  UseObservabilityAlertResourcesReturn,
+  UseObservabilityAlertTemplatesOptions,
+  UseObservabilityAlertTemplatesReturn,
+} from '../../interface/observability/alertForm.interface';
+export type {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+  ModifiedWebhookConfig,
+};
 
-export interface ModifiedDestination extends Destination {
-  destinationType: SubscriptionType | SubscriptionCategory;
-  config?: ModifiedWebhookConfig;
-}
-
-export interface ModifiedEventSubscription
-  extends Omit<EventSubscription, 'notificationTemplate'> {
-  destinations: ModifiedDestination[];
-  notificationTemplate?: string | EventSubscription['notificationTemplate'];
-  timeout: number;
-  readTimeout: number;
-}
-
-export interface ModifiedCreateEventSubscription
-  extends Omit<CreateEventSubscription, 'notificationTemplate'> {
-  notificationTemplate?:
-    | string
-    | CreateEventSubscription['notificationTemplate'];
-  customNotificationTemplateData?: NotificationTemplate;
-  destinations: ModifiedDestination[];
-  timeout: number;
-  readTimeout: number;
+export interface AddObservabilityPageProps {
+  pageTitle: string;
+  /** Notification alerts reuse this page; they have no trigger section. */
+  alertType?: AlertType;
 }

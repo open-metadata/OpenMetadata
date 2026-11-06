@@ -10,19 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as AbortedIcon } from '../assets/svg/aborted-status.svg';
-import { ReactComponent as DeprecatedIcon } from '../assets/svg/arrow-down-colored.svg';
-import { ReactComponent as ApprovedIcon } from '../assets/svg/check-colored.svg';
-import { ReactComponent as DraftIcon } from '../assets/svg/clipboard-colored.svg';
-import { ReactComponent as InReviewIcon } from '../assets/svg/eye-colored.svg';
-import { ReactComponent as FailedIcon } from '../assets/svg/fail-badge.svg';
-import { ReactComponent as ActiveErrorIcon } from '../assets/svg/ic-alert-circle.svg';
-import { ReactComponent as CompletedIcon } from '../assets/svg/ic-check-circle-colored.svg';
+import { BadgeColors } from '@openmetadata/ui-core-components';
+import {
+  AlertCircle,
+  ArrowDown,
+  Check,
+  CheckCircle02,
+  Clipboard,
+  Eye,
+  Play,
+  Rocket01,
+  SlashCircle01,
+  XCircle,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as PendingIcon } from '../assets/svg/ic-pause.svg';
-import { ReactComponent as RunningIcon } from '../assets/svg/ic-play.svg';
-import { ReactComponent as StartedIcon } from '../assets/svg/ic-rocket.svg';
 import { ReactComponent as StoppedIcon } from '../assets/svg/ic-stop-circle.svg';
-import { ReactComponent as RejectedIcon } from '../assets/svg/x-colored.svg';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { Status as AppStatus } from '../generated/entity/applications/appRunRecord';
 import { EntityStatus } from '../generated/entity/data/glossaryTerm';
@@ -33,35 +36,56 @@ export type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 export type AllStatusTypes = EntityStatus | AppStatus | TestCaseStatus;
 
 export const icons: Partial<Record<AllStatusTypes, IconComponent>> = {
-  [EntityStatus.Approved]: ApprovedIcon,
-  [EntityStatus.Rejected]: RejectedIcon,
-  [EntityStatus.InReview]: InReviewIcon,
-  [EntityStatus.Draft]: DraftIcon,
-  [EntityStatus.Deprecated]: DeprecatedIcon,
-  [EntityStatus.Archived]: DeprecatedIcon,
-  [AppStatus.Active]: ApprovedIcon,
-  [AppStatus.Completed]: CompletedIcon,
-  [AppStatus.Failed]: RejectedIcon,
-  [AppStatus.Running]: RunningIcon,
-  [AppStatus.Started]: StartedIcon,
+  [EntityStatus.Approved]: Check,
+  [EntityStatus.Rejected]: XClose,
+  [EntityStatus.InReview]: Eye,
+  [EntityStatus.Draft]: Clipboard,
+  [EntityStatus.Deprecated]: ArrowDown,
+  [EntityStatus.Archived]: ArrowDown,
+  [AppStatus.Active]: Check,
+  [AppStatus.Completed]: CheckCircle02,
+  [AppStatus.Failed]: XClose,
+  [AppStatus.Running]: Play,
+  [AppStatus.Started]: Rocket01,
   [AppStatus.Stopped]: StoppedIcon,
-  [AppStatus.Success]: ApprovedIcon,
+  [AppStatus.Success]: Check,
   [AppStatus.Pending]: PendingIcon,
-  [AppStatus.ActiveError]: ActiveErrorIcon,
-  [TestCaseStatus.Aborted]: AbortedIcon,
+  [AppStatus.ActiveError]: AlertCircle,
+  [TestCaseStatus.Aborted]: SlashCircle01,
 };
 
 export const iconsV2: Partial<Record<StatusType, IconComponent>> = {
-  [StatusType.Success]: CompletedIcon,
-  [StatusType.Warning]: ActiveErrorIcon,
-  [StatusType.Failure]: FailedIcon,
-  [StatusType.ActiveError]: DraftIcon,
-  [StatusType.Running]: RunningIcon,
-  [StatusType.Started]: StartedIcon,
+  [StatusType.Success]: CheckCircle02,
+  [StatusType.Warning]: AlertCircle,
+  [StatusType.Failure]: XCircle,
+  [StatusType.ActiveError]: Clipboard,
+  [StatusType.Running]: Play,
+  [StatusType.Started]: Rocket01,
   [StatusType.Stopped]: StoppedIcon,
   [StatusType.Pending]: PendingIcon,
-  [StatusType.InReview]: InReviewIcon,
-  [StatusType.Deprecated]: DeprecatedIcon,
-  [StatusType.Aborted]: AbortedIcon,
-  [StatusType.Archived]: DeprecatedIcon,
+  [StatusType.InReview]: Eye,
+  [StatusType.Deprecated]: ArrowDown,
+  [StatusType.Aborted]: SlashCircle01,
+  [StatusType.Archived]: ArrowDown,
+};
+
+// Maps each StatusType to the nearest core Badge (utility-scale) color. The
+// utility palette auto-flips in dark, so every status gains dark support for
+// free; the hue is chosen to stay closest to the legacy light color.
+export const STATUS_TYPE_TO_BADGE_COLOR: Record<StatusType, BadgeColors> = {
+  [StatusType.Success]: 'success',
+  [StatusType.Warning]: 'warning',
+  [StatusType.Pending]: 'warning',
+  [StatusType.Failure]: 'error',
+  [StatusType.Stopped]: 'error',
+  [StatusType.ActiveError]: 'error',
+  [StatusType.Aborted]: 'orange',
+  [StatusType.Running]: 'brand',
+  [StatusType.Acknowledged]: 'blue',
+  [StatusType.Started]: 'purple',
+  [StatusType.InReview]: 'purple',
+  [StatusType.Version]: 'purple',
+  [StatusType.Deprecated]: 'gray',
+  [StatusType.Archived]: 'gray',
+  [StatusType.Unprocessed]: 'gray',
 };

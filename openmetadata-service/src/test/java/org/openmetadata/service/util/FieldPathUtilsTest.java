@@ -13,197 +13,157 @@
 
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.service.util.FieldPathUtils.FieldPathComponents;
+import org.openmetadata.schema.entity.data.APIEndpoint;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.type.APISchema;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.MessageSchema;
 
-/**
- * Unit tests for FieldPathUtils.
- *
- * <p>Tests the field path parsing logic for various formats:
- * - Simple: "description"
- * - Column/Field: "columns::column_name::description"
- * - Dot notation: "columns.column_name.description"
- * - Nested with quotes: "messageSchema::\"parent.child\"::description"
- * - Array index: "columns[0].description"
- */
 class FieldPathUtilsTest {
 
   @Test
-  void testParseFieldPath_colonSeparator_simple() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns::customer_id::description");
+  void setDescription_nestedPath_writesTheChildNotItsParent() {
+    // #36615: a nested column's description was written onto its parent column.
+    Table table = nestedTable();
 
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("customer_id", result.fieldName());
-    assertEquals("description", result.property());
+    assertTrue(FieldPathUtils.setDescription(table, path("profile", "personal"), "Personal"));
+
+    Column profile = table.getColumns().getFirst();
+    assertEquals("Personal", profile.getChildren().getFirst().getDescription());
+    assertEquals("Customer profile block", profile.getDescription());
   }
 
   @Test
-  void testParseFieldPath_colonSeparator_noProperty() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns::customer_id");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("customer_id", result.fieldName());
-    assertEquals("description", result.property());
+  void getDescription_readsTheNestedLeaf() {
+    assertEquals(
+        Optional.of("name"),
+        FieldPathUtils.getDescription(nestedTable(), path("profile", "personal", "full_name")));
   }
 
   @Test
-  void testParseFieldPath_colonSeparator_quotedFieldName() throws Exception {
-    FieldPathComponents result =
-        invokeParseFieldPath("messageSchema::\"level.somefield\"::description");
+  void locate_nameWithADot_isOneName() {
+    Column dotted = new Column().withName("a.b");
+    Table table = new Table().withName("t").withColumns(List.of(dotted));
 
-    assertNotNull(result);
-    assertEquals("messageSchema", result.containerName());
-    assertEquals("level.somefield", result.fieldName());
-    assertEquals("description", result.property());
+    assertSame(dotted, FieldPathUtils.locate(table, path("a.b")).orElseThrow());
+    assertTrue(FieldPathUtils.locate(table, path("a", "b")).isEmpty());
   }
 
   @Test
-  void testParseFieldPath_dotSeparator_simple() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns.email.description");
+  void locate_entityLevel_isTheEntity() {
+    Table table = nestedTable();
 
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("email", result.fieldName());
-    assertEquals("description", result.property());
+    assertSame(
+        table,
+        FieldPathUtils.locate(table, EntityFieldPath.entityLevel(FieldProperty.TAGS))
+            .orElseThrow());
   }
 
   @Test
-  void testParseFieldPath_dotSeparator_noProperty() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns.email");
+  void setDescription_entityLevel_writesTheEntity() {
+    Table table = nestedTable();
 
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("email", result.fieldName());
-    assertEquals("description", result.property());
+    assertTrue(
+        FieldPathUtils.setDescription(
+            table, EntityFieldPath.entityLevel(FieldProperty.DESCRIPTION), "Customers"));
+
+    assertEquals("Customers", table.getDescription());
   }
 
   @Test
-  void testParseFieldPath_arrayIndex() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns[0].description");
+  void setDescription_missingField_changesNothing() {
+    Table table = nestedTable();
 
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("0", result.fieldName());
-    assertEquals("description", result.property());
+    assertFalse(FieldPathUtils.setDescription(table, path("profile", "nonexistent"), "x"));
+    assertEquals("Customer profile block", table.getColumns().getFirst().getDescription());
   }
 
   @Test
-  void testParseFieldPath_arrayIndex_nestedProperty() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("schemaFields[2].tags");
-
-    assertNotNull(result);
-    assertEquals("schemaFields", result.containerName());
-    assertEquals("2", result.fieldName());
-    assertEquals("tags", result.property());
+  void locate_doesNotReachAFieldByItsOwnNameAlone() {
+    assertTrue(FieldPathUtils.locate(nestedTable(), path("full_name")).isEmpty());
   }
 
   @Test
-  void testParseFieldPath_messageSchema() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("messageSchema::event_id::description");
+  void locate_twoSiblingsWithTheSameName_areRefused() {
+    Table table =
+        new Table()
+            .withName("t")
+            .withColumns(List.of(new Column().withName("id"), new Column().withName("id")));
 
-    assertNotNull(result);
-    assertEquals("messageSchema", result.containerName());
-    assertEquals("event_id", result.fieldName());
-    assertEquals("description", result.property());
+    assertTrue(FieldPathUtils.locate(table, path("id")).isEmpty());
   }
 
   @Test
-  void testParseFieldPath_dataModel() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("dataModel::product_id::description");
+  void locate_topicSchemaField() {
+    Field userId = new Field().withName("user_id");
+    Topic topic =
+        new Topic().withMessageSchema(new MessageSchema().withSchemaFields(List.of(userId)));
+    EntityFieldPath path =
+        new EntityFieldPath(
+            "messageSchema.schemaFields", List.of("user_id"), FieldProperty.DESCRIPTION);
 
-    assertNotNull(result);
-    assertEquals("dataModel", result.containerName());
-    assertEquals("product_id", result.fieldName());
-    assertEquals("description", result.property());
+    assertSame(userId, FieldPathUtils.locate(topic, path).orElseThrow());
   }
 
   @Test
-  void testParseFieldPath_schemaFields() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("schemaFields::user_id::description");
+  void locate_apiEndpointSchemasAreSeparate() {
+    Field request = new Field().withName("shared");
+    Field response = new Field().withName("shared");
+    APIEndpoint endpoint =
+        new APIEndpoint()
+            .withRequestSchema(new APISchema().withSchemaFields(List.of(request)))
+            .withResponseSchema(new APISchema().withSchemaFields(List.of(response)));
 
-    assertNotNull(result);
-    assertEquals("schemaFields", result.containerName());
-    assertEquals("user_id", result.fieldName());
-    assertEquals("description", result.property());
+    assertSame(
+        response,
+        FieldPathUtils.locate(endpoint, fieldIn("responseSchema.schemaFields", "shared"))
+            .orElseThrow());
+    assertSame(
+        request,
+        FieldPathUtils.locate(endpoint, fieldIn("requestSchema.schemaFields", "shared"))
+            .orElseThrow());
   }
 
   @Test
-  void testParseFieldPath_responseSchema() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("responseSchema::status_code::description");
+  void supports_matchesWhatTheFieldCarries() {
+    Column column = new Column().withName("id");
 
-    assertNotNull(result);
-    assertEquals("responseSchema", result.containerName());
-    assertEquals("status_code", result.fieldName());
-    assertEquals("description", result.property());
+    assertTrue(FieldPathUtils.supports(column, FieldProperty.DESCRIPTION));
+    assertTrue(FieldPathUtils.supports(column, FieldProperty.TAGS));
+    assertFalse(FieldPathUtils.supports(new Object(), FieldProperty.DESCRIPTION));
   }
 
   @Test
-  void testParseFieldPath_tasks() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("tasks::etl_task::description");
-
-    assertNotNull(result);
-    assertEquals("tasks", result.containerName());
-    assertEquals("etl_task", result.fieldName());
-    assertEquals("description", result.property());
+  void getDescription_fieldWithoutOne_isEmpty() {
+    assertTrue(FieldPathUtils.getDescription(nestedTable(), path("profile", "personal")).isEmpty());
   }
 
-  @Test
-  void testParseFieldPath_charts() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("charts::revenue_chart::description");
-
-    assertNotNull(result);
-    assertEquals("charts", result.containerName());
-    assertEquals("revenue_chart", result.fieldName());
-    assertEquals("description", result.property());
+  private static EntityFieldPath path(String... names) {
+    return new EntityFieldPath("columns", List.of(names), FieldProperty.DESCRIPTION);
   }
 
-  @Test
-  void testParseFieldPath_fields() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("fields::title::description");
-
-    assertNotNull(result);
-    assertEquals("fields", result.containerName());
-    assertEquals("title", result.fieldName());
-    assertEquals("description", result.property());
+  private static EntityFieldPath fieldIn(String container, String name) {
+    return new EntityFieldPath(container, List.of(name), FieldProperty.DESCRIPTION);
   }
 
-  @Test
-  void testParseFieldPath_null() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath(null);
-    assertNull(result);
-  }
-
-  @Test
-  void testParseFieldPath_empty() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("");
-    assertNull(result);
-  }
-
-  @Test
-  void testParseFieldPath_simpleString() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("description");
-    assertNull(result);
-  }
-
-  @Test
-  void testParseFieldPath_nestedChildrenPath() throws Exception {
-    FieldPathComponents result =
-        invokeParseFieldPath("columns::address::children::street::description");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("address", result.fieldName());
-    assertEquals("children", result.property());
-  }
-
-  private FieldPathComponents invokeParseFieldPath(String fieldPath) throws Exception {
-    Method method = FieldPathUtils.class.getDeclaredMethod("parseFieldPath", String.class);
-    method.setAccessible(true);
-    return (FieldPathComponents) method.invoke(null, fieldPath);
+  private static Table nestedTable() {
+    Column fullName = new Column().withName("full_name").withDescription("name");
+    Column personal = new Column().withName("personal").withChildren(List.of(fullName));
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDescription("Customer profile block")
+            .withChildren(List.of(personal));
+    return new Table().withName("customer_events").withColumns(List.of(profile));
   }
 }

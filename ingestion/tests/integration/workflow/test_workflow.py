@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..conftest import _safe_delete
+from ..conftest import _safe_delete  # noqa: TID252
 
 
 def delete_service(metadata):

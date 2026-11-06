@@ -12,11 +12,9 @@
 Sampling Models
 """
 
-from enum import Enum
-from typing import Any, List, Optional, Union
+from typing import Annotated, Any, TypeVar
 
-from pydantic import Field, field_validator, model_validator
-from typing_extensions import Annotated
+from pydantic import Field, model_validator
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import (
@@ -25,89 +23,46 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
 )
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    SampleDataStorageConfig,
-)
 from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     ProfileSampleType,
     SamplingMethodType,
 )
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.pii.types import ClassifiableEntityType
+from metadata.utils.constants import SAMPLE_DATA_MAX_STORED_COUNT
 
-
-class ProfileSampleConfigType(str, Enum):
-    STATIC = "STATIC"
-    DYNAMIC = "DYNAMIC"
-
-
-class DynamicSamplingThreshold(ConfigModel):
-    """Single threshold entry for dynamic sampling"""
-
-    rowCountThreshold: int
-    profileSample: Union[float, int]
-    profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
-    samplingMethodType: Optional[SamplingMethodType] = None
-
-
-class DynamicSamplingConfig(ConfigModel):
-    """Configuration for dynamic sampling with row-count-based thresholds"""
-
-    thresholds: Optional[List[DynamicSamplingThreshold]] = None
-
-    @field_validator("thresholds")
-    @classmethod
-    def sort_thresholds_descending(
-        cls, v: Optional[List[DynamicSamplingThreshold]]
-    ) -> Optional[List[DynamicSamplingThreshold]]:
-        if v is not None:
-            return sorted(v, key=lambda t: t.rowCountThreshold, reverse=True)
-        return v
-
-
-class StaticSamplingConfig(ConfigModel):
-    """Configuration for static sampling"""
-
-    profileSample: Optional[Union[float, int]] = None
-    profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
-    samplingMethodType: Optional[SamplingMethodType] = None
-
-
-class ProfileSampleConfig(ConfigModel):
-    """Profile sample configuration supporting static and dynamic sampling"""
-
-    sampleConfigType: ProfileSampleConfigType = ProfileSampleConfigType.STATIC
-    config: Optional[Union[DynamicSamplingConfig, StaticSamplingConfig]] = None
+T = TypeVar("T", bound=BaseModel)
 
 
 class BaseProfileConfig(ConfigModel):
     """base profile config"""
 
-    fullyQualifiedName: FullyQualifiedEntityName
-    profileSample: Optional[Union[float, int]] = None
-    profileSampleType: Optional[ProfileSampleType] = None
-    samplingMethodType: Optional[SamplingMethodType] = None
-    sampleDataCount: Optional[int] = 100
-    randomizedSample: Optional[bool] = True
-    profileSampleConfig: Optional[ProfileSampleConfig] = None
+    fullyQualifiedName: FullyQualifiedEntityName  # noqa: N815
+    profileSample: float | int | None = None  # noqa: N815
+    profileSampleType: ProfileSampleType | None = None  # noqa: N815
+    samplingMethodType: SamplingMethodType | None = None  # noqa: N815
+    sampleDataCount: int | None = None  # noqa: N815
+    randomizedSample: bool | None = True  # noqa: N815
+    profileSampleConfig: ProfileSampleConfig | None = None  # noqa: N815
 
 
 class ColumnConfig(ConfigModel):
     """Column config for profiler"""
 
-    excludeColumns: Optional[List[str]] = None
-    includeColumns: Optional[List[ColumnProfilerConfig]] = None
+    excludeColumns: list[str] | None = None  # noqa: N815
+    includeColumns: list[ColumnProfilerConfig] | None = None  # noqa: N815
 
 
 class TableConfig(BaseProfileConfig):
     """table profile config"""
 
-    profileQuery: Optional[str] = None
-    partitionConfig: Optional[PartitionProfilerConfig] = None
-    columnConfig: Optional[ColumnConfig] = None
-    randomizedSample: Optional[bool] = False
+    profileQuery: str | None = None  # noqa: N815
+    partitionConfig: PartitionProfilerConfig | None = None  # noqa: N815
+    columnConfig: ColumnConfig | None = None  # noqa: N815
+    randomizedSample: bool | None = False  # noqa: N815
 
     @classmethod
     def from_database_and_schema_config(cls, config: "DatabaseAndSchemaConfig", table_fqn: str):
@@ -119,13 +74,11 @@ class TableConfig(BaseProfileConfig):
             samplingMethodType=config.samplingMethodType,
             profileSampleConfig=config.profileSampleConfig,
         )
-        return table_config
+        return table_config  # noqa: RET504
 
 
 class DatabaseAndSchemaConfig(BaseProfileConfig):
     """schema profile config"""
-
-    sampleDataStorageConfig: Optional[SampleDataStorageConfig] = None
 
 
 class SampleData(BaseModel):
@@ -135,12 +88,17 @@ class SampleData(BaseModel):
     store: Annotated[bool, Field(False, description="Is the sample data should be stored or not")]
 
 
+def limit_stored_rows(table_data: TableData) -> TableData:
+    """Classification can read more rows than are persisted; trim to the stored cap before persisting."""
+    return table_data.model_copy(update={"rows": (table_data.rows or [])[:SAMPLE_DATA_MAX_STORED_COUNT]})
+
+
 class SamplerResponse(ConfigModel):
     """PII & Sampler Workflow Response. For a given entity, return all the tags and sample data"""
 
     entity: ClassifiableEntityType
-    sample_data: Optional[SampleData] = None
-    column_tags: Optional[List[ColumnTag]] = None
+    sample_data: SampleData | None = None
+    column_tags: list[ColumnTag] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -168,13 +126,13 @@ class SamplerResponse(ConfigModel):
 class SampleConfig(ConfigModel):
     """Profile Sample Config"""
 
-    profileSampleConfig: Optional[ProfileSampleConfig] = None
-    randomizedSample: Optional[bool] = True
+    profileSampleConfig: ProfileSampleConfig | None = None  # noqa: N815
+    randomizedSample: bool | None = True  # noqa: N815
 
-    def get_static_config(self) -> Optional[StaticSamplingConfig]:
-        """Extract the StaticSamplingConfig from profileSampleConfig, or None."""
+    def get_config(self, config_class: type[T]) -> T | None:
+        """Extract the config of the specified type from profileSampleConfig, or None."""
         if self.profileSampleConfig and self.profileSampleConfig.config:
             cfg = self.profileSampleConfig.config
-            if isinstance(cfg, StaticSamplingConfig):
-                return cfg
+            if isinstance(cfg, config_class):
+                return config_class.model_validate(cfg.model_dump())
         return None

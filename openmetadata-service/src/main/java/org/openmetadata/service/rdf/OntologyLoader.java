@@ -87,7 +87,11 @@ public class OntologyLoader {
       String checkQuery = "ASK { GRAPH <" + ONTOLOGY_GRAPH + "> { ?s ?p ?o } }";
       String result =
           rdfRepository.executeSparqlQuery(checkQuery, "application/sparql-results+json");
-      return result.contains("\"boolean\" : true");
+      // JenaFusekiStorage formats ASK results as `{"head": {}, "boolean": true}`
+      // (no space before the colon), so a literal-substring check that includes
+      // a space would never match. Normalise whitespace and match either form.
+      String normalised = result.replaceAll("\\s+", "");
+      return normalised.contains("\"boolean\":true");
     } catch (Exception e) {
       LOG.error("Failed to check if ontologies are loaded", e);
       return false;

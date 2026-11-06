@@ -175,10 +175,10 @@ def custom_column_compare(self, other):
 
 class CouchbaseUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.couchbase.metadata.CouchbaseSource.test_connection")
-    @patch("metadata.ingestion.source.database.couchbase.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    @patch("metadata.ingestion.source.database.couchbase.connection.CouchbaseConnection._get_client")
+    def __init__(self, methodName, get_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
-        get_connection.return_value = False
+        get_client.return_value = False
         test_connection.return_value = False
 
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_couch_config)
@@ -191,7 +191,7 @@ class CouchbaseUnitTest(TestCase):
         self.couch_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_names(self):
-        assert EXPECTED_DATABASE_NAMES == list(self.couch_source.get_database_names())
+        assert EXPECTED_DATABASE_NAMES == list(self.couch_source.get_database_names())  # noqa: SIM300
 
     def test_database_schema_names(self):
         with patch.object(
@@ -199,7 +199,7 @@ class CouchbaseUnitTest(TestCase):
             "get_schema_name_list",
             return_value=MOCK_DATABASE_SCHEMA_NAMES,
         ):
-            assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.couch_source.get_database_schema_names())
+            assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.couch_source.get_database_schema_names())  # noqa: SIM300
 
     def test_table_names(self):
         with patch.object(
@@ -207,11 +207,11 @@ class CouchbaseUnitTest(TestCase):
             "query_table_names_and_types",
             return_value=MOCK_TABLE_NAMES,
         ):
-            assert EXPECTED_TABLE_NAMES == list(self.couch_source.get_tables_name_and_type())
+            assert EXPECTED_TABLE_NAMES == list(self.couch_source.get_tables_name_and_type())  # noqa: SIM300
 
     def test_yield_tables(self):
         Column.__eq__ = custom_column_compare
         with patch.object(CouchbaseSource, "get_table_columns_dict", return_value=MOCK_JSON_TABLE_DATA):
-            assert MOCK_CREATE_TABLE == [
+            assert MOCK_CREATE_TABLE == [  # noqa: SIM300
                 either.right for either in self.couch_source.yield_table(EXPECTED_TABLE_NAMES[0])
             ]

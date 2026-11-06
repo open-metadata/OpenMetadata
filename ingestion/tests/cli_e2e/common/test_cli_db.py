@@ -16,7 +16,6 @@ Test database connectors which extend from `CommonDbSourceService` with CLI
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
 
 from sqlalchemy.engine import Engine
 
@@ -26,10 +25,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.status import Status
-from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.metadata import MetadataWorkflow  # noqa: TC001
 
-from ..base.test_cli import PATH_TO_RESOURCES
-from ..base.test_cli_db import CliDBBase
+from ..base.test_cli import PATH_TO_RESOURCES  # noqa: TID252
+from ..base.test_cli_db import CliDBBase  # noqa: TID252
 
 
 class CliCommonDB:
@@ -191,7 +190,7 @@ class CliCommonDB:
             raise NotImplementedError()
 
         @staticmethod
-        def _fqn_deleted_table() -> Optional[str]:
+        def _fqn_deleted_table() -> str | None:
             return None
 
         @staticmethod

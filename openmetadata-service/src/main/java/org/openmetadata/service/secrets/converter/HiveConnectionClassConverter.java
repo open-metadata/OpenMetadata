@@ -14,6 +14,8 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
+import java.util.Map;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
@@ -25,6 +27,8 @@ public class HiveConnectionClassConverter extends ClassConverter {
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
       List.of(MysqlConnection.class, PostgresConnection.class);
 
+  private static final List<Class<?>> SSL_SOURCE_CLASSES = List.of(ValidateSSLClientConfig.class);
+
   public HiveConnectionClassConverter() {
     super(HiveConnection.class);
   }
@@ -33,9 +37,22 @@ public class HiveConnectionClassConverter extends ClassConverter {
   public Object convert(Object object) {
     HiveConnection hiveConnection = (HiveConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvert(hiveConnection.getMetastoreConnection(), CONFIG_SOURCE_CLASSES)
-        .ifPresent(hiveConnection::setMetastoreConnection);
+    if (!isEmptyMap(hiveConnection.getMetastoreConnection())) {
+      tryToConvert(hiveConnection.getMetastoreConnection(), CONFIG_SOURCE_CLASSES)
+          .ifPresent(hiveConnection::setMetastoreConnection);
+    }
+
+    convertProperty(hiveConnection, "sslConfig", SSL_SOURCE_CLASSES);
 
     return hiveConnection;
+  }
+
+  /**
+   * Selecting "None" for the metastore submits an empty object. Jackson does not enforce JSON
+   * Schema `required`, so converting it would succeed against the first candidate class and persist
+   * a metastore config populated entirely with schema defaults.
+   */
+  private static boolean isEmptyMap(Object object) {
+    return object instanceof Map<?, ?> map && map.isEmpty();
   }
 }

@@ -10,25 +10,89 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosResponse } from 'axios';
+import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { QueryVote as VoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { SearchIndex } from '../enums/search.enum';
 import { CreateMetric } from '../generated/api/data/createMetric';
+import { MetricHierarchyContext } from '../generated/api/data/metricHierarchyContext';
+import { MetricHierarchyItem } from '../generated/api/data/metricHierarchyItem';
+import {
+  Direction,
+  MetricAssetDirection,
+  MetricObservability,
+} from '../generated/api/data/metricObservability';
 import { Metric } from '../generated/entity/data/metric';
 import { EntityReference } from '../generated/entity/type';
+import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
-import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
-import APIClient from './index';
+import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
+import type { AsyncDeleteJob } from '../interface/entity/asyncDelete.interface';
+import type { QueryVote as VoteType } from '../interface/entity/vote.interface';
+import { getTermQuery } from '../utils/SearchPureUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
+import { searchQuery } from './searchAPI';
 
-export const getMetrics = async (params: ListParams) => {
+/**
+ * `parent` selects a slice of the hierarchy: omit it for every metric, pass the literal string
+ * `'null'` for root metrics only, or pass a parent metric's fully qualified name for its immediate
+ * children. Metric fully qualified names are flat, so the hierarchy cannot be inferred from the
+ * name and has to be asked for explicitly.
+ */
+export type MetricListParams = ListParams & {
+  parent?: string;
+  entityStatus?: string;
+};
+
+export const ROOT_METRICS_PARENT = 'null';
+
+export type MetricHierarchyListParams = Pick<
+  ListParamsWithOffset,
+  'limit' | 'offset'
+> & {
+  q?: string;
+};
+
+export type MetricHierarchyContextParams = {
+  childLimit?: number;
+  childOffset?: number;
+  siblingLimit?: number;
+  siblingOffset?: number;
+};
+
+export const getMetricHierarchy = async (params: MetricHierarchyListParams) => {
+  const response = await APIClient.get<PagingResponse<MetricHierarchyItem[]>>(
+    '/metrics/hierarchy',
+    { params }
+  );
+
+  return response.data;
+};
+
+export const getMetricHierarchyContext = async (
+  id: string,
+  params?: MetricHierarchyContextParams
+) => {
+  const response = await APIClient.get<MetricHierarchyContext>(
+    `/metrics/${id}/hierarchy`,
+    { params }
+  );
+
+  return response.data;
+};
+
+export const getMetrics = async (
+  params: MetricListParams,
+  config?: Pick<AxiosRequestConfig, 'signal'>
+) => {
   const response = await APIClient.get<PagingResponse<Metric[]>>(`/metrics`, {
     params: {
       ...params,
     },
+    signal: config?.signal,
   });
 
   return response.data;
@@ -68,13 +132,9 @@ export const restoreMetric = async (id: string) => {
   return response.data;
 };
 
-export const getMetricVersions = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getMetricVersions = async (id: string) => {
   const response = await APIClient.get<EntityHistory>(
-    `/metrics/${id}/versions`,
-    { params }
+    `/metrics/${id}/versions`
   );
 
   return response.data;
@@ -128,8 +188,185 @@ export const createMetric = async (data: CreateMetric) => {
   return response.data;
 };
 
+export const exportMetricDetailsInCSV = async (fqn: string) => {
+  const response = await APIClient.get(
+    `/metrics/name/${getEncodedFqn(fqn)}/exportAsync`
+  );
+
+  return response.data;
+};
+
+// Synchronous export used only to LOAD rows into the Bulk Edit grid. Unlike the
+// async export it does NOT create a background job (so it never appears in the
+// Jobs tray) and returns the CSV string directly for the wizard to parse.
+export const exportMetricDetailsInCSVSync = async (fqn: string) => {
+  const response = await APIClient.get<string>(
+    `/metrics/name/${getEncodedFqn(fqn)}/export`
+  );
+
+  return response.data;
+};
+
+export const deleteMetricAsync = async (id: string, recursive = false) => {
+  const response = await APIClient.delete<AsyncDeleteJob>(
+    `/metrics/async/${id}`,
+    {
+      params: { recursive },
+    }
+  );
+
+  return response.data;
+};
+
 export const getCustomUnitsOfMeasurement = async () => {
   const response = await APIClient.get<string[]>('/metrics/customUnits');
 
   return response.data;
+};
+
+export const addAssetsToMetric = async (
+  fqn: string,
+  assets: EntityReference[]
+) => {
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<BulkOperationResult>
+  >(`/metrics/${getEncodedFqn(fqn)}/assets/add`, { assets });
+
+  return response.data;
+};
+
+export const removeAssetsFromMetric = async (
+  fqn: string,
+  assets: EntityReference[]
+) => {
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<BulkOperationResult>
+  >(`/metrics/${getEncodedFqn(fqn)}/assets/remove`, { assets });
+
+  return response.data;
+};
+
+export interface MetricAssetsParams {
+  direction?: Direction;
+  entityType?: string;
+  limit?: number;
+  offset?: number;
+  q?: string;
+}
+
+export const getMetricAssets = async (
+  id: string,
+  params?: MetricAssetsParams,
+  config?: Pick<AxiosRequestConfig, 'signal'>
+) => {
+  const response = await APIClient.get<PagingResponse<MetricAssetDirection[]>>(
+    `/metrics/${id}/assets`,
+    {
+      params,
+      signal: config?.signal,
+    }
+  );
+
+  return response.data;
+};
+
+export const getMetricObservability = async (id: string) => {
+  const response = await APIClient.get<MetricObservability>(
+    `/metrics/${id}/observability`
+  );
+
+  return response.data;
+};
+
+// ADR:2026-10-28-metric-hierarchy-search-filters-children-only-on-complete-paths
+const METRIC_SEARCH_PATH_PAGE_SIZE = 100;
+const METRIC_SEARCH_PATH_MAX_DEPTH = 6;
+
+type MetricSearchDoc = { id: string; parent?: { id?: string } };
+
+const searchMetricDocs = async (
+  query: string,
+  queryFilter?: Record<string, unknown>
+) => {
+  const response = await searchQuery({
+    query,
+    pageNumber: 1,
+    pageSize: METRIC_SEARCH_PATH_PAGE_SIZE,
+    searchIndex: SearchIndex.METRIC,
+    trackTotalHits: true,
+    queryFilter,
+  });
+
+  return {
+    docs: response.hits.hits.map(
+      ({ _source }) => _source as unknown as MetricSearchDoc
+    ),
+    total: response.hits.total.value,
+  };
+};
+
+/**
+ * The hierarchy search keeps a root when any descendant matches, but listing a parent's children
+ * has no search. These ids let the tree show only the branches that lead to a match: the matches
+ * themselves, and every metric on their parent chains (walked a bounded number of levels).
+ * `complete` is false when a cap was hit or nothing matched; the caller must then show children
+ * unfiltered, or a match the server found could become unreachable.
+ */
+export const getMetricSearchPaths = async (query: string) => {
+  const { docs: matches, total } = await searchMetricDocs(query);
+  const matchIds = new Set(matches.map(({ id }) => id));
+  const ancestorIds = new Set<string>();
+  let level = matches;
+  let depth = 0;
+
+  while (level.length && depth < METRIC_SEARCH_PATH_MAX_DEPTH) {
+    const parentIds = [
+      ...new Set(
+        level.flatMap(({ parent }) => (parent?.id ? [parent.id] : []))
+      ),
+    ].filter((id) => !ancestorIds.has(id));
+    parentIds.forEach((id) => ancestorIds.add(id));
+    const parentFilter = getTermQuery({ 'id.keyword': parentIds }, 'should', 1);
+    const parentDocs = parentIds.length
+      ? await searchMetricDocs('', parentFilter) // NOSONAR each level needs the previous level's results
+      : undefined;
+    level = parentDocs?.docs ?? [];
+    depth += 1;
+  }
+
+  return {
+    matchIds,
+    ancestorIds,
+    complete:
+      matches.length > 0 &&
+      total <= METRIC_SEARCH_PATH_PAGE_SIZE &&
+      level.length === 0,
+  };
+};
+
+/**
+ * Parent links for metrics that are not loaded on the page, walked up from `ids` a bounded number
+ * of levels with one search per level. The index stores only each metric's direct parent.
+ */
+export const getMetricParentIds = async (ids: string[]) => {
+  const parentIdById = new Map<string, string>();
+  let level = ids;
+  let depth = 0;
+
+  while (level.length && depth < METRIC_SEARCH_PATH_MAX_DEPTH) {
+    const levelFilter = getTermQuery({ 'id.keyword': level }, 'should', 1);
+    const { docs } = await searchMetricDocs('', levelFilter); // NOSONAR each level needs the previous level's results
+    level = [];
+    docs.forEach(({ id, parent }) => {
+      if (parent?.id && !parentIdById.has(id)) {
+        parentIdById.set(id, parent.id);
+        level.push(parent.id);
+      }
+    });
+    depth += 1;
+  }
+
+  return parentIdById;
 };

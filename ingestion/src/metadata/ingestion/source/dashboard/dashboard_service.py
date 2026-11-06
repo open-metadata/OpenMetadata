@@ -14,11 +14,13 @@ Base class for ingesting dashboard services
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple, Union
+from collections.abc import Iterable
+from contextlib import closing
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated
 
+from metadata.domain.tags import TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -54,24 +56,32 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.delete import delete_entity_from_source
-from metadata.ingestion.api.models import Either, Entity
+from metadata.ingestion.api.delete import SourceListing, delete_entity_from_source
+from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import C, PerSourceState, TopologyRunnerMixin
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest, OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_dashboard, filter_by_project
 from metadata.utils.logger import ingestion_logger
@@ -113,7 +123,6 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_create_request_dashboard_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
             NodeStage(
                 type_=OMetaTagAndClassification,
@@ -142,7 +151,6 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_bulk_datamodel",
                 consumer=["dashboard_service"],
                 nullable=True,
-                use_cache=True,
             )
         ],
     )
@@ -162,7 +170,6 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 store_all_in_context=True,
                 clear_context=True,
-                use_cache=True,
             ),
             NodeStage(
                 type_=DashboardDataModel,
@@ -172,14 +179,19 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 store_all_in_context=True,
                 clear_context=True,
-                use_cache=True,
             ),
-            NodeStage(
+            NodeStage(  # pyright: ignore[reportCallIssue]
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
                 consumer=["dashboard_service"],
-                use_cache=True,
+                clear_context=True,
+            ),
+            NodeStage(  # pyright: ignore[reportCallIssue]
+                type_=AddLineageRequest,
+                processor="yield_dashboard_chart_lineage",
+                consumer=["dashboard_service"],
+                nullable=True,
             ),
             NodeStage(
                 type_=AddLineageRequest,
@@ -193,11 +205,17 @@ class DashboardServiceTopology(ServiceTopology):
                 consumer=["dashboard_service"],
                 nullable=True,
             ),
+            NodeStage(
+                type_=PatchRequest,
+                processor="yield_dashboard_extension",
+                consumer=["dashboard_service"],
+                nullable=True,
+            ),
         ],
     )
 
 
-from metadata.utils.helpers import retry_with_docker_host
+from metadata.utils.helpers import retry_with_docker_host  # noqa: E402
 
 
 # pylint: disable=too-many-public-methods
@@ -214,10 +232,101 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: DashboardConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = DashboardServiceTopology()
-    context = TopologyContextManager(topology)
-    dashboard_source_state: Set = set()
-    datamodel_source_state: Set = set()
-    chart_source_state: Set = set()
+    dashboard_source_state = PerSourceState(set)
+    datamodel_source_state = PerSourceState(set)
+    chart_source_state = PerSourceState(set)
+
+    @property
+    def tags_registry(self) -> TagRegistry:
+        """Per-source registry for native dashboard tags."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tags_registry")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
+
+    def yield_tag_definitions(
+        self,
+        *,
+        tags: Iterable[str],
+        classification_name: str,
+        classification_description: str,
+        tag_description: str,
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Publish native tag definitions, yielding individual registration failures."""
+        if not self.source_config.includeTags:
+            return
+        for tag in tags:
+            if not tag or not tag.strip():
+                continue
+            try:
+                if not (fqn.is_valid_entity_name(classification_name) and fqn.is_valid_entity_name(tag)):
+                    logger.warning("Skipping invalid tag %r in classification %r", tag, classification_name)
+                    continue
+                self.tags_registry.define(
+                    TagDefinition(classification_name, tag, classification_description, tag_description)
+                )
+            except Exception as exc:
+                yield Either(
+                    right=None,
+                    left=StackTraceError(
+                        name=tag,
+                        error=f"Error registering tag [{tag}]: [{exc}]",
+                        stackTrace=traceback.format_exc(),
+                    ),
+                )
+        if registry := vars(self).get("tags_registry"):
+            with closing(registry.drain()) as definitions:
+                for definition in definitions:
+                    yield Either(right=definition, left=None)
+
+    def get_tag_labels(
+        self, *, entity_fqn: str, tags: Iterable[str] | None, classification_name: str
+    ) -> list[TagLabel] | None:
+        """Copy existing native labels and release the asset's attachments."""
+        if not self.source_config.includeTags or not tags:
+            return None
+        try:
+            for tag in tags:
+                if not tag or not tag.strip():
+                    continue
+                try:
+                    if not (fqn.is_valid_entity_name(classification_name) and fqn.is_valid_entity_name(tag)):
+                        continue
+                    self.tags_registry.attach(
+                        entity_fqn=entity_fqn,
+                        tag=TagDefinition(classification_name, tag, "", ""),
+                    )
+                except Exception as exc:
+                    logger.warning("Unable to attach tag %r to %s: %s", tag, entity_fqn, exc)
+            if registry := vars(self).get("tags_registry"):
+                return registry.labels_for(entity_fqn) or None
+            return None
+        finally:
+            if registry := vars(self).get("tags_registry"):
+                registry.clear_scope(entity_fqn)
+
+    def _declare_progress_groups(self, label: str, total: int | None) -> None:
+        """Declare the grouping axis (e.g. workspaces) as a global counter.
+
+        These group helpers drive ``self.progress_tracking.manual`` and therefore require
+        the connector to set ``progress_mode = ProgressMode.MANUAL`` (as PowerBI
+        does); calling them from a default AUTO source raises ``ProgressModeError``
+        and would double-count against the runner's own tracking."""
+        self.progress_tracking.manual.declare_groups(label, total)
+
+    def _open_group_progress(self, group: str, expected_by_type: dict[str, int | None]) -> None:
+        """Open one child node per asset type under ``group`` so each type renders
+        as its own line; ``expected`` may be None for lazy (running) counts."""
+        self.progress_tracking.manual.open_group(group, expected_by_type)
+
+    def _advance_group_progress(self, group: str, asset_type: str) -> None:
+        """Record one processed asset of ``asset_type`` under ``group``."""
+        self.progress_tracking.manual.advance(group, asset_type)
+
+    def _close_group_progress(self, group: str) -> None:
+        """Count the finished group on its global counter and prune its subtree."""
+        self.progress_tracking.manual.close_group(group)
 
     @retry_with_docker_host()
     def __init__(
@@ -230,11 +339,14 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: DashboardServiceMetadataPipeline = self.config.sourceConfig.config
-        self.client = get_connection(self.service_connection)
-
-        # Flag the connection for the test connection
+        # Per instance, unlike the class-level seen-sets, so each run starts unconfirmed.
+        self.dashboard_listing = SourceListing()
+        self.datamodel_listing = SourceListing()
+        self._connection = create_connection(self.service_connection)
+        self.client = self._connection.client if self._connection else get_connection(self.service_connection)
         self.connection_obj = self.client
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @property
     def name(self) -> str:
@@ -250,7 +362,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Any,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -263,7 +375,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_dashboards_list(self) -> Optional[List[Any]]:
+    def get_dashboards_list(self) -> list[Any] | None:
         """
         Get List of all dashboards
         """
@@ -326,10 +438,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"
+                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"  # noqa: RUF010
                     )
 
-    def get_db_service_prefixes(self) -> List[str]:
+    def get_db_service_prefixes(self) -> list[str]:
         """
         Get the list of db service prefixes
         """
@@ -354,8 +466,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         return QueryParserType.Auto
 
     def parse_db_service_prefix(
-        self, db_service_prefix: Optional[str]
-    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        self,
+        db_service_prefix: str | None,
+    ) -> tuple[str | None, str | None, str | None, str | None]:
         """
         Parse the db service prefix
         Returns:
@@ -364,6 +477,60 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         prefix_parts = (db_service_prefix or "").split(".")
         return prefix_parts + ([None] * (4 - len(prefix_parts)))
 
+    def yield_dashboard_chart_lineage(self, _) -> Iterable[Either[OMetaLineageRequest]]:
+        """
+        One Dashboard -> Chart edge per chart the server holds under the dashboard, so the
+        visual hierarchy can be walked through lineage. It is a stage of its own so that a
+        connector replacing yield_dashboard_lineage still draws these edges.
+
+        The charts are read back from the server instead of taken from the context: a chart
+        that was filtered out, failed in the connector or was rejected by the server is not
+        under the dashboard and gets no edge. The read returns chart references, which is
+        all an edge needs, so no chart is fetched on its own.
+        """
+        dashboard_name = self.context.get().dashboard  # pyright: ignore[reportAttributeAccessIssue]
+        if not dashboard_name:
+            return
+        # Flush the sink buffer so the dashboard and its charts are persisted before
+        # they are read back.
+        yield Either(right=Barrier(reason="dashboard_chart_lineage_flush"))  # pyright: ignore[reportCallIssue]
+        try:
+            dashboard_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
+                dashboard_name=dashboard_name,
+            )
+            dashboard = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=dashboard_fqn,  # pyright: ignore[reportArgumentType]
+                fields=["charts"],
+            )
+            if not dashboard or not dashboard.charts:
+                return
+            dashboard_reference = EntityReference(  # pyright: ignore[reportCallIssue]
+                id=dashboard.id,
+                type=LINEAGE_MAP[Dashboard],
+                fullyQualifiedName=model_str(dashboard.fullyQualifiedName),
+            )
+            for chart in dashboard.charts.root:
+                lineage = AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=dashboard_reference,
+                        toEntity=chart,
+                        lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
+                    )
+                )
+                yield from self.yield_lineage_request(Either(right=lineage))  # pyright: ignore[reportCallIssue]
+        except Exception as exc:
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=dashboard_name,
+                    error=f"Error to yield dashboard chart lineage for [{dashboard_name}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
     def yield_dashboard_lineage(self, dashboard_details: Any) -> Iterable[Either[OMetaLineageRequest]]:
         """
         Yields lineage if config is enabled.
@@ -371,6 +538,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         We will look for the data in all the services
         we have informed.
         """
+        # Flush the sink buffer so charts, datamodels and dashboards created in this
+        # stage are persisted before lineage resolution looks them up via get_by_name.
+        yield Either(right=Barrier(reason="dashboard_lineage_flush"))  # pyright: ignore[reportCallIssue]
+
         # yield datamodel dashboard lineage
         for lineage in self.yield_datamodel_dashboard_lineage() or []:
             yield from self.yield_lineage_request(lineage)
@@ -382,7 +553,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 yield from self.yield_lineage_request(lineage)
 
     def yield_lineage_request(
-        self, lineage: Optional[Either[AddLineageRequest]] = None
+        self,
+        lineage: Either[AddLineageRequest] | Either[OMetaFQNLineageRequest] | None = None,
     ) -> Iterable[Either[OMetaLineageRequest]]:
         """
         Method to yield lineage request
@@ -415,7 +587,18 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         if not self.source_config.includeUsage:
             return
 
+    def yield_dashboard_extension(self, dashboard_details: Any) -> Iterable[Either[PatchRequest]]:
+        """
+        Custom property values that change on every run, such as the last run status. They
+        are patched in once the dashboard exists: a bot PUT keeps the stored extension unless
+        metadata is overridden, so values sent with the dashboard would stop updating after
+        the first run (ADR:2026-11-02-run-changing-dashboard-custom-properties-are-patched-after-the-dashboard).
+        """
+        yield from ()
+
     def close(self):
+        if self._connection is not None:
+            self._connection.close()
         self.metadata.close()
 
     def get_services(self) -> Iterable[WorkflowSource]:
@@ -436,8 +619,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Dashboard,
                 entity_source_state=self.dashboard_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDashboards,
+                recursive=self.source_config.markDeletedDashboards,
                 params={"service": self.context.get().dashboard_service},
+                source_listing=self.dashboard_listing,
             )
 
     def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
@@ -450,8 +634,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=DashboardDataModel,
                 entity_source_state=self.datamodel_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDataModels,
+                recursive=self.source_config.markDeletedDataModels,
                 params={"service": self.context.get().dashboard_service},
+                # A run that skips data models has not confirmed that none exist.
+                source_listing=self.datamodel_listing if self.source_config.includeDataModels else None,
             )
 
     def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
@@ -464,13 +650,13 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Chart,
                 entity_source_state=self.chart_source_state,
-                mark_deleted_entity=self.source_config.markDeletedCharts,
+                recursive=self.source_config.markDeletedCharts,
                 params={"service": self.context.get().dashboard_service},
             )
 
     def get_owner_ref(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details
-    ) -> Optional[EntityReferenceList]:
+    ) -> EntityReferenceList | None:
         """
         Method to process the dashboard owners
         """
@@ -518,22 +704,30 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @staticmethod
     def _get_add_lineage_request(
-        to_entity: Union[Dashboard, DashboardDataModel, Chart],
-        from_entity: Union[Table, DashboardDataModel, Dashboard],
-        column_lineage: List[ColumnLineage] = None,
-        sql: Optional[str] = None,
-    ) -> Optional[Either[AddLineageRequest]]:
+        to_entity: Dashboard | DashboardDataModel | Chart,
+        from_entity: Table | DashboardDataModel | Dashboard,
+        column_lineage: list[ColumnLineage] = None,  # noqa: RUF013
+        sql: str | None = None,
+    ) -> Either[AddLineageRequest] | None:
         if from_entity and to_entity:
-            return Either(
+            return Either(  # pyright: ignore[reportCallIssue]
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(
+                        # Carry the FQN on both references so the sink can return the source FQN
+                        # without a follow-up lineage GET (see add_lineage return_lineage flag).
+                        fromEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                             id=Uuid(from_entity.id.root),
                             type=LINEAGE_MAP[type(from_entity)],
+                            fullyQualifiedName=(
+                                model_str(from_entity.fullyQualifiedName) if from_entity.fullyQualifiedName else None
+                            ),
                         ),
-                        toEntity=EntityReference(
+                        toEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                             id=Uuid(to_entity.id.root),
                             type=LINEAGE_MAP[type(to_entity)],
+                            fullyQualifiedName=(
+                                model_str(to_entity.fullyQualifiedName) if to_entity.fullyQualifiedName else None
+                            ),
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage,
@@ -547,7 +741,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         return None
 
     @staticmethod
-    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> Optional[str]:
+    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> str | None:
         """
         Get fqn of column if exist in table entity
         """
@@ -606,12 +800,15 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             yield dashboard_details
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def prepare(self):
         """By default, nothing to prepare"""
 
-    def check_database_schema_name(self, database_schema_name: str):
+    def check_database_schema_name(self, database_schema_name: str | None):
         """
         Check if the input database schema name is equal to "<default>" and return the input name if it is not.
 
@@ -629,7 +826,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_project_name(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details: Any
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Get the project / workspace / folder / collection name of the dashboard
         """
@@ -638,7 +835,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_project_names(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details: Any
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Get the project / workspace / folder / collection names of the dashboard
         """
@@ -687,8 +884,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self,
         om_table: Table,
         data_model_entity: DashboardDataModel,
-        columns_list: List[str],
-    ) -> List[ColumnLineage]:
+        columns_list: list[str],
+    ) -> list[ColumnLineage]:
         """
         Get the column lineage from the fields
         """
@@ -702,7 +899,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 )
                 if from_column and to_column:
                     column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
-            return column_lineage
+            return column_lineage  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())

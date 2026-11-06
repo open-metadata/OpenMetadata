@@ -13,9 +13,11 @@
 Google Drive service specification
 """
 
+from metadata.ingestion.source.drive.googledrive.connection import GoogleDriveConnection
 from metadata.ingestion.source.drive.googledrive.metadata import GoogleDriveSource
 from metadata.utils.service_spec.service_spec import BaseSpec
 
 ServiceSpec = BaseSpec(
     metadata_source_class=GoogleDriveSource,
+    connection_class=GoogleDriveConnection,  # pyright: ignore[reportArgumentType]
 )

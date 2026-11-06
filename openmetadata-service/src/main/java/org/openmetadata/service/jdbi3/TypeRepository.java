@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.resources.types.TypeResource;
@@ -60,6 +61,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.ValidatorUtil;
 
 @Slf4j
 public class TypeRepository extends EntityRepository<Type> {
@@ -76,6 +78,20 @@ public class TypeRepository extends EntityRepository<Type> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     Entity.setTypeRepository(this);
+    fieldFetchers.put("customProperties", this::fetchAndSetCustomProperties);
+  }
+
+  private void fetchAndSetCustomProperties(List<Type> types, Fields fields) {
+    if (fields.contains("customProperties")) {
+      types.forEach(type -> type.setCustomProperties(getCustomProperties(type)));
+    }
+  }
+
+  // A type's custom property definitions are field relationships under its name. A type carries no
+  // tag labels, so its delete leaves tag_usage alone.
+  @Override
+  protected boolean shouldCleanupFqnDependents() {
+    return true;
   }
 
   @Override
@@ -120,6 +136,10 @@ public class TypeRepository extends EntityRepository<Type> {
     updateTypeMap(type);
   }
 
+  public void populateRegistryFromDatabase() {
+    listAll(getFields(UPDATE_FIELDS), new ListFilter(NON_DELETED)).forEach(this::addToRegistry);
+  }
+
   @Override
   public void storeRelationships(Type type) {
     // No relationships to store beyond what is stored in the super class
@@ -152,6 +172,16 @@ public class TypeRepository extends EntityRepository<Type> {
 
   public PutResponse<Type> addCustomProperty(
       UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
+    return addCustomProperty(uriInfo, updatedBy, id, property, true);
+  }
+
+  public PutResponse<Type> createCustomProperty(
+      UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
+    return addCustomProperty(uriInfo, updatedBy, id, property, false);
+  }
+
+  private PutResponse<Type> addCustomProperty(
+      UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property, boolean updateExisting) {
     Lock lock = TYPE_PROPERTY_LOCKS.get(id);
     lock.lock();
     try {
@@ -168,11 +198,13 @@ public class TypeRepository extends EntityRepository<Type> {
 
       find(property.getPropertyType().getId(), NON_DELETED); // Validate customProperty type exists
 
-      // If property already exists, then update it. Else add the new property.
       List<CustomProperty> updatedProperties = new ArrayList<>(List.of(property));
       for (CustomProperty existing : type.getCustomProperties()) {
         if (!existing.getName().equals(property.getName())) {
           updatedProperties.add(existing);
+        } else if (!updateExisting) {
+          throw new BadRequestException(
+              String.format("Custom property '%s' already exists", property.getName()));
         }
       }
 
@@ -327,14 +359,27 @@ public class TypeRepository extends EntityRepository<Type> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class TypeUpdater extends EntityUpdater {
+    private final List<CustomProperty> requestedAdditions;
+    private final List<CustomProperty> requestedDeletions;
+    private boolean membershipChangesApplied;
+
     public TypeUpdater(Type original, Type updated, Operation operation) {
       super(original, updated, operation);
+      requestedAdditions =
+          getPropertiesAbsentByName(updated.getCustomProperties(), original.getCustomProperties());
+      requestedDeletions =
+          getPropertiesAbsentByName(original.getCustomProperties(), updated.getCustomProperties());
     }
 
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate("customProperties", this::updateCustomProperties);
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      membershipChangesApplied = false;
     }
 
     private void updateCustomProperties() {
@@ -344,12 +389,7 @@ public class TypeRepository extends EntityRepository<Type> {
       List<CustomProperty> deleted = new ArrayList<>();
       recordListChange(
           "customProperties", origProperties, updatedProperties, added, deleted, customFieldMatch);
-      for (CustomProperty property : added) {
-        storeCustomProperty(property);
-      }
-      for (CustomProperty property : deleted) {
-        deleteCustomProperty(property);
-      }
+      applyRequestedMembershipChanges();
 
       // Record changes to updated custom properties (only description can be updated)
       for (CustomProperty updateProperty : updatedProperties) {
@@ -366,6 +406,41 @@ public class TypeRepository extends EntityRepository<Type> {
         updateDisplayName(updated, storedProperty, updateProperty);
         updateCustomPropertyConfig(updated, storedProperty, updateProperty);
       }
+    }
+
+    private List<CustomProperty> getPropertiesAbsentByName(
+        List<CustomProperty> candidates, List<CustomProperty> existingProperties) {
+      Set<String> existingNames =
+          listOrEmpty(existingProperties).stream()
+              .map(CustomProperty::getName)
+              .collect(Collectors.toSet());
+      Set<String> collectedNames = new HashSet<>();
+      return listOrEmpty(candidates).stream()
+          .filter(property -> !existingNames.contains(property.getName()))
+          .filter(property -> collectedNames.add(property.getName()))
+          .map(property -> JsonUtils.deepCopy(property, CustomProperty.class))
+          .toList();
+    }
+
+    private void applyRequestedMembershipChanges() {
+      if (membershipChangesApplied) {
+        return;
+      }
+
+      // Legacy names from existing data are not re-validated; only newly added ones.
+      for (CustomProperty property : requestedAdditions) {
+        String violations = ValidatorUtil.validate(property);
+        if (violations != null) {
+          throw new IllegalArgumentException(violations);
+        }
+      }
+      for (CustomProperty property : requestedAdditions) {
+        storeCustomProperty(property);
+      }
+      for (CustomProperty property : requestedDeletions) {
+        deleteCustomProperty(property);
+      }
+      membershipChangesApplied = true;
     }
 
     private void storeCustomProperty(CustomProperty property) {
@@ -409,6 +484,17 @@ public class TypeRepository extends EntityRepository<Type> {
               Relationship.HAS.ordinal());
       // Delete all the data stored in the entity extension for the custom property
       daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
+      if (CustomPropertyReferences.REFERENCE_TYPES.contains(property.getPropertyType().getName())) {
+        new CustomPropertyReferences(daoCollection)
+            .deleteProperty(updated.getName(), property.getName());
+      }
+
+      if (Entity.hasEntityRepository(Entity.INTAKE_FORM)) {
+        IntakeFormRepository intakeFormRepository =
+            (IntakeFormRepository) Entity.getEntityRepository(Entity.INTAKE_FORM);
+        intakeFormRepository.removeCustomPropertyField(
+            updated.getName(), property.getName(), updated.getUpdatedBy());
+      }
 
       // Remove from TypeRegistry cache
       TypeRegistry.instance().removeCustomProperty(updated.getName(), property.getName());

@@ -12,22 +12,51 @@
  */
 
 import { get } from 'lodash';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
-import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
-import TopicSchemaFields from '../components/Topic/TopicSchema/TopicSchema';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
+import { lazy } from 'react';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import PermissionPlaceholder from '../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { Topic } from '../generated/entity/data/topic';
+import type { Topic } from '../generated/entity/data/topic';
 import { PageType } from '../generated/system/ui/page';
-import { EntityReference } from '../generated/type/entityReference';
-import { Field } from '../generated/type/schema';
-import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import type { EntityReference } from '../generated/type/entityReference';
+import type { Field } from '../generated/type/schema';
+import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
-import { TopicDetailPageTabProps } from './TopicClassBase';
+import type { TopicDetailPageTabProps } from './TopicClassBase';
+
+const TabsLabel = withSuspenseFallback(
+  lazy(() => import('../components/common/TabsLabel/TabsLabel.component'))
+);
+
+const GenericTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Customization/GenericTab/GenericTab').then(
+      (module) => ({ default: module.GenericTab })
+    )
+  )
+);
+
+const CommonWidgets = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataAssets/CommonWidgets/CommonWidgets').then(
+      (module) => ({ default: module.CommonWidgets })
+    )
+  )
+);
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+const TopicSchemaFields = withSuspenseFallback(
+  lazy(() => import('../components/Topic/TopicSchema/TopicSchema')),
+  <EntityDetailWidgetSkeleton lineCount={5} />
+);
 
 export const getTopicDetailsPageTabs = ({
   schemaCount,
@@ -77,14 +106,15 @@ export const getTopicDetailsPageTabs = ({
       children: viewSampleDataPermission ? (
         sampleDataTab
       ) : (
-        <div className="border-default border-radius-sm p-y-lg">
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={i18n.t('label.view-entity', {
-              entity: i18n.t('label.sample-data'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
+        <div className="border-default border-radius-sm p-y-lg tw:relative tw:min-h-60 tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <PermissionPlaceholder
+              data-testid="permission-error-placeholder"
+              permissionValue={i18n.t('label.view-entity', {
+                entity: i18n.t('label.sample-data'),
+              })}
+            />
+          </div>
         </div>
       ),
     },

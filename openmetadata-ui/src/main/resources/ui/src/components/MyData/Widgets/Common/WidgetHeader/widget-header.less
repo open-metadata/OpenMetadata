@@ -13,72 +13,25 @@
 @import (reference) '../../../../../styles/variables.less';
 
 .widget-header {
-  padding: 12px 20px 12px 20px;
-  box-shadow: 0px 4px 8px -4px rgba(10, 13, 18, 0.08);
-  z-index: 1;
+  flex-shrink: 0;
+  box-shadow: 0px 4px 8px -4px var(--om-legacy-color-10-13-18-0-08);
+  z-index: var(--om-z-1);
   height: 60px;
-
-  .header-title-icon {
-    svg {
-      color: @grey-600;
-    }
-  }
-
-  .widget-header-left-col {
-    min-width: 0;
-  }
 
   .widget-title {
     margin: 0;
-    font-weight: 500;
-    font-size: 16px;
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-md);
     line-height: 24px;
-    color: @grey-700;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     flex: 1;
     min-width: 0;
   }
 
   .widget-header-options {
-    transition: color 0.3s ease;
+    transition: color var(--om-duration-300) ease;
 
     &:hover {
       color: @primary-color;
     }
-  }
-
-  .widget-header-drag-button,
-  .widget-header-edit-button {
-    width: 37px;
-  }
-
-  .widget-header-menu {
-    .ant-dropdown-menu-item {
-      padding: 8px 16px;
-      font-size: 14px;
-      line-height: 20px;
-
-      &:hover {
-        color: @blue-34;
-        background-color: @blue-33;
-        font-weight: 500;
-      }
-    }
-
-    .ant-dropdown-menu-item-active {
-      color: @blue-34;
-      background-color: @blue-33;
-      font-weight: 500;
-    }
-  }
-
-  .drag-widget-icon {
-    cursor: grab;
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
   }
 }

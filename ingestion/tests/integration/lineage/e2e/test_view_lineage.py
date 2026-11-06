@@ -1,10 +1,7 @@
-import pytest
-
 from ingestion.tests.integration.lineage.e2e.helpers import assert_lineage
 from metadata.generated.schema.entity.data.table import Table
 
 
-@pytest.mark.flaky(reruns=3)
 def test_view_1_lineage(
     oracle_lineage_container,
     oracle_lineage_ingestion,
@@ -20,7 +17,6 @@ def test_view_1_lineage(
     assert_lineage(lineage, {"BASE_TABLE"}, None, None)
 
 
-@pytest.mark.flaky(reruns=3)
 def test_view_2_lineage(
     oracle_lineage_container,
     oracle_lineage_ingestion,
@@ -36,7 +32,6 @@ def test_view_2_lineage(
     assert_lineage(lineage, {"view_1"}, None, None)
 
 
-@pytest.mark.flaky(reruns=3)
 def test_view_3_lineage(
     oracle_lineage_container,
     oracle_lineage_ingestion,
@@ -52,7 +47,6 @@ def test_view_3_lineage(
     assert_lineage(lineage, {"SOURCE_TABLE_1", "SOURCE_TABLE_2"}, None, None)
 
 
-@pytest.mark.flaky(reruns=3)
 def test_view_4_lineage(
     oracle_lineage_container,
     oracle_lineage_ingestion,

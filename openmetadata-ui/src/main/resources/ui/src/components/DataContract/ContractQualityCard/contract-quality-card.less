@@ -14,12 +14,12 @@
 
 .data-quality-card-container {
   .data-quality-total-test {
-    font-size: 14px;
-    font-weight: 400;
+    font-size: var(--om-font-size-sm);
+    font-weight: var(--om-font-weight-regular);
     color: @grey-600;
 
     .data-quality-total-test-value {
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
       color: @grey-800;
     }
   }
@@ -28,12 +28,12 @@
 .data-quality-legends-container {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: var(--om-space-32);
 
   .data-quality-legends-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--om-space-8);
 
     .data-quality-legends-dot {
       width: 8px;
@@ -53,12 +53,12 @@
     }
 
     .data-quality-legends-label {
-      font-size: 14px;
-      font-weight: 400;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-regular);
       color: @grey-600;
 
       .data-quality-legends-value {
-        font-weight: 600;
+        font-weight: var(--om-font-weight-semibold);
         color: @grey-800;
       }
     }
@@ -68,14 +68,14 @@
 .data-quality-line-chart-container {
   height: 12px;
   width: 100%;
-  margin: 12px 0;
+  margin: var(--om-space-12) 0;
   display: flex;
-  border-radius: 2px;
+  border-radius: var(--om-radius-xs);
   overflow: hidden;
 
   .data-quality-line-chart-item {
     height: 100%;
-    margin-right: 2px;
+    margin-right: var(--om-space-2);
 
     &.success {
       background: @green-500;
@@ -92,5 +92,5 @@
 }
 
 .data-quality-test-item-container {
-  margin-top: 26px;
+  margin-top: var(--om-space-26);
 }

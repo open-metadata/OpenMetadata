@@ -12,6 +12,11 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import {
+  deleteFixtureEntity,
+  okJson,
+  requireEntityIdentity,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { selectDataProduct } from '../../utils/domain';
 import { getEncodedFqn } from '../../utils/entity';
@@ -36,7 +41,7 @@ export type AssetReference = {
   deleted?: boolean;
 };
 
-type ResponseDataType = {
+type DataProductData = {
   name: string;
   displayName: string;
   description: string;
@@ -45,11 +50,17 @@ type ResponseDataType = {
   fullyQualifiedName?: string;
   owners?: UserTeamRef[];
   experts?: UserTeamRef[];
+  dataProductType?: string;
+};
+
+type ResponseDataType = DataProductData & {
+  id: string;
+  fullyQualifiedName: string;
 };
 
 export class DataProduct extends EntityClass {
   id: string;
-  data: ResponseDataType;
+  data: DataProductData;
   private domains: Domain[];
   createDomain = true;
   private subDomains?: SubDomain[];
@@ -72,6 +83,7 @@ export class DataProduct extends EntityClass {
       domains: [],
       // eslint-disable-next-line no-useless-escape
       fullyQualifiedName: `\"${dataName}\"`,
+      dataProductType: 'DATASET',
     };
   }
 
@@ -108,7 +120,10 @@ export class DataProduct extends EntityClass {
       );
     }
 
-    const data = await response.json();
+    const data = requireEntityIdentity(
+      await okJson<DataProductData>(response, 'DataProduct.create'),
+      'DataProduct.create'
+    );
     this.responseData = data;
 
     return data;
@@ -124,7 +139,8 @@ export class DataProduct extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/dataProducts/name/${encodeURIComponent(
         this.responseData?.fullyQualifiedName ?? this.data.name
       )}`
@@ -137,7 +153,7 @@ export class DataProduct extends EntityClass {
     return this.domains;
   }
 
-  private getFqn() {
+  getFqn() {
     return this.data?.fullyQualifiedName ?? this.data.name;
   }
 
@@ -149,8 +165,10 @@ export class DataProduct extends EntityClass {
       }
     );
 
+    // A 400 here is a bulk-operation report (numberOfRowsFailed and a
+    // failedRequest list), not a transport failure, so the caller inspects the
+    // body rather than having it raised.
     const data = await response.json();
-    this.responseData = data;
 
     return data;
   }

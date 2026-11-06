@@ -1,12 +1,21 @@
 """Snowflake system metrics source"""
 
+import functools
 import hashlib
 import re
+import sys
+import threading
 import traceback
-from typing import List, Optional, Tuple
+from collections import OrderedDict, defaultdict
+from collections.abc import Callable, Iterable
+from contextlib import closing
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Generic, NamedTuple, TypeVar
 
 import sqlalchemy.orm
 from pydantic import TypeAdapter
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.table import (
@@ -23,14 +32,17 @@ from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeQueryLogEntry,
     SnowflakeQueryResult,
 )
+from metadata.ingestion.source.database.snowflake.settings import snowflake_settings
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
 from metadata.profiler.metrics.system.system import (
-    CacheProvider,
+    TABLE_BATCH_WINDOW,
     SystemMetricsComputer,
+    TableBatch,
     register_system_metrics,
 )
 from metadata.profiler.orm.registry import PythonDialects
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils import fqn
 from metadata.utils.collections import CaseInsensitiveString
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
@@ -38,12 +50,13 @@ from metadata.utils.profiler_utils import get_identifiers_from_string
 from metadata.utils.time_utils import datetime_to_timestamp
 
 PUBLIC_SCHEMA = "PUBLIC"
+SHOW_TABLES_MATCH_LIMIT = 100
 logger = profiler_logger()
 RESULT_SCAN = """
     SELECT *
     FROM TABLE(RESULT_SCAN('{query_id}'));
     """
-QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"\'()]+)(?=[\s*\n])"  # pylint: disable=line-too-long
+QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"\'(),]+)(?=\s|;|$)"  # pylint: disable=line-too-long
 IDENTIFIER_PATTERN = r"(IDENTIFIER\(\')([\w._\"]+)(\'\))"
 
 
@@ -53,13 +66,59 @@ def sha256_hash(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-cache = LRUCache(LRU_CACHE_SIZE)
+_cache = LRUCache(LRU_CACHE_SIZE)
 
 
-@cache.wrap(key_func=lambda query: sha256_hash(query.strip()))
-def _parse_query(query: str) -> Optional[str]:
-    """Parse snowflake queries to extract the identifiers"""
-    match = re.match(QUERY_PATTERN, query, re.IGNORECASE)
+def _normalize_dml_sql(query: str) -> str:
+    """Normalize a SQL query before DML pattern matching.
+
+    Four-pass process:
+    1. Replace /* ... */ block comments with a single space so they act as a
+       token separator but do not expose their body to the regex.
+    2. Strip -- single-line comments (remove to end of line, leave the newline).
+    3. Strip leading/trailing whitespace so re.match() can find the DML keyword
+       at position 0.
+    4. Collapse whitespace after a dot so qualified names split by a block
+       comment are rejoined.
+
+    This prevents comment bodies (e.g. commented-out SQL snippets) from being
+    mistaken for actual DML operations.
+
+    Note: the comment-stripping regexes operate on the raw text and will
+    corrupt string literals that happen to contain \"--\" or \"/*\" sequences
+    (e.g. ``INSERT INTO t SELECT 'a--b'``). This is acceptable for DML-target
+    extraction because the corruption would only affect parts of the query
+    after the table identifier, which the caller does not use.  Do not reuse
+    this function for any purpose that requires preserving string literal
+    contents.
+    """
+    query = re.sub(r"/\*.*?\*/", " ", query, flags=re.DOTALL)
+    query = re.sub(r"--[^\n]*", "", query)
+    query = query.strip()
+    # Clean up whitespace inserted by block-comment removal inside qualified names,
+    # e.g. "my_schema./*c*/my_table" → "my_schema. my_table" → "my_schema.my_table"
+    return re.sub(r"\.\s+", ".", query)
+
+
+def _parse_query(query: str | None) -> str | None:
+    """Parse snowflake queries to extract the identifiers.
+
+    The query is first normalized (block comments, single-line comments, and
+    leading whitespace removed) so that re.match() can reliably find the DML
+    keyword at position 0 without being confused by commented-out SQL in the
+    query body.
+
+    Returns ``None`` if *query* is ``None`` or empty, or if the query is not a
+    recognized DML statement.
+    """
+    if not query:
+        return None
+    return _parse_cached(_normalize_dml_sql(query))
+
+
+@_cache.wrap(key_func=sha256_hash)
+def _parse_cached(normalized: str) -> str | None:
+    match = re.match(QUERY_PATTERN, normalized, re.IGNORECASE)
     try:
         # This will match results like `DATABASE.SCHEMA.TABLE1` or IDENTIFIER('TABLE1')
         # If we have `IDENTIFIER` type of queries coming from Stored Procedures, we'll need to further clean it up.
@@ -70,10 +129,23 @@ def _parse_query(query: str) -> Optional[str]:
         if internal_identifier:
             return internal_identifier
 
-        return identifier
+        # Anchored at the end so a quoted identifier containing parens ("my(table)")
+        # survives; the closing paren is optional as QUERY_PATTERN may stop mid-list.
+        return re.sub(r"\([^()]*\)?$", "", identifier)
     except (IndexError, AttributeError):
         logger.debug("Could not find identifier in query. Skipping row.")
         return None
+
+
+def _snowflake_identifier(name: str) -> str:
+    """Quote a Snowflake identifier: an embedded double quote is doubled."""
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _snowflake_literal(value: str) -> str:
+    """Quote a Snowflake string literal: a backslash is an escape, so it is
+    doubled before the single quote is."""
+    return "'" + value.replace("\\", "\\\\").replace("'", "''") + "'"
 
 
 class SnowflakeTableResovler:
@@ -98,7 +170,18 @@ class SnowflakeTableResovler:
         self.session = session
 
     def show_tables(self, db, schema, table):
-        return self.session.execute(f'SHOW TABLES LIKE \'{table}\' IN SCHEMA "{db}"."{schema}" LIMIT 1;').fetchone()
+        # SHOW ... LIKE treats _ and % as wildcards and has no ESCAPE clause, so the
+        # match is narrowed server-side and the name column is compared here instead.
+        # The names are parsed out of the query history, so they are untrusted.
+        rows = self.session.execute(
+            text(
+                f"SHOW TABLES LIKE {_snowflake_literal(table)} "
+                f"IN SCHEMA {_snowflake_identifier(db)}.{_snowflake_identifier(schema)} "
+                f"LIMIT {SHOW_TABLES_MATCH_LIMIT}"
+            )
+        ).fetchall()
+        target = CaseInsensitiveString(table)
+        return next((row for row in rows if target == row[1]), None)
 
     def table_exists(self, db, schema, table):
         """Return True if the table exists in Snowflake. Uses cache to store the results.
@@ -111,20 +194,19 @@ class SnowflakeTableResovler:
         Returns:
             bool: True if the table exists in Snowflake
         """
-        if f"{db}.{schema}.{table}" in self._cache:
-            return self._cache.get(f"{db}.{schema}.{table}")
-        table = self.show_tables(db, schema, table)
-        if table:
-            self._cache.put(f"{db}.{schema}.{table}", True)
-            return True
-        return False
+        key = f"{db}.{schema}.{table}"
+        if key in self._cache:
+            return self._cache.get(key)
+        exists = self.show_tables(db, schema, table) is not None
+        self._cache.put(key, exists)
+        return exists
 
     def resolve_implicit_fqn(
         self,
         context_database: str,
-        context_schema: Optional[str],
+        context_schema: str | None,
         table_name: str,
-    ) -> Tuple[str, str, str]:
+    ) -> tuple[str, str, str]:
         """Resolve the fully qualified name of the table from snowflake based on the following logic:
         1. If the schema is provided:
             a. search for the table in the schema
@@ -151,16 +233,16 @@ class SnowflakeTableResovler:
             return context_database, PUBLIC_SCHEMA, table_name
         raise RuntimeError(
             "Could not find the table {search_paths}.".format(  # pylint: disable=consider-using-f-string
-                search_paths=" OR ".join(map(lambda x: f"[{x}]", search_paths))
+                search_paths=" OR ".join(map(lambda x: f"[{x}]", search_paths))  # noqa: C417
             )
         )
 
     def resolve_snowflake_fqn(
         self,
         context_database: str,
-        context_schema: Optional[str],
+        context_schema: str | None,
         identifier: str,
-    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    ) -> tuple[str | None, str | None, str | None]:
         """Get query identifiers from the query text. If the schema is not provided in the query, we'll look for
         the table under "PUBLIC" in Snowflake.
         Database can be retrieved from the query or the query context.
@@ -225,7 +307,7 @@ class SnowflakeTableResovler:
 def get_snowflake_system_queries(
     query_log_entry: SnowflakeQueryLogEntry,
     resolver: SnowflakeTableResovler,
-) -> Optional[SnowflakeQueryResult]:
+) -> SnowflakeQueryResult | None:
     """
     Run a regex lookup on the query to identify which operation ran against the table.
 
@@ -243,7 +325,7 @@ def get_snowflake_system_queries(
         logger.debug(f"Parsing snowflake query [{query_log_entry.query_id}]")
         identifier = _parse_query(query_log_entry.query_text)
         if not identifier:
-            raise RuntimeError("Could not identify the table from the query.")
+            raise RuntimeError("Could not identify the table from the query.")  # noqa: TRY301
 
         database_name, schema_name, table_name = resolver.resolve_snowflake_fqn(
             identifier=identifier,
@@ -252,7 +334,7 @@ def get_snowflake_system_queries(
         )
 
         if not all([database_name, schema_name, table_name]):
-            raise RuntimeError(f"Could not extract the identifiers from the query [{query_log_entry.query_id}].")
+            raise RuntimeError(f"Could not extract the identifiers from the query [{query_log_entry.query_id}].")  # noqa: TRY301
 
         return SnowflakeQueryResult(
             query_id=query_log_entry.query_id,
@@ -277,8 +359,265 @@ def get_snowflake_system_queries(
     return None
 
 
+TableKey = tuple[str, str, str]
+
+
+class DmlRecord(NamedTuple):
+    """Compact history retained after resolving a DML target and dropping QUERY_TEXT."""
+
+    database_name: str
+    schema_name: str
+    table_name: str
+    query_type: str
+    start_time: datetime
+    rows_inserted: int | None
+    rows_updated: int | None
+    rows_deleted: int | None
+
+
+T = TypeVar("T", bound=DmlRecord | SnowflakeDynamicTableRefreshEntry)
+MemoryReservation = Callable[[int], None]
+HistoryBuilder = Callable[[frozenset[TableKey], MemoryReservation | None], tuple[dict[TableKey, list[T]], int]]
+
+
+class HistoryBudgetExceededError(Exception):
+    """The shared history cache cannot retain another record within its budget."""
+
+
+@dataclass
+class HistoryAllocation:
+    discard: Callable[[], None]
+    size_bytes: int = 0
+
+
+class HistoryMemoryBudget:
+    """Account for both retained history views and the batch currently being built.
+
+    Builders run under the same lock so their reservations cannot race. Only older
+    batches may be evicted; preserving the current batch's other view avoids repeated
+    batch scans when the two views cannot fit together.
+    """
+
+    def __init__(self, max_bytes: int):
+        self.max_bytes = max_bytes
+        self.used_bytes = 0
+        self.lock = threading.RLock()
+        self._allocations: OrderedDict[tuple[str, int], HistoryAllocation] = OrderedDict()
+
+    def begin(self, key: tuple[str, int], discard: Callable[[], None]) -> None:
+        self._allocations[key] = HistoryAllocation(discard=discard)
+
+    def touch(self, key: tuple[str, int]) -> None:
+        if key in self._allocations:
+            self._allocations.move_to_end(key)
+
+    def reserve(self, key: tuple[str, int], size_bytes: int) -> None:
+        while self.used_bytes + size_bytes > self.max_bytes:
+            oldest = next((candidate for candidate in self._allocations if candidate[1] < key[1]), None)
+            if oldest is None:
+                raise HistoryBudgetExceededError
+            self.discard(oldest)
+        self._allocations[key].size_bytes += size_bytes
+        self.used_bytes += size_bytes
+
+    def discard(self, key: tuple[str, int]) -> None:
+        allocation = self._allocations.pop(key, None)
+        if allocation is not None:
+            self.used_bytes -= allocation.size_bytes
+            allocation.discard()
+
+
+HISTORY_MEMORY_BUDGET = HistoryMemoryBudget(snowflake_settings.system_metrics_cache_max_bytes)
+HISTORY_INDEX_OVERHEAD_BYTES = 1024
+
+
+def _append_history(
+    index: dict[TableKey, list[T]], key: TableKey, record: T, reserve: MemoryReservation | None
+) -> None:
+    if reserve is not None:
+        record_bytes = sys.getsizeof(record)
+        if isinstance(record, DmlRecord):
+            record_bytes += sum(sys.getsizeof(value) for value in record)
+        else:
+            record_bytes += sys.getsizeof(record.__dict__)
+            record_bytes += sum(sys.getsizeof(value) for value in record.__dict__.values())
+            record_bytes += sys.getsizeof(record.__pydantic_fields_set__)
+            record_bytes += sum(sys.getsizeof(field) for field in record.__pydantic_fields_set__)
+        # Charge a separate list slot container for each row, and a separate dict for
+        # each bucket. This overcounts spare capacity and shared values deliberately.
+        record_bytes += sys.getsizeof([None])
+        if key not in index:
+            record_bytes += sys.getsizeof(key) + sum(sys.getsizeof(part) for part in key)
+            record_bytes += sys.getsizeof({key: None}) + sys.getsizeof([])
+        reserve(record_bytes)
+    index.setdefault(key, []).append(record)
+
+
+def _table_key(database: str, schema: str, table: str) -> TableKey:
+    return database.lower(), schema.lower(), table.lower()
+
+
+@functools.lru_cache(maxsize=4)
+def _batch_table_keys(batch: TableBatch) -> frozenset[TableKey]:
+    """Every table of the batch asks for its keys; splitting an FQN runs the ANTLR
+    parser, so it is done once per batch."""
+    keys = set()
+    for table_fqn in batch.table_fqns:
+        parts = fqn.split(table_fqn)
+        if len(parts) == 4:
+            keys.add(_table_key(*(fqn.unquote_name(part) for part in parts[1:])))
+    return frozenset(keys)
+
+
+def _target_table_name(identifier: str) -> str | None:
+    try:
+        return get_identifiers_from_string(identifier)[2]
+    except ValueError:
+        return None
+
+
+class BatchHistoryIndex(Generic[T]):
+    """History for recent batches within the shared byte budget.
+
+    An oversized batch is remembered as ``None`` so later tables use individual scans
+    without repeatedly attempting the same oversized batch scan.
+    """
+
+    def __init__(self, name: str, max_batches: int = 2):
+        self.name = name
+        self._max_batches = max_batches
+        self._budget = HISTORY_MEMORY_BUDGET
+        self._indexes: OrderedDict[int, dict[TableKey, list[T]] | None] = OrderedDict()
+        self._batches_built = 0
+
+    def get(self, batch: TableBatch, build: HistoryBuilder[T]) -> dict[TableKey, list[T]] | None:
+        with self._budget.lock:
+            cache_key = (self.name, batch.batch_id)
+            if batch.batch_id in self._indexes:
+                self._indexes.move_to_end(batch.batch_id)
+                self._budget.touch(cache_key)
+                return self._indexes[batch.batch_id]
+            while len(self._indexes) >= self._max_batches:
+                evicted, _ = self._indexes.popitem(last=False)
+                self._budget.discard((self.name, evicted))
+
+            def discard(batch_id: int = batch.batch_id) -> None:
+                self._indexes.pop(batch_id, None)
+
+            self._budget.begin(cache_key, discard)
+            cached = False
+            index = None
+            try:
+                self._budget.reserve(cache_key, HISTORY_INDEX_OVERHEAD_BYTES)
+                index, rows_read = build(_batch_table_keys(batch), lambda size: self._budget.reserve(cache_key, size))
+                cached = True
+                self._batches_built += 1
+                logger.info(
+                    "Scanned Snowflake %s for system metrics batch #%d (%d tables): %d rows fetched, %d tables indexed",
+                    self.name,
+                    self._batches_built,
+                    len(batch.table_fqns),
+                    rows_read,
+                    len(index),
+                )
+            except HistoryBudgetExceededError:
+                logger.warning(
+                    "Snowflake %s batch of %d tables exceeded the shared system metrics cache budget "
+                    "(%d bytes); falling back to per-table scans",
+                    self.name,
+                    len(batch.table_fqns),
+                    self._budget.max_bytes,
+                )
+            finally:
+                if not cached:
+                    self._budget.discard(cache_key)
+            self._indexes[batch.batch_id] = index
+            return index
+
+    def clear(self) -> None:
+        with self._budget.lock:
+            for batch_id in list(self._indexes):
+                self._budget.discard((self.name, batch_id))
+            self._indexes.clear()
+            self._batches_built = 0
+
+
+QUERY_HISTORY_INDEX = BatchHistoryIndex[DmlRecord]("QUERY_HISTORY")
+DYNAMIC_TABLE_REFRESH_INDEX = BatchHistoryIndex[SnowflakeDynamicTableRefreshEntry]("DYNAMIC_TABLE_REFRESH_HISTORY")
+
+
+def index_query_history(
+    entries: Iterable[SnowflakeQueryLogEntry],
+    resolver: SnowflakeTableResovler,
+    targets: frozenset[TableKey],
+    reserve: MemoryReservation | None = None,
+) -> tuple[dict[TableKey, list[DmlRecord]], int]:
+    """Resolve the table each DML modified and keep the ones that target `targets`.
+
+    `entries` is consumed lazily and matching rows reserve cache space before being
+    retained. An oversized batch aborts so its caller can retry one table at a time.
+    Each row is attributed to the single table it resolves to, so a query matched by
+    several ILIKE patterns -- in this batch
+    or in another one -- is counted once.
+
+    Returns the index and the number of rows read.
+    """
+    target_names = {table for _, _, table in targets}
+    index: dict[TableKey, list[DmlRecord]] = defaultdict(list)
+    rows_read = 0
+    for entry in entries:
+        rows_read += 1
+        identifier = _parse_query(entry.query_text)
+        if not identifier:
+            continue
+        # ILIKE matches the name anywhere in the text (`orders` in `customer_orders`):
+        # skip such rows before resolving, which can cost a SHOW TABLES round trip.
+        target_name = _target_table_name(identifier)
+        if target_name is not None and target_name.lower() not in target_names:
+            continue
+        result = get_snowflake_system_queries(query_log_entry=entry, resolver=resolver)
+        if result is None:
+            continue
+        key = _table_key(result.database_name, result.schema_name, result.table_name)
+        if key not in targets:
+            continue
+        _append_history(
+            index,
+            key,
+            DmlRecord(
+                database_name=key[0],
+                schema_name=key[1],
+                table_name=key[2],
+                query_type=result.query_type,
+                start_time=result.start_time,
+                rows_inserted=result.rows_inserted,
+                rows_updated=result.rows_updated,
+                rows_deleted=result.rows_deleted,
+            ),
+            reserve,
+        )
+    return dict(index), rows_read
+
+
+def index_dynamic_table_refreshes(
+    entries: Iterable[SnowflakeDynamicTableRefreshEntry],
+    targets: frozenset[TableKey],
+    reserve: MemoryReservation | None = None,
+) -> tuple[dict[TableKey, list[SnowflakeDynamicTableRefreshEntry]], int]:
+    """Group the refreshes of `targets` by dynamic table. Returns the index and the
+    number of rows read."""
+    index: dict[TableKey, list[SnowflakeDynamicTableRefreshEntry]] = defaultdict(list)
+    rows_read = 0
+    for entry in entries:
+        rows_read += 1
+        key = _table_key(entry.database_name or "", entry.schema_name or "", entry.table_name)
+        if key in targets:
+            _append_history(index, key, entry, reserve)
+    return dict(index), rows_read
+
+
 @register_system_metrics(PythonDialects.Snowflake)
-class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[SnowflakeQueryLogEntry]):
+class SnowflakeSystemMetricsComputer(SystemMetricsComputer):
     """Snowflake system metrics source"""
 
     def __init__(
@@ -298,13 +637,15 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
         )
         self.service_connection_config = service_connection_config
         self.table_entity = table_entity
+        # get_inserts/updates/deletes each read the history of the same table
+        self._history: dict[tuple[str, str], list] = {}
 
     @property
     def is_dynamic_table(self) -> bool:
         """Check if the table is a dynamic table"""
         return self.table_entity.tableType == TableType.Dynamic
 
-    def get_inserts(self) -> List[SystemProfile]:
+    def get_inserts(self) -> list[SystemProfile]:
         if self.is_dynamic_table:
             return self._get_dynamic_table_system_profile("rows_inserted", DmlOperationType.INSERT)
         return self.get_system_profile(
@@ -324,7 +665,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
             DmlOperationType.INSERT,
         )
 
-    def get_updates(self) -> List[SystemProfile]:
+    def get_updates(self) -> list[SystemProfile]:
         if self.is_dynamic_table:
             return self._get_dynamic_table_system_profile("rows_updated", DmlOperationType.UPDATE)
         return self.get_system_profile(
@@ -344,7 +685,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
             DmlOperationType.UPDATE,
         )
 
-    def get_deletes(self) -> List[SystemProfile]:
+    def get_deletes(self) -> list[SystemProfile]:
         if self.is_dynamic_table:
             return self._get_dynamic_table_system_profile("rows_deleted", DmlOperationType.DELETE)
         return self.get_system_profile(
@@ -363,26 +704,66 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
             DmlOperationType.DELETE,
         )
 
+    def _table_batch(self) -> TableBatch | None:
+        table_fqn = getattr(self.table_entity.fullyQualifiedName, "root", None)
+        return TABLE_BATCH_WINDOW.batch_for(table_fqn) if isinstance(table_fqn, str) else None
+
+    def _history_for(
+        self,
+        table: str,
+        history_index: BatchHistoryIndex[T],
+        build: HistoryBuilder[T],
+    ) -> list[T]:
+        """History of `table`, read from its batch's index. A table the fetcher did not
+        queue (e.g. profiled on its own) is scanned alone, as before batching."""
+        memo_key = (history_index.name, table)
+        if memo_key not in self._history:
+            key = _table_key(self.database or "", self.schema or "", table)
+            batch = self._table_batch()
+            index = history_index.get(batch, build) if batch is not None and key in _batch_table_keys(batch) else None
+            if index is None:
+                index, _ = build(frozenset({key}), None)
+            self._history[memo_key] = index.get(key, [])
+        return self._history[memo_key]
+
+    def _build_query_history_index(
+        self, targets: frozenset[TableKey], reserve: MemoryReservation | None = None
+    ) -> tuple[dict[TableKey, list[DmlRecord]], int]:
+        with closing(
+            SnowflakeQueryLogEntry.stream_for_tables(
+                session=self.session,
+                table_names=[table for _, _, table in targets],
+                service_connection_config=self.service_connection_config,
+            )
+        ) as entries:
+            return index_query_history(entries, resolver=self.resolver, targets=targets, reserve=reserve)
+
+    def _build_dynamic_table_refresh_index(
+        self, targets: frozenset[TableKey], reserve: MemoryReservation | None = None
+    ) -> tuple[dict[TableKey, list[SnowflakeDynamicTableRefreshEntry]], int]:
+        with closing(
+            SnowflakeDynamicTableRefreshEntry.stream_for_tables(
+                session=self.session,
+                table_names=[table for _, _, table in targets],
+                service_connection_config=self.service_connection_config,
+            )
+        ) as entries:
+            return index_dynamic_table_refreshes(entries, targets=targets, reserve=reserve)
+
     def _get_dynamic_table_refresh_entries(
         self,
-    ) -> List[SnowflakeDynamicTableRefreshEntry]:
-        """Get dynamic table refresh history entries from cache or query"""
-        return self.get_or_update_cache(
-            self.table,
-            SnowflakeDynamicTableRefreshEntry.get_for_table,
-            session=self.session,
-            tablename=self.table,
-            service_connection_config=self.service_connection_config,
-        )
+    ) -> list[SnowflakeDynamicTableRefreshEntry]:
+        """Get dynamic table refresh history entries of this table"""
+        return self._history_for(self.table, DYNAMIC_TABLE_REFRESH_INDEX, self._build_dynamic_table_refresh_index)
 
     def _get_dynamic_table_system_profile(
         self,
         rows_affected_field: str,
         operation: DmlOperationType,
-    ) -> List[SystemProfile]:
+    ) -> list[SystemProfile]:
         """Get system profile from dynamic table refresh history"""
         refresh_entries = self._get_dynamic_table_refresh_entries()
-        return TypeAdapter(List[SystemProfile]).validate_python(
+        return TypeAdapter(list[SystemProfile]).validate_python(
             [
                 {
                     "timestamp": datetime_to_timestamp(entry.start_time, milliseconds=True),
@@ -400,15 +781,15 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
         db: str,
         schema: str,
         table: str,
-        query_results: List[SnowflakeQueryResult],
+        query_results: list[SnowflakeQueryResult] | list[DmlRecord],
         rows_affected_field: str,
         operation: DmlOperationType,
-    ) -> List[SystemProfile]:
+    ) -> list[SystemProfile]:
         if not SnowflakeQueryResult.model_fields.get(rows_affected_field):
             raise ValueError(
                 f"rows_affected_field [{rows_affected_field}] is not a valid field in SnowflakeQueryResult."
             )
-        return TypeAdapter(List[SystemProfile]).validate_python(
+        return TypeAdapter(list[SystemProfile]).validate_python(
             [
                 {
                     "timestamp": datetime_to_timestamp(q.start_time, milliseconds=True),
@@ -416,7 +797,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
                     "rowsAffected": getattr(q, rows_affected_field),
                 }
                 for q in query_results
-                if getattr(q, rows_affected_field) > 0
+                if (getattr(q, rows_affected_field) or 0) > 0
                 # snowflake SQL identifiers are case insensitive. All identifiers are stored in upper case.
                 and (
                     CaseInsensitiveString(db),
@@ -431,23 +812,9 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
             ]
         )
 
-    def get_queries_by_operation(self, table: str, operations: List[DatabaseDMLOperations]):
+    def get_queries_by_operation(self, table: str, operations: list[DatabaseDMLOperations]):
         ops = [op.value for op in operations]
         yield from (query for query in self.get_queries(table) if query.query_type in ops)
 
-    def get_queries(self, table: str) -> List[SnowflakeQueryResult]:
-        queries = self.get_or_update_cache(
-            table,
-            SnowflakeQueryLogEntry.get_for_table,
-            session=self.session,
-            tablename=table,
-            service_connection_config=self.service_connection_config,
-        )
-        results = [
-            get_snowflake_system_queries(
-                query_log_entry=row,
-                resolver=self.resolver,
-            )
-            for row in queries
-        ]
-        return [result for result in results if result is not None]
+    def get_queries(self, table: str) -> list[DmlRecord]:
+        return self._history_for(table, QUERY_HISTORY_INDEX, self._build_query_history_index)

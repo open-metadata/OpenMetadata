@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { find } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { Column } from '../../../../generated/entity/data/container';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 
 interface ColumnPickerMenuProps {
   activeColumnFqn: string;
@@ -43,12 +43,13 @@ const ColumnPickerMenu: FC<ColumnPickerMenuProps> = ({
         <Button
           color="secondary"
           data-testid="column-picker-menu-button"
-          iconTrailing={<ChevronDown className="tw:size-4" />}
+          iconTrailing={ChevronDown}
           size="sm">
           {getEntityName(selectedItem)}
         </Button>
-        <Dropdown.Popover className="tw:max-h-87 tw:min-w-50 tw:w-max">
+        <Dropdown.Popover className="tw:min-w-50 tw:w-max">
           <Dropdown.Menu
+            className="tw:max-h-87 tw:overflow-y-auto"
             selectedKeys={[activeColumnFqn]}
             selectionMode="single"
             onAction={(key) => {

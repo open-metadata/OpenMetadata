@@ -10,64 +10,101 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { useFqn } from '../../../hooks/useFqn';
-import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { ReactNode, useState } from 'react';
+import { AlertCapabilities } from '../../../generated/events/api/alertCapabilities';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
 import AlertFormSourceItem from './AlertFormSourceItem';
 
-jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue({ fqn: '' }),
-}));
+const LISTED = {
+  alertType: 'Notification',
+  filters: [],
+  triggers: [],
+  sources: [
+    { name: 'all', kind: 'all' },
+    { name: 'dashboard', kind: 'entity' },
+  ],
+} as unknown as AlertCapabilities;
 
-jest.mock('antd', () => {
-  const antd = jest.requireActual('antd');
-
-  return {
-    ...antd,
-    Form: {
-      ...antd.Form,
-      useFormInstance: jest.fn().mockImplementation(() => ({
-        setFieldValue: jest.fn(),
-        getFieldValue: jest.fn(),
-      })),
-    },
-  };
-});
+// The source list comes from what the server answered, through the page's selection.
+const WithSelection = ({ children }: { children: ReactNode }) => (
+  <AlertSelectionProvider
+    value={
+      {
+        capabilities: {
+          selection: LISTED,
+          knownSources: [],
+          loading: false,
+          settled: true,
+          retry: jest.fn(),
+        },
+      } as unknown as AlertSelection
+    }>
+    {children}
+  </AlertSelectionProvider>
+);
 
 describe('AlertFormSourceItem', () => {
-  it('should renders without crashing', () => {
-    render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />, {
-      wrapper: MemoryRouter,
-    });
+  it('offers the source picker straight away, with nothing chosen', () => {
+    render(<AlertFormSourceItem />, { wrapper: WithSelection });
 
     expect(screen.getByText('label.source')).toBeInTheDocument();
     expect(
       screen.getByText('message.alerts-source-description')
     ).toBeInTheDocument();
-
-    expect(screen.getByTestId('add-source-button')).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('source-select')).getByRole('combobox')
+    ).toHaveAttribute('placeholder', 'label.select-field');
+    expect(screen.queryByTestId('add-source-button')).not.toBeInTheDocument();
   });
 
-  it('should render the trigger select when fqn is provided', () => {
-    (useFqn as jest.Mock).mockImplementationOnce(() => ({
-      fqn: 'test',
-    }));
-
-    render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />, {
-      wrapper: MemoryRouter,
+  it('shows the error under the picker', () => {
+    render(<AlertFormSourceItem error="Source is required" />, {
+      wrapper: WithSelection,
     });
 
-    expect(screen.getByTestId('source-select')).toBeInTheDocument();
+    expect(screen.getByText('Source is required')).toBeInTheDocument();
   });
 
-  it('should display select dropdown when clicked on add trigger button', async () => {
-    render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />, {
-      wrapper: MemoryRouter,
-    });
-    const addButton = screen.getByTestId('add-source-button');
-    fireEvent.click(addButton);
+  it('keeps the source selection controlled and reports the previous selection on removal', async () => {
+    const changed = jest.fn();
+    const SourceForm = () => {
+      const [value, setValue] = useState(['all']);
 
-    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+      return (
+        <AlertFormSourceItem
+          value={value}
+          onChange={(next, previous) => {
+            changed(next, previous);
+            setValue(next);
+          }}
+        />
+      );
+    };
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<SourceForm />, { wrapper: WithSelection });
+    const [removeAll] = within(
+      screen.getByTestId('source-select')
+    ).getAllByRole('button');
+    await user.click(removeAll);
+
+    expect(changed).toHaveBeenLastCalledWith([], ['all']);
+
+    await user.click(
+      within(screen.getByTestId('source-select')).getByRole('combobox')
+    );
+    await user.click(screen.getByTestId('dashboard-option'));
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(changed).toHaveBeenLastCalledWith(['dashboard'], [])
+    );
+
+    expect(screen.getByTestId('source-select')).toHaveTextContent(
+      'label.dashboard'
+    );
   });
 });

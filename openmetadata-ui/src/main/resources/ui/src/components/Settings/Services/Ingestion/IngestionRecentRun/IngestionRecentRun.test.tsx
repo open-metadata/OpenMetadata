@@ -21,7 +21,7 @@ import {
 import { Status } from '../../../../../generated/entity/applications/appRunRecord';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EXECUTION_RUNS, FAILURE } from '../../../../../mocks/Ingestion.mock';
-import { mockDataInsightApplicationRun } from '../../../../../mocks/LogsViewerPage.mock';
+import { mockDataInsightApplicationRun } from '../../../../../mocks/IngestionRecentRun.mock';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import ConnectionStepCard from '../../../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRecentRuns } from './IngestionRecentRuns.component';
@@ -269,8 +269,9 @@ describe('Test IngestionRecentRun component', () => {
       fireEvent.click(await screen.findByText(/label.log-plural/));
     });
 
-    expect(ConnectionStepCard).toHaveBeenNthCalledWith(
-      2,
+    // Call-index-free: AntD re-rendered the expanded row a second time and
+    // the old assertion pinned that incidental index; TableV2 renders once.
+    expect(ConnectionStepCard).toHaveBeenCalledWith(
       {
         isTestingConnection: false,
         testConnectionStep: {

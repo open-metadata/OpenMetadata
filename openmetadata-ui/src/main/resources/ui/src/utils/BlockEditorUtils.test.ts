@@ -12,12 +12,15 @@
  */
 import { Editor } from '@tiptap/react';
 import {
-  formatContent,
-  formatValueBasedOnContent,
-  getHtmlStringFromMarkdownString,
+  formatClientContent,
   getTextFromHtmlString,
   isDescriptionContentEmpty,
   isHTMLString,
+} from './BlockEditorPureUtils';
+import {
+  formatServerContent,
+  formatValueBasedOnContent,
+  getHtmlStringFromMarkdownString,
   setEditorContent,
   transformImgTagsToFileAttachment,
 } from './BlockEditorUtils';
@@ -139,23 +142,25 @@ describe('formatValueBasedOnContent', () => {
   });
 });
 
-describe('formatContent', () => {
+describe('formatClientContent', () => {
   it('should format mention for client display correctly', () => {
     const input =
       '<p>This <a data-type="mention" data-label="Infrastructure" href="http://localhost:3000/settings/members/teams/Infrastructure" data-entitytype="team" data-fqn="Infrastructure">@Infrastructure</a> team</p>';
 
-    const result = formatContent(input, 'client');
+    const result = formatClientContent(input);
 
     // Should replace the anchor tag content with just @Infrastructure
     expect(result).toContain('@Infrastructure');
     expect(result.match(/@Infrastructure/g) || []).toHaveLength(1);
   });
+});
 
+describe('formatServerContent', () => {
   it('should format mention for server storage correctly', () => {
     const input =
       '<p>This <a data-type="mention" data-label="Infrastructure" href="http://localhost:3000/settings/members/teams/Infrastructure" data-entitytype="team" data-fqn="Infrastructure">@Infrastructure</a> team</p>';
 
-    const result = formatContent(input, 'server');
+    const result = formatServerContent(input);
 
     // Should convert to server format with markdown link structure
     expect(result).toContain(
@@ -256,7 +261,9 @@ describe('Image transformation in setEditorContent', () => {
 
       setEditorContent(mockEditor as unknown as Editor, htmlString);
 
-      expect(mockEditor.commands.setContent).toHaveBeenCalledWith(htmlString);
+      expect(mockEditor.commands.setContent).toHaveBeenCalledWith(htmlString, {
+        emitUpdate: false,
+      });
     });
 
     it('should transform simple img tag to file attachment div', () => {
@@ -387,7 +394,8 @@ describe('Image transformation in setEditorContent', () => {
       setEditorContent(mockEditor as unknown as Editor, content);
 
       expect(mockEditor.commands.setContent).toHaveBeenCalledWith(
-        '<p>Hello world</p>'
+        '<p>Hello world</p>',
+        { emitUpdate: false }
       );
       expect(mockEditor.view.updateState).toHaveBeenCalled();
     });
@@ -404,6 +412,32 @@ describe('Image transformation in setEditorContent', () => {
       const transformedHtml = mockEditor.commands.setContent.mock.calls[0][0];
 
       expect(transformedHtml).toContain('<strong>Bold text</strong>');
+    });
+
+    it('should sanitize the markup the last markdown conversion builds from escaped text', () => {
+      const description =
+        '<details>\\\\\\!\\\\\\[a\\\\\\](x"onerror="alert(1)) \\\\\\[b\\\\\\](y"onmouseover="alert(2)) <code>**c**</code></details>';
+      const previewContent = formatClientContent(
+        formatClientContent(description)
+      );
+
+      expect(previewContent).toContain('![a](x"onerror="alert(1))');
+
+      const innerHTMLSetter = jest.spyOn(Element.prototype, 'innerHTML', 'set');
+
+      setEditorContent(mockEditor as unknown as Editor, previewContent);
+
+      const transformedHtml = mockEditor.commands.setContent.mock.calls[0][0];
+
+      expect(transformedHtml).toContain('data-url="x"');
+      expect(transformedHtml).toContain('href="y"');
+      expect(transformedHtml).not.toContain('onerror');
+      expect(transformedHtml).not.toContain('onmouseover');
+      expect(innerHTMLSetter).not.toHaveBeenCalledWith(
+        expect.stringContaining('onerror')
+      );
+
+      innerHTMLSetter.mockRestore();
     });
   });
 });
@@ -722,6 +756,19 @@ describe('transformImgTagsToFileAttachment', () => {
   });
 
   describe('Security & Robustness', () => {
+    it('should parse the html outside the live document', () => {
+      const innerHTMLSetter = jest.spyOn(Element.prototype, 'innerHTML', 'set');
+
+      const result = transformImgTagsToFileAttachment(
+        '<p><img src="x" onerror="alert(1)"></p>'
+      );
+
+      expect(result).toContain('data-url="x"');
+      expect(innerHTMLSetter).not.toHaveBeenCalled();
+
+      innerHTMLSetter.mockRestore();
+    });
+
     it('should handle extremely large content without timeout', () => {
       const largeHtml =
         '<div>'.repeat(1000) +

@@ -28,6 +28,7 @@ const EntityListingTable = <T extends { id: string; name: string }>({
   onEntityClick,
   ariaLabel,
   emptyMessage,
+  containerClassName,
 }: EntityListingTableProps<T>) => {
   const selectedKeys: Selection = useMemo(
     () => new Set(selectedEntities),
@@ -65,15 +66,22 @@ const EntityListingTable = <T extends { id: string; name: string }>({
   return (
     <Table
       aria-label={ariaLabel}
+      containerClassName={containerClassName}
       data-testid="table-view-container"
       selectedKeys={selectedKeys}
       selectionBehavior="toggle"
       selectionMode="multiple"
       onSelectionChange={handleSelectionChange}>
-      <Table.Header
-        className="tw:border-t tw:border-x tw:border-secondary"
-        columns={columns}>
-        {(col) => <Table.Head id={col.id} key={col.id} label={col.label} />}
+      {/* React Aria requires a data column to identify rows; the selection column is insufficient. */}
+      <Table.Header columns={columns}>
+        {(col) => (
+          <Table.Head
+            id={col.id}
+            isRowHeader={col.id === columns[0]?.id}
+            key={col.id}
+            label={col.label}
+          />
+        )}
       </Table.Header>
       <Table.Body
         items={entities}
@@ -86,9 +94,7 @@ const EntityListingTable = <T extends { id: string; name: string }>({
         }>
         {(entity) => (
           <Table.Row
-            className={`tw:border-x tw:border-secondary${
-              onEntityClick ? ' tw:cursor-pointer' : ''
-            }`}
+            className={onEntityClick ? 'tw:cursor-pointer' : undefined}
             columns={columns}
             data-testid={entity.name}
             id={entity.id}

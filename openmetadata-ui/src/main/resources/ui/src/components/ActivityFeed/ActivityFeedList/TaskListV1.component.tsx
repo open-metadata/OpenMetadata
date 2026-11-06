@@ -11,14 +11,11 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Task } from '../../../rest/tasksAPI';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import TaskFeedCardFromTask from '../TaskFeedCard/TaskFeedCardFromTask.component';
 
@@ -28,6 +25,7 @@ interface TaskListV1Props {
   onTaskClick?: (task: Task) => void;
   activeFeedId?: string;
   emptyPlaceholderText: ReactNode;
+  emptyPlaceholderDescription?: ReactNode;
   selectedTask?: Task;
   onAfterClose?: () => void;
   handlePanelResize?: (isFullWidth: boolean) => void;
@@ -35,11 +33,13 @@ interface TaskListV1Props {
 }
 
 const TaskListV1 = ({
-  taskList,
+  // The ActivityFeedProvider context defaults to `{}`, so this can be undefined
+  taskList = [],
   isLoading,
   onTaskClick,
   activeFeedId,
   emptyPlaceholderText,
+  emptyPlaceholderDescription,
   selectedTask,
   onAfterClose,
   handlePanelResize,
@@ -53,12 +53,17 @@ const TaskListV1 = ({
   }, [taskList, selectedTask, onTaskClick]);
 
   useEffect(() => {
+    // While a fetch is in flight the list is intentionally empty; collapsing the
+    // right panel here would flash the layout on every sub-tab/filter switch.
+    if (isLoading) {
+      return;
+    }
     if (isEmpty(taskList) && handlePanelResize) {
       handlePanelResize?.(true);
     } else {
       handlePanelResize?.(false);
     }
-  }, [taskList]);
+  }, [taskList, isLoading, handlePanelResize]);
 
   const tasks = useMemo(
     () =>
@@ -84,21 +89,22 @@ const TaskListV1 = ({
         className="p-x-md no-data-placeholder-container h-full"
         data-testid="no-data-placeholder-container"
         id="taskData">
-        <ErrorPlaceHolderNew
-          icon={<FeedEmptyIcon height={140} width={140} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph
-            className="placeholder-text"
-            style={{ marginBottom: '0' }}>
-            {emptyPlaceholderText}
-          </Typography.Paragraph>
-        </ErrorPlaceHolderNew>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={emptyPlaceholderDescription}
+            icon={<FeedEmptyIcon height={140} width={140} />}
+            title={emptyPlaceholderText}
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={classNames('activity-feed-tab-padding')} id="taskData">
+    // Padding lives here, not in .activity-feed-tab-padding: that rule's stylesheet
+    // is not loaded on every page that renders this list (e.g. the incident tab).
+    <div className="tw:p-5" id="taskData">
       {tasks}
     </div>
   );

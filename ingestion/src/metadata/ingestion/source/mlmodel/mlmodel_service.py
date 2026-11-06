@@ -13,10 +13,10 @@ Base class for ingesting mlmodel services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple
+from collections.abc import Iterable
+from typing import Annotated, Any
 
 from pydantic import Field
-from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -39,17 +39,22 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import PerSourceState, TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils import fqn
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -75,7 +80,6 @@ class MlModelServiceTopology(ServiceTopology):
                 processor="yield_create_request_mlmodel_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["mlmodel"],
@@ -89,7 +93,6 @@ class MlModelServiceTopology(ServiceTopology):
                 context="mlmodels",
                 processor="yield_mlmodel",
                 consumer=["mlmodel_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=AddLineageRequest,
@@ -113,8 +116,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: MlModelConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = MlModelServiceTopology()
-    context = TopologyContextManager(topology)
-    mlmodel_source_state: Set = set()
+    mlmodel_source_state = PerSourceState(set)
 
     @retry_with_docker_host()
     def __init__(
@@ -127,11 +129,13 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: MlModelServiceMetadataPipeline = self.config.sourceConfig.config
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
         self.client = self.connection
 
@@ -157,15 +161,15 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         """Method to return MlModel Entities"""
 
     @abstractmethod
-    def _get_hyper_params(self, *args, **kwargs) -> Optional[List[MlHyperParameter]]:
+    def _get_hyper_params(self, *args, **kwargs) -> list[MlHyperParameter] | None:
         """Get the Hyper Parameters from the MlModel"""
 
     @abstractmethod
-    def _get_ml_store(self, *args, **kwargs) -> Optional[MlStore]:
+    def _get_ml_store(self, *args, **kwargs) -> MlStore | None:
         """Get the Ml Store from the model version object"""
 
     @abstractmethod
-    def _get_ml_features(self, *args, **kwargs) -> Optional[List[MlFeature]]:
+    def _get_ml_features(self, *args, **kwargs) -> list[MlFeature] | None:
         """Pick up features"""
 
     @abstractmethod
@@ -173,10 +177,14 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         """Return the algorithm for a given model"""
 
     def close(self):
-        """By default, nothing to close"""
+        if self._connection is not None:
+            self._connection.close()
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_mlmodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the mlmodels as deleted"""
@@ -185,7 +193,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=MlModel,
                 entity_source_state=self.mlmodel_source_state,
-                mark_deleted_entity=self.source_config.markDeletedMlModels,
+                recursive=self.source_config.markDeletedMlModels,
                 params={"service": self.context.get().mlmodel_service},
             )
 
@@ -206,7 +214,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing to prepare"""
 
-    def get_db_service_prefixes(self) -> List[str]:
+    def get_db_service_prefixes(self) -> list[str]:
         """
         Get the list of db service prefixes
         """
@@ -217,8 +225,9 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
     def parse_db_service_prefix(
-        self, db_service_prefix: Optional[str]
-    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        self,
+        db_service_prefix: str | None,
+    ) -> tuple[str | None, str | None, str | None, str | None]:
         """
         Parse the db service prefix
         Returns:
@@ -228,7 +237,9 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         return tuple(prefix_parts + ([None] * (4 - len(prefix_parts))))
 
     def yield_mlmodel_lineage_details(
-        self, mlmodel_details: Any, db_service_prefix: Optional[str] = None
+        self,
+        mlmodel_details: Any,
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between MLModel and source tables.
@@ -246,7 +257,8 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
                 yield from self.yield_lineage_request(lineage)
 
     def yield_lineage_request(
-        self, lineage: Optional[Either[AddLineageRequest]] = None
+        self,
+        lineage: Either[AddLineageRequest] | None = None,
     ) -> Iterable[Either[OMetaLineageRequest]]:
         """
         Method to yield lineage request

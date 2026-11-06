@@ -12,8 +12,15 @@
  */
 import { Operation } from 'fast-json-patch';
 import { HTMLAttributes } from 'react';
+import { AnnouncementStatus } from '../../generated/entity/feed/announcement';
 import { AnnouncementEntity } from '../../rest/announcementsAPI';
-import { ConfirmState } from '../ActivityFeed/ActivityFeedCard/ActivityFeedCard.interface';
+
+export interface ConfirmState {
+  state: boolean;
+  threadId: string | undefined;
+  postId: string | undefined;
+  isThread: boolean;
+}
 
 export type AnnouncementUpdatedFunction = (
   announcementId: string,
@@ -36,6 +43,8 @@ export interface AnnouncementThreadBodyProp
     > {
   refetchThread: boolean;
   editPermission: boolean;
+  /** Undefined shows every announcement — the drawer's "All" tab. */
+  statusFilter?: AnnouncementStatus;
 }
 
 export interface AnnouncementThreadListProp

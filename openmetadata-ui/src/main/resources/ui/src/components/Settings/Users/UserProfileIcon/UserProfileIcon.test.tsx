@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -25,6 +27,18 @@ jest.mock('../../../../hooks/authHooks', () => ({
   useAuthProvider: () => ({
     onLogoutHandler: jest.fn(),
   }),
+}));
+jest.mock('../../../AppModeSwitcher/AppModeSwitcher', () => ({
+  __esModule: true,
+  default: () => <span>app-mode-switcher</span>,
+}));
+jest.mock('../../../../utils/NavbarUtilClassBase', () => ({
+  __esModule: true,
+  default: {
+    getUserProfileExtraItems: jest
+      .fn()
+      .mockReturnValue([<span key="extra-item">app-mode-extra-item</span>]),
+  },
 }));
 const translationState = {
   language: 'en',
@@ -121,7 +135,9 @@ const createMockStoreData = (overrides = {}) => ({
 });
 
 const MockWrapper = ({ children }: { children: React.ReactNode }) => (
-  <BrowserRouter>{children}</BrowserRouter>
+  <BrowserRouter>
+    <ThemeProvider>{children}</ThemeProvider>
+  </BrowserRouter>
 );
 
 describe('UserProfileIcon', () => {
@@ -133,16 +149,20 @@ describe('UserProfileIcon', () => {
     translationState.language = 'en';
   });
 
-  const openDropdown = () => {
-    const userButton = screen.getByRole('button');
-    fireEvent.click(userButton);
+  afterEach(() => {
+    localStorage.clear();
+    document.documentElement.classList.remove('dark-mode');
+    document.documentElement.style.removeProperty('color-scheme');
+  });
 
-    return userButton;
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+  const openDropdown = async () => {
+    await user.click(screen.getByTestId('dropdown-profile'));
   };
 
-  const expandPersonas = () => {
-    const moreButton = screen.getByText('1 label.more');
-    fireEvent.click(moreButton);
+  const expandPersonas = async () => {
+    await user.click(screen.getByText('1 label.more'));
   };
 
   it('should render user profile dropdown', () => {
@@ -152,7 +172,19 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByTestId('dropdown-profile')).toBeInTheDocument();
+  });
+
+  it('should render extra profile menu items provided by the navbar util', async () => {
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
+
+    await openDropdown();
+
+    expect(screen.getByText('app-mode-extra-item')).toBeInTheDocument();
   });
 
   it('should display personas with pagination and sorting', async () => {
@@ -162,7 +194,7 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    openDropdown();
+    await openDropdown();
     await screen.findByText('label.switch-persona');
 
     // Initially shows 2 personas (pagination)
@@ -175,11 +207,10 @@ describe('UserProfileIcon', () => {
     expect(screen.getByTestId('default-persona-tag')).toBeInTheDocument();
 
     // Expand to show all personas
-    expandPersonas();
+    await expandPersonas();
     personaLabels = screen.getAllByTestId('persona-label');
 
     expect(personaLabels).toHaveLength(3);
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
   });
 
   it('should handle persona selection', async () => {
@@ -194,9 +225,9 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    openDropdown();
+    await openDropdown();
     await screen.findByText('label.switch-persona');
-    expandPersonas();
+    await expandPersonas();
 
     const alphaPersonaLabel = screen
       .getAllByTestId('persona-label')
@@ -204,7 +235,7 @@ describe('UserProfileIcon', () => {
         label.textContent?.includes('Alpha Persona')
       ) as HTMLElement;
 
-    fireEvent.click(alphaPersonaLabel);
+    await user.click(alphaPersonaLabel);
 
     expect(mockSetSelectedPersona).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -214,7 +245,7 @@ describe('UserProfileIcon', () => {
     );
   });
 
-  it('should handle missing default persona', () => {
+  it('should handle missing default persona', async () => {
     mockUseApplicationStore.mockReturnValue(
       createMockStoreData({
         currentUser: { ...mockUser, defaultPersona: undefined },
@@ -227,10 +258,10 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    openDropdown();
+    await openDropdown();
 
     expect(screen.queryByTestId('default-persona-tag')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId('persona-label').length).toBeGreaterThan(0);
   });
 
   it('should update dropdown labels when language changes', async () => {
@@ -240,7 +271,7 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    openDropdown();
+    await openDropdown();
     await screen.findByText('label.switch-persona');
 
     expect(screen.getByText('label.role-plural')).toBeInTheDocument();
@@ -258,5 +289,20 @@ describe('UserProfileIcon', () => {
     expect(screen.getByText('Rollen')).toBeInTheDocument();
     expect(screen.getByText('Teams')).toBeInTheDocument();
     expect(screen.getByText('Abmelden')).toBeInTheDocument();
+  });
+
+  it('has no dark-mode toggle because classic mode is light-only', async () => {
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
+
+    await openDropdown();
+
+    expect(screen.getByText('label.logout')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('switch', { name: 'label.dark-mode' })
+    ).not.toBeInTheDocument();
   });
 });

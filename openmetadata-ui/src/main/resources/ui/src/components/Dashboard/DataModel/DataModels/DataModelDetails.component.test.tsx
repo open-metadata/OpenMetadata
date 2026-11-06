@@ -13,10 +13,12 @@
 
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   DashboardDataModel,
   DataModelType,
 } from '../../../../generated/entity/data/dashboardDataModel';
+import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import DataModelDetails from './DataModelDetails.component';
@@ -60,7 +62,7 @@ jest.mock('../../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('testEntityName'),
 }));
 
@@ -84,7 +86,9 @@ jest.mock('../../../../utils/useRequiredParams', () => ({
   }),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),
 }));
 
@@ -112,11 +116,17 @@ jest.mock('../../../../utils/DashboardDataModelClassBase', () => ({
   },
 }));
 
-jest.mock('../../../../utils/CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),
-  getDetailsTabWithNewLabel: jest.fn().mockReturnValue([]),
-  checkIfExpandViewSupported: jest.fn().mockReturnValue(false),
-}));
+jest.mock(
+  '../../../../utils/CustomizePage/CustomizePageEntityTabUtils',
+  () => ({
+    getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),
+    getRenderedActiveTab: jest.requireActual(
+      '../../../../utils/CustomizePage/CustomizePageEntityTabUtils'
+    ).getRenderedActiveTab,
+    getDetailsTabWithNewLabel: jest.fn().mockReturnValue([]),
+    checkIfExpandViewSupported: jest.fn().mockReturnValue(false),
+  })
+);
 
 describe('DataModelDetails component', () => {
   it('should render successfully', () => {
@@ -138,5 +148,59 @@ describe('DataModelDetails component', () => {
       }),
       expect.anything()
     );
+  });
+});
+
+describe('DataModelDetails lineage permission', () => {
+  const renderWith = (
+    dataModelPermissions: OperationPermission,
+    deleted = false
+  ) =>
+    render(
+      <DataModelDetails
+        {...mockProps}
+        dataModelData={{ ...mockDataModelData, deleted }}
+        dataModelPermissions={dataModelPermissions}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+  const lastEditLineagePermission = () => {
+    const calls = (
+      dashboardDataModelClassBase.getDashboardDataModelDetailPageTabs as jest.Mock
+    ).mock.calls;
+
+    return calls[calls.length - 1][0].editLineagePermission;
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should grant lineage editing on EditLineage', () => {
+    renderWith({ EditLineage: true } as OperationPermission);
+
+    expect(lastEditLineagePermission()).toBe(true);
+  });
+
+  it('should grant lineage editing on EditAll', () => {
+    renderWith({ EditAll: true } as OperationPermission);
+
+    expect(lastEditLineagePermission()).toBe(true);
+  });
+
+  it('should let a denied EditLineage beat EditAll', () => {
+    renderWith({
+      EditAll: true,
+      EditLineage: false,
+    } as OperationPermission);
+
+    expect(lastEditLineagePermission()).toBe(false);
+  });
+
+  it('should deny lineage editing on a deleted data model', () => {
+    renderWith({ EditLineage: true } as OperationPermission, true);
+
+    expect(lastEditLineagePermission()).toBe(false);
   });
 });

@@ -11,28 +11,33 @@
  *  limitations under the License.
  */
 
-import { LineageNodeType } from '../../components/Lineage/Lineage.interface';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { TagSource } from '../../generated/type/tagLabel';
+import { DataType } from '../../generated/entity/data/table';
+import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
+import { NodeData } from '../../interface/lineage.interface';
 import { TableSearchSource } from '../../interface/search.interface';
 import {
   getSearchNameEsQuery,
-  LINEAGE_DEPENDENCY_OPTIONS,
-  LINEAGE_IMPACT_OPTIONS,
   prepareColumnLevelNodesFromEdges,
   prepareDownstreamColumnLevelNodesFromDownstreamEdges,
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
+} from './LineagePureUtils';
+import {
+  addBaseNodeDepthToNodes,
+  LINEAGE_DEPENDENCY_OPTIONS,
+  LINEAGE_IMPACT_OPTIONS,
 } from './LineageUtils';
 
 describe('LineageUtils', () => {
-  const mockNodes: Record<string, LineageNodeType> = {
+  const mockNodes: Record<string, NodeData & { entity: TableSearchSource }> = {
     'test.table1': {
       entity: {
         id: 'entity1',
         fullyQualifiedName: 'test.table1',
         name: 'table1',
         type: 'table',
+        entityType: 'table',
         owners: [
           {
             id: 'owner1',
@@ -46,8 +51,8 @@ describe('LineageUtils', () => {
           name: 'Tier1',
           description: 'Tier 1 data',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
         tags: [
           {
@@ -55,8 +60,8 @@ describe('LineageUtils', () => {
             name: 'Sensitive',
             description: 'Sensitive data',
             source: TagSource.Classification,
-            labelType: 'Manual',
-            state: 'Confirmed',
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
           },
         ],
         domains: [
@@ -72,37 +77,37 @@ describe('LineageUtils', () => {
           {
             name: 'customer_id',
             fullyQualifiedName: 'customer_id',
-            dataType: 'BIGINT',
+            dataType: DataType.Bigint,
             tags: [
               {
                 tagFQN: 'PII.NonSensitive',
                 name: 'NonSensitive',
                 description: 'Non-sensitive column',
                 source: TagSource.Classification,
-                labelType: 'Manual',
-                state: 'Confirmed',
+                labelType: LabelType.Manual,
+                state: State.Confirmed,
               },
             ],
           },
           {
             name: 'customer_name',
             fullyQualifiedName: 'customer_name',
-            dataType: 'VARCHAR',
+            dataType: DataType.Varchar,
             tags: [
               {
                 tagFQN: 'PII.Sensitive',
                 name: 'Sensitive',
                 description: 'Sensitive column',
                 source: TagSource.Classification,
-                labelType: 'Manual',
-                state: 'Confirmed',
+                labelType: LabelType.Manual,
+                state: State.Confirmed,
               },
             ],
           },
           {
             name: 'order_date',
             fullyQualifiedName: 'order_date',
-            dataType: 'DATE',
+            dataType: DataType.Date,
             tags: [],
           },
         ],
@@ -119,6 +124,7 @@ describe('LineageUtils', () => {
         fullyQualifiedName: 'test.table2',
         name: 'table2',
         type: 'table',
+        entityType: 'table',
         owners: [],
         tags: [],
         domains: [],
@@ -127,36 +133,36 @@ describe('LineageUtils', () => {
           {
             name: 'customer_id1',
             fullyQualifiedName: 'customer_id1',
-            dataType: 'BIGINT',
+            dataType: DataType.Bigint,
             tags: [
               {
                 tagFQN: 'PII.Public',
                 name: 'Public',
                 description: 'Public column',
                 source: TagSource.Classification,
-                labelType: 'Manual',
-                state: 'Confirmed',
+                labelType: LabelType.Manual,
+                state: State.Confirmed,
               },
             ],
           },
           {
             name: 'created_date',
             fullyQualifiedName: 'created_date',
-            dataType: 'DATE',
+            dataType: DataType.Date,
             tags: [],
           },
           {
             name: 'status',
             fullyQualifiedName: 'status',
-            dataType: 'VARCHAR',
+            dataType: DataType.Varchar,
             tags: [
               {
                 tagFQN: 'BusinessGlossary.Status',
                 name: 'Status',
                 description: 'Status column',
                 source: TagSource.Glossary,
-                labelType: 'Manual',
-                state: 'Confirmed',
+                labelType: LabelType.Manual,
+                state: State.Confirmed,
               },
             ],
           },
@@ -296,8 +302,8 @@ describe('LineageUtils', () => {
           name: 'Public',
           description: 'Public column',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ]);
 
@@ -317,8 +323,8 @@ describe('LineageUtils', () => {
           name: 'Public',
           description: 'Public column',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ]);
     });
@@ -342,12 +348,8 @@ describe('LineageUtils', () => {
       expect(firstNode.fromColumn).toBe('customer_id'); // Flattened
       expect(firstNode.docId).toBe('customer_id->customer_id1');
       expect(firstNode.nodeDepth).toBe(1); // nodeDepth from fromEntity (test.table1)
-      expect(firstNode.owners).toEqual(
-        (mockNodes['test.table1'].entity as TableSearchSource).owners
-      );
-      expect(firstNode.tier).toEqual(
-        (mockNodes['test.table1'].entity as TableSearchSource).tier
-      );
+      expect(firstNode.owners).toEqual(mockNodes['test.table1'].entity.owners);
+      expect(firstNode.tier).toEqual(mockNodes['test.table1'].entity.tier);
       // Upstream direction uses fromColumn tags
       expect(firstNode.tags).toEqual([
         {
@@ -355,12 +357,12 @@ describe('LineageUtils', () => {
           name: 'NonSensitive',
           description: 'Non-sensitive column',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ]);
       expect(firstNode.domains).toEqual(
-        (mockNodes['test.table1'].entity as TableSearchSource).domains
+        mockNodes['test.table1'].entity.domains
       );
       expect(firstNode.description).toBe('Test table description');
 
@@ -377,8 +379,8 @@ describe('LineageUtils', () => {
           name: 'Status',
           description: 'Status column',
           source: TagSource.Glossary,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ]);
     });
@@ -489,8 +491,8 @@ describe('LineageUtils', () => {
           name: 'Public',
           description: 'Public column',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ]);
     });
@@ -517,8 +519,8 @@ describe('LineageUtils', () => {
           name: 'NonSensitive',
           description: 'Non-sensitive column',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ]);
     });
@@ -762,8 +764,8 @@ describe('LineageUtils', () => {
           name: 'NonSensitive',
           description: 'Non-sensitive column',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ]);
 
@@ -795,8 +797,8 @@ describe('LineageUtils', () => {
           name: 'Public',
           description: 'Public column',
           source: TagSource.Classification,
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         },
       ]);
     });
@@ -927,13 +929,11 @@ describe('LineageUtils', () => {
             fromEntity: {
               id: 'entity1',
               fullyQualifiedName: 'test.table1',
-              name: 'table1',
               type: 'table',
             },
             toEntity: {
               id: 'entity2',
               fullyQualifiedName: 'test.table2',
-              name: 'table2',
               type: 'table',
             },
             columns: [
@@ -960,13 +960,11 @@ describe('LineageUtils', () => {
             fromEntity: {
               id: 'entity1',
               fullyQualifiedName: 'test.table1',
-              name: 'table1',
               type: 'table',
             },
             toEntity: {
               id: 'entity2',
               fullyQualifiedName: 'test.table2',
-              name: 'table2',
               type: 'table',
             },
             columns: [
@@ -984,6 +982,63 @@ describe('LineageUtils', () => {
       expect(result).toHaveLength(1);
       // Column not found in map, should return empty array
       expect(result[0].tags).toStrictEqual([]);
+    });
+  });
+
+  describe('addBaseNodeDepthToNodes', () => {
+    it('should offset nodeDepth by baseNodeDepth for each node', () => {
+      const nodes: Record<string, NodeData> = {
+        table1: {
+          entity: { id: 'e1', type: 'table', name: 'table1' },
+          paging: {},
+          nodeDepth: 1,
+        },
+        table2: {
+          entity: { id: 'e2', type: 'table', name: 'table2' },
+          paging: {},
+          nodeDepth: 2,
+        },
+      };
+
+      const result = addBaseNodeDepthToNodes(3, nodes);
+
+      expect(result['table1'].nodeDepth).toBe(4);
+      expect(result['table2'].nodeDepth).toBe(5);
+    });
+
+    it('should treat undefined nodeDepth as 0 when adding baseNodeDepth', () => {
+      const nodes: Record<string, NodeData> = {
+        table1: {
+          entity: { id: 'e1', type: 'table', name: 'table1' },
+          paging: {},
+        },
+      };
+
+      const result = addBaseNodeDepthToNodes(2, nodes);
+
+      expect(result['table1'].nodeDepth).toBe(2);
+    });
+
+    it('should return a new object and not mutate the original nodes', () => {
+      const nodes: Record<string, NodeData> = {
+        table1: {
+          entity: { id: 'e1', type: 'table', name: 'table1' },
+          paging: {},
+          nodeDepth: 1,
+        },
+      };
+
+      const result = addBaseNodeDepthToNodes(5, nodes);
+
+      expect(result).not.toBe(nodes);
+      expect(nodes['table1'].nodeDepth).toBe(1);
+      expect(result['table1'].nodeDepth).toBe(6);
+    });
+
+    it('should handle empty nodes record', () => {
+      const result = addBaseNodeDepthToNodes(3, {});
+
+      expect(result).toStrictEqual({});
     });
   });
 });

@@ -17,13 +17,16 @@ import os
 import re
 import traceback
 from collections import defaultdict
+from collections.abc import Iterable
 from functools import singledispatch
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 import requests
+from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 
 from metadata.clients.aws_client import AWSClient
 from metadata.clients.azure_client import AzureClient
+from metadata.core.connections.test_connection.aws import aws_error_code
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
     DbtAzureConfig,
 )
@@ -50,16 +53,18 @@ from metadata.ingestion.source.database.dbt.constants import (
 )
 from metadata.ingestion.source.database.dbt.models import DbtFiles
 from metadata.readers.file.config_source_factory import get_reader
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    get_gcp_impersonate_credentials_or_none,
+    set_google_credentials,
+)
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ometa_logger
-from metadata.utils.s3_utils import list_s3_objects
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ometa_logger()
 
 
-class DBTConfigException(Exception):
+class DBTConfigException(Exception):  # noqa: N818
     """
     Raise when encountering errors while extracting dbt files
     """
@@ -79,16 +84,16 @@ def get_dbt_details(config):
 def _(config: DbtLocalConfig):
     try:
         manifest_path = config.dbtManifestFilePath
-        if not os.path.exists(manifest_path):
-            raise DBTConfigException(
+        if not os.path.exists(manifest_path):  # noqa: PTH110
+            raise DBTConfigException(  # noqa: TRY301
                 f"Manifest file not found at '{manifest_path}'. Please verify the file path is correct."
             )
         if not os.access(manifest_path, os.R_OK):
-            raise DBTConfigException(f"Cannot read manifest file at '{manifest_path}'. Please check file permissions.")
+            raise DBTConfigException(f"Cannot read manifest file at '{manifest_path}'. Please check file permissions.")  # noqa: TRY301
 
         blob_grouped_by_directory = defaultdict(list)
 
-        subdirectory = os.path.dirname(manifest_path)
+        subdirectory = os.path.dirname(manifest_path)  # noqa: PTH120
         blob_grouped_by_directory[subdirectory] = [
             manifest_path,
             config.dbtCatalogFilePath,
@@ -113,11 +118,11 @@ def _(config: DbtLocalConfig):
         ) from exc
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from local: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from local: {exc}")  # noqa: B904
 
 
 @get_dbt_details.register
-def _(config: DbtHttpConfig):
+def _(config: DbtHttpConfig):  # noqa: C901
     try:
         verify_ssl_fn = get_verify_ssl_fn(config.dbtVerifySSL) if config.dbtVerifySSL else lambda _: None
         ssl_verify = verify_ssl_fn(config.dbtSSLConfig) if config.dbtVerifySSL else None
@@ -146,18 +151,17 @@ def _(config: DbtHttpConfig):
                 f"Unable to connect to '{manifest_url}'. Please verify the URL is correct and accessible."
             ) from exc
         except requests.exceptions.HTTPError as exc:
-            if exc.response.status_code == 404:
+            status_code = exc.response.status_code if exc.response is not None else None
+            if status_code == 404:
                 raise DBTConfigException(
                     f"Manifest file not found at '{manifest_url}'. Please verify the URL is correct."
                 ) from exc
-            if exc.response.status_code in (401, 403):
+            if status_code in (401, 403):
                 raise DBTConfigException(
                     f"Access denied to '{manifest_url}'. "
                     "Check your dbtHttpHeaders contain the correct authentication headers."
                 ) from exc
-            raise DBTConfigException(
-                f"HTTP error {exc.response.status_code} fetching manifest from '{manifest_url}'."
-            ) from exc
+            raise DBTConfigException(f"HTTP error {status_code} fetching manifest from '{manifest_url}'.") from exc
 
         try:
             manifest_json = dbt_manifest.json()
@@ -221,14 +225,28 @@ def _(config: DbtHttpConfig):
         raise
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from file server: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from file server: {exc}")  # noqa: B904
+
+
+class DbtCloudNoRunException(DBTConfigException):
+    """
+    Raise when a dbt Cloud job has no completed run, so it has no artifacts to read
+    """
+
+
+# Fields dbt sets on a manifest node only in a run that compiled it
+DBT_COMPILED_NODE_KEYS = (
+    "compiled",
+    "compiled_code",
+    "compiled_sql",
+    "compiled_path",
+    "extra_ctes",
+    "extra_ctes_injected",
+)
 
 
 @get_dbt_details.register
-def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
-    dbt_catalog = None
-    dbt_manifest = None
-    dbt_run_results = None
+def _(config: DbtCloudConfig):
     try:
         # pylint: disable=import-outside-toplevel
         from metadata.ingestion.connections.source_api_client import TrackedREST
@@ -242,106 +260,351 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             auth_token=lambda: auth_token,
             auth_header="Authorization",
             allow_redirects=True,
+            # Reading many jobs can hit dbt Cloud's rate limit; the default treats 429 as final
+            retry_codes=[429, 503, 504],
+            limit_codes=[],
         )
         client = TrackedREST(client_config)
-        account_id = config.dbtCloudAccountId
-        project_id = config.dbtCloudProjectId
-        job_id = config.dbtCloudJobId
-        logger.debug("Requesting [dbt_catalog], [dbt_manifest] and [dbt_run_results] data")
-        params_data = {
-            "order_by": "-finished_at",
-            "limit": "1",
-            "status__in": "[10,20]",
-        }
-        if project_id:
-            params_data["project_id"] = project_id
-
-        if job_id:
-            params_data["job_definition_id"] = job_id
-
-        try:
-            response = client.get(f"/accounts/{account_id}/runs", data=params_data)
-        except Exception as exc:
-            error_msg = str(exc).lower()
-            if "401" in error_msg or "unauthorized" in error_msg:
-                raise DBTConfigException(
-                    "Invalid dbt Cloud auth token. Please verify your token has "
-                    "'Account Viewer' permissions and is not expired."
-                ) from exc
-            if "404" in error_msg:
-                raise DBTConfigException(
-                    f"dbt Cloud account ID '{account_id}' not found. Please verify the account ID is correct."
-                ) from exc
-            if "connection" in error_msg or "timeout" in error_msg:
-                raise DBTConfigException(
-                    f"Unable to connect to dbt Cloud at '{config.dbtCloudUrl}'. "
-                    "Please verify the URL is correct and accessible."
-                ) from exc
-            raise DBTConfigException(f"Error connecting to dbt Cloud: {exc}") from exc
-
-        if not response or not response.get("data"):
-            filter_info = []
-            if project_id:
-                filter_info.append(f"project ID '{project_id}'")
-            if job_id:
-                filter_info.append(f"job ID '{job_id}'")
-
-            if filter_info:
-                raise DBTConfigException(
-                    f"No completed dbt runs found for {' and '.join(filter_info)}. "
-                    "Please verify these IDs exist and have completed runs."
-                )
-            raise DBTConfigException(
-                f"No completed dbt runs found for account '{account_id}'. "
-                "Please ensure at least one job has completed successfully."
-            )
-        runs_data = response.get("data")
-        if runs_data:
-            last_run = runs_data[0]
-            run_id = last_run["id"]
-            logger.info(
-                f"Retrieved last completed run [{str(run_id)}]: "
-                f"Finished {str(last_run['finished_at_humanized'])} (duration: {str(last_run['duration_humanized'])})"
-            )
-            try:
-                logger.debug("Requesting [dbt_catalog]")
-                dbt_catalog = client.get(f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}")
-            except Exception as exc:
-                logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog: {exc}")
-                logger.debug(traceback.format_exc())
-            try:
-                logger.debug("Requesting [dbt_manifest]")
-                dbt_manifest = client.get(f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_MANIFEST_FILE_NAME}")
-            except Exception as exc:
-                raise DBTConfigException(
-                    f"Manifest artifact not found for run {run_id}. Please ensure the dbt job generates artifacts."
-                ) from exc
-            try:
-                logger.debug("Requesting [dbt_run_results]")
-                dbt_run_results = client.get(
-                    f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}.json"
-                )
-            except Exception as exc:
-                logger.warning(f"dbt run_results file not found for run {run_id}, skipping dbt tests: {exc}")
-                logger.debug(traceback.format_exc())
-        if not dbt_manifest:
-            raise DBTConfigException(
-                "Manifest file not found in dbt Cloud. Please ensure your dbt job generates artifacts."
-            )
-
-        yield DbtFiles(
-            dbt_catalog=dbt_catalog,
-            dbt_manifest=dbt_manifest,
-            dbt_run_results=[dbt_run_results] if dbt_run_results else None,
+        job_ids = list(
+            dict.fromkeys(job_id.strip() for job_id in (config.dbtCloudJobId or "").split(",") if job_id.strip())
         )
+        if not job_ids and config.dbtCloudIngestAllJobs:
+            job_ids = _get_dbt_cloud_job_ids(client, config)
+        if len(job_ids) > 1:
+            yield from _get_dbt_cloud_merged_files(client, config, job_ids)
+        else:
+            # A single run is read: the job's latest, or without a job ID the latest of any job
+            run = _get_dbt_cloud_latest_run(client, config, job_ids[0] if job_ids else None)
+            yield _get_dbt_cloud_run_files(client, config, run)
     except DBTConfigException as exc:
-        raise exc
+        raise exc  # noqa: TRY201
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from dbt Cloud: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from dbt Cloud: {exc}")  # noqa: B904
 
 
-def get_blobs_grouped_by_dir(blobs: Iterable[str]) -> Dict[str, List[str]]:
+def _dbt_cloud_get(client, config: DbtCloudConfig, path: str, params: dict) -> dict:
+    """
+    GET a dbt Cloud list endpoint, translating every failure into a DBTConfigException
+    """
+    # pylint: disable=import-outside-toplevel
+    from metadata.ingestion.ometa.client import APIError, RestTransportError
+
+    account_id = config.dbtCloudAccountId
+    try:
+        response = client.get(path, data=params)
+    except APIError as exc:
+        if exc.code == 401:
+            raise DBTConfigException(
+                "Invalid dbt Cloud auth token. Please verify your token has "
+                "'Account Viewer' permissions and is not expired."
+            ) from exc
+        if exc.code == 404:
+            raise DBTConfigException(
+                f"dbt Cloud account ID '{account_id}' not found. Please verify the account ID is correct."
+            ) from exc
+        raise DBTConfigException(f"dbt Cloud API error {exc.code}: {exc}") from exc
+    except RestTransportError as exc:
+        raise DBTConfigException(
+            f"Unable to connect to dbt Cloud at '{config.dbtCloudUrl}'. Please verify the URL is correct and accessible."
+        ) from exc
+    except requests.HTTPError as exc:
+        # The REST client only raises APIError for a body with a top-level "code" key.
+        # dbt Cloud nests it under "status", and an SSO gateway or proxy may answer with
+        # HTML that has no "code" at all - those reach here as a bare HTTPError, and the
+        # status line is the only thing left to classify on.
+        status_code = exc.response.status_code if exc.response is not None else None
+        if status_code in (401, 403):
+            raise DBTConfigException(
+                "Invalid dbt Cloud auth token. Please verify your token has "
+                "'Account Viewer' permissions and is not expired."
+            ) from exc
+        if status_code == 404:
+            raise DBTConfigException(
+                f"dbt Cloud account ID '{account_id}' not found. Please verify the account ID is correct."
+            ) from exc
+        raise DBTConfigException(f"Error connecting to dbt Cloud: {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Error connecting to dbt Cloud: {exc}") from exc
+
+    # The client returns None for an error body it cannot classify, and can surface a raw
+    # Response on paths that bypass JSON decoding. Neither carries usable data.
+    if not isinstance(response, dict):
+        raise DBTConfigException(
+            f"No usable response from dbt Cloud for account '{account_id}'. The API returned "
+            "an error the client could not classify, so the status was not preserved. "
+            "Possible causes: the account ID is wrong, the project or job ID is wrong, the "
+            "auth token is invalid, expired, or lacks 'Account Viewer' permission, or dbt "
+            "Cloud rate-limited the request and every retry was exhausted."
+        )
+    return response
+
+
+def _get_dbt_cloud_job_ids(client, config: DbtCloudConfig) -> list[str]:
+    """
+    List every job of the account, or of the project when one is configured. CI jobs are
+    skipped: their runs build into temporary PR schemas that match no table in OpenMetadata.
+    """
+    account_id = config.dbtCloudAccountId
+    project_id = config.dbtCloudProjectId
+    params: dict[str, Any] = {"offset": 0, "limit": 100}
+    if project_id:
+        params["project_id"] = project_id
+    job_ids = []
+    while True:
+        response = _dbt_cloud_get(client, config, f"/accounts/{account_id}/jobs/", params)
+        jobs = response.get("data") or []
+        job_ids.extend(str(job["id"]) for job in jobs if job.get("job_type") != "ci")
+        params["offset"] += len(jobs)
+        total_count = ((response.get("extra") or {}).get("pagination") or {}).get("total_count", 0)
+        if not jobs or params["offset"] >= total_count:
+            break
+    if not job_ids:
+        scope = f"project ID '{project_id}'" if project_id else f"account '{account_id}'"
+        raise DBTConfigException(f"No dbt Cloud jobs found for {scope}. Please verify the IDs are correct.")
+    logger.info("Fetching dbt artifacts from %d dbt Cloud jobs: %s", len(job_ids), job_ids)
+    return job_ids
+
+
+def _get_dbt_cloud_merged_files(client, config: DbtCloudConfig, job_ids: list[str]) -> Iterable[DbtFiles]:
+    """
+    Every job's manifest lists the whole project, but only the nodes that job compiled carry
+    their SQL, and only a job running `docs generate` has a catalog. Processed one by one, a
+    partial job would blank out what a full one wrote, so the artifacts are merged into one
+    set per dbt Cloud environment. Environments stay apart: they build into different schemas.
+    ADR:2026-10-29-dbt-cloud-multi-job-artifacts-merge-per-environment
+
+    Only a job that never completed a run is skipped. Any other failure on a job leaves its
+    whole environment out, since merging without that job's artifacts would blank the models
+    only it compiled; the other environments are still ingested and the run is then failed.
+    """
+    runs_by_environment = defaultdict(list)
+    for job_id in job_ids:
+        try:
+            run = _get_dbt_cloud_latest_run(client, config, job_id)
+        except DbtCloudNoRunException as exc:
+            logger.warning("Skipping dbt Cloud job [%s]: %s", job_id, exc)
+            continue
+        runs_by_environment[run.get("environment_id")].append(run)
+    if not runs_by_environment:
+        raise DBTConfigException(
+            f"No completed dbt runs found for any of the dbt Cloud jobs {job_ids}. "
+            "Please verify these IDs exist and have completed runs."
+        )
+    failed_environments = []
+    # One environment's artifacts are held at a time: manifests of large projects are big
+    for environment_id, runs in runs_by_environment.items():
+        try:
+            merged = _get_dbt_cloud_environment_files(client, config, runs)
+        except DBTConfigException as exc:
+            logger.warning("Skipping dbt Cloud environment [%s]: %s", environment_id, exc)
+            failed_environments.append(f"[{environment_id}] {exc}")
+            continue
+        yield merged
+    if failed_environments:
+        raise DBTConfigException(
+            f"dbt artifacts of {len(failed_environments)} dbt Cloud environment(s) were not ingested: "
+            + " | ".join(failed_environments)
+        )
+
+
+def _get_dbt_cloud_environment_files(client, config: DbtCloudConfig, runs: list[dict]) -> DbtFiles:
+    # The newest run is merged first, so it wins wherever two runs compiled the same node
+    runs.sort(key=lambda run: run.get("finished_at") or "", reverse=True)
+    merged = _get_dbt_cloud_run_files(client, config, runs[0], strict=True)
+    for run in runs[1:]:
+        dbt_files = _get_dbt_cloud_run_files(client, config, run, strict=True)
+        _check_same_manifest_schema(merged, runs[0], dbt_files, run)
+        _merge_dbt_files(merged, dbt_files)
+    return merged
+
+
+def _check_same_manifest_schema(merged: DbtFiles, merged_run: dict, dbt_files: DbtFiles, run: dict) -> None:
+    """
+    A job can override its environment's dbt version, and the manifest parser validates every
+    node against the one schema version the merged manifest declares
+    """
+    merged_version = (merged.dbt_manifest.get("metadata") or {}).get("dbt_schema_version")
+    version = (dbt_files.dbt_manifest.get("metadata") or {}).get("dbt_schema_version")
+    if merged_version != version:
+        raise DBTConfigException(
+            f"dbt Cloud jobs [{merged_run.get('job_definition_id')}] and [{run.get('job_definition_id')}] share "
+            f"an environment but wrote different manifest versions ({merged_version} and {version}), so their "
+            "artifacts cannot be merged. List the jobs of one dbt version in the dbt Cloud Job Ids."
+        )
+
+
+def _merge_dbt_files(target: DbtFiles, source: DbtFiles) -> None:
+    """
+    Merge an older run's artifacts into the newest run's. The newest manifest decides which
+    nodes exist and how they are configured; the older one only fills in the compiled SQL of
+    nodes the newest run did not compile, so a model removed since then does not come back.
+    """
+    source_nodes = source.dbt_manifest.get("nodes") or {}
+    for unique_id, node in (target.dbt_manifest.get("nodes") or {}).items():
+        older_node = source_nodes.get(unique_id) or {}
+        if _compiled_query(older_node) and not _compiled_query(node):
+            node.update({key: older_node[key] for key in DBT_COMPILED_NODE_KEYS if key in older_node})
+    if source.dbt_catalog and target.dbt_catalog:
+        for section in ("nodes", "sources"):
+            target_entries = target.dbt_catalog.get(section) or {}
+            for unique_id, entry in (source.dbt_catalog.get(section) or {}).items():
+                target_entries.setdefault(unique_id, entry)
+            target.dbt_catalog[section] = target_entries
+    elif source.dbt_catalog:
+        target.dbt_catalog = source.dbt_catalog
+    if source.dbt_run_results:
+        # The source keeps the newest result per test when one appears in several files
+        target.dbt_run_results = (target.dbt_run_results or []) + source.dbt_run_results
+
+
+def _compiled_query(node: dict) -> str | None:
+    return node.get("compiled_code") or node.get("compiled_sql")
+
+
+def _get_dbt_cloud_latest_run(client, config: DbtCloudConfig, job_id: str | None) -> dict:
+    """
+    Fetch the latest completed run of a dbt Cloud job, or of any job when no job ID is given
+    """
+    account_id = config.dbtCloudAccountId
+    project_id = config.dbtCloudProjectId
+    params_data = {
+        "order_by": "-finished_at",
+        "limit": "1",
+        "status__in": "[10,20]",
+        # Without `step` the artifacts endpoint serves only the last step's files, so a
+        # job whose `dbt test` is not its final command would lose every test result.
+        "include_related": '["run_steps"]',
+    }
+    if project_id:
+        params_data["project_id"] = project_id
+    if job_id:
+        params_data["job_definition_id"] = job_id
+
+    logger.debug("Requesting the latest completed run of dbt Cloud job [%s]", job_id or "any")
+    runs_data = _dbt_cloud_get(client, config, f"/accounts/{account_id}/runs", params_data).get("data")
+    if not runs_data:
+        filter_info = []
+        if project_id:
+            filter_info.append(f"project ID '{project_id}'")
+        if job_id:
+            filter_info.append(f"job ID '{job_id}'")
+        if filter_info:
+            raise DbtCloudNoRunException(
+                f"No completed dbt runs found for {' and '.join(filter_info)}. "
+                "Please verify these IDs exist and have completed runs."
+            )
+        raise DbtCloudNoRunException(
+            f"No completed dbt runs found for account '{account_id}'. "
+            "Please ensure at least one job has completed successfully."
+        )
+    last_run = runs_data[0]
+    logger.info(
+        "Retrieved last completed run [%s]%s: Finished %s (duration: %s)",
+        last_run["id"],
+        f" of job [{job_id}]" if job_id else "",
+        last_run["finished_at_humanized"],
+        last_run["duration_humanized"],
+    )
+    return last_run
+
+
+def _get_dbt_cloud_run_files(client, config: DbtCloudConfig, run: dict, strict: bool = False) -> DbtFiles:
+    """
+    Fetch the artifacts of a dbt Cloud run. With `strict`, a failed request raises instead of
+    reading as a missing artifact: a merge would otherwise lose that job's catalog or tests.
+    """
+    account_id = config.dbtCloudAccountId
+    run_id = run["id"]
+    artifacts_path = f"/accounts/{account_id}/runs/{run_id}/artifacts"
+    if strict:
+        dbt_catalog = _get_dbt_cloud_artifact(client, f"{artifacts_path}/{DBT_CATALOG_FILE_NAME}")
+        dbt_manifest = _get_dbt_cloud_artifact(client, f"{artifacts_path}/{DBT_MANIFEST_FILE_NAME}")
+    else:
+        dbt_catalog = None
+        try:
+            logger.debug("Requesting [dbt_catalog]")
+            dbt_catalog = client.get(f"{artifacts_path}/{DBT_CATALOG_FILE_NAME}")
+        except Exception as exc:
+            logger.warning("dbt catalog file not found for run %s, skipping catalog: %s", run_id, exc)
+            logger.debug(traceback.format_exc())
+        else:
+            if dbt_catalog is None:
+                logger.warning("dbt catalog file not found for run %s, skipping catalog", run_id)
+        try:
+            logger.debug("Requesting [dbt_manifest]")
+            dbt_manifest = client.get(f"{artifacts_path}/{DBT_MANIFEST_FILE_NAME}")
+        except Exception as exc:
+            raise DBTConfigException(
+                f"Manifest artifact not found for run {run_id}. Please ensure the dbt job generates artifacts."
+            ) from exc
+    if not dbt_manifest and strict:
+        raise DBTConfigException(
+            f"Manifest file not found in dbt Cloud for run [{run_id}] of job [{run.get('job_definition_id')}]. "
+            "Please ensure the dbt job generates artifacts."
+        )
+    if not dbt_manifest:
+        raise DBTConfigException(
+            "Manifest file not found in dbt Cloud. Please ensure your dbt job generates artifacts."
+        )
+    return DbtFiles(
+        dbt_catalog=dbt_catalog,
+        dbt_manifest=dbt_manifest,
+        dbt_run_results=_get_dbt_cloud_run_results(client, account_id, run_id, run.get("run_steps"), strict) or None,
+    )
+
+
+def _get_dbt_cloud_artifact(client, path: str, data: dict | None = None) -> dict | None:
+    """
+    Fetch a run artifact, returning None only when it does not exist: `get` also returns None
+    for a request that ran out of retries
+    """
+    from metadata.ingestion.ometa.client import RestTransportError  # pylint: disable=import-outside-toplevel
+
+    try:
+        response = client.get_raw(path, data=data)
+    except RestTransportError as exc:
+        raise DBTConfigException(f"Unable to download {path} from dbt Cloud: {exc}") from exc
+    if response.status_code == 404:
+        return None
+    if not response.ok:
+        raise DBTConfigException(f"dbt Cloud answered {response.status_code} for {path}: {response.text[:200]}")
+    try:
+        return response.json()
+    except ValueError as exc:
+        raise DBTConfigException(f"dbt Cloud answered a non-JSON body for {path}: {response.text[:200]}") from exc
+
+
+def _get_dbt_cloud_run_results(
+    client, account_id, run_id, run_steps: list[dict] | None, strict: bool = False
+) -> list[dict]:
+    """
+    Collect run_results.json from every step of a dbt Cloud run. Steps that ran no dbt command
+    (clone, profile, deps) have no artifacts and 404; a run without step details falls back to
+    the endpoint's default, the last step.
+    """
+    path = f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}.json"
+    step_indexes = [step["index"] for step in run_steps or [] if step.get("index") is not None] or [None]
+    run_results = []
+    for step_index in step_indexes:
+        data = {"step": step_index} if step_index is not None else None
+        logger.debug("Requesting [dbt_run_results] for step [%s]", step_index)
+        if strict:
+            result = _get_dbt_cloud_artifact(client, path, data)
+        else:
+            try:
+                result = client.get(path, data=data)
+            except Exception as exc:
+                logger.debug("No dbt run_results for run %s step %s: %s", run_id, step_index, exc)
+                continue
+        if isinstance(result, dict):
+            run_results.append(result)
+    if not run_results:
+        logger.warning("dbt run_results file not found for run %s, skipping dbt tests", run_id)
+    return run_results
+
+
+def get_blobs_grouped_by_dir(blobs: Iterable[str]) -> dict[str, list[str]]:
     """
     Method to group the objs by the dir
     """
@@ -350,15 +613,15 @@ def get_blobs_grouped_by_dir(blobs: Iterable[str]) -> Dict[str, List[str]]:
     total_matched = 0
     for blob in blobs:
         total_blobs_scanned += 1
-        subdirectory = os.path.dirname(blob)
-        blob_file_name = os.path.basename(blob)
+        subdirectory = os.path.dirname(blob)  # noqa: PTH120
+        blob_file_name = os.path.basename(blob)  # noqa: PTH119
         # We'll be processing multiple run_result files from a single dir
         # Grouping them together to process them in a single go
         if (
-            DBT_MANIFEST_FILE_NAME == blob_file_name.lower()
-            or DBT_CATALOG_FILE_NAME == blob_file_name.lower()
+            DBT_MANIFEST_FILE_NAME == blob_file_name.lower()  # noqa: SIM300
+            or DBT_CATALOG_FILE_NAME == blob_file_name.lower()  # noqa: SIM300
             or DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower()
-            or DBT_SOURCES_FILE_NAME == blob_file_name.lower()
+            or DBT_SOURCES_FILE_NAME == blob_file_name.lower()  # noqa: SIM300
         ):
             blob_grouped_by_directory[subdirectory].append(blob)
             total_matched += 1
@@ -374,13 +637,13 @@ _DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 def _has_date_pattern(directory: str) -> bool:
     """Check if the leaf directory name contains a date pattern (YYYY-MM-DD)."""
-    leaf = os.path.basename(directory)
+    leaf = os.path.basename(directory)  # noqa: PTH119
     return bool(_DATE_PATTERN.search(leaf))
 
 
 def _filter_latest_per_project(
-    blob_grouped_by_directory: Dict[str, List[str]],
-) -> Dict[str, List[str]]:
+    blob_grouped_by_directory: dict[str, list[str]],
+) -> dict[str, list[str]]:
     """
     When multiple timestamped run directories exist under the same project
     (e.g. project/target_2025-04-19/manifest.json, project/target_2025-04-20/manifest.json),
@@ -397,18 +660,18 @@ def _filter_latest_per_project(
         return blob_grouped_by_directory
 
     # Separate dated dirs (candidates for filtering) from non-dated dirs (always kept)
-    project_to_dated_dirs: Dict[str, List[str]] = defaultdict(list)
-    filtered: Dict[str, List[str]] = {}
+    project_to_dated_dirs: dict[str, list[str]] = defaultdict(list)
+    filtered: dict[str, list[str]] = {}
 
-    for directory in blob_grouped_by_directory:
+    for directory in blob_grouped_by_directory:  # noqa: PLC0206
         if _has_date_pattern(directory):
-            parent = os.path.dirname(directory)
+            parent = os.path.dirname(directory)  # noqa: PTH120
             project_to_dated_dirs[parent].append(directory)
         else:
             filtered[directory] = blob_grouped_by_directory[directory]
 
     total_skipped = 0
-    for project, dirs in project_to_dated_dirs.items():
+    for project, dirs in project_to_dated_dirs.items():  # noqa: B007, PERF102
         latest_dir = max(dirs)
         filtered[latest_dir] = blob_grouped_by_directory[latest_dir]
         total_skipped += len(dirs) - 1
@@ -424,7 +687,10 @@ def _filter_latest_per_project(
 
 # pylint: disable=too-many-locals, too-many-branches
 def download_dbt_files(
-    blob_grouped_by_directory: Dict, config, client, bucket_name: Optional[str]
+    blob_grouped_by_directory: dict,
+    config,
+    client,
+    bucket_name: str | None,
 ) -> Iterable[DbtFiles]:
     """
     Method to download the files from sources
@@ -447,11 +713,11 @@ def download_dbt_files(
             for blob in blobs:
                 if blob:
                     reader = get_reader(config_source=config, client=client)
-                    blob_file_name = os.path.basename(blob)
-                    if DBT_MANIFEST_FILE_NAME == blob_file_name.lower():
+                    blob_file_name = os.path.basename(blob)  # noqa: PTH119
+                    if DBT_MANIFEST_FILE_NAME == blob_file_name.lower():  # noqa: SIM300
                         logger.debug(f"{DBT_MANIFEST_FILE_NAME} found in {key}")
                         dbt_manifest = reader.read(path=blob, **kwargs)
-                    if DBT_CATALOG_FILE_NAME == blob_file_name.lower():
+                    if DBT_CATALOG_FILE_NAME == blob_file_name.lower():  # noqa: SIM300
                         try:
                             logger.debug(f"{DBT_CATALOG_FILE_NAME} found in {key}")
                             dbt_catalog = reader.read(path=blob, **kwargs)
@@ -465,11 +731,11 @@ def download_dbt_files(
                                 dbt_run_results.append(json.loads(dbt_run_result))
                         except Exception as exc:
                             logger.warning(f"{DBT_RUN_RESULTS_FILE_NAME} not found in {key}: {exc}")
-                    if DBT_SOURCES_FILE_NAME == blob_file_name.lower():
+                    if DBT_SOURCES_FILE_NAME == blob_file_name.lower():  # noqa: SIM300
                         logger.debug(f"{DBT_SOURCES_FILE_NAME} found in {key}")
                         dbt_sources = reader.read(path=blob, **kwargs)
             if not dbt_manifest:
-                raise DBTConfigException(f"Manifest file not found at: {key}")
+                raise DBTConfigException(f"Manifest file not found at: {key}")  # noqa: TRY301
             found_manifest = True
             yield DbtFiles(
                 dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
@@ -486,33 +752,80 @@ def download_dbt_files(
         raise DBTConfigException(f"No valid dbt manifest.json found. {error_details}")
 
 
+def _get_s3_client(config: DbtS3Config):
+    try:
+        client = AWSClient(config.dbtSecurityConfig).get_client(service_name="s3")
+    except (NoCredentialsError, PartialCredentialsError) as exc:
+        raise DBTConfigException(
+            "AWS authentication failed. Please verify your AWS Access Key ID and Secret Access Key are correct."
+        ) from exc
+    except ClientError as exc:
+        if aws_error_code(exc) in ("AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"):
+            raise DBTConfigException(
+                "AWS authentication failed. Please verify your AWS Access Key ID and Secret Access Key are correct."
+            ) from exc
+        raise DBTConfigException(f"Failed to initialize AWS S3 client: {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to initialize AWS S3 client: {exc}") from exc
+    return client
+
+
+def _list_s3_buckets(client, bucket_name: str | None) -> list[dict]:
+    if bucket_name:
+        return [{"Name": bucket_name}]
+    try:
+        buckets = client.list_buckets()["Buckets"]
+    except ClientError as exc:
+        if aws_error_code(exc) == "AccessDenied":
+            raise DBTConfigException(
+                "Access denied when listing S3 buckets. Please check your IAM permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to list S3 buckets: {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to list S3 buckets: {exc}") from exc
+    return buckets
+
+
+def _iter_s3_object_keys(client, kwargs: dict) -> Iterable[str]:
+    """
+    Paginated listing of S3 object keys that lets botocore errors propagate.
+
+    metadata.utils.s3_utils.list_s3_objects catches every exception and only logs it, so a
+    wrong bucket name or a missing IAM permission reaches the caller as an empty listing and
+    is then reported as "no dbt artifacts found". dbt needs the original error to tell the
+    user which of the two it is, so it drives the paginator itself.
+    """
+    paginator = client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(**kwargs):
+        for obj in page.get("Contents", []):
+            yield obj["Key"]
+
+
+def _get_s3_blob_grouped(client, current_bucket: str, kwargs: dict):
+    try:
+        blob_grouped = get_blobs_grouped_by_dir(blobs=_iter_s3_object_keys(client, kwargs))
+    except ClientError as exc:
+        error_code = aws_error_code(exc)
+        if error_code == "NoSuchBucket":
+            raise DBTConfigException(
+                f"S3 bucket '{current_bucket}' not found. Please verify the bucket name is correct."
+            ) from exc
+        if error_code == "AccessDenied":
+            raise DBTConfigException(
+                f"Access denied to S3 bucket '{current_bucket}'. Please check your IAM permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to list objects in S3 bucket '{current_bucket}': {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to list objects in S3 bucket '{current_bucket}': {exc}") from exc
+    return blob_grouped
+
+
 @get_dbt_details.register
 def _(config: DbtS3Config):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-
-        try:
-            client = AWSClient(config.dbtSecurityConfig).get_client(service_name="s3")
-        except Exception as exc:
-            error_msg = str(exc).lower()
-            if "credentials" in error_msg or "accessdenied" in error_msg:
-                raise DBTConfigException(
-                    "AWS authentication failed. Please verify your AWS Access Key ID and Secret Access Key are correct."
-                ) from exc
-            raise DBTConfigException(f"Failed to initialize AWS S3 client: {exc}") from exc
-
-        if not bucket_name:
-            try:
-                buckets = client.list_buckets()["Buckets"]
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "accessdenied" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        "Access denied when listing S3 buckets. Please check your IAM permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to list S3 buckets: {exc}") from exc
-        else:
-            buckets = [{"Name": bucket_name}]
+        client = _get_s3_client(config)
+        buckets = _list_s3_buckets(client, bucket_name)
 
         for bucket in buckets:
             current_bucket = bucket["Name"]
@@ -521,19 +834,7 @@ def _(config: DbtS3Config):
                 kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
 
             logger.debug(f"Listing S3 objects in s3://{current_bucket}/{prefix or ''}")
-            try:
-                blob_grouped = get_blobs_grouped_by_dir(blobs=(obj["Key"] for obj in list_s3_objects(client, **kwargs)))
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "nosuchbucket" in error_msg:
-                    raise DBTConfigException(
-                        f"S3 bucket '{current_bucket}' not found. Please verify the bucket name is correct."
-                    ) from exc
-                if "accessdenied" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        f"Access denied to S3 bucket '{current_bucket}'. Please check your IAM permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to list objects in S3 bucket '{current_bucket}': {exc}") from exc
+            blob_grouped = _get_s3_blob_grouped(client, current_bucket, kwargs)
 
             if not blob_grouped:
                 prefix_path = prefix or ""
@@ -554,7 +855,7 @@ def _(config: DbtS3Config):
         raise
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from S3: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from S3: {exc}")  # noqa: B904
 
 
 @get_dbt_details.register
@@ -569,7 +870,7 @@ def _(config: DbtGcsConfig):
             set_google_credentials(gcp_credentials=config.dbtSecurityConfig, single_project=True)
         except (ValueError, GoogleAuthError) as cred_exc:
             logger.error(
-                f"Failed to set Google Cloud credentials: {str(cred_exc)}. "
+                f"Failed to set Google Cloud credentials: {str(cred_exc)}. "  # noqa: RUF010
                 "Please ensure your credentials are properly formatted and valid."
             )
             raise DBTConfigException(
@@ -577,10 +878,10 @@ def _(config: DbtGcsConfig):
             ) from cred_exc
 
         try:
-            client = storage.Client()
+            client = storage.Client(credentials=get_gcp_impersonate_credentials_or_none(config.dbtSecurityConfig))
         except DefaultCredentialsError as client_exc:
             logger.error(
-                f"Failed to create Google Cloud Storage client: {str(client_exc)}. "
+                f"Failed to create Google Cloud Storage client: {str(client_exc)}. "  # noqa: RUF010
                 "Please ensure you have valid credentials configured."
             )
             raise DBTConfigException(
@@ -591,7 +892,7 @@ def _(config: DbtGcsConfig):
             try:
                 buckets = client.list_buckets()
             except Exception as bucket_exc:
-                logger.error(f"Failed to list GCS buckets: {str(bucket_exc)}")
+                logger.error(f"Failed to list GCS buckets: {str(bucket_exc)}")  # noqa: RUF010
                 raise DBTConfigException(
                     "Unable to list GCS buckets. Please check your permissions and credentials."
                 ) from bucket_exc
@@ -599,7 +900,7 @@ def _(config: DbtGcsConfig):
             try:
                 buckets = [client.get_bucket(bucket_name)]
             except Exception as bucket_exc:
-                logger.error(f"Failed to access GCS bucket {bucket_name}: {str(bucket_exc)}")
+                logger.error(f"Failed to access GCS bucket {bucket_name}: {str(bucket_exc)}")  # noqa: RUF010
                 raise DBTConfigException(
                     f"Unable to access GCS bucket {bucket_name}."
                     "Please verify the bucket exists and you have proper permissions."
@@ -629,67 +930,98 @@ def _(config: DbtGcsConfig):
             except DBTConfigException:
                 raise
             except Exception as blob_exc:
-                logger.error(f"Failed to process blobs in bucket {bucket.name}: {str(blob_exc)}")
+                logger.error(f"Failed to process blobs in bucket {bucket.name}: {str(blob_exc)}")  # noqa: RUF010
                 logger.debug(traceback.format_exc())
 
     except DBTConfigException:
         raise
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from GCS: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from GCS: {exc}")  # noqa: B904
+
+
+def _get_azure_client(config: DbtAzureConfig):
+    # pylint: disable=import-outside-toplevel
+    from azure.core.exceptions import AzureError, ClientAuthenticationError
+
+    try:
+        client = AzureClient(config.dbtSecurityConfig).create_blob_client()
+    except ClientAuthenticationError as auth_exc:
+        raise DBTConfigException(
+            "Azure authentication failed. Please verify your credentials and permissions."
+        ) from auth_exc
+    except AzureError as azure_exc:
+        raise DBTConfigException(
+            "Failed to initialize Azure client. Please check your Azure configuration."
+        ) from azure_exc
+    return client
+
+
+def _list_azure_containers(client):
+    # pylint: disable=import-outside-toplevel
+    from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
+
+    try:
+        container_dicts = list(client.list_containers())
+        container_clients = [client.get_container_client(container["name"]) for container in container_dicts]
+    except ClientAuthenticationError as exc:
+        raise DBTConfigException("Access denied when listing Azure containers. Please check your permissions.") from exc
+    except HttpResponseError as exc:
+        if exc.status_code == 403:
+            raise DBTConfigException(
+                "Access denied when listing Azure containers. Please check your permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to list Azure containers: {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to list Azure containers: {exc}") from exc
+    return container_clients
+
+
+def _get_azure_container_client(client, bucket_name: str):
+    # pylint: disable=import-outside-toplevel
+    from azure.core.exceptions import (
+        ClientAuthenticationError,
+        HttpResponseError,
+        ResourceNotFoundError,
+    )
+
+    try:
+        container_client = client.get_container_client(bucket_name)
+        # Verify container exists by attempting to get properties
+        container_client.get_container_properties()
+    except ResourceNotFoundError as exc:
+        raise DBTConfigException(
+            f"Azure container '{bucket_name}' not found. Please verify the container name is correct."
+        ) from exc
+    except ClientAuthenticationError as exc:
+        raise DBTConfigException(
+            f"Access denied to Azure container '{bucket_name}'. Please check your permissions."
+        ) from exc
+    except HttpResponseError as exc:
+        if exc.status_code == 404:
+            raise DBTConfigException(
+                f"Azure container '{bucket_name}' not found. Please verify the container name is correct."
+            ) from exc
+        if exc.status_code == 403:
+            raise DBTConfigException(
+                f"Access denied to Azure container '{bucket_name}'. Please check your permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to access Azure container '{bucket_name}': {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to access Azure container '{bucket_name}': {exc}") from exc
+    return container_client
 
 
 @get_dbt_details.register
 def _(config: DbtAzureConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        # pylint: disable=import-outside-toplevel
-        from azure.core.exceptions import AzureError, ClientAuthenticationError
-
-        try:
-            client = AzureClient(config.dbtSecurityConfig).create_blob_client()
-        except ClientAuthenticationError as auth_exc:
-            logger.error(
-                f"Failed to authenticate with Azure: {str(auth_exc)}. "
-                "Please check your Azure credentials and permissions."
-            )
-            raise DBTConfigException(
-                "Azure authentication failed. Please verify your credentials and permissions."
-            ) from auth_exc
-        except AzureError as azure_exc:
-            logger.error(f"Failed to create Azure client: {str(azure_exc)}")
-            raise DBTConfigException(
-                "Failed to initialize Azure client. Please check your Azure configuration."
-            ) from azure_exc
+        client = _get_azure_client(config)
 
         if not bucket_name:
-            try:
-                container_dicts = list(client.list_containers())
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "authorization" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        "Access denied when listing Azure containers. Please check your permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to list Azure containers: {exc}") from exc
-            containers = [client.get_container_client(container["name"]) for container in container_dicts]
+            containers = _list_azure_containers(client)
         else:
-            try:
-                container_client = client.get_container_client(bucket_name)
-                # Verify container exists by attempting to get properties
-                container_client.get_container_properties()
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "not found" in error_msg or "does not exist" in error_msg:
-                    raise DBTConfigException(
-                        f"Azure container '{bucket_name}' not found. Please verify the container name is correct."
-                    ) from exc
-                if "authorization" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        f"Access denied to Azure container '{bucket_name}'. Please check your permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to access Azure container '{bucket_name}': {exc}") from exc
-            containers = [container_client]
+            containers = [_get_azure_container_client(client, bucket_name)]
 
         for container_client in containers:
             container_name = container_client.container_name
@@ -715,17 +1047,17 @@ def _(config: DbtAzureConfig):
             except DBTConfigException:
                 raise
             except Exception as exc:
-                logger.error(f"Failed to process blobs in container {container_name}: {str(exc)}")
+                logger.error(f"Failed to process blobs in container {container_name}: {str(exc)}")  # noqa: RUF010
                 logger.debug(traceback.format_exc())
 
     except DBTConfigException:
         raise
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from Azure: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from Azure: {exc}")  # noqa: B904
 
 
-def get_dbt_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:
+def get_dbt_prefix_config(config) -> tuple[str | None, str | None]:
     """
     Return (bucket, prefix) tuple
     """

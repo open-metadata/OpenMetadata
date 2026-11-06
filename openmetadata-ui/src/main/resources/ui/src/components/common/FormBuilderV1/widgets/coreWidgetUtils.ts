@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { WidgetProps } from '@rjsf/utils';
+import { ADDITIONAL_PROPERTY_FLAG, WidgetProps } from '@rjsf/utils';
+import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 export const getWidgetHint = ({
   rawErrors,
@@ -24,6 +25,22 @@ export const getWidgetHint = ({
 export const getWidgetLabel = ({
   hideLabel,
   label,
-}: Pick<WidgetProps, 'hideLabel' | 'label'>) => {
-  return hideLabel ? undefined : label;
+  schema,
+}: Pick<WidgetProps, 'hideLabel' | 'label' | 'schema'>) => {
+  const looksLikeRawKey = (s: string) => /^[a-z][a-zA-Z0-9]*$/.test(s); // camelCase id
+
+  // A map entry's label is its key, which CoreWrapIfAdditionalTemplate already
+  // shows as an editable input beside the value.
+  if (hideLabel || (schema && ADDITIONAL_PROPERTY_FLAG in schema)) {
+    return undefined;
+  }
+
+  return looksLikeRawKey(label) ? getFormDisplayLabel(label) : label;
 };
+
+// A map entry's value has no visible label, so its key names it for assistive tech.
+export const getWidgetAriaProps = ({
+  label,
+  schema,
+}: Pick<WidgetProps, 'label' | 'schema'>): { 'aria-label'?: string } =>
+  schema && ADDITIONAL_PROPERTY_FLAG in schema ? { 'aria-label': label } : {};

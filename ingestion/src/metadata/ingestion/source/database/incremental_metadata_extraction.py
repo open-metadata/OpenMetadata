@@ -14,7 +14,6 @@ Incremental Metadata Extraction related classes
 
 import traceback
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
 
@@ -37,10 +36,10 @@ class IncrementalConfig(BaseModel):
     """Holds the Configuration to extract the Metadata incrementally, if enabled."""
 
     enabled: bool
-    start_timestamp: Optional[int] = None
+    start_timestamp: int | None = None
 
     @property
-    def start_datetime_utc(self) -> Optional[datetime]:
+    def start_datetime_utc(self) -> datetime | None:
         if self.start_timestamp:
             return datetime.fromtimestamp(self.start_timestamp / 1000, timezone.utc)
         return None
@@ -48,8 +47,8 @@ class IncrementalConfig(BaseModel):
     @classmethod
     def create(
         cls,
-        incremental: Optional[bool],
-        pipeline_name: Optional[str],
+        incremental: bool | None,
+        pipeline_name: str | None,
         metadata: OpenMetadata,
     ) -> "IncrementalConfig":
         """Returns the IncrementalConfig based on the flow defined on the IncrementalConfigCreator."""
@@ -61,15 +60,15 @@ class IncrementalConfigCreator:
 
     def __init__(
         self,
-        incremental: Optional[Incremental],
-        pipeline_name: Optional[str],
+        incremental: Incremental | None,
+        pipeline_name: str | None,
         metadata: OpenMetadata,
     ):
         self.incremental = incremental
         self.pipeline_name = pipeline_name
         self.metadata = metadata
 
-    def _calculate_pipeline_status_parameters(self) -> Tuple[int, int]:
+    def _calculate_pipeline_status_parameters(self) -> tuple[int, int]:
         """Calculate the needed 'start' and 'end' parameters based on the 'lookbackDays'."""
         now = datetime.now()
 
@@ -79,7 +78,7 @@ class IncrementalConfigCreator:
 
         return start, end
 
-    def _get_pipeline_statuses(self) -> Optional[List[PipelineStatus]]:
+    def _get_pipeline_statuses(self) -> list[PipelineStatus] | None:
         """Retrieve all the pipeline statuses between 'start' and 'end'."""
         if not self.pipeline_name:
             return None
@@ -88,7 +87,7 @@ class IncrementalConfigCreator:
 
         return self.metadata.get_pipeline_status_between_ts(self.pipeline_name, start, end)
 
-    def _get_last_success_timestamp(self, pipeline_statuses: List[PipelineStatus]) -> Optional[int]:
+    def _get_last_success_timestamp(self, pipeline_statuses: list[PipelineStatus]) -> int | None:
         """Filter the pipeline statuses to get the last time the pipeline was run succesfully."""
         return max(  # pylint: disable=R1728
             [

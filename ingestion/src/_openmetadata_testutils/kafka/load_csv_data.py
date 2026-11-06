@@ -4,7 +4,6 @@ pip install confluent_kafka pandas requests avro-python3
 
 import json
 import os
-from typing import Dict, List
 
 import pandas as pd
 import requests
@@ -33,23 +32,26 @@ class SchemaRegistry:
         data = json.dumps({"schema": schema})
         response = requests.post(url, headers=headers, data=data)
         if response.status_code == 200:
-            print(f"Schema registered for topic {topic}")
+            print(f"Schema registered for topic {topic}")  # noqa: T201
         else:
-            print(f"Failed to register schema for topic {topic}: {response.text}")
+            print(f"Failed to register schema for topic {topic}: {response.text}")  # noqa: T201
 
     def get_avro_serializer(self, schema: str) -> AvroSerializer:
         schema_registry_conf = {"url": self.url}
         schema_registry_client = SchemaRegistryClient(schema_registry_conf)
-        return AvroSerializer(schema_registry_client, schema_str=schema)
+        # confluent_kafka.schema_registry.avro stacks `import *` from _async, _sync and
+        # common, so a type checker binds AvroSerializer to the wrong class; at runtime
+        # _sync wins and takes these arguments.
+        return AvroSerializer(schema_registry_client, schema_str=schema)  # pyright: ignore[reportCallIssue]
 
 
 def delivery_report(err, msg):
     """Called once for each message produced to indicate delivery result.
     Triggered by poll() or flush()."""
     if err is not None:
-        print(f"Message delivery failed: {err}")
+        print(f"Message delivery failed: {err}")  # noqa: T201
     else:
-        print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
+        print(f"Message delivered to {msg.topic()} [{msg.partition()}]")  # noqa: T201
 
 
 def sanitize_name(name):
@@ -59,10 +61,12 @@ def sanitize_name(name):
 
 def generate_avro_schema(df: pd.DataFrame, topic: str) -> str:
     """Generate an Avro schema from a pandas DataFrame"""
-    fields: List[Dict[str, str]] = []
+    fields: list[dict[str, str]] = []
     for column in df.columns:
-        fields.append({"name": sanitize_name(column), "type": "string"})  # Assuming all columns are of type string
-    schema_dict: Dict[str, any] = {
+        fields.append(  # noqa: PERF401
+            {"name": sanitize_name(column), "type": "string"}
+        )  # Assuming all columns are of type string
+    schema_dict: dict[str, any] = {
         "namespace": "example.avro",
         "type": "record",
         "name": sanitize_name(topic),
@@ -82,7 +86,7 @@ def send_csv_to_kafka(kafka: Kafka, schema_registry: SchemaRegistry, file_path: 
     df = df.astype(str)
 
     # Get the file name without extension to use as the topic name
-    topic = os.path.splitext(os.path.basename(file_path))[0]
+    topic = os.path.splitext(os.path.basename(file_path))[0]  # noqa: PTH119, PTH122
 
     # Generate and register the Avro schema
     schema = generate_avro_schema(df, topic)
@@ -104,7 +108,7 @@ def send_csv_to_kafka(kafka: Kafka, schema_registry: SchemaRegistry, file_path: 
                 callback=delivery_report,
             )
         except Exception as e:
-            print(f"Message serialization failed: {e}")
+            print(f"Message serialization failed: {e}")  # noqa: T201
             break
 
     # Wait for any outstanding messages to be delivered and delivery reports to be received
@@ -115,9 +119,9 @@ def main(kafka_broker: str, schema_registry_url: str, csv_directory: str):
     # Iterate over all files in the directory
     kafka = Kafka(kafka_broker)
     schema_registry = SchemaRegistry(schema_registry_url)
-    for file_name in os.listdir(csv_directory):
+    for file_name in os.listdir(csv_directory):  # noqa: PTH208
         if file_name.endswith(".csv"):
-            file_path = os.path.join(csv_directory, file_name)
+            file_path = os.path.join(csv_directory, file_name)  # noqa: PTH118
             send_csv_to_kafka(kafka, schema_registry, file_path)
 
 

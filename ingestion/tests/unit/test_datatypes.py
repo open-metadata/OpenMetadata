@@ -98,5 +98,5 @@ class DataTypeTest(TestCase):
         for types in SQLTYPES:
             with self.subTest(line=types):
                 col_type = ColumnTypeParser.get_column_type(types)
-                col_type = True if col_type != "NULL" else False
+                col_type = True if col_type != "NULL" else False  # noqa: SIM210
                 self.assertTrue(col_type, msg=types)

@@ -11,11 +11,25 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Input, Row, Select, Space, Tooltip, Typography } from 'antd';
-import { get, isArray, isEmpty, isNull, isObject, startCase } from 'lodash';
+import {
+  Badge,
+  Box,
+  Input,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  get,
+  isArray,
+  isEmpty,
+  isNull,
+  isObject,
+  isString,
+  startCase,
+} from 'lodash';
 import { ReactNode } from 'react';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
@@ -28,60 +42,75 @@ type KeyValuesProps = {
   serviceCategory: string;
 };
 
-// Renders a basic input field with label and optional tooltip
+export const renderConnectionDetailLabel = (
+  label = '',
+  description?: string
+) => (
+  <Box align="center" className="tw:w-1/3 tw:shrink-0 tw:pr-2" gap={1}>
+    <Typography className="tw:min-w-0 tw:break-all" color="secondary">
+      {label}:
+    </Typography>
+    {description && (
+      <Tooltip placement="bottom" title={description}>
+        <InfoCircle className="tw:size-3.5 tw:text-fg-quaternary" />
+      </Tooltip>
+    )}
+  </Box>
+);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const getSchemaText = (
+  property: unknown,
+  key: 'description' | 'format' | 'title'
+) => {
+  if (!isRecord(property)) {
+    return undefined;
+  }
+  const value = property[key];
+
+  return typeof value === 'string' ? value : undefined;
+};
+
 const renderInputField = (
   key: string,
-  value: string,
+  value: unknown,
   description?: string,
   format?: string,
   title?: string
 ) => (
-  <Col key={key} span={12}>
-    <Row>
-      <Col className="d-flex items-center" span={8}>
-        <Space size={0}>
-          <p className="text-grey-muted m-0">{key || title}:</p>
-          {description && (
-            <Tooltip placement="bottom" title={description} trigger="hover">
-              <InfoCircleOutlined
-                className="m-x-xss"
-                style={{ color: '#C4C4C4' }}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      </Col>
-      <Col span={16}>
-        {isArray(value) ? (
-          <Select
-            allowClear={false}
-            bordered={false}
-            className="w-full border-none"
-            data-testid="input-field"
-            mode="multiple"
-            open={false}
-            removeIcon={null}
-            style={{ pointerEvents: 'none' }}
-            value={value}
-          />
-        ) : (
-          <Input
-            readOnly
-            className="w-full border-none"
-            data-testid="input-field"
-            type={format === 'password' ? 'password' : 'text'}
-            value={value}
-          />
-        )}
-      </Col>
-    </Row>
-  </Col>
+  <Box align="center" key={key}>
+    {renderConnectionDetailLabel(key || title, description)}
+    <Box className="tw:min-w-0 tw:flex-1">
+      {isArray(value) ? (
+        <Box data-testid="input-field" gap={1} wrap="wrap">
+          {/* Repeated values are valid in connection arrays, so value alone is not a unique key. */}
+          {value.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <Badge color="gray" key={`${item}-${index}`} size="sm" type="color">
+              {String(item)}
+            </Badge>
+          ))}
+        </Box>
+      ) : (
+        <Input
+          isReadOnly
+          aria-label={key || title}
+          inputDataTestId="input-field"
+          size="sm"
+          type={format === 'password' ? 'password' : 'text'}
+          value={String(value ?? '')}
+        />
+      )}
+    </Box>
+  </Box>
 );
 
 // Renders filter pattern fields
 const renderFilterPattern = (
   key: string,
-  value: { includes: string[]; excludes: string[] },
+  value: Record<string, unknown>,
   description?: string,
   title?: string
 ) => {
@@ -90,40 +119,98 @@ const renderFilterPattern = (
   }
 
   return (
-    <Col key={key} span={12}>
-      <Row>
-        <Col className="d-flex" span={8}>
-          <Space align="start" size={0}>
-            <p className="text-grey-muted m-0">{key || title}:</p>
-            {description && (
-              <Tooltip placement="bottom" title={description} trigger="hover">
-                <InfoCircleOutlined
-                  className="m-x-xss"
-                  style={{ color: '#C4C4C4' }}
-                />
-              </Tooltip>
-            )}
-          </Space>
-        </Col>
-        <Col className="filter-config" span={16}>
-          {Object.entries(value).map(([key, value]) => {
-            return isEmpty(value) ? null : (
-              <div
-                className="w-full flex flex-col"
-                key={`${key}-${JSON.stringify(value)}`}>
-                <Typography.Text className="key">{`${startCase(
-                  key
-                )}:`}</Typography.Text>
-                <Typography.Text className="value">
-                  {(value as string[]).join(', ')}
-                </Typography.Text>
-              </div>
-            );
-          })}
-        </Col>
-      </Row>
-    </Col>
+    <Box align="start" key={key}>
+      {renderConnectionDetailLabel(key || title, description)}
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
+        {Object.entries(value).map(([patternKey, patternValue]) =>
+          isEmpty(patternValue) ? null : (
+            <Box
+              direction="col"
+              key={`${patternKey}-${JSON.stringify(patternValue)}`}>
+              <Typography color="secondary">{`${startCase(
+                patternKey
+              )}:`}</Typography>
+              <Typography weight="semibold">
+                {Array.isArray(patternValue)
+                  ? patternValue.join(', ')
+                  : String(patternValue)}
+              </Typography>
+            </Box>
+          )
+        )}
+      </Box>
+    </Box>
   );
+};
+
+const MAX_SCHEMA_RESOLUTION_DEPTH = 10;
+
+// Follows a local `#/definitions/...` pointer, as deep as the schema chains them.
+const resolveRef = (
+  node: Record<string, unknown>,
+  schema: Record<string, unknown>
+): Record<string, unknown> => {
+  let current = node;
+  for (let depth = 0; depth < MAX_SCHEMA_RESOLUTION_DEPTH; depth++) {
+    const ref = current?.$ref;
+    if (!isString(ref) || !ref.startsWith('#/')) {
+      return current;
+    }
+    const resolved = get(schema, ref.slice(2).split('/'));
+    if (!isRecord(resolved)) {
+      return current;
+    }
+    current = resolved;
+  }
+
+  return current;
+};
+
+/**
+ * Resolves the `properties` of a nested config, walking `$ref` and `oneOf`/`anyOf`.
+ *
+ * Many connectors keep their credentials inside a `oneOf` branch -- SFTP `authType`, every
+ * `sslConfig`, the Alation/Databricks/OpenSearch auth types. Reading `schemaProperty.properties`
+ * alone yields `{}` for those, which drops the `format: password` marker and renders the secret
+ * as a readable text input. Branches are merged so a secret declared in any branch stays masked,
+ * with the branch matching the stored value last so it wins on the fields it shares.
+ */
+export const getSchemaProperties = (
+  schemaProperty: unknown,
+  value: unknown,
+  schema: Record<string, unknown>,
+  depth = 0
+): Record<string, unknown> => {
+  if (!isRecord(schemaProperty) || depth >= MAX_SCHEMA_RESOLUTION_DEPTH) {
+    return {};
+  }
+
+  const node = resolveRef(schemaProperty, schema);
+  if (isRecord(node.properties)) {
+    return node.properties;
+  }
+
+  const branches = node.oneOf ?? node.anyOf;
+  if (!isArray(branches)) {
+    return {};
+  }
+
+  const valueKeys = isObject(value) ? Object.keys(value) : [];
+  let merged: Record<string, unknown> = {};
+  let bestMatch: Record<string, unknown> = {};
+  let bestScore = 0;
+
+  branches.forEach((branch) => {
+    const properties = getSchemaProperties(branch, value, schema, depth + 1);
+    merged = { ...properties, ...merged };
+    const score = valueKeys.filter((key) => key in properties).length;
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = properties;
+    }
+  });
+
+  return { ...merged, ...bestMatch };
 };
 
 export const getKeyValues = ({
@@ -141,10 +228,13 @@ export const getKeyValues = ({
         return null;
       }
 
-      // Handle non-object and array values
-      if (!isObject(value) || isArray(value)) {
-        const { description, format, title } = schemaPropertyObject[key] ?? {};
+      const property = schemaPropertyObject[key];
+      const description = getSchemaText(property, 'description');
+      const format = getSchemaText(property, 'format');
+      const title = getSchemaText(property, 'title');
 
+      // Handle non-object and array values
+      if (!isRecord(value)) {
         return renderInputField(key, value, description, format, title);
       }
 
@@ -160,59 +250,68 @@ export const getKeyValues = ({
           key as ServiceConnectionFilterPatternFields
         )
       ) {
-        const { description, title } = schemaPropertyObject[key] ?? {};
-
         return renderFilterPattern(key, value, description, title);
       }
 
-      // Handle special service configurations
-      const specialConfig = handleSpecialServiceConfig(
+      // Handle special, database, and default object configurations
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutually recursive with getKeyValues
+      return getNestedConfigValue({
         serviceType,
         key,
         value,
         schemaPropertyObject,
         schema,
-        serviceCategory
-      );
-      if (specialConfig !== null) {
-        return specialConfig;
-      }
-
-      // Handle database config source
-      if (
-        serviceType === EntityType.DATABASE_SERVICE &&
-        key === 'configSource'
-      ) {
-        const configSource = handleDatabaseConfigSource(
-          key,
-          value,
-          schemaPropertyObject,
-          schema,
-          serviceCategory
-        );
-        if (configSource !== null) {
-          return configSource;
-        }
-      }
-
-      // Default object handling
-      return getKeyValues({
-        obj: value,
-        schemaPropertyObject: schemaPropertyObject[key]?.properties ?? {},
-        schema,
         serviceCategory,
       });
     });
   } catch {
-    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
+};
+
+// Resolves a `oneOf` sub-schema by title and renders its key/values
+const renderOneOfSchema = ({
+  schemaProperty,
+  title,
+  value,
+  schema,
+  serviceCategory,
+}: {
+  schemaProperty: unknown;
+  title: string;
+  value: Record<string, unknown>;
+  schema: Record<string, unknown>;
+  serviceCategory: string;
+}): ReactNode => {
+  if (!isRecord(schemaProperty) || !Array.isArray(schemaProperty.oneOf)) {
+    return null;
+  }
+
+  const branch = schemaProperty.oneOf.find(
+    (item) => isRecord(item) && item.title === title
+  );
+  const subSchema = isRecord(branch) ? branch.properties : undefined;
+
+  return (
+    isRecord(subSchema) &&
+    getKeyValues({
+      obj: value,
+      schemaPropertyObject: subSchema,
+      schema,
+      serviceCategory,
+    })
+  );
 };
 
 // Handles special service type configurations
 const handleSpecialServiceConfig = (
   serviceType: string,
   key: string,
-  value: unknown,
+  value: Record<string, unknown>,
   schemaPropertyObject: Record<string, unknown>,
   schema: Record<string, unknown>,
   serviceCategory: string
@@ -221,30 +320,13 @@ const handleSpecialServiceConfig = (
   if (
     serviceType === EntityType.PIPELINE_SERVICE &&
     key === 'connection' &&
-    value.type?.toLowerCase() === 'airflow'
+    typeof value.type === 'string' &&
+    value.type.toLowerCase() === 'airflow'
   ) {
-    const airflowSchema = schemaPropertyObject[key].oneOf.find(
-      (item: { title: string }) => item.title === `${value.type}Connection`
-    )?.properties;
-
-    return (
-      airflowSchema &&
-      getKeyValues({
-        obj: value,
-        schemaPropertyObject: airflowSchema,
-        schema,
-        serviceCategory,
-      })
-    );
-  }
-
-  // Database service - GCP credentials
-  if (serviceType === EntityType.DATABASE_SERVICE && key === 'credentials') {
-    const gcpSchema = schemaPropertyObject[key].definitions.gcpCredentialsPath;
-
-    return getKeyValues({
-      obj: value,
-      schemaPropertyObject: gcpSchema,
+    return renderOneOfSchema({
+      schemaProperty: schemaPropertyObject[key],
+      title: `${value.type}Connection`,
+      value,
       schema,
       serviceCategory,
     });
@@ -252,19 +334,13 @@ const handleSpecialServiceConfig = (
 
   // Metadata service - Security config
   if (serviceType === EntityType.METADATA_SERVICE && key === 'securityConfig') {
-    const jwtSchema = schemaPropertyObject[key].oneOf.find(
-      (item: { title: string }) => item.title === JWT_CONFIG
-    )?.properties;
-
-    return (
-      jwtSchema &&
-      getKeyValues({
-        obj: value,
-        schemaPropertyObject: jwtSchema,
-        schema,
-        serviceCategory,
-      })
-    );
+    return renderOneOfSchema({
+      schemaProperty: schemaPropertyObject[key],
+      title: JWT_CONFIG,
+      value,
+      schema,
+      serviceCategory,
+    });
   }
 
   // Dashboard service - GitHub credentials
@@ -272,19 +348,13 @@ const handleSpecialServiceConfig = (
     serviceType === EntityType.DASHBOARD_SERVICE &&
     key === 'githubCredentials'
   ) {
-    const githubSchema = schemaPropertyObject[key].oneOf.find(
-      (item: { title: string }) => item.title === 'GitHubCredentials'
-    )?.properties;
-
-    return (
-      githubSchema &&
-      getKeyValues({
-        obj: value,
-        schemaPropertyObject: githubSchema,
-        schema,
-        serviceCategory,
-      })
-    );
+    return renderOneOfSchema({
+      schemaProperty: schemaPropertyObject[key],
+      title: 'GitHubCredentials',
+      value,
+      schema,
+      serviceCategory,
+    });
   }
 
   return null;
@@ -293,31 +363,38 @@ const handleSpecialServiceConfig = (
 // Handles database service config source
 const handleDatabaseConfigSource = (
   key: string,
-  value: unknown,
+  value: Record<string, unknown>,
   schemaPropertyObject: Record<string, unknown>,
   schema: Record<string, unknown>,
   serviceCategory: string
 ): ReactNode | null => {
-  if (!isObject(value.securityConfig)) {
+  const securityConfig = value.securityConfig;
+  if (!isRecord(securityConfig)) {
     return null;
   }
 
-  if (value.securityConfig.gcpConfig) {
-    const gcpConfigSchema = isObject(value.securityConfig.gcpConfig)
-      ? get(
-          schema,
-          'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
-          {}
+  if (securityConfig.gcpConfig) {
+    const gcpConfigSchema = isRecord(securityConfig.gcpConfig)
+      ? getSchemaProperties(
+          get(
+            schema,
+            'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues'
+          ),
+          securityConfig.gcpConfig,
+          schema
         )
-      : get(
-          schema,
-          'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath',
-          {}
+      : getSchemaProperties(
+          get(
+            schema,
+            'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath'
+          ),
+          value,
+          schema
         );
 
     return getKeyValues({
-      obj: isObject(value.securityConfig.gcpConfig)
-        ? value.securityConfig.gcpConfig
+      obj: isRecord(securityConfig.gcpConfig)
+        ? securityConfig.gcpConfig
         : value,
       schemaPropertyObject: gcpConfigSchema,
       schema,
@@ -325,38 +402,94 @@ const handleDatabaseConfigSource = (
     });
   }
 
-  const internalRef = '$ref';
-  const oneOf = 'oneOf';
+  const schemaProperty = schemaPropertyObject[key];
+  if (!isRecord(schemaProperty)) {
+    return null;
+  }
 
   if (
-    Object.keys(schemaPropertyObject[key]).includes(oneOf) &&
-    (value.securityConfig?.awsAccessKeyId ||
-      value.securityConfig?.awsSecretAccessKey)
+    'oneOf' in schemaProperty &&
+    (securityConfig.awsAccessKeyId || securityConfig.awsSecretAccessKey)
   ) {
     return getKeyValues({
-      obj: value.securityConfig,
-      schemaPropertyObject: get(
-        schema,
-        'definitions.S3Config.properties.securityConfig.properties',
-        {}
+      obj: securityConfig,
+      schemaPropertyObject: getSchemaProperties(
+        get(schema, 'definitions.S3Config.properties.securityConfig'),
+        securityConfig,
+        schema
       ),
       schema,
       serviceCategory,
     });
   }
 
-  if (Object.keys(schemaPropertyObject[key]).includes(internalRef)) {
-    const definition = schemaPropertyObject[key][internalRef]
-      .split('/')
-      .splice(2);
+  if (typeof schemaProperty.$ref === 'string') {
+    const definition = schemaProperty.$ref.split('/').splice(2);
 
     return getKeyValues({
       obj: value,
-      schemaPropertyObject: schema.definitions[definition],
+      schemaPropertyObject: getSchemaProperties(
+        get(schema, ['definitions', String(definition)]),
+        value,
+        schema
+      ),
       schema,
       serviceCategory,
     });
   }
 
   return null;
+};
+
+// Resolves special, database, or default object configurations for a key
+const getNestedConfigValue = ({
+  serviceType,
+  key,
+  value,
+  schemaPropertyObject,
+  schema,
+  serviceCategory,
+}: {
+  serviceType: string;
+  key: string;
+  value: Record<string, unknown>;
+  schemaPropertyObject: Record<string, unknown>;
+  schema: Record<string, unknown>;
+  serviceCategory: string;
+}): ReactNode => {
+  const specialConfig = handleSpecialServiceConfig(
+    serviceType,
+    key,
+    value,
+    schemaPropertyObject,
+    schema,
+    serviceCategory
+  );
+  if (specialConfig !== null) {
+    return specialConfig;
+  }
+
+  if (serviceType === EntityType.DATABASE_SERVICE && key === 'configSource') {
+    const configSource = handleDatabaseConfigSource(
+      key,
+      value,
+      schemaPropertyObject,
+      schema,
+      serviceCategory
+    );
+    if (configSource !== null) {
+      return configSource;
+    }
+  }
+
+  return getKeyValues({
+    obj: value,
+    schemaPropertyObject: getSchemaProperties(
+      schemaPropertyObject[key],
+      value,
+      schema
+    ),
+    schema,
+    serviceCategory,
+  });
 };

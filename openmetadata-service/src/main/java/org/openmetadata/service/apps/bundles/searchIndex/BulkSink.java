@@ -107,21 +107,6 @@ public interface BulkSink {
   }
 
   /**
-   * Wait for vector embedding tasks to complete and return detailed result including timing.
-   *
-   * @param timeoutSeconds Maximum time to wait
-   * @return VectorCompletionResult with completion status, pending count, and wait time
-   */
-  default VectorCompletionResult awaitVectorCompletionWithDetails(int timeoutSeconds) {
-    long start = System.currentTimeMillis();
-    boolean ok = awaitVectorCompletion(timeoutSeconds);
-    long waited = System.currentTimeMillis() - start;
-    return ok
-        ? VectorCompletionResult.success(waited)
-        : VectorCompletionResult.timeout(getPendingVectorTaskCount(), waited);
-  }
-
-  /**
    * Returns the column indexing statistics. Columns are indexed as a side effect of table
    * processing, so their stats are tracked separately.
    *
@@ -133,4 +118,17 @@ public interface BulkSink {
 
   /** Key for passing StageStatsTracker through context data to the sink. */
   String STATS_TRACKER_CONTEXT_KEY = "stageStatsTracker";
+
+  String SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY = "scriptedPartialUpdates";
+
+  String RELATIONSHIP_REVISIONS_CONTEXT_KEY = "relationshipRevisions";
+
+  /**
+   * Key for passing a {@code Map<UUID, DocBuildContext>} through context data. Producers (the
+   * reindex worker / retry worker / bulk update path) prepare per-entity doc-build context —
+   * pre-fetched lineage today, additional batch-fetched fields in the future — and stuff it under
+   * this key. Sinks just look the per-entity entry up and hand it to {@code buildSearchIndexDoc(ctx)};
+   * they remain transport-only and stay ignorant of what the context carries.
+   */
+  String DOC_BUILD_CONTEXT_KEY = "docBuildContextByEntityId";
 }

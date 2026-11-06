@@ -5,7 +5,7 @@ In this section, we provide guides and references to use the Hive connector. You
 To extract metadata, the user used in the connection needs to be able to perform `SELECT`, `SHOW`, and `DESCRIBE` operations in the database/schema where the metadata needs to be extracted from.
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/profiler-workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/quality" target="_blank">here</a>.
 
 You can find further information on the Hive connector in the <a href="https://docs.open-metadata.org/connectors/database/hive" target="_blank">docs</a>.
 
@@ -33,7 +33,7 @@ This parameter specifies the host and port of the Hive instance. This should be 
 
 If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:10000` as the value.
 $$
-$$section 
+$$section
 ### Authentication Mode $(id="auth")
 The auth parameter specifies the authentication method to use when connecting to the Hive server. Possible values are `LDAP`, `NONE`, `CUSTOM`, or `KERBEROS`. If you are using Kerberos authentication, you should set auth to `KERBEROS`. If you are using custom authentication, you should set auth to `CUSTOM` and provide additional options in the `authOptions` parameter.
 $$
@@ -50,6 +50,7 @@ $$
 
 $$section
 ### Database Name $(id="databaseName")
+
 In OpenMetadata, the Database Service hierarchy works as follows:
 ```
 Database Service > Database > Schema > Table
@@ -81,15 +82,16 @@ There are 2 types of auth configs:
 - IAM based Auth.
 - Azure Based Auth.
 
-User can authenticate the Postgres Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Baed Authentication` to connecto to Azure releated services.
+User can authenticate the Postgres Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Based Authentication` to connect to Azure related services.
 $$
 
 ## Basic Auth
 
+$$section
 ### Password $(id="password")
 
 Password to connect to Postgres/MySQL.
-
+$$
 
 ## IAM Auth Config
 
@@ -266,35 +268,38 @@ If ticked, the workflow will be able to ingest all database in the cluster. If n
 
 ## Hive Mysql Metastore Connection Details
 
-
+$$section
 ### Scheme $(id="scheme")
 SQLAlchemy driver scheme options. If you are unsure about this setting, you can use the default value.
+$$
 
-
-
+$$section
 ### Username $(id="username")
 Username to connect to MySQL. This user should have access to the `INFORMATION_SCHEMA` to extract metadata. Other workflows may require different permissions -- refer to the section above for more information.
+$$
 
-
+$$section
 ### Host Port $(id="hostPort")
 
 This parameter specifies the host and port of the MySQL instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:3306`.
 
 If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:3306` as the value.
+$$
 
-
-
+$$section
 ### Database Name $(id="databaseName")
+
 In OpenMetadata, the Database Service hierarchy works as follows:
 ```
 Database Service > Database > Schema > Table
 ```
 In the case of MySQL, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+$$
 
-
-
+$$section
 ### Database Schema $(id="databaseSchema")
 This is an optional parameter. When set, the value will be used to restrict the metadata reading to a single database (corresponding to the value passed in this field). When left blank, OpenMetadata will scan all the databases.
+$$
 
 
 $$section

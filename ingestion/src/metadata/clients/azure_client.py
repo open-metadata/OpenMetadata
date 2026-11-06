@@ -47,12 +47,12 @@ class AzureClient:
                     client_id=self.credentials.clientId,
                     client_secret=self.credentials.clientSecret.get_secret_value(),
                 )
-            else:
+            else:  # noqa: RET505
                 logger.info("Using Default Azure Credentials")
                 return DefaultAzureCredential()
         except Exception as e:
             logger.error(f"Error creating Azure Client: {e}")
-            raise e
+            raise e  # noqa: TRY201
 
     def create_blob_client(self):
         from azure.storage.blob import BlobServiceClient
@@ -64,10 +64,10 @@ class AzureClient:
                     account_url=f"https://{self.credentials.accountName}.blob.core.windows.net/",
                     credential=self.create_client(),
                 )
-            raise ValueError("Account Name is required to create Blob Service Client")
+            raise ValueError("Account Name is required to create Blob Service Client")  # noqa: TRY301
         except Exception as e:
             logger.error(f"Error creating Blob Service Client: {e}")
-            raise e
+            raise e  # noqa: TRY201
 
     def create_secret_client(self):
         from azure.keyvault.secrets import SecretClient
@@ -79,7 +79,7 @@ class AzureClient:
                     vault_url=f"https://{self.credentials.vaultName}.vault.azure.net/",
                     credential=self.create_client(),
                 )
-            raise ValueError("Vault Name is required to create a Secret Client")
+            raise ValueError("Vault Name is required to create a Secret Client")  # noqa: TRY301
         except Exception as e:
             logger.error(f"Error creating Secret Client: {e}")
-            raise e
+            raise e  # noqa: TRY201

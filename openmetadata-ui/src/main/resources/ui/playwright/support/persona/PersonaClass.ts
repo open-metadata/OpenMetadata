@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  requireEntityIdentity,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
-type ResponseDataType = {
+type PersonaData = {
   name: string;
   displayName: string;
   description: string;
@@ -22,12 +29,17 @@ type ResponseDataType = {
   users?: string[];
 };
 
+type ResponseDataType = PersonaData & {
+  id: string;
+  fullyQualifiedName: string;
+};
+
 export class PersonaClass {
   id: string;
-  data: ResponseDataType;
+  data: PersonaData;
   responseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(data?: ResponseDataType) {
+  constructor(data?: PersonaData) {
     this.id = uuid();
     this.data = data ?? {
       name: `PW%Persona-${this.id}`,
@@ -42,17 +54,23 @@ export class PersonaClass {
   }
 
   async create(apiContext: APIRequestContext, users?: string[]) {
-    const response = await apiContext.post('/api/v1/personas', {
-      data: { ...this.data, users },
-    });
-    const data = await response.json();
+    const data = requireEntityIdentity(
+      await createOrFetch<PersonaData>(apiContext, {
+        label: 'PersonaClass.create',
+        createPath: '/api/v1/personas',
+        fqnSegments: [this.data.name],
+        data: { ...this.data, users },
+      }),
+      'PersonaClass.create'
+    );
     this.responseData = data;
 
     return data;
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/personas/${this.responseData.id}?hardDelete=true&recursive=false`
     );
 
@@ -60,18 +78,20 @@ export class PersonaClass {
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await apiContext.patch(
-      `/api/v1/personas/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/personas/${this.responseData.id}`, {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    this.responseData = await response.json();
+    this.responseData = requireEntityIdentity(
+      await okJson<PersonaData>(response, 'PersonaClass.patch'),
+      'PersonaClass.patch'
+    );
 
-    return await response.json();
+    return this.responseData;
   }
 }

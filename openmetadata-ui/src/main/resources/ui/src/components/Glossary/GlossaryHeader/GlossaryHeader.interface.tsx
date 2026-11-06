@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { VotingDataProps } from '../../Entity/Voting/voting.interface';
+import { VotingDataProps } from '../../../interface/entity/vote.interface';
 
 export interface GlossaryHeaderProps {
   supportAddOwner?: boolean;
@@ -19,4 +19,6 @@ export interface GlossaryHeaderProps {
   onAssetAdd?: () => void;
   updateVote?: (data: VotingDataProps) => Promise<void>;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
+  /** Reloads the term once its proposal is decided, since the approval workflow moves its stage. */
+  onProposalDecided?: () => void;
 }

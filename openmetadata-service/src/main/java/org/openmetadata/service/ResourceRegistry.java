@@ -26,6 +26,8 @@ public class ResourceRegistry {
       new EnumMap<>(MetadataOperation.class);
   protected static final Map<String, Map<String, MetadataOperation>>
       ENTITY_FIELD_TO_VIEW_OPERATION_MAP = new ConcurrentHashMap<>();
+  protected static final Map<String, Map<String, MetadataOperation>>
+      ENTITY_FIELD_TO_EDIT_OPERATION_MAP = new ConcurrentHashMap<>();
 
   // Operations common to all the entities
   protected static final List<MetadataOperation> COMMON_OPERATIONS =
@@ -39,7 +41,9 @@ public class ResourceRegistry {
               MetadataOperation.EDIT_DESCRIPTION,
               MetadataOperation.EDIT_DISPLAY_NAME,
               MetadataOperation.EDIT_GLOSSARY_TERMS,
-              MetadataOperation.EDIT_TIER));
+              MetadataOperation.EDIT_TIER,
+              MetadataOperation.CREATE_TASK,
+              MetadataOperation.EDIT_TASK));
 
   static {
     mapFieldOperation(MetadataOperation.EDIT_TAGS, Entity.FIELD_TAGS);
@@ -55,6 +59,7 @@ public class ResourceRegistry {
     mapFieldOperation(MetadataOperation.EDIT_DESCRIPTION, Entity.FIELD_DESCRIPTION);
     mapFieldOperation(MetadataOperation.EDIT_DISPLAY_NAME, Entity.FIELD_DISPLAY_NAME);
     mapFieldOperation(MetadataOperation.EDIT_CERTIFICATION, Entity.FIELD_CERTIFICATION);
+    mapFieldOperation(MetadataOperation.EDIT_DOMAINS, Entity.FIELD_DOMAINS);
 
     // Set up "all" resource descriptor that includes operations for all entities
     List<MetadataOperation> allOperations = Arrays.asList(MetadataOperation.values());
@@ -107,6 +112,9 @@ public class ResourceRegistry {
     if (entityFields.contains(Entity.FIELD_CERTIFICATION)) {
       operations.add(MetadataOperation.EDIT_CERTIFICATION);
     }
+    if (entityFields.contains(Entity.FIELD_DOMAINS)) {
+      operations.add(MetadataOperation.EDIT_DOMAINS);
+    }
     return new ArrayList<>(operations);
   }
 
@@ -143,6 +151,37 @@ public class ResourceRegistry {
 
   public static boolean hasEditOperation(String field) {
     return FIELD_TO_EDIT_OPERATION_MAP.containsKey(field);
+  }
+
+  /**
+   * Look up an edit operation scoped to a specific entity type, falling back to the global field
+   * map when the entity does not declare a per-field override. Lets resources reserve specific
+   * fields for narrower operations (e.g. {@code task.assignees} → {@code ReassignTask}) without
+   * affecting other resources that share the same field name.
+   */
+  public static MetadataOperation getEntityEditOperation(String entityType, String field) {
+    if (entityType != null) {
+      Map<String, MetadataOperation> perEntity = ENTITY_FIELD_TO_EDIT_OPERATION_MAP.get(entityType);
+      if (perEntity != null) {
+        MetadataOperation override = perEntity.get(field);
+        if (override != null) {
+          return override;
+        }
+      }
+    }
+    return FIELD_TO_EDIT_OPERATION_MAP.get(field);
+  }
+
+  public static boolean hasEntityEditOperation(String entityType, String field) {
+    return getEntityEditOperation(entityType, field) != null;
+  }
+
+  /** Register a per-entity edit operation override for a JSON Patch field path component. */
+  public static void mapEntityFieldOperation(
+      String entityType, String field, MetadataOperation operation) {
+    ENTITY_FIELD_TO_EDIT_OPERATION_MAP
+        .computeIfAbsent(entityType, k -> new ConcurrentHashMap<>())
+        .put(field, operation);
   }
 
   /** Given an edit operation get the corresponding entity field */

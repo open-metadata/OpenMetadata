@@ -45,3 +45,27 @@ export const MOCK_TAG_OPTIONS = [
     },
   },
 ];
+
+// fetchGlossaryList maps each hit to { label: fqn, value: fqn, data: term }.
+export const MOCK_GLOSSARY_OPTIONS = [
+  {
+    label: 'Business.Revenue',
+    value: 'Business.Revenue',
+    data: {
+      fullyQualifiedName: 'Business.Revenue',
+      name: 'Revenue',
+      displayName: 'Revenue',
+      description: 'Revenue glossary term',
+    },
+  },
+  {
+    label: 'Business.Customer',
+    value: 'Business.Customer',
+    data: {
+      fullyQualifiedName: 'Business.Customer',
+      name: 'Customer',
+      displayName: 'Customer',
+      description: 'Customer glossary term',
+    },
+  },
+];

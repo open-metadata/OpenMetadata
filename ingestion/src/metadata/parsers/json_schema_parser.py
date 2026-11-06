@@ -16,7 +16,6 @@ Utils module to parse the jsonschema
 import json
 import traceback
 from enum import Enum
-from typing import List, Optional, Tuple, Type
 
 from pydantic import BaseModel
 
@@ -41,7 +40,7 @@ class JsonSchemaDataTypes(Enum):
     UNKNOWN = "unknown"
 
 
-def parse_json_schema(schema_text: str, cls: Type[BaseModel] = FieldModel) -> Optional[List[FieldModel]]:
+def parse_json_schema(schema_text: str, cls: type[BaseModel] = FieldModel) -> list[FieldModel] | None:
     """
     Method to parse the jsonschema
     """
@@ -55,14 +54,14 @@ def parse_json_schema(schema_text: str, cls: Type[BaseModel] = FieldModel) -> Op
                 children=get_json_schema_fields(json_schema_data.get("properties", {}), cls=cls),
             )
         ]
-        return field_models
+        return field_models  # noqa: RET504, TRY300
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
         logger.warning(f"Unable to parse the jsonschema: {exc}")
     return None
 
 
-def get_child_models(key, value, field_models, cls: Type[BaseModel] = FieldModel):
+def get_child_models(key, value, field_models, cls: type[BaseModel] = FieldModel):
     """
     Method to parse the child objects in the json schema.
     Handles oneOf union types (e.g., Debezium CDC nullable fields).
@@ -121,8 +120,9 @@ def get_child_models(key, value, field_models, cls: Type[BaseModel] = FieldModel
 
 
 def get_json_schema_array_fields(
-    array_items, cls: Type[BaseModel] = FieldModel
-) -> Optional[Tuple[str, List[FieldModel]]]:
+    array_items,
+    cls: type[BaseModel] = FieldModel,
+) -> tuple[str, list[FieldModel]] | None:
     """
     Recursively convert the parsed array schema into required models
     """
@@ -137,7 +137,7 @@ def get_json_schema_array_fields(
     )
 
 
-def get_json_schema_fields(properties, cls: Type[BaseModel] = FieldModel) -> Optional[List[FieldModel]]:
+def get_json_schema_fields(properties, cls: type[BaseModel] = FieldModel) -> list[FieldModel] | None:
     """
     Recursively convert the parsed schema into required models
     """

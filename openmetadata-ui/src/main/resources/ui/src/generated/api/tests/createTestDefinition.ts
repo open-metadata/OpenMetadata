@@ -14,7 +14,12 @@
  * Schema corresponding to a Test Definition
  */
 export interface CreateTestDefinition {
-    dataQualityDimension?: DataQualityDimensions;
+    /**
+     * Name of the data quality dimension test cases of this test definition are classified with
+     * by default. Any dimension registered in Settings > Preferences > Data Quality can be
+     * used, system and custom alike.
+     */
+    dataQualityDimension?: string;
     /**
      * Description of the testcase.
      */
@@ -39,11 +44,18 @@ export interface CreateTestDefinition {
     parameterDefinition?: TestCaseParameterDefinition[];
     provider?:            ProviderType;
     /**
-     * SQL expression template for custom SQL-based test definitions. Supports substitution
-     * variables: {table} and {column} for runtime entity references, and {{paramName}} for
-     * user-defined parameters.
+     * SQL expression template for custom SQL-based test definitions. The template is rendered
+     * with Jinja2, so every substitution variable must use double curly braces: {{ table_name
+     * }} for the runtime table reference, {{ column_name }} for the runtime column reference
+     * (available only for column-level test definitions, i.e. entityType COLUMN), and {{
+     * paramName }} for user-defined parameters. Single-brace placeholders are not substituted
+     * and will produce invalid SQL.
      */
-    sqlExpression?:      string;
+    sqlExpression?: string;
+    /**
+     * List of column data types that this test definition supports. When empty, it implies all
+     * data types are supported.
+     */
     supportedDataTypes?: DataType[];
     /**
      * List of services that this test definition supports. When empty, it implies all services
@@ -56,20 +68,6 @@ export interface CreateTestDefinition {
      * SQL-based tests, defaults to 'ruleLibrarySqlExpressionValidator'.
      */
     validatorClass?: string;
-}
-
-/**
- * This enum defines the dimension a test case belongs to.
- */
-export enum DataQualityDimensions {
-    Accuracy = "Accuracy",
-    Completeness = "Completeness",
-    Consistency = "Consistency",
-    Integrity = "Integrity",
-    NoDimension = "NoDimension",
-    SQL = "SQL",
-    Uniqueness = "Uniqueness",
-    Validity = "Validity",
 }
 
 /**

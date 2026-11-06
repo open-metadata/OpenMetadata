@@ -14,7 +14,8 @@ Mixin class containing Pipeline specific methods
 To be used by OpenMetadata class
 """
 
-from typing import List, Optional
+from collections.abc import Callable
+from typing import Any, cast
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -30,6 +31,10 @@ from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
+# The largest page of statuses the server returns
+# (ADR:2026-11-05-pipeline-entity-status-reads-hold-at-most-one-page).
+MAX_PIPELINE_STATUS_PAGE_SIZE = 1000
+
 
 class OMetaPipelineMixin:
     """
@@ -39,8 +44,9 @@ class OMetaPipelineMixin:
     """
 
     client: REST
+    get_suffix: Callable[..., str]
 
-    def add_bulk_pipeline_status(self, fqn: str, statuses: List[PipelineStatus]) -> Pipeline:
+    def add_bulk_pipeline_status(self, fqn: str, statuses: list[PipelineStatus]) -> Pipeline:
         """
         Send multiple PipelineStatus records to the Pipeline Entity
         in a single bulk request
@@ -84,10 +90,14 @@ class OMetaPipelineMixin:
         fqn: str,
         start_ts: int,
         end_ts: int,
-        limit: Optional[int] = None,
-    ) -> List[PipelineStatus]:
+        limit: int | None = None,
+    ) -> list[PipelineStatus]:
         """
-        List PipelineStatus records for a Pipeline within a time range.
+        List PipelineStatus records for a Pipeline within a time range, newest first.
+
+        Return at most `limit` records, or every record in the range without one.
+        The server returns at most one page per request, so this follows the
+        paging cursor until it has them.
         """
         try:
             parts = fqn_utils.split(fqn)
@@ -95,17 +105,25 @@ class OMetaPipelineMixin:
         except Exception:
             normalized_fqn = fqn
 
-        params = f"startTs={start_ts}&endTs={end_ts}"
-        if limit is not None:
-            params += f"&limit={limit}"
-
-        resp = self.client.get(
-            f"{self.get_suffix(Pipeline)}/{quote(normalized_fqn)}/status?{params}",
-        )
-
-        if resp and "data" in resp:
-            return [PipelineStatus(**status) for status in resp["data"]]
-        return []
+        statuses: list[PipelineStatus] = []
+        after: str | None = None
+        while True:
+            page_size = MAX_PIPELINE_STATUS_PAGE_SIZE
+            if limit is not None:
+                page_size = min(limit - len(statuses), MAX_PIPELINE_STATUS_PAGE_SIZE)
+            params = f"startTs={start_ts}&endTs={end_ts}&limit={page_size}"
+            if after:
+                params += f"&after={after}"
+            resp = cast(
+                "dict[str, Any]",
+                self.client.get(f"{self.get_suffix(Pipeline)}/{quote(normalized_fqn)}/status?{params}") or {},
+            )
+            page = [PipelineStatus(**status) for status in resp.get("data", [])]
+            statuses.extend(page)
+            after = (resp.get("paging") or {}).get("after")
+            reached_limit = limit is not None and len(statuses) >= limit
+            if reached_limit or not after or len(page) < page_size:
+                return statuses
 
     def add_task_to_pipeline(self, pipeline: Pipeline, *tasks: Task) -> Pipeline:
         """
@@ -150,7 +168,7 @@ class OMetaPipelineMixin:
 
         return self.create_or_update(updated_pipeline)
 
-    def clean_pipeline_tasks(self, pipeline: Pipeline, task_ids: List[str]) -> Pipeline:
+    def clean_pipeline_tasks(self, pipeline: Pipeline, task_ids: list[str]) -> Pipeline:
         """
         Given a list of tasks, remove from the
         Pipeline Entity those that are not received

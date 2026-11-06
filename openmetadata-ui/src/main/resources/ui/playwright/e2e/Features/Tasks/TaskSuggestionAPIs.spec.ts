@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 
@@ -77,8 +77,7 @@ test.describe('Task Suggestion APIs', () => {
       // Create a Suggestion task with SuggestionPayload
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'Suggestion',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -125,8 +124,7 @@ test.describe('Task Suggestion APIs', () => {
       // Create a regular DescriptionUpdate task (not a Suggestion)
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -156,14 +154,13 @@ test.describe('Task Suggestion APIs', () => {
       // Create multiple suggestion tasks
       const task1Response = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'Suggestion',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
             suggestionType: 'Description',
-            fieldPath: `columns::${table.entityResponseData?.columns?.[0]?.name}::description`,
+            fieldPath: `columns.${table.entityResponseData?.columns?.[0]?.name}.description`,
             suggestedValue: 'Column 1 description',
             source: 'Agent',
             confidence: 90,
@@ -174,14 +171,13 @@ test.describe('Task Suggestion APIs', () => {
 
       const task2Response = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'Suggestion',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
             suggestionType: 'Description',
-            fieldPath: `columns::${table.entityResponseData?.columns?.[1]?.name}::description`,
+            fieldPath: `columns.${table.entityResponseData?.columns?.[1]?.name}.description`,
             suggestedValue: 'Column 2 description',
             source: 'Agent',
             confidence: 88,
@@ -230,8 +226,7 @@ test.describe('Task Suggestion APIs', () => {
       // Create multiple suggestion tasks
       const task1Response = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'Suggestion',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -248,8 +243,7 @@ test.describe('Task Suggestion APIs', () => {
 
       const task2Response = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'Suggestion',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -299,8 +293,7 @@ test.describe('Task Suggestion APIs', () => {
       // Create tasks
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -353,8 +346,7 @@ test.describe('Task Suggestion APIs', () => {
       // Create tasks
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -395,8 +387,7 @@ test.describe('Task Suggestion APIs', () => {
       // Create one valid task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],

@@ -12,7 +12,8 @@
 MCP Service Spec
 """
 
+from metadata.ingestion.source.mcp.connection import McpConnection
 from metadata.ingestion.source.mcp.metadata import McpSource
 from metadata.utils.service_spec import BaseSpec
 
-ServiceSpec = BaseSpec(metadata_source_class=McpSource)
+ServiceSpec = BaseSpec(metadata_source_class=McpSource, connection_class=McpConnection)  # pyright: ignore[reportArgumentType]

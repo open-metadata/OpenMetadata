@@ -210,7 +210,35 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     description: 'This is Table Column custom property',
     entityApiType: 'column',
   },
+  entity_team: {
+    ...commonCustomPropertyValues,
+    name: 'team',
+    description: 'This is Team custom property',
+    entityApiType: 'teams',
+  },
+  entity_user: {
+    ...commonCustomPropertyValues,
+    name: 'user',
+    description: 'This is User custom property',
+    entityApiType: 'users',
+  },
 };
 
-export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
-  "Name must not contain '::'.";
+export const NAME_SUFFIX = ".!@#%`()_-=+{}[]|;',.?";
+
+export const CUSTOM_PROPERTY_INVALID_NAMES = {
+  STARTS_WITH_SPECIAL_CHAR: '_invalidName',
+  DISALLOWED_COLON: 'name:with:colon',
+  DISALLOWED_DOLLAR: 'name$invalid',
+  DISALLOWED_CARET: 'name^invalid',
+  DISALLOWED_QUOTE: 'name"invalid',
+  DISALLOWED_BACKSLASH: String.raw`name\invalid`,
+  DISALLOWED_LESS_THAN: 'name<<invalid',
+  DISALLOWED_GREATER_THAN: 'name>>invalid',
+  DISALLOWED_AMPERSAND: 'name&invalid',
+  DISALLOWED_ASTERISK: 'name*invalid',
+  DISALLOWED_FORWARD_SLASH: 'name/invalid',
+  DISALLOWED_TILDE: 'name~invalid',
+};
+
+export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR = String.raw`Name must start with a letter or number. Invalid characters: " * : ^ $ \ < > & ~ /`;

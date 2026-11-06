@@ -14,8 +14,8 @@
 
 .setting-card-item {
   border: 1px solid @grey-15;
-  background-color: @white;
-  border-radius: 12px;
+  background-color: var(--tw-color-bg-primary);
+  border-radius: var(--om-radius-xl);
   width: 100%;
   cursor: pointer;
   height: 100%;
@@ -24,19 +24,11 @@
     border: 1px solid @blue-20;
   }
 
-  .ant-card-body {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 20px 4px;
-  }
-
   .setting-card-icon {
     position: relative;
     flex: 0 0 auto;
 
     svg {
-      font-size: 90px;
       fill: transparent;
     }
 
@@ -46,15 +38,15 @@
       right: -15%;
 
       sup {
-        font-size: 10px;
+        font-size: var(--om-font-size-10);
         height: auto;
-        font-weight: 500;
+        font-weight: var(--om-font-weight-medium);
         background: @grey-200;
         color: @text-color-tertiary;
         box-shadow: none;
         border: none;
-        border-radius: 16px;
-        padding: 0 8px;
+        border-radius: var(--om-radius-2xl);
+        padding: 0 var(--om-space-8);
       }
     }
   }
@@ -66,11 +58,12 @@
     flex-direction: column;
     line-height: @size-mlg;
     gap: @size-xs;
-    .ant-typography {
+    .setting-card-title,
+    .setting-card-description {
       color: @grey-700;
     }
 
-    .ant-typography-ellipsis {
+    .setting-card-description {
       color: @grey-700;
       margin-bottom: 0;
     }
@@ -80,6 +73,6 @@
 .setting-card-body {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--om-space-16);
   padding: 0;
 }

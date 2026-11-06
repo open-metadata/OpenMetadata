@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { cloneDeep, isString } from 'lodash';
+import { Children, isValidElement, ReactNode } from 'react';
 
 export function escapeBackwardSlashChar<T>(formData: T): T {
   for (const key in formData) {
@@ -52,18 +54,30 @@ function formatConnectionFields<T>(formData: T, field: string): T {
   return formData;
 }
 
-function formatAdditionalProperties<T>(formData: T): T {
+// Drops map rows the user added but never filled in, recognised by RJSF's default key and
+// value. For string-valued maps RJSF seeds a new row with 'New Value'; for maps whose value
+// schema is a type-less anyOf (e.g. the ownerConfig maps in the Metadata pipeline form) RJSF
+// coerces the new row's type to object, so it defaults to {} (or [] for array-valued maps).
+// The empty-structure check must run before recursing, otherwise an empty object/array has no
+// keys to visit and the row would survive the cleanup as schema-invalid data.
+export function formatAdditionalProperties<T>(formData: T): T {
   for (const key in formData) {
-    if (typeof formData[key as keyof T] === 'object') {
-      formatAdditionalProperties(formData[key as keyof T]);
-    } else {
-      const data = formData[key as keyof T];
-      if (
-        key.startsWith('newKey') &&
-        data === ('New Value' as unknown as T[keyof T])
-      ) {
+    const data = formData[key as keyof T];
+    if (typeof data === 'object' && data !== null) {
+      const isEmptyStructure = Array.isArray(data)
+        ? data.length === 0
+        : Object.keys(data).length === 0;
+      if (key.startsWith('newKey') && isEmptyStructure) {
         delete formData[key];
+
+        continue;
       }
+      formatAdditionalProperties(data);
+    } else if (
+      key.startsWith('newKey') &&
+      data === ('New Value' as unknown as T[keyof T])
+    ) {
+      delete formData[key];
     }
   }
 
@@ -107,3 +121,44 @@ export function formatFormDataForRender<T extends object>(formData: T): T {
 
   return formData;
 }
+
+export const hasHiddenClassName = (className?: unknown): boolean =>
+  typeof className === 'string' &&
+  /(^|\s)(tw:hidden|hidden)(\s|$)/.test(className);
+
+export const hasHiddenContent = (node: ReactNode): boolean => {
+  if (!isValidElement(node)) {
+    return false;
+  }
+
+  const props = node.props as {
+    children?: ReactNode;
+    className?: unknown;
+    hidden?: boolean;
+    style?: {
+      display?: string;
+      visibility?: string;
+    };
+  };
+
+  if (
+    props.hidden ||
+    hasHiddenClassName(props.className) ||
+    props.style?.display === 'none' ||
+    props.style?.visibility === 'hidden'
+  ) {
+    return true;
+  }
+
+  const children = Children.toArray(props.children);
+
+  return children.length > 0 && children.every(hasHiddenContent);
+};
+
+export const isVisibleProperty = (
+  property: ObjectFieldTemplatePropertyType
+): boolean => !property.hidden && !hasHiddenContent(property.content);
+
+export const hasVisibleProperties = (
+  properties: ObjectFieldTemplatePropertyType[]
+): boolean => properties.some(isVisibleProperty);

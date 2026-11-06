@@ -18,18 +18,20 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
+import { waitForSearchIndexed } from '../../../utils/polling';
 import {
   cleanupDownloadedCSV,
   performE2EExportImportFlow,
 } from '../../../utils/testCases';
 import { test as base } from '../../fixtures/pages';
 
-// Policy rules for test case edit permissions
+// A CSV import authorizes each row as its REST write, so the new rows this flow
+// imports need Create on testCase (ADR:2026-11-02-a-csv-import-authorizes-each-row-as-its-own-write).
 const TEST_CASE_EDIT_ALL_RULES = [
   {
     name: `test-case-e2e-edit-${uuid()}`,
     resources: ['testCase'],
-    operations: ['ViewAll', 'ViewBasic', 'EditAll'],
+    operations: ['ViewAll', 'ViewBasic', 'EditAll', 'Create'],
     effect: 'allow',
   },
   {
@@ -51,7 +53,7 @@ const test = base.extend<{
 }>({
   testCaseEditPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await testCaseEditUser.login(page);
+    await testCaseEditUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -59,7 +61,7 @@ const test = base.extend<{
 
 test.describe(
   'Test Case Import/Export/Edit - End-to-End Flow with Admin',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
     const table = new TableClass();
 
@@ -67,6 +69,18 @@ test.describe(
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
       await table.createTestCase(apiContext);
+
+      // The export step inside performE2EExportImportFlow reads the table's
+      // test cases via search. Without waiting for ES indexing here, the
+      // just-created test case is missing from the exported CSV, so the
+      // import sees only the 4 added rows (not 5 = 1 existing + 4 added) and
+      // `processed-row` reports "4" instead of the expected "5".
+      await waitForSearchIndexed(
+        apiContext,
+        table.testCasesResponseData[0]?.fullyQualifiedName,
+        'test_case_search_index'
+      );
+
       await afterAction();
     });
 
@@ -86,7 +100,7 @@ test.describe(
      * 5. Verify Bulk Edit capabilities (Display Name, Tags)
      */
     test('Admin: Complete export-import-validate flow', async ({ page }) => {
-      test.slow(true);
+      test.setTimeout(300_000);
       await redirectToHomePage(page);
       await performE2EExportImportFlow(page, table, 'admin');
     });
@@ -94,15 +108,15 @@ test.describe(
 );
 
 test.describe(
-  'Test Case Import/Export/Edit - End-to-End Flow with EditAll User on TestCase resource',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  'Test Case Import/Export/Edit - End-to-End Flow with EditAll and Create on TestCase resource',
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
     const table = new TableClass();
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      // Create user with EditAll and ViewAll permissions on testCase
+      // Give the importer permission for both existing and newly added rows.
       await testCaseEditUser.create(apiContext, false);
       const editPolicyResponse = await testCaseEditPolicy.create(
         apiContext,
@@ -128,6 +142,16 @@ test.describe(
 
       await table.create(apiContext);
       await table.createTestCase(apiContext);
+
+      // See the matching note in the Admin describe — without waiting for
+      // ES indexing the export misses the just-created test case and
+      // processed-row reports "4" instead of "5".
+      await waitForSearchIndexed(
+        apiContext,
+        table.testCasesResponseData[0]?.fullyQualifiedName,
+        'test_case_search_index'
+      );
+
       await afterAction();
     });
 
@@ -149,10 +173,10 @@ test.describe(
      * 4. Update and verify successful creation
      * 5. Verify Bulk Edit capabilities (Display Name, Tags)
      */
-    test('EditAll User: Complete export-import-validate flow', async ({
+    test('EditAll and Create User: Complete export-import-validate flow', async ({
       testCaseEditPage,
     }) => {
-      test.slow(true);
+      test.setTimeout(300_000);
       await redirectToHomePage(testCaseEditPage);
       await performE2EExportImportFlow(testCaseEditPage, table, 'edituser');
     });

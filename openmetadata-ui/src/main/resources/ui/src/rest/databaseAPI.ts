@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import {
   Database,
@@ -26,8 +25,9 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
-import APIClient from './index';
+import { QueryVote } from '../interface/entity/vote.interface';
+import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 
 export const getDatabases = async (
   service: string,
@@ -187,13 +187,10 @@ export const restoreDatabase = async (id: string) => {
   return response.data;
 };
 
-export const getDatabaseVersions = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getDatabaseVersions = async (id: string) => {
   const url = `/databases/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };
@@ -206,13 +203,10 @@ export const getDatabaseVersionData = async (id: string, version: string) => {
   return response.data;
 };
 
-export const getDatabaseSchemaVersions = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getDatabaseSchemaVersions = async (id: string) => {
   const url = `/databaseSchemas/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

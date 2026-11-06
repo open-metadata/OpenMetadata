@@ -11,11 +11,23 @@
  *  limitations under the License.
  */
 
-import { GitMerge, X } from '@untitledui/icons';
-import { Button, Tooltip, Typography } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ButtonUtility,
+  Card,
+  Dropdown,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Edit01,
+  GitMerge,
+  Trash01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
+import { TFunction } from 'i18next';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Node } from 'reactflow';
+import { Edge, Node } from 'reactflow';
 import DescriptionSection from '../../../components/common/DescriptionSection/DescriptionSection';
 import OverviewSection from '../../../components/common/OverviewSection/OverviewSection';
 import SectionWithEdit from '../../../components/common/SectionWithEdit/SectionWithEdit';
@@ -24,20 +36,203 @@ import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
-import { Source } from '../../../generated/type/entityLineage';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
-  getColumnFunctionValue,
-  getLineageDetailsObject,
-} from '../../../utils/EntityLineageUtils';
+  EntityReference as LineagePipelineReference,
+  LineageDetails,
+  Source,
+} from '../../../generated/type/entityLineage';
+import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getLineageDetailsObject } from '../../../utils/EntityLineageEdgeUtils';
+import { getColumnFunctionValue } from '../../../utils/EntityLineagePureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
-import { ModalWithFunctionEditor } from '../../Modals/ModalWithFunctionEditor/ModalWithFunctionEditor';
-import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWithQueryEditor';
-import './entity-info-drawer.less';
 import { EdgeInfoDrawerInfo } from './EntityInfoDrawer.interface';
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
+
+const ModalWithFunctionEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithFunctionEditor/ModalWithFunctionEditor').then(
+      (m) => ({ default: m.ModalWithFunctionEditor })
+    )
+  )
+);
+
+const ModalWithQueryEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithQueryEditor/ModalWithQueryEditor').then(
+      (m) => ({ default: m.ModalWithQueryEditor })
+    )
+  )
+);
+
+const getUserTimeValue = (user?: string, timestamp?: number) => {
+  const valueParts = [user, getRelativeTime(timestamp)].filter(Boolean);
+
+  return valueParts.length > 0 ? valueParts.join(' ') : NO_DATA_PLACEHOLDER;
+};
+
+type OverviewDataItem = {
+  name: string;
+  value?: React.ReactNode;
+  url?: string;
+  isLink?: boolean;
+  visible?: string[];
+};
+
+const getSourceOverviewItem = (
+  sourceData: Node | undefined,
+  t: TFunction
+): OverviewDataItem | undefined => {
+  if (!sourceData) {
+    return undefined;
+  }
+  const {
+    entityType: sourceEntityType = '',
+    fullyQualifiedName: sourceFqn = '',
+  } = sourceData?.data?.node ?? {};
+
+  return {
+    name: t('label.source'),
+    value: getEntityName(sourceData?.data?.node),
+    url: entityUtilClassBase.getEntityLink(sourceEntityType, sourceFqn),
+    isLink: true,
+  };
+};
+
+const getTargetOverviewItem = (
+  targetData: Node | undefined,
+  t: TFunction
+): OverviewDataItem | undefined => {
+  if (!targetData) {
+    return undefined;
+  }
+  const {
+    entityType: targetEntityType = '',
+    fullyQualifiedName: targetFqn = '',
+  } = targetData?.data?.node ?? {};
+
+  return {
+    name: t('label.target'),
+    value: getEntityName(targetData?.data?.node),
+    url: entityUtilClassBase.getEntityLink(targetEntityType, targetFqn),
+    isLink: true,
+  };
+};
+
+const getHandleOverviewItem = (
+  handle: string | null | undefined,
+  labelKey: string,
+  t: TFunction
+): OverviewDataItem | undefined =>
+  handle ? { name: t(labelKey), value: getNameFromFQN(handle) } : undefined;
+
+const getPipelineOverviewItem = (
+  pipeline: LineagePipelineReference | undefined,
+  pipelineEntityType: string | undefined,
+  t: TFunction
+): OverviewDataItem | undefined => {
+  if (!pipeline) {
+    return undefined;
+  }
+
+  return {
+    name: t('label.edge'),
+    value: getEntityName(pipeline),
+    url: entityUtilClassBase.getEntityLink(
+      pipelineEntityType as string,
+      pipeline.fullyQualifiedName as string
+    ),
+    isLink: true,
+  };
+};
+
+const getCreatedByOverviewItem = (
+  edgeInfo: LineageDetails | undefined,
+  t: TFunction
+): OverviewDataItem | undefined =>
+  edgeInfo?.createdBy || edgeInfo?.createdAt
+    ? {
+        name: t('label.created-by'),
+        value: getUserTimeValue(edgeInfo?.createdBy, edgeInfo?.createdAt),
+      }
+    : undefined;
+
+const getUpdatedByOverviewItem = (
+  edgeInfo: LineageDetails | undefined,
+  t: TFunction
+): OverviewDataItem | undefined =>
+  edgeInfo?.updatedBy || edgeInfo?.updatedAt
+    ? {
+        name: t('label.updated-by'),
+        value: getUserTimeValue(edgeInfo?.updatedBy, edgeInfo?.updatedAt),
+      }
+    : undefined;
+
+const buildEdgeOverviewData = (
+  edge: Edge,
+  sourceData: Node | undefined,
+  targetData: Node | undefined,
+  t: TFunction
+): OverviewDataItem[] => {
+  const { sourceHandle, targetHandle, data } = edge;
+  const edgeInfo: LineageDetails | undefined = data?.edge;
+  const { pipeline, pipelineEntityType } = edgeInfo ?? {};
+
+  return [
+    getSourceOverviewItem(sourceData, t),
+    getHandleOverviewItem(sourceHandle, 'label.source-column', t),
+    getTargetOverviewItem(targetData, t),
+    getHandleOverviewItem(targetHandle, 'label.target-column', t),
+    getPipelineOverviewItem(pipeline, pipelineEntityType, t),
+    getCreatedByOverviewItem(edgeInfo, t),
+    getUpdatedByOverviewItem(edgeInfo, t),
+  ].filter((item): item is OverviewDataItem => Boolean(item));
+};
+
+const EdgeActionsMenu = ({
+  onEditPipeline,
+  onDelete,
+}: Pick<EdgeInfoDrawerInfo, 'onEditPipeline' | 'onDelete'>) => {
+  const { t } = useTranslation();
+
+  if (!onEditPipeline && !onDelete) {
+    return null;
+  }
+
+  return (
+    <Dropdown.Root>
+      <Dropdown.DotsButton
+        aria-label={t('label.action-plural')}
+        data-testid="edge-drawer-menu"
+      />
+      <Dropdown.Popover>
+        <Dropdown.Menu
+          aria-label={t('label.action-plural')}
+          disallowEmptySelection={false}
+          selectionMode="none"
+          onAction={(key) =>
+            key === 'edit-pipeline' ? onEditPipeline?.() : onDelete?.()
+          }>
+          {onEditPipeline ? (
+            <Dropdown.Item icon={Edit01} id="edit-pipeline">
+              {t('label.edit-entity', { entity: t('label.pipeline') })}
+            </Dropdown.Item>
+          ) : null}
+          {onDelete ? (
+            <Dropdown.Item icon={Trash01} id="delete">
+              {t('label.delete')}
+            </Dropdown.Item>
+          ) : null}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
 
 const EdgeInfoDrawer = ({
   edge,
@@ -46,11 +241,13 @@ const EdgeInfoDrawer = ({
   nodes,
   hasEditAccess,
   onEdgeDetailsUpdate,
+  onEditPipeline,
+  onDelete,
 }: EdgeInfoDrawerInfo) => {
   const [edgeData, setEdgeData] = useState<
     Array<{
       name: string;
-      value?: unknown;
+      value?: React.ReactNode;
       url?: string;
       isLink?: boolean;
       visible?: string[];
@@ -73,6 +270,24 @@ const EdgeInfoDrawer = ({
 
     return Boolean(sourceHandle && targetHandle);
   }, [edge]);
+
+  const resolvedSqlQuery = useMemo(() => {
+    const inlineQuery = edgeEntity?.sqlQuery;
+    if (inlineQuery) {
+      return inlineQuery;
+    }
+
+    // When the same SQL appears on multiple edges it is deduped into the target
+    // node's lineageSqlQueries map and referenced from the edge by sqlQueryKey.
+    const sqlQueryKey = edgeEntity?.sqlQueryKey;
+    if (!sqlQueryKey) {
+      return '';
+    }
+
+    const targetNode = nodes.find((node) => node.id === edge.target);
+
+    return targetNode?.data?.node?.lineageSqlQueries?.[sqlQueryKey] ?? '';
+  }, [edgeEntity, nodes, edge.target]);
 
   const onDescriptionUpdate = useCallback(
     async (updatedHTML: string) => {
@@ -160,16 +375,17 @@ const EdgeInfoDrawer = ({
 
       return (
         <SectionWithEdit
-          className="summary-panel-card sql-function-section"
+          className="sql-function-section tw:mt-4 tw:last:border-b-0"
           showEditButton={hasEditAccess}
           title={t('label.sql-function')}
+          titleClassName="tw:justify-start tw:gap-2"
           onEdit={() => {
             setSqlFunction(functionValue ?? '');
             setShowSqlFunctionModal(true);
           }}>
-          <Typography.Text className="m-b-0" data-testid="sql-function">
+          <Typography className="tw:m-0" data-testid="sql-function">
             {functionValue ?? NO_DATA_PLACEHOLDER}
-          </Typography.Text>
+          </Typography>
         </SectionWithEdit>
       );
     }
@@ -177,13 +393,14 @@ const EdgeInfoDrawer = ({
     return (
       <>
         <SectionWithEdit
-          className="summary-panel-card"
+          className="tw:mt-4 tw:last:border-b-0"
           showEditButton={hasEditAccess}
           title={t('label.sql-uppercase-query')}
+          titleClassName="tw:justify-start tw:gap-2"
           onEdit={() => setShowSqlQueryModal(true)}>
           {mysqlQuery ? (
             <SchemaEditor
-              className="edge-drawer-sql-editor"
+              className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:dark:border-subtle tw:[&_.cm-editor]:h-50 tw:[&_.cm-editor]:rounded-lg"
               mode={{ name: CSMode.SQL }}
               options={{
                 styleActiveLine: false,
@@ -192,18 +409,18 @@ const EdgeInfoDrawer = ({
               value={mysqlQuery}
             />
           ) : (
-            <Typography.Paragraph className="m-b-0">
+            <Typography as="p" className="tw:m-0">
               {t('server.no-query-available')}
-            </Typography.Paragraph>
+            </Typography>
           )}
         </SectionWithEdit>
         <SectionWithEdit
-          className="summary-panel-card"
+          className="tw:mt-4 tw:last:border-b-0"
           showEditButton={false}
           title={t('label.lineage-source')}>
-          <Typography.Text className="lineage-source-text">
+          <Typography className="tw:text-xs tw:font-normal tw:text-utility-gray-900">
             {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
-          </Typography.Text>
+          </Typography>
         </SectionWithEdit>
       </>
     );
@@ -219,9 +436,7 @@ const EdgeInfoDrawer = ({
   ]);
 
   const getEdgeInfo = () => {
-    const { source, target, data } = edge;
-    const { sourceHandle, targetHandle } = edge;
-    const { pipeline, pipelineEntityType } = data?.edge ?? {};
+    const { source, target } = edge;
 
     let sourceData: Node | undefined, targetData: Node | undefined;
     nodes.forEach((node) => {
@@ -232,63 +447,7 @@ const EdgeInfoDrawer = ({
       }
     });
 
-    const {
-      entityType: sourceEntityType = '',
-      fullyQualifiedName: sourceFqn = '',
-    } = sourceData?.data?.node ?? {};
-
-    const {
-      entityType: targetEntityType = '',
-      fullyQualifiedName: targetFqn = '',
-    } = targetData?.data?.node ?? {};
-
-    const overviewData = [];
-
-    if (sourceData) {
-      overviewData.push({
-        name: t('label.source'),
-        value: getEntityName(sourceData?.data?.node),
-        url: entityUtilClassBase.getEntityLink(sourceEntityType, sourceFqn),
-        isLink: true,
-      });
-    }
-
-    if (sourceHandle) {
-      overviewData.push({
-        name: t('label.source-column'),
-        value: getNameFromFQN(sourceHandle),
-      });
-    }
-
-    if (targetData) {
-      overviewData.push({
-        name: t('label.target'),
-        value: getEntityName(targetData?.data?.node),
-        url: entityUtilClassBase.getEntityLink(targetEntityType, targetFqn),
-        isLink: true,
-      });
-    }
-
-    if (targetHandle) {
-      overviewData.push({
-        name: t('label.target-column'),
-        value: getNameFromFQN(targetHandle),
-      });
-    }
-
-    if (pipeline) {
-      overviewData.push({
-        name: t('label.edge'),
-        value: getEntityName(pipeline),
-        url: entityUtilClassBase.getEntityLink(
-          pipelineEntityType,
-          pipeline.fullyQualifiedName
-        ),
-        isLink: true,
-      });
-    }
-
-    setEdgeData(overviewData);
+    setEdgeData(buildEdgeOverviewData(edge, sourceData, targetData, t));
     setIsLoading(false);
   };
 
@@ -324,72 +483,77 @@ const EdgeInfoDrawer = ({
   useEffect(() => {
     setIsLoading(true);
     getEdgeInfo();
-    setMysqlQuery(edge.data.edge?.sqlQuery);
-  }, [edge, visible]);
+    setMysqlQuery(resolvedSqlQuery);
+  }, [edge, visible, nodes, resolvedSqlQuery]);
 
   return (
     <>
       {visible && (
-        <div className="edge-info-drawer-container">
-          <div className="d-flex items-center justify-between">
-            <div className="title-section drawer-title-section">
-              <div className="title-container">
-                <Tooltip
-                  mouseEnterDelay={0.5}
-                  placement="bottomLeft"
-                  title={t('label.edge-information')}
-                  trigger="hover">
-                  <div className="d-flex items-center gap-2">
-                    <span className="d-flex">
-                      <GitMerge height={16} width={16} />
-                    </span>
-                    <Typography.Text
-                      className="edge-info-drawer-title"
-                      data-testid="edge-header-title">
-                      {t('label.edge-information')}
-                    </Typography.Text>
-                  </div>
-                </Tooltip>
-              </div>
+        <div
+          className="tw:flex tw:h-full tw:flex-col"
+          data-testid="edge-info-drawer-container">
+          {/* Insets line the icon and the × up with the card's edges. */}
+          <div className="tw:flex tw:h-14 tw:shrink-0 tw:items-center tw:gap-1 tw:pr-1.5 tw:pl-3">
+            <div className="tw:min-w-0 tw:flex-1">
+              <Tooltip
+                excludeTriggerFromTabOrder
+                delay={500}
+                placement="bottom left"
+                title={t('label.edge-information')}
+                triggerClassName="tw:flex tw:items-center tw:gap-2">
+                <GitMerge className="tw:size-5 tw:shrink-0" />
+                <Typography
+                  className="tw:block"
+                  data-testid="edge-header-title"
+                  size="text-lg"
+                  weight="semibold">
+                  {t('label.edge-information')}
+                </Typography>
+              </Tooltip>
             </div>
-            <Button
+            <EdgeActionsMenu
+              onDelete={onDelete}
+              onEditPipeline={onEditPipeline}
+            />
+            <ButtonUtility
               aria-label={t('label.close')}
-              className="drawer-close-icon flex-center mr-2"
               data-testid="drawer-close-icon"
-              icon={<X height={16} width={16} />}
-              size="small"
+              icon={XClose}
+              size="lg"
               onClick={onClose}
             />
           </div>
-          <div className="edge-info-drawer-content">
-            {isLoading ? (
-              <Loader />
-            ) : (
-              <div className="d-flex flex-col">
-                <div className="summary-panel-card">
-                  <DescriptionSection
-                    description={edgeEntity?.description ?? ''}
-                    entityFqn={edgeEntity.fromEntity.fullyQualifiedName}
-                    entityType={EntityType.LINEAGE_EDGE}
-                    hasPermission={hasEditAccess}
-                    showEditButton={hasEditAccess}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                  />
-                </div>
-                {edgeData && edgeData.length > 0 && (
-                  <div className="summary-panel-card">
-                    <OverviewSection
-                      componentType=""
-                      entityInfoV1={edgeData}
-                      showEditButton={false}
+          <Card className="tw:mx-3 tw:flex tw:max-h-[calc(100vh-70px)] tw:min-h-0 tw:flex-1 tw:flex-col">
+            <div className="tw:min-h-0 tw:flex-1 tw:overflow-x-hidden tw:overflow-y-auto tw:[scrollbar-width:none] tw:[&::-webkit-scrollbar]:hidden">
+              {isLoading ? (
+                <Loader />
+              ) : (
+                <div className="d-flex flex-col">
+                  <div className="tw:mt-4 tw:last:border-b-0 tw:[&_.description-section]:mt-0">
+                    <DescriptionSection
+                      description={edgeEntity?.description ?? ''}
+                      entityFqn={edgeEntity.fromEntity.fullyQualifiedName}
+                      entityType={EntityType.LINEAGE_EDGE}
+                      hasPermission={hasEditAccess}
+                      showEditButton={hasEditAccess}
+                      onDescriptionUpdate={onDescriptionUpdate}
                     />
                   </div>
-                )}
+                  {edgeData && edgeData.length > 0 && (
+                    <div className="tw:mt-4 tw:last:border-b-0">
+                      <OverviewSection
+                        componentType=""
+                        entityInfoV1={edgeData}
+                        showEditButton={false}
+                      />
+                    </div>
+                  )}
 
-                {edgeDetailsSection}
-              </div>
-            )}
-          </div>
+                  {edgeDetailsSection}
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
       )}
       {showSqlQueryModal && (

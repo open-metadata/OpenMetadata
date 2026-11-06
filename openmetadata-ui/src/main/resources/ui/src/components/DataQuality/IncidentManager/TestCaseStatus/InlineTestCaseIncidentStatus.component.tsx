@@ -27,7 +27,10 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STATUS_COLORS } from '../../../../constants/Color.constants';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
-import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
+import {
+  INCIDENT_STATUS_MENU_OPTIONS,
+  TEST_CASE_RESOLUTION_STATUS_LABELS,
+} from '../../../../constants/TestSuite.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
   EntityReference,
@@ -37,17 +40,13 @@ import {
 import { Option } from '../../../../pages/TasksPage/TasksPage.interface';
 import {
   getListTestCaseIncidentByStateId,
+  INCIDENT_TRANSITION_ID,
   transitionIncident,
 } from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
-import {
-  createTask,
-  ResolveTask,
-  TaskCategory,
-  TaskEntityType,
-  TaskResolutionType,
-} from '../../../../rest/tasksAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { ResolveTask, TaskResolutionType } from '../../../../rest/tasksAPI';
+import { reopenResolvedIncident } from '../../../../utils/DataQuality/IncidentManagerUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
@@ -60,6 +59,71 @@ import { InlineTestCaseIncidentStatusProps } from './TestCaseIncidentManagerStat
 
 const SELECTED_ITEM_CLASS =
   'tw:[&[data-selected]>div]:!bg-brand-solid tw:[&[data-selected]>div_*]:!text-white';
+
+interface StatusChangeAdditionalData {
+  assignee?: EntityReference;
+  reason?: TestCaseFailureReasonType;
+  comment?: string;
+}
+
+const buildAssignedResolveRequest = (
+  currentStatus: TestCaseResolutionStatusTypes,
+  additionalData?: StatusChangeAdditionalData
+): ResolveTask => {
+  const transitionId =
+    currentStatus === TestCaseResolutionStatusTypes.Assigned
+      ? INCIDENT_TRANSITION_ID.Reassign
+      : INCIDENT_TRANSITION_ID.Assign;
+  const assignee = additionalData?.assignee;
+
+  return {
+    transitionId,
+    payload: assignee
+      ? {
+          assignees: [
+            {
+              id: assignee.id,
+              type: assignee.type ?? EntityType.USER,
+              name: assignee.name,
+              fullyQualifiedName: assignee.fullyQualifiedName ?? assignee.name,
+              displayName: assignee.displayName,
+            },
+          ],
+        }
+      : undefined,
+  };
+};
+
+const buildResolveRequest = (
+  status: TestCaseResolutionStatusTypes,
+  currentStatus: TestCaseResolutionStatusTypes,
+  additionalData?: StatusChangeAdditionalData
+): ResolveTask | undefined => {
+  const requestByStatus: Partial<
+    Record<TestCaseResolutionStatusTypes, ResolveTask>
+  > = {
+    [TestCaseResolutionStatusTypes.New]: {
+      transitionId: INCIDENT_TRANSITION_ID.New,
+    },
+    [TestCaseResolutionStatusTypes.ACK]: {
+      transitionId: INCIDENT_TRANSITION_ID.Ack,
+    },
+    [TestCaseResolutionStatusTypes.Assigned]: buildAssignedResolveRequest(
+      currentStatus,
+      additionalData
+    ),
+    [TestCaseResolutionStatusTypes.Resolved]: {
+      transitionId: INCIDENT_TRANSITION_ID.Resolve,
+      resolutionType: TaskResolutionType.Completed,
+      comment: additionalData?.comment,
+      payload: additionalData?.reason
+        ? { testCaseFailureReason: additionalData.reason }
+        : undefined,
+    },
+  };
+
+  return requestByStatus[status];
+};
 
 const InlineTestCaseIncidentStatus = ({
   data,
@@ -159,7 +223,11 @@ const InlineTestCaseIncidentStatus = ({
   const reopenIncident = useCallback(
     async (
       targetStatus: TestCaseResolutionStatusTypes,
-      additionalData?: { assignee?: EntityReference }
+      additionalData?: {
+        assignee?: EntityReference;
+        reason?: TestCaseFailureReasonType;
+        comment?: string;
+      }
     ) => {
       const testCaseFqn = data.testCaseReference?.fullyQualifiedName;
       const testCaseName = data.testCaseReference?.name;
@@ -169,46 +237,13 @@ const InlineTestCaseIncidentStatus = ({
 
       setIsLoading(true);
       try {
-        const newTask = await createTask({
-          name: `Incident: ${testCaseName}`,
-          category: TaskCategory.Incident,
-          type: TaskEntityType.TestCaseResolution,
-          about: testCaseFqn,
-          aboutType: 'testCase',
+        const latest = await reopenResolvedIncident({
+          testCaseFqn,
+          testCaseName,
+          targetStatus,
+          currentStateId: data.stateId,
+          details: additionalData,
         });
-
-        if (targetStatus !== TestCaseResolutionStatusTypes.New && newTask?.id) {
-          const transitionMap: Partial<
-            Record<TestCaseResolutionStatusTypes, string>
-          > = {
-            [TestCaseResolutionStatusTypes.ACK]: 'ack',
-            [TestCaseResolutionStatusTypes.Assigned]: 'assign',
-          };
-          const transitionId = transitionMap[targetStatus];
-          if (transitionId) {
-            const assignee = additionalData?.assignee;
-            await transitionIncident(newTask.id, {
-              transitionId,
-              payload: assignee
-                ? {
-                    assignees: [
-                      {
-                        id: assignee.id,
-                        type: assignee.type ?? EntityType.USER,
-                        name: assignee.name,
-                        fullyQualifiedName:
-                          assignee.fullyQualifiedName ?? assignee.name,
-                        displayName: assignee.displayName,
-                      },
-                    ],
-                  }
-                : undefined,
-            });
-          }
-        }
-
-        const refreshed = await getListTestCaseIncidentByStateId(newTask.id);
-        const latest = refreshed?.data?.[0];
         if (latest) {
           onSubmit(latest);
         }
@@ -221,6 +256,7 @@ const InlineTestCaseIncidentStatus = ({
     [
       data.testCaseReference?.fullyQualifiedName,
       data.testCaseReference?.name,
+      data.stateId,
       onSubmit,
     ]
   );
@@ -247,44 +283,12 @@ const InlineTestCaseIncidentStatus = ({
         return;
       }
 
-      let resolveRequest: ResolveTask;
-      if (status === TestCaseResolutionStatusTypes.New) {
-        resolveRequest = { transitionId: 'new' };
-      } else if (status === TestCaseResolutionStatusTypes.ACK) {
-        resolveRequest = { transitionId: 'ack' };
-      } else if (status === TestCaseResolutionStatusTypes.Assigned) {
-        const transitionId =
-          currentStatus === TestCaseResolutionStatusTypes.Assigned
-            ? 'reassign'
-            : 'assign';
-        const assignee = additionalData?.assignee;
-        resolveRequest = {
-          transitionId,
-          payload: assignee
-            ? {
-                assignees: [
-                  {
-                    id: assignee.id,
-                    type: assignee.type ?? EntityType.USER,
-                    name: assignee.name,
-                    fullyQualifiedName:
-                      assignee.fullyQualifiedName ?? assignee.name,
-                    displayName: assignee.displayName,
-                  },
-                ],
-              }
-            : undefined,
-        };
-      } else if (status === TestCaseResolutionStatusTypes.Resolved) {
-        resolveRequest = {
-          transitionId: 'resolve',
-          resolutionType: TaskResolutionType.Completed,
-          comment: additionalData?.comment,
-          payload: additionalData?.reason
-            ? { testCaseFailureReason: additionalData.reason }
-            : undefined,
-        };
-      } else {
+      const resolveRequest = buildResolveRequest(
+        status,
+        currentStatus,
+        additionalData
+      );
+      if (!resolveRequest) {
         return;
       }
 
@@ -292,7 +296,9 @@ const InlineTestCaseIncidentStatus = ({
       try {
         await transitionIncident(taskId, resolveRequest);
 
-        const refreshed = await getListTestCaseIncidentByStateId(taskId);
+        const refreshed = await getListTestCaseIncidentByStateId(taskId, {
+          limit: 1,
+        });
         const latest = refreshed?.data?.[0];
         if (latest) {
           onSubmit(latest);
@@ -419,7 +425,7 @@ const InlineTestCaseIncidentStatus = ({
       return (
         <Box className="tw:p-2 tw:text-center">
           <Typography className="tw:text-tertiary" size="text-sm">
-            {t('message.no-username-available', { user: '' })}
+            {t('label.no-entity-found', { entity: t('label.user-plural') })}
           </Typography>
         </Box>
       );
@@ -483,7 +489,7 @@ const InlineTestCaseIncidentStatus = ({
       onAction={(key) =>
         handleStatusChange(key as TestCaseResolutionStatusTypes)
       }>
-      {Object.values(TestCaseResolutionStatusTypes).map((status) => (
+      {INCIDENT_STATUS_MENU_OPTIONS[statusType].map((status) => (
         <Dropdown.Item
           className={SELECTED_ITEM_CLASS}
           data-testid={`status-item-${status}`}
@@ -515,6 +521,7 @@ const InlineTestCaseIncidentStatus = ({
         direction="col"
         gap={2}>
         <Input
+          autoComplete="off"
           data-testid="assignee-search-input"
           placeholder={t('label.search')}
           size="sm"
@@ -567,6 +574,7 @@ const InlineTestCaseIncidentStatus = ({
           containerClassName="tw:max-h-[500px] tw:min-w-0 tw:w-[320px] tw:border tw:border-border-secondary"
           dataTestid={`${data.testCaseReference?.name}-assignee-popover`}
           isOpen={showAssigneePopover}
+          popoverClassName="tw:!max-h-none"
           trigger={renderStatusChipButton()}
           onOpenChange={(open) => {
             if (open) {
@@ -584,9 +592,10 @@ const InlineTestCaseIncidentStatus = ({
     if (showResolvedPopover) {
       return (
         <IncidentStatusPopoverShell
-          containerClassName="tw:min-w-0 tw:w-[320px] tw:border tw:border-border-secondary"
+          containerClassName="tw:min-w-0 tw:w-80 tw:overflow-y-auto tw:border tw:border-border-secondary"
           dataTestid={`${data.testCaseReference?.name}-resolved-popover`}
           isOpen={showResolvedPopover}
+          popoverClassName="tw:!max-h-none"
           trigger={renderStatusChipButton()}
           onOpenChange={(open) => {
             if (!open) {
@@ -609,7 +618,7 @@ const InlineTestCaseIncidentStatus = ({
         onOpenChange={handleStatusMenuOpenChange}>
         {renderStatusChipButton()}
         <Dropdown.Popover
-          className="tw:min-w-[100px] tw:w-max tw:overflow-auto"
+          className="tw:min-w-25 tw:w-max tw:overflow-auto"
           placement="top">
           {statusMenuItems}
         </Dropdown.Popover>

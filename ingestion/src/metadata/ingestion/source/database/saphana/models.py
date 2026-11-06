@@ -13,10 +13,9 @@ SAP Hana lineage module
 """
 
 from enum import Enum
-from typing import Optional
+from typing import Annotated
 
 from pydantic import Field, computed_field
-from typing_extensions import Annotated
 
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureType
 from metadata.generated.schema.entity.data.table import Table
@@ -73,5 +72,5 @@ class SapHanaStoredProcedure(BaseModel):
 
     name: str = Field(..., alias="function_name")
     schema_name: str = Field(...)
-    definition: Optional[str] = Field(None)
+    definition: str | None = Field(None)
     procedure_type: str = Field(default=StoredProcedureType.Function.value)

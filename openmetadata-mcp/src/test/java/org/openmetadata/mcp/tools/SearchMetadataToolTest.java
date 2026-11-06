@@ -1,27 +1,51 @@
 package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.mcp.util.PageCursor;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -45,14 +69,14 @@ class SearchMetadataToolTest {
 
   @BeforeEach
   void setUp() {
-    searchMetadataTool = new SearchMetadataTool();
+    searchMetadataTool = new SearchMetadataTool(ignored -> Optional.empty());
     authorizer = mock(Authorizer.class);
     securityContext = mock(CatalogSecurityContext.class);
     searchRepository = mock(SearchRepository.class);
 
     Principal mockPrincipal = mock(Principal.class);
-    when(mockPrincipal.getName()).thenReturn("test-user");
-    when(securityContext.getUserPrincipal()).thenReturn(mockPrincipal);
+    lenient().when(mockPrincipal.getName()).thenReturn("test-user");
+    lenient().when(securityContext.getUserPrincipal()).thenReturn(mockPrincipal);
 
     mockUser = new User();
     mockUser.setId(UUID.randomUUID());
@@ -64,6 +88,78 @@ class SearchMetadataToolTest {
   }
 
   @Test
+  void testDefaultConstructorCreatesTool() {
+    assertNotNull(new SearchMetadataTool());
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false, false", "true, false", "false, true", "true, true"})
+  void testCaseSearchUsesTheLinkedColumnResponsePolicy(boolean authorized, boolean objectResponse)
+      throws Exception {
+    String tableFqn = "service.db.schema.table";
+    Map<String, Object> body =
+        Map.of(
+            "hits",
+            Map.of(
+                "total",
+                Map.of("value", 1),
+                "hits",
+                List.of(
+                    Map.of(
+                        "_index",
+                        "test_case_search_index",
+                        "_id",
+                        UUID.randomUUID().toString(),
+                        "_source",
+                        Map.of(
+                            "name",
+                            "check",
+                            "entityType",
+                            Entity.TEST_CASE,
+                            "fullyQualifiedName",
+                            tableFqn + ".SSN.check",
+                            "description",
+                            "Column details",
+                            "entityLink",
+                            "<#E::table::" + tableFqn + "::columns::SSN>")))));
+    Table table =
+        new Table()
+            .withOwners(List.of())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("ssn")
+                        .withTags(
+                            List.of(new TagLabel().withTagFQN(PIIMasker.SENSITIVE_PII_TAG)))));
+    when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+    when(searchRepository.getIndexOrAliasName(Entity.TEST_CASE))
+        .thenReturn("test_case_search_index");
+    when(searchRepository.getIndexOrAliasName(Entity.TEST_CASE_RESULT))
+        .thenReturn("test_case_result_search_index");
+    when(searchRepository.search(any(), any(SubjectContext.class)))
+        .thenReturn(Response.ok(objectResponse ? body : JsonUtils.pojoToJson(body)).build());
+    doReturn(false).when(authorizer).authorizePII(securityContext, null);
+    doReturn(authorized).when(authorizer).authorizePII(securityContext, List.of());
+    try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      subjects.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+      JsonNode result =
+          JsonUtils.valueToTree(
+              searchMetadataTool.execute(authorizer, securityContext, Map.of("query", "*")));
+      assertEquals(
+          authorized ? "Column details" : "", result.at("/results/0/description").asText());
+      assertEquals(authorized ? "check" : "check [MASKED]", result.at("/results/0/name").asText());
+    }
+  }
+
+  @Test
   void testSearchWithClusterAlias() throws Exception {
     try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
       subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
@@ -72,7 +168,7 @@ class SearchMetadataToolTest {
       params.put("query", "test");
       params.put("size", 10);
 
-      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("openmetadata_dataAsset");
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("openmetadata_all");
 
       Response mockResponse = mock(Response.class);
       when(mockResponse.getEntity()).thenReturn("{\"hits\":{\"hits\":[],\"total\":{\"value\":0}}}");
@@ -96,7 +192,7 @@ class SearchMetadataToolTest {
       params.put("query", "test");
       params.put("size", 10);
 
-      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
 
       Response mockResponse = mock(Response.class);
       when(mockResponse.getEntity()).thenReturn("{\"hits\":{\"hits\":[],\"total\":{\"value\":0}}}");
@@ -121,6 +217,7 @@ class SearchMetadataToolTest {
       params.put("entityType", "dashboard");
       params.put("size", 10);
 
+      when(searchRepository.getIndexMapping("dashboard")).thenReturn(mock(IndexMapping.class));
       when(searchRepository.getIndexOrAliasName("dashboard")).thenReturn("openmetadata_dashboard");
 
       Response mockResponse = mock(Response.class);
@@ -134,5 +231,698 @@ class SearchMetadataToolTest {
       assertEquals(0, result.get("returnedCount"));
       assertNotNull(result.get("results"));
     }
+  }
+
+  @Test
+  void testRegisteredEntityTypeResolvesToOwnIndex() {
+    // Regression for #27796: databaseService is absent from the legacy switch and not part of the
+    // dataAsset alias, so it must resolve to its own index rather than falling back to dataAsset.
+    when(searchRepository.getIndexMapping("databaseService")).thenReturn(mock(IndexMapping.class));
+
+    assertEquals("databaseService", SearchMetadataTool.resolveIndex("databaseService"));
+  }
+
+  @Test
+  void testUnregisteredEntityTypeFallsBackToDefaultScope() {
+    when(searchRepository.getIndexMapping("bogusType")).thenReturn(null);
+
+    assertEquals("all", SearchMetadataTool.resolveIndex("bogusType"));
+  }
+
+  @Test
+  void testWildcardAndCommaInputFallBackToDefaultScope() {
+    when(searchRepository.getIndexMapping(any())).thenReturn(null);
+
+    assertEquals("all", SearchMetadataTool.resolveIndex("*"));
+    assertEquals("all", SearchMetadataTool.resolveIndex("_all"));
+    assertEquals("all", SearchMetadataTool.resolveIndex("table,user"));
+  }
+
+  @Test
+  void testNullEntityTypeUsesDefaultScope() {
+    assertEquals("all", SearchMetadataTool.resolveIndex(null));
+    assertEquals("all", SearchMetadataTool.resolveIndex(""));
+  }
+
+  @Test
+  void testNonStringEntityTypeDoesNotThrow() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("entityType", 123);
+
+      when(searchRepository.getIndexMapping("123")).thenReturn(null);
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      Map<String, Object> result = searchMetadataTool.execute(authorizer, securityContext, params);
+
+      assertNotNull(result);
+      verify(searchRepository).getIndexOrAliasName("all");
+    }
+  }
+
+  @Test
+  void testQueryFilterAsJsonObjectIsSerialized() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("queryFilter", Map.of("query", Map.of("term", Map.of("entityType", "table"))));
+
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      Map<String, Object> result = searchMetadataTool.execute(authorizer, securityContext, params);
+
+      assertNotNull(result);
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(
+          "table",
+          JsonUtils.readTree(captor.getValue().getQueryFilter())
+              .at("/query/bool/filter/0/term/entityType")
+              .asText());
+    }
+  }
+
+  /** Without an entityType, AI governance assets are searched along with every dataAsset type. */
+  @Test
+  void testDefaultScopeAddsAiGovernanceTypesToDataAssetTypes() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getEntityTypesForIndex("dataAsset"))
+          .thenReturn(List.of("dashboard", "table"));
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(
+          authorizer,
+          securityContext,
+          Map.of("queryFilter", Map.of("term", Map.of("tier.tagFQN", "Tier.Tier1"))));
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      JsonNode filters =
+          JsonUtils.readTree(captor.getValue().getQueryFilter()).at("/query/bool/filter");
+      assertEquals("all", captor.getValue().getIndex());
+      assertEquals("Tier.Tier1", filters.get(0).at("/term/tier.tagFQN").asText());
+      assertEquals(
+          JsonUtils.valueToTree(
+              List.of("dashboard", "table", "llmModel", "mcpServer", "aiApplication")),
+          filters.get(1).at("/terms/entityType"));
+    }
+  }
+
+  /** totalFound is read as a count, so it must not stop at the engine's 10,000 default. */
+  @Test
+  void testSearchAsksForExactTotals() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, Map.of("query", "*"));
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(true, captor.getValue().getTrackTotalHits());
+    }
+  }
+
+  @Test
+  void testPersonaScopeIsAppliedByDefaultAndDisclosedOnEmptyResults() throws Exception {
+    PersonaSearchScope scope =
+        new PersonaSearchScope(
+            "{\"query\":{\"term\":{\"service.name.keyword\":\"finance\"}}}", List.of("table"));
+    searchMetadataTool = new SearchMetadataTool(ignored -> Optional.of(scope));
+
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      Map<String, Object> result =
+          searchMetadataTool.execute(
+              authorizer,
+              securityContext,
+              Map.of(
+                  "query",
+                  "orders",
+                  "queryFilter",
+                  Map.of("term", Map.of("tier.tagFQN", "Tier.Tier1"))));
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      JsonNode filters =
+          JsonUtils.readTree(captor.getValue().getQueryFilter()).at("/query/bool/filter");
+      assertEquals("Tier.Tier1", filters.get(0).at("/bool/filter/0/term/tier.tagFQN").asText());
+      assertEquals("finance", filters.get(1).at("/term/service.name.keyword").asText());
+      assertEquals(true, result.get("personaScopeApplied"));
+      assertEquals(List.of("table"), result.get("personaScopeEntityTypes"));
+      assertTrue(result.get("message").toString().contains("ignorePersonaScope=true"));
+    }
+  }
+
+  @Test
+  void testIgnorePersonaScopeLeavesTheSearchUnscoped() throws Exception {
+    PersonaSearchScope scope =
+        new PersonaSearchScope(
+            "{\"query\":{\"term\":{\"service.name.keyword\":\"finance\"}}}", List.of("table"));
+    searchMetadataTool = new SearchMetadataTool(ignored -> Optional.of(scope));
+
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      Map<String, Object> result =
+          searchMetadataTool.execute(
+              authorizer, securityContext, Map.of("query", "orders", "ignorePersonaScope", true));
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(
+          1,
+          JsonUtils.readTree(captor.getValue().getQueryFilter()).at("/query/bool/filter").size(),
+          "only the default scope applies, no persona clause");
+      assertFalse(result.containsKey("personaScopeApplied"));
+    }
+  }
+
+  @Test
+  void testQueryFilterKeepsTextQueryAndDeletedFlag() throws Exception {
+    // A caller-supplied queryFilter used to route through searchWithDirectQuery, which reads
+    // neither the text query nor the deleted flag, so both were silently dropped.
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "customer orders");
+      params.put("includeDeleted", true);
+      params.put("queryFilter", Map.of("query", Map.of("term", Map.of("entityType", "table"))));
+
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals("customer orders", captor.getValue().getQuery());
+      assertEquals(true, captor.getValue().getDeleted());
+      verify(searchRepository, never()).searchWithDirectQuery(any(), any(SubjectContext.class));
+    }
+  }
+
+  @Test
+  void testMissingQueryDefaultsToMatchAnything() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("queryFilter", Map.of("query", Map.of("term", Map.of("entityType", "table"))));
+
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(
+          "*", captor.getValue().getQuery(), "a filter-only call must still match anything");
+    }
+  }
+
+  @Test
+  void testSearchRequestTargetsResolvedEntityTypeIndex() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("entityType", "chart");
+
+      when(searchRepository.getIndexMapping("chart")).thenReturn(mock(IndexMapping.class));
+      when(searchRepository.getIndexOrAliasName("chart")).thenReturn("chart_search_index");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals("chart_search_index", captor.getValue().getIndex());
+      assertEquals("test", captor.getValue().getQuery());
+    }
+  }
+
+  /**
+   * Tool-calling models fill every optional string in the schema, using "" or "null" for the ones
+   * they have nothing for. A filter that carries no clause has to read as an omitted filter, or the
+   * degenerate value is wrapped into {"query": null} and sent to the engine, which rejects it and
+   * fails the search the model actually asked for.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "",
+        "   ",
+        "null",
+        "NULL",
+        "{}",
+        "{\"query\":null}",
+        "{\"query\":{}}",
+        "{\"query\":\"\"}",
+        "\"\"",
+        "\"   \""
+      })
+  void testBlankQueryFilterIsTreatedAsAbsent(String blankFilter) throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "mart_cash_collections");
+      params.put("queryFilter", blankFilter);
+
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      JsonNode filters =
+          JsonUtils.readTree(captor.getValue().getQueryFilter()).at("/query/bool/filter");
+      assertEquals(
+          1,
+          filters.size(),
+          "a filter with no clause must fall through to the keyword search, not be wrapped and sent");
+      assertTrue(filters.get(0).has("terms"), "only the default scope clause remains");
+      assertEquals("mart_cash_collections", captor.getValue().getQuery());
+    }
+  }
+
+  /**
+   * The exclusion filter is built only when the caller supplied no filter of their own, so a blank
+   * filter must leave queryFilter null rather than empty - otherwise excludeEntityTypes silently
+   * stops being applied.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"", "{}", "{\"query\":null}"})
+  void testBlankQueryFilterStillAppliesEntityTypeExclusions(String blankFilter) throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", blankFilter);
+      params.put("excludeEntityTypes", List.of("tableColumn"));
+
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      JsonNode bool =
+          JsonUtils.readTree(captor.getValue().getQueryFilter()).at("/query/bool/filter/0/bool");
+      assertEquals("tableColumn", bool.at("/must_not/0/term/entityType").asText());
+      assertTrue(
+          bool.path("must").isMissingNode(),
+          "the blank filter must leave no clause behind - a null 'must' is rejected by the engine");
+    }
+  }
+
+  /**
+   * A filter that is present but cannot be a query clause is the caller's mistake to correct, so it
+   * has to say so. Sending it on produces an opaque backend rejection the model cannot act on.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"[]", "42", "\"text\"", "hello", "{\"query\":[]}", "{\"query\":42}"})
+  void testUnusableQueryFilterIsRejectedByName(String badFilter) throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", badFilter);
+
+      IllegalArgumentException thrown =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> searchMetadataTool.execute(authorizer, securityContext, params));
+
+      assertTrue(
+          thrown.getMessage().contains("queryFilter"),
+          "the message must name the parameter the model has to fix, got: " + thrown.getMessage());
+      verify(searchRepository, never()).search(any(), any(SubjectContext.class));
+    }
+  }
+
+  /**
+   * The guard unwraps the DSL wrapper key once and no further. A clause that is a real object
+   * carrying wrong DSL is malformed, not absent, so it stays the engine's rejection to report -
+   * swallowing it would leave the model believing a filter applied when it never did.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"{\"query\":{\"query\":null}}", "{\"query\":{\"bool\":null}}"})
+  void testMalformedClauseIsLeftForTheEngine(String malformedFilter) throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", malformedFilter);
+
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(
+          JsonUtils.readTree(malformedFilter).get("query"),
+          JsonUtils.readTree(captor.getValue().getQueryFilter()).at("/query/bool/filter/0"));
+    }
+  }
+
+  @Test
+  void testSiblingKeysSurviveAlongsideARealClause() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", "{\"query\":{\"match_all\":{}},\"size\":5}");
+
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(5, JsonUtils.readTree(captor.getValue().getQueryFilter()).at("/size").asInt());
+    }
+  }
+
+  /** Siblings follow the clause: with nothing to qualify, the whole filter goes rather than half. */
+  @Test
+  void testSiblingKeysGoWithAnAbsentClause() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", "{\"query\":null,\"size\":5}");
+
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertTrue(
+          JsonUtils.readTree(captor.getValue().getQueryFilter()).path("size").isMissingNode());
+    }
+  }
+
+  private void stubEmptySearch() throws Exception {
+    Response mockResponse = mock(Response.class);
+    when(mockResponse.getEntity()).thenReturn("{\"hits\":{\"hits\":[],\"total\":{\"value\":0}}}");
+    when(searchRepository.search(any(), any(SubjectContext.class))).thenReturn(mockResponse);
+  }
+
+  @Test
+  void testResultsIncludeSimilarityScoreFromScore() {
+    Map<String, Object> searchResponse =
+        searchResponseWith(buildHit(12.5, "db.schema.users"), buildHit(8.0, "db.schema.orders"));
+
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "users", 10, List.of(), false, 0);
+
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> results = (List<Map<String, Object>>) result.get("results");
+    assertEquals(2, results.size());
+    assertEquals(12.5, results.get(0).get("similarityScore"));
+    assertEquals(8.0, results.get(1).get("similarityScore"));
+  }
+
+  @Test
+  void testResultOmitsSimilarityScoreWhenScoreMissing() {
+    Map<String, Object> hit = new HashMap<>();
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "table");
+    source.put("fullyQualifiedName", "db.schema.users");
+    hit.put("_source", source);
+
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponseWith(hit), "users", 10, List.of(), false, 0);
+
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> results = (List<Map<String, Object>>) result.get("results");
+    assertEquals(1, results.size());
+    assertFalse(results.get(0).containsKey("similarityScore"));
+  }
+
+  @Test
+  void testTestCaseAndTestSuiteResolveToOwnIndexes() {
+    // Regression for collate#4323: test cases/suites are not part of the dataAsset alias, so they
+    // must resolve to their own indexes for data quality search to work.
+    when(searchRepository.getIndexMapping("testCase")).thenReturn(mock(IndexMapping.class));
+    when(searchRepository.getIndexMapping("testSuite")).thenReturn(mock(IndexMapping.class));
+
+    assertEquals("testCase", SearchMetadataTool.resolveIndex("testCase"));
+    assertEquals("testSuite", SearchMetadataTool.resolveIndex("testSuite"));
+  }
+
+  @Test
+  void testCleanSearchResultKeepsTestCaseFields() {
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "testCase");
+    source.put("fullyQualifiedName", "svc.db.schema.users.id.column_values_to_be_unique");
+    source.put("entityFQN", "svc.db.schema.users.id");
+    source.put("originEntityFQN", "svc.db.schema.users");
+    source.put("testCaseStatus", "Failed");
+    source.put("testCaseType", "column");
+    source.put("dataQualityDimensionName", "Uniqueness");
+    source.put("testPlatforms", List.of("OpenMetadata"));
+
+    Map<String, Object> result = SearchMetadataTool.cleanSearchResult(source, List.of());
+
+    assertEquals("svc.db.schema.users.id", result.get("entityFQN"));
+    assertEquals("svc.db.schema.users", result.get("originEntityFQN"));
+    assertEquals("Failed", result.get("testCaseStatus"));
+    assertEquals("column", result.get("testCaseType"));
+    assertEquals("Uniqueness", result.get("dataQualityDimensionName"));
+    assertEquals(List.of("OpenMetadata"), result.get("testPlatforms"));
+  }
+
+  @Test
+  void testCleanSearchResultKeepsTestSuiteFields() {
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "testSuite");
+    source.put("fullyQualifiedName", "svc.db.schema.users.testSuite");
+    source.put("basic", true);
+    source.put("lastResultTimestamp", 1768222130752L);
+
+    Map<String, Object> result = SearchMetadataTool.cleanSearchResult(source, List.of());
+
+    assertEquals(true, result.get("basic"));
+    assertEquals(1768222130752L, result.get("lastResultTimestamp"));
+  }
+
+  @Test
+  void testCleanSearchResultSlimsTestCaseResult() {
+    Map<String, Object> testCaseResult = new HashMap<>();
+    testCaseResult.put("testCaseStatus", "Failed");
+    testCaseResult.put("timestamp", 1768222130752L);
+    testCaseResult.put("result", "Found min=1001 vs. expected min=90001");
+    testCaseResult.put("testResultValue", List.of(Map.of("name", "min", "value", "1001")));
+    testCaseResult.put("id", "5c0b4b32-b4ec-4570-b3b9-025d3fdf264b");
+
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "testCase");
+    source.put("testCaseResult", testCaseResult);
+
+    Map<String, Object> result = SearchMetadataTool.cleanSearchResult(source, List.of());
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> slim = (Map<String, Object>) result.get("testCaseResult");
+    assertNotNull(slim);
+    assertEquals("Failed", slim.get("testCaseStatus"));
+    assertEquals(1768222130752L, slim.get("timestamp"));
+    assertEquals("Found min=1001 vs. expected min=90001", slim.get("result"));
+    assertFalse(slim.containsKey("testResultValue"));
+    assertFalse(slim.containsKey("id"));
+  }
+
+  @Test
+  void testCleanSearchResultReturnsFullTestCaseResultWhenRequested() {
+    Map<String, Object> testCaseResult = new HashMap<>();
+    testCaseResult.put("testCaseStatus", "Failed");
+    testCaseResult.put("testResultValue", List.of(Map.of("name", "min", "value", "1001")));
+
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "testCase");
+    source.put("testCaseResult", testCaseResult);
+
+    Map<String, Object> result =
+        SearchMetadataTool.cleanSearchResult(source, List.of("testCaseResult"));
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> full = (Map<String, Object>) result.get("testCaseResult");
+    assertEquals(testCaseResult, full);
+  }
+
+  @Test
+  void trimMessageMentionsNextCursorWhenPaging() {
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 5000; i++) {
+      hits.add(buildHit(1.0, "svc.db.schema.table_" + i));
+    }
+    Map<String, Object> hitsContainer = new HashMap<>();
+    hitsContainer.put("hits", hits);
+    hitsContainer.put("total", Map.of("value", hits.size()));
+    Map<String, Object> searchResponse = new HashMap<>();
+    searchResponse.put("hits", hitsContainer);
+
+    int from = 20;
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "tables", 5000, from, List.of(), false, 0);
+
+    int returnedCount = (int) result.get("returnedCount");
+    assertTrue(returnedCount < 5000, "results should have been trimmed to fit the budget");
+    assertEquals(true, result.get("hasMore"));
+    String message = (String) result.get("message");
+    assertTrue(
+        message.contains("nextCursor"), "trim message should reference nextCursor: " + message);
+  }
+
+  @Test
+  void nextCursorEncodesAbsoluteOffsetAfterBudgetTrim() {
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 5000; i++) {
+      hits.add(buildHit(1.0, "svc.db.schema.table_" + i));
+    }
+    Map<String, Object> hitsContainer = new HashMap<>();
+    hitsContainer.put("hits", hits);
+    hitsContainer.put("total", Map.of("value", hits.size()));
+    Map<String, Object> searchResponse = new HashMap<>();
+    searchResponse.put("hits", hitsContainer);
+
+    int from = 20;
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "tables", 5000, from, List.of(), false, 0);
+
+    int returnedCount = (int) result.get("returnedCount");
+    assertEquals(true, result.get("hasMore"));
+    assertEquals(5000, ((Number) result.get("total")).intValue());
+    Optional<PageCursor.Cursor> decoded = PageCursor.decode((String) result.get("nextCursor"));
+    assertTrue(decoded.isPresent());
+    assertTrue(decoded.get().isOffset());
+    assertEquals(from + returnedCount, decoded.get().offset());
+  }
+
+  /** The engine refuses offsets past its 10,000-hit window, so paging stops there. */
+  @Test
+  void pagingStopsAtTheResultWindowWhenTheTotalIsHigher() {
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      hits.add(buildHit(1.0, "svc.db.schema.table_" + i));
+    }
+    Map<String, Object> hitsContainer = new HashMap<>();
+    hitsContainer.put("hits", hits);
+    hitsContainer.put("total", Map.of("value", 50000));
+    Map<String, Object> searchResponse = new HashMap<>();
+    searchResponse.put("hits", hitsContainer);
+
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "*", 10, 9990, List.of(), false, 0);
+
+    assertEquals(50000, result.get("totalFound"));
+    assertFalse(result.containsKey("nextCursor"));
+    assertFalse(result.containsKey("hasMore"));
+  }
+
+  @Test
+  void aPageThatWouldCrossTheResultWindowIsShortened() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(
+          authorizer, securityContext, Map.of("query", "*", "from", 9995, "size", 10));
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(9995, captor.getValue().getFrom());
+      assertEquals(5, captor.getValue().getSize());
+    }
+  }
+
+  /** Past the window the engine fails or returns an empty page, which would read as no matches. */
+  @Test
+  void aRequestPastTheResultWindowIsRejectedByName() throws Exception {
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                searchMetadataTool.execute(
+                    authorizer, securityContext, Map.of("query", "*", "from", 10000)));
+
+    assertTrue(thrown.getMessage().contains("'from'"), thrown.getMessage());
+    verify(searchRepository, never()).search(any(), any(SubjectContext.class));
+  }
+
+  /** A size-0 count returns no hits, only the total, and must not report 0 matches. */
+  @Test
+  void anEmptyPageStillReportsTheRealTotal() {
+    Map<String, Object> hitsContainer = new HashMap<>();
+    hitsContainer.put("hits", List.of());
+    hitsContainer.put("total", Map.of("value", 50000));
+    Map<String, Object> searchResponse = new HashMap<>();
+    searchResponse.put("hits", hitsContainer);
+
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "*", 0, 0, List.of(), false, 0);
+
+    assertEquals(50000, result.get("totalFound"));
+    assertEquals(0, result.get("returnedCount"));
+  }
+
+  private Map<String, Object> buildHit(double score, String fqn) {
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "table");
+    source.put("fullyQualifiedName", fqn);
+
+    Map<String, Object> hit = new HashMap<>();
+    hit.put("_score", score);
+    hit.put("_source", source);
+    return hit;
+  }
+
+  @SafeVarargs
+  private final Map<String, Object> searchResponseWith(Map<String, Object>... hits) {
+    Map<String, Object> hitsContainer = new HashMap<>();
+    hitsContainer.put("hits", List.of(hits));
+    hitsContainer.put("total", Map.of("value", hits.length));
+
+    Map<String, Object> searchResponse = new HashMap<>();
+    searchResponse.put("hits", hitsContainer);
+    return searchResponse;
   }
 }

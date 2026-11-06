@@ -60,6 +60,13 @@ Once an approach is approved, break it into ordered tasks:
 3. Order tasks by dependency — schema changes before model generation, backend before frontend
 4. Include a final verification task that runs all relevant tests
 
+For Python changes, use the locked Nox sessions through Make from the checkout root:
+`make unit_ingestion ARGS="-n 0 tests/unit/PATH"`.
+Include lock validation with the pinned `ingestion/.nox/bootstrap/bin/uv lock --check --project ingestion`.
+When generation inputs change, include `make generate ARGS=--python-only` and
+`python3 scripts/check_generated_models.py --check`. Preserve public aliases and
+intentional test exclusions when migrating command callers.
+
 **OpenMetadata task ordering pattern:**
 ```
 1. JSON Schema changes (openmetadata-spec/)
@@ -67,7 +74,7 @@ Once an approach is approved, break it into ordered tasks:
 3. Java backend changes (openmetadata-service/)
 4. Run: mvn spotless:apply && mvn test-compile
 5. Python ingestion changes (ingestion/)
-6. Run: cd ingestion && make lint && make unit_ingestion_dev_env
+6. Run: cd ingestion && make py_format && make py_format_check && make unit_ingestion_dev_env
 7. Frontend changes (openmetadata-ui/.../ui/)
 8. Run: yarn lint && yarn test
 9. Database migrations if needed (bootstrap/sql/)

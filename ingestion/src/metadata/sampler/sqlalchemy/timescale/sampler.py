@@ -15,16 +15,13 @@ requires expensive decompression).
 """
 
 from datetime import datetime
-from typing import Dict, Optional, Union
 
 from pydantic import BaseModel
 from sqlalchemy import Column, select, text
 from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -47,7 +44,7 @@ class HypertableMeta(BaseModel):
 
     time_column: str
     has_compressed: bool
-    uncompressed_boundary: Optional[datetime] = None
+    uncompressed_boundary: datetime | None = None
 
 
 class TimescaleSampler(PostgresSampler):
@@ -64,14 +61,13 @@ class TimescaleSampler(PostgresSampler):
 
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: DatabaseConnection | DatalakeConnection,
         ometa_client: OpenMetadata,
         entity: Table,
-        sample_config: Optional[SampleConfig] = None,
-        partition_details: Optional[Dict] = None,
-        sample_query: Optional[str] = None,
-        storage_config: DataStorageConfig = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        sample_config: SampleConfig | None = None,
+        partition_details: dict | None = None,
+        sample_query: str | None = None,
+        sample_data_count: int | None = SAMPLE_DATA_DEFAULT_COUNT,
         **kwargs,
     ):
         super().__init__(
@@ -81,11 +77,10 @@ class TimescaleSampler(PostgresSampler):
             sample_config=sample_config,
             partition_details=partition_details,
             sample_query=sample_query,
-            storage_config=storage_config,
             sample_data_count=sample_data_count,
             **kwargs,
         )
-        self._hypertable_meta: Optional[HypertableMeta] = None
+        self._hypertable_meta: HypertableMeta | None = None
         self._hypertable_checked = False
 
     def _get_hypertable_sampling_boundary(
@@ -174,7 +169,7 @@ class TimescaleSampler(PostgresSampler):
         )
         return stmt.cte(f"{self.get_sampler_table_name()}_uncompressed")
 
-    def get_dataset(self, column=None, **kwargs) -> Union[type, AliasedClass]:
+    def get_dataset(self, column=None, **kwargs) -> type | AliasedClass | CTE:
         """Return the effective dataset, substituting raw_dataset with the
         uncompressed-only CTE when the hypertable has compressed chunks.
 
@@ -186,14 +181,14 @@ class TimescaleSampler(PostgresSampler):
             return self._get_uncompressed_dataset()
         return dataset
 
-    def _base_sample_query(self, column: Optional[Column], label=None):
+    def _base_sample_query(self, selectable, column: Column | None, label=None):
         """Add an uncompressed-chunks filter when sampling is active.
 
-        The base class builds the sampling query from ``raw_dataset.__table__``.
+        The base class builds the sampling query from the given selectable.
         We call super() to keep TABLESAMPLE / partition logic intact, then
         append a WHERE predicate that restricts rows to uncompressed chunks.
         """
-        query = super()._base_sample_query(column, label)
+        query = super()._base_sample_query(selectable, column, label)
         if not self._has_compressed_chunks():
             return query
 

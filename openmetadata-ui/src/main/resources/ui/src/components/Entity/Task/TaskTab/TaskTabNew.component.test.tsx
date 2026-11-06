@@ -10,10 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
+import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
+import APIClient from '../../../../rest/axiosClient';
 import {
   Task,
   TaskCategory,
@@ -22,7 +30,14 @@ import {
   TaskPriority,
   TaskResolutionType,
 } from '../../../../rest/tasksAPI';
+import {
+  renderWithQueryClient,
+  runQueryNotificationsSynchronously,
+} from '../../../../test/unit/test-utils';
 import { TaskTabNew } from './TaskTabNew.component';
+
+jest.mock('../../../../rest/axiosClient', () => ({ get: jest.fn() }));
+runQueryNotificationsSynchronously();
 
 const MOCK_TASK: Task = {
   id: '8b5076bb-8284-46b0-b00d-5e43a184ba9b',
@@ -55,7 +70,7 @@ const MOCK_TASK: Task = {
   ],
   payload: {
     field: 'tags',
-    fieldPath: 'columns::shop_id::tags',
+    fieldPath: 'columns.shop_id.tags',
     currentValue: '[]',
     suggestedValue: JSON.stringify([
       {
@@ -267,6 +282,14 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(),
 }));
 
+jest.mock(
+  '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component',
+  () =>
+    jest.fn(({ changeRequestId }: { changeRequestId: string }) => (
+      <div data-testid="change-request-changes-by-id">{changeRequestId}</div>
+    ))
+);
+
 jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({
     isAdminUser: false,
@@ -302,13 +325,14 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
+const mockFetchUpdatedThread = jest.fn().mockResolvedValue({});
 jest.mock(
   '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest.fn().mockImplementation(() => ({
       postFeed: jest.fn().mockResolvedValue({}),
       updateTask: jest.fn(),
-      fetchUpdatedThread: jest.fn().mockResolvedValue({}),
+      fetchUpdatedThread: mockFetchUpdatedThread,
       updateTestCaseIncidentStatus: jest.fn(),
       testCaseResolutionStatus: [],
       isPostsLoading: false,
@@ -316,11 +340,19 @@ jest.mock(
   })
 );
 
+const mockShowErrorToast = jest.fn();
+jest.mock('../../../../utils/ToastUtils', () => ({
+  ...jest.requireActual('../../../../utils/ToastUtils'),
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
+}));
+
 jest.mock('../../../../rest/tasksAPI', () => ({
   ...jest.requireActual('../../../../rest/tasksAPI'),
   resolveTask: jest.fn().mockResolvedValue({}),
   closeTask: jest.fn().mockResolvedValue({}),
   patchTask: jest.fn().mockResolvedValue({}),
+  editTaskComment: jest.fn().mockResolvedValue({}),
+  deleteTaskComment: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../../rest/userAPI', () => ({
@@ -340,22 +372,34 @@ jest.mock('../../../../utils/EntityLink', () => {
   };
 });
 
-jest.mock('../../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../../utils/TasksUtils'),
-  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
+jest.mock('../../../../utils/TaskActionUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskActionUtils'),
   isTagsTaskType: jest.fn().mockReturnValue(true),
   isDescriptionTaskType: jest.fn().mockReturnValue(false),
   isRecognizerFeedbackTask: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock('../../../../utils/TaskAssigneeUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskAssigneeUtils'),
   fetchOptions: jest.fn(),
   generateOptions: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskNavigationUtils'),
+  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
+}));
+
+jest.mock('../../../../utils/FqnUtils', () => ({
+  ...jest.requireActual('../../../../utils/FqnUtils'),
   getNameFromFQN: jest.fn().mockReturnValue('entityName'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Admin User'),
+}));
+
+jest.mock('../../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceListFromEntities: jest.fn().mockReturnValue([]),
 }));
 
@@ -391,16 +435,9 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <p>ProfilePicture</p>);
 });
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(<p>OwnerLabel</p>),
-}));
-
-jest.mock('../../../common/IconButtons/EditIconButton', () => ({
-  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button type="button" onClick={onClick} {...props}>
-      EditIconButton
-    </button>
-  )),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock(
@@ -410,10 +447,15 @@ jest.mock(
   }
 );
 
+const mockCommentCardProps: Record<string, unknown>[] = [];
 jest.mock(
-  '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component',
+  '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component',
   () => {
-    return jest.fn().mockImplementation(() => <p>TaskCommentCard</p>);
+    return jest.fn().mockImplementation((props) => {
+      mockCommentCardProps.push(props);
+
+      return <p>CommentCard</p>;
+    });
   }
 );
 
@@ -429,6 +471,11 @@ jest.mock('../../../common/InlineEdit/InlineEdit.component', () => ({
   default: jest.fn().mockImplementation(({ children }) => children),
 }));
 
+jest.mock('../MetadataCompletionTask/MetadataCompletionTask', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue(<p>MetadataCompletionTask</p>),
+}));
+
 const mockProps = {
   task: MOCK_TASK,
   owners: [],
@@ -439,6 +486,7 @@ const mockProps = {
 describe('TaskTabNew Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCommentCardProps.length = 0;
     const { useAuth } = require('../../../../hooks/authHooks');
     const {
       useApplicationStore,
@@ -450,7 +498,7 @@ describe('TaskTabNew Component', () => {
       isTagsTaskType,
       isDescriptionTaskType,
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     const actualTaskFormSchemaUtils = jest.requireActual(
       '../../../../utils/TaskFormSchemaUtils'
     );
@@ -463,13 +511,14 @@ describe('TaskTabNew Component', () => {
         teams: [],
       },
     });
-    getResolvedTaskFormSchema.mockImplementation((taskType, taskCategory) =>
-      Promise.resolve(
-        actualTaskFormSchemaUtils.getDefaultTaskFormSchema(
-          taskType,
-          taskCategory
+    getResolvedTaskFormSchema.mockImplementation(
+      (taskType: TaskEntityType, taskCategory: TaskCategory) =>
+        Promise.resolve(
+          actualTaskFormSchemaUtils.getDefaultTaskFormSchema(
+            taskType,
+            taskCategory
+          )
         )
-      )
     );
     isTagsTaskType.mockReturnValue(true);
     isDescriptionTaskType.mockReturnValue(false);
@@ -569,7 +618,7 @@ describe('TaskTabNew Component', () => {
     const {
       isTagsTaskType,
       isDescriptionTaskType,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(true);
 
@@ -597,7 +646,7 @@ describe('TaskTabNew Component', () => {
   it('should render FeedbackApprovalTask for recognizer feedback approval tasks', async () => {
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     isRecognizerFeedbackTask.mockReturnValue(true);
 
     await act(async () => {
@@ -609,7 +658,7 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    expect(screen.getByText('FeedbackApprovalTask')).toBeInTheDocument();
+    expect(await screen.findByText('FeedbackApprovalTask')).toBeInTheDocument();
   });
 
   it('should display action required section for open tasks', async () => {
@@ -634,6 +683,46 @@ describe('TaskTabNew Component', () => {
     });
 
     expect(screen.getByText('label.action-required')).toBeInTheDocument();
+  });
+
+  it('offers no action on a Revise and resubmit task but keeps its comments', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    const {
+      useApplicationStore,
+    } = require('../../../../hooks/useApplicationStore');
+
+    useAuth.mockReturnValue({ isAdminUser: true });
+    useApplicationStore.mockReturnValue({
+      currentUser: {
+        id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+        name: 'test-user',
+        teams: [],
+      },
+    });
+    const revisionTask = {
+      ...MOCK_TASK,
+      type: TaskEntityType.MetadataCompletion,
+      availableTransitions: [],
+      payload: {
+        missingFields: [],
+        revision: { comment: 'Add a definition', requestedBy: 'karan' },
+      },
+    } as Task;
+
+    await act(async () => {
+      render(<TaskTabNew {...mockProps} task={revisionTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText('MetadataCompletionTask')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('label.action-required')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('edit-accept-task-dropdown')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('comments-input-field')).toBeInTheDocument();
   });
 
   it('should display comments section', async () => {
@@ -664,7 +753,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -737,7 +826,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -763,7 +852,7 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    const dropdownButton = screen.getByTestId(
+    const dropdownButton = await screen.findByTestId(
       'glossary-accept-reject-task-dropdown'
     );
 
@@ -818,7 +907,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -844,7 +933,7 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    const dropdownButton = screen.getByTestId(
+    const dropdownButton = await screen.findByTestId(
       'glossary-accept-reject-task-dropdown'
     );
 
@@ -859,8 +948,8 @@ describe('TaskTabNew Component', () => {
     });
 
     const commentInput = screen.getByTestId('comments-input-field');
-    await act(async () => {
-      fireEvent.click(commentInput);
+    act(() => {
+      commentInput.focus();
     });
 
     expect(screen.getByText('ActivityFeedEditorNew')).toBeInTheDocument();
@@ -872,7 +961,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -893,10 +982,13 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    const dropdown = screen.getByTestId('glossary-accept-reject-task-dropdown');
+    const dropdown = await screen.findByTestId(
+      'glossary-accept-reject-task-dropdown'
+    );
 
     expect(dropdown).toBeInTheDocument();
-    expect(dropdown).toHaveStyle('pointer-events: none');
+    expect(screen.getByTestId('glossary-task-action-primary')).toBeDisabled();
+    expect(screen.getByTestId('glossary-task-action-trigger')).toBeDisabled();
   });
 
   it('should render posts/comments when available', async () => {
@@ -929,7 +1021,7 @@ describe('TaskTabNew Component', () => {
     const {
       isTagsTaskType,
       isDescriptionTaskType,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(false);
 
@@ -945,6 +1037,40 @@ describe('TaskTabNew Component', () => {
     expect(screen.getByTestId('entity-link')).toHaveTextContent('entityName');
     expect(screen.getByText('label.created-by')).toBeInTheDocument();
     expect(screen.getByText('label.assignee-plural')).toBeInTheDocument();
+  });
+
+  it('shows the change request a review task names instead of its preview chips', async () => {
+    const {
+      isTagsTaskType,
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isTagsTaskType.mockReturnValue(false);
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              changeRequestId: 'cr-42',
+              proposedChanges: {
+                tags: { added: ['PII.Sensitive'], removed: [] },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.getByTestId('change-request-changes-by-id')
+    ).toHaveTextContent('cr-42');
+    expect(
+      screen.getByText('label.proposed-change-plural')
+    ).toBeInTheDocument();
   });
 
   it('renders schema-driven payload details for custom tasks', async () => {
@@ -1078,6 +1204,131 @@ describe('TaskTabNew Component', () => {
     expect(screen.getByTestId('comments-input-field')).toBeInTheDocument();
   });
 
+  const buildAssignees = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      id: `assignee-${index}`,
+      type: 'user',
+      name: `assignee-${index}`,
+      displayName: `Assignee ${index}`,
+      deleted: false,
+    }));
+
+  const renderDataAccessTaskWithAssignees = async (assigneeCount: number) => {
+    const {
+      getResolvedTaskFormSchema,
+    } = require('../../../../utils/TaskFormSchemaUtils');
+    getResolvedTaskFormSchema.mockResolvedValue({
+      name: 'DataAccessTask',
+      taskType: TaskEntityType.CustomTask,
+      taskCategory: TaskCategory.DataAccess,
+      formSchema: {
+        type: 'object',
+        properties: {
+          reason: { type: 'string', title: 'Reason' },
+        },
+      },
+      uiSchema: {},
+    });
+
+    const dataAccessTask: Task = {
+      ...MOCK_WORKFLOW_TASK,
+      category: TaskCategory.DataAccess,
+      assignees: buildAssignees(assigneeCount),
+    };
+
+    await act(async () => {
+      render(<TaskTabNew {...mockProps} task={dataAccessTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+  };
+
+  it('should not render the show-more toggle when assignees fit the collapsed view', async () => {
+    await renderDataAccessTaskWithAssignees(5);
+
+    expect(screen.getByText('label.assignee-plural')).toBeInTheDocument();
+    expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.show-less')).not.toBeInTheDocument();
+  });
+
+  it('should clamp assignees and toggle the full list via show-more/show-less', async () => {
+    await renderDataAccessTaskWithAssignees(8);
+
+    const collapsedChips = screen.getAllByText('ProfilePicture').length;
+
+    expect(screen.getByText('label.show-more')).toBeInTheDocument();
+    expect(screen.queryByText('label.show-less')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.show-more'));
+    });
+
+    expect(screen.getByText('label.show-less')).toBeInTheDocument();
+    expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
+    expect(screen.getAllByText('ProfilePicture').length).toBe(
+      collapsedChips + 3
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.show-less'));
+    });
+
+    expect(screen.getByText('label.show-more')).toBeInTheDocument();
+    expect(screen.getAllByText('ProfilePicture').length).toBe(collapsedChips);
+  });
+
+  const renderDataAccessTaskWithAccessType = async (accessType: AccessType) => {
+    const {
+      getResolvedTaskFormSchema,
+    } = require('../../../../utils/TaskFormSchemaUtils');
+    getResolvedTaskFormSchema.mockResolvedValue({
+      name: 'DataAccessTask',
+      taskType: TaskEntityType.CustomTask,
+      taskCategory: TaskCategory.DataAccess,
+      formSchema: {
+        type: 'object',
+        properties: {
+          accessType: { type: 'string', title: 'Access Type' },
+          columns: {
+            type: 'array',
+            items: { type: 'string' },
+            title: 'Columns Requested',
+          },
+        },
+      },
+      uiSchema: { 'ui:order': ['accessType', 'columns'] },
+    });
+
+    const dataAccessTask: Task = {
+      ...MOCK_WORKFLOW_TASK,
+      category: TaskCategory.DataAccess,
+      payload: {
+        accessType,
+        columns: ['sample_data.ecommerce_db.shopify."dim.shop".shop_id'],
+      },
+    };
+
+    await act(async () => {
+      render(<TaskTabNew {...mockProps} task={dataAccessTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+  };
+
+  it('should render the columns field in the read-only form for column-level access', async () => {
+    await renderDataAccessTaskWithAccessType(AccessType.ColumnLevel);
+
+    expect(screen.getByText('Access Type')).toBeInTheDocument();
+    expect(screen.getByText('Columns Requested')).toBeInTheDocument();
+  });
+
+  it('should hide the columns field in the read-only form for non-column-level access', async () => {
+    await renderDataAccessTaskWithAccessType(AccessType.FullAccess);
+
+    expect(screen.getByText('Access Type')).toBeInTheDocument();
+    expect(screen.queryByText('Columns Requested')).not.toBeInTheDocument();
+  });
+
   it('resolves workflow-driven tasks using transition ids', async () => {
     const { useAuth } = require('../../../../hooks/authHooks');
     const {
@@ -1126,6 +1377,294 @@ describe('TaskTabNew Component', () => {
           reviewNotes: 'Needs final verification',
         },
       });
+    });
+  });
+
+  it.each([true, false])(
+    'restricts native ontology resolution to assigned reviewers (assigned: %s)',
+    async (assigned) => {
+      const { useAuth } = require('../../../../hooks/authHooks');
+      const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+      const { resolveTask } = require('../../../../rest/tasksAPI');
+      useAuth.mockReturnValue({ isAdminUser: true });
+      isTagsTaskType.mockReturnValue(false);
+      const task: Task = {
+        ...MOCK_TASK,
+        type: TaskEntityType.RequestApproval,
+        category: TaskCategory.Approval,
+        about: { id: 'release-id', type: 'ontologyRelease' },
+        assignees: assigned
+          ? [{ id: 'test-user-id', type: 'user', name: 'test-user' }]
+          : [],
+        ontologyReview: {
+          entityId: 'release-id',
+          entityVersion: 0.2,
+          ontologyId: 'ontology-id',
+          author: 'author',
+          contentDigest: 'a'.repeat(64),
+        },
+        payload: { proposedChanges: { description: 'Captured release' } },
+        availableTransitions: [
+          {
+            id: 'approve',
+            label: 'Approve',
+            resolutionType: TaskResolutionType.Approved,
+            targetStageId: 'approved',
+            targetTaskStatus: TaskEntityStatus.Approved,
+          },
+        ],
+      };
+      (APIClient.get as jest.Mock).mockImplementation(async (path: string) => ({
+        data: path.endsWith('/diff')
+          ? { data: [], paging: { total: 0 } }
+          : { id: 'release-id', version: 0.2, name: 'Release' },
+      }));
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TaskTabNew {...mockProps} task={task} />
+          </MemoryRouter>
+        );
+      });
+
+      if (!assigned) {
+        const panel = await screen.findByTestId('ontology-review-panel');
+        await waitFor(() =>
+          expect(within(panel).queryByRole('status')).not.toBeInTheDocument()
+        );
+
+        expect(
+          screen.queryByTestId('workflow-task-action-primary')
+        ).not.toBeInTheDocument();
+        expect(resolveTask).not.toHaveBeenCalled();
+
+        return;
+      }
+
+      await waitFor(() =>
+        expect(screen.getByTestId('workflow-task-action-primary')).toBeEnabled()
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
+      });
+
+      await waitFor(() =>
+        expect(resolveTask).toHaveBeenCalledWith(task.id, {
+          transitionId: 'approve',
+          resolutionType: TaskResolutionType.Approved,
+          comment: undefined,
+        })
+      );
+    }
+  );
+
+  it('disables release approval when the submitted content is unavailable', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+    const { resolveTask } = require('../../../../rest/tasksAPI');
+    useAuth.mockReturnValue({ isAdminUser: true });
+    isTagsTaskType.mockReturnValue(false);
+    const task: Task = {
+      ...MOCK_TASK,
+      type: TaskEntityType.RequestApproval,
+      category: TaskCategory.Approval,
+      about: { id: 'release-id', type: 'ontologyRelease' },
+      assignees: [{ id: 'test-user-id', type: 'user', name: 'test-user' }],
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          resolutionType: TaskResolutionType.Approved,
+          targetStageId: 'approved',
+          targetTaskStatus: TaskEntityStatus.Approved,
+        },
+      ],
+    };
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TaskTabNew {...mockProps} task={task} />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'message.ontology-review-unavailable'
+    );
+    expect(screen.getByTestId('workflow-task-action-primary')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
+
+    expect(resolveTask).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to legacy approval while a native workflow is starting', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+    useAuth.mockReturnValue({ isAdminUser: true });
+    isTagsTaskType.mockReturnValue(false);
+    const task: Task = {
+      ...MOCK_TASK,
+      type: TaskEntityType.RequestApproval,
+      category: TaskCategory.Approval,
+      about: { id: 'release-id', type: 'ontologyRelease' },
+      availableTransitions: [],
+    };
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TaskTabNew {...mockProps} task={task} />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.queryByTestId('task-cta-buttons')).not.toBeInTheDocument();
+  });
+
+  describe('task comments', () => {
+    // The card re-renders, so assert against the props it was last handed rather
+    // than a render count.
+    const lastCommentCardProps = () =>
+      mockCommentCardProps[mockCommentCardProps.length - 1];
+
+    const MOCK_TASK_WITH_COMMENT: Task = {
+      ...MOCK_TASK,
+      comments: [
+        {
+          id: 'comment-1',
+          message: 'A comment on the incident',
+          createdAt: 1735732800000,
+          author: { id: 'user-1', type: 'user', name: 'alice' },
+        },
+      ],
+    };
+
+    const renderWithComment = async () => {
+      await act(async () => {
+        render(<TaskTabNew {...mockProps} task={MOCK_TASK_WITH_COMMENT} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+    };
+
+    it('should pass the comment through to the card', async () => {
+      await renderWithComment();
+
+      expect(lastCommentCardProps()).toEqual(
+        expect.objectContaining({
+          reply: expect.objectContaining({
+            author: expect.objectContaining({ name: 'alice' }),
+            createdAt: 1735732800000,
+            message: 'A comment on the incident',
+          }),
+        })
+      );
+    });
+
+    it('should deny edit and delete to a non-author, non-admin user', async () => {
+      await renderWithComment();
+
+      expect(lastCommentCardProps()).toEqual(
+        expect.objectContaining({ canDelete: false, canEdit: false })
+      );
+    });
+
+    it('should let an admin delete but not edit someone elses comment', async () => {
+      const {
+        useApplicationStore,
+      } = require('../../../../hooks/useApplicationStore');
+      useApplicationStore.mockReturnValue({
+        currentUser: {
+          id: 'admin-id',
+          name: 'an-admin',
+          isAdmin: true,
+          teams: [],
+        },
+      });
+
+      await renderWithComment();
+
+      expect(lastCommentCardProps()).toEqual(
+        expect.objectContaining({ canDelete: true, canEdit: false })
+      );
+    });
+
+    it('should omit onReaction so the card hides its reactions footer', async () => {
+      await renderWithComment();
+
+      expect(lastCommentCardProps().onReaction).toBeUndefined();
+    });
+
+    it('should delete the comment and refetch the thread', async () => {
+      const { deleteTaskComment } = require('../../../../rest/tasksAPI');
+      await renderWithComment();
+
+      mockFetchUpdatedThread.mockClear();
+
+      await act(async () => {
+        await (lastCommentCardProps().onDelete as () => Promise<void>)();
+      });
+
+      expect(deleteTaskComment).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        'comment-1'
+      );
+      expect(mockFetchUpdatedThread).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        true
+      );
+    });
+
+    it('should toast and rethrow when deleting the comment fails', async () => {
+      const { deleteTaskComment } = require('../../../../rest/tasksAPI');
+      const failure = new Error('nope');
+      deleteTaskComment.mockRejectedValueOnce(failure);
+      await renderWithComment();
+
+      // Rethrown on purpose: the card keeps its confirmation open only if the
+      // callback it awaited actually rejects.
+      await expect(
+        (lastCommentCardProps().onDelete as () => Promise<void>)()
+      ).rejects.toThrow('nope');
+
+      expect(mockShowErrorToast).toHaveBeenCalledWith(failure);
+    });
+
+    it('should toast and rethrow when editing the comment fails', async () => {
+      const { editTaskComment } = require('../../../../rest/tasksAPI');
+      const failure = new Error('nope');
+      editTaskComment.mockRejectedValueOnce(failure);
+      await renderWithComment();
+
+      await expect(
+        (lastCommentCardProps().onEdit as (m: string) => Promise<void>)('x')
+      ).rejects.toThrow('nope');
+
+      expect(mockShowErrorToast).toHaveBeenCalledWith(failure);
+    });
+
+    it('should edit the comment and refetch the thread', async () => {
+      const { editTaskComment } = require('../../../../rest/tasksAPI');
+      await renderWithComment();
+
+      mockFetchUpdatedThread.mockClear();
+
+      await act(async () => {
+        await (
+          lastCommentCardProps().onEdit as (message: string) => Promise<void>
+        )('an edited comment');
+      });
+
+      expect(editTaskComment).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        'comment-1',
+        'an edited comment'
+      );
+      expect(mockFetchUpdatedThread).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        true
+      );
     });
   });
 });

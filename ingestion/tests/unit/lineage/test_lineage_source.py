@@ -19,8 +19,8 @@ import csv
 import os
 import tempfile
 import unittest
+from collections.abc import Iterator
 from datetime import datetime, timedelta
-from typing import Iterator
 from unittest.mock import Mock, patch
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -171,6 +171,49 @@ class TestQueryLineage(unittest.TestCase):
             self.assertEqual(queries[0].databaseName, "db1")
             self.assertEqual(queries[0].serviceName, "test_service")
 
+    def _mock_engine_with_rows(self, rows):
+        mock_engine = Mock()
+        mock_connection = Mock()
+        mock_connection.execute.return_value = rows
+        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
+        mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
+        return mock_engine
+
+    def test_result_limit_truncation_logged_when_reached(self):
+        """A truncation warning is logged when the query log fills resultLimit"""
+        self.lineage_source.source_config.resultLimit = 2
+        rows = [
+            {"query_text": "SELECT * FROM t1", "database_name": "db1", "schema_name": "s1"},
+            {"query_text": "SELECT * FROM t2", "database_name": "db1", "schema_name": "s1"},
+        ]
+        mock_engine = self._mock_engine_with_rows(rows)
+
+        with (
+            patch.object(self.lineage_source, "get_engine", return_value=[mock_engine]),
+            patch("metadata.ingestion.source.database.query_parser_source.logger") as mock_logger,
+        ):
+            list(self.lineage_source.yield_table_query())
+
+        assert any("resultLimit" in str(call.args[0]) for call in mock_logger.warning.call_args_list)
+
+    def test_result_limit_non_int_does_not_raise(self):
+        """A non-int resultLimit (e.g. absent/mocked) skips the check without TypeError"""
+        self.lineage_source.source_config.resultLimit = Mock()
+        rows = [
+            {"query_text": "SELECT * FROM t1", "database_name": "db1", "schema_name": "s1"},
+        ]
+        mock_engine = self._mock_engine_with_rows(rows)
+
+        with (
+            patch.object(self.lineage_source, "get_engine", return_value=[mock_engine]),
+            patch("metadata.ingestion.source.database.query_parser_source.logger") as mock_logger,
+        ):
+            queries = list(self.lineage_source.yield_table_query())
+
+        # Processing completes and no truncation notice is emitted
+        self.assertEqual(len(queries), 1)
+        assert not any("resultLimit" in str(call.args[0]) for call in mock_logger.warning.call_args_list)
+
     def test_yield_table_queries_from_logs(self):
         """Test yielding table queries from CSV log files"""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
@@ -201,7 +244,7 @@ class TestQueryLineage(unittest.TestCase):
             self.assertEqual(queries[1].query, "INSERT INTO target SELECT * FROM source")
             self.assertEqual(queries[0].databaseName, "log_db")
         finally:
-            os.unlink(temp_file)
+            os.unlink(temp_file)  # noqa: PTH108
 
     def test_query_lineage_producer_with_log_file(self):
         """Test query lineage producer uses log file when configured"""
@@ -225,7 +268,7 @@ class TestQueryLineage(unittest.TestCase):
             self.assertEqual(len(queries), 1)
             self.assertEqual(queries[0].query, "CREATE TABLE new AS SELECT * FROM old")
         finally:
-            os.unlink(temp_file)
+            os.unlink(temp_file)  # noqa: PTH108
 
     def test_query_lineage_producer_without_log_file(self):
         """Test query lineage producer uses database when no log file"""
@@ -294,7 +337,7 @@ class TestQueryLineage(unittest.TestCase):
                 self.assertEqual(len(queries), 1)
                 self.assertEqual(queries[0].query, "SELECT * FROM db_table")
         finally:
-            os.unlink(temp_file)
+            os.unlink(temp_file)  # noqa: PTH108
 
 
 class TestViewLineage(unittest.TestCase):
@@ -368,6 +411,65 @@ class TestViewLineage(unittest.TestCase):
             self.assertEqual(views[0].table_name, "view1")
             # Verify the filtered view was logged
             self.lineage_source.status.filter.assert_called_once()
+
+    def test_view_lineage_producer_schema_filter_quoted_name(self):
+        """
+        A schema whose name contains a dot is stored in the FQN as a quoted
+        identifier, e.g. '"folder.sub"'.  filter_by_schema must receive the
+        unquoted name 'folder.sub' so that user patterns such as r'^folder\\.sub$'
+        actually match.  Regression for #34365.
+        """
+        from metadata.generated.schema.type.filterPattern import FilterPattern
+
+        mock_views = [
+            TableView(
+                table_name="my_view",
+                db_name="db",
+                schema_name='"folder.sub"',  # quoted FQN segment
+                view_def="CREATE VIEW my_view AS SELECT 1",
+            ),
+        ]
+        self.mock_metadata.yield_es_view_def = Mock(return_value=iter(mock_views))
+
+        # includes pattern for the unquoted name — must match and yield the view
+        includes_pattern = FilterPattern(includes=[r"^folder\.sub$"])
+        self.lineage_source.source_config.schemaFilterPattern = includes_pattern
+        self.lineage_source.source_config.databaseFilterPattern = None
+        self.lineage_source.source_config.tableFilterPattern = None
+
+        views = list(self.lineage_source.view_lineage_producer())
+        self.assertEqual(len(views), 1, "View with quoted schema should pass an includes filter on the unquoted name")
+
+        # excludes pattern for the unquoted name — must match and filter out the view
+        excludes_pattern = FilterPattern(excludes=[r"^folder\.sub$"])
+        self.lineage_source.source_config.schemaFilterPattern = excludes_pattern
+        self.mock_metadata.yield_es_view_def = Mock(return_value=iter(mock_views))
+
+        views = list(self.lineage_source.view_lineage_producer())
+        self.assertEqual(
+            len(views), 0, "View with quoted schema should be filtered out by an excludes pattern on the unquoted name"
+        )
+
+    def test_view_lineage_producer_unquoted_schema_unaffected(self):
+        """
+        Plain schema names without dots must continue to work unchanged after
+        applying fqn.unquote_name (no quotes to strip).
+        """
+        mock_views = [
+            TableView(
+                table_name="my_view",
+                db_name="db",
+                schema_name="plain_schema",
+                view_def="CREATE VIEW my_view AS SELECT 1",
+            ),
+        ]
+        self.mock_metadata.yield_es_view_def = Mock(return_value=iter(mock_views))
+        self.lineage_source.source_config.schemaFilterPattern = None
+        self.lineage_source.source_config.databaseFilterPattern = None
+        self.lineage_source.source_config.tableFilterPattern = None
+
+        views = list(self.lineage_source.view_lineage_producer())
+        self.assertEqual(len(views), 1)
 
 
 class TestProcessingMethods(unittest.TestCase):
@@ -485,6 +587,7 @@ class TestIntegrationAndEdgeCases(unittest.TestCase):
         self.mock_config.sourceConfig.config.processViewLineage = True
         self.mock_config.sourceConfig.config.processQueryLineage = True
         self.mock_config.sourceConfig.config.threads = 5
+        self.mock_config.sourceConfig.config.resultLimit = 1000
 
         self.lineage_source = TestableLineageSource(self.mock_config, self.mock_metadata)
 
@@ -498,7 +601,7 @@ class TestIntegrationAndEdgeCases(unittest.TestCase):
         )
 
         # Mock the query producer
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.lineage_source,
             "query_lineage_producer",
             return_value=iter([mock_table_query]),
@@ -543,7 +646,7 @@ class TestIntegrationAndEdgeCases(unittest.TestCase):
             queries = list(self.lineage_source.get_table_query())
             self.assertEqual(len(queries), 1)
         finally:
-            os.unlink(temp_file)
+            os.unlink(temp_file)  # noqa: PTH108
 
     def test_critical_method_removal_protection(self):
         """Test that critical methods cannot be removed without breaking tests"""

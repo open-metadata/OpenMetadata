@@ -26,6 +26,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -156,5 +157,30 @@ class TestSuiteIndexTest {
 
     // Entity-specific
     assertEquals(0L, result.get("lastResultTimestamp"));
+  }
+
+  @Test
+  void testBuildSearchIndexDocCarriesLogicalSuiteRelationshipRevisionFromContext() {
+    TestSuite logicalSuite =
+        new TestSuite()
+            .withId(UUID.randomUUID())
+            .withName("logicalSuite")
+            .withFullyQualifiedName("logicalSuite")
+            .withBasic(false);
+
+    Map<String, Object> result =
+        new TestSuiteIndex(logicalSuite)
+            .buildSearchIndexDoc(
+                DocBuildContext.of(
+                    null, DocBuildContext.ServiceStylePrefetch.notPrefetched(), 42L));
+
+    assertEquals(42L, result.get(TestSuiteRepository.TESTS_REVISION_FIELD));
+
+    logicalSuite.setBasic(true);
+    assertFalse(
+        new TestSuiteIndex(logicalSuite)
+            .buildSearchIndexDoc(
+                DocBuildContext.of(null, DocBuildContext.ServiceStylePrefetch.notPrefetched(), 43L))
+            .containsKey(TestSuiteRepository.TESTS_REVISION_FIELD));
   }
 }

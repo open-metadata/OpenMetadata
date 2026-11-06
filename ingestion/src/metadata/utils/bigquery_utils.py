@@ -14,7 +14,7 @@ Utils module of BigQuery
 """
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -37,18 +37,20 @@ if TYPE_CHECKING:
 
 
 def get_bigquery_client(
-    project_id: Optional[str] = None,
-    location: Optional[str] = None,
-    impersonate_service_account: Optional[str] = None,
-    quota_project_id: Optional[str] = None,
-    scopes: Optional[List[str]] = None,
-    lifetime: Optional[int] = 3600,
+    project_id: str | None = None,
+    location: str | None = None,
+    api_endpoint: str | None = None,
+    impersonate_service_account: str | None = None,
+    quota_project_id: str | None = None,
+    scopes: list[str] | None = None,
+    lifetime: int | None = 3600,
 ) -> "bigquery.Client":
     """Get a BigQuery client
 
     Args:
         location: The job location
         project_id: The client project ID
+        api_endpoint: Custom BigQuery API endpoint for non-default GCP universes
         impersonate_service_account: The service account email
         quota_project_id: The project ID for quota
         scopes: scopes
@@ -68,7 +70,15 @@ def get_bigquery_client(
         )
     from google.cloud import bigquery  # pylint: disable=import-outside-toplevel
 
-    return bigquery.Client(credentials=credentials, project=project_id, location=location)
+    client_kwargs = {
+        "credentials": credentials,
+        "project": project_id,
+        "location": location,
+    }
+    if api_endpoint:
+        client_kwargs["client_options"] = {"api_endpoint": api_endpoint}
+
+    return bigquery.Client(**client_kwargs)
 
 
 def copy_service_config(config: OpenMetadataWorkflowConfig, database_name: str) -> BigQueryConnection:
@@ -85,7 +95,7 @@ def copy_service_config(config: OpenMetadataWorkflowConfig, database_name: str) 
         config.source.serviceConnection.root.config  # type: ignore
     )
 
-    if isinstance(config_copy.credentials.gcpConfig, GcpCredentialsValues):
+    if isinstance(config_copy.credentials.gcpConfig, GcpCredentialsValues):  # noqa: SIM102
         if isinstance(config_copy.credentials.gcpConfig.projectId, MultipleProjectId):
             config_copy.credentials.gcpConfig.projectId = SingleProjectId(database_name)
 

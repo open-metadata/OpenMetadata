@@ -18,6 +18,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,68 @@ class SchemaFieldExtractorTest {
     assertTrue(entityTypes.contains("dataContract"));
     assertTrue(entityTypes.contains("learningResource"));
     assertTrue(entityTypes.contains("aiApplication"));
+  }
+
+  @Test
+  void everyDiscoveredEntityTypeResolvesToAnExistingSchema() throws Throwable {
+    List<String> unresolved = new ArrayList<>();
+    for (String entityType : SchemaFieldExtractor.getAllEntityTypes()) {
+      String schemaPath = determineSchemaPath(entityType);
+      if (SchemaFieldExtractor.class.getClassLoader().getResource(schemaPath) == null) {
+        unresolved.add(entityType + " -> " + schemaPath);
+      }
+    }
+
+    assertTrue(
+        unresolved.isEmpty(),
+        "Entity types discovered under json/schema/entity/ that resolve to a schema path which "
+            + "does not exist on the classpath: "
+            + unresolved);
+  }
+
+  @Test
+  void resolvesSchemaPathForEntityInUnknownSubdirectory() throws Throwable {
+    assertEquals(
+        "json/schema/entity/driftProbe/schemaDriftProbe.json",
+        determineSchemaPath("schemaDriftProbe"));
+  }
+
+  @Test
+  void resolvesDuplicateEntityTypeToTheFirstSchemaPathInScanOrder() throws Throwable {
+    assertEquals(
+        "json/schema/entity/driftProbe/duplicateProbe.json", determineSchemaPath("duplicateProbe"));
+  }
+
+  @Test
+  void fallsBackToDataSubdirectoryForUndiscoveredEntityType() throws Throwable {
+    assertEquals(
+        "json/schema/entity/data/notAnEntityType.json", determineSchemaPath("notAnEntityType"));
+  }
+
+  @Test
+  void extractFieldsSupportsMcpSchemas() {
+    SchemaFieldExtractor extractor = new SchemaFieldExtractor();
+
+    Map<String, SchemaFieldExtractor.FieldDefinition> serverFields =
+        toMap(extractor.extractFields(new Type(), "mcpServer"));
+    Map<String, SchemaFieldExtractor.FieldDefinition> executionFields =
+        toMap(extractor.extractFields(new Type(), "mcpExecution"));
+
+    assertEquals("string", serverFields.get("protocolVersion").getType());
+    assertEquals("array<mcpTool>", serverFields.get("tools").getType());
+    assertEquals("string", executionFields.get("sessionId").getType());
+    assertEquals("array<toolCallRecord>", executionFields.get("toolCalls").getType());
+  }
+
+  @Test
+  void extractFieldsSupportsContextMemorySchema() {
+    SchemaFieldExtractor extractor = new SchemaFieldExtractor();
+
+    Map<String, SchemaFieldExtractor.FieldDefinition> contextMemoryFields =
+        toMap(extractor.extractFields(new Type(), "contextMemory"));
+
+    assertEquals("entityName", contextMemoryFields.get("name").getType());
+    assertNotNull(contextMemoryFields.get("memoryType"));
   }
 
   @Test
@@ -130,6 +193,41 @@ class SchemaFieldExtractorTest {
 
     assertTrue(customProperties.containsKey("table"));
     assertEquals("string", toMap(customProperties.get("table")).get("extraField").getType());
+  }
+
+  @Test
+  void extractAllCustomPropertiesReturnsOnlyCustomProperties() {
+    SchemaFieldExtractor extractor = new SchemaFieldExtractor();
+    TypeRepository repository = mock(TypeRepository.class);
+    UriInfo uriInfo = mock(UriInfo.class);
+    Type tableType =
+        new Type()
+            .withCustomProperties(
+                List.of(customProperty("extraField", "Extra Field", "string", null)));
+
+    when(repository.getByName(eq(uriInfo), anyString(), any(), eq(Include.ALL), eq(false)))
+        .thenAnswer(
+            invocation -> "table".equals(invocation.getArgument(1)) ? tableType : new Type());
+
+    Map<String, List<SchemaFieldExtractor.FieldDefinition>> customProperties =
+        extractor.extractAllCustomProperties(uriInfo, repository);
+
+    assertEquals(
+        List.of("extraField"),
+        customProperties.get("table").stream()
+            .map(SchemaFieldExtractor.FieldDefinition::getName)
+            .collect(Collectors.toList()),
+        "Entity schema fields must not leak into the custom-properties response");
+
+    List<String> entityTypesWithFields =
+        customProperties.entrySet().stream()
+            .filter(entry -> !"table".equals(entry.getKey()) && !entry.getValue().isEmpty())
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
+    assertTrue(
+        entityTypesWithFields.isEmpty(),
+        "Entity types without custom properties must return an empty list, got: "
+            + entityTypesWithFields);
   }
 
   @Test
@@ -335,6 +433,11 @@ class SchemaFieldExtractorTest {
     Field cacheField = SchemaFieldExtractor.class.getDeclaredField("entityFieldsCache");
     cacheField.setAccessible(true);
     return (Map<String, Map<String, SchemaFieldExtractor.FieldDefinition>>) cacheField.get(null);
+  }
+
+  private static String determineSchemaPath(String entityType) throws Throwable {
+    return (String)
+        invokePrivateStatic("determineSchemaPath", new Class<?>[] {String.class}, entityType);
   }
 
   private static Object invokePrivateStatic(

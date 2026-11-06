@@ -13,13 +13,12 @@
 Source connection handler
 """
 
-from copy import deepcopy  # noqa: I001
-from typing import Optional, cast
+from copy import deepcopy
+from typing import cast
 from urllib.parse import quote_plus
 
 from requests import Session
 from sqlalchemy.engine import Engine
-from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -54,12 +53,13 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.trino.queries import TRINO_GET_DATABASE
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.credentials import get_azure_access_token
+from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
 
 
 # pylint: disable=unused-argument
 def _is_disconnect(self, e, connection, cursor):
     """is_disconnect method for the Databricks dialect"""
-    if "JWT expired" in str(e):
+    if "JWT expired" in str(e):  # noqa: SIM103
         return True
     return False
 
@@ -83,7 +83,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         connection_copy = deepcopy(connection)
 
         if hasattr(connection.authType, "azureConfig"):
-            auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)
+            auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)  # noqa: TC006
             access_token = get_azure_access_token(auth_type)
             if not connection.connectionOptions:
                 connection.connectionOptions = init_empty_connection_options()
@@ -101,8 +101,8 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -226,7 +226,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         """
         Get the basic auth dictionary for the trino connection
         """
-        auth_type = cast(basicAuth.BasicAuth, connection.authType)
+        auth_type = cast(basicAuth.BasicAuth, connection.authType)  # noqa: TC006
         return {
             "authType": "basic",
             "username": connection.username,
@@ -239,7 +239,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         Get the basic auth dictionary for the trino connection
         """
         assert connection_args.root is not None
-        auth_type = cast(basicAuth.BasicAuth, connection.authType)
+        auth_type = cast(basicAuth.BasicAuth, connection.authType)  # noqa: TC006
 
         connection_args.root["auth"] = BasicAuthentication(
             connection.username,
@@ -254,7 +254,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         """
         Get the jwt auth dictionary for the trino connection
         """
-        auth_type = cast(jwtAuth.JwtAuth, connection.authType)
+        auth_type = cast(jwtAuth.JwtAuth, connection.authType)  # noqa: TC006
 
         return {
             "authType": "jwt",
@@ -267,7 +267,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         Set the jwt auth for the trino connection
         """
         assert connection_args.root is not None
-        auth_type = cast(jwtAuth.JwtAuth, connection.authType)
+        auth_type = cast(jwtAuth.JwtAuth, connection.authType)  # noqa: TC006
 
         connection_args.root["auth"] = JWTAuthentication(auth_type.jwt.get_secret_value())
 
@@ -320,5 +320,5 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         """
         Get the azure token for the trino connection
         """
-        auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)
+        auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)  # noqa: TC006
         return get_azure_access_token(auth_type)

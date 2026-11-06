@@ -28,8 +28,8 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.database import Database  # noqa: TC001
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema  # noqa: TC001
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
@@ -128,7 +128,7 @@ class TestE2EWorkflow(unittest.TestCase):
         OpenMetadataConnection.model_validate(test_suite_config["workflowConfig"]["openMetadataServerConfig"])
     )
 
-    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")  # noqa: PTH118, PTH120, PTH122
     sqlite_conn = DatabaseConnection(
         config=SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
@@ -232,7 +232,7 @@ class TestE2EWorkflow(unittest.TestCase):
             hard_delete=True,
         )
 
-        os.remove(cls.db_path)
+        os.remove(cls.db_path)  # noqa: PTH107
         return super().tearDownClass()
 
     def test_e2e_cli_workflow(self):
@@ -307,8 +307,8 @@ class TestE2EWorkflow(unittest.TestCase):
                 profileSampleConfig=ProfileSampleConfig(
                     sampleConfigType="STATIC",
                     config={
-                        "profileSample": 50.0,
-                        "profileSampleType": "PERCENTAGE",
+                        "profileSample": 15,
+                        "profileSampleType": "ROWS",
                     },
                 ),
             ),
@@ -356,12 +356,7 @@ class TestE2EWorkflow(unittest.TestCase):
         assert data_test_case_result_1[0]["testCaseStatus"] == "Success"
         assert data_test_case_result_2
         assert data_test_case_result_2[0]["testCaseStatus"] == "Success"
-        self.assertAlmostEqual(
-            data_test_case_result_2[0]["passedRows"],
-            15,
-            delta=8,
-            msg="This is a 99% confidence interval. Run the test again to validate failure.",
-        )
+        self.assertEqual(data_test_case_result_2[0]["passedRows"], 15)
 
     def test_e2e_cli_partitioned_workflow(self):
         """test cli workflow e2e"""

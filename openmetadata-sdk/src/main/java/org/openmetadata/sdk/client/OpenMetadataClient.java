@@ -36,11 +36,12 @@ import org.openmetadata.sdk.services.databases.StoredProcedureService;
 import org.openmetadata.sdk.services.datacontracts.DataContractService;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
+import org.openmetadata.sdk.services.drives.ContextFileService;
+import org.openmetadata.sdk.services.drives.FolderService;
 import org.openmetadata.sdk.services.events.ChangeEventService;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.sdk.services.events.NotificationTemplateService;
 import org.openmetadata.sdk.services.feed.AnnouncementService;
-import org.openmetadata.sdk.services.feed.FeedService;
 import org.openmetadata.sdk.services.feed.TaskFormSchemaService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
@@ -48,7 +49,23 @@ import org.openmetadata.sdk.services.governance.AIGovernancePolicyService;
 import org.openmetadata.sdk.services.governance.WorkflowDefinitionService;
 import org.openmetadata.sdk.services.importexport.ImportExportAPI;
 import org.openmetadata.sdk.services.ingestion.IngestionPipelineService;
+import org.openmetadata.sdk.services.knowledge.PageService;
 import org.openmetadata.sdk.services.lineage.LineageAPI;
+import org.openmetadata.sdk.services.ontology.InferenceRuleService;
+import org.openmetadata.sdk.services.ontology.OntologyAiService;
+import org.openmetadata.sdk.services.ontology.OntologyAxiomService;
+import org.openmetadata.sdk.services.ontology.OntologyBulkService;
+import org.openmetadata.sdk.services.ontology.OntologyChangeSetService;
+import org.openmetadata.sdk.services.ontology.OntologyConceptService;
+import org.openmetadata.sdk.services.ontology.OntologyEditLockService;
+import org.openmetadata.sdk.services.ontology.OntologyImpactService;
+import org.openmetadata.sdk.services.ontology.OntologyPackService;
+import org.openmetadata.sdk.services.ontology.OntologyPatternService;
+import org.openmetadata.sdk.services.ontology.OntologyPropertyService;
+import org.openmetadata.sdk.services.ontology.OntologyReasoningService;
+import org.openmetadata.sdk.services.ontology.OntologyReleaseService;
+import org.openmetadata.sdk.services.ontology.OntologyService;
+import org.openmetadata.sdk.services.ontology.RelationshipTypeService;
 import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.search.SearchAPI;
 import org.openmetadata.sdk.services.services.APIServiceService;
@@ -56,6 +73,7 @@ import org.openmetadata.sdk.services.services.DashboardServiceService;
 import org.openmetadata.sdk.services.services.DatabaseServiceService;
 import org.openmetadata.sdk.services.services.DriveServiceService;
 import org.openmetadata.sdk.services.services.LLMServiceService;
+import org.openmetadata.sdk.services.services.McpServiceService;
 import org.openmetadata.sdk.services.services.MessagingServiceService;
 import org.openmetadata.sdk.services.services.MetadataServiceService;
 import org.openmetadata.sdk.services.services.MlModelServiceService;
@@ -67,6 +85,7 @@ import org.openmetadata.sdk.services.storages.DirectoryService;
 import org.openmetadata.sdk.services.storages.FileService;
 import org.openmetadata.sdk.services.storages.SpreadsheetService;
 import org.openmetadata.sdk.services.storages.WorksheetService;
+import org.openmetadata.sdk.services.system.SystemSettingsService;
 import org.openmetadata.sdk.services.tasks.TaskService;
 import org.openmetadata.sdk.services.teams.PersonaService;
 import org.openmetadata.sdk.services.teams.RoleService;
@@ -83,9 +102,6 @@ public class OpenMetadataClient {
   private final OpenMetadataConfig config;
   private final HttpClient httpClient;
   private UUID cachedUserId = null;
-
-  // Feeds
-  private final FeedService feed;
 
   // Data Assets
   private final TableService tables;
@@ -118,9 +134,34 @@ public class OpenMetadataClient {
   private final SpreadsheetService spreadsheets;
   private final WorksheetService worksheets;
 
+  // Context Center
+  private final FolderService folders;
+  private final ContextFileService contextFiles;
+  private final PageService pages;
+
   // Glossary
   private final GlossaryService glossaries;
   private final GlossaryTermService glossaryTerms;
+
+  // Ontology
+  private final RelationshipTypeService relationshipTypes;
+  private final OntologyAxiomService ontologyAxioms;
+  private final OntologyService ontologies;
+  private final OntologyConceptService ontologyConcepts;
+  private final OntologyPropertyService ontologyProperties;
+  private final OntologyReleaseService ontologyReleases;
+  private final OntologyAiService ontologyAi;
+  private final OntologyBulkService ontologyBulk;
+  private final OntologyChangeSetService ontologyChangeSets;
+  private final OntologyEditLockService ontologyEditLocks;
+  private final OntologyImpactService ontologyImpacts;
+  private final InferenceRuleService inferenceRules;
+  private final OntologyPackService ontologyPacks;
+  private final OntologyPatternService ontologyPatterns;
+  private final OntologyReasoningService ontologyReasoning;
+
+  // System settings
+  private final SystemSettingsService settings;
 
   // Classification
   private final ClassificationService classifications;
@@ -175,6 +216,7 @@ public class OpenMetadataClient {
   private final SearchServiceService searchServices;
   private final StorageServiceService storageServices;
   private final LLMServiceService llmServices;
+  private final McpServiceService mcpServices;
   private final APIServiceService apiServices;
 
   // Ingestion
@@ -236,9 +278,32 @@ public class OpenMetadataClient {
     this.spreadsheets = new SpreadsheetService(httpClient);
     this.worksheets = new WorksheetService(httpClient);
 
+    // Initialize Context Center services
+    this.folders = new FolderService(httpClient);
+    this.contextFiles = new ContextFileService(httpClient);
+    this.pages = new PageService(httpClient);
+
     // Initialize glossary services
     this.glossaries = new GlossaryService(httpClient);
     this.glossaryTerms = new GlossaryTermService(httpClient);
+    this.settings = new SystemSettingsService(httpClient);
+
+    // Initialize Ontology services
+    this.relationshipTypes = new RelationshipTypeService(httpClient);
+    this.ontologyAxioms = new OntologyAxiomService(httpClient);
+    this.ontologies = new OntologyService(httpClient);
+    this.ontologyConcepts = new OntologyConceptService(httpClient);
+    this.ontologyProperties = new OntologyPropertyService(httpClient);
+    this.ontologyReleases = new OntologyReleaseService(httpClient);
+    this.ontologyAi = new OntologyAiService(httpClient);
+    this.ontologyBulk = new OntologyBulkService(httpClient);
+    this.ontologyChangeSets = new OntologyChangeSetService(httpClient);
+    this.ontologyEditLocks = new OntologyEditLockService(httpClient);
+    this.ontologyImpacts = new OntologyImpactService(httpClient);
+    this.inferenceRules = new InferenceRuleService(httpClient);
+    this.ontologyPacks = new OntologyPackService(httpClient);
+    this.ontologyPatterns = new OntologyPatternService(httpClient);
+    this.ontologyReasoning = new OntologyReasoningService(httpClient);
 
     // Initialize classification services
     this.classifications = new ClassificationService(httpClient);
@@ -293,6 +358,7 @@ public class OpenMetadataClient {
     this.searchServices = new SearchServiceService(httpClient);
     this.storageServices = new StorageServiceService(httpClient);
     this.llmServices = new LLMServiceService(httpClient);
+    this.mcpServices = new McpServiceService(httpClient);
     this.apiServices = new APIServiceService(httpClient);
 
     // Initialize ingestion services
@@ -318,14 +384,6 @@ public class OpenMetadataClient {
 
     // Initialize task form schema services
     this.taskFormSchemas = new TaskFormSchemaService(httpClient);
-
-    // Initialize feed service
-    this.feed = new FeedService(httpClient);
-  }
-
-  // Feed Service Getter
-  public FeedService feed() {
-    return feed;
   }
 
   public OpenMetadataConfig getConfig() {
@@ -424,6 +482,19 @@ public class OpenMetadataClient {
     return worksheets;
   }
 
+  // Context Center Service Getters
+  public FolderService folders() {
+    return folders;
+  }
+
+  public ContextFileService contextFiles() {
+    return contextFiles;
+  }
+
+  public PageService pages() {
+    return pages;
+  }
+
   // Glossary Service Getters
   public GlossaryService glossaries() {
     return glossaries;
@@ -431,6 +502,70 @@ public class OpenMetadataClient {
 
   public GlossaryTermService glossaryTerms() {
     return glossaryTerms;
+  }
+
+  public RelationshipTypeService relationshipTypes() {
+    return relationshipTypes;
+  }
+
+  public OntologyAxiomService ontologyAxioms() {
+    return ontologyAxioms;
+  }
+
+  public OntologyService ontologies() {
+    return ontologies;
+  }
+
+  public OntologyReleaseService ontologyReleases() {
+    return ontologyReleases;
+  }
+
+  public OntologyConceptService ontologyConcepts() {
+    return ontologyConcepts;
+  }
+
+  public OntologyPropertyService ontologyProperties() {
+    return ontologyProperties;
+  }
+
+  public OntologyAiService ontologyAi() {
+    return ontologyAi;
+  }
+
+  public OntologyBulkService ontologyBulk() {
+    return ontologyBulk;
+  }
+
+  public OntologyChangeSetService ontologyChangeSets() {
+    return ontologyChangeSets;
+  }
+
+  public OntologyEditLockService ontologyEditLocks() {
+    return ontologyEditLocks;
+  }
+
+  public OntologyImpactService ontologyImpacts() {
+    return ontologyImpacts;
+  }
+
+  public InferenceRuleService inferenceRules() {
+    return inferenceRules;
+  }
+
+  public OntologyPackService ontologyPacks() {
+    return ontologyPacks;
+  }
+
+  public OntologyPatternService ontologyPatterns() {
+    return ontologyPatterns;
+  }
+
+  public OntologyReasoningService ontologyReasoning() {
+    return ontologyReasoning;
+  }
+
+  public SystemSettingsService settings() {
+    return settings;
   }
 
   // Classification Service Getters
@@ -577,6 +712,10 @@ public class OpenMetadataClient {
 
   public LLMServiceService llmServices() {
     return llmServices;
+  }
+
+  public McpServiceService mcpServices() {
+    return mcpServices;
   }
 
   public APIServiceService apiServices() {

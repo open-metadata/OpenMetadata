@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/handlebarsHelpers.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Handlebars Helpers List",
   "description": "List of available Handlebars helpers with metadata",
   "type": "array",
@@ -10,7 +10,7 @@
   "definitions": {
     "handlebarsHelperUsage": {
       "type": "object",
-      "javaType": "org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage",
+      "javaType": "org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage",
       "description": "Usage example for a Handlebars helper",
       "properties": {
         "syntax": {
@@ -27,7 +27,7 @@
     },
     "handlebarsHelperMetadata": {
       "type": "object",
-      "javaType": "org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata",
+      "javaType": "org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata",
       "description": "Metadata describing a Handlebars helper",
       "properties": {
         "name": {

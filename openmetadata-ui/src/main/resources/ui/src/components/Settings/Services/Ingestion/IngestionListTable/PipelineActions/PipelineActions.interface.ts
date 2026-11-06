@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 
-import { ButtonProps } from 'antd';
-import { IngestionServicePermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../../../../../../enums/service.enum';
 import { IngestionPipeline } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SelectedRowDetails } from '../../ingestion.interface';
 
 export interface PipelineActionsProps {
   pipeline: IngestionPipeline;
-  ingestionPipelinePermissions?: IngestionServicePermission;
+  /**
+   * Closes down every control in the row. Set when the pipeline service is unreachable — pausing,
+   * resuming, running, deploying, killing, and reading logs all go through it.
+   */
+  isDisabled?: boolean;
+  ingestionPipelinePermissions?: OperationPermission;
   serviceCategory?: ServiceCategory;
   serviceName?: string;
   deployIngestion?: (id: string, displayName: string) => Promise<void>;
@@ -29,5 +33,5 @@ export interface PipelineActionsProps {
   handleEnableDisableIngestion?: (id: string) => Promise<void>;
   handleIsConfirmationModalOpen: (value: boolean) => void;
   onIngestionWorkflowsUpdate?: () => void;
-  moreActionButtonProps?: ButtonProps;
+  moreActionButtonProps?: { disabled?: boolean };
 }

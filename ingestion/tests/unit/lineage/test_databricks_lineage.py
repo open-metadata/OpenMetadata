@@ -28,7 +28,7 @@ from metadata.ingestion.source.database.databricks.lineage import (
 )
 
 mock_file_path = Path(__file__).parent / "../resources/datasets/databricks_dataset.json"
-with open(mock_file_path, encoding="utf-8") as file:
+with open(mock_file_path, encoding="utf-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 
@@ -125,7 +125,7 @@ class DatabricksLineageTests(TestCase):
     Databricks lineage test
     """
 
-    def __init__(self, methodName) -> None:
+    def __init__(self, methodName) -> None:  # noqa: N803
         super().__init__(methodName)
         config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
 

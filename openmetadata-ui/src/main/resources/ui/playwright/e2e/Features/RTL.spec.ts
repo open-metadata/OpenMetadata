@@ -11,86 +11,68 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
-import { toLower } from 'lodash';
+import { expect } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
-import { clickOutside, redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
+import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
 import {
   followEntity,
   validateFollowedEntityToWidget,
-  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-
-const user = new UserClass();
-
-export const test = base.extend<{ adminPage: Page }>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await user.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-});
+import { test } from './../../e2e/fixtures/pages';
 
 test.describe('Verify RTL Layout for landing page', () => {
   const table = EntityDataClass.table1;
 
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await user.create(apiContext);
-    await user.setAdminRole(apiContext);
-    await afterAction();
-  });
-
-  test.beforeEach(async ({ adminPage: page }) => {
+  test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
 
     await page.getByTestId('language-selector-button').click();
-    await page
-      .locator('.ant-dropdown:visible [data-menu-id*="-he-HE"]')
-      .click();
-    await page.waitForLoadState('domcontentloaded');
-    await waitForAllLoadersToDisappear(page);
+    await Promise.all([
+      page.waitForEvent('load'),
+      page.getByRole('menu').locator('[data-key="he-HE"]').click(),
+    ]);
+    // The landing header's own domain control went with the header; the navbar
+    // one is on every page now, home included.
+    await expect(page.getByTestId('domain-dropdown')).toBeVisible();
+    // wait for translation to reflect in the UI. `toContainText`, as every
+    // other spec driving this trigger uses: the testid is on the DomainSelect
+    // root, which also carries the globe icon and its popover, so an exact
+    // match is asserting more than the label.
+    await expect(page.getByTestId('domain-dropdown')).toContainText(
+      'כל הדומיינים',
+      { timeout: ACTION_TIMEOUT }
+    );
   });
 
-  test('Verify DataAssets widget functionality', async ({
-    adminPage: page,
+  // Replaces a Data Assets widget check: that widget is excluded from the
+  // landing page now, and nothing on the page exposes per-service tiles. The
+  // Hebrew-locale assertion that mattered — the landing page's own widgets
+  // render translated — moves onto the topic cards that took its place.
+  test('Verify landing page widgets render under an RTL locale', async ({
+    page,
   }) => {
-    const serviceType = toLower(table.service.serviceType);
+    test.slow();
 
-    await clickOutside(page);
-    const quickFilterResponse = page.waitForResponse(
-      `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
+    const dataEstateWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.DataEstate'
     );
 
-    await page
-      .locator(`[data-testid="data-asset-service-${serviceType}"]`)
-      .click();
-
-    await quickFilterResponse;
-
+    await expect(dataEstateWidget).toContainText('נכסי הנתונים שלך');
     await expect(
-      page.getByRole('button', { name: `סוג השירות : ${serviceType}` })
-    ).toBeAttached();
-
-    await expect(
-      page
-        .getByTestId('explore-tree')
-        .locator('span')
-        .filter({ hasText: serviceType })
-        .first()
-    ).toHaveClass(/ant-tree-node-selected/);
+      dataEstateWidget.getByTestId('data-estate-total')
+    ).toBeVisible();
   });
 
-  test('Verify Following widget functionality', async ({ adminPage }) => {
-    await table.visitEntityPage(adminPage);
+  test('Verify Following widget functionality', async ({ page }) => {
+    test.slow();
+    await table.visitEntityPage(page);
 
     const entityName = table.entityResponseData?.['displayName'];
 
-    await followEntity(adminPage, table.endpoint, 'בטל מעקב');
-    await validateFollowedEntityToWidget(adminPage, entityName ?? '', true);
+    await followEntity(page, table.endpoint, 'בטל מעקב');
+    await validateFollowedEntityToWidget(page, entityName ?? '', true);
   });
 });

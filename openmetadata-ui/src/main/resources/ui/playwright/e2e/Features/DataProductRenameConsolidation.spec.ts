@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -24,6 +25,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  resolveDescriptionBox,
   uuid,
 } from '../../utils/common';
 import {
@@ -31,7 +33,12 @@ import {
   checkAssetsCount,
   selectDataProduct,
 } from '../../utils/domain';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  visitEntityPageByFqn,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -92,7 +99,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     await page.getByTestId('save-button').click();
     await patchResponse;
 
-    await page.waitForURL(`**/dataProduct/${newName}/**`);
+    await page.waitForURL(`**/dataProduct/${newName}/**`, {
+      waitUntil: 'domcontentloaded',
+    });
     // Wait for the page to fully load after rename navigation
     // Ensure the data product header is visible with the new name
     await expect(page.getByTestId('entity-header-name')).toBeVisible();
@@ -106,11 +115,11 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     description: string
   ): Promise<void> {
     await page.getByTestId('edit-description').click();
+    const editor = await resolveDescriptionBox(page);
 
-    const descriptionBox = '.om-block-editor[contenteditable="true"]';
-    await page.locator(descriptionBox).first().click();
-    await page.locator(descriptionBox).first().clear();
-    await page.locator(descriptionBox).first().fill(description);
+    await editor.click();
+    await editor.clear();
+    await editor.fill(description);
 
     const patchResponse = page.waitForResponse(
       (response) =>
@@ -142,8 +151,8 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: { id: domain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: domain.responseData.id, type: 'domain' }],
         },
       ],
     });
@@ -187,12 +196,15 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
         page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
       ).toBeVisible();
 
-      // Verify from the table side
-      await page
-        .locator(
-          `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
-        )
-        .click();
+      // Verify from the table side — direct navigation instead of
+      // clicking the entity-link on the asset card. The card body
+      // re-renders as tags/owners/counts stream in, so .click() flakes
+      // "element is not stable" under SharedInfra load.
+      await visitEntityPageByFqn({
+        page,
+        endpoint: testTable.endpoint,
+        fqn: tableFqn ?? '',
+      });
 
       await expect(
         page.getByTestId('KnowledgePanel.DataProducts')
@@ -235,8 +247,8 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: { id: domain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: domain.responseData.id, type: 'domain' }],
         },
       ],
     });
@@ -265,22 +277,34 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
 
       // Step 2: Add a tag (this triggers consolidation logic)
       await page.getByTestId('documentation').click();
-      await page.getByTestId('tags-container').getByTestId('add-tag').click();
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      );
 
+      const tagSearchResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent(
+          escapeESReservedCharacters(tag.data.name)
+        )}*`
+      );
       await page
-        .locator('[data-testid="tag-selector"] input')
+        .getByTestId('classification-tag-picker-search')
         .fill(tag.data.name);
+      await tagSearchResponse;
 
       await page
-        .locator(`[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`)
+        .getByTestId(`tree-node-${tag.responseData.fullyQualifiedName}`)
         .click();
+
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
       const patchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/dataProducts/') &&
           response.request().method() === 'PATCH'
       );
-      await page.getByTestId('saveAssociatedTag').click();
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
       await patchResponse;
 
       // Step 3: Verify assets
@@ -331,8 +355,8 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: { id: domain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: domain.responseData.id, type: 'domain' }],
         },
       ],
     });
@@ -381,7 +405,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await searchResponse;
 
       // Click on the user in the list
-      await page.getByRole('listitem', { name: ownerDisplayName }).click();
+      await page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: ownerDisplayName })
+        .click();
 
       const patchResponse = page.waitForResponse(
         (response) =>
@@ -438,8 +465,8 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: { id: domain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: domain.responseData.id, type: 'domain' }],
         },
       ],
     });
@@ -486,13 +513,15 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
         ).toBeVisible();
       }
 
-      // Final verification from table side
+      // Final verification from table side — direct navigation instead
+      // of clicking the entity-link on the asset card (same reason as
+      // the sibling replacement above).
       const tableFqn = get(testTable, 'entityResponseData.fullyQualifiedName');
-      await page
-        .locator(
-          `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
-        )
-        .click();
+      await visitEntityPageByFqn({
+        page,
+        endpoint: testTable.endpoint,
+        fqn: tableFqn ?? '',
+      });
 
       await expect(
         page.getByTestId('KnowledgePanel.DataProducts')

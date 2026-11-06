@@ -32,7 +32,7 @@ runs:
         librdkafka-dev unixodbc-dev libevent-dev wkhtmltopdf libkrb5-dev jq
     - name: Set up JDK 21
       if: inputs.is_ingestion == 'false'
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: 21
         distribution: 'temurin'

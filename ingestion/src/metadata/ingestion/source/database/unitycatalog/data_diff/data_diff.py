@@ -9,4 +9,4 @@ class UnityCatalogTableParameter(DatabricksBaseTableParameter):
     """Unity Catalog table parameter setter - uses Unity Catalog connection
     which is databricks-based for data diff operations"""
 
-    pass
+    pass  # noqa: PIE790

@@ -52,7 +52,7 @@ class TestLineageEmptyResults(unittest.TestCase):
             WHERE query_text NOT LIKE '%%excluded%%'
             AND query_text LIKE '%%create%%table%%'
             LIMIT 100
-        """
+        """  # noqa: W291
 
         # Execute the query with text() wrapper - should not raise error
         with engine.connect() as conn:
@@ -97,7 +97,7 @@ class TestLineageEmptyResults(unittest.TestCase):
             FROM query_logs
             WHERE query_text LIKE '%%INSERT%%'
             AND 1=0
-        """
+        """  # noqa: W291
 
         # Should handle 0 rows gracefully
         with engine.connect() as conn:

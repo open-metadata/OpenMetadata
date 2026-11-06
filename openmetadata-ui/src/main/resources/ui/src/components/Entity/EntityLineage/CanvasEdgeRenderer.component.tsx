@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useTheme } from '@mui/material';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Edge, useReactFlow, useViewport } from 'reactflow';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { useTranslation } from 'react-i18next';
+import type { Edge, Node } from 'reactflow';
+import { useNodes, useReactFlow, useViewport } from 'reactflow';
+import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { useCanvasEdgeRenderer } from '../../../hooks/useCanvasEdgeRenderer';
 import { useCanvasMouseEvents } from '../../../hooks/useCanvasMouseEvents';
+import { useLineageEdgeColors } from '../../../hooks/useLineageEdgeColors';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { ECanvasButtonType } from '../../../utils/CanvasButtonUtils';
 import { calculateEdgeMidpoints } from '../../../utils/EdgeMidpointUtils';
@@ -27,24 +29,38 @@ import { CanvasButtonPopover } from './CanvasButtonPopover.component';
 export interface CanvasEdgeRendererProps {
   dqHighlightedEdges: Set<string>;
   hoverEdge: Edge | null;
+  edges?: Edge[];
+  nodes?: Node[];
+  pathHighlightedEdgeIds?: Set<string>;
+  isPathHighlightActive?: boolean;
   onEdgeClick?: (edge: Edge, event: MouseEvent) => void;
   onEdgeHover?: (edge: Edge | null) => void;
 }
 
 export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   dqHighlightedEdges,
+  edges: edgesOverride,
+  nodes: nodesOverride,
+  pathHighlightedEdgeIds,
+  isPathHighlightActive,
   onEdgeClick,
   onEdgeHover,
   hoverEdge,
 }) => {
-  const theme = useTheme();
+  const { t } = useTranslation();
+  const { theme } = useTheme();
+  const edgeColors = useLineageEdgeColors();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const { isEditMode, columnsInCurrentPages, isCanvasReady } =
+  const { columnsInCurrentPages, isCanvasReady, tracedNodes, tracedColumns } =
     useLineageStore();
-  const { edges, nodes } = useLineageProvider();
+  const providerEdges = useLineageStore((s) => s.edges);
+  const providerNodes = useLineageStore((s) => s.nodes);
+  const edges = edgesOverride ?? providerEdges;
+  const nodes = nodesOverride ?? providerNodes;
   const { getNode } = useReactFlow();
+  const flowNodes = useNodes();
   const viewport = useViewport();
 
   // Keep stable refs for callbacks and getEdgeAtPoint so the pane event listener effect
@@ -103,10 +119,13 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     canvasRef,
     edges,
     dqHighlightedEdges,
-    theme,
+    colors: edgeColors,
     hoverEdge,
+    pathHighlightedEdgeIds,
+    isPathHighlightActive,
     containerWidth: containerSize.width,
     containerHeight: containerSize.height,
+    theme,
   });
 
   useEffect(() => {
@@ -132,14 +151,26 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       return [];
     }
 
-    return calculateEdgeMidpoints(edges, getNode, columnsInCurrentPages);
+    return calculateEdgeMidpoints(
+      edges,
+      getNode,
+      columnsInCurrentPages,
+      tracedNodes,
+      tracedColumns
+    );
+    // `nodes` and `flowNodes` are recompute triggers: getNode is identity-stable,
+    // and only React Flow's nodes change while a drag is in progress.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isPlaywright,
     edges,
     nodes,
+    flowNodes,
     getNode,
     columnsInCurrentPages,
     isCanvasReady,
+    tracedNodes,
+    tracedColumns,
   ]);
 
   const hoveredEdge = useMemo(() => {
@@ -191,7 +222,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       pane.removeEventListener('mousemove', handleMouseMove);
       pane.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [isEditMode, handleClick, handleMouseMove, handleMouseLeave]);
+  }, [handleClick, handleMouseMove, handleMouseLeave]);
 
   return (
     <div
@@ -199,12 +230,15 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       ref={containerRef}
       style={{ pointerEvents: 'none' }}>
       <canvas
+        aria-hidden
         ref={canvasRef}
         style={{ position: 'absolute', top: 0, left: 0 }}
       />
       {edgeMidpoints.map((midpoint) =>
         midpoint?.dataTestId ? (
           <button
+            aria-label={t('label.edge')}
+            data-edge-state={midpoint.visualState}
             data-testid={midpoint.dataTestId}
             key={midpoint.id}
             style={{
@@ -228,22 +262,20 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
           />
         ) : null
       )}
-      {hoveredButton?.type === ECanvasButtonType.Pipeline &&
-        hoveredEdge &&
-        !isEditMode && (
-          <CanvasButtonPopover
-            hoverTimeoutRef={hoverTimeoutRef}
-            hoveredButton={hoveredButton}
-            hoveredEdge={hoveredEdge}
-            isOverPopoverRef={isOverPopoverRef}
-            viewport={viewport}
-            onMouseLeave={() => {
-              isOverPopoverRef.current = false;
-              setHoveredButton(null);
-              onEdgeHoverRef.current?.(null);
-            }}
-          />
-        )}
+      {hoveredButton?.type === ECanvasButtonType.Pipeline && hoveredEdge && (
+        <CanvasButtonPopover
+          hoverTimeoutRef={hoverTimeoutRef}
+          hoveredButton={hoveredButton}
+          hoveredEdge={hoveredEdge}
+          isOverPopoverRef={isOverPopoverRef}
+          viewport={viewport}
+          onMouseLeave={() => {
+            isOverPopoverRef.current = false;
+            setHoveredButton(null);
+            onEdgeHoverRef.current?.(null);
+          }}
+        />
+      )}
     </div>
   );
 };

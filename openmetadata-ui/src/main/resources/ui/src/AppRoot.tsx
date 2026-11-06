@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ToastProvider } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { FC, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
@@ -18,19 +19,22 @@ import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import App from './App';
+import { DocumentTitleProvider } from './components/common/DocumentTitle/DocumentTitleProvider';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
-import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
+import { useThemeCssVariables } from './hooks/useThemeCssVariables';
 import {
   getCustomUiThemePreference,
   getSystemConfig,
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
+import { isPlaywrightEnv } from './utils/PlaywrightUtils';
 import { getThemeConfig } from './utils/ThemeUtils';
 
 const AppRoot: FC = () => {
   const { initializeAuthState } = useApplicationStore();
+  useThemeCssVariables();
 
   const { applicationConfig, setApplicationConfig, setRdfEnabled } =
     useApplicationStore(
@@ -84,15 +88,18 @@ const AppRoot: FC = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <BrowserRouter basename={getBasePath()}>
+        <BrowserRouter
+          basename={getBasePath()}
+          useTransitions={!isPlaywrightEnv()}>
           <I18nextProvider i18n={i18n}>
-            <AntDConfigProvider>
-              <HelmetProvider>
+            <HelmetProvider>
+              <DocumentTitleProvider>
                 <ErrorBoundary>
                   <App />
+                  <ToastProvider />
                 </ErrorBoundary>
-              </HelmetProvider>
-            </AntDConfigProvider>
+              </DocumentTitleProvider>
+            </HelmetProvider>
           </I18nextProvider>
         </BrowserRouter>
       </div>

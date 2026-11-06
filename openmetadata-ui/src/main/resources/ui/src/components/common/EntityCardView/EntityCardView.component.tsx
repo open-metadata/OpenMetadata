@@ -12,8 +12,12 @@
  */
 
 import { Card } from '@openmetadata/ui-core-components';
+import cx from 'classnames';
 import Loader from '../Loader/Loader';
 import { EntityCardViewProps } from './EntityCardView.interface';
+
+const DEFAULT_GRID_COLUMNS =
+  'tw:grid-cols-1 tw:md:grid-cols-2 tw:lg:grid-cols-3';
 
 const EntityCardView = <T extends { id: string }>({
   entities,
@@ -21,6 +25,7 @@ const EntityCardView = <T extends { id: string }>({
   renderCard,
   onEntityClick,
   emptyMessage,
+  className,
 }: EntityCardViewProps<T>) => {
   if (loading) {
     return <Loader />;
@@ -36,14 +41,18 @@ const EntityCardView = <T extends { id: string }>({
 
   return (
     <div
-      className="tw:grid tw:grid-cols-1 tw:md:grid-cols-2 tw:lg:grid-cols-3 tw:gap-4 tw:p-6"
+      className={cx(
+        // auto-rows-max: `auto` lets a definite-height grid squash rows and clip cards.
+        'tw:grid tw:auto-rows-max tw:gap-4 tw:p-6',
+        className ?? DEFAULT_GRID_COLUMNS
+      )}
       data-testid="card-view-container">
       {entities.map((entity) => (
         <Card
           data-testid="entity-card"
           isClickable={Boolean(onEntityClick)}
           key={entity.id}
-          variant="default"
+          variant="tile"
           onClick={onEntityClick ? () => onEntityClick(entity) : undefined}>
           <Card.Content>{renderCard(entity)}</Card.Content>
         </Card>

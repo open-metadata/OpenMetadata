@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -49,6 +50,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -63,6 +65,7 @@ import org.openmetadata.schema.type.PipelineMetrics;
 import org.openmetadata.schema.type.PipelineObservabilityResponse;
 import org.openmetadata.schema.type.PipelineRuntimeTrendList;
 import org.openmetadata.schema.type.PipelineSummary;
+import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -103,6 +106,77 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("tasks,pipelineStatus", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_LINEAGE, MetadataOperation.EDIT_STATUS);
+  }
+
+  public static class PipelineTaskList extends ResultList<FieldInterface> {
+    /* Required for serde */
+  }
+
+  @GET
+  @Path("/name/{fqn}/columns")
+  @Operation(
+      operationId = "getPipelineTasksPaginatedByFQN",
+      summary = "Get paginated tasks of a pipeline by fully qualified name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Paginated tasks",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineTaskList.class))),
+        @ApiResponse(responseCode = "404", description = "Pipeline not found")
+      })
+  public PipelineTaskList getTasksPaginatedByFQN(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the pipeline",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of tasks returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset,
+      @Parameter(description = "Fields requested in the returned tasks (tags)")
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Include all, deleted, or non-deleted entities.")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description = "Sort tasks by. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
+    ResultList<FieldInterface> page =
+        getChildFieldPage(
+            securityContext, fqn, limit, offset, fieldsParam, include, sortBy, sortOrder);
+    PipelineTaskList result = new PipelineTaskList();
+    result.setData(page.getData());
+    result.setPaging(page.getPaging());
+    return result;
   }
 
   public static class PipelineList extends ResultList<Pipeline> {
@@ -195,24 +269,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -393,12 +451,61 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
                                 org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
+  @Parameter(
+      name = "overrideMetadata",
+      in = ParameterIn.QUERY,
+      description =
+          "When true, allows the bulk update to overwrite user-curated fields "
+              + "(description, displayName, owners, tags) that bot-driven updates "
+              + "normally preserve, and disables the sourceHash fast-path so unchanged "
+              + "entities are re-evaluated. Defaults to false.",
+      schema = @Schema(type = "boolean", defaultValue = "false"))
   public Response bulkCreateOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreatePipeline> createRequests) {
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
+  @DELETE
+  @Path("/deleteStale")
+  @Operation(
+      operationId = "bulkDeleteStalePipelines",
+      summary = "Delete stale pipelines within a scope",
+      description =
+          "Delete entities within the given scope (service, database, or databaseSchema) "
+              + "that the ingestion connector did not report in the current run. The connector "
+              + "sends the set of FQNs it saw; entities in scope not in that set are considered "
+              + "stale. By default the deletion is soft; pass hardDelete=true to hard-delete "
+              + "instead. Returns a BulkOperationResult of deleted (or, for dryRun, would-be-deleted) "
+              + "entities.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Stale deletion results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response deleteStale(
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              required = true,
+              description =
+                  "Scope to reconcile and the FQNs the connector saw this run. Carried as a"
+                      + " request body on DELETE; a topology that strips it is rejected with 400"
+                      + " rather than being read as an empty seen-set.",
+              content = @Content(schema = @Schema(implementation = BulkDeleteStaleRequest.class)))
+          @NotNull
+          @Valid
+          BulkDeleteStaleRequest request) {
+    return deleteStaleEntities(securityContext, request);
   }
 
   @PATCH
@@ -542,7 +649,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.addBulkPipelineStatus(fqn, pipelineStatuses).toResponse();
+    return repository
+        .addBulkPipelineStatus(fqn, pipelineStatuses, securityContext.getUserPrincipal().getName())
+        .toResponse();
   }
 
   @GET
@@ -551,7 +660,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       operationId = "listPipelineStatuses",
       summary = "List pipeline status",
       description =
-          "Get a list of pipeline status. Use `limit` and `before` or `after` query params for cursor-based pagination. "
+          "Get a page of pipeline statuses, newest first. Use `limit` and `before` or `after` query params for cursor-based pagination. "
               + "Filter by execution status using comma-separated values (e.g., 'Failed,Successful'). "
               + "Search by task name using the `search` parameter.",
       responses = {
@@ -585,12 +694,18 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           Long endTs,
       @Parameter(
               description =
-                  "Limit the number of pipeline statuses returned. If not provided, returns all results.",
+                  "Maximum number of pipeline statuses to return. 0 returns only the total; follow "
+                      + "the `after` cursor in `paging` to read the rest of the range.",
               schema = @Schema(type = "integer"))
+          @DefaultValue("10")
           @Min(value = 0, message = "must be greater than or equal to 0")
-          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @Max(
+              value = PipelineRepository.MAX_PIPELINE_STATUS_PAGE_SIZE,
+              message =
+                  "must be less than or equal to "
+                      + PipelineRepository.MAX_PIPELINE_STATUS_PAGE_SIZE)
           @QueryParam("limit")
-          Integer limitParam,
+          int limitParam,
       @Parameter(
               description = "Returns list of pipeline statuses before this cursor (timestamp)",
               schema = @Schema(type = "string"))
@@ -622,6 +737,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "number"))
           @QueryParam("maxDuration")
           Long maxDuration) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getPipelineStatuses(
         fqn, startTs, endTs, limitParam, before, after, status, search, minDuration, maxDuration);
   }
@@ -685,9 +803,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -716,9 +832,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, userId);
   }
 
   @PUT
@@ -743,9 +857,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @GET
@@ -815,6 +927,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
     Fields fields = getFields(fieldsParam);
     ListFilter filter =
         new ListFilter(include)

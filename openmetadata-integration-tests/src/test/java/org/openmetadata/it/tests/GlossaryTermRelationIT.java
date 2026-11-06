@@ -26,7 +26,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -45,7 +47,11 @@ import org.slf4j.LoggerFactory;
  *
  * <p>These tests verify that typed semantic relationships between glossary terms (e.g.,
  * calculatedFrom, synonym, broader) are correctly stored and returned by the API.
+ *
+ * <p>@Isolated because @BeforeAll flips global RDF configuration; any concurrent class
+ * would inherit that state and contend for the shared Fuseki backend, causing flaky timeouts.
  */
+@Isolated
 @Execution(ExecutionMode.SAME_THREAD)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryTermRelationIT {
@@ -64,6 +70,8 @@ public class GlossaryTermRelationIT {
   private static GlossaryTerm customerTerm;
   private static GlossaryTerm clientTerm;
 
+  private static boolean enabledServerRdf;
+
   @BeforeAll
   public static void setup() throws Exception {
     assumeTrue(
@@ -78,7 +86,7 @@ public class GlossaryTermRelationIT {
       rdfConfig.setUsername("admin");
       rdfConfig.setPassword("test-admin");
       rdfConfig.setDataset("openmetadata");
-      RdfUpdater.initialize(rdfConfig);
+      enabledServerRdf = RdfTestUtils.enableServerRdf(rdfConfig);
     }
 
     client = SdkClients.adminClient();
@@ -383,6 +391,6 @@ public class GlossaryTermRelationIT {
 
   @AfterAll
   static void disableRdf() {
-    RdfUpdater.disable();
+    RdfTestUtils.disableServerRdf(enabledServerRdf);
   }
 }

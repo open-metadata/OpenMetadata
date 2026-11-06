@@ -12,6 +12,8 @@
  */
 export interface SectionWithEditProps {
   title: string | React.ReactNode;
+  /** Rendered beside the title with an 8px gap (e.g. a count badge). */
+  titleExtra?: React.ReactNode;
   children: React.ReactNode;
   onEdit?: () => void;
   showEditButton?: boolean;

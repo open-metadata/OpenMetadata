@@ -89,7 +89,6 @@ jest.mock('./InlineTestCaseIncidentStatus.component', () => ({
       </div>
     )),
 }));
-jest.mock('../../../../test/unit/mocks/mui.mock');
 
 describe('TestCaseIncidentManagerStatus', () => {
   it('Should render component', async () => {
@@ -99,6 +98,20 @@ describe('TestCaseIncidentManagerStatus', () => {
     expect(
       await screen.findByTestId('edit-resolution-icon')
     ).toBeInTheDocument();
+  });
+
+  it('names the header edit button, as the other header fields name theirs', async () => {
+    render(
+      <TestCaseIncidentManagerStatus
+        {...mockProps}
+        newLook
+        headerName="label.incident-status"
+      />
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'label.edit-entity' })
+    ).toHaveAttribute('data-testid', 'edit-resolution-icon');
   });
 
   it('Should not show edit icon if edit permission is false', async () => {

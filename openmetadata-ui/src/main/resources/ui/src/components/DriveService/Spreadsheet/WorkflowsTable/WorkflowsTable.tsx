@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ColumnsType } from 'antd/lib/table';
+import { Assets } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -19,12 +19,14 @@ import {
   EntityReference,
   Spreadsheet,
 } from '../../../../generated/entity/data/spreadsheet';
-import { getColumnSorter, getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../../common/Table/Table';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 
 function WorkflowsTable() {
   const { t } = useTranslation();
@@ -52,7 +54,7 @@ function WorkflowsTable() {
           </div>
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EntityReference>(),
     ],
     []
   );
@@ -63,7 +65,16 @@ function WorkflowsTable() {
       data-testid="container-list-table"
       dataSource={spreadsheetDetails.worksheets}
       locale={{
-        emptyText: <ErrorPlaceHolder className="p-y-md" />,
+        emptyText: (
+          <div className="tw:relative tw:min-h-70">
+            <NoDataPlaceholder
+              icon={<Assets />}
+              title={t('message.no-entity-data-available', {
+                entity: t('label.worksheet-plural'),
+              })}
+            />
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="id"

@@ -6,7 +6,12 @@ user-invocable: true
 
 # Verification Before Completion
 
-No completion claims without fresh verification evidence.
+No completion claims without applicable verification evidence. Reuse results when tested inputs,
+commands and environment remain valid; a new skill invocation is not a reason to rerun.
+Select focused checks for implementation, push and PR creation; full impacted checks for merge
+readiness. Report exactly what passed, failed, was blocked or remains pending. Confirm the
+requested push/PR once, then finish; monitor CI only when requested. Redirect long logs to a file
+and inspect the final summary or failure details rather than repeatedly polling unchanged output.
 
 ## Core Rule
 
@@ -43,8 +48,8 @@ mvn test-compile -pl <module>
 # 3. Run relevant tests
 mvn test -pl <module> -Dtest=<TestClass>
 
-# 4. For API changes: run integration tests
-mvn verify -pl openmetadata-integration-tests -Dtest=<IntegrationTestClass>
+# 4. Unit tests + integration tests the diff impacts (PR CI runs no ITs; see java-affected-tests)
+make java_affected_run ARGS="--scope focused"  # --scope full for merge readiness
 ```
 
 ### Python Ingestion Changes
@@ -52,9 +57,9 @@ mvn verify -pl openmetadata-integration-tests -Dtest=<IntegrationTestClass>
 ```bash
 source env/bin/activate && cd ingestion
 
-# 1. Format and lint
+# 1. Format (apply) then lint check (verify)
 make py_format
-make lint
+make py_format_check
 
 # 2. Type check
 make static-checks

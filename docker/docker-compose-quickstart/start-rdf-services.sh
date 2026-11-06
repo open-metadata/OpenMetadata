@@ -29,7 +29,7 @@ VOLUMES_PATH=${DOCKER_VOLUMES_PATH:-./docker-volumes}
 
 # Create volume directories
 echo "Creating volume directories in: $VOLUMES_PATH"
-mkdir -p "$VOLUMES_PATH/fuseki/databases" "$VOLUMES_PATH/fuseki/run" "$VOLUMES_PATH/opensearch"
+mkdir -p "$VOLUMES_PATH/fuseki-store" "$VOLUMES_PATH/opensearch"
 
 # Set permissions
 echo "Setting permissions..."
@@ -37,13 +37,8 @@ chmod -R 777 "$VOLUMES_PATH"
 
 # Start Fuseki
 echo "Starting Apache Jena Fuseki..."
-# Use Rosetta 2 emulation on ARM64 for stain/jena-fuseki:5.0.0
-if [[ $(uname -m) == "arm64" ]] || [[ $(uname -m) == "aarch64" ]]; then
-    echo "Detected ARM64 architecture, using Rosetta 2 emulation..."
-    docker compose -f docker-compose-fuseki-rosetta.yml up -d
-else
-    docker compose -f docker-compose-fuseki-standalone.yml up -d
-fi
+# The published image is multi-architecture (linux/amd64 and linux/arm64).
+docker compose -f docker-compose-fuseki-standalone.yml up -d
 
 # Start OpenSearch
 echo "Starting OpenSearch..."

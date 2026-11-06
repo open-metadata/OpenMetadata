@@ -17,17 +17,25 @@ and verifies all new dialect-to-class factory registrations.
 
 from unittest.mock import MagicMock, Mock, patch
 
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import DeclarativeBase
+import pytest
+from sqlalchemy import Column, Integer, String, create_engine, text
+from sqlalchemy.orm import DeclarativeBase, Session
+from sqlalchemy.pool import StaticPool
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.profiler.orm.functions.table_metric_computer import (
     BaseTableMetricComputer,
     CockroachTableMetricComputer,
+    DatabricksTableMetricComputer,
     DB2TableMetricComputer,
+    ExasolTableMetricComputer,
+    HiveTableMetricComputer,
+    ImpalaTableMetricComputer,
     MSSQLTableMetricComputer,
     MySQLTableMetricComputer,
     SAPHanaTableMetricComputer,
+    TeradataTableMetricComputer,
+    TrinoTableMetricComputer,
     VerticaTableMetricComputer,
     table_metric_computer_factory,
 )
@@ -41,7 +49,7 @@ class Base(DeclarativeBase):
 
 class MockModel(Base):
     __tablename__ = "test_table"
-    __table_args__ = {"schema": "test_schema"}
+    __table_args__ = {"schema": "test_schema"}  # noqa: RUF012
     id = Column(Integer, primary_key=True)
     name = Column(String(256))
 
@@ -52,6 +60,16 @@ def _build_mock_session(db_name="test_db"):
     mock_bind.url.database = db_name
     session.get_bind.return_value = mock_bind
     return session
+
+
+# Schema and table names are enumerated from the source system, so anyone with
+# CREATE rights there controls them. All three engines below quote with backticks.
+HOSTILE_SCHEMA = "sch`ema"
+HOSTILE_TABLE = "ta`ble"
+
+
+def _emitted(session) -> str:
+    return str(session.execute.call_args[0][0])
 
 
 def _build_computer(session, computer_class, table_type=TableType.Regular):
@@ -94,6 +112,20 @@ class TestFactoryRegistrations:
 
     def test_hana_registration(self):
         assert table_metric_computer_factory._constructs.get(Dialects.Hana) is SAPHanaTableMetricComputer
+
+
+class TestDialectStringValidation:
+    """Verify Dialects enum values match actual SQLAlchemy dialect names."""
+
+    def test_exasol_dialect_matches_driver(self):
+        from sqlalchemy_exasol.base import EXADialect
+
+        assert Dialects.Exasol == EXADialect.name
+
+    def test_teradata_dialect_matches_driver(self):
+        from teradatasqlalchemy.dialect import TeradataDialect
+
+        assert Dialects.Teradata == TeradataDialect.name
 
 
 class TestDB2TableMetricComputer:
@@ -335,3 +367,571 @@ class TestSAPHanaTableMetricComputer:
         sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
         assert "columnCount" in sql, f"Query must select columnCount, got: {sql}"
         assert "columnNames" in sql, f"Query must select columnNames, got: {sql}"
+
+
+class TestExasolTableMetricComputer:
+    def test_exasol_registration(self):
+        assert table_metric_computer_factory._constructs.get(Dialects.Exasol) is ExasolTableMetricComputer
+
+    def test_compute_uses_view_metrics_for_views(self):
+        session = _build_mock_session()
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.View)
+
+        with patch.object(ExasolTableMetricComputer, "_compute_view_metrics", return_value="view-metrics") as mock_view:
+            result = computer.compute()
+
+        assert result == "view-metrics"
+        mock_view.assert_called_once_with()
+
+    def test_compute_uses_view_metrics_for_materialized_views(self):
+        session = _build_mock_session()
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.MaterializedView)
+
+        with patch.object(ExasolTableMetricComputer, "_compute_view_metrics", return_value="view-metrics") as mock_view:
+            result = computer.compute()
+
+        assert result == "view-metrics"
+        mock_view.assert_called_once_with()
+
+    def test_compute_view_metrics_falls_back_to_base_compute(self):
+        session = _build_mock_session()
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.View)
+
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
+            result = computer._compute_view_metrics()
+
+        assert result == "fallback"
+        mock_base.assert_called_once_with()
+
+    def test_compute_table_metrics_returns_none_when_no_result(self):
+        session = _build_mock_session()
+        session.execute.return_value.first.return_value = None
+        computer = _build_computer(session, ExasolTableMetricComputer)
+
+        result = computer._compute_table_metrics()
+
+        assert result is None
+
+    def test_compute_returns_result(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = 3000
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, ExasolTableMetricComputer)
+        result = computer.compute()
+        assert result is mock_result
+        assert result.rowCount == 3000
+
+    def test_compute_returns_none_when_no_result(self):
+        session = _build_mock_session()
+        session.execute.return_value.first.return_value = None
+        computer = _build_computer(session, ExasolTableMetricComputer)
+        result = computer.compute()
+        assert result is None
+
+    def test_compute_fallback_on_none_row_count(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = None
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, ExasolTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
+            result = computer.compute()
+            assert result == "fallback"
+
+    def test_compute_fallback_on_zero_row_count_for_view(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = 0
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.View)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
+            result = computer.compute()
+            assert result == "fallback"
+
+    def test_compute_table_metrics_falls_back_on_none_row_count(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = None
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, ExasolTableMetricComputer)
+
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
+            result = computer._compute_table_metrics()
+
+        assert result == "fallback"
+        mock_base.assert_called_once_with()
+
+
+class TestTeradataTableMetricComputer:
+    """DBC.TableSizeV is a space view and has no RowCount column (selecting it
+    fails with Teradata error 5628). Row counts come from DBC.TableStatsV,
+    populated by COLLECT STATISTICS; tables without collected stats fall back
+    to COUNT(*)."""
+
+    @staticmethod
+    def _exec_result(no_row=False, row_count=..., size_in_bytes=None):
+        """Mock execute() result; `.first()` returns a row mock with the given attrs."""
+        exec_result = MagicMock()
+        if no_row:
+            exec_result.first.return_value = None
+        else:
+            row = MagicMock()
+            if row_count is not ...:
+                row.rowCount = row_count
+            if size_in_bytes is not None:
+                row.sizeInBytes = size_in_bytes
+            exec_result.first.return_value = row
+        return exec_result
+
+    def test_teradata_registration(self):
+        assert table_metric_computer_factory._constructs.get(Dialects.Teradata) is TeradataTableMetricComputer
+
+    @staticmethod
+    def _sqls_by_table(session):
+        """Rendered SQL for each executed query, matched to the system view
+        it selects rather than to a call order."""
+        sqls = {}
+        for call in session.execute.call_args_list:
+            sql = str(call[0][0])
+            for table in ("TableStatsV", "TableSizeV"):
+                if table in sql:
+                    sqls[table] = sql
+        return sqls
+
+    def test_size_query_does_not_select_rowcount_from_table_size_v(self):
+        """Regression #3032: `sum(RowCount)` against DBC.TableSizeV raises
+        Teradata error 5628. The size query must only touch CurrentPerm."""
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500, size_in_bytes=12345),
+            self._exec_result(size_in_bytes=12345),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        computer.compute()
+        size_query = self._sqls_by_table(session)["TableSizeV"]
+        assert "TableSizeV" in size_query, f"Expected size query on DBC.TableSizeV, got: {size_query}"
+        assert "RowCount" not in size_query, f"TableSizeV has no RowCount column, got: {size_query}"
+        assert "CurrentPerm" in size_query, f"Size must come from CurrentPerm, got: {size_query}"
+
+    def test_row_count_query_targets_table_stats_v(self):
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500, size_in_bytes=12345),
+            self._exec_result(size_in_bytes=12345),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        computer.compute()
+        stats_query = self._sqls_by_table(session)["TableStatsV"]
+        assert "TableStatsV" in stats_query, f"Expected row count query on DBC.TableStatsV, got: {stats_query}"
+
+    def test_stats_query_filters_on_schema_and_table_name(self):
+        """Without the WHERE filters, MAX(RowCount) would return an arbitrary
+        table's count from the whole DBC statistics view."""
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500, size_in_bytes=12345),
+            self._exec_result(size_in_bytes=12345),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        computer.compute()
+        stats_query = session.execute.call_args_list[0][0][0]
+        sql = str(stats_query.compile())
+        params = stats_query.compile().params
+        assert 'trim("DatabaseName")' in sql, f"Stats query must filter on DatabaseName, got: {sql}"
+        assert 'trim("TableName")' in sql, f"Stats query must filter on TableName, got: {sql}"
+        assert "test_schema" in params.values(), f"Stats query must look up test_schema, got: {params}"
+        assert "test_table" in params.values(), f"Stats query must look up test_table, got: {params}"
+
+    def test_compute_returns_result_from_stats_and_size(self):
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500.0, size_in_bytes=12345),
+            self._exec_result(size_in_bytes=12345),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 7500
+        assert result.sizeInBytes == 12345
+        assert result.columnCount == 2
+        assert "id" in result.columnNames.split(",")
+
+    def test_compute_result_supports_asdict(self):
+        """TableMetricComputer.compute_table_entity calls row._asdict()."""
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500.0, size_in_bytes=12345),
+            self._exec_result(size_in_bytes=12345),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        result = computer.compute()
+        row = result._asdict()
+        assert row["rowCount"] == 7500
+        assert row["sizeInBytes"] == 12345
+
+    def test_compute_falls_back_when_no_stats_collected(self):
+        session = _build_mock_session()
+        stats = MagicMock()
+        stats.first.return_value = None
+        session.execute.side_effect = [stats]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
+            result = computer.compute()
+        assert result == "fallback"
+        mock_base.assert_called_once_with()
+
+    def test_compute_falls_back_on_null_row_count_in_stats(self):
+        session = _build_mock_session()
+        session.execute.side_effect = [self._exec_result(row_count=None)]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
+            result = computer.compute()
+        assert result == "fallback"
+
+    def test_compute_falls_back_on_zero_row_count_for_view(self):
+        session = _build_mock_session()
+        session.execute.side_effect = [self._exec_result(row_count=0)]
+        computer = _build_computer(session, TeradataTableMetricComputer, table_type=TableType.View)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
+            result = computer.compute()
+        assert result == "fallback"
+
+    def test_compute_returns_result_for_zero_row_count_regular_table(self):
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=0, size_in_bytes=0),
+            self._exec_result(size_in_bytes=0),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 0
+
+    def test_compute_returns_none_size_when_table_absent_from_size_view(self):
+        """A stats row found but no TableSizeV entry (e.g. no PERM) still
+        yields the row count with sizeInBytes None."""
+        session = _build_mock_session()
+        session.execute.side_effect = [self._exec_result(row_count=7500), self._exec_result(no_row=True)]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 7500
+        assert result.sizeInBytes is None
+
+    def test_stats_query_does_not_restrict_index_number(self):
+        """Statistics not collected on an index carry a NULL IndexNumber.
+        Restricting to index/table-level entries would drop tables whose only
+        collected stats are column stats into the COUNT(*) fallback."""
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500),
+            self._exec_result(size_in_bytes=12345),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        computer.compute()
+        stats_query = session.execute.call_args_list[0][0][0]
+        sql = str(stats_query.compile())
+        assert "IndexNumber" not in sql, f"Stats query must not filter on IndexNumber, got: {sql}"
+
+    @pytest.fixture
+    def teradata_sqlite_session(self):
+        """A real ORM session over a single-connection in-memory SQLite
+        engine with a DBC schema attaching TableStatsV/TableSizeV stand-ins,
+        to exercise the actual stats/size SQL semantics end to end."""
+        engine = create_engine("sqlite://", poolclass=StaticPool)
+        # ATTACH cannot run inside a transaction, so the DBC stand-in is
+        # created on a raw connection before the session opens its own.
+        with engine.connect() as conn:
+            conn.execute(text("ATTACH ':memory:' AS DBC"))
+            conn.execute(
+                text(
+                    'CREATE TABLE DBC."TableStatsV" ("DatabaseName" VARCHAR(256),'
+                    ' "TableName" VARCHAR(256), "IndexNumber" INTEGER,'
+                    ' "LastCollectTimeStamp" VARCHAR(32), "RowCount" INTEGER)'
+                )
+            )
+            conn.execute(
+                text(
+                    'CREATE TABLE DBC."TableSizeV" ("DatabaseName" VARCHAR(256),'
+                    ' "TableName" VARCHAR(256), "CurrentPerm" BIGINT)'
+                )
+            )
+            conn.commit()
+        session = Session(engine)
+        yield session
+        session.close()
+        engine.dispose()
+
+    def test_column_only_statistics_avoid_count_star_fallback(self, teradata_sqlite_session):
+        """A table whose only collected stats are column stats (NULL
+        IndexNumber) must report the stored row count, not fall back to
+        COUNT(*)."""
+        teradata_sqlite_session.execute(
+            text(
+                'INSERT INTO DBC."TableStatsV" VALUES'
+                " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
+            )
+        )
+        computer = _build_computer(teradata_sqlite_session, TeradataTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
+            result = computer.compute()
+        assert result.rowCount == 7500
+        mock_base.assert_not_called()
+
+    def test_index_and_column_statistics_return_max_row_count(self, teradata_sqlite_session):
+        """Entries collected in the same, latest run tie on
+        LastCollectTimeStamp; the largest count among them is reported.
+        Column stats (NULL IndexNumber) coexist with index stats and must not
+        be dropped."""
+        teradata_sqlite_session.execute(
+            text(
+                'INSERT INTO DBC."TableStatsV" VALUES'
+                " ('test_schema', 'test_table', 1, '2026-01-20 10:00:00', 10000),"
+                " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
+            )
+        )
+        computer = _build_computer(teradata_sqlite_session, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 10000
+
+    def test_newer_statistics_take_precedence_over_larger_stale_count(self, teradata_sqlite_session):
+        """A freshly collected entry reporting a shrunken table wins over a
+        stale, larger entry that was collected once and never re-collected."""
+        teradata_sqlite_session.execute(
+            text(
+                'INSERT INTO DBC."TableStatsV" VALUES'
+                " ('test_schema', 'test_table', 1, '2026-01-01 08:00:00', 100000000),"
+                " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
+            )
+        )
+        computer = _build_computer(teradata_sqlite_session, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 7500
+
+    def test_size_comes_from_table_size_v_current_perm(self, teradata_sqlite_session):
+        teradata_sqlite_session.execute(
+            text(
+                'INSERT INTO DBC."TableStatsV" VALUES'
+                " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
+            )
+        )
+        teradata_sqlite_session.execute(
+            text("INSERT INTO DBC.\"TableSizeV\" VALUES ('test_schema', 'test_table', 12345)")
+        )
+        computer = _build_computer(teradata_sqlite_session, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result.sizeInBytes == 12345
+
+
+class TestTrinoTableMetricComputer:
+    def test_show_stats_returns_row_count(self):
+        session = _build_mock_session()
+        summary_row = MagicMock()
+        summary_row._asdict.return_value = {"column_name": None, "row_count": 891.0}
+        col_row = MagicMock()
+        col_row._asdict.return_value = {"column_name": "id", "row_count": None}
+        session.execute.return_value = [col_row, summary_row]
+
+        computer = _build_computer(session, TrinoTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 891
+
+    def test_show_stats_no_row_count_falls_back(self):
+        session = _build_mock_session()
+        summary_row = MagicMock()
+        summary_row._asdict.return_value = {"column_name": None, "row_count": None}
+        session.execute.return_value = [summary_row]
+        session.execute.return_value = iter([summary_row])
+
+        computer = _build_computer(session, TrinoTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=500)):
+            result = computer.compute()
+        assert result.rowCount == 500
+
+    def test_show_stats_empty_result_falls_back(self):
+        session = _build_mock_session()
+        session.execute.return_value = iter([])
+
+        computer = _build_computer(session, TrinoTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=100)):
+            result = computer.compute()
+        assert result.rowCount == 100
+
+    def test_result_includes_column_metadata(self):
+        session = _build_mock_session()
+        summary_row = MagicMock()
+        summary_row._asdict.return_value = {"column_name": None, "row_count": 50.0}
+        session.execute.return_value = [summary_row]
+
+        computer = _build_computer(session, TrinoTableMetricComputer)
+        result = computer.compute()
+        assert result.columnCount == 2
+        assert "id" in result.columnNames
+        assert "name" in result.columnNames
+
+    def test_trino_presto_athena_registrations(self):
+        assert table_metric_computer_factory._constructs[Dialects.Trino] is TrinoTableMetricComputer
+        assert table_metric_computer_factory._constructs[Dialects.Presto] is TrinoTableMetricComputer
+
+
+class TestHiveTableMetricComputer:
+    def test_describe_formatted_extracts_numrows(self):
+        session = _build_mock_session()
+        rows = [
+            ("", "Table Parameters:", None),
+            ("", "numRows             ", "12345               "),
+            ("", "rawDataSize         ", "999                 "),
+        ]
+        session.execute.return_value.fetchall.return_value = rows
+
+        computer = _build_computer(session, HiveTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 12345
+
+    def test_describe_formatted_no_match_falls_back(self):
+        session = _build_mock_session()
+        rows = [("col_name", "data_type", "comment")]
+        session.execute.return_value.fetchall.return_value = rows
+
+        computer = _build_computer(session, HiveTableMetricComputer)
+        with patch.object(
+            BaseTableMetricComputer,
+            "compute",
+            return_value=MagicMock(rowCount=200),
+        ):
+            result = computer.compute()
+        assert result.rowCount == 200
+
+    def test_describe_formatted_escapes_backticks(self):
+        """Hive doubles a backtick inside a quoted identifier and unescapes it
+        again -- `HiveLexer.g`: ('`' ( '``' | ~('`') )+ '`')."""
+        session = _build_mock_session()
+        session.execute.return_value.fetchall.return_value = [("", "numRows", "1")]
+
+        computer = _build_computer(session, HiveTableMetricComputer)
+        computer._schema_name = HOSTILE_SCHEMA
+        computer._table_name = HOSTILE_TABLE
+        computer.compute()
+
+        assert _emitted(session) == "DESCRIBE FORMATTED `sch``ema`.`ta``ble`"
+
+    def test_hive_registration(self):
+        assert table_metric_computer_factory._constructs[Dialects.Hive] is HiveTableMetricComputer
+
+
+class TestImpalaTableMetricComputer:
+    def test_sums_rows_across_partitions(self):
+        session = _build_mock_session()
+        row1 = MagicMock()
+        row1._asdict.return_value = {"#Rows": "3000"}
+        row2 = MagicMock()
+        row2._asdict.return_value = {"#Rows": "2000"}
+        session.execute.return_value.fetchall.return_value = [row1, row2]
+
+        computer = _build_computer(session, ImpalaTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 5000
+
+    def test_handles_lowercase_rows_key(self):
+        session = _build_mock_session()
+        row = MagicMock()
+        row._asdict.return_value = {"#rows": "800"}
+        session.execute.return_value.fetchall.return_value = [row]
+
+        computer = _build_computer(session, ImpalaTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 800
+
+    def test_zero_rows_falls_back(self):
+        session = _build_mock_session()
+        row = MagicMock()
+        row._asdict.return_value = {"#Rows": "0"}
+        session.execute.return_value.fetchall.return_value = [row]
+
+        computer = _build_computer(session, ImpalaTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=0)):
+            result = computer.compute()
+        assert result.rowCount == 0
+
+    def test_empty_stats_falls_back(self):
+        session = _build_mock_session()
+        session.execute.return_value.fetchall.return_value = []
+
+        computer = _build_computer(session, ImpalaTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=50)):
+            result = computer.compute()
+        assert result.rowCount == 50
+
+    def test_show_table_stats_rejects_unquotable_name(self):
+        """Impala's lexer (`sql-scanner.flex`: QuotedIdentifier =
+        `(\\.|[^\\`])*`) treats a backslash as an escape and cannot represent a
+        literal backtick, so a hostile name is rejected rather than quoted into
+        SQL that could break out of the backticks."""
+        session = _build_mock_session()
+
+        computer = _build_computer(session, ImpalaTableMetricComputer)
+        computer._schema_name = HOSTILE_SCHEMA
+        computer._table_name = HOSTILE_TABLE
+        with pytest.raises(ValueError):
+            computer.compute()
+
+        session.execute.assert_not_called()
+
+    def test_impala_registration(self):
+        assert table_metric_computer_factory._constructs[Dialects.Impala] is ImpalaTableMetricComputer
+
+
+class TestDatabricksTableMetricComputer:
+    def test_describe_detail_returns_num_records(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result._asdict.return_value = {"numRecords": 42000}
+        session.execute.return_value.first.return_value = mock_result
+
+        computer = _build_computer(session, DatabricksTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 42000
+
+    def test_describe_detail_none_falls_back(self):
+        session = _build_mock_session()
+        session.execute.return_value.first.return_value = None
+
+        computer = _build_computer(session, DatabricksTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=5000)):
+            result = computer.compute()
+        assert result.rowCount == 5000
+
+    def test_views_fall_back_without_describe_detail(self):
+        for table_type in (TableType.View, TableType.MaterializedView):
+            session = _build_mock_session()
+            session.execute.side_effect = AssertionError("DESCRIBE DETAIL must not run for views")
+            computer = _build_computer(
+                session,
+                DatabricksTableMetricComputer,
+                table_type=table_type,
+            )
+
+            with patch.object(
+                BaseTableMetricComputer,
+                "compute",
+                return_value=MagicMock(rowCount=5000),
+            ):
+                result = computer.compute()
+
+            assert result is not None
+            assert result.rowCount == 5000
+
+    def test_describe_detail_escapes_backticks(self):
+        """Databricks SQL: "Use ` to escape ` itself"."""
+        session = _build_mock_session()
+        result = MagicMock()
+        result._asdict.return_value = {"numRecords": 1}
+        session.execute.return_value.first.return_value = result
+
+        computer = _build_computer(session, DatabricksTableMetricComputer)
+        computer._schema_name = HOSTILE_SCHEMA
+        computer._table_name = HOSTILE_TABLE
+        computer.compute()
+
+        assert _emitted(session) == "DESCRIBE DETAIL `sch``ema`.`ta``ble`"
+
+    def test_databricks_registration(self):
+        assert table_metric_computer_factory._constructs[Dialects.Databricks] is DatabricksTableMetricComputer

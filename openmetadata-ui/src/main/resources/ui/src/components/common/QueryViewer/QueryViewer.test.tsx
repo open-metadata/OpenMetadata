@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { JSON_TAB_SIZE } from '../../../constants/constants';
+import { useClipboard } from '../../../hooks/useClipBoard';
 import QueryViewer from './QueryViewer.component';
 
 jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
@@ -28,17 +30,19 @@ jest.mock('../../../hooks/useClipBoard', () => ({
 }));
 
 describe('QueryViewer Component', () => {
-  it('should render with SQL query', () => {
+  it('should render with SQL query', async () => {
     const sqlQuery = 'SELECT * FROM table';
     render(<QueryViewer sqlQuery={sqlQuery} title={<span>Test Title</span>} />);
 
-    expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-    expect(screen.getByTestId('schema-editor')).toHaveTextContent(sqlQuery);
+    const schemaEditor = await screen.findByTestId('schema-editor');
+
+    expect(schemaEditor).toBeInTheDocument();
+    expect(schemaEditor).toHaveTextContent(sqlQuery);
     expect(screen.getByTestId('query-line')).toBeInTheDocument();
     expect(screen.getByTestId('query-entity-copy-button')).toBeInTheDocument();
   });
 
-  it('should render title without SQL editor when query is empty', () => {
+  it('should render title and no-data placeholder when query is empty', () => {
     render(<QueryViewer sqlQuery="" title={<span>dbt Project Info</span>} />);
 
     expect(screen.queryByTestId('schema-editor')).not.toBeInTheDocument();
@@ -47,6 +51,7 @@ describe('QueryViewer Component', () => {
       screen.queryByTestId('query-entity-copy-button')
     ).not.toBeInTheDocument();
     expect(screen.getByText('dbt Project Info')).toBeInTheDocument();
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
   });
 
   it('should render title without SQL editor when query is undefined-like empty string', () => {
@@ -63,5 +68,19 @@ describe('QueryViewer Component', () => {
     render(<QueryViewer sqlQuery={multilineSql} />);
 
     expect(screen.getByTestId('query-line')).toHaveTextContent('3');
+  });
+
+  it('should count lines of the formatted JSON shown in the editor', () => {
+    const config = { 'cleanup.policy': 'delete', 'retention.ms': '604800000' };
+    const formattedConfig = JSON.stringify(config, null, JSON_TAB_SIZE);
+    render(<QueryViewer sqlQuery={JSON.stringify(config)} />);
+
+    expect(screen.getByTestId('query-line')).toHaveTextContent(
+      '4 label.line-plural'
+    );
+    expect(screen.getByTestId('schema-editor').textContent).toBe(
+      formattedConfig
+    );
+    expect(useClipboard).toHaveBeenLastCalledWith(formattedConfig);
   });
 });

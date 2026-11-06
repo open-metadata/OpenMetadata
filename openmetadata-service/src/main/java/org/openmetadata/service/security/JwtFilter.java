@@ -13,11 +13,12 @@
 
 package org.openmetadata.service.security;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
+import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
+import static org.openmetadata.service.security.SecurityUtil.getClaimAsList;
 import static org.openmetadata.service.security.SecurityUtil.isBot;
+import static org.openmetadata.service.security.SecurityUtil.validateConfiguredEmailDomain;
 import static org.openmetadata.service.security.SecurityUtil.validateDomainEnforcement;
 import static org.openmetadata.service.security.SecurityUtil.validatePrincipalClaimsMapping;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
@@ -32,6 +33,8 @@ import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
 import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.Priority;
@@ -39,33 +42,59 @@ import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.PathSegment;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
 import java.net.URI;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.Invalidatable;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.OAuthDAOs;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
-import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
-import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
+import org.openmetadata.service.security.credentials.CredentialVerifier;
+import org.openmetadata.service.security.credentials.Credentials;
+import org.openmetadata.service.security.credentials.OmCredential;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.security.session.SessionProviders;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.UserSession;
+import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Provider
@@ -76,7 +105,22 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
   public static final String BOT_CLAIM = "isBot";
-  public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
+  public static final String IMPERSONATE_USER_HEADER = "X-Impersonate-User";
+  public static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
+  private static final Set<String> MULTI_TENANT_AUTHORITIES =
+      Set.of("common", "organizations", "consumers");
+  private static final Pattern TENANT_ID =
+      Pattern.compile(
+          "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+  // The path segment after the tenant in a v2 endpoint authority, as in .../{tenant}/v2.0.
+  private static final String AUTHORITY_VERSION_SEGMENT = "v2.0";
+  private static final String EMAIL_SEPARATOR = "@";
+
+  private static final String BOT_TOKEN_MISMATCH =
+      "The given token does not match the current bot's token!";
+  private static final String INVALID_PERSONAL_ACCESS_TOKEN = "Invalid personal access token!";
+  private static final String UNRECOGNIZED_TOKEN = "Unrecognized token type!";
+  private static final String NON_TEXT_TOKEN_TYPE = "non-text";
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -87,6 +131,60 @@ public class JwtFilter implements ContainerRequestFilter {
   private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
+  private OidcClientConfig serverSideOidcClient;
+  private ProviderTokenValidator providerTokenValidator =
+      ProviderTokenValidator.acceptingAnyProviderToken();
+
+  /** Looked up per check: the server installs its verifier after the first filter is built. */
+  private final Supplier<CredentialVerifier> credentialVerifier;
+
+  private String emailClaim;
+  private String displayNameClaim;
+  private List<String> allowedEmailDomains;
+
+  /**
+   * Email-to-username resolution cache for the email-first flow. This mapping decides which
+   * principal a request runs as, so a stale entry is an authorization bug, not just a stale read:
+   * if an address is reassigned, a replica still holding the old mapping would run the new holder
+   * as the previous owner. Three things bound that. Entries are only written for an email a
+   * stored account actually owns. Local user writes invalidate through {@link
+   * #invalidateResolvedEmailIdentity}, and that fans out to other replicas over the cache
+   * invalidation channel when Redis is configured. The short TTL is the backstop for deployments
+   * with no shared cache, and for changes made outside a running server -- the {@code
+   * change-email} ops command runs in its own process and cannot reach any replica's memory.
+   */
+  private static final Cache<String, String> EMAIL_TO_USERNAME_CACHE =
+      CacheBuilder.newBuilder().maximumSize(10_000).expireAfterWrite(60, TimeUnit.SECONDS).build();
+
+  /**
+   * Drops resolved-identity entries for a user when any replica reports a write to that user.
+   * Registered with {@link CacheBundle}, which fans both local mutations and remote pub/sub
+   * messages out to every registered layer.
+   */
+  private static final Invalidatable EMAIL_IDENTITY_INVALIDATOR =
+      (type, id, fqn) -> {
+        if (!USER.equals(type) || fqn == null) {
+          return;
+        }
+        String userName = EntityInterfaceUtil.unquoteName(fqn);
+        EMAIL_TO_USERNAME_CACHE.asMap().values().removeIf(userName::equals);
+      };
+
+  public static Invalidatable emailIdentityInvalidator() {
+    return EMAIL_IDENTITY_INVALIDATOR;
+  }
+
+  public static void invalidateResolvedEmailIdentity(String email) {
+    if (email != null) {
+      EMAIL_TO_USERNAME_CACHE.invalidate(email.toLowerCase(Locale.ROOT));
+    }
+  }
+
+  private record ResolvedIdentity(String userName, String email, boolean usedEmailFirstFlow) {}
+
+  /** A token that passed {@link #authenticate}, with the identity it was minted for. */
+  private record AuthenticatedToken(
+      DecodedJWT jwt, Map<String, Claim> claims, ResolvedIdentity identity, boolean isBot) {}
 
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
@@ -104,22 +202,37 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/password/reset",
           "v1/users/login",
           "v1/users/refresh",
-          "v1/collate/apps/support/login");
+          "v1/collate/apps/support/redeem-code");
+
+  /**
+   * Whether the request targets an endpoint that bypasses authentication (and, for the event
+   * filter, auditing). Matches the resource path exactly, after dropping matrix parameters from
+   * each segment: a substring or raw-path match would let {@code ;x=…} or an encoded separator in
+   * an entity name make a different endpoint look like an excluded one.
+   */
+  public static boolean isExcludedEndpoint(UriInfo uriInfo) {
+    String path =
+        uriInfo.getPathSegments().stream()
+            .map(PathSegment::getPath)
+            .collect(Collectors.joining("/"));
+    return EXCLUDED_ENDPOINTS.stream().anyMatch(path::equalsIgnoreCase);
+  }
 
   @SuppressWarnings("unused")
-  private JwtFilter() {}
+  private JwtFilter() {
+    this.credentialVerifier = Credentials::verifier;
+  }
 
   @SneakyThrows
   public JwtFilter(
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConfiguration) {
+    this.credentialVerifier = Credentials::verifier;
     this.providerType = authenticationConfiguration.getProvider();
     // Cannot remove  Principal Claims listing since that is , breaking change for existing users
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
     this.jwtPrincipalClaimsMapping =
-        listOrEmpty(authenticationConfiguration.getJwtPrincipalClaimsMapping()).stream()
-            .map(s -> s.split(":"))
-            .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+        buildPrincipalClaimsMapping(authenticationConfiguration.getJwtPrincipalClaimsMapping());
     validatePrincipalClaimsMapping(jwtPrincipalClaimsMapping);
     this.jwtTeamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
 
@@ -127,13 +240,79 @@ public class JwtFilter implements ContainerRequestFilter {
     for (String publicKeyUrlStr : authenticationConfiguration.getPublicKeyUrls()) {
       publicKeyUrlsBuilder.add(URI.create(publicKeyUrlStr).toURL());
     }
-    this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
+    this.jwkProvider =
+        new MultiUrlJwkProvider(publicKeyUrlsBuilder.build(), this::providerKeySetUrls);
+    this.serverSideOidcClient =
+        authenticationConfiguration.getClientType() == ClientType.CONFIDENTIAL
+            ? authenticationConfiguration.getOidcConfiguration()
+            : null;
+    this.providerTokenValidator =
+        new ProviderTokenValidator(
+            clientIdsOf(authenticationConfiguration),
+            this::providerIssuer,
+            publicClientEntraTenant(authenticationConfiguration));
 
-    this.principalDomain = authorizerConfiguration.getPrincipalDomain();
+    this.principalDomain =
+        SecurityUtil.resolvePrincipalDomain(
+            authorizerConfiguration.getPrincipalDomain(),
+            authorizerConfiguration.getAllowedEmailDomains(),
+            authorizerConfiguration.getAllowedDomains());
     this.allowedDomains = authorizerConfiguration.getAllowedDomains();
-    this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
+    this.enforcePrincipalDomain =
+        Boolean.TRUE.equals(authorizerConfiguration.getEnforcePrincipalDomain());
     this.useRolesFromProvider = authorizerConfiguration.getUseRolesFromProvider();
     this.tokenValidationAlgorithm = authenticationConfiguration.getTokenValidationAlgorithm();
+
+    this.emailClaim = authenticationConfiguration.getEmailClaim();
+    this.displayNameClaim = authenticationConfiguration.getDisplayNameClaim();
+    Set<String> emailDomainsSet = authorizerConfiguration.getAllowedEmailDomains();
+    this.allowedEmailDomains =
+        emailDomainsSet != null ? new ArrayList<>(emailDomainsSet) : new ArrayList<>();
+
+    logDeprecationWarnings(authenticationConfiguration);
+  }
+
+  /**
+   * Warns only about deprecated settings that are now redundant, i.e. once the replacement is
+   * configured. 'jwtPrincipalClaims' ships with a non-empty default and still drives the legacy
+   * flow when 'emailClaim' is unset, so warning about it unconditionally would tell every
+   * untouched deployment to remove configuration it still depends on.
+   */
+  private void logDeprecationWarnings(AuthenticationConfiguration config) {
+    boolean emailFirstConfigured = !nullOrEmpty(config.getEmailClaim());
+    if (emailFirstConfigured && !nullOrEmpty(config.getJwtPrincipalClaims())) {
+      LOG.warn(
+          "DEPRECATED: 'jwtPrincipalClaims' is deprecated and no longer used now that "
+              + "'emailClaim' is configured. It can be removed; this will be removed in a "
+              + "future version.");
+    }
+
+    // Empty by default, so this only fires for a deployment that explicitly set it. Note it also
+    // suppresses the email-first flow, which is worth saying out loud.
+    if (!nullOrEmpty(config.getJwtPrincipalClaimsMapping())) {
+      LOG.warn(
+          "DEPRECATED: 'jwtPrincipalClaimsMapping' configuration is deprecated and keeps "
+              + "identity resolution on the legacy flow. Use 'emailClaim' and "
+              + "'displayNameClaim' instead. This will be removed in a future version.");
+    }
+  }
+
+  /**
+   * Other distributions' tests build the filter through this signature. It checks tokens against
+   * the installed verifier, as the production constructor does.
+   */
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain) {
+    this(
+        jwkProvider,
+        jwtPrincipalClaims,
+        principalDomain,
+        enforcePrincipalDomain,
+        Credentials::verifier);
   }
 
   @VisibleForTesting
@@ -141,61 +320,144 @@ public class JwtFilter implements ContainerRequestFilter {
       JwkProvider jwkProvider,
       List<String> jwtPrincipalClaims,
       String principalDomain,
-      boolean enforcePrincipalDomain) {
+      boolean enforcePrincipalDomain,
+      Supplier<CredentialVerifier> credentialVerifier) {
+    this(
+        jwkProvider,
+        jwtPrincipalClaims,
+        principalDomain,
+        enforcePrincipalDomain,
+        null,
+        credentialVerifier);
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain,
+      AuthProvider providerType,
+      Supplier<CredentialVerifier> credentialVerifier) {
+    this.credentialVerifier = credentialVerifier;
     this.jwkProvider = jwkProvider;
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
     this.enforcePrincipalDomain = enforcePrincipalDomain;
+    this.providerType = providerType;
     this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      ProviderTokenValidator providerTokenValidator,
+      Supplier<CredentialVerifier> credentialVerifier) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, false, credentialVerifier);
+    this.providerTokenValidator = providerTokenValidator;
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      String emailClaim,
+      String displayNameClaim,
+      List<String> allowedEmailDomains,
+      Supplier<CredentialVerifier> credentialVerifier) {
+    this.credentialVerifier = credentialVerifier;
+    this.jwkProvider = jwkProvider;
+    this.emailClaim = emailClaim;
+    this.displayNameClaim = displayNameClaim;
+    this.allowedEmailDomains = allowedEmailDomains;
+    this.jwtPrincipalClaimsMapping = null;
+    this.jwtPrincipalClaims = new ArrayList<>();
+    this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain,
+      String emailClaim,
+      String displayNameClaim,
+      List<String> allowedEmailDomains,
+      Supplier<CredentialVerifier> credentialVerifier) {
+    this(
+        jwkProvider,
+        jwtPrincipalClaims,
+        principalDomain,
+        enforcePrincipalDomain,
+        credentialVerifier);
+    this.emailClaim = emailClaim;
+    this.displayNameClaim = displayNameClaim;
+    this.allowedEmailDomains = allowedEmailDomains;
   }
 
   @SneakyThrows
   @Override
   public void filter(ContainerRequestContext requestContext) {
-    UriInfo uriInfo = requestContext.getUriInfo();
-    if (EXCLUDED_ENDPOINTS.stream()
-        .anyMatch(endpoint -> uriInfo.getPath().equalsIgnoreCase(endpoint))) {
+    if (isExcludedEndpoint(requestContext.getUriInfo())) {
       return;
     }
 
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
-    // Ensure stale thread-local state from a prior request is not reused on early failures.
     ImpersonationContext.clear();
+    ActivePersonaContext.clear();
+    ActiveDomainContext.clear();
+
     try {
       String tokenFromHeader = extractToken(requestContext.getHeaders());
-      LOG.debug("Token from header:{}", tokenFromHeader);
+      LOG.debug("Authorization header present: {}", !nullOrEmpty(tokenFromHeader));
+      AuthenticatedToken authenticated = authenticate(tokenFromHeader);
+      String tokenKeyId = authenticated.jwt().getKeyId();
+      Map<String, Claim> claims = authenticated.claims();
+      boolean isBotUser = authenticated.isBot();
+      ResolvedIdentity resolvedIdentity = authenticated.identity();
+      String userName = resolvedIdentity.userName();
+      String email = resolvedIdentity.email();
 
-      Map<String, Claim> claims = validateJwtAndGetClaims(tokenFromHeader);
-      String userName =
-          findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
-      String email =
-          findEmailFromClaims(
-              jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
-      boolean isBotUser = isBot(claims);
-
-      String impersonateUser = requestContext.getHeaderString("X-Impersonate-User");
+      String impersonateUser = requestContext.getHeaderString(IMPERSONATE_USER_HEADER);
+      String activePersona = requestContext.getHeaderString(ACTIVE_PERSONA_HEADER);
       String impersonatedBy = null;
 
       if (impersonateUser != null && !impersonateUser.isEmpty()) {
         if (!isBotUser) {
-          throw new AuthorizationException("Only bot users can impersonate other users");
+          throw new ImpersonationDeniedException("Only bot users can impersonate other users");
         }
         impersonatedBy = userName;
-        userName = impersonateUser;
+        User impersonatedUser = resolveImpersonationTarget(impersonatedBy, impersonateUser);
+        userName = impersonatedUser.getName();
+        email = impersonatedUser.getEmail();
       }
 
-      checkValidationsForToken(claims, tokenFromHeader, userName, impersonatedBy);
+      checkValidationsForToken(
+          claims,
+          tokenFromHeader,
+          tokenKeyId,
+          userName,
+          email,
+          resolvedIdentity.usedEmailFirstFlow());
 
       CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
       String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+      // The persisted navbar selection is a UI view preference: bot tokens (including impersonated
+      // requests) and personal access tokens (scripts, SDK) list without it.
+      EntityReference activeDomain =
+          ActiveDomainContext.resolve(userName, isBotUser || isPersonalAccessToken(claims));
       CatalogSecurityContext catalogSecurityContext =
           new CatalogSecurityContext(
               catalogPrincipal,
               scheme,
               SecurityContext.DIGEST_AUTH,
-              getUserRolesFromClaims(claims, isBotUser),
+              getUserRolesFromClaims(claims, isBotUser, tokenKeyId),
               isBotUser,
-              impersonatedBy);
+              impersonatedBy,
+              activePersona,
+              activeDomain);
       LOG.debug("SecurityContext {}", catalogSecurityContext);
       requestContext.setSecurityContext(catalogSecurityContext);
 
@@ -204,66 +466,335 @@ public class JwtFilter implements ContainerRequestFilter {
       } else {
         ImpersonationContext.clear();
       }
+      ActivePersonaContext.setActivePersona(activePersona);
+      ActiveDomainContext.setActiveDomain(activeDomain);
+    } catch (Throwable t) {
+      ImpersonationContext.clear();
+      ActivePersonaContext.clear();
+      ActiveDomainContext.clear();
+      throw t;
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
     }
   }
 
+  /**
+   * Resolves the {@code X-Impersonate-User} target and authorizes the swap here, where the header
+   * is read, so the grant is enforced at the door and fails closed.
+   *
+   * <p>{@link Authorizer} entry points check this too. Both are needed: the authorizer covers the
+   * paths that reach it, and this covers the ones that never call an authorizer at all - which is
+   * how GHSA-3w33-vhhj-h357 slipped through {@code authorizeRequests}. The authorizer-side check is
+   * memoized per request, so the duplicate costs one extra lookup on impersonated requests only.
+   */
+  private User resolveImpersonationTarget(String botName, String targetName) {
+    User target;
+    try {
+      target = Entity.getEntityByName(Entity.USER, targetName, "", Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      LOG.warn("Impersonation target user not found: {}", targetName);
+      throw new ImpersonationTargetNotFoundException(
+          "Cannot impersonate non-existent user: " + targetName);
+    }
+    ImpersonationAuthorizer.authorize(botName, target);
+    return target;
+  }
+
+  /**
+   * The legacy claim flow names the user after a claim's local part, so a provider token for any
+   * address with that local part would resolve to the account of that name. When {@code
+   * allowedEmailDomains} is set, the provider must assert an email in an allowed domain. A token
+   * that carries none is refused: the name it signs in under says nothing about a domain, and the
+   * {@code userName@principalDomain} address the legacy flow would build for it is in an allowed
+   * domain by construction. Either way, a provider token never resolves to a bot account.
+   * ADR:2026-10-30-a-provider-token-must-carry-an-email-while-sign-in-domains-are-restricted
+   */
+  private void validateLegacyProviderIdentity(Map<String, Claim> claims, String userName) {
+    if (!nullOrEmpty(allowedEmailDomains)) {
+      String claimedEmail = claimedEmail(claims);
+      if (claimedEmail == null) {
+        throw new AuthenticationException(
+            "Authentication failed: sign-in is limited to allowed email domains, and the token"
+                + " carries no email");
+      }
+      validateConfiguredEmailDomain(
+          claimedEmail,
+          allowedEmailDomains,
+          principalDomain,
+          allowedDomains,
+          enforcePrincipalDomain);
+    } else if (enforcePrincipalDomain) {
+      validateDomainEnforcement(
+          jwtPrincipalClaimsMapping,
+          jwtPrincipalClaims,
+          claims,
+          principalDomain,
+          allowedDomains,
+          enforcePrincipalDomain);
+    }
+    rejectProviderTokenForBotAccount(userName);
+  }
+
+  /**
+   * A provider token names the user after a claim's local part, so one whose local part matches a bot
+   * account's name - with or without an email - would otherwise sign in as that bot and inherit its
+   * roles. Bots authenticate with their own issued tokens, never through the provider flow, so a
+   * provider token must never resolve to a bot account. Uses the cached user context so this stays off
+   * the database on the per-request path.
+   */
+  private static void rejectProviderTokenForBotAccount(String userName) {
+    User account;
+    try {
+      account = SubjectCache.getUserContext(userName);
+    } catch (EntityNotFoundException e) {
+      // No account holds the name yet: a first login, which provisioning handles. Any other failure
+      // propagates, so an unreadable account is refused rather than waved through.
+      return;
+    }
+    if (account != null && Boolean.TRUE.equals(account.getIsBot())) {
+      throw new AuthenticationException(
+          "Authentication failed: a provider token cannot sign in to a bot account");
+    }
+  }
+
+  /**
+   * The email the provider asserted: the mapped email claim, otherwise the first principal claim
+   * that holds an address, which need not be the claim the account is named after. Null when there
+   * is none.
+   */
+  private String claimedEmail(Map<String, Claim> claims) {
+    Stream<String> candidates =
+        nullOrEmpty(jwtPrincipalClaimsMapping)
+            ? jwtPrincipalClaims.stream().map(claims::get).map(SecurityUtil::getClaimOrObject)
+            : Stream.of(
+                SecurityUtil.getClaimOrObject(
+                    claims.get(jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY))));
+    return candidates.filter(value -> value.contains(EMAIL_SEPARATOR)).findFirst().orElse(null);
+  }
+
+  /**
+   * The checks that follow {@link #verifySignatureOnly}: the stored-credential check, the logout
+   * denylist, the MCP access token lookup, the email and principal domain rules, the legacy claim
+   * flow's rule that a provider token never signs in to a bot account, and the session binding.
+   * The stored-credential check classifies the token from its own claims and checks its own
+   * principal, so it holds whatever {@code claims} and {@code userName} the caller passes. A caller
+   * that verified the token with {@link #validateJwtAndGetClaims} instead makes that check twice,
+   * and the second is answered from memory. {@code impersonatedBy} is not consulted; the parameter
+   * stays because other distributions call this signature.
+   *
+   * @throws AuthenticationException the token cannot be decoded, or is unrecognized or not current
+   * @throws CredentialUnavailableException the stored-credential check could not be confirmed
+   */
   public void checkValidationsForToken(
       Map<String, Claim> claims, String tokenFromHeader, String userName, String impersonatedBy) {
+    DecodedJWT jwt = decode(tokenFromHeader);
+    Map<String, Claim> tokenClaims = extractClaims(jwt);
+    requireCurrentCredential(
+        tokenFromHeader,
+        jwt,
+        tokenClaims,
+        () -> resolveIdentity(tokenClaims, isBot(tokenClaims), jwt.getKeyId()).userName());
+    ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBot(claims), jwt.getKeyId());
+    checkValidationsForToken(
+        claims,
+        tokenFromHeader,
+        jwt.getKeyId(),
+        userName,
+        resolvedIdentity.email(),
+        resolvedIdentity.usedEmailFirstFlow());
+  }
+
+  private void checkValidationsForToken(
+      Map<String, Claim> claims,
+      String tokenFromHeader,
+      String tokenKeyId,
+      String userName,
+      String email,
+      boolean usedEmailFirstFlow) {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
+    validateMcpAccessTokenIsActive(tokenFromHeader, claims, tokenKeyId);
 
-    // Validate Domain
-    validateDomainEnforcement(
-        jwtPrincipalClaimsMapping,
-        jwtPrincipalClaims,
-        claims,
-        principalDomain,
-        allowedDomains,
-        enforcePrincipalDomain);
-
-    // Validate Bot token matches what was created in OM
-    // Skip validation for impersonation tokens - they are generated dynamically and not stored in
-    // cache
-    if (impersonatedBy == null && isBot(claims)) {
-      validateBotToken(tokenFromHeader, userName);
-    }
-
-    // validate personal access token
-    validatePersonalAccessToken(claims, tokenFromHeader, userName);
-  }
-
-  private Set<String> getUserRolesFromClaims(Map<String, Claim> claims, boolean isBot) {
-    Set<String> userRoles = new HashSet<>();
-    // Re-sync user roles from token
-    if (useRolesFromProvider && !isBot && claims.containsKey(ROLES_CLAIM)) {
-      List<String> roles = claims.get(ROLES_CLAIM).asList(String.class);
-      if (!nullOrEmpty(roles)) {
-        userRoles = new HashSet<>(claims.get(ROLES_CLAIM).asList(String.class));
+    // OM-issued tokens minted before JWTTokenGenerator mirrored the provider's claim shape carry a
+    // bare preferred_username, which getFirstMatchJwtClaim-based domain extraction turns into an
+    // empty domain. Unlimited-expiry bot tokens from that era are still in use, so OM-issued tokens
+    // stay exempt - consistent with how bot tokens are already handled (validateDomainEnforcement
+    // returns early for isBot=true tokens). The isInternallyIssuedToken check is guarded by
+    // enforcePrincipalDomain to avoid the singleton lookup where enforcement is disabled.
+    if (usedEmailFirstFlow) {
+      // OM-issued tokens (sessions, PATs) carry emails that predate any allowedEmailDomains
+      // config; enforcing the domain list on them would lock out the seeded admin and
+      // grandfathered users. Domain restrictions apply to IdP-issued tokens only.
+      if (!isInternallyIssuedToken(claims, tokenKeyId)) {
+        validateConfiguredEmailDomain(
+            email, allowedEmailDomains, principalDomain, allowedDomains, enforcePrincipalDomain);
       }
+    } else if (!isBot(claims) && !isInternallyIssuedToken(claims, tokenKeyId)) {
+      validateLegacyProviderIdentity(claims, userName);
     }
-    return userRoles;
+
+    validateSessionBoundToken(claims, userName);
   }
 
-  @SneakyThrows
+  private ResolvedIdentity resolveIdentity(
+      Map<String, Claim> claims, boolean isBotUser, String tokenKeyId) {
+    JwtIdentityResolver.ResolvedIdentity resolvedIdentity =
+        new JwtIdentityResolver(
+                emailClaim,
+                jwtPrincipalClaimsMapping,
+                jwtPrincipalClaims,
+                principalDomain,
+                this::resolveUserNameForEmail)
+            .resolve(claims, isBotUser, isOpenMetadataKeyId(tokenKeyId));
+    return new ResolvedIdentity(
+        resolvedIdentity.userName(), resolvedIdentity.email(), resolvedIdentity.emailFirstFlow());
+  }
+
+  /**
+   * The principal name an HTTP request carrying these claims is authenticated as: resolved from
+   * the email when {@code emailClaim} is configured, from the legacy principal claims otherwise.
+   * Any other entry point that binds an identity to a token (the push-feed handshake) must use
+   * this, or a user whose stored name differs from the token claim authenticates over HTTP yet
+   * loses the socket.
+   */
+  public String resolveUserName(Map<String, Claim> claims) {
+    return resolveIdentity(claims, isBot(claims), null).userName();
+  }
+
+  /** Resolves claims from the same token already accepted by {@link #verifySignatureOnly}. */
+  public String resolveUserName(Map<String, Claim> claims, String verifiedToken) {
+    return resolveIdentity(claims, isBot(claims), decode(verifiedToken).getKeyId()).userName();
+  }
+
+  /** Caching wrapper around {@link UserUtil#resolveUserName}; this runs on every request. */
+  private String resolveUserNameForEmail(String email) {
+    String cached = EMAIL_TO_USERNAME_CACHE.getIfPresent(email);
+    if (cached != null) {
+      return cached;
+    }
+    UserUtil.ResolvedUserName resolved = UserUtil.resolveUserName(email);
+    // A name no account owns is a first-login bootstrap guess. Caching it would outlive the guess:
+    // creation does not invalidate this cache, so a later account taking that name -- for someone
+    // else's email -- would inherit the mapping and the requests authorized under it.
+    if (resolved.backedByAccount()) {
+      EMAIL_TO_USERNAME_CACHE.put(email, resolved.userName());
+    }
+    return resolved.userName();
+  }
+
+  private boolean isInternallyIssuedToken(Map<String, Claim> claims, String tokenKeyId) {
+    JWTTokenGenerator tokenGenerator = JWTTokenGenerator.getInstance();
+    return SecurityUtil.isOpenMetadataIssuedToken(
+        claims, tokenKeyId, tokenGenerator.getIssuer(), tokenGenerator.getKid());
+  }
+
+  // null tells the role sync downstream there is nothing to sync from. A token OpenMetadata minted
+  // (a session token or a PAT) is one of those: its roles are the ones the user had when it was
+  // minted, so syncing from it would restore roles the provider revoked since. In the provider's
+  // own token an absent roles claim means no roles - claims without a value are omitted (OIDC Core
+  // 5.1), and Entra ID drops the claim once a user's last app role is removed.
+  // ADR:2026-10-13-provider-token-is-authoritative-for-roles-and-admin
+  private Set<String> getUserRolesFromClaims(
+      Map<String, Claim> claims, boolean isBot, String tokenKeyId) {
+    if (!useRolesFromProvider || isBot || isInternallyIssuedToken(claims, tokenKeyId)) {
+      return null;
+    }
+    return new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM)));
+  }
+
+  /**
+   * Verifies the token and returns its claims. This includes the stored-credential check, so a bot
+   * JWT or a personal access token is accepted only while the database stores it. The principal is
+   * resolved only for those two kinds, so a caller that maps the principal itself still receives
+   * the claims of any other verified token, including one that carries no configured principal
+   * claim.
+   *
+   * @throws AuthenticationException the token is invalid, expired, unrecognized or not current
+   * @throws CredentialUnavailableException the stored-credential check could not be confirmed
+   */
   public Map<String, Claim> validateJwtAndGetClaims(String token) {
-    // Decode JWT Token
-    DecodedJWT jwt;
+    DecodedJWT jwt = decodeAndVerify(token);
+    Map<String, Claim> claims = extractClaims(jwt);
+    requireCurrentCredential(
+        token,
+        jwt,
+        claims,
+        () -> resolveIdentity(claims, isBot(claims), jwt.getKeyId()).userName());
+    return claims;
+  }
+
+  /**
+   * Signature, expiry and issuer only, with no stored-credential check. For probes and dry runs
+   * that grant no access, and for a caller that runs {@link #checkValidationsForToken} next, which
+   * makes that check. Anything else that authenticates a request calls {@link
+   * #validateJwtAndGetClaims}.
+   */
+  public Map<String, Claim> verifySignatureOnly(String token) {
+    return extractClaims(decodeAndVerify(token));
+  }
+
+  /**
+   * Signature, expiry and issuer, then the token's own identity, then the stored-credential check
+   * of that identity. A caller swaps to an impersonation target only afterwards, so a bot token is
+   * always checked against the bot.
+   */
+  private AuthenticatedToken authenticate(String token) {
+    DecodedJWT jwt = decodeAndVerify(token);
+    Map<String, Claim> claims = extractClaims(jwt);
+    boolean isBotUser = isBot(claims);
+    ResolvedIdentity identity = resolveIdentity(claims, isBotUser, jwt.getKeyId());
+    requireCurrentCredential(token, jwt, claims, identity::userName);
+    return new AuthenticatedToken(jwt, claims, identity, isBotUser);
+  }
+
+  private void requireCurrentCredential(
+      String token, DecodedJWT jwt, Map<String, Claim> claims, Supplier<String> tokenPrincipal) {
+    boolean isBotUser = isBot(claims);
+    OmCredential credential =
+        OmCredential.classify(
+            isSignedWithOpenMetadataKey(jwt), isBotUser, tokenTypeOf(claims), tokenPrincipal);
+    credentialVerifier.get().require(credential, token, rejectionMessage(credential, isBotUser));
+  }
+
+  private static String rejectionMessage(OmCredential credential, boolean isBotUser) {
+    String message = isBotUser ? BOT_TOKEN_MISMATCH : INVALID_PERSONAL_ACCESS_TOKEN;
+    if (credential instanceof OmCredential.Unrecognized) {
+      message = UNRECOGNIZED_TOKEN;
+    }
+    return message;
+  }
+
+  /**
+   * The raw claim {@link OmCredential#classify} parses, null only when the token carries no value.
+   * OpenMetadata writes the claim as text, so any other JSON type becomes a value of no issued kind.
+   */
+  private static String tokenTypeOf(Map<String, Claim> claims) {
+    Claim tokenType = claims.get(TOKEN_TYPE);
+    String value = null;
+    if (tokenType != null && !tokenType.isNull()) {
+      String text = tokenType.asString();
+      value = text != null ? text : NON_TEXT_TOKEN_TYPE;
+    }
+    return value;
+  }
+
+  private static DecodedJWT decode(String token) {
     try {
-      jwt = JWT.decode(token);
+      return JWT.decode(token);
     } catch (JWTDecodeException e) {
       throw AuthenticationException.getInvalidTokenException("Invalid token.");
     }
+  }
 
-    // Check if expired
-    // If expiresAt is set to null, treat it as never expiring token
+  @SneakyThrows
+  private DecodedJWT decodeAndVerify(String token) {
+    DecodedJWT jwt = decode(token);
+
     if (jwt.getExpiresAt() != null
         && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
       throw AuthenticationException.getExpiredTokenException();
     }
 
-    // Validate JWT with public key
     Jwk jwk = jwkProvider.get(jwt.getKeyId());
     Algorithm algorithm = createAlgorithmFromJwk(tokenValidationAlgorithm, jwk);
     try {
@@ -272,21 +803,107 @@ public class JwtFilter implements ContainerRequestFilter {
       throw AuthenticationException.getInvalidTokenException(
           "Invalid token. Token verification failed. Public key mismatch.", runtimeException);
     }
+    requireIssuedForThisDeployment(jwt);
 
+    return jwt;
+  }
+
+  private void requireIssuedForThisDeployment(DecodedJWT jwt) {
+    if (!isSignedWithOpenMetadataKey(jwt)) {
+      providerTokenValidator.validate(jwt);
+    }
+  }
+
+  /**
+   * Key lookup resolves OpenMetadata's own key id locally before any configured URL, so a verified
+   * token carrying it was signed with our key. Unlike {@link #isInternallyIssuedToken}, this does
+   * not require the current issuer: long-lived bot tokens minted under an earlier one are still ours.
+   */
+  private static boolean isSignedWithOpenMetadataKey(DecodedJWT jwt) {
+    return isOpenMetadataKeyId(jwt.getKeyId());
+  }
+
+  private static boolean isOpenMetadataKeyId(String tokenKeyId) {
+    String openMetadataKeyId = JWTTokenGenerator.getInstance().getKid();
+    return !nullOrEmpty(openMetadataKeyId) && openMetadataKeyId.equals(tokenKeyId);
+  }
+
+  /** The OIDC client IDs this deployment's sign-in flows request tokens for. */
+  static Set<String> clientIdsOf(AuthenticationConfiguration authenticationConfiguration) {
+    OidcClientConfig oidcClient = authenticationConfiguration.getOidcConfiguration();
+    return Stream.of(
+            authenticationConfiguration.getClientId(),
+            oidcClient == null ? null : oidcClient.getId())
+        .filter(clientId -> !nullOrEmpty(clientId) && !clientId.isBlank())
+        .collect(Collectors.toUnmodifiableSet());
+  }
+
+  /**
+   * The Entra ID tenant a public client's authority names, which provider tokens must come from. A
+   * confidential client checks the issuer from discovery instead, so it has none. A multi-tenant
+   * authority (common, organizations, consumers) restricts nothing on purpose. A tenant named by
+   * domain cannot be compared with the token's tenant ID without a discovery lookup.
+   */
+  @VisibleForTesting
+  static String publicClientEntraTenant(AuthenticationConfiguration authenticationConfiguration) {
+    if (authenticationConfiguration.getProvider() != AuthProvider.AZURE
+        || authenticationConfiguration.getClientType() == ClientType.CONFIDENTIAL
+        || nullOrEmpty(authenticationConfiguration.getAuthority())) {
+      return null;
+    }
+    List<String> segments =
+        Stream.of(
+                URI.create(authenticationConfiguration.getAuthority().trim()).getPath().split("/"))
+            .filter(segment -> !segment.isEmpty() && !AUTHORITY_VERSION_SEGMENT.equals(segment))
+            .toList();
+    String tenant = segments.isEmpty() ? null : segments.get(segments.size() - 1);
+    if (tenant == null || MULTI_TENANT_AUTHORITIES.contains(tenant.toLowerCase(Locale.ROOT))) {
+      return null;
+    }
+    if (!TENANT_ID.matcher(tenant).matches()) {
+      LOG.warn(
+          "Entra ID tokens are accepted from any tenant: the authority names tenant '{}' by domain;"
+              + " use the tenant ID to restrict sign-in to it",
+          tenant);
+      return null;
+    }
+    return tenant;
+  }
+
+  @VisibleForTesting
+  Optional<String> providerIssuer() {
+    return codeFlowHandler().map(AuthenticationCodeFlowHandler::getProviderIssuer);
+  }
+
+  @VisibleForTesting
+  List<URL> providerKeySetUrls() {
+    return codeFlowHandler().map(AuthenticationCodeFlowHandler::getProviderKeySetUrl).stream()
+        .toList();
+  }
+
+  /**
+   * The server-side sign-in handler, when it serves this filter's OIDC client. It registers after
+   * this filter at startup and is replaced on a configuration change, so it is looked up per use.
+   */
+  private Optional<AuthenticationCodeFlowHandler> codeFlowHandler() {
+    return AuthServeletHandlerRegistry.getHandler() instanceof AuthenticationCodeFlowHandler handler
+            && handler.servesClient(serverSideOidcClient)
+        ? Optional.of(handler)
+        : Optional.empty();
+  }
+
+  private static Map<String, Claim> extractClaims(DecodedJWT jwt) {
     Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     claims.putAll(jwt.getClaims());
-
     return claims;
   }
 
   protected static String extractToken(MultivaluedMap<String, String> headers) {
-    LOG.debug("Request Headers:{}", headers);
     String source = headers.getFirst(AUTHORIZATION_HEADER);
     return extractTokenFromString(source);
   }
 
   public static String extractToken(String tokenFromHeader) {
-    LOG.debug("Request Token:{}", tokenFromHeader);
     return extractTokenFromString(tokenFromHeader);
   }
 
@@ -303,31 +920,15 @@ public class JwtFilter implements ContainerRequestFilter {
     throw AuthenticationException.getTokenNotPresentException();
   }
 
-  private void validateBotToken(String tokenFromHeader, String userName) {
-    if (tokenFromHeader.equals(BotTokenCache.getToken(userName))) {
-      return;
-    }
-    throw AuthenticationException.getInvalidTokenException(
-        "The given token does not match the current bot's token!");
-  }
-
-  private void validatePersonalAccessToken(
-      Map<String, Claim> claims, String tokenFromHeader, String userName) {
-    Claim tokenTypeClaim = claims.get(TOKEN_TYPE);
-    String tokenType = tokenTypeClaim == null ? StringUtils.EMPTY : tokenTypeClaim.asString();
-    if (claims.containsKey(TOKEN_TYPE)
-        && ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenType)) {
-      Set<String> userTokens = UserTokenCache.getToken(userName);
-      if (userTokens != null && userTokens.contains(tokenFromHeader)) {
-        return;
-      }
-      throw AuthenticationException.getInvalidTokenException("Invalid personal access token!");
-    }
+  private static boolean isPersonalAccessToken(Map<String, Claim> claims) {
+    return ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenTypeOf(claims));
   }
 
   private void validateTokenIsNotUsedAfterLogout(String authToken) {
     // Only OMD generated Tokens
-    if (AuthProvider.BASIC.equals(providerType) || AuthProvider.SAML.equals(providerType)) {
+    if (AuthProvider.BASIC.equals(providerType)
+        || AuthProvider.OPENMETADATA.equals(providerType)
+        || AuthProvider.SAML.equals(providerType)) {
       LogoutRequest previouslyLoggedOutEvent =
           JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
       if (previouslyLoggedOutEvent != null) {
@@ -336,19 +937,114 @@ public class JwtFilter implements ContainerRequestFilter {
     }
   }
 
+  /**
+   * An MCP OAuth access token is stored when issued and deleted when revoked or when its client is
+   * deleted, so one missing from the store is refused on every server. Only a token OpenMetadata
+   * signed is looked up, a provider's own token may carry a client_id claim too, and it is picked by
+   * our key id like the signature check, not by the current issuer, which can change.
+   * ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server
+   */
+  private void validateMcpAccessTokenIsActive(
+      String token, Map<String, Claim> claims, String tokenKeyId) {
+    boolean isMcpAccessToken =
+        claims.containsKey(JWTTokenGenerator.CLIENT_ID_CLAIM) && isOpenMetadataKeyId(tokenKeyId);
+    if (isMcpAccessToken
+        && Entity.getCollectionDAO()
+                .oauthAccessTokenDAO()
+                .findByTokenHash(OAuthDAOs.hashToken(token))
+            == null) {
+      throw AuthenticationException.getInvalidTokenException("Token has been revoked.");
+    }
+  }
+
+  private void validateSessionBoundToken(Map<String, Claim> claims, String userName) {
+    Claim sessionClaim = claims.get(JWTTokenGenerator.SESSION_ID_CLAIM);
+    String sessionId = sessionClaim == null ? null : sessionClaim.asString();
+    if (nullOrEmpty(sessionId)) {
+      return;
+    }
+
+    SessionService sessionService = AuthServeletHandlerRegistry.getSessionService();
+    if (sessionService == null) {
+      throw AuthenticationException.getInvalidTokenException("Session service is not available.");
+    }
+
+    UserSession session =
+        sessionService
+            .getFreshSessionById(sessionId)
+            .orElseThrow(
+                () -> AuthenticationException.getInvalidTokenException("Invalid session."));
+    // Existing access tokens remain usable while another request holds the refresh lease.
+    final boolean isAuthenticated =
+        session.getStatus() == SessionStatus.ACTIVE
+            || session.getStatus() == SessionStatus.REFRESHING;
+    if (!isAuthenticated
+        || session.isExpired(System.currentTimeMillis())
+        || nullOrEmpty(session.getUsername())
+        || !SecurityUtil.sameIdentifier(session.getUsername(), userName)) {
+      throw AuthenticationException.getInvalidTokenException("Invalid session.");
+    }
+    validateSessionProviderIsCurrent(session);
+    try {
+      sessionService.recordSessionAccess(session);
+    } catch (Exception e) {
+      LOG.warn("Failed to record session access for session {}", session.getId(), e);
+    }
+  }
+
+  /**
+   * Sessions record the provider that authenticated them. Swapping {@code AUTHENTICATION_PROVIDER}
+   * decommissions that provider, so sessions minted under it must stop working immediately instead of
+   * living on until natural expiry — otherwise off-boarding a user by moving IdPs leaves their old
+   * token valid for up to a week. Checked per request against this pod's current config, so it holds
+   * on every pod without a session sweep.
+   */
+  private void validateSessionProviderIsCurrent(UserSession session) {
+    String sessionProvider = session.getProvider();
+    if (nullOrEmpty(sessionProvider) || providerType == null) {
+      return;
+    }
+    if (!SessionProviders.isSameProvider(sessionProvider, providerType.value())) {
+      LOG.warn(
+          "Rejecting session {} issued by provider {} — the configured provider is now {}",
+          SessionService.truncateId(session.getId()),
+          sessionProvider,
+          providerType.value());
+      throw AuthenticationException.getInvalidTokenException(
+          "Session was issued by a provider that is no longer configured.");
+    }
+  }
+
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
-    Map<String, Claim> claims = validateJwtAndGetClaims(token);
-    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
-    String email =
-        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
-    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
-    boolean isBotUser = isBot(claims);
+    return getCatalogSecurityContext(token, null);
+  }
+
+  public CatalogSecurityContext getCatalogSecurityContext(String token, String activePersona) {
+    AuthenticatedToken authenticated = authenticate(token);
+    Map<String, Claim> claims = authenticated.claims();
+    boolean isBotUser = authenticated.isBot();
+    ResolvedIdentity resolvedIdentity = authenticated.identity();
+    String tokenKeyId = authenticated.jwt().getKeyId();
+    if (resolvedIdentity.usedEmailFirstFlow() && !isInternallyIssuedToken(claims, tokenKeyId)) {
+      validateConfiguredEmailDomain(
+          resolvedIdentity.email(),
+          allowedEmailDomains,
+          principalDomain,
+          allowedDomains,
+          enforcePrincipalDomain);
+    }
+    CatalogPrincipal catalogPrincipal =
+        new CatalogPrincipal(resolvedIdentity.userName(), resolvedIdentity.email());
     return new CatalogSecurityContext(
         catalogPrincipal,
         "https",
         SecurityContext.DIGEST_AUTH,
-        getUserRolesFromClaims(claims, isBotUser),
-        isBotUser);
+        getUserRolesFromClaims(claims, isBotUser, tokenKeyId),
+        isBotUser,
+        null,
+        activePersona,
+        ActiveDomainContext.resolve(
+            resolvedIdentity.userName(), isBotUser || isPersonalAccessToken(claims)));
   }
 
   private Algorithm createAlgorithmFromJwk(

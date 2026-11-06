@@ -23,3 +23,25 @@ export const fontSizeClass: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', string> = {
   lg: 'tw:text-lg',
   xl: 'tw:text-xl',
 };
+
+/**
+ * Draws a 1px border on the ::after overlay, for elements whose own `outline` is already
+ * taken by the focus ring.
+ *
+ * Rings are box-shadows, and WebKit does not pixel-snap box-shadows — so a ring used as a
+ * border thins or disappears in Safari at fractional zoom. Outlines are snapped. An element
+ * has only one outline, so on focusable elements the border moves to ::after and the
+ * element's own outline stays free for focus.
+ *
+ * Layout-neutral. Requires `tw:relative` on the host. Supply the colour per variant with
+ * `tw:after:outline-<color>`; state changes use `tw:<state>:after:outline-<color>`.
+ *
+ * Where the element's outline is NOT already in use, prefer the simpler
+ * `tw:outline-1 tw:-outline-offset-1 tw:outline-<color>` directly on the element.
+ */
+export const borderAfter =
+  'tw:after:pointer-events-none tw:after:absolute tw:after:inset-0 tw:after:rounded-[inherit] tw:after:outline-1 tw:after:-outline-offset-1';
+
+/** 2px variant of {@link borderAfter}, for elements whose border was a `ring-2`. */
+export const borderAfter2 =
+  'tw:after:pointer-events-none tw:after:absolute tw:after:inset-0 tw:after:rounded-[inherit] tw:after:outline-2 tw:after:-outline-offset-2';

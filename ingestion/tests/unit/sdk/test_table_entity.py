@@ -2,7 +2,7 @@
 Comprehensive unit tests for Table entity with full mock coverage.
 """
 
-import unittest  # noqa: I001
+import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
 
@@ -10,13 +10,15 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.tests.createCustomMetric import (
     CreateCustomMetricRequest,
 )
-from metadata.generated.schema.entity.data.table import Column, ConstraintType, DataType
-from metadata.generated.schema.entity.data.table import Table as TableEntity
 from metadata.generated.schema.entity.data.table import (
+    Column,
+    ConstraintType,
+    DataType,
     TableConstraint,
     TableData,
     TableType,
 )
+from metadata.generated.schema.entity.data.table import Table as TableEntity
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.sdk import Tables

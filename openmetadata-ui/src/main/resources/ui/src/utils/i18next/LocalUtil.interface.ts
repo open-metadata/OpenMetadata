@@ -15,6 +15,7 @@ export enum SupportedLocales {
   English = 'en-US',
   한국어 = 'ko-KR',
   Français = 'fr-FR',
+  Italiano = 'it-IT',
   简体中文 = 'zh-CN',
   繁體中文 = 'zh-TW',
   日本語 = 'ja-JP',
@@ -31,4 +32,5 @@ export enum SupportedLocales {
   मराठी = 'mr-IN',
   Türkçe = 'tr-TR',
   العربية = 'ar-SA',
+  Svenska = 'sv-SE',
 }

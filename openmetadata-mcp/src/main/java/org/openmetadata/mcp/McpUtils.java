@@ -4,36 +4,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
-import jakarta.servlet.http.HttpServletRequest;
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.security.JwtFilter;
 
 @Slf4j
 public class McpUtils {
 
   private static final McpJsonMapper JSON_MAPPER =
       new JacksonMcpJsonMapper(JsonUtils.getObjectMapper());
-
-  @SuppressWarnings("unchecked")
-  public static McpSchema.JSONRPCMessage getJsonRpcMessageWithAuthorizationParam(
-      McpJsonMapper jsonMapper, HttpServletRequest request, String body) throws IOException {
-    Map<String, Object> requestMessage = JsonUtils.getMap(JsonUtils.readTree(body));
-    Map<String, Object> params = (Map<String, Object>) requestMessage.get("params");
-    if (params != null) {
-      Map<String, Object> arguments = (Map<String, Object>) params.get("arguments");
-      if (arguments != null) {
-        arguments.put("Authorization", JwtFilter.extractToken(request.getHeader("Authorization")));
-      }
-    }
-    return McpSchema.deserializeJsonRpcMessage(jsonMapper, JsonUtils.pojoToJson(requestMessage));
-  }
 
   @SuppressWarnings("unchecked")
   public static List<Map<String, Object>> loadDefinitionsFromJson(String json) {
@@ -83,23 +65,53 @@ public class McpUtils {
         throw new RuntimeException("Failed to load tool definitions");
       }
       LOG.debug("Successfully loaded {} tool definitions", cachedTools.size());
-      for (int i = 0; i < cachedTools.size(); i++) {
-        Map<String, Object> toolDef = cachedTools.get(i);
-        String name = (String) toolDef.get("name");
-        String description = (String) toolDef.get("description");
-        Map<String, Object> schema = JsonUtils.getMap(toolDef.get("parameters"));
-        result.add(
-            McpSchema.Tool.builder()
-                .name(name)
-                .description(description)
-                .inputSchema(JSON_MAPPER, JsonUtils.pojoToJson(schema))
-                .build());
+      for (Map<String, Object> toolDef : cachedTools) {
+        result.add(buildTool(toolDef));
       }
       return result;
     } catch (Exception e) {
       LOG.error("Error during server startup", e);
       throw new RuntimeException("Failed to start MCP server", e);
     }
+  }
+
+  private static McpSchema.Tool buildTool(Map<String, Object> toolDef) {
+    String name = (String) toolDef.get("name");
+    String title = (String) toolDef.get("title");
+    String description = (String) toolDef.get("description");
+    Map<String, Object> schema = JsonUtils.getMap(toolDef.get("parameters"));
+    McpSchema.Tool.Builder builder =
+        McpSchema.Tool.builder()
+            .name(name)
+            .title(title)
+            .description(description)
+            .inputSchema(JSON_MAPPER, JsonUtils.pojoToJson(schema));
+    McpSchema.ToolAnnotations annotations = buildToolAnnotations(toolDef, title);
+    if (annotations != null) {
+      builder.annotations(annotations);
+    }
+    return builder.build();
+  }
+
+  @SuppressWarnings("unchecked")
+  private static McpSchema.ToolAnnotations buildToolAnnotations(
+      Map<String, Object> toolDef, String title) {
+    // openWorldHint defaults to true per the MCP spec when omitted, which would mislabel every
+    // tool here as reaching external/public systems. All tools only read/write our own
+    // OpenMetadata catalog, so tools.json sets it to false explicitly for each tool.
+    McpSchema.ToolAnnotations result = null;
+    Map<String, Object> annotations = (Map<String, Object>) toolDef.get("annotations");
+    if (annotations != null) {
+      result =
+          new McpSchema.ToolAnnotations(
+              title,
+              (Boolean) annotations.get("readOnlyHint"),
+              (Boolean) annotations.get("destructiveHint"),
+              (Boolean) annotations.get("idempotentHint"),
+              (Boolean) annotations.get("openWorldHint"),
+              (Boolean) annotations.get("returnDirect"));
+    }
+    return result;
   }
 
   public static List<McpSchema.Prompt> getPrompts(String jsonFilePath) {
@@ -125,16 +137,5 @@ public class McpUtils {
       LOG.error("Error during server startup", e);
       throw new RuntimeException("Failed to start MCP server", e);
     }
-  }
-
-  public static String readRequestBody(HttpServletRequest request) throws IOException {
-    StringBuilder body = new StringBuilder();
-    try (BufferedReader reader = request.getReader()) {
-      String line;
-      while ((line = reader.readLine()) != null) {
-        body.append(line);
-      }
-    }
-    return body.toString();
   }
 }

@@ -1,0 +1,2985 @@
+package org.openmetadata.it.tests.alerts;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.StreamSupport;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.tests.BaseEntityIT;
+import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.events.AlertFilteringInput;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.events.CreateNotificationTemplate;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.events.AlertType;
+import org.openmetadata.schema.entity.events.Argument;
+import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
+import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.PrefixCondition;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
+import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
+import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.NotificationFilterOperation;
+import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
+import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
+import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
+import org.openmetadata.service.secrets.BoundCiphertext;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+
+/**
+ * Integration tests for EventSubscription entity operations.
+ *
+ * <p>Extends BaseEntityIT to inherit common entity tests. Adds event subscription-specific tests
+ * for webhook destinations and filtering rules.
+ *
+ * <p>Migrated from: org.openmetadata.service.resources.events.EventSubscriptionResourceTest
+ */
+@Execution(ExecutionMode.CONCURRENT)
+public class EventSubscriptionResourceIT
+    extends BaseEntityIT<EventSubscription, CreateEventSubscription> {
+
+  private static final URI LOOPBACK_ENDPOINT =
+      URI.create("http://127.0.0.1:8585/api/v1/test/webhook/blocked");
+
+  // EventSubscription has special requirements
+  {
+    supportsEntityStatus = false;
+    supportsFieldsQueryParam = false;
+    supportsEtag = false;
+    supportsTags = false;
+    supportsFollowers = false;
+    supportsOwners = false;
+    supportsSoftDelete = false; // EventSubscription uses hard delete
+    supportsDomains = false;
+    supportsDataProducts = false;
+    supportsSearchIndex = false; // EventSubscription doesn't have a search index
+    supportsListHistoryByTimestamp = false; // History endpoint not supported for EventSubscription
+  }
+
+  // Enough opposing rounds that the unordered scheduler loses the race at least once; with the
+  // reconcile in place every round settles, so this only costs wall-clock when it is broken.
+  private static final int TOGGLE_ORDERING_ROUNDS = 20;
+  private static final int TOGGLE_CONFLICT_ATTEMPTS = 5;
+
+  @Override
+  protected String getResourcePath() {
+    return EventSubscriptionResource.COLLECTION_PATH;
+  }
+
+  // ===================================================================
+  // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
+  // ===================================================================
+
+  @Override
+  protected CreateEventSubscription createMinimalRequest(TestNamespace ns) {
+    return new CreateEventSubscription()
+        .withName(ns.prefix("eventsub"))
+        .withDescription("Test event subscription created by integration test")
+        .withAlertType(AlertType.NOTIFICATION)
+        .withResources(List.of("all"))
+        .withEnabled(false)
+        .withDestinations(getWebhookDestination(ns));
+  }
+
+  @Override
+  protected CreateEventSubscription createRequest(String name, TestNamespace ns) {
+    return new CreateEventSubscription()
+        .withName(name)
+        .withDescription("Test event subscription")
+        .withAlertType(AlertType.NOTIFICATION)
+        .withResources(List.of("all"))
+        .withEnabled(false)
+        .withDestinations(getWebhookDestination(ns));
+  }
+
+  @Test
+  void test_webhookEndpointAsLoopbackAddress_400(TestNamespace ns) {
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_loopback"))
+            .withDescription("Endpoint written as a loopback address")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(
+                List.of(
+                    new SubscriptionDestination()
+                        .withId(UUID.randomUUID())
+                        .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+                        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                        .withConfig(new Webhook().withEndpoint(LOOPBACK_ENDPOINT))));
+
+    InvalidRequestException rejected =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> createEntity(request),
+            "A webhook endpoint written as a loopback address should be rejected");
+    assertEquals(400, rejected.getStatusCode());
+  }
+
+  /** A destination's id is the server's: an id it did not issue for the alert names nothing. */
+  @Test
+  void test_destinationIdsAreTheServers(TestNamespace ns) {
+    UUID sent = UUID.randomUUID();
+    String hook = "http://localhost:8585/api/v1/test/webhook/" + ns.prefix("ids");
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_ids"))
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(
+                List.of(
+                    webhookDestination(hook + "/a", null, null).withId(sent),
+                    webhookDestination(hook + "/b", null, null).withId(sent)));
+    EventSubscription created = createEntity(request);
+    UUID first = created.getDestinations().get(0).getId();
+    UUID second = created.getDestinations().get(1).getId();
+    assertNotEquals(sent, first);
+    assertNotEquals(sent, second);
+    assertNotEquals(first, second);
+
+    assertEquals(List.of(first, second), destinationIds(putSubscription(request)), "a PUT again");
+
+    EventSubscription unknown = JsonUtils.deepCopy(created, EventSubscription.class);
+    unknown.getDestinations().get(1).withId(UUID.randomUUID());
+    assertEquals(List.of(first, second), destinationIds(patchEntity(idOf(created), unknown)));
+
+    EventSubscription repeated = JsonUtils.deepCopy(created, EventSubscription.class);
+    repeated.getDestinations().get(1).withId(first);
+    assertEquals(List.of(first, second), destinationIds(patchEntity(idOf(created), repeated)));
+
+    EventSubscription added = JsonUtils.deepCopy(created, EventSubscription.class);
+    added.getDestinations().add(webhookDestination(hook + "/c", null, null).withId(null));
+    List<UUID> ids = destinationIds(patchEntity(idOf(created), added));
+    assertEquals(List.of(first, second), ids.subList(0, 2));
+    assertNotNull(ids.get(2));
+    assertEquals(3, new HashSet<>(ids).size(), "the added destination has an id of its own");
+  }
+
+  private static List<UUID> destinationIds(EventSubscription alert) {
+    return alert.getDestinations().stream().map(SubscriptionDestination::getId).toList();
+  }
+
+  private static String idOf(EventSubscription alert) {
+    return alert.getId().toString();
+  }
+
+  @Test
+  void test_patchWebhookEndpointToLoopbackAddress_400(TestNamespace ns) {
+    // PATCH never reaches the resource's own checks, so this is what proves the policy also runs
+    // on the persistence path.
+    EventSubscription subscription =
+        createEntity(createRequest(ns.prefix("sub_patch_loopback"), ns));
+    SubscriptionDestination destination = subscription.getDestinations().get(0);
+    Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
+    destination.withConfig(webhook.withEndpoint(LOOPBACK_ENDPOINT));
+
+    // The SDK wraps a patch failure, so the server's status is on the cause.
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> patchEntity(subscription.getId().toString(), subscription),
+            "Patching an endpoint to a loopback address should be rejected");
+    InvalidRequestException cause =
+        assertInstanceOf(InvalidRequestException.class, rejected.getCause());
+    assertEquals(400, cause.getStatusCode());
+  }
+
+  private List<SubscriptionDestination> getWebhookDestination(TestNamespace ns) {
+    Webhook webhook =
+        new Webhook()
+            .withEndpoint(java.net.URI.create("http://localhost:8585/api/v1/test/webhook/test"));
+
+    return List.of(
+        new SubscriptionDestination()
+            .withId(UUID.randomUUID())
+            .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+            .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+            .withConfig(webhook));
+  }
+
+  @Override
+  protected EventSubscription createEntity(CreateEventSubscription createRequest) {
+    return SdkClients.adminClient().eventSubscriptions().create(createRequest);
+  }
+
+  @Override
+  protected EventSubscription getEntity(String id) {
+    return SdkClients.adminClient().eventSubscriptions().get(id);
+  }
+
+  @Override
+  protected EventSubscription getEntityByName(String fqn) {
+    return SdkClients.adminClient().eventSubscriptions().getByName(fqn);
+  }
+
+  @Override
+  protected EventSubscription patchEntity(String id, EventSubscription entity) {
+    return SdkClients.adminClient().eventSubscriptions().update(id, entity);
+  }
+
+  @Override
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().eventSubscriptions().delete(id);
+  }
+
+  @Override
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().eventSubscriptions().restore(id);
+  }
+
+  @Override
+  protected void hardDeleteEntity(String id) {
+    java.util.Map<String, String> params = new java.util.HashMap<>();
+    params.put("hardDelete", "true");
+    SdkClients.adminClient().eventSubscriptions().delete(id, params);
+  }
+
+  @Override
+  protected String getEntityType() {
+    return "eventsubscription";
+  }
+
+  @Override
+  protected void validateCreatedEntity(
+      EventSubscription entity, CreateEventSubscription createRequest) {
+    assertEquals(createRequest.getName(), entity.getName());
+
+    if (createRequest.getDescription() != null) {
+      assertEquals(createRequest.getDescription(), entity.getDescription());
+    }
+
+    assertNotNull(entity.getDestinations());
+  }
+
+  @Override
+  protected ListResponse<EventSubscription> listEntities(ListParams params) {
+    return SdkClients.adminClient().eventSubscriptions().list(params);
+  }
+
+  @Override
+  protected EventSubscription getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().eventSubscriptions().get(id, fields);
+  }
+
+  @Override
+  protected EventSubscription getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().eventSubscriptions().getByName(fqn, fields);
+  }
+
+  @Override
+  protected EventSubscription getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().eventSubscriptions().get(id, null, "deleted");
+  }
+
+  @Override
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().eventSubscriptions().getVersionList(id);
+  }
+
+  @Override
+  protected EventSubscription getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().eventSubscriptions().getVersion(id.toString(), version);
+  }
+
+  // ===================================================================
+  // EVENT SUBSCRIPTION-SPECIFIC TESTS
+  // ===================================================================
+
+  @Test
+  void post_eventSubscriptionDisabled_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_disabled"))
+            .withDescription("Disabled subscription")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertFalse(subscription.getEnabled());
+  }
+
+  @Test
+  void put_eventSubscriptionDescription_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_update_desc"))
+            .withDescription("Initial description")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertEquals("Initial description", subscription.getDescription());
+
+    // Update description
+    subscription.setDescription("Updated description");
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+    assertEquals("Updated description", updated.getDescription());
+  }
+
+  @Test
+  void test_eventSubscriptionNameUniqueness(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String subName = ns.prefix("unique_sub");
+    CreateEventSubscription request1 =
+        new CreateEventSubscription()
+            .withName(subName)
+            .withDescription("First subscription")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription sub1 = createEntity(request1);
+    assertNotNull(sub1);
+
+    // Attempt to create duplicate
+    CreateEventSubscription request2 =
+        new CreateEventSubscription()
+            .withName(subName)
+            .withDescription("Duplicate subscription")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request2),
+        "Creating duplicate event subscription should fail");
+  }
+
+  @Test
+  void test_eventSubscriptionWithResources_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_filter"))
+            .withDescription("Subscription with filtering")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getFilteringRules());
+  }
+
+  @Test
+  void test_notificationResourcesServeSupportedEventTypes() throws Exception {
+    HttpResponse<String> response = getPerSourceList("notification");
+    assertEquals(200, response.statusCode());
+    assertDeprecatedInFavourOfCapabilities(response);
+
+    JsonNode glossaryTerm =
+        StreamSupport.stream(
+                new ObjectMapper().readTree(response.body()).get("data").spliterator(), false)
+            .filter(descriptor -> "glossaryTerm".equals(descriptor.get("name").asText()))
+            .findFirst()
+            .orElseThrow();
+    List<String> eventTypes =
+        StreamSupport.stream(glossaryTerm.get("supportedEventTypes").spliterator(), false)
+            .map(JsonNode::asText)
+            .toList();
+    assertTrue(eventTypes.contains("entityCreated"));
+    assertTrue(eventTypes.contains("threadCreated"));
+    // never reaches change_event, so no resource may advertise it
+    assertFalse(eventTypes.contains("entityFieldsChanged"));
+    // reachable only through the "all" resource
+    assertFalse(eventTypes.contains("entityLineageAdded"));
+  }
+
+  @Test
+  void test_observabilityResourcesAreDeprecatedInFavourOfCapabilities() throws Exception {
+    HttpResponse<String> response = getPerSourceList("observability");
+    assertEquals(200, response.statusCode());
+    assertDeprecatedInFavourOfCapabilities(response);
+
+    List<String> sources =
+        StreamSupport.stream(
+                new ObjectMapper().readTree(response.body()).get("data").spliterator(), false)
+            .map(descriptor -> descriptor.get("name").asText())
+            .toList();
+    assertTrue(sources.containsAll(List.of("pipeline", "ingestionPipeline", "testCase")));
+  }
+
+  private static HttpResponse<String> getPerSourceList(String alertType) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl()
+                        + "/v1/events/subscriptions/"
+                        + alertType
+                        + "/resources"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .GET()
+            .build();
+    return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  // ADR:2026-10-20-alert-forms-read-only-the-capabilities-answer
+  private static void assertDeprecatedInFavourOfCapabilities(HttpResponse<String> response) {
+    assertEquals(Optional.of("@1792454400"), response.headers().firstValue("Deprecation"));
+    assertEquals(
+        Optional.of("</api/v1/events/subscriptions/capabilities>; rel=\"alternate\""),
+        response.headers().firstValue("Link"));
+  }
+
+  @Test
+  void test_slackDestination_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("slack_sub"))
+            .withDescription("Slack subscription")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getSlackDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(1, subscription.getDestinations().size());
+    assertEquals(
+        SubscriptionDestination.SubscriptionType.SLACK,
+        subscription.getDestinations().get(0).getType());
+  }
+
+  @Test
+  void test_msTeamsDestination_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("msteams_sub"))
+            .withDescription("MS Teams subscription")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getMSTeamsDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(1, subscription.getDestinations().size());
+    assertEquals(
+        SubscriptionDestination.SubscriptionType.MS_TEAMS,
+        subscription.getDestinations().get(0).getType());
+  }
+
+  @Test
+  void test_emailDestination_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("email_sub"))
+            .withDescription("Email subscription")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getEmailDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(1, subscription.getDestinations().size());
+    assertEquals(
+        SubscriptionDestination.SubscriptionType.EMAIL,
+        subscription.getDestinations().get(0).getType());
+  }
+
+  @Test
+  void test_observabilityAlertType_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Observability alerts support only ONE specific resource type
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("observability_sub"))
+            .withDescription("Observability subscription")
+            .withAlertType(AlertType.OBSERVABILITY)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(AlertType.OBSERVABILITY, subscription.getAlertType());
+  }
+
+  @Test
+  void test_activityFeedAlertType_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("activityfeed_sub"))
+            .withDescription("Activity Feed subscription")
+            .withAlertType(AlertType.ACTIVITY_FEED)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(AlertType.ACTIVITY_FEED, subscription.getAlertType());
+  }
+
+  @Test
+  void test_eventFilteringByEventType(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput filterByEventType =
+        new ArgumentsInput()
+            .withName("filterByEventType")
+            .withArguments(
+                List.of(
+                    new Argument()
+                        .withName("eventTypeList")
+                        .withInput(List.of(EventType.ENTITY_CREATED.value()))));
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("event_filter_sub"))
+            .withDescription("Subscription with event type filtering")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(filterByEventType)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getInput());
+    assertNotNull(subscription.getInput().getFilters());
+    assertFalse(subscription.getInput().getFilters().isEmpty());
+  }
+
+  @Test
+  void test_batchSizeConfiguration(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("batch_sub"))
+            .withDescription("Subscription with batch size")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withBatchSize(50)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(50, subscription.getBatchSize());
+  }
+
+  @Test
+  void test_pollIntervalConfiguration(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("poll_sub"))
+            .withDescription("Subscription with poll interval")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withPollInterval(5)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(5, subscription.getPollInterval());
+  }
+
+  @Test
+  void test_retriesConfiguration(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("retry_sub"))
+            .withDescription("Subscription with retries")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withRetries(3)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(3, subscription.getRetries());
+  }
+
+  @Test
+  void test_filterByOwnerName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput filterByOwner =
+        createFilterByOwnerArgumentsInput(List.of("admin"), Effect.INCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("owner_filter_sub"))
+            .withDescription("Subscription with owner filtering")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(filterByOwner)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getInput());
+    assertNotNull(subscription.getInput().getFilters());
+    assertEquals(1, subscription.getInput().getFilters().size());
+  }
+
+  @Test
+  void test_filterByDomain(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput filterByDomain =
+        createFilterByDomainArgumentsInput(List.of("Engineering"), Effect.INCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("domain_filter_sub"))
+            .withDescription("Subscription with domain filtering")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(filterByDomain)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getInput());
+    assertNotNull(subscription.getInput().getFilters());
+    assertEquals(1, subscription.getInput().getFilters().size());
+  }
+
+  @Test
+  void test_filterByFqn(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput filterByFqn =
+        createFilterByFqnArgumentsInput(
+            List.of("sample_data.ecommerce_db.shopify.dim_customer"), Effect.INCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("fqn_filter_sub"))
+            .withDescription("Subscription with FQN filtering")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(filterByFqn)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getInput());
+    assertNotNull(subscription.getInput().getFilters());
+    assertEquals(1, subscription.getInput().getFilters().size());
+  }
+
+  @Test
+  void test_excludeFilters(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput excludeFilter =
+        createFilterByFqnArgumentsInput(
+            List.of("sample_data.ecommerce_db.shopify.dim_customer"), Effect.EXCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("exclude_filter_sub"))
+            .withDescription("Subscription with exclude filtering")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(excludeFilter)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getInput());
+    assertNotNull(subscription.getInput().getFilters());
+    assertEquals(Effect.EXCLUDE, subscription.getInput().getFilters().get(0).getEffect());
+  }
+
+  @Test
+  void test_multipleFilters(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput filterByOwner =
+        createFilterByOwnerArgumentsInput(List.of("admin"), Effect.INCLUDE);
+    ArgumentsInput filterByDomain =
+        createFilterByDomainArgumentsInput(List.of("Engineering"), Effect.INCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("multi_filter_sub"))
+            .withDescription("Subscription with multiple filters")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(
+                new AlertFilteringInput().withFilters(List.of(filterByOwner, filterByDomain)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getInput());
+    assertNotNull(subscription.getInput().getFilters());
+    assertEquals(2, subscription.getInput().getFilters().size());
+  }
+
+  @Test
+  void test_tableResourceFilter(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("table_resource_sub"))
+            .withDescription("Subscription for table resource")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getFilteringRules());
+    assertEquals(List.of("table"), subscription.getFilteringRules().getResources());
+  }
+
+  @Test
+  void test_topicResourceFilter(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("topic_resource_sub"))
+            .withDescription("Subscription for topic resource")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("topic"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getFilteringRules());
+    assertEquals(List.of("topic"), subscription.getFilteringRules().getResources());
+  }
+
+  @Test
+  void test_ingestionPipelineResourceFilter(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("pipeline_resource_sub"))
+            .withDescription("Subscription for ingestion pipeline resource")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("ingestionPipeline"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getFilteringRules());
+    assertEquals(List.of("ingestionPipeline"), subscription.getFilteringRules().getResources());
+  }
+
+  @Test
+  void test_updateBatchSize(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("update_batch_sub"))
+            .withDescription("Subscription to update batch size")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withBatchSize(10)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertEquals(10, subscription.getBatchSize());
+
+    subscription.setBatchSize(25);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+    assertEquals(25, updated.getBatchSize());
+  }
+
+  @Test
+  void test_updateRetries(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("update_retry_sub"))
+            .withDescription("Subscription to update retries")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withRetries(0)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertEquals(0, subscription.getRetries());
+
+    subscription.setRetries(3);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+    assertEquals(3, updated.getRetries());
+  }
+
+  @Test
+  void test_updateDestination(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("update_dest_sub"))
+            .withDescription("Subscription to update destination")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertEquals(
+        SubscriptionDestination.SubscriptionType.WEBHOOK,
+        subscription.getDestinations().get(0).getType());
+
+    subscription.setDestinations(getSlackDestination(ns));
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+    assertEquals(
+        SubscriptionDestination.SubscriptionType.SLACK, updated.getDestinations().get(0).getType());
+  }
+
+  @Test
+  void test_enableDisableSubscription(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("enable_disable_sub"))
+            .withDescription("Subscription to test enable/disable")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertFalse(subscription.getEnabled());
+
+    subscription.setEnabled(true);
+    EventSubscription enabled = patchEntity(subscription.getId().toString(), subscription);
+    assertTrue(enabled.getEnabled());
+
+    enabled.setEnabled(false);
+    EventSubscription disabled = patchEntity(enabled.getId().toString(), enabled);
+    assertFalse(disabled.getEnabled());
+  }
+
+  /**
+   * Toggling a subscription rewrites one Quartz (job, trigger) pair, and several writers reach that
+   * pair at once: concurrent requests on one node, and {@code initializeEventSubscriptions()} on
+   * every peer that starts up against the same clustered job store. While the pair was removed and
+   * re-added as two transactions, a toggle could list a trigger another writer had already dropped
+   * and fail the request with "Unable to unschedule trigger [...] while deleting job [...]".
+   */
+  @Test
+  void test_concurrentEnableDisableSubscription(TestNamespace ns) throws Exception {
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("concurrent_toggle_sub"))
+            .withDescription("Subscription toggled from several threads at once")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    String subscriptionId = subscription.getId().toString();
+
+    int writers = 4;
+    int togglesPerWriter = 5;
+    ExecutorService pool = Executors.newFixedThreadPool(writers);
+    CountDownLatch startLine = new CountDownLatch(1);
+    AtomicInteger completed = new AtomicInteger();
+    List<Future<?>> toggles = new ArrayList<>();
+    try {
+      for (int writer = 0; writer < writers; writer++) {
+        boolean startEnabled = writer % 2 == 0;
+        toggles.add(
+            pool.submit(
+                () -> {
+                  startLine.await();
+                  for (int i = 0; i < togglesPerWriter; i++) {
+                    toggleEnabled(subscriptionId, startEnabled == (i % 2 == 0));
+                    completed.incrementAndGet();
+                  }
+                  return null;
+                }));
+      }
+      startLine.countDown();
+      for (Future<?> toggle : toggles) {
+        // Everything propagates. A version conflict is the one collision this workload expects and
+        // toggleEnabled retries it, so any failure that reaches here -- a 5xx, an SDK fault, an
+        // unexpected runtime error -- is a real defect rather than contention.
+        toggle.get(2, TimeUnit.MINUTES);
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+
+    assertEquals(
+        writers * togglesPerWriter,
+        completed.get(),
+        "Every worker must finish its toggles, otherwise the race was never exercised");
+    assertNotNull(getEntity(subscriptionId), "Subscription must survive concurrent enable/disable");
+    deleteEntity(subscriptionId);
+  }
+
+  /**
+   * However the requests interleave, the schedule has to end up agreeing with the committed row.
+   * Before the scheduler reconciled from committed state, a disable that committed first but reached
+   * the scheduler second deleted the job a later enable had just installed: the row read enabled
+   * while no Quartz job remained, so the subscription looked active and silently never fired again.
+   *
+   * <p>The scheduling endpoint is the observable: it names the job's class when a job exists, so an
+   * enabled row with no class is exactly the broken state, and a disabled row with one is the same
+   * bug the other way round.
+   */
+  @Test
+  void test_concurrentEnableDisableLeavesScheduleMatchingCommittedState(TestNamespace ns)
+      throws Exception {
+    EventSubscription subscription =
+        createEntity(
+            new CreateEventSubscription()
+                .withName(ns.prefix("toggle_ordering_sub"))
+                .withDescription("Subscription toggled from both directions at once")
+                .withAlertType(AlertType.NOTIFICATION)
+                .withResources(List.of("all"))
+                .withEnabled(true)
+                .withDestinations(getWebhookDestination(ns)));
+    String subscriptionId = subscription.getId().toString();
+
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    try {
+      for (int round = 1; round <= TOGGLE_ORDERING_ROUNDS; round++) {
+        CountDownLatch startLine = new CountDownLatch(1);
+        Future<?> enabling = pool.submit(() -> toggleAfter(startLine, subscriptionId, true));
+        Future<?> disabling = pool.submit(() -> toggleAfter(startLine, subscriptionId, false));
+        startLine.countDown();
+        enabling.get(1, TimeUnit.MINUTES);
+        disabling.get(1, TimeUnit.MINUTES);
+
+        EventSubscription settled = getEntity(subscriptionId);
+        JsonNode scheduling = JsonUtils.readTree(readScheduling(subscriptionId));
+        boolean hasJob = scheduling.hasNonNull("jobClass");
+        assertEquals(
+            Boolean.TRUE.equals(settled.getEnabled()),
+            hasJob,
+            "Round "
+                + round
+                + ": the row reads enabled="
+                + settled.getEnabled()
+                + ", job "
+                + hasJob);
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+
+    deleteEntity(subscriptionId);
+  }
+
+  private Void toggleAfter(CountDownLatch startLine, String subscriptionId, boolean enabled)
+      throws InterruptedException {
+    startLine.await();
+    toggleEnabled(subscriptionId, enabled);
+    return null;
+  }
+
+  /**
+   * Two toggles racing on one subscription can legitimately collide on the entity's version, which
+   * the server answers with 409. That is the only failure this workload absorbs, and retrying it
+   * keeps every worker doing its full share so a test cannot pass by aborting early.
+   */
+  private void toggleEnabled(String subscriptionId, boolean enabled) {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        EventSubscription current = getEntity(subscriptionId);
+        current.setEnabled(enabled);
+        patchEntity(subscriptionId, current);
+        return;
+      } catch (RuntimeException failure) {
+        if (attempt == TOGGLE_CONFLICT_ATTEMPTS || statusCodeOf(failure) != 409) {
+          throw failure;
+        }
+      }
+    }
+  }
+
+  /** The SDK wraps the transport failure, so the real status sits on a cause rather than the top. */
+  private static int statusCodeOf(Throwable failure) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof OpenMetadataException reported && reported.getStatusCode() > 0) {
+        return reported.getStatusCode();
+      }
+    }
+    return -1;
+  }
+
+  /** Empty body means the scheduler holds no job and the row is not disabled either. */
+  private String readScheduling(String subscriptionId) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl()
+                        + "/v1/events/subscriptions/id/"
+                        + subscriptionId
+                        + "/scheduling"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .GET()
+            .build();
+    HttpResponse<String> response =
+        HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+    assertTrue(
+        response.statusCode() < 300,
+        "Scheduling endpoint failed: " + response.statusCode() + " " + response.body());
+    return response.body() == null ? "" : response.body().trim();
+  }
+
+  @Test
+  void test_invalidAlertTypeThrowsException(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Test that creating event subscription with empty name fails
+    assertThrows(
+        Exception.class,
+        () -> {
+          CreateEventSubscription request =
+              new CreateEventSubscription()
+                  .withName("") // Empty name should fail
+                  .withDescription("Invalid - empty name")
+                  .withAlertType(AlertType.NOTIFICATION)
+                  .withResources(List.of("table"))
+                  .withEnabled(false)
+                  .withDestinations(getWebhookDestination(ns));
+
+          createEntity(request);
+        });
+  }
+
+  @Test
+  void test_listEventSubscriptions(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request1 =
+        new CreateEventSubscription()
+            .withName(ns.prefix("list_sub_1"))
+            .withDescription("List test 1")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    CreateEventSubscription request2 =
+        new CreateEventSubscription()
+            .withName(ns.prefix("list_sub_2"))
+            .withDescription("List test 2")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription sub1 = createEntity(request1);
+    EventSubscription sub2 = createEntity(request2);
+
+    ListParams params = new ListParams();
+    ListResponse<EventSubscription> response = listEntities(params);
+    assertNotNull(response);
+    assertTrue(response.getData().size() >= 2);
+  }
+
+  @Test
+  void test_getByInvalidId_throwsException(TestNamespace ns) {
+    UUID invalidId = UUID.randomUUID();
+    assertThrows(OpenMetadataException.class, () -> getEntity(invalidId.toString()));
+  }
+
+  @Test
+  void test_updateEndpointURL(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("update_endpoint_sub"))
+            .withDescription("Subscription to update endpoint")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription.getDestinations());
+    assertEquals(1, subscription.getDestinations().size());
+
+    Webhook updatedWebhook =
+        new Webhook().withEndpoint(URI.create("http://localhost:8585/api/v1/test/webhook/updated"));
+
+    List<SubscriptionDestination> updatedDestination =
+        List.of(
+            new SubscriptionDestination()
+                .withId(subscription.getDestinations().get(0).getId())
+                .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+                .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                .withConfig(updatedWebhook));
+
+    subscription.setDestinations(updatedDestination);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+    assertNotNull(updated.getDestinations());
+    assertEquals(1, updated.getDestinations().size());
+  }
+
+  @Test
+  void test_updateAlertFilteringRules(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput filter1 =
+        new ArgumentsInput()
+            .withName("filterByEventType")
+            .withArguments(
+                List.of(
+                    new Argument()
+                        .withName("eventTypeList")
+                        .withInput(List.of(EventType.ENTITY_CREATED.value()))));
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("update_filter_sub"))
+            .withDescription("Subscription to update filters")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(filter1)));
+
+    EventSubscription subscription = createEntity(request);
+    assertEquals(1, subscription.getInput().getFilters().size());
+
+    ArgumentsInput filter2 =
+        new ArgumentsInput()
+            .withName("filterByEventType")
+            .withArguments(
+                List.of(
+                    new Argument()
+                        .withName("eventTypeList")
+                        .withInput(
+                            List.of(
+                                EventType.ENTITY_CREATED.value(),
+                                EventType.ENTITY_UPDATED.value(),
+                                EventType.ENTITY_DELETED.value()))));
+
+    subscription.setInput(new AlertFilteringInput().withFilters(List.of(filter2)));
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+    assertEquals(1, updated.getInput().getFilters().size());
+  }
+
+  @Test
+  void test_createAndFetchEventSubscription(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("fetch_test_sub"))
+            .withDescription("Subscription for fetch testing")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withBatchSize(10)
+            .withRetries(0)
+            .withPollInterval(1)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription created = createEntity(request);
+    assertNotNull(created);
+
+    EventSubscription fetchedById = getEntity(created.getId().toString());
+    assertNotNull(fetchedById);
+    assertEquals(created.getName(), fetchedById.getName());
+
+    EventSubscription fetchedByName = getEntityByName(created.getFullyQualifiedName());
+    assertNotNull(fetchedByName);
+    assertEquals(created.getName(), fetchedByName.getName());
+    assertEquals(created.getId(), fetchedByName.getId());
+  }
+
+  @Test
+  void test_deleteEventSubscription(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("delete_test_sub"))
+            .withDescription("Subscription for delete testing")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription created = createEntity(request);
+    String id = created.getId().toString();
+
+    deleteEntity(id);
+
+    assertThrows(OpenMetadataException.class, () -> getEntity(id));
+  }
+
+  @Test
+  void test_filterByOwnerNameExclude(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput excludeOwner =
+        createFilterByOwnerArgumentsInput(List.of("admin"), Effect.EXCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("exclude_owner_sub"))
+            .withDescription("Subscription with owner exclude filter")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(excludeOwner)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(Effect.EXCLUDE, subscription.getInput().getFilters().get(0).getEffect());
+  }
+
+  @Test
+  void test_filterByDomainExclude(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput excludeDomain =
+        createFilterByDomainArgumentsInput(List.of("Engineering"), Effect.EXCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("exclude_domain_sub"))
+            .withDescription("Subscription with domain exclude filter")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(excludeDomain)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(Effect.EXCLUDE, subscription.getInput().getFilters().get(0).getEffect());
+  }
+
+  @Test
+  void test_multipleResourceTypesOfOneKindAccepted(TestNamespace ns) {
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("multi_resource_sub"))
+            .withDescription("Subscription for multiple resource types")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table", "topic", "dashboard"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+
+    assertEquals(
+        List.of("table", "topic", "dashboard"), subscription.getFilteringRules().getResources());
+  }
+
+  @Test
+  void test_resourceTypesThatDoNotCombineRejected(TestNamespace ns) {
+    CreateEventSubscription entityPlusActivity =
+        new CreateEventSubscription()
+            .withName(ns.prefix("two_kinds_sub"))
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table", "conversation"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+    CreateEventSubscription wildcardPlusOne =
+        new CreateEventSubscription()
+            .withName(ns.prefix("wildcard_plus_sub"))
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all", "table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(entityPlusActivity),
+        "Entity and activity sources share no filters and cannot be combined");
+    assertThrows(
+        Exception.class,
+        () -> createEntity(wildcardPlusOne),
+        "The wildcard already watches everything and stands alone");
+  }
+
+  @Test
+  void test_updatePollInterval(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("update_poll_sub"))
+            .withDescription("Subscription to update poll interval")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withPollInterval(1)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertEquals(1, subscription.getPollInterval());
+
+    subscription.setPollInterval(10);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+    assertEquals(10, updated.getPollInterval());
+  }
+
+  @Test
+  void test_combinedOwnerAndDomainFilters(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput filterByOwner =
+        createFilterByOwnerArgumentsInput(List.of("admin"), Effect.INCLUDE);
+    ArgumentsInput filterByDomain =
+        createFilterByDomainArgumentsInput(List.of("Engineering"), Effect.INCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("combined_filter_sub"))
+            .withDescription("Subscription with combined owner and domain filters")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(
+                new AlertFilteringInput().withFilters(List.of(filterByOwner, filterByDomain)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(2, subscription.getInput().getFilters().size());
+  }
+
+  @Test
+  void test_filterByFqnWithMultipleValues(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput filterByFqn =
+        createFilterByFqnArgumentsInput(
+            List.of(
+                "sample_data.ecommerce_db.shopify.dim_customer",
+                "sample_data.ecommerce_db.shopify.fact_order"),
+            Effect.INCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("multi_fqn_filter_sub"))
+            .withDescription("Subscription with multiple FQN filters")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(filterByFqn)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(1, subscription.getInput().getFilters().size());
+  }
+
+  @Test
+  @org.junit.jupiter.api.Disabled("EventSubscription resource does not support restore operation")
+  void test_deleteAndRestoreSubscription(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("delete_restore_sub"))
+            .withDescription("Test delete and restore")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    String id = subscription.getId().toString();
+
+    deleteEntity(id);
+
+    assertThrows(OpenMetadataException.class, () -> getEntity(id));
+
+    restoreEntity(id);
+    EventSubscription restored = getEntityIncludeDeleted(id);
+    assertNotNull(restored);
+  }
+
+  @Test
+  void test_createSubscriptionWithUserTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateNotificationTemplate createTemplate =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("user_template"))
+            .withDescription("User notification template")
+            .withTemplateSubject("Notification Subject")
+            .withTemplateBody("<div>Custom template content</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate userTemplate =
+        client.notificationTemplates().create(createTemplate);
+
+    org.openmetadata.schema.type.EntityReference templateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(userTemplate.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_with_template"))
+            .withDescription("Subscription with notification template")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(templateRef);
+
+    EventSubscription subscription = createEntity(createSub);
+
+    assertNotNull(subscription.getNotificationTemplate());
+    assertEquals(userTemplate.getId(), subscription.getNotificationTemplate().getId());
+
+    EventSubscription fetched = getEntity(subscription.getId().toString());
+    assertNotNull(fetched.getNotificationTemplate());
+    assertEquals(userTemplate.getId(), fetched.getNotificationTemplate().getId());
+
+    deleteEntity(subscription.getId().toString());
+    client.notificationTemplates().delete(userTemplate.getId().toString());
+  }
+
+  @Test
+  void test_createSubscriptionWithoutTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_without_template"))
+            .withDescription("Subscription without template")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(createSub);
+
+    assertNull(subscription.getNotificationTemplate());
+
+    deleteEntity(subscription.getId().toString());
+  }
+
+  @Test
+  void test_rejectSystemTemplateOnCreate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    org.openmetadata.schema.entity.events.NotificationTemplate systemTemplate =
+        getSystemTemplate(client);
+
+    if (systemTemplate == null) {
+      return;
+    }
+
+    assertEquals(org.openmetadata.schema.type.ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    org.openmetadata.schema.type.EntityReference systemTemplateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(systemTemplate.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_system_template"))
+            .withDescription("Subscription with system template - should fail")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(systemTemplateRef);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(createSub),
+        "System templates cannot be assigned to EventSubscriptions");
+  }
+
+  @Test
+  void test_updateSubscriptionAddTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_add_template"))
+            .withDescription("Subscription to add template")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(createSub);
+    assertNull(subscription.getNotificationTemplate());
+
+    CreateNotificationTemplate createTemplate =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("template_to_add"))
+            .withDescription("Template to add to subscription")
+            .withTemplateSubject("Added Template Subject")
+            .withTemplateBody("<div>Added template</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template =
+        client.notificationTemplates().create(createTemplate);
+
+    org.openmetadata.schema.type.EntityReference templateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template.getId())
+            .withType("notificationTemplate");
+
+    subscription.setNotificationTemplate(templateRef);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+
+    assertNotNull(updated.getNotificationTemplate());
+    assertEquals(template.getId(), updated.getNotificationTemplate().getId());
+
+    EventSubscription fetched = getEntity(subscription.getId().toString());
+    assertNotNull(fetched.getNotificationTemplate());
+    assertEquals(template.getId(), fetched.getNotificationTemplate().getId());
+
+    deleteEntity(subscription.getId().toString());
+    client.notificationTemplates().delete(template.getId().toString());
+  }
+
+  @Test
+  void test_updateSubscriptionChangeTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateNotificationTemplate createTemplate1 =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("template1"))
+            .withDescription("First template")
+            .withTemplateSubject("Template 1 Subject")
+            .withTemplateBody("<div>Template 1</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template1 =
+        client.notificationTemplates().create(createTemplate1);
+
+    CreateNotificationTemplate createTemplate2 =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("template2"))
+            .withDescription("Second template")
+            .withTemplateSubject("Template 2 Subject")
+            .withTemplateBody("<div>Template 2</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template2 =
+        client.notificationTemplates().create(createTemplate2);
+
+    org.openmetadata.schema.type.EntityReference template1Ref =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template1.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_change_template"))
+            .withDescription("Subscription to change template")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(template1Ref);
+
+    EventSubscription subscription = createEntity(createSub);
+    assertEquals(template1.getId(), subscription.getNotificationTemplate().getId());
+
+    org.openmetadata.schema.type.EntityReference template2Ref =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template2.getId())
+            .withType("notificationTemplate");
+
+    subscription.setNotificationTemplate(template2Ref);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+
+    assertEquals(template2.getId(), updated.getNotificationTemplate().getId());
+
+    deleteEntity(subscription.getId().toString());
+    client.notificationTemplates().delete(template1.getId().toString());
+    client.notificationTemplates().delete(template2.getId().toString());
+  }
+
+  @Test
+  void test_updateSubscriptionRemoveTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateNotificationTemplate createTemplate =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("template_to_remove"))
+            .withDescription("Template to be removed")
+            .withTemplateSubject("To Be Removed Subject")
+            .withTemplateBody("<div>Will be removed</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template =
+        client.notificationTemplates().create(createTemplate);
+
+    org.openmetadata.schema.type.EntityReference templateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_remove_template"))
+            .withDescription("Subscription to remove template")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(templateRef);
+
+    EventSubscription subscription = createEntity(createSub);
+    assertNotNull(subscription.getNotificationTemplate());
+
+    subscription.setNotificationTemplate(null);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+
+    assertNull(updated.getNotificationTemplate());
+
+    deleteEntity(subscription.getId().toString());
+    client.notificationTemplates().delete(template.getId().toString());
+  }
+
+  @Test
+  void test_rejectSystemTemplateOnUpdate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_system_update"))
+            .withDescription("Subscription for system template update test")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(createSub);
+
+    org.openmetadata.schema.entity.events.NotificationTemplate systemTemplate =
+        getSystemTemplate(client);
+
+    if (systemTemplate == null) {
+      deleteEntity(subscription.getId().toString());
+      return;
+    }
+
+    assertEquals(org.openmetadata.schema.type.ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    org.openmetadata.schema.type.EntityReference systemTemplateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(systemTemplate.getId())
+            .withType("notificationTemplate");
+
+    subscription.setNotificationTemplate(systemTemplateRef);
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(subscription.getId().toString(), subscription),
+        "System templates cannot be assigned to EventSubscriptions");
+
+    deleteEntity(subscription.getId().toString());
+  }
+
+  @Test
+  void test_deleteSubscriptionPreservesTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateNotificationTemplate createTemplate =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("template_preserved"))
+            .withDescription("Template that should survive")
+            .withTemplateSubject("Preserved Template Subject")
+            .withTemplateBody("<div>Should survive</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template =
+        client.notificationTemplates().create(createTemplate);
+
+    org.openmetadata.schema.type.EntityReference templateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_to_delete"))
+            .withDescription("Subscription to delete")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(templateRef);
+
+    EventSubscription subscription = createEntity(createSub);
+
+    deleteEntity(subscription.getId().toString());
+
+    org.openmetadata.schema.entity.events.NotificationTemplate templateAfterDelete =
+        client.notificationTemplates().get(template.getId().toString());
+    assertNotNull(templateAfterDelete, "Template should exist after subscription deletion");
+
+    ListParams params =
+        new ListParams().addFilter("notificationTemplate", template.getId().toString());
+    ListResponse<EventSubscription> subscriptions = listEntities(params);
+    assertTrue(subscriptions.getData().isEmpty(), "No subscriptions should reference template");
+
+    client.notificationTemplates().delete(template.getId().toString());
+  }
+
+  @Test
+  void test_querySubscriptionsByTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateNotificationTemplate createTemplate1 =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("query_template1"))
+            .withDescription("Template 1 for query test")
+            .withTemplateSubject("Query Template 1 Subject")
+            .withTemplateBody("<div>Template 1 for query</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template1 =
+        client.notificationTemplates().create(createTemplate1);
+
+    CreateNotificationTemplate createTemplate2 =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("query_template2"))
+            .withDescription("Template 2 for query test")
+            .withTemplateSubject("Query Template 2 Subject")
+            .withTemplateBody("<div>Template 2 for query</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template2 =
+        client.notificationTemplates().create(createTemplate2);
+
+    org.openmetadata.schema.type.EntityReference template1Ref =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template1.getId())
+            .withType("notificationTemplate");
+
+    org.openmetadata.schema.type.EntityReference template2Ref =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template2.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub1 =
+        new CreateEventSubscription()
+            .withName(ns.prefix("query_sub1"))
+            .withDescription("Query subscription 1")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(template1Ref);
+
+    EventSubscription sub1 = createEntity(createSub1);
+
+    CreateEventSubscription createSub2 =
+        new CreateEventSubscription()
+            .withName(ns.prefix("query_sub2"))
+            .withDescription("Query subscription 2")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(template1Ref);
+
+    EventSubscription sub2 = createEntity(createSub2);
+
+    CreateEventSubscription createSub3 =
+        new CreateEventSubscription()
+            .withName(ns.prefix("query_sub3"))
+            .withDescription("Query subscription 3")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(template2Ref);
+
+    EventSubscription sub3 = createEntity(createSub3);
+
+    CreateEventSubscription createSub4 =
+        new CreateEventSubscription()
+            .withName(ns.prefix("query_sub4"))
+            .withDescription("Query subscription 4")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription sub4 = createEntity(createSub4);
+
+    ListParams params1 =
+        new ListParams().addFilter("notificationTemplate", template1.getId().toString());
+    ListResponse<EventSubscription> results1 = listEntities(params1);
+
+    assertTrue(
+        results1.getData().size() >= 2, "Should find at least 2 subscriptions with template1");
+    long countWithTemplate1 =
+        results1.getData().stream()
+            .filter(
+                s ->
+                    s.getNotificationTemplate() != null
+                        && s.getNotificationTemplate().getId().equals(template1.getId()))
+            .count();
+    assertTrue(
+        countWithTemplate1 >= 2, "Should have at least 2 results with template1 in this namespace");
+
+    ListParams params2 =
+        new ListParams().addFilter("notificationTemplate", template2.getId().toString());
+    ListResponse<EventSubscription> results2 = listEntities(params2);
+
+    assertTrue(
+        results2.getData().size() >= 1, "Should find at least 1 subscription with template2");
+
+    deleteEntity(sub1.getId().toString());
+    deleteEntity(sub2.getId().toString());
+    deleteEntity(sub3.getId().toString());
+    deleteEntity(sub4.getId().toString());
+    client.notificationTemplates().delete(template1.getId().toString());
+    client.notificationTemplates().delete(template2.getId().toString());
+  }
+
+  // ===================================================================
+  // HELPER METHODS FOR CREATING DIFFERENT DESTINATION TYPES
+  // ===================================================================
+
+  private List<SubscriptionDestination> getSlackDestination(TestNamespace ns) {
+    Webhook webhook =
+        new Webhook()
+            .withEndpoint(URI.create("http://localhost:8585/api/v1/test/slack/test"))
+            .withReceivers(new HashSet<>())
+            .withAuthType(
+                new WebhookBearerAuth()
+                    .withType(WebhookBearerAuth.Type.BEARER)
+                    .withSecretKey("slackTest"));
+
+    return List.of(
+        new SubscriptionDestination()
+            .withId(UUID.randomUUID())
+            .withType(SubscriptionDestination.SubscriptionType.SLACK)
+            .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+            .withConfig(webhook));
+  }
+
+  private List<SubscriptionDestination> getMSTeamsDestination(TestNamespace ns) {
+    Webhook webhook =
+        new Webhook()
+            .withEndpoint(URI.create("http://localhost:8585/api/v1/test/msteams/test"))
+            .withReceivers(new HashSet<>())
+            .withAuthType(
+                new WebhookBearerAuth()
+                    .withType(WebhookBearerAuth.Type.BEARER)
+                    .withSecretKey("msTeamsTest"));
+
+    return List.of(
+        new SubscriptionDestination()
+            .withId(UUID.randomUUID())
+            .withType(SubscriptionDestination.SubscriptionType.MS_TEAMS)
+            .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+            .withConfig(webhook));
+  }
+
+  private List<SubscriptionDestination> getEmailDestination(TestNamespace ns) {
+    Map<String, Object> emailConfig = Map.of("receivers", List.of("test@example.com"));
+
+    return List.of(
+        new SubscriptionDestination()
+            .withId(UUID.randomUUID())
+            .withType(SubscriptionDestination.SubscriptionType.EMAIL)
+            .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+            .withConfig(emailConfig));
+  }
+
+  private ArgumentsInput createFilterByOwnerArgumentsInput(List<String> ownerName, Effect effect) {
+    Argument ownerArgument = new Argument().withName("ownerNameList").withInput(ownerName);
+
+    return new ArgumentsInput()
+        .withName(NotificationFilterOperation.FILTER_BY_OWNER_NAME.value())
+        .withEffect(effect)
+        .withArguments(List.of(ownerArgument))
+        .withPrefixCondition(PrefixCondition.AND);
+  }
+
+  private ArgumentsInput createFilterByDomainArgumentsInput(
+      List<String> domainName, Effect effect) {
+    Argument domainArgument = new Argument().withName("domainList").withInput(domainName);
+
+    return new ArgumentsInput()
+        .withName(NotificationFilterOperation.FILTER_BY_DOMAIN.value())
+        .withEffect(effect)
+        .withArguments(List.of(domainArgument))
+        .withPrefixCondition(PrefixCondition.AND);
+  }
+
+  private ArgumentsInput createFilterByFqnArgumentsInput(List<String> fqnList, Effect effect) {
+    Argument fqnArgument = new Argument().withName("fqnList").withInput(fqnList);
+
+    return new ArgumentsInput()
+        .withName(NotificationFilterOperation.FILTER_BY_FQN.value())
+        .withEffect(effect)
+        .withArguments(List.of(fqnArgument))
+        .withPrefixCondition(PrefixCondition.AND);
+  }
+
+  // ===================================================================
+  // OAUTH2 WEBHOOK VALIDATION TESTS
+  // ===================================================================
+
+  @Test
+  void post_webhookOAuth2MissingTokenUrl_400(TestNamespace ns) {
+    WebhookOAuth2Config oauth2 =
+        new WebhookOAuth2Config()
+            .withType(WebhookOAuth2Config.Type.OAUTH_2)
+            .withClientId("my-client-id")
+            .withClientSecret("my-client-secret");
+    Map<String, Object> oauth2Map = JsonUtils.convertValue(oauth2, Map.class);
+    oauth2Map.remove("tokenUrl");
+
+    CreateEventSubscription request =
+        buildOAuth2SubscriptionRequest(ns, "oauth2_no_url", oauth2Map);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "OAuth2 config without tokenUrl should fail validation");
+  }
+
+  @Test
+  void post_webhookOAuth2MissingClientId_400(TestNamespace ns) {
+    WebhookOAuth2Config oauth2 =
+        new WebhookOAuth2Config()
+            .withType(WebhookOAuth2Config.Type.OAUTH_2)
+            .withTokenUrl(URI.create("https://auth.example.com/token"))
+            .withClientSecret("my-client-secret");
+    Map<String, Object> oauth2Map = JsonUtils.convertValue(oauth2, Map.class);
+    oauth2Map.remove("clientId");
+
+    CreateEventSubscription request =
+        buildOAuth2SubscriptionRequest(ns, "oauth2_no_cid", oauth2Map);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "OAuth2 config without clientId should fail validation");
+  }
+
+  @Test
+  void post_webhookOAuth2MissingClientSecret_400(TestNamespace ns) {
+    WebhookOAuth2Config oauth2 =
+        new WebhookOAuth2Config()
+            .withType(WebhookOAuth2Config.Type.OAUTH_2)
+            .withTokenUrl(URI.create("https://auth.example.com/token"))
+            .withClientId("my-client-id");
+    Map<String, Object> oauth2Map = JsonUtils.convertValue(oauth2, Map.class);
+    oauth2Map.remove("clientSecret");
+
+    CreateEventSubscription request =
+        buildOAuth2SubscriptionRequest(ns, "oauth2_no_csecret", oauth2Map);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "OAuth2 config without clientSecret should fail validation");
+  }
+
+  @Test
+  void post_webhookOAuth2ValidConfig_createsSubscription(TestNamespace ns) {
+    WebhookOAuth2Config oauth2 =
+        new WebhookOAuth2Config()
+            .withType(WebhookOAuth2Config.Type.OAUTH_2)
+            .withTokenUrl(URI.create("https://auth.example.com/token"))
+            .withClientId("my-client-id")
+            .withClientSecret("my-client-secret")
+            .withScope("read write");
+
+    CreateEventSubscription request =
+        buildOAuth2SubscriptionRequest(
+            ns, "oauth2_valid", JsonUtils.convertValue(oauth2, Map.class));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getDestinations());
+    assertFalse(subscription.getDestinations().isEmpty());
+
+    SubscriptionDestination dest = subscription.getDestinations().get(0);
+    Map<String, Object> config = JsonUtils.convertValue(dest.getConfig(), Map.class);
+    assertNotNull(config.get("authType"));
+
+    Map<String, Object> authMap = (Map<String, Object>) config.get("authType");
+    assertEquals("oauth2", authMap.get("type"));
+  }
+
+  private CreateEventSubscription buildOAuth2SubscriptionRequest(
+      TestNamespace ns, String nameSuffix, Map<String, Object> oauth2Map) {
+    Map<String, Object> webhookConfig = new LinkedHashMap<>();
+    webhookConfig.put("endpoint", "http://localhost:8585/api/v1/test/webhook/test");
+    webhookConfig.put("authType", oauth2Map);
+
+    return new CreateEventSubscription()
+        .withName(ns.prefix(nameSuffix))
+        .withDescription("OAuth2 webhook test")
+        .withAlertType(AlertType.NOTIFICATION)
+        .withResources(List.of("all"))
+        .withEnabled(false)
+        .withDestinations(
+            List.of(
+                new SubscriptionDestination()
+                    .withId(UUID.randomUUID())
+                    .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+                    .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                    .withConfig(webhookConfig)));
+  }
+
+  /**
+   * The testDestination endpoint must never echo the submitted destination config back: it carries
+   * webhook credentials in plaintext. It must also report destinations whose delivery threw, rather
+   * than silently dropping them, so the response stays aligned with the request.
+   */
+  @Test
+  void test_testDestinationRedactsConfigAndReportsFailures(TestNamespace ns) throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext(
+        "/oauth/token",
+        exchange -> sendJson(exchange, "{\"access_token\":\"test-token\",\"expires_in\":3600}"));
+    server.createContext("/webhook", exchange -> sendJson(exchange, "{}"));
+    server.start();
+    int port = server.getAddress().getPort();
+    String clientSecret = ns.prefix("client-secret");
+
+    try {
+      WebhookOAuth2Config oauth2 =
+          new WebhookOAuth2Config()
+              .withType(WebhookOAuth2Config.Type.OAUTH_2)
+              .withTokenUrl(URI.create("http://localhost:" + port + "/oauth/token"))
+              .withClientId(ns.prefix("client-id"))
+              .withClientSecret(clientSecret);
+      String queryToken = ns.prefix("query-token");
+      SubscriptionDestination reachable =
+          webhookDestination("http://localhost:" + port + "/webhook", oauth2, null);
+      SubscriptionDestination unreachable =
+          webhookDestination(
+              "http://localhost:" + closedPort() + "/webhook", null, Map.of("token", queryToken));
+
+      HttpResponse<String> response = postTestDestination(List.of(reachable, unreachable));
+
+      assertEquals(200, response.statusCode(), response.body());
+      assertFalse(
+          response.body().contains(clientSecret), "Response echoed the webhook client secret");
+      assertFalse(response.body().contains("clientSecret"), "Response echoed the auth config");
+      assertFalse(response.body().contains("authType"), "Response echoed the auth config");
+      assertFalse(
+          response.body().contains(queryToken),
+          "Response echoed a credential carried in the endpoint query string");
+
+      List<SubscriptionDestination> results =
+          JsonUtils.readObjects(response.body(), SubscriptionDestination.class);
+      assertEquals(2, results.size(), "Every requested destination must be reported");
+      assertNull(results.get(0).getConfig(), "Destination config must be redacted");
+      assertNull(results.get(1).getConfig(), "Destination config must be redacted");
+      assertEquals(TestDestinationStatus.Status.SUCCESS, testStatus(results.get(0)));
+      assertEquals(TestDestinationStatus.Status.FAILED, testStatus(results.get(1)));
+      assertNotNull(testReason(results.get(1)), "A failed destination must carry a reason");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  private SubscriptionDestination webhookDestination(
+      String endpoint, WebhookOAuth2Config authType, Map<String, String> queryParams) {
+    Webhook webhook =
+        new Webhook()
+            .withEndpoint(URI.create(endpoint))
+            .withAuthType(authType)
+            .withQueryParams(queryParams);
+
+    return new SubscriptionDestination()
+        .withId(UUID.randomUUID())
+        .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+        .withConfig(webhook);
+  }
+
+  private HttpResponse<String> postTestDestination(List<SubscriptionDestination> destinations)
+      throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/events/subscriptions/testDestination"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    JsonUtils.pojoToJson(Map.of("destinations", destinations))))
+            .build();
+
+    return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private TestDestinationStatus.Status testStatus(SubscriptionDestination destination) {
+    return JsonUtils.convertValue(destination.getStatusDetails(), TestDestinationStatus.class)
+        .getStatus();
+  }
+
+  private String testReason(SubscriptionDestination destination) {
+    return JsonUtils.convertValue(destination.getStatusDetails(), TestDestinationStatus.class)
+        .getReason();
+  }
+
+  private static void sendJson(HttpExchange exchange, String body) throws IOException {
+    byte[] payload = body.getBytes(StandardCharsets.UTF_8);
+    exchange.getResponseHeaders().add("Content-Type", "application/json");
+    exchange.sendResponseHeaders(200, payload.length);
+    try (OutputStream out = exchange.getResponseBody()) {
+      out.write(payload);
+    }
+  }
+
+  /** A port that nothing is listening on, so delivery fails at connect time. */
+  private static int closedPort() throws IOException {
+    try (ServerSocket socket = new ServerSocket(0)) {
+      return socket.getLocalPort();
+    }
+  }
+
+  private org.openmetadata.schema.entity.events.NotificationTemplate getSystemTemplate(
+      OpenMetadataClient client) {
+    try {
+      return client.notificationTemplates().getByName("system-notification-entity-default");
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  /**
+   * A destination's endpoint, header values and credentials are secrets: stored encrypted, masked
+   * in every response for every caller, and kept as stored when a caller sends the mask back.
+   */
+  @Test
+  void test_destinationSecretsAreMaskedEncryptedAndRestored(TestNamespace ns) throws Exception {
+    String endpoint = "http://localhost:8585/api/v1/test/webhook/" + ns.prefix("hook");
+    String headerValue = ns.prefix("header-token");
+    String secretKey = ns.prefix("signing-key");
+    List<String> plaintexts = List.of(endpoint, headerValue, secretKey);
+
+    EventSubscription created =
+        createEntity(secretRequest(ns, "secret_sub", endpoint, headerValue, secretKey));
+    String id = created.getId().toString();
+    assertSecretsMasked(created.getDestinations().getFirst());
+    Map<String, Object> storedConfig = storedConfig(created.getId());
+    assertEquals(endpoint, opened(created.getId(), "/endpoint"));
+    assertEquals(headerValue, opened(created.getId(), "/headers/Authorization"));
+    assertEquals(secretKey, opened(created.getId(), "/authType/secretKey"));
+
+    String path = "/v1/events/subscriptions/" + id;
+    List<String> reads =
+        List.of(
+            rawGet(SdkClients.adminClient(), path),
+            rawGet(SdkClients.adminClient(), "/v1/events/subscriptions/name/" + created.getName()),
+            rawGet(SdkClients.adminClient(), path + "/versions"),
+            rawGet(SdkClients.adminClient(), "/v1/events/subscriptions/id/" + id + "/destinations"),
+            rawGet(plainUserClient(), path),
+            rawGet(SdkClients.ingestionBotClient(), path));
+    reads.forEach(response -> assertNoSecretOrCiphertext(response, plaintexts));
+    assertNoSecretOrCiphertext(
+        rawGet(SdkClients.adminClient(), "/v1/events/subscriptions?limit=1000"), plaintexts);
+
+    EventSubscription sentBack = getEntity(id).withDescription("edited with the masks sent back");
+    EventSubscription edited = patchEntity(id, sentBack);
+    assertEquals("edited with the masks sent back", edited.getDescription());
+    assertSecretsMasked(edited.getDestinations().getFirst());
+    assertEquals(storedConfig, storedConfig(created.getId()), "the stored ciphertext is kept");
+
+    // A stored secret does not follow a moved endpoint: the caller chose the address, and all it
+    // could read was the mask. Moving the destination means entering every credential again.
+    String otherEndpoint = endpoint + "-moved";
+    EventSubscription withNewEndpoint = getEntity(id);
+    Map<String, Object> config = configOf(withNewEndpoint.getDestinations().getFirst());
+    config.put("endpoint", otherEndpoint);
+    withNewEndpoint.getDestinations().getFirst().withConfig(config);
+    Map<String, Object> before = storedConfig(created.getId());
+    assertRefused(() -> patchEntity(id, withNewEndpoint));
+    assertEquals(before, storedConfig(created.getId()), "the stored ciphertext is kept");
+
+    Map<String, Object> fresh = new LinkedHashMap<>(config);
+    fresh.put("headers", Map.of("Authorization", headerValue));
+    if (authTypeOf(config) != null) {
+      fresh.put("authType", Map.of("type", "bearer", "secretKey", secretKey));
+    }
+    withNewEndpoint.getDestinations().getFirst().withConfig(fresh);
+    EventSubscription moved = patchEntity(id, withNewEndpoint);
+    assertSecretsMasked(moved.getDestinations().getFirst());
+    assertEquals(otherEndpoint, opened(created.getId(), "/endpoint"));
+    assertEquals(headerValue, opened(created.getId(), "/headers/Authorization"));
+    assertEquals(secretKey, opened(created.getId(), "/authType/secretKey"));
+    assertNoSecretOrCiphertext(
+        rawGet(SdkClients.adminClient(), path + "/versions"),
+        List.of(otherEndpoint, headerValue, secretKey));
+  }
+
+  @Test
+  void test_putDestinationSecretsPreservesStoredValues(TestNamespace ns) {
+    String endpoint = "http://localhost:8585/" + ns.prefix("put_hook");
+    CreateEventSubscription request =
+        secretRequest(ns, "put_secrets", endpoint, "header-token", "signing-key");
+    EventSubscription created = createEntity(request);
+    Map<String, Object> stored = storedConfig(created.getId());
+    UUID destinationId = created.getDestinations().getFirst().getId();
+
+    request.withDestinations(created.getDestinations()).withDescription("masked PUT");
+    request.getDestinations().getFirst().withId(null);
+    EventSubscription updated = putSubscription(request);
+    assertEquals("masked PUT", updated.getDescription());
+    assertSecretsMasked(updated.getDestinations().getFirst());
+    assertEquals(stored, storedConfig(created.getId()));
+    assertEquals(destinationId, updated.getDestinations().getFirst().getId());
+
+    CreateEventSubscription plaintext =
+        secretRequest(ns, "put_secrets", endpoint, "header-token", "signing-key");
+    plaintext.withDescription("plaintext PUT");
+    updated = putSubscription(plaintext);
+    assertEquals("plaintext PUT", updated.getDescription());
+    assertSecretsMasked(updated.getDestinations().getFirst());
+    assertEquals(stored, storedConfig(created.getId()));
+    assertEquals(destinationId, updated.getDestinations().getFirst().getId());
+  }
+
+  @Test
+  void test_putInsertedDestinationKeepsDistinctIds(TestNamespace ns) {
+    CreateEventSubscription request =
+        secretRequest(ns, "insert_destination", "http://localhost:8585/original", "header", null);
+    EventSubscription created = createEntity(request);
+    SubscriptionDestination retained = created.getDestinations().getFirst();
+    SubscriptionDestination inserted =
+        secretRequest(ns, "inserted", "http://localhost:8585/inserted", "new-header", null)
+            .getDestinations()
+            .getFirst()
+            .withId(null);
+    request.withDestinations(List.of(inserted, retained));
+
+    EventSubscription updated = putSubscription(request);
+
+    assertEquals(2, updated.getDestinations().size());
+    assertEquals(
+        2,
+        updated.getDestinations().stream().map(SubscriptionDestination::getId).distinct().count());
+    assertEquals(retained.getId(), updated.getDestinations().get(1).getId());
+    assertEquals("http://localhost:8585/inserted", opened(created.getId(), "/endpoint"));
+  }
+
+  @Test
+  void test_unrelatedPatchCopyWithLegacyNumericHeader(TestNamespace ns) throws Exception {
+    // Long enough that the random hex in the copied name never contains it by chance.
+    int numericSecret = 987654321;
+    EventSubscription created =
+        createEntity(
+            secretRequest(
+                ns,
+                "legacy_numeric",
+                "http://localhost:8585/hook",
+                String.valueOf(numericSecret),
+                null));
+    EventSubscription stored = AlertFixtures.stored(created.getId());
+    Map<String, Object> config = configOf(stored.getDestinations().getFirst());
+    config.put("headers", Map.of("Authorization", numericSecret));
+    stored.getDestinations().getFirst().withConfig(config);
+    stored.withBatchSize(numericSecret);
+    AlertFixtures.writeBehindTheServer(stored);
+    JsonNode patch =
+        JsonUtils.readTree("[{\"op\":\"copy\",\"from\":\"/name\",\"path\":\"/displayName\"}]");
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/events/subscriptions/" + created.getId(), patch);
+
+    EventSubscription updated = getEntity(created.getId().toString());
+    assertEquals(created.getName(), updated.getDisplayName());
+    assertEquals(numericSecret, updated.getBatchSize());
+    assertEquals(String.valueOf(numericSecret), opened(created.getId(), "/headers/Authorization"));
+  }
+
+  @Test
+  void test_putNewDestinationSecretsAreEncryptedAndGuarded(TestNamespace ns) {
+    String endpoint = "http://localhost:8585/" + ns.prefix("new_put_hook");
+    EventSubscription created =
+        putSubscription(secretRequest(ns, "new_put_secrets", endpoint, "header-token", null));
+    assertSecretsMasked(created.getDestinations().getFirst());
+    assertEquals(endpoint, opened(created.getId(), "/endpoint"));
+    assertRefused(
+        () ->
+            putSubscription(
+                secretRequest(
+                    ns, "new_put_mask", endpoint, PasswordEntityMasker.PASSWORD_MASK, null)));
+    assertRefused(
+        () ->
+            putSubscription(
+                secretRequest(
+                    ns,
+                    "new_put_cipher",
+                    endpoint,
+                    Fernet.getInstance().encrypt("foreign"),
+                    null)));
+  }
+
+  @Test
+  void test_batchCreateDestinationSecretsAreEncrypted(TestNamespace ns) {
+    String endpoint = "http://localhost:8585/" + ns.prefix("batch_hook");
+    EventSubscription entity =
+        new EventSubscriptionMapper()
+            .createToEntity(
+                secretRequest(ns, "batch_secrets", endpoint, "batch-header", null), "admin");
+    AlertFixtures.repository().prepareInternal(entity, false);
+    AlertFixtures.repository().createManyEntitiesForImport(List.of(entity));
+    assertEquals(endpoint, opened(entity.getId(), "/endpoint"));
+    assertEquals("batch-header", opened(entity.getId(), "/headers/Authorization"));
+    assertSecretsMasked(getEntity(entity.getId().toString()).getDestinations().getFirst());
+  }
+
+  @Test
+  void test_deleteDestinationSecretsAreMasked(TestNamespace ns) {
+    for (boolean legacy : List.of(false, true)) {
+      for (boolean byName : List.of(false, true)) {
+        String suffix = "delete_secret_" + legacy + "_" + byName;
+        String endpoint = "http://localhost:8585/" + ns.prefix(suffix);
+        CreateEventSubscription request =
+            secretRequest(ns, suffix, endpoint, "delete-header-token", "delete-signing-key");
+        EventSubscription created = createEntity(request);
+        if (legacy) {
+          EventSubscription stored = AlertFixtures.stored(created.getId());
+          stored
+              .getDestinations()
+              .getFirst()
+              .withConfig(request.getDestinations().getFirst().getConfig());
+          AlertFixtures.writeBehindTheServer(stored);
+        }
+        String path =
+            "/v1/events/subscriptions/" + (byName ? "name/" + created.getName() : created.getId());
+        String response =
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(HttpMethod.DELETE, path, null);
+        assertNoSecretOrCiphertext(
+            response, List.of(endpoint, "delete-header-token", "delete-signing-key"));
+        assertSecretsMasked(
+            JsonUtils.readValue(response, EventSubscription.class).getDestinations().getFirst());
+        assertNull(AlertFixtures.stored(created.getId()));
+      }
+    }
+  }
+
+  @Test
+  void test_testDestinationCannotRedirectStoredOAuthCredentials(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      CreateEventSubscription request =
+          secretRequest(ns, "oauth_test_secret", receiver.url("/hook"), "header-token", null);
+      Map<String, Object> config = configOf(request.getDestinations().getFirst());
+      config.put(
+          "authType",
+          new WebhookOAuth2Config()
+              .withType(WebhookOAuth2Config.Type.OAUTH_2)
+              .withTokenUrl(URI.create(receiver.url("/token")))
+              .withClientId("client-id")
+              .withClientSecret("client-secret"));
+      request.getDestinations().getFirst().withConfig(config);
+      SubscriptionDestination masked = createEntity(request).getDestinations().getFirst();
+      config = configOf(masked);
+      Map<String, Object> auth = new LinkedHashMap<>(authTypeOf(config));
+      auth.put("tokenUrl", receiver.url("/other-token"));
+      config.put("authType", auth);
+      masked.withConfig(config);
+
+      assertEquals(400, postTestDestination(List.of(masked)).statusCode());
+      assertTrue(
+          receiver.received().isEmpty(),
+          "stored credentials must never reach the changed token URL");
+    }
+  }
+
+  @Test
+  void test_destinationSecretsTheServerAloneWrites_400(TestNamespace ns) throws Exception {
+    String endpoint = "http://localhost:8585/api/v1/test/webhook/" + ns.prefix("guarded");
+    String mask = PasswordEntityMasker.PASSWORD_MASK;
+    EventSubscription created =
+        createEntity(secretRequest(ns, "guarded_sub", endpoint, ns.prefix("header"), null));
+
+    assertRefused(() -> createEntity(secretRequest(ns, "masked_sub", endpoint, mask, null)));
+    assertRefused(
+        () ->
+            createEntity(
+                secretRequest(
+                    ns,
+                    "cipher_sub",
+                    endpoint,
+                    Fernet.getInstance().encrypt(ns.prefix("foreign")),
+                    null)));
+
+    EventSubscription unmatched = getEntity(created.getId().toString());
+    unmatched
+        .getDestinations()
+        .add(
+            JsonUtils.deepCopy(
+                    unmatched.getDestinations().getFirst(), SubscriptionDestination.class)
+                .withId(null));
+    assertRefused(() -> patchEntity(created.getId().toString(), unmatched));
+
+    JsonNode copyOut =
+        JsonUtils.readTree(
+            """
+            [{"op":"copy","from":"/destinations/0/config/endpoint","path":"/description"}]
+            """);
+    assertRefused(
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PATCH, "/v1/events/subscriptions/" + created.getId(), copyOut));
+    assertEquals(
+        endpoint, opened(created.getId(), "/endpoint"), "a refused request changes nothing");
+  }
+
+  /**
+   * A patch that changes a destination's id and channel leaves its configuration where it was.
+   * The channel it names no longer declares those fields secrets, so they would be stored and
+   * served as written: the stored endpoint and header of a row saved before this change, and the
+   * ciphertext of a row saved by it.
+   */
+  @Test
+  void test_patchCannotCarryAStoredSecretIntoAChannelThatDoesNotMaskIt(TestNamespace ns)
+      throws Exception {
+    String header = ns.prefix("carried-header");
+    for (boolean legacy : List.of(false, true)) {
+      String endpoint = "http://localhost:8585/" + ns.prefix("rechannel_hook_" + legacy);
+      CreateEventSubscription request =
+          secretRequest(ns, "rechannel_" + legacy, endpoint, header, null);
+      EventSubscription created = createEntity(request);
+      if (legacy) {
+        EventSubscription row = AlertFixtures.stored(created.getId());
+        row.getDestinations()
+            .getFirst()
+            .withConfig(request.getDestinations().getFirst().getConfig());
+        AlertFixtures.writeBehindTheServer(row);
+      }
+
+      assertRefused(() -> patchDestinationIdentity(created.getId()));
+
+      Object storedEndpoint = storedConfig(created.getId()).get("endpoint");
+      assertEquals(
+          endpoint,
+          legacy ? storedEndpoint : opened(created.getId(), "/endpoint"),
+          "a refused request changes nothing");
+      assertSecretsMasked(getEntity(created.getId().toString()).getDestinations().getFirst());
+    }
+  }
+
+  /** A destination that holds no secret moves to another channel, as the alert form sends it. */
+  @Test
+  void test_ownersDestinationMovesFromEmailToSlack(TestNamespace ns) {
+    EventSubscription created =
+        createEntity(
+            new CreateEventSubscription()
+                .withName(ns.prefix("owners_channel"))
+                .withAlertType(AlertType.NOTIFICATION)
+                .withResources(List.of("all"))
+                .withEnabled(false)
+                .withDestinations(
+                    List.of(
+                        new SubscriptionDestination()
+                            .withCategory(SubscriptionDestination.SubscriptionCategory.OWNERS)
+                            .withType(SubscriptionDestination.SubscriptionType.EMAIL)
+                            .withConfig(Map.of("sendToOwners", true)))));
+    SubscriptionDestination owners = created.getDestinations().getFirst();
+    SubscriptionDestination bySlack =
+        JsonUtils.deepCopy(owners, SubscriptionDestination.class)
+            .withType(SubscriptionDestination.SubscriptionType.SLACK);
+    JsonNode wholeListReplace =
+        JsonUtils.valueToTree(
+            List.of(Map.of("op", "replace", "path", "/destinations", "value", List.of(bySlack))));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/events/subscriptions/" + created.getId(), wholeListReplace);
+
+    SubscriptionDestination saved =
+        getEntity(created.getId().toString()).getDestinations().getFirst();
+    assertEquals(SubscriptionDestination.SubscriptionType.SLACK, saved.getType());
+    assertEquals(owners.getId(), saved.getId(), "it stays the same destination");
+  }
+
+  /** Gives the first destination a fresh id and a channel whose rules do not name its secrets. */
+  private static void patchDestinationIdentity(UUID alertId) {
+    JsonNode patch =
+        JsonUtils.readTree(
+            """
+            [{"op":"add","path":"/destinations/0/id","value":"%s"},
+             {"op":"add","path":"/destinations/0/channel","value":"ActivityFeed"}]
+            """
+                .formatted(UUID.randomUUID()));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/events/subscriptions/" + alertId, patch);
+  }
+
+  /** The write path refuses a moved token URL with the stored credentials, as the test does. */
+  @Test
+  void test_patchMovedTokenUrlWithMaskedCredentials_400(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      CreateEventSubscription request =
+          secretRequest(ns, "oauth_write_secret", receiver.url("/hook"), "header-token", null);
+      Map<String, Object> config = configOf(request.getDestinations().getFirst());
+      config.put(
+          "authType",
+          new WebhookOAuth2Config()
+              .withType(WebhookOAuth2Config.Type.OAUTH_2)
+              .withTokenUrl(URI.create(receiver.url("/token")))
+              .withClientId("client-id")
+              .withClientSecret("client-secret"));
+      request.getDestinations().getFirst().withConfig(config);
+      EventSubscription created = createEntity(request);
+      EventSubscription moved = getEntity(created.getId().toString());
+      config = configOf(moved.getDestinations().getFirst());
+      Map<String, Object> auth = new LinkedHashMap<>(authTypeOf(config));
+      auth.put("tokenUrl", receiver.url("/other-token"));
+      config.put("authType", auth);
+      moved.getDestinations().getFirst().withConfig(config);
+
+      assertRefused(() -> patchEntity(created.getId().toString(), moved));
+      assertTrue(receiver.received().isEmpty(), "stored credentials never reach the moved URL");
+      Object storedTokenUrl =
+          ((Map<?, ?>) storedConfig(created.getId()).get("authType")).get("tokenUrl");
+      assertTrue(
+          storedTokenUrl.toString().endsWith("/token"), "the refused request changes nothing");
+    }
+  }
+
+  /**
+   * Each receiver replaces the endpoint at send time and is sent the same headers and
+   * credentials, so a receivers list is a target like the endpoint itself: the stored secrets do
+   * not follow one the request chose, and re-entering every secret moves it.
+   */
+  @Test
+  void test_receiversCannotRedirectStoredCredentials(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      String headerValue = ns.prefix("receiver-header");
+      CreateEventSubscription request =
+          secretRequest(ns, "receiver_sub", receiver.url("/hook"), headerValue, null);
+      Map<String, Object> config = configOf(request.getDestinations().getFirst());
+      config.put("receivers", List.of(receiver.url("/stored-receiver")));
+      request.getDestinations().getFirst().withConfig(config);
+      EventSubscription created = createEntity(request);
+      String id = created.getId().toString();
+      assertSecretsMasked(created.getDestinations().getFirst());
+
+      EventSubscription withOtherReceiver = getEntity(id);
+      Map<String, Object> changed = configOf(withOtherReceiver.getDestinations().getFirst());
+      changed.put("receivers", List.of(receiver.url("/other-receiver")));
+      withOtherReceiver.getDestinations().getFirst().withConfig(changed);
+      Map<String, Object> before = storedConfig(created.getId());
+      assertRefused(() -> patchEntity(id, withOtherReceiver));
+      assertEquals(before, storedConfig(created.getId()), "the stored ciphertext is kept");
+
+      Map<String, Object> fresh = new LinkedHashMap<>(changed);
+      fresh.put("endpoint", receiver.url("/hook"));
+      fresh.put("headers", Map.of("Authorization", headerValue));
+      withOtherReceiver.getDestinations().getFirst().withConfig(fresh);
+      EventSubscription moved = patchEntity(id, withOtherReceiver);
+      assertSecretsMasked(moved.getDestinations().getFirst());
+      assertEquals(
+          List.of(receiver.url("/other-receiver")),
+          configOf(moved.getDestinations().getFirst()).get("receivers"));
+      assertEquals(headerValue, opened(created.getId(), "/headers/Authorization"));
+      assertTrue(receiver.received().isEmpty(), "the alert never runs, disabled as it is");
+    }
+  }
+
+  /** A destination an update keeps by id serves through the channel it is stored under. */
+  @Test
+  void test_patchKeepsTheServedChannel_400(TestNamespace ns) {
+    String endpoint = "http://localhost:8585/" + ns.prefix("channel_hook");
+    String headerValue = ns.prefix("channel-header");
+    EventSubscription created =
+        createEntity(secretRequest(ns, "channel_sub", endpoint, headerValue, null));
+    EventSubscription withAnotherChannel = getEntity(created.getId().toString());
+    withAnotherChannel.getDestinations().getFirst().withChannel("ActivityFeed");
+
+    assertRefused(() -> patchEntity(created.getId().toString(), withAnotherChannel));
+    assertEquals(
+        endpoint, opened(created.getId(), "/endpoint"), "the refused request changes nothing");
+  }
+
+  /**
+   * An update of a destination the users do not configure still judges its configuration, as it
+   * would be used: the update paths hand it over with its secrets encrypted.
+   */
+  @Test
+  void test_internalDestinationConfigIsJudgedAsItWouldBeSent(TestNamespace ns) {
+    Map<String, Object> config = new LinkedHashMap<>();
+    config.put("endpoint", "http://localhost:8585/" + ns.prefix("internal_hook"));
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("internal_destination"))
+            .withDescription("An internal destination whose endpoint is judged as it is sent")
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(
+                List.of(
+                    new SubscriptionDestination()
+                        .withType(SubscriptionDestination.SubscriptionType.SLACK)
+                        .withCategory(SubscriptionDestination.SubscriptionCategory.OWNERS)
+                        .withConfig(config)));
+    EventSubscription created = createEntity(request);
+    assertTrue(
+        Fernet.isTokenized((String) storedConfig(created.getId()).get("endpoint")),
+        "the endpoint is a secret whatever the category");
+
+    EventSubscription edited = getEntity(created.getId().toString());
+    edited.getDestinations().getFirst().withReadTimeout(30);
+    EventSubscription updated = patchEntity(created.getId().toString(), edited);
+
+    assertEquals(30, updated.getDestinations().getFirst().getReadTimeout());
+  }
+
+  /** A destination sent back as read is tested with the secrets stored for it, only as stored. */
+  @Test
+  void test_testDestinationWithMaskedValuesUsesTheStoredSecrets(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      String headerValue = ns.prefix("header-token");
+      EventSubscription created =
+          createEntity(secretRequest(ns, "tested_sub", receiver.url("/hook"), headerValue, null));
+      SubscriptionDestination masked = created.getDestinations().getFirst();
+      assertSecretsMasked(masked);
+
+      HttpResponse<String> response = postTestDestination(List.of(masked));
+
+      assertEquals(200, response.statusCode(), response.body());
+      List<SubscriptionDestination> results =
+          JsonUtils.readObjects(response.body(), SubscriptionDestination.class);
+      assertEquals(TestDestinationStatus.Status.SUCCESS, testStatus(results.getFirst()));
+      assertNull(results.getFirst().getConfig());
+      assertEquals(1, receiver.received().size());
+      assertEquals("/hook", receiver.received().getFirst().path());
+      assertEquals(headerValue, headerOf(receiver.received().getFirst(), "Authorization"));
+
+      SubscriptionDestination elsewhere = JsonUtils.deepCopy(masked, SubscriptionDestination.class);
+      Map<String, Object> config = configOf(elsewhere);
+      config.put("endpoint", receiver.url("/elsewhere"));
+      elsewhere.withConfig(config);
+      assertEquals(400, postTestDestination(List.of(elsewhere)).statusCode());
+
+      SubscriptionDestination unknown =
+          JsonUtils.deepCopy(masked, SubscriptionDestination.class).withId(UUID.randomUUID());
+      assertEquals(400, postTestDestination(List.of(unknown)).statusCode());
+      assertEquals(1, receiver.received().size(), "a refused test sends nothing");
+    }
+  }
+
+  /** An id copied into another alert is not kept, so a test send reaches the alert that holds it. */
+  @Test
+  void test_testDestinationResolvesAnIdCopiedIntoAnotherAlert(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      String headerValue = ns.prefix("one");
+      EventSubscription first =
+          createEntity(
+              secretRequest(ns, "first_holder", receiver.url("/first"), headerValue, null));
+      SubscriptionDestination masked = first.getDestinations().getFirst();
+      CreateEventSubscription second =
+          secretRequest(ns, "second_holder", receiver.url("/second"), ns.prefix("two"), null);
+      second.getDestinations().getFirst().withId(masked.getId());
+      UUID secondId = createEntity(second).getDestinations().getFirst().getId();
+      assertNotEquals(masked.getId(), secondId, "a create issues its own id");
+
+      HttpResponse<String> response = postTestDestination(List.of(masked));
+
+      assertEquals(200, response.statusCode(), response.body());
+      assertEquals(1, receiver.received().size());
+      assertEquals("/first", receiver.received().getFirst().path());
+      assertEquals(headerValue, headerOf(receiver.received().getFirst(), "Authorization"));
+    }
+  }
+
+  /** Stored secrets are tested only by a caller allowed to edit the alert that holds them. */
+  @Test
+  void test_testDestinationWithStoredSecretsNeedsEditOnTheirAlert(TestNamespace ns)
+      throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription created =
+          createEntity(
+              secretRequest(ns, "guarded_sub", receiver.url("/hook"), ns.prefix("token"), null));
+      OpenMetadataClient creator = AlertFixtures.alertCreatorClient();
+
+      OpenMetadataException refused =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> testDestinationAs(creator, created.getDestinations().getFirst()));
+      assertEquals(403, statusOf(refused), refused.getMessage());
+      assertTrue(receiver.received().isEmpty(), "a refused test sends nothing");
+
+      testDestinationAs(creator, webhookDestination(receiver.url("/entered"), null, null));
+      assertEquals(1, receiver.received().size(), "values the caller enters are tested");
+    }
+  }
+
+  /** An alert deleted in the background is recorded as every read shows it. */
+  @Test
+  void test_asyncDeleteRecordsTheAlertMasked(TestNamespace ns) throws Exception {
+    String endpoint = "http://localhost:8585/api/v1/test/webhook/" + ns.prefix("async");
+    String headerValue = ns.prefix("header-token");
+    EventSubscription created =
+        createEntity(secretRequest(ns, "async_deleted", endpoint, headerValue, null));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.DELETE,
+            "/v1/events/subscriptions/async/" + created.getId() + "?hardDelete=true",
+            null,
+            Object.class);
+
+    String recorded =
+        Awaitility.await("the deleted event of " + created.getName())
+            .atMost(Duration.ofSeconds(30))
+            .pollInterval(Duration.ofMillis(500))
+            .until(() -> deletedEventOf(created), Optional::isPresent)
+            .orElseThrow();
+    assertFalse(recorded.contains(endpoint), recorded);
+    assertFalse(recorded.contains(headerValue), recorded);
+    assertFalse(recorded.contains(FERNET_TOKEN_PREFIX), "no stored ciphertext either");
+    assertTrue(recorded.contains(PasswordEntityMasker.PASSWORD_MASK), recorded);
+  }
+
+  private static final String FERNET_TOKEN_PREFIX = "gAAAAA";
+
+  private static Optional<String> deletedEventOf(EventSubscription alert) throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParams(
+                Map.of(
+                    "entityDeleted",
+                    Entity.EVENT_SUBSCRIPTION,
+                    "timestamp",
+                    String.valueOf(alert.getUpdatedAt())))
+            .build();
+    String events =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/events", null, options);
+    Optional<String> found = Optional.empty();
+    for (JsonNode event : JsonUtils.readTree(events).path("data")) {
+      if (alert.getId().toString().equals(event.path("entityId").asText())) {
+        found = Optional.of(event.toString());
+      }
+    }
+    return found;
+  }
+
+  private static void testDestinationAs(
+      OpenMetadataClient client, SubscriptionDestination destination) {
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/events/subscriptions/testDestination",
+            Map.of("destinations", List.of(destination)),
+            Object.class);
+  }
+
+  private static int statusOf(OpenMetadataException refused) {
+    return refused.getCause() instanceof OpenMetadataException cause
+        ? cause.getStatusCode()
+        : refused.getStatusCode();
+  }
+
+  private static EventSubscription putSubscription(CreateEventSubscription request) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/events/subscriptions", request, EventSubscription.class);
+  }
+
+  private static CreateEventSubscription secretRequest(
+      TestNamespace ns, String name, String endpoint, String headerValue, String secretKey) {
+    Map<String, Object> config = new LinkedHashMap<>();
+    config.put("endpoint", endpoint);
+    config.put("headers", Map.of("Authorization", headerValue));
+    if (secretKey != null) {
+      config.put("authType", Map.of("type", "bearer", "secretKey", secretKey));
+    }
+    return new CreateEventSubscription()
+        .withName(ns.prefix(name))
+        .withAlertType(AlertType.NOTIFICATION)
+        .withResources(List.of("all"))
+        .withEnabled(false)
+        .withDestinations(
+            List.of(
+                new SubscriptionDestination()
+                    .withType(SubscriptionDestination.SubscriptionType.SLACK)
+                    .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                    .withConfig(config)));
+  }
+
+  private static void assertSecretsMasked(SubscriptionDestination destination) {
+    String mask = PasswordEntityMasker.PASSWORD_MASK;
+    Map<String, Object> config = configOf(destination);
+    assertEquals(mask, config.get("endpoint"));
+    assertEquals(mask, headersOf(config).get("Authorization"));
+    if (config.get("authType") != null) {
+      assertEquals(mask, authTypeOf(config).get("secretKey"));
+    }
+  }
+
+  private static void assertNoSecretOrCiphertext(String response, List<String> plaintexts) {
+    plaintexts.forEach(
+        secret -> assertFalse(response.contains(secret), "response carries " + secret));
+    assertFalse(response.contains(Fernet.FERNET_PREFIX), "response carries ciphertext");
+  }
+
+  private static void assertRefused(Runnable request) {
+    OpenMetadataException rejected = assertThrows(OpenMetadataException.class, request::run);
+    int status =
+        rejected.getCause() instanceof InvalidRequestException cause
+            ? cause.getStatusCode()
+            : rejected.getStatusCode();
+    assertEquals(400, status, rejected.getMessage());
+  }
+
+  /** A user with no role of its own: what every user may read, it may read. */
+  private static OpenMetadataClient plainUserClient() {
+    String name = "viewer" + UUID.randomUUID().toString().substring(0, 8);
+    String email = name + "@open-metadata.org";
+    SdkClients.adminClient().users().create(new CreateUser().withName(name).withEmail(email));
+    return SdkClients.createClient(name, email, new String[] {});
+  }
+
+  private static String rawGet(OpenMetadataClient client, String path) {
+    return client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+  }
+
+  private static Map<String, Object> storedConfig(UUID alertId) {
+    return configOf(AlertFixtures.stored(alertId).getDestinations().getFirst());
+  }
+
+  /** The value the alert's first destination stores at {@code field}, opened for it. */
+  private static String opened(UUID alertId, String field) {
+    SubscriptionDestination stored = AlertFixtures.stored(alertId).getDestinations().getFirst();
+    String value = JsonUtils.valueToTree(stored.getConfig()).at(field).asText();
+    assertTrue(BoundCiphertext.isBound(value), "not bound to its destination: " + value);
+    return JsonUtils.valueToTree(DestinationSecrets.decrypted(stored).getConfig())
+        .at(field)
+        .asText();
+  }
+
+  private static String headerOf(RecordingReceiver.Received received, String name) {
+    return received.headers().entrySet().stream()
+        .filter(header -> header.getKey().equalsIgnoreCase(name))
+        .map(Map.Entry::getValue)
+        .findFirst()
+        .orElse(null);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> configOf(SubscriptionDestination destination) {
+    return new LinkedHashMap<>(JsonUtils.convertValue(destination.getConfig(), Map.class));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> headersOf(Map<String, Object> config) {
+    return (Map<String, Object>) config.get("headers");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> authTypeOf(Map<String, Object> config) {
+    return (Map<String, Object>) config.get("authType");
+  }
+}

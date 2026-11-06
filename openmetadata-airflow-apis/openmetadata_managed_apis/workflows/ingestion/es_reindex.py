@@ -12,13 +12,7 @@
 ElasticSearch reindex DAG function builder
 """
 
-from airflow import DAG  # noqa: I001
-from openmetadata_managed_apis.workflows.ingestion.common import (
-    ClientInitializationError,
-    GetServiceException,
-    build_dag,
-    metadata_ingestion_workflow,
-)
+from airflow import DAG
 
 from metadata.generated.schema.entity.services.connections.metadata.metadataESConnection import (
     MetadataESConnection,
@@ -34,12 +28,18 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
     Sink,
+    WorkflowConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    ClientInitializationError,
+    GetServiceException,
+    build_dag,
+    metadata_ingestion_workflow,
+)
 
 
 def build_es_reindex_workflow_config(
@@ -52,7 +52,7 @@ def build_es_reindex_workflow_config(
     try:
         metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
     except Exception as exc:
-        raise ClientInitializationError(f"Failed to initialize the client: {exc}")
+        raise ClientInitializationError(f"Failed to initialize the client: {exc}")  # noqa: B904
 
     openmetadata_service: MetadataService = metadata.get_by_name(
         entity=MetadataService, fqn=ingestion_pipeline.service.fullyQualifiedName
@@ -78,7 +78,7 @@ def build_es_reindex_workflow_config(
         enableStreamableLogs=ingestion_pipeline.enableStreamableLogs,
     )
 
-    return workflow_config
+    return workflow_config  # noqa: RET504
 
 
 def build_es_reindex_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
@@ -91,4 +91,4 @@ def build_es_reindex_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
         workflow_fn=metadata_ingestion_workflow,
     )
 
-    return dag
+    return dag  # noqa: RET504

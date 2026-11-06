@@ -333,7 +333,7 @@ class TestMcpSourceConvertMethods:
             from metadata.ingestion.source.mcp.metadata import McpSource
 
             source = McpSource.__new__(McpSource)
-            return source
+            return source  # noqa: RET504
 
     def test_convert_tools(self, mock_source):
         tools = [

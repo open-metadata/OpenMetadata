@@ -5,7 +5,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 
 
 @pytest.fixture(scope="module")
-def prepare_mongodb(mongodbContainer):
+def prepare_mongodb(mongodbContainer):  # noqa: N803
     db = mongodbContainer.get_connection_client().test
     db.create_collection(
         "test_table",

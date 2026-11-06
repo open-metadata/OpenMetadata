@@ -40,14 +40,14 @@ class SSLManagerTest(TestCase):
     def test_create_temp_file(self):
         content = SecretStr("Test content")
         temp_file = self.ssl_manager.create_temp_file(content)
-        self.assertTrue(os.path.exists(temp_file))
-        with open(temp_file, "r", encoding="UTF-8") as file:
+        self.assertTrue(os.path.exists(temp_file))  # noqa: PTH110
+        with open(temp_file, "r", encoding="UTF-8") as file:  # noqa: PTH123
             file_content = file.read()
         self.assertEqual(file_content, content.get_secret_value())
         content = SecretStr("")
         temp_file = self.ssl_manager.create_temp_file(content)
-        self.assertTrue(os.path.exists(temp_file))
-        with open(temp_file, "r", encoding="UTF-8") as file:
+        self.assertTrue(os.path.exists(temp_file))  # noqa: PTH110
+        with open(temp_file, "r", encoding="UTF-8") as file:  # noqa: PTH123
             file_content = file.read()
         self.assertEqual(file_content, content.get_secret_value())
         with self.assertRaises(AttributeError):
@@ -57,16 +57,20 @@ class SSLManagerTest(TestCase):
     def test_cleanup_temp_files(self):
         temp_file = self.ssl_manager.create_temp_file(SecretStr("Test content"))
         self.ssl_manager.cleanup_temp_files()
-        self.assertFalse(os.path.exists(temp_file))
+        self.assertFalse(os.path.exists(temp_file))  # noqa: PTH110
 
 
 class KafkaSourceSSLTest(TestCase):
+    # Building a KafkaSource runs get_connection for real; without these the test
+    # spins up librdkafka clients that background-dial localhost:9092.
+    @patch("metadata.ingestion.source.messaging.kafka.connection.Consumer")
+    @patch("metadata.ingestion.source.messaging.kafka.connection.AdminClient")
     @patch("metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection")
     @patch("metadata.ingestion.source.messaging.kafka.metadata.SSLManager")
-    def test_init(self, mock_ssl_manager, test_connection):
+    def test_init(self, mock_ssl_manager, test_connection, _admin_client, _consumer):
         test_connection.return_value = True
         config = WorkflowSource(
-            **{
+            **{  # noqa: PIE804
                 "type": "kafka",
                 "serviceName": "local_kafka",
                 "serviceConnection": {
@@ -91,7 +95,7 @@ class KafkaSourceSSLTest(TestCase):
         mock_ssl_manager.assert_not_called()
 
         config_with_ssl = WorkflowSource(
-            **{
+            **{  # noqa: PIE804
                 "type": "kafka",
                 "serviceName": "local_kafka",
                 "serviceConnection": {
@@ -137,14 +141,14 @@ class KafkaSourceSSLTest(TestCase):
 class CassandraSourceSSLTest(TestCase):
     @patch("metadata.utils.ssl_manager.SSLManager.setup_ssl")
     @patch("metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection")
-    @patch("metadata.ingestion.source.database.cassandra.connection.get_connection")
-    def test_init(self, get_connection, test_connection, setup_ssl):
-        get_connection.return_value = True
+    @patch("metadata.ingestion.source.database.cassandra.connection.CassandraConnection._get_client")
+    def test_init(self, get_client, test_connection, setup_ssl):
+        get_client.return_value = True
         test_connection.return_value = True
         setup_ssl.side_effect = lambda x: x
 
         config = WorkflowSource(
-            **{
+            **{  # noqa: PIE804
                 "type": "cassandra",
                 "serviceName": "local_cassandra",
                 "serviceConnection": {
@@ -167,7 +171,7 @@ class CassandraSourceSSLTest(TestCase):
         self.assertIsNone(cassandra_source.ssl_manager)
 
         config_with_ssl = WorkflowSource(
-            **{
+            **{  # noqa: PIE804
                 "type": "cassandra",
                 "serviceName": "local_cassandra",
                 "serviceConnection": {
@@ -478,6 +482,108 @@ class MssqlSSLManagerTest(TestCase):
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertDictEqual(updated_connection.connectionArguments.root, {})
+
+        ssl_manager.cleanup_temp_files()
+
+    def _pytds_connection(self, **kwargs):
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+            MssqlScheme,
+        )
+
+        return MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            scheme=MssqlScheme.mssql_pytds,
+            **kwargs,
+        )
+
+    def test_setup_ssl_pytds_trust_server_certificate_drops_host_validation(self):
+        """pytds always verifies the chain against the CA it is given, so host
+        validation is the only check trustServerCertificate can drop."""
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(
+            trustServerCertificate=True,
+            sslConfig={"caCertificate": "caCertificateData"},
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertIs(updated_connection.connectionArguments.root["validate_host"], False)
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pytds_keeps_host_validation_by_default(self):
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(sslConfig={"caCertificate": "caCertificateData"})
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertNotIn("validate_host", updated_connection.connectionArguments.root)
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pytds_encrypt_without_a_ca_certificate_warns(self):
+        """pytds enables TLS only when a CA certificate is supplied. Encrypt on its
+        own cannot be honoured, and the connection must not claim otherwise."""
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(encrypt=True)
+
+        ssl_manager = check_ssl_and_init(connection)
+        with patch("metadata.utils.ssl_manager.logger") as mock_logger:
+            updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertNotIn("cafile", updated_connection.connectionArguments.root)
+        mock_logger.warning.assert_called_once()
+        self.assertIn("will NOT be encrypted", mock_logger.warning.call_args.args[0])
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pytds_encrypt_with_a_ca_certificate_is_silent(self):
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(encrypt=True, sslConfig={"caCertificate": "caCertificateData"})
+
+        ssl_manager = check_ssl_and_init(connection)
+        with patch("metadata.utils.ssl_manager.logger") as mock_logger:
+            updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertIsNotNone(updated_connection.connectionArguments.root["cafile"])
+        mock_logger.warning.assert_not_called()
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pymssql_warns_that_tls_settings_are_inert(self):
+        """pymssql takes no TLS parameters: FreeTDS configuration decides."""
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+            MssqlScheme,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            scheme=MssqlScheme.mssql_pymssql,
+            encrypt=True,
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        with patch("metadata.utils.ssl_manager.logger") as mock_logger:
+            updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertDictEqual(updated_connection.connectionArguments.root, {})
+        mock_logger.warning.assert_called_once()
+        self.assertIn("mssql+pymssql", mock_logger.warning.call_args.args[0])
 
         ssl_manager.cleanup_temp_files()
 

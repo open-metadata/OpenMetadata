@@ -20,8 +20,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexFailureDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexFailureDAO.SearchIndexFailureRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexFailureDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexFailureDAO.SearchIndexFailureRecord;
 
 @ExtendWith(MockitoExtension.class)
 class IndexingFailureRecorderTest {
@@ -410,6 +410,26 @@ class IndexingFailureRecorderTest {
 
         verify(failureDAO).insertBatch(captor.capture());
         assertEquals("SINK", captor.getValue().get(0).getFailureStage());
+      }
+    }
+
+    @Test
+    @DisplayName("Relationship warnings should have READER_RELATIONSHIP_WARNING stage")
+    @SuppressWarnings("unchecked")
+    void testRelationshipWarningStage() {
+      ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
+
+      try (IndexingFailureRecorder recorder =
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
+
+        recorder.recordRelationshipWarning(
+            "testCaseResolutionStatus", "entity-1", "fqn", "parent test case not found");
+
+        verify(failureDAO).insertBatch(captor.capture());
+        SearchIndexFailureRecord record = captor.getValue().get(0);
+        assertEquals("READER_RELATIONSHIP_WARNING", record.getFailureStage());
+        assertEquals("testCaseResolutionStatus", record.getEntityType());
+        assertEquals("entity-1", record.getEntityId());
       }
     }
   }

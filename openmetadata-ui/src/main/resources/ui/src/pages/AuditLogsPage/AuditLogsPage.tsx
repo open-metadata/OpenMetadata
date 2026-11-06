@@ -16,31 +16,34 @@ import {
   Button,
   ButtonUtility,
   Card,
+  DateRangePicker,
+  Input,
+  ProgressBar,
+  SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
-import { Modal, Progress } from 'antd';
+import {
+  Download01,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import dayjs from 'dayjs';
+import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExportIcon } from '../../assets/svg/ic-download.svg';
-import { AuditLogFilters, AuditLogList } from '../../components/AuditLog';
+import AuditLogFilters from '../../components/AuditLog/AuditLogFilters.component';
+import AuditLogList from '../../components/AuditLog/AuditLogList.component';
 import '../../components/common/atoms/filters/FilterSelection.less';
-import { useBreadcrumbs } from '../../components/common/atoms/navigation/useBreadcrumbs';
-import { useSearch } from '../../components/common/atoms/navigation/useSearch';
 import Banner from '../../components/common/Banner/Banner';
-import DatePicker from '../../components/common/DatePicker/DatePicker';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { CSVExportWebsocketResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -48,7 +51,14 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
-import { exportAuditLogs, getAuditLogs } from '../../rest/auditLogAPI';
+import { usePageSizeState } from '../../hooks/paging/usePageSizeState';
+import { useStagedPickerValue } from '../../hooks/useStagedPickerValue';
+import {
+  exportAuditLogs,
+  getAuditLogExportJob,
+  getAuditLogExportResult,
+  getAuditLogs,
+} from '../../rest/auditLogAPI';
 import {
   AuditLogActiveFilter,
   AuditLogEntry,
@@ -56,9 +66,21 @@ import {
   AuditLogListResponse,
 } from '../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../utils/AuditLogUtils';
+import {
+  dateValueToEndOfDayMillis,
+  dateValueToMillis,
+  millisToPickerDateValue,
+} from '../../utils/date-time/calendarDate.utils';
+import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './AuditLogsPage.less';
+
+type CorePickerProps = Parameters<typeof DateRangePicker>[0];
+
+// Fallback cadence for the export modal when the completion websocket event is
+// delivered to a different server than the one holding this client's socket.
+const EXPORT_POLL_INTERVAL_MS = 5000;
 
 const INITIAL_PAGING: Paging = {
   total: 0,
@@ -91,15 +113,18 @@ const AuditLogsPage = () => {
     {}
   );
   const filterParamsRef = useRef<Partial<AuditLogListParams>>({});
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
+  const [pageSize, setPageSize] = usePageSizeState();
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportDateRange, setExportDateRange] = useState<
-    [DateTime, DateTime] | null
-  >(null);
+  const [exportDateRange, setExportDateRange] =
+    useState<CorePickerProps['value']>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportJob, setExportJob] = useState<ExportJob | null>(null);
   const exportJobRef = useRef<ExportJob | null>(null);
+  const exportRangePicker = useStagedPickerValue(
+    exportDateRange,
+    setExportDateRange
+  );
 
   const fetchAuditLogs = useCallback(
     async (
@@ -148,10 +173,13 @@ const AuditLogsPage = () => {
     [fetchAuditLogs, paging]
   );
 
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-    setCurrentPage(1);
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size);
+      setCurrentPage(1);
+    },
+    [setPageSize]
+  );
 
   const handleFiltersChange = useCallback(
     (filters: AuditLogActiveFilter[], params: Partial<AuditLogListParams>) => {
@@ -174,22 +202,30 @@ const AuditLogsPage = () => {
     [fetchAuditLogs]
   );
 
-  const { search: searchComponent, clearSearch } = useSearch({
-    searchPlaceholder: t('label.search-audit-logs'),
-    onSearchChange: handleSearchChange,
-    testId: 'audit-log-search',
-  });
+  const [searchInputValue, setSearchInputValue] = useState('');
+
+  const debouncedSearch = useMemo(
+    () => debounce(handleSearchChange, 300),
+    [handleSearchChange]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   const handleClearFilters = useCallback(() => {
+    debouncedSearch.cancel();
     setActiveFilters([]);
     setFilterParams({});
     filterParamsRef.current = {};
     setSearchTerm('');
     searchTermRef.current = '';
     setCurrentPage(1);
-    clearSearch();
+    setSearchInputValue('');
     fetchAuditLogs({ after: undefined, before: undefined }, {});
-  }, [fetchAuditLogs, clearSearch]);
+  }, [debouncedSearch, fetchAuditLogs]);
 
   const handleRemoveFilter = useCallback(
     (category: string) => {
@@ -208,8 +244,8 @@ const AuditLogsPage = () => {
     const element = document.createElement('a');
     const file = new Blob([data], { type: 'application/json' });
 
-    const now = dayjs();
-    const fileName = `audit_logs_${now.format('YYYYMMDD_HHmmss')}.json`;
+    const now = DateTime.now();
+    const fileName = `audit_logs_${now.toFormat('yyyyMMdd_HHmmss')}.json`;
 
     element.href = URL.createObjectURL(file);
     element.download = fileName;
@@ -219,6 +255,32 @@ const AuditLogsPage = () => {
     URL.revokeObjectURL(element.href);
     element.remove();
   }, []);
+
+  const completeExport = useCallback(
+    (data: string) => {
+      handleExportDownload(data);
+      showSuccessToast(t('message.export-successful'));
+      setIsExporting(false);
+      setIsExportModalOpen(false);
+      setExportJob(null);
+      exportJobRef.current = null;
+    },
+    [handleExportDownload, t]
+  );
+
+  // The completion event no longer carries the payload — it can be arbitrarily
+  // large — so it is fetched from the result endpoint, which any server can serve.
+  const downloadExportResult = useCallback(
+    (jobId: string) => {
+      getAuditLogExportResult(jobId)
+        .then(completeExport)
+        .catch((error) => {
+          showErrorToast(error as AxiosError);
+          setIsExporting(false);
+        });
+    },
+    [completeExport]
+  );
 
   const handleExportWebSocketMessage = useCallback(
     (response: CSVExportWebsocketResponse) => {
@@ -238,19 +300,76 @@ const AuditLogsPage = () => {
       setExportJob(updatedJob);
       exportJobRef.current = updatedJob;
 
-      if (response.status === 'COMPLETED' && response.data) {
-        handleExportDownload(response.data);
-        showSuccessToast(t('message.export-successful'));
-        setIsExporting(false);
-        setIsExportModalOpen(false);
-        setExportJob(null);
-        exportJobRef.current = null;
+      if (response.status === 'COMPLETED') {
+        // `data` is still honoured for servers older than this release.
+        if (isString(response.data)) {
+          completeExport(response.data);
+        } else {
+          downloadExportResult(response.jobId);
+        }
       } else if (response.status === 'FAILED') {
         setIsExporting(false);
       }
     },
-    [handleExportDownload, t]
+    [completeExport, downloadExportResult]
   );
+
+  // The completion event only reaches sockets held by the server that ran the
+  // job, so on a multi-server deployment it is usually delivered to a peer and
+  // this modal would otherwise wait forever. Polling is the correctness floor;
+  // the socket above is the fast path. Self-scheduling so a slow response cannot
+  // stack up concurrent polls.
+  useEffect(() => {
+    if (!isExporting || !exportJob?.jobId) {
+      return;
+    }
+
+    const jobId = exportJob.jobId;
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const pollOnce = async () => {
+      try {
+        const job = await getAuditLogExportJob(jobId);
+
+        if (cancelled || exportJobRef.current?.jobId !== jobId) {
+          return;
+        }
+
+        if (job.status === 'COMPLETED') {
+          downloadExportResult(jobId);
+
+          return;
+        }
+
+        if (job.status === 'FAILED' || job.status === 'CANCELLED') {
+          setExportJob({ ...job, jobId });
+          exportJobRef.current = { ...job, jobId };
+          setIsExporting(false);
+
+          return;
+        }
+      } catch {
+        // A transient failure must not end the export; the next tick retries.
+      }
+
+      if (!cancelled) {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutually recursive with pollOnce
+        scheduleNextPoll();
+      }
+    };
+
+    const scheduleNextPoll = () => {
+      timeoutId = setTimeout(pollOnce, EXPORT_POLL_INTERVAL_MS);
+    };
+
+    scheduleNextPoll();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [isExporting, exportJob?.jobId, downloadExportResult]);
 
   useEffect(() => {
     if (socket) {
@@ -282,8 +401,8 @@ const AuditLogsPage = () => {
     setIsExporting(true);
     try {
       const response = await exportAuditLogs({
-        startTs: exportDateRange[0].startOf('day').valueOf(),
-        endTs: exportDateRange[1].endOf('day').valueOf(),
+        startTs: dateValueToMillis(exportDateRange.start),
+        endTs: dateValueToEndOfDayMillis(exportDateRange.end),
         q: searchTerm || undefined,
         ...filterParams,
       });
@@ -301,18 +420,6 @@ const AuditLogsPage = () => {
     }
   }, [exportDateRange, searchTerm, filterParams]);
 
-  const { breadcrumbs } = useBreadcrumbs({
-    home: { show: false },
-    items: [
-      { name: t('label.setting-plural'), url: getSettingPath() },
-      {
-        name: t('label.access-control'),
-        url: getSettingPath(GlobalSettingsMenuCategory.ACCESS),
-      },
-      { name: t('label.audit-log-plural'), isActive: true },
-    ],
-  });
-
   const handleExportModalClose = useCallback(() => {
     if (!isExporting) {
       setIsExportModalOpen(false);
@@ -322,8 +429,36 @@ const AuditLogsPage = () => {
     }
   }, [isExporting]);
 
-  const hasActiveFilters =
-    activeFilters.length > 0 || Boolean(searchTerm.trim());
+  const hasActiveSearch = Boolean(searchTerm.trim());
+  const hasActiveFiltersOnly = activeFilters.length > 0;
+  const hasActiveFilters = hasActiveFiltersOnly || hasActiveSearch;
+
+  const renderExportProgress = () =>
+    exportJob?.status === 'IN_PROGRESS' ? (
+      <div className="export-progress-container">
+        <ProgressBar
+          className="tw:h-1.5"
+          value={
+            exportJob.total && exportJob.total > 0
+              ? Math.round(((exportJob.progress ?? 0) / exportJob.total) * 100)
+              : 0
+          }
+        />
+        <Typography as="p" className="tw:mt-2!" size="text-md">
+          {exportJob.message ?? t('message.exporting')}
+        </Typography>
+      </div>
+    ) : null;
+
+  const renderExportResult = () =>
+    exportJob && exportJob.status !== 'IN_PROGRESS' ? (
+      <Banner
+        className="border-radius"
+        isLoading={isExporting && !exportJob.error}
+        message={exportJob.error ?? exportJob.message ?? ''}
+        type={exportJob.error ? 'error' : 'success'}
+      />
+    ) : null;
 
   return (
     <PageLayoutV1
@@ -333,7 +468,19 @@ const AuditLogsPage = () => {
       <div
         className="tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:overflow-hidden"
         data-testid="audit-logs-page">
-        <div className="tw:shrink-0 tw:mb-2">{breadcrumbs}</div>
+        <div className="tw:shrink-0">
+          <HeaderBreadcrumb
+            items={[
+              { label: t('label.setting-plural'), href: getSettingPath() },
+              {
+                label: t('label.access-control'),
+                href: getSettingPath(GlobalSettingsMenuCategory.ACCESS),
+              },
+              { label: t('label.audit-log-plural') },
+            ]}
+            showHome={false}
+          />
+        </div>
         {/* Header */}
         <Card
           className="tw:flex tw:justify-between tw:items-center tw:mt-1 tw:mb-2 tw:px-6 tw:py-4"
@@ -348,7 +495,7 @@ const AuditLogsPage = () => {
           <Button
             color="primary"
             data-testid="export-audit-logs-button"
-            iconLeading={<ExportIcon height={16} width={16} />}
+            iconLeading={Download01}
             onPress={() => setIsExportModalOpen(true)}>
             {t('label.export')}
           </Button>
@@ -357,12 +504,23 @@ const AuditLogsPage = () => {
         {/* Content Paper */}
         <Card className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
           {/* Filters */}
-          <div className="tw:shrink-0 tw:p-3">
+          <div className="tw:shrink-0 tw:p-3 tw:border-b tw:border-secondary">
             <div className="tw:flex tw:items-center tw:gap-4">
               <div
                 className="tw:shrink-0"
                 data-testid="audit-log-search-container">
-                {searchComponent}
+                <Input
+                  autoComplete="off"
+                  className="tw:max-w-86"
+                  icon={Search}
+                  inputDataTestId="audit-log-search"
+                  placeholder={t('label.search-audit-logs')}
+                  value={searchInputValue}
+                  onChange={(value) => {
+                    setSearchInputValue(value);
+                    debouncedSearch(value);
+                  }}
+                />
               </div>
               <AuditLogFilters
                 activeFilters={activeFilters}
@@ -377,7 +535,7 @@ const AuditLogsPage = () => {
                 <div className="tw:flex tw:gap-2 tw:flex-wrap tw:flex-1">
                   {activeFilters.map((filter) => (
                     <Badge
-                      className="tw:ring-0 tw:gap-1"
+                      className="tw:gap-1"
                       color="brand"
                       key={filter.category}
                       size="lg"
@@ -386,7 +544,7 @@ const AuditLogsPage = () => {
                         className="tw:flex tw:items-center tw:gap-1"
                         data-testid={`filter-chip-${filter.category}`}>
                         <Typography
-                          className="tw:text-gray-600"
+                          className="tw:text-tertiary"
                           weight="medium">
                           {filter.categoryLabel}:{' '}
                         </Typography>
@@ -398,7 +556,7 @@ const AuditLogsPage = () => {
                             title={filter.value.label}
                             weight="medium">
                             {filter.category === 'time' &&
-                            filter.value.key === 'customRange'
+                            filter.value.key === CUSTOM_DATE_RANGE_KEY
                               ? t('label.custom-range')
                               : filter.value.label}
                           </Typography>
@@ -406,9 +564,9 @@ const AuditLogsPage = () => {
                       </div>
                       <ButtonUtility
                         aria-label="Remove filter"
-                        color="tertiary"
                         data-testid={`remove-filter-${filter.category}`}
-                        icon={<XClose size={14} />}
+                        icon={XClose}
+                        size="xs"
                         onClick={() => handleRemoveFilter(filter.category)}
                       />
                     </Badge>
@@ -427,8 +585,14 @@ const AuditLogsPage = () => {
           </div>
 
           {/* List */}
-          <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto">
-            <AuditLogList isLoading={isLoading} logs={logs} />
+          <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:relative">
+            <AuditLogList
+              hasActiveFilters={hasActiveFiltersOnly}
+              hasActiveSearch={hasActiveSearch}
+              isLoading={isLoading}
+              logs={logs}
+              onClearFilters={handleClearFilters}
+            />
           </div>
 
           {/* Pagination */}
@@ -438,11 +602,7 @@ const AuditLogsPage = () => {
                 currentPage={currentPage}
                 isLoading={isLoading}
                 pageSize={pageSize}
-                pageSizeOptions={[
-                  PAGE_SIZE_BASE,
-                  PAGE_SIZE_MEDIUM,
-                  PAGE_SIZE_LARGE,
-                ]}
+                pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
                 paging={paging}
                 pagingHandler={handlePaging}
                 onShowSizeChange={handlePageSizeChange}
@@ -452,19 +612,14 @@ const AuditLogsPage = () => {
         </Card>
       </div>
 
-      <Modal
-        centered
-        cancelButtonProps={{ disabled: isExporting }}
+      <SimpleModal
         cancelText={t('label.cancel')}
-        closable={!isExporting}
         data-testid="export-audit-logs-modal"
-        maskClosable={!isExporting}
-        okButtonProps={{
-          disabled: isExporting || !exportDateRange,
-          loading: isExporting,
-        }}
+        isDismissable={false}
+        isOkDisabled={isExporting || !exportDateRange}
+        isOkLoading={isExporting}
+        isOpen={isExportModalOpen}
         okText={t('label.export')}
-        open={isExportModalOpen}
         title={t('label.export-entity', {
           entity: t('label.audit-log-plural'),
         })}
@@ -481,50 +636,18 @@ const AuditLogsPage = () => {
               size="text-md">
               {t('label.date-range')} <span className="tw:text-red-600">*</span>
             </Typography>
-            <DatePicker.RangePicker
-              allowClear
-              className="w-full"
+            <DateRangePicker
+              fullWidth
               data-testid="export-date-range-picker"
-              disabled={isExporting}
-              disabledDate={(current) => current > DateTime.now().endOf('day')}
-              value={exportDateRange}
-              onChange={(dates) => {
-                if (dates?.[0] && dates?.[1]) {
-                  setExportDateRange([dates[0], dates[1]]);
-                } else {
-                  setExportDateRange(null);
-                }
-              }}
+              isDisabled={isExporting}
+              maxValue={millisToPickerDateValue(Date.now())}
+              {...exportRangePicker}
             />
           </div>
-          {exportJob?.status === 'IN_PROGRESS' && (
-            <div className="export-progress-container">
-              <Progress
-                percent={
-                  exportJob.total && exportJob.total > 0
-                    ? Math.round(
-                        ((exportJob.progress ?? 0) / exportJob.total) * 100
-                      )
-                    : 0
-                }
-                size="small"
-                status="active"
-              />
-              <Typography as="p" className="tw:mt-2!" size="text-md">
-                {exportJob.message ?? t('message.exporting')}
-              </Typography>
-            </div>
-          )}
-          {exportJob && exportJob.status !== 'IN_PROGRESS' && (
-            <Banner
-              className="border-radius"
-              isLoading={isExporting && !exportJob.error}
-              message={exportJob.error ?? exportJob.message ?? ''}
-              type={exportJob.error ? 'error' : 'success'}
-            />
-          )}
+          {renderExportProgress()}
+          {renderExportResult()}
         </div>
-      </Modal>
+      </SimpleModal>
     </PageLayoutV1>
   );
 };

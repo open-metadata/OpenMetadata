@@ -19,6 +19,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,11 @@ import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.lineage.MissingLineageEntityException;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
+import org.openmetadata.service.util.LineageUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -45,6 +51,25 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
 
 @Slf4j
 public class OsUtils {
+
+  // Keep vectors in _source to avoid prematurely closed readers (opensearch-project/k-NN#3138).
+  private static final String VECTOR_INDEX_MAPPING =
+      "/elasticsearch/opensearch_vector_index_mapping.json";
+
+  private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
+      new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
+
+  /**
+   * ANDs the org-wide-only ContextMemory filter into a query built on a raw {@code
+   * SearchRequest.Builder}. Non-memory documents are unaffected.
+   */
+  static Query restrictToOrgWideMemories(Query query) {
+    Query memoryFilter =
+        ((OpenSearchQueryBuilder) MEMORY_VISIBILITY.buildOrgWideOnlyFilter()).buildV2();
+    return query == null
+        ? memoryFilter
+        : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
+  }
 
   public static Map<String, Object> jsonDataToMap(JsonData jsonData) {
     try {
@@ -259,7 +284,10 @@ public class OsUtils {
       baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
 
-    searchRequestBuilder.query(baseQuery);
+    // Lineage and entity-relationship traversals query the global alias and hand the matched hit's
+    // raw _source back as the node payload, with no SubjectContext to resolve memory visibility
+    // against: only org-wide memories may surface as nodes.
+    searchRequestBuilder.query(restrictToOrgWideMemories(baseQuery));
     searchRequestBuilder.from(from);
     searchRequestBuilder.size(size);
 
@@ -308,6 +336,9 @@ public class OsUtils {
             1,
             fieldsToInclude,
             fieldsToRemove);
+    if (result.isEmpty()) {
+      throw new MissingLineageEntityException(hasToFqnPair.getRight());
+    }
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
     } else {
@@ -415,6 +446,7 @@ public class OsUtils {
       }
     }
 
+    LineageUtil.rejectTimedOutSearch(searchResponse.timedOut(), indexAlias);
     for (Hit<JsonData> hit : searchResponse.hits().hits()) {
       if (hit.source() != null) {
         Map<String, Object> esDoc = jsonDataToMap(hit.source());
@@ -461,7 +493,10 @@ public class OsUtils {
       baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
 
-    searchRequestBuilder.query(baseQuery);
+    // Lineage and entity-relationship traversals query the global alias and hand the matched hit's
+    // raw _source back as the node payload, with no SubjectContext to resolve memory visibility
+    // against: only org-wide memories may surface as nodes.
+    searchRequestBuilder.query(restrictToOrgWideMemories(baseQuery));
     searchRequestBuilder.from(from);
     searchRequestBuilder.size(size);
 
@@ -490,8 +525,13 @@ public class OsUtils {
                     t ->
                         t.field("deleted").value(FieldValue.of(!nullOrEmpty(deleted) && deleted))));
 
+    // Platform lineage returns each hit's raw _source and runs without a SubjectContext, so it
+    // cannot tell whose restricted memory a document is: only org-wide memories may come back.
     SearchRequest.Builder searchRequestBuilder =
-        new SearchRequest.Builder().index(indexName).query(deletedQuery).size(10000);
+        new SearchRequest.Builder()
+            .index(indexName)
+            .query(restrictToOrgWideMemories(deletedQuery))
+            .size(10000);
 
     // Apply query filter
     buildSearchSourceFilter(queryFilter, searchRequestBuilder);
@@ -635,8 +675,15 @@ public class OsUtils {
                 JsonNode typeNode = fieldObj.get("type");
                 if (typeNode != null && "flattened".equals(typeNode.asText())) {
                   fieldObj.put("type", "flat_object");
+                  // flat_object does not support the ES flattened guard parameters
+                  fieldObj.remove("ignore_above");
+                  fieldObj.remove("depth_limit");
                   LOG.debug(
                       "Transformed field '{}' from 'flattened' to 'flat_object'", entry.getKey());
+                }
+                // OpenSearch's boolean type does not support ignore_malformed (Elasticsearch does)
+                if (typeNode != null && "boolean".equals(typeNode.asText())) {
+                  fieldObj.remove("ignore_malformed");
                 }
 
                 // Recurse into nested properties
@@ -679,6 +726,17 @@ public class OsUtils {
     addKnnVectorSettings(rootNode);
 
     return rootNode.toString();
+  }
+
+  public static ObjectNode loadVectorIndexMapping() {
+    try {
+      return mapper.readValue(
+          Objects.requireNonNull(
+              OsUtils.class.getResource(VECTOR_INDEX_MAPPING), VECTOR_INDEX_MAPPING),
+          ObjectNode.class);
+    } catch (IOException e) {
+      throw new IllegalStateException("Failed to read index mapping " + VECTOR_INDEX_MAPPING, e);
+    }
   }
 
   /**
@@ -730,7 +788,7 @@ public class OsUtils {
     JsonNode indexSettingsNode = rootNode.path("settings").path("index");
     if (!indexSettingsNode.isMissingNode() && indexSettingsNode.isObject()) {
       ObjectNode indexSettings = (ObjectNode) indexSettingsNode;
-      indexSettings.put("knn", true);
+      indexSettings.setAll((ObjectNode) loadVectorIndexMapping().path("settings").path("index"));
       indexSettings.put("knn.algo_param.ef_search", 1000);
       indexSettings.put("knn.advanced.filtered_exact_search_threshold", 0);
     }

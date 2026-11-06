@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/recognizers/regexFlags.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "RegexFlags",
   "description": "Regex flags used for PatternRecognizers",
   "type": "object",

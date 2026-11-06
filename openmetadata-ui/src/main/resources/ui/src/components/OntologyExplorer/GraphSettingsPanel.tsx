@@ -12,14 +12,13 @@
  */
 
 import {
-  Button,
   ButtonUtility,
   Dropdown,
   Select,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Settings01, X } from '@untitledui/icons';
+import { Settings01, XClose } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LayoutType } from './OntologyExplorer.constants';
@@ -59,17 +58,16 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 
   const popoverContent = (
     <div className="tw:min-w-0 tw:rounded-lg">
-      <div className="tw:flex tw:items-center tw:justify-between tw:shrink-0 tw:border-b tw:border-gray-200 tw:px-4 tw:py-3 ">
+      <div className="tw:flex tw:items-center tw:justify-between tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3 ">
         <Typography
           as="span"
-          className="tw:text-sm tw:font-semibold tw:text-gray-900">
+          className="tw:text-sm tw:font-semibold tw:text-primary">
           {t('label.graph-settings')}
         </Typography>
         <ButtonUtility
-          color="tertiary"
           data-testid="graph-settings-close"
-          icon={X}
-          size="xs"
+          icon={XClose}
+          size="lg"
           tooltip={t('label.close')}
           onClick={() => setOpen(false)}
         />
@@ -78,7 +76,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
         <div className="tw:space-y-1.5 tw:w-full tw:pt-4">
           <Typography
             as="span"
-            className="tw:text-xs tw:font-semibold tw:text-gray-500">
+            className="tw:text-xs tw:font-semibold tw:text-quaternary">
             {t('label.layout')}
           </Typography>
           <Select
@@ -114,11 +112,11 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 
   return (
     <Dropdown.Root isOpen={open} onOpenChange={setOpen}>
-      <Button
-        color="secondary"
+      <ButtonUtility
         data-testid="ontology-graph-settings"
-        iconLeading={<Settings01 height={20} width={20} />}
-        size="sm"
+        icon={Settings01}
+        size="lg"
+        tooltip={t('label.graph-settings')}
       />
       <Dropdown.Popover aria-label={t('label.graph-settings')} placement="top">
         {popoverContent}

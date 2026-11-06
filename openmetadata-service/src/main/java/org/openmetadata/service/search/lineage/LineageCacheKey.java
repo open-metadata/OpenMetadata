@@ -22,6 +22,8 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
  * - Direction and connection filters
  * - Pagination parameters (from, size) for entity count queries
  * - Node depth filter for entity count queries
+ * - Edge time window (startTime, endTime in epoch millis) so windowed lineage
+ *   queries occupy distinct cache slots
  */
 @Value
 @EqualsAndHashCode
@@ -41,6 +43,8 @@ public class LineageCacheKey {
   Boolean includePaginationInfo;
   int paginationUpstreamDepth;
   int paginationDownstreamDepth;
+  Long startTime;
+  Long endTime;
 
   /**
    * Creates cache key from lineage request.
@@ -68,7 +72,9 @@ public class LineageCacheKey {
         0,
         Boolean.FALSE,
         0,
-        0);
+        0,
+        request.getStartTime(),
+        request.getEndTime());
   }
 
   /**
@@ -83,7 +89,7 @@ public class LineageCacheKey {
         "LineageCacheKey{fqn='%s', up=%d, down=%d, queryFilter='%s', columnFilter='%s',"
             + " preservePaths=%b, direction='%s', isConnectedVia=%b, from=%d, size=%d,"
             + " nodeDepth=%d, includePaginationInfo=%b, paginationUpstreamDepth=%d,"
-            + " paginationDownstreamDepth=%d}",
+            + " paginationDownstreamDepth=%d, startTime=%s, endTime=%s}",
         fqn,
         upstreamDepth,
         downstreamDepth,
@@ -97,6 +103,8 @@ public class LineageCacheKey {
         nodeDepth,
         includePaginationInfo,
         paginationUpstreamDepth,
-        paginationDownstreamDepth);
+        paginationDownstreamDepth,
+        startTime,
+        endTime);
   }
 }

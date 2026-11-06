@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
 import { ReactComponent as UpdatedIcon } from '../../../../../assets/svg/updated-icon.svg';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
-import { getFrontEndFormat } from '../../../../../utils/FeedUtils';
+import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import RichTextEditorPreviewNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
-
 interface ActivityDescriptionFeedProps {
   activity: ActivityEvent;
 }
@@ -45,15 +44,15 @@ function ActivityDescriptionFeed({
   }, [isAdded]);
 
   return (
-    <Row gutter={[12, 12]} wrap={false}>
-      <Col className="h-4">{operationIcon}</Col>
-      <Col>
+    <Box gap={3}>
+      <div className="h-4">{operationIcon}</div>
+      <div>
         <RichTextEditorPreviewNew
           className="text-wrap"
           markdown={getFrontEndFormat(description)}
         />
-      </Col>
-    </Row>
+      </div>
+    </Box>
   );
 }
 

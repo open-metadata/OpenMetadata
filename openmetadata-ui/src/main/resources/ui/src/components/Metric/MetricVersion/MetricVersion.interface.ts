@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { Metric } from '../../../generated/entity/data/metric';
-import { EntityHistory } from '../../../generated/type/entityHistory';
-import { TagLabel } from '../../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import type { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import type { Metric } from '../../../generated/entity/data/metric';
+import type { EntityHistory } from '../../../generated/type/entityHistory';
+import type { TagLabel } from '../../../generated/type/tagLabel';
+import type { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface MetricVersionProp {
   version?: string;
@@ -25,9 +25,6 @@ export interface MetricVersionProp {
   tier: TagLabel;
   slashedMetricName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;
-  onLoadMore?: () => void;
-  hasMore?: boolean;
-  isLoadingMore?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
   entityPermissions: OperationPermission;

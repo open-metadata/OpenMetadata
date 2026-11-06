@@ -11,38 +11,77 @@
  *  limitations under the License.
  */
 
+import {
+  CheckCircle02,
+  SlashCircle02,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { get } from 'lodash';
-import { lazy, Suspense } from 'react';
-import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
-import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
-import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
-import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { lazy } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import Loader from '../components/common/Loader/Loader';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
-import ExecutionsTab from '../components/Pipeline/Execution/Execution.component';
-import { PipelineTaskTab } from '../components/Pipeline/PipelineTaskTab/PipelineTaskTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import {
-  Pipeline,
-  StatusType,
-  Task,
-  TaskStatus,
-} from '../generated/entity/data/pipeline';
+import { StatusType, TaskStatus } from '../generated/entity/data/pipeline';
 import { PageType } from '../generated/system/ui/page';
-import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { t } from './i18next/LocalUtil';
 import { PipelineDetailPageTabProps } from './PipelineClassBase';
-const EntityLineageTab = lazy(() =>
-  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-    (module) => ({ default: module.EntityLineageTab })
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
+    ).then((module) => ({ default: module.ActivityFeedTab }))
+  )
+);
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+      (module) => ({ default: module.EntityLineageTab })
+    )
+  )
+);
+
+const ExecutionsTab = withSuspenseFallback(
+  lazy(() => import('../components/Pipeline/Execution/Execution.component')),
+  TAB_CONTENT_FALLBACK
+);
+
+const PipelineTaskTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Pipeline/PipelineTaskTab/PipelineTaskTab').then(
+      (module) => ({ default: module.PipelineTaskTab })
+    )
   )
 );
 
@@ -53,16 +92,29 @@ export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
   return tasks.find((task) => task.name === taskName)?.executionStatus;
 };
 
+export const getStatusBadgeClassName = (status?: StatusType) => {
+  switch (status) {
+    case StatusType.Successful:
+      return 'tw:text-utility-green-500';
+
+    case StatusType.Failed:
+      return 'tw:text-utility-error-600';
+
+    default:
+      return 'tw:text-utility-gray-500';
+  }
+};
+
 export const getStatusBadgeIcon = (status?: StatusType) => {
   switch (status) {
     case StatusType.Successful:
-      return IconSuccessBadge;
+      return CheckCircle02;
 
     case StatusType.Failed:
-      return IconFailBadge;
+      return XCircle;
 
     default:
-      return IconSkippedBadge;
+      return SlashCircle02;
   }
 };
 
@@ -128,14 +180,12 @@ export const getPipelineDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <Suspense fallback={<Loader />}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={pipelineDetails as SourceType}
-            entityType={EntityType.PIPELINE}
-            hasEditAccess={editLineagePermission}
-          />
-        </Suspense>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={pipelineDetails as SourceType}
+          entityType={EntityType.PIPELINE}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {
@@ -177,15 +227,5 @@ export const getPipelineWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       entityType={EntityType.PIPELINE}
       widgetConfig={widgetConfig}
     />
-  );
-};
-
-export const extractPipelineTasks = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): Task[] => {
-  const pipeline = data as Partial<Pipeline>;
-
-  return (pipeline.tasks ?? []).map(
-    (task) => ({ ...task, tags: task.tags ?? [] } as Task)
   );
 };

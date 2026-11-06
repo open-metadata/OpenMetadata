@@ -10,17 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { ClassificationTag, Owner } from '@openmetadata/ui-core-components';
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { EntityServiceUnion } from '../components/Explore/ExplorePage.interface';
-import TagsV1 from '../components/Tag/TagsV1/TagsV1.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { NO_DATA } from '../constants/constants';
-import { TAG_START_WITH } from '../constants/Tag.constants';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
@@ -45,103 +44,44 @@ import {
 import { Table, TableType, TagLabel } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Worksheet } from '../generated/entity/data/worksheet';
+import { getTagName, getTagRedirectLink } from './TagsPureUtils';
 
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { EntityReference } from '../generated/entity/type';
-import { UsageDetails } from '../generated/type/usageDetails';
 import {
-  formatNumberWithComma,
-  getPartialNameFromTableFQN,
-} from './CommonUtils';
-import { DRAWER_NAVIGATION_OPTIONS, getEntityName } from './EntityUtils';
+  ColumnSearchResult,
+  getTableFieldsFromTableDetails,
+  getUsageData,
+} from './DataAssetSummaryPanelPureUtils';
+import { getEntityName } from './EntityNameUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from './EntityPureUtils';
+import { renderHighlightedText } from './EntitySearchUtils';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
+import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
+import { formatNumberWithComma } from './NumberUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
-import { bytesToSize, stringToHTML } from './StringsUtils';
-import { getTierTags, getUsagePercentile } from './TableUtils';
-
-interface ColumnSearchResult {
-  dataType?: string;
-  dataTypeDisplay?: string;
-  constraint?: string;
-  table?: {
-    name?: string;
-    displayName?: string;
-    fullyQualifiedName?: string;
-  };
-  service?: {
-    name?: string;
-    displayName?: string;
-    fullyQualifiedName?: string;
-    type?: string;
-  };
-  database?: {
-    name?: string;
-    displayName?: string;
-    fullyQualifiedName?: string;
-  };
-  databaseSchema?: {
-    name?: string;
-    displayName?: string;
-    fullyQualifiedName?: string;
-  };
-  owners?: EntityReference[];
-  domains?: EntityReference[];
-}
+import { bytesToSize } from './StringUtils';
+import { getTierTags } from './TablePureUtils';
 
 const entityTierRenderer = (tier?: TagLabel) => {
   return tier ? (
-    <TagsV1 startWith={TAG_START_WITH.SOURCE_ICON} tag={tier} />
+    <ClassificationTag
+      color={tier.style?.color}
+      href={getTagRedirectLink(tier)}
+      icon={tier.style?.iconURL}
+      label={getTagName(tier)}
+      size="sm"
+    />
   ) : (
     NO_DATA
   );
 };
 
-const getUsageData = (usageSummary: UsageDetails | undefined) =>
-  isNil(usageSummary?.weeklyStats?.percentileRank)
-    ? NO_DATA
-    : getUsagePercentile(usageSummary?.weeklyStats?.percentileRank ?? 0);
+const orNoData = (value?: string | number) => value || NO_DATA;
 
-const getTableFieldsFromTableDetails = (tableDetails: Table) => {
-  const {
-    fullyQualifiedName,
-    owners,
-    tags,
-    usageSummary,
-    profile,
-    columns,
-    tableType,
-    service,
-    database,
-    databaseSchema,
-    domains,
-  } = tableDetails;
-  const [serviceName, databaseName, schemaName] = getPartialNameFromTableFQN(
-    fullyQualifiedName ?? '',
-    [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
-    FQN_SEPARATOR_CHAR
-  ).split(FQN_SEPARATOR_CHAR);
-
-  const serviceDisplayName = getEntityName(service) || serviceName;
-  const databaseDisplayName = getEntityName(database) || databaseName;
-  const schemaDisplayName = getEntityName(databaseSchema) || schemaName;
-
-  const tier = getTierTags(tags ?? []);
-
-  return {
-    fullyQualifiedName,
-    owners,
-    service: serviceDisplayName,
-    database: databaseDisplayName,
-    schema: schemaDisplayName,
-    tier,
-    usage: getUsageData(usageSummary),
-    profile,
-    columns,
-    tableType,
-    domains,
-  };
-};
+const displayNameOrDash = (entity?: { displayName?: string; name?: string }) =>
+  entity?.displayName || entity?.name || '--';
 
 const getCommonOverview = (
   {
@@ -159,10 +99,10 @@ const getCommonOverview = (
           {
             name: i18n.t('label.owner-plural'),
             value: (
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={owners}
+                owners={owners ?? []}
                 showLabel={false}
               />
             ),
@@ -204,6 +144,9 @@ const getTableOverview = (
     domains,
   } = getTableFieldsFromTableDetails(tableDetails);
 
+  const fqn = fullyQualifiedName ?? '';
+  const tableId = tableDetails.id || '';
+
   const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domains }),
     {
@@ -217,18 +160,18 @@ const getTableOverview = (
     },
     {
       name: i18n.t('label.service'),
-      value: service || NO_DATA,
+      value: orNoData(service),
       url: getServiceDetailsPath(service, ServiceCategory.DATABASE_SERVICES),
       isLink: true,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
       name: i18n.t('label.database'),
-      value: database || NO_DATA,
+      value: orNoData(database),
       url: getEntityDetailsPath(
         EntityType.DATABASE,
         getPartialNameFromTableFQN(
-          fullyQualifiedName ?? '',
+          fqn,
           [FqnPart.Service, FqnPart.Database],
           FQN_SEPARATOR_CHAR
         )
@@ -238,11 +181,11 @@ const getTableOverview = (
     },
     {
       name: i18n.t('label.schema'),
-      value: schema || NO_DATA,
+      value: orNoData(schema),
       url: getEntityDetailsPath(
         EntityType.DATABASE_SCHEMA,
         getPartialNameFromTableFQN(
-          fullyQualifiedName ?? '',
+          fqn,
           [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
           FQN_SEPARATOR_CHAR
         )
@@ -258,13 +201,13 @@ const getTableOverview = (
     },
     {
       name: i18n.t('label.usage'),
-      value: usage || NO_DATA,
+      value: orNoData(usage),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
       name: i18n.t('label.query-plural'),
-      value: <QueryCount tableId={tableDetails.id || ''} />,
+      value: <QueryCount tableId={tableId} />,
       isLink: false,
       visible: [
         DRAWER_NAVIGATION_OPTIONS.lineage,
@@ -296,7 +239,7 @@ const getTableOverview = (
       linkProps: {
         pathname: getEntityDetailsPath(
           EntityType.TABLE,
-          fullyQualifiedName ?? '',
+          fqn,
           EntityTabs.PROFILER,
           ProfilerTabPath.INCIDENTS
         ),
@@ -394,7 +337,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
     {
       name: `${i18n.t('label.pipeline')} ${i18n.t('label.url-uppercase')}`,
       dataTestId: 'pipeline-url-label',
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -435,7 +378,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
     ...getCommonOverview({ owners, domains }),
     {
       name: `${i18n.t('label.dashboard')} ${i18n.t('label.url-uppercase')}`,
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -614,7 +557,7 @@ const getChartOverview = (chartDetails: Chart) => {
     ...getCommonOverview({ owners, domains }),
     {
       name: `${i18n.t('label.chart')} ${i18n.t('label.url-uppercase')}`,
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -676,7 +619,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
     ...getCommonOverview({ owners, domains }),
     {
       name: `${i18n.t('label.data-model')} ${i18n.t('label.url-uppercase')}`,
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DASHBOARD_DATA_MODEL,
         fullyQualifiedName ?? ''
@@ -817,7 +760,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={owners ?? []} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
@@ -858,7 +801,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={owners ?? []} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
@@ -907,7 +850,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={owners ?? []} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
@@ -1224,7 +1167,7 @@ const getColumnOverview = (
     },
     {
       name: i18n.t('label.table'),
-      value: table?.displayName || table?.name || '--',
+      value: displayNameOrDash(table),
       url: table?.fullyQualifiedName
         ? getEntityDetailsPath(EntityType.TABLE, table.fullyQualifiedName)
         : undefined,
@@ -1236,7 +1179,7 @@ const getColumnOverview = (
     },
     {
       name: i18n.t('label.service'),
-      value: service?.displayName || service?.name || '--',
+      value: displayNameOrDash(service),
       url: service?.fullyQualifiedName
         ? getServiceDetailsPath(service.fullyQualifiedName, service.type || '')
         : undefined,
@@ -1248,7 +1191,7 @@ const getColumnOverview = (
     },
     {
       name: i18n.t('label.database'),
-      value: database?.displayName || database?.name || '--',
+      value: displayNameOrDash(database),
       url: database?.fullyQualifiedName
         ? getEntityDetailsPath(EntityType.DATABASE, database.fullyQualifiedName)
         : undefined,
@@ -1260,7 +1203,7 @@ const getColumnOverview = (
     },
     {
       name: i18n.t('label.schema'),
-      value: databaseSchema?.displayName || databaseSchema?.name || '--',
+      value: displayNameOrDash(databaseSchema),
       url: databaseSchema?.fullyQualifiedName
         ? getEntityDetailsPath(
             EntityType.DATABASE_SCHEMA,
@@ -1290,128 +1233,132 @@ const getColumnOverview = (
   return overview;
 };
 
+type OverviewBuilder = (
+  entityDetail: DataAssetSummaryPanelProps['dataAsset'],
+  additionalInfo?: Record<string, number | string>
+) => BasicEntityOverviewInfo[];
+
+// Each entry maps the set of type identifiers (Explore tab + entity type) that
+// share an overview builder — mirrors the fall-through cases of the original
+// switch. Built via fromEntries so overlapping enum string values (e.g. an
+// Explore tab equal to its entity type) collapse to a single key rather than
+// erroring as duplicate object-literal properties.
+const OVERVIEW_BUILDER_ENTRIES: Array<[string[], OverviewBuilder]> = [
+  [
+    [ExplorePageTabs.TABLES, EntityType.TABLE],
+    (detail, additionalInfo) =>
+      getTableOverview(detail as Table, additionalInfo),
+  ],
+  [
+    [ExplorePageTabs.COLUMNS, EntityType.TABLE_COLUMN],
+    (detail) => getColumnOverview(detail as unknown as ColumnSearchResult),
+  ],
+  [
+    [ExplorePageTabs.TOPICS, EntityType.TOPIC],
+    (detail) => getTopicOverview(detail as Topic),
+  ],
+  [
+    [ExplorePageTabs.PIPELINES, EntityType.PIPELINE],
+    (detail) => getPipelineOverview(detail as Pipeline),
+  ],
+  [
+    [ExplorePageTabs.DASHBOARDS, EntityType.DASHBOARD],
+    (detail) => getDashboardOverview(detail as Dashboard),
+  ],
+  [
+    [ExplorePageTabs.SEARCH_INDEX, EntityType.SEARCH_INDEX],
+    (detail) => getSearchIndexOverview(detail as SearchIndex),
+  ],
+  [
+    [ExplorePageTabs.MLMODELS, EntityType.MLMODEL],
+    (detail) => getMlModelOverview(detail as Mlmodel),
+  ],
+  [
+    [ExplorePageTabs.CONTAINERS, EntityType.CONTAINER],
+    (detail) => getContainerOverview(detail as Container),
+  ],
+  [
+    [ExplorePageTabs.CHARTS, EntityType.CHART],
+    (detail) => getChartOverview(detail as Chart),
+  ],
+  [
+    [ExplorePageTabs.DASHBOARD_DATA_MODEL, EntityType.DASHBOARD_DATA_MODEL],
+    (detail) => getDataModelOverview(detail as DashboardDataModel),
+  ],
+  [
+    [ExplorePageTabs.STORED_PROCEDURE, EntityType.STORED_PROCEDURE],
+    (detail) => getStoredProcedureOverview(detail as StoredProcedure),
+  ],
+  [
+    [ExplorePageTabs.DATABASE, EntityType.DATABASE],
+    (detail) => getDatabaseOverview(detail as Database),
+  ],
+  [
+    [ExplorePageTabs.DATABASE_SCHEMA, EntityType.DATABASE_SCHEMA],
+    (detail) => getDatabaseSchemaOverview(detail as DatabaseSchema),
+  ],
+  [
+    [ExplorePageTabs.API_COLLECTION, EntityType.API_COLLECTION],
+    (detail) => getApiCollectionOverview(detail as APICollection),
+  ],
+  [
+    [ExplorePageTabs.API_ENDPOINT, EntityType.API_ENDPOINT],
+    (detail) => getApiEndpointOverview(detail as APIEndpoint),
+  ],
+  [
+    [ExplorePageTabs.METRIC, EntityType.METRIC],
+    (detail) => getMetricOverview(detail as Metric),
+  ],
+  [
+    [ExplorePageTabs.DIRECTORIES, EntityType.DIRECTORY],
+    (detail) => getDirectoryOverview(detail as Directory),
+  ],
+  [
+    [ExplorePageTabs.FILES, EntityType.FILE],
+    (detail) => getFileOverview(detail as unknown as File),
+  ],
+  [
+    [ExplorePageTabs.SPREADSHEETS, EntityType.SPREADSHEET],
+    (detail) => getSpreadsheetOverview(detail as Spreadsheet),
+  ],
+  [
+    [ExplorePageTabs.WORKSHEETS, EntityType.WORKSHEET],
+    (detail) => getWorksheetOverview(detail as Worksheet),
+  ],
+  [
+    [
+      ExplorePageTabs.DATABASE_SERVICE,
+      ExplorePageTabs.MESSAGING_SERVICE,
+      ExplorePageTabs.DASHBOARD_SERVICE,
+      ExplorePageTabs.ML_MODEL_SERVICE,
+      ExplorePageTabs.PIPELINE_SERVICE,
+      ExplorePageTabs.SEARCH_INDEX_SERVICE,
+      ExplorePageTabs.API_SERVICE,
+      EntityType.DATABASE_SERVICE,
+      EntityType.MESSAGING_SERVICE,
+      EntityType.DASHBOARD_SERVICE,
+      EntityType.MLMODEL_SERVICE,
+      EntityType.PIPELINE_SERVICE,
+      EntityType.SEARCH_SERVICE,
+      EntityType.API_SERVICE,
+    ],
+    (detail) => getEntityServiceOverview(detail as EntityServiceUnion),
+  ],
+];
+
+const ENTITY_OVERVIEW_BUILDERS: Record<string, OverviewBuilder> =
+  Object.fromEntries(
+    OVERVIEW_BUILDER_ENTRIES.flatMap(([types, builder]) =>
+      types.map((type) => [type, builder] as const)
+    )
+  );
+
 export const getEntityOverview = (
   type: string,
   entityDetail: DataAssetSummaryPanelProps['dataAsset'],
   additionalInfo?: Record<string, number | string>
 ): Array<BasicEntityOverviewInfo> => {
-  switch (type) {
-    case ExplorePageTabs.TABLES:
-    case EntityType.TABLE: {
-      return getTableOverview(entityDetail as Table, additionalInfo);
-    }
+  const builder = ENTITY_OVERVIEW_BUILDERS[type];
 
-    case ExplorePageTabs.COLUMNS:
-    case EntityType.TABLE_COLUMN: {
-      return getColumnOverview(entityDetail as unknown as ColumnSearchResult);
-    }
-
-    case ExplorePageTabs.TOPICS:
-    case EntityType.TOPIC: {
-      return getTopicOverview(entityDetail as Topic);
-    }
-
-    case ExplorePageTabs.PIPELINES:
-    case EntityType.PIPELINE: {
-      return getPipelineOverview(entityDetail as Pipeline);
-    }
-
-    case ExplorePageTabs.DASHBOARDS:
-    case EntityType.DASHBOARD: {
-      return getDashboardOverview(entityDetail as Dashboard);
-    }
-
-    case ExplorePageTabs.SEARCH_INDEX:
-    case EntityType.SEARCH_INDEX: {
-      return getSearchIndexOverview(entityDetail as SearchIndex);
-    }
-
-    case ExplorePageTabs.MLMODELS:
-    case EntityType.MLMODEL: {
-      return getMlModelOverview(entityDetail as Mlmodel);
-    }
-    case ExplorePageTabs.CONTAINERS:
-    case EntityType.CONTAINER: {
-      return getContainerOverview(entityDetail as Container);
-    }
-    case ExplorePageTabs.CHARTS:
-    case EntityType.CHART: {
-      return getChartOverview(entityDetail as Chart);
-    }
-
-    case ExplorePageTabs.DASHBOARD_DATA_MODEL:
-    case EntityType.DASHBOARD_DATA_MODEL: {
-      return getDataModelOverview(entityDetail as DashboardDataModel);
-    }
-
-    case ExplorePageTabs.STORED_PROCEDURE:
-    case EntityType.STORED_PROCEDURE: {
-      return getStoredProcedureOverview(entityDetail as StoredProcedure);
-    }
-
-    case ExplorePageTabs.DATABASE:
-    case EntityType.DATABASE: {
-      return getDatabaseOverview(entityDetail as Database);
-    }
-
-    case ExplorePageTabs.DATABASE_SCHEMA:
-    case EntityType.DATABASE_SCHEMA: {
-      return getDatabaseSchemaOverview(entityDetail as DatabaseSchema);
-    }
-
-    case ExplorePageTabs.API_COLLECTION:
-    case EntityType.API_COLLECTION: {
-      return getApiCollectionOverview(entityDetail as APICollection);
-    }
-
-    case ExplorePageTabs.API_ENDPOINT:
-    case EntityType.API_ENDPOINT: {
-      return getApiEndpointOverview(entityDetail as APIEndpoint);
-    }
-
-    case ExplorePageTabs.METRIC:
-    case EntityType.METRIC: {
-      return getMetricOverview(entityDetail as Metric);
-    }
-
-    case ExplorePageTabs.DIRECTORIES:
-    case EntityType.DIRECTORY: {
-      return getDirectoryOverview(entityDetail as Directory);
-    }
-
-    case ExplorePageTabs.FILES:
-    case EntityType.FILE: {
-      return getFileOverview(entityDetail as unknown as File);
-    }
-
-    case ExplorePageTabs.SPREADSHEETS:
-    case EntityType.SPREADSHEET: {
-      return getSpreadsheetOverview(entityDetail as Spreadsheet);
-    }
-
-    case ExplorePageTabs.WORKSHEETS:
-    case EntityType.WORKSHEET: {
-      return getWorksheetOverview(entityDetail as Worksheet);
-    }
-
-    case ExplorePageTabs.DATABASE_SERVICE:
-    case ExplorePageTabs.MESSAGING_SERVICE:
-    case ExplorePageTabs.DASHBOARD_SERVICE:
-    case ExplorePageTabs.ML_MODEL_SERVICE:
-    case ExplorePageTabs.PIPELINE_SERVICE:
-    case ExplorePageTabs.SEARCH_INDEX_SERVICE:
-    case ExplorePageTabs.API_SERVICE:
-    case EntityType.DATABASE_SERVICE:
-    case EntityType.MESSAGING_SERVICE:
-    case EntityType.DASHBOARD_SERVICE:
-    case EntityType.MLMODEL_SERVICE:
-    case EntityType.PIPELINE_SERVICE:
-    case EntityType.SEARCH_SERVICE:
-    case EntityType.API_SERVICE: {
-      return getEntityServiceOverview(entityDetail as EntityServiceUnion);
-    }
-
-    default:
-      return [];
-  }
+  return builder ? builder(entityDetail, additionalInfo) : [];
 };

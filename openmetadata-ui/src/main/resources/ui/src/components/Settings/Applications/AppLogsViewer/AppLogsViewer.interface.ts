@@ -16,7 +16,6 @@ import { AppRunRecord } from '../../../../generated/entity/applications/appRunRe
 
 export interface AppLogsViewerProps {
   data: AppRunRecord;
-  scrollHeight?: number;
 }
 
 export interface TotalRecords {
@@ -67,6 +66,10 @@ export interface EntityStatsData {
   successRecords: number;
   failedRecords: number;
   vectorEmbeddings: number | null;
+  readerAvgMs: string;
+  processAvgMs: string;
+  sinkAvgMs: string;
+  vectorAvgMs: string;
 }
 
 export interface ServerStats {

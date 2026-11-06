@@ -13,7 +13,7 @@ Generic Column Type Parser.
 """
 
 import re
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any
 
 from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.sql import sqltypes as types
@@ -31,7 +31,7 @@ def create_sqlalchemy_type(name: str):
             "__repr__": lambda self: f"{name}()",
         },
     )
-    return sqlalchemy_type
+    return sqlalchemy_type  # noqa: RET504
 
 
 NUMERIC_TYPES_SUPPORTING_PRECISION = {
@@ -48,9 +48,9 @@ class ColumnTypeParser:
     Column Type Parser Class
     """
 
-    _BRACKETS = {"(": ")", "[": "]", "{": "}", "<": ">"}
+    _BRACKETS = {"(": ")", "[": "]", "{": "}", "<": ">"}  # noqa: RUF012
 
-    _COLUMN_TYPE_MAPPING: Dict[Type[types.TypeEngine], str] = {
+    _COLUMN_TYPE_MAPPING: dict[type[types.TypeEngine], str] = {  # noqa: RUF012
         types.ARRAY: "ARRAY",
         types.Boolean: "BOOLEAN",
         types.CHAR: "CHAR",
@@ -82,7 +82,7 @@ class ColumnTypeParser:
         BYTEA: "BYTEA",
     }
 
-    _SOURCE_TYPE_TO_OM_TYPE = {
+    _SOURCE_TYPE_TO_OM_TYPE = {  # noqa: RUF012
         "ARRAY": "ARRAY",
         "BIGINT": "BIGINT",
         "BIGNUMERIC": "NUMERIC",
@@ -100,7 +100,9 @@ class ColumnTypeParser:
         "BINARY VARYING": "VARBINARY",
         "CURSOR": "BINARY",
         "DATE": "DATE",
+        "DATEV2": "DATE",
         "DATETIME": "DATETIME",
+        "DATETIMEV2": "DATETIME",
         "DATETIME2": "DATETIME",
         "DATETIMEOFFSET": "DATETIME",
         "DECIMAL": "DECIMAL",
@@ -141,6 +143,7 @@ class ColumnTypeParser:
         "INTERVAL DAY TO SECOND": "INTERVAL",
         "INTERVAL YEAR TO MONTH": "INTERVAL",
         "INTERVAL": "INTERVAL",
+        "LARGEINT": "LARGEINT",
         "LONG RAW": "BINARY",
         "LONG VARCHAR": "VARCHAR",
         "LONGBLOB": "LONGBLOB",
@@ -310,7 +313,7 @@ class ColumnTypeParser:
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
 
-    _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*,\s*(\d+)\s*\))?")
+    _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*(?:,\s*(\d+)\s*)?\))?")
 
     try:
         # pylint: disable=import-outside-toplevel
@@ -353,7 +356,7 @@ class ColumnTypeParser:
     def _parse_datatype_string(
         data_type: str,
         **kwargs: Any,  # pylint: disable=unused-argument
-    ) -> Union[object, Dict[str, object]]:
+    ) -> object | dict[str, object]:
         data_type = data_type.lower().strip()
         data_type = data_type.replace(" ", "")
         if data_type.startswith("array<"):
@@ -378,13 +381,13 @@ class ColumnTypeParser:
                     "The map type string format is: 'map<key_type,value_type>', " + f"but got: {data_type}"
                 )
             return {"dataType": "MAP", "dataTypeDisplay": data_type}
-        if data_type.startswith("uniontype<") or data_type.startswith("union<"):
+        if data_type.startswith("uniontype<") or data_type.startswith("union<"):  # noqa: PIE810
             if data_type[-1] != ">":
                 raise ValueError(f"'>' should be the last char, but got: {data_type}")
             parts = ColumnTypeParser._ignore_brackets_split(data_type[10:-1], ",")
             temp = []
             for part in parts:
-                temp.append(ColumnTypeParser._parse_datatype_string(part))
+                temp.append(ColumnTypeParser._parse_datatype_string(part))  # noqa: PERF401
             return temp
         if data_type.startswith("struct<"):
             if data_type[-1] != ">":
@@ -395,19 +398,24 @@ class ColumnTypeParser:
         return ColumnTypeParser._parse_primitive_datatype_string(data_type)
 
     @staticmethod
-    def _parse_struct_fields_string(stuct_type: str) -> Dict[str, object]:
+    def _parse_struct_fields_string(stuct_type: str) -> dict[str, object]:
         parts = ColumnTypeParser._ignore_brackets_split(stuct_type, ",", skip_no_child_validation=True)
         columns = []
         for part in parts:
             name_and_type = ColumnTypeParser._ignore_brackets_split(part, ":")
-            if len(name_and_type) != 2:
+            if len(name_and_type) < 2:
                 raise ValueError("expected format is: 'field_name:field_type', " + f"but got: {part}")
-            field_name = name_and_type[0].strip()
+            # A field type never contains a top-level ':' (colons only appear inside
+            # bracketed types, which the split above protects), so the last segment is
+            # the type and everything before it is the field name. Delta column-mapped
+            # struct fields carry ':' in the name itself, so rejoin the leading segments.
+            field_type_string = name_and_type[-1]
+            field_name = ":".join(name_and_type[:-1]).strip()
             if field_name.startswith("`"):
                 if field_name[-1] != "`":
                     raise ValueError(f"'`' should be the last char, but got: {stuct_type}")
                 field_name = field_name[1:-1]
-            field_type = ColumnTypeParser._parse_datatype_string(name_and_type[1])
+            field_type = ColumnTypeParser._parse_datatype_string(field_type_string)
             field_type["name"] = field_name
             columns.append(field_type)
 
@@ -420,24 +428,26 @@ class ColumnTypeParser:
     @staticmethod
     def _parse_primitive_datatype_string(  # pylint: disable=too-many-return-statements
         dtype: str,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         if dtype.upper() in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE:
             return {
                 "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[dtype.upper()],
                 "dataTypeDisplay": dtype,
             }
-        if ColumnTypeParser._FIXED_DECIMAL.match(dtype):
-            match = ColumnTypeParser._FIXED_DECIMAL.match(dtype)
-            if match.group(2) is not None:  # type: ignore
-                return {
-                    "dataType": ColumnTypeParser.get_column_type(match.group(0)),
-                    "dataTypeDisplay": dtype,
-                    "dataLength": int(match.group(3)),  # type: ignore
-                }
-            return {
-                "dataType": ColumnTypeParser.get_column_type(match.group(0)),
+        decimal_match = ColumnTypeParser._FIXED_DECIMAL.match(dtype)
+        if decimal_match:
+            # The digits of a numeric are its precision and scale, never a character length:
+            # dataLength is defined for char/varchar/binary only (entity/data/table.json).
+            parsed: dict[str, object] = {
+                "dataType": ColumnTypeParser.get_column_type(decimal_match.group(0)),
                 "dataTypeDisplay": dtype,
             }
+            if decimal_match.group(3) is not None:
+                parsed["precision"] = int(decimal_match.group(3))
+            # decimal(p) leaves the scale unstated, as SQLAlchemy does for numeric(p).
+            if decimal_match.group(4) is not None:
+                parsed["scale"] = int(decimal_match.group(4))
+            return parsed
         if dtype == "date":
             return {"dataType": "DATE", "dataTypeDisplay": dtype}
         if dtype == "timestamp":
@@ -460,7 +470,7 @@ class ColumnTypeParser:
         }
 
     @staticmethod
-    def _ignore_brackets_split(string: str, separator: str, skip_no_child_validation: bool = False) -> List[str]:
+    def _ignore_brackets_split(string: str, separator: str, skip_no_child_validation: bool = False) -> list[str]:
         parts = []
         buf = ""
         level = 0
@@ -488,7 +498,7 @@ class ColumnTypeParser:
         return parts
 
     @staticmethod
-    def check_col_precision(datatype: str, col_raw_type: object) -> Optional[Tuple[str, str]]:
+    def check_col_precision(datatype: str, col_raw_type: object) -> tuple[str, str] | None:
         """
         Method retuerns the precision details of column if available
         """
@@ -496,7 +506,7 @@ class ColumnTypeParser:
             args = re.search(r"\((.*)\)", str(col_raw_type))
             if args and args.group(1):
                 args = tuple(re.split(r"\s*,\s*", args.group(1)))
-                return args
+                return args  # noqa: RET504
         return None
 
     @staticmethod

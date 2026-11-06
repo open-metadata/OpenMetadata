@@ -23,12 +23,15 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
-import { transitionIncident } from '../../../../rest/incidentManagerAPI';
+import {
+  postTestCaseIncidentStatus,
+  transitionIncident,
+} from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { createTask } from '../../../../rest/tasksAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ArrowLeft: () => <svg data-testid="icon-arrow-left" />,
   Check: () => <svg data-testid="icon-check" />,
   ChevronDown: () => <svg data-testid="icon-chevron-down" />,
@@ -98,7 +101,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     label?: React.ReactNode;
     onAction?: (key: React.Key) => void;
   }) => (
-    <div role="menuitem" onClick={() => onAction?.(id)}>
+    <div
+      role="menuitem"
+      tabIndex={0}
+      onClick={() => onAction?.(id)}
+      onKeyDown={() => onAction?.(id)}>
       {children ?? label}
     </div>
   );
@@ -150,14 +157,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
     ButtonUtility: ({
       icon: Icon,
+      isDisabled,
       onClick,
       ...props
     }: {
       icon?: React.ComponentType<{ className?: string }>;
+      isDisabled?: boolean;
       onClick?: () => void;
       [key: string]: unknown;
     }) => (
-      <button type="button" onClick={onClick} {...props}>
+      <button disabled={isDisabled} type="button" onClick={onClick} {...props}>
         {Icon ? <Icon /> : null}
       </button>
     ),
@@ -181,6 +190,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         return (
           <div data-testid="dropdown-root">
             <div
+              role="presentation"
               onClick={() => {
                 setOpen(true);
                 onOpenChange?.(true);
@@ -221,10 +231,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
       children: React.ReactNode;
       isRequired?: boolean;
     }) => (
-      <label>
+      <span>
         {children}
         {isRequired && <span> *</span>}
-      </label>
+      </span>
     ),
     Popover: ({
       children,
@@ -257,6 +267,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       return (
         <div data-testid="popover-trigger-root">
           <div
+            role="presentation"
             onClick={() => {
               setOpen(true);
               onOpenChange?.(true);
@@ -303,7 +314,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
+  // Spread the real module: the transition ids are plain constants the
+  // source reads at import time, and a bare factory leaves them undefined.
+  ...jest.requireActual('../../../../rest/incidentManagerAPI'),
   transitionIncident: jest.fn().mockResolvedValue({}),
+  postTestCaseIncidentStatus: jest
+    .fn()
+    .mockResolvedValue({ stateId: 'state-id' }),
   getListTestCaseIncidentByStateId: jest.fn().mockResolvedValue({
     data: [
       {
@@ -476,6 +493,24 @@ describe('InlineTestCaseIncidentStatus', () => {
       );
     });
 
+    it('status menu of an assigned incident offers only reassign and resolve', async () => {
+      renderComponent({
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      });
+
+      // An assigned chip opens on the assignee picker; Back leads to the menu.
+      await act(async () => {
+        fireEvent.click(screen.getByTestId(CHIP_TEST_ID));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('incident-status-popover-back'));
+      });
+
+      expect(
+        screen.getAllByRole('menuitem').map((item) => item.textContent)
+      ).toEqual(['label.assigned', 'label.resolved']);
+    });
+
     it('selecting ACK submits directly via API', async () => {
       renderComponent();
 
@@ -573,6 +608,25 @@ describe('InlineTestCaseIncidentStatus', () => {
       await waitFor(() => {
         expect(screen.getByTestId('user1')).toBeInTheDocument();
       });
+    });
+
+    it('shows a plain-text empty state when no users match', async () => {
+      (getUserAndTeamSearch as jest.Mock).mockResolvedValueOnce({
+        data: { hits: { hits: [] } },
+      });
+
+      renderComponent({
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId(CHIP_TEST_ID));
+      });
+
+      expect(
+        await screen.findByText('label.no-entity-found')
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/<0>/)).not.toBeInTheDocument();
     });
 
     it('calls getUserAndTeamSearch with query when typing in search', async () => {
@@ -722,10 +776,10 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       const backButton = screen
         .getByTestId('icon-arrow-left')
-        .closest('button');
+        .closest('button') as HTMLButtonElement;
 
       await act(async () => {
-        fireEvent.click(backButton!);
+        fireEvent.click(backButton);
       });
 
       await waitFor(() => {
@@ -894,13 +948,16 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       await waitFor(() => {
         // Current status is Resolved, so submitStatusChange routes to
-        // reopenIncident which creates a new task instead of calling
-        // transitionIncident with 'resolve'.
-        expect(createTask).toHaveBeenCalledWith(
+        // reopenIncident. Resolved reopens the same incident via the reuse
+        // endpoint (postTestCaseIncidentStatus), not createTask.
+        expect(postTestCaseIncidentStatus).toHaveBeenCalledWith(
           expect.objectContaining({
-            about: mockData.testCaseReference?.fullyQualifiedName,
+            testCaseReference: mockData.testCaseReference?.fullyQualifiedName,
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Resolved,
           })
         );
+        expect(createTask).not.toHaveBeenCalled();
 
         expect(mockOnSubmit).toHaveBeenCalled();
       });
@@ -949,10 +1006,10 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       const backButton = screen
         .getByTestId('icon-arrow-left')
-        .closest('button');
+        .closest('button') as HTMLButtonElement;
 
       await act(async () => {
-        fireEvent.click(backButton!);
+        fireEvent.click(backButton);
       });
 
       await waitFor(() => {

@@ -18,15 +18,15 @@ import json
 import os
 import shutil
 import traceback
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
 
 from metadata.config.common import ConfigModel
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
 from metadata.ingestion.api.models import Either
@@ -77,7 +77,7 @@ class TableUsageStage(Stage):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: str | None = None,
     ):
         config = TableStageConfig.model_validate(config_dict)
         return cls(config, metadata)
@@ -93,15 +93,15 @@ class TableUsageStage(Stage):
         logger.info(f"Creating the directory to store staging data in {location}")
         location.mkdir(parents=True, exist_ok=True)
 
-    def _get_user_entity(self, username: str) -> Tuple[Optional[List[str]], Optional[List[str]]]:
+    def _get_user_entity(self, username: str) -> tuple[list[str] | None, list[str] | None]:
         """
         From the user received in the query history call - who executed the query in the db -
         return if we find any users in OM that match, plus the user that we found in the db record.
         """
         if username:
-            user = self.metadata.get_by_name(entity=User, fqn=username)
-            if user:
-                return [user.fullyQualifiedName.root], [username]
+            user_reference = self.metadata.get_cached_user_reference(name=username)
+            if user_reference and user_reference.fullyQualifiedName:
+                return [user_reference.fullyQualifiedName], [username]
             return None, [username]
         return None, None
 
@@ -138,7 +138,7 @@ class TableUsageStage(Stage):
             ]
 
     def _handle_table_usage(self, parsed_data: ParsedData, table: str) -> Iterable[Either[str]]:
-        table_joins = parsed_data.joins.get(table)
+        table_joins = (parsed_data.joins or {}).get(table)
         try:
             self._add_sql_query(record=parsed_data, table=table)
             table_usage_count = self.table_usage.get((table, parsed_data.date))
@@ -203,8 +203,9 @@ class TableUsageStage(Stage):
         for parsed_data in record.parsedData:
             if parsed_data is None:
                 continue
-            for table in parsed_data.tables:
-                yield from self._handle_table_usage(parsed_data=parsed_data, table=table)
+            usage_data = get_table_binding_resolution(self.metadata, parsed_data.serviceName).prepare_usage(parsed_data)
+            for table in usage_data.tables:
+                yield from self._handle_table_usage(parsed_data=usage_data, table=table)
             self._handle_query_cost(parsed_data)
         self.dump_data_to_file()
 
@@ -216,8 +217,8 @@ class TableUsageStage(Stage):
             if value:
                 value.sqlQueries = self.table_queries.get(key, [])
                 data = value.model_dump_json()
-                with open(
-                    os.path.join(self.config.filename, f"{value.serviceName}_{key[1]}"),
+                with open(  # noqa: PTH123
+                    os.path.join(self.config.filename, f"{value.serviceName}_{key[1]}"),  # noqa: PTH118
                     "a+",
                     encoding=UTF_8,
                 ) as file:
@@ -235,8 +236,8 @@ class TableUsageStage(Stage):
                     "dialect": value["dialect"],
                     "totalDuration": value["totalDuration"],
                 }
-                with open(
-                    os.path.join(self.config.filename, f"{self.service_name}_{key[1]}_query"),
+                with open(  # noqa: PTH123
+                    os.path.join(self.config.filename, f"{self.service_name}_{key[1]}_query"),  # noqa: PTH118
                     "a+",
                     encoding=UTF_8,
                 ) as file:

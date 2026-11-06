@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,13 @@ public record ContainerIndex(Container container) implements ColumnIndex, DataAs
   @Override
   public Set<String> getExcludedFields() {
     return Set.of("children");
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    fields.add("dataModel");
+    return Collections.unmodifiableSet(fields);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
@@ -66,7 +74,7 @@ public record ContainerIndex(Container container) implements ColumnIndex, DataAs
     fields.put(DATA_MODEL_COLUMNS_NAME_KEYWORD, 10.0f);
     fields.put("dataModel.columns.displayName", 2.0f);
     fields.put("dataModel.columns.description", 1.0f);
-    fields.put("dataModel.columns.children.name", 2.0f);
+    fields.put("columnNamesFuzzy", 2.0f);
     return fields;
   }
 }

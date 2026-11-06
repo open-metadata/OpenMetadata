@@ -48,7 +48,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
-from ..conftest import _safe_delete
+from ..conftest import _safe_delete  # noqa: TID252
 
 SERVICE_NAME = Path(__file__).stem
 
@@ -170,7 +170,7 @@ class NoSQLProfiler(TestCase):
         """
         does nothing. useful to check if the setup and teardown methods are working
         """
-        pass
+        pass  # noqa: PIE790
 
     def run_profiler_workflow(self, config):
         profiler_workflow = ProfilerWorkflow.create(config)
@@ -241,7 +241,7 @@ class NoSQLProfiler(TestCase):
             )
             assert (len(column_profile.entities) > 0) == (len(tc["expected"]["columns"]) > 0)
             if len(expected["columns"]) > 0:
-                for c1, c2 in zip(column_profile.entities, expected["columns"]):
+                for c1, c2 in zip(column_profile.entities, expected["columns"]):  # noqa: B905
                     assert c1.name == c2.name
                     assert c1.max == c2.max
                     assert c1.min == c2.min
@@ -285,7 +285,7 @@ class NoSQLProfiler(TestCase):
                 "tableConfig": [
                     {
                         "fullyQualifiedName": f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}",
-                        "profileQuery": '{"age": %s}' % query_age,
+                        "profileQuery": '{"age": %s}' % query_age,  # noqa: UP031
                     }
                 ],
             },
@@ -349,7 +349,7 @@ class NoSQLProfiler(TestCase):
                 "tableConfig": [
                     {
                         "fullyQualifiedName": f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}",
-                        "profileQuery": '{"age": %s}' % query_age,
+                        "profileQuery": '{"age": %s}' % query_age,  # noqa: UP031
                     }
                 ],
             },
@@ -359,4 +359,4 @@ class NoSQLProfiler(TestCase):
         table = self.metadata.get_by_name(Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}")
         sample_data = self.metadata.get_sample_data(table)
         age_column_index = [col.root for col in sample_data.sampleData.columns].index("age")
-        assert all([r[age_column_index] == str(query_age) for r in sample_data.sampleData.rows])
+        assert all([r[age_column_index] == str(query_age) for r in sample_data.sampleData.rows])  # noqa: C419

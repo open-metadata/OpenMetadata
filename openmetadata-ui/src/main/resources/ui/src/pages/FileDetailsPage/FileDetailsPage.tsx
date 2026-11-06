@@ -12,29 +12,26 @@
  */
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { get, isUndefined, omitBy, toString } from 'lodash';
+import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import FileDetails from '../../components/DriveService/File/FileDetails';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { File } from '../../generated/entity/data/file';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { useSub } from '../../hooks/usePubSub';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import {
   addDriveAssetFollower,
   getDriveAssetByFqn,
@@ -42,16 +39,10 @@ import {
   removeDriveAssetFollower,
   updateDriveAssetVotes,
 } from '../../rest/driveAPI';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { fileDefaultFields } from '../../utils/FileDetailsUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -60,16 +51,30 @@ function FileDetailsPage() {
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: fileFQN } = useFqn();
   const [fileDetails, setFileDetails] = useState<File>({} as File);
-  const [isLoading, setLoading] = useState<boolean>(true);
+  // Entity-fetch loading only now — permission-fetch loading comes from the hook below.
+  // Combined at the render gate as `isPermissionsLoading || (canViewBasic &&
+  // isEntityLoading)` — see SpreadsheetDetailsPage.tsx's analogous comment for why the
+  // `canViewBasic` guard matters (a denied-view render must not get stuck on the loader
+  // forever, since fetchFileDetails — the only thing that ever flips this flag false — is
+  // never called at all when view permission is denied).
+  const [isEntityLoading, setEntityLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
 
-  const [filePermissions, setFilePermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
+  // Single useEntityPermissions call — no genuine cycle: this page never derives a
+  // `deleted`-gated canEdit* flag of its own. FileDetails (the child) owns the raw
+  // filePermissions prop and derives its own edit-tier flags against its own `deleted`
+  // (sourced from fileDetails.deleted) — see TopicDetailsPage.component.tsx's analogous
+  // comment.
+  const {
+    permissions: filePermissions, // FileDetails consumes the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic,
+    hasViewAccess,
+  } = useEntityPermissions(ResourceEntity.FILE, fileFQN);
 
   const { id: fileId, version: currentVersion } = fileDetails;
 
@@ -95,27 +100,8 @@ function FileDetailsPage() {
     }
   };
 
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setLoading(true);
-    try {
-      const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.FILE,
-        entityFqn
-      );
-      setFilePermissions(permissions);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchFileDetails = async (fileFQN: string) => {
-    setLoading(true);
+    setEntityLoading(true);
     try {
       const res = await getDriveAssetByFqn<File>(
         fileFQN,
@@ -151,14 +137,14 @@ function FileDetailsPage() {
         );
       }
     } finally {
-      setLoading(false);
+      setEntityLoading(false);
     }
   };
 
   const followFile = async () => {
     try {
       const res = await addDriveAssetFollower(fileId, USERId, EntityType.FILE);
-      const { newValue } = get(res, 'changeDescription.fieldsAdded[0]', {});
+      const newValue = res.changeDescription?.fieldsAdded?.[0]?.newValue ?? [];
       setFileDetails((prev) => ({
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
@@ -218,6 +204,25 @@ function FileDetailsPage() {
     });
   };
 
+  // Not on React Query, so the provider's cache invalidation can't reach this page.
+  useSub(
+    'updateDetails',
+    async () => {
+      try {
+        setFileDetails(
+          await getDriveAssetByFqn<File>(
+            fileDetails.fullyQualifiedName ?? '',
+            EntityType.FILE,
+            fileDefaultFields
+          )
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [fileDetails.fullyQualifiedName]
+  );
+
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDriveAssetVotes<File>(id, data, EntityType.FILE);
@@ -246,40 +251,47 @@ function FileDetailsPage() {
     }));
   }, []);
 
+  // Permission fetching itself now lives in useEntityPermissions (called above). Preserves
+  // the old fetchResourcePermission catch's exact toast (interpolating the FQN itself, not
+  // a translated entity-type label) — matches TopicDetailsPage.component.tsx's analogous
+  // effect.
   useEffect(() => {
-    fetchResourcePermission(fileFQN);
-  }, [fileFQN]);
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', { entity: fileFQN })
+      );
+    }
+  }, [permissionsError, fileFQN]);
 
   useEffect(() => {
-    if (
-      getPrioritizedViewPermission(
-        filePermissions,
-        PermissionOperation.ViewBasic
-      )
-    ) {
+    if (canViewBasic) {
       fetchFileDetails(fileFQN);
     }
-  }, [filePermissions, fileFQN]);
+  }, [canViewBasic, fileFQN]);
 
-  if (isLoading) {
-    return <Loader />;
+  if (isPermissionsLoading || (canViewBasic && isEntityLoading)) {
+    return <EntityDetailsPageSkeleton />;
   }
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError('file', fileFQN)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError('file', fileFQN)}
+        />
+      </div>
     );
   }
-  if (!filePermissions.ViewAll && !filePermissions.ViewBasic) {
+  if (!hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.file'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.file'),
+          })}
+        />
+      </div>
     );
   }
 

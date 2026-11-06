@@ -41,6 +41,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import (
@@ -173,6 +174,7 @@ class TestHexSource(TestCase):
 
         # Initialize required attributes
         self.hex_source.config = self.config
+        self.hex_source.config.serviceName = "mock_hex"
         self.hex_source.metadata = self.metadata
         self.hex_source.service_connection = MagicMock()
         self.hex_source.source_config = MagicMock()
@@ -189,12 +191,18 @@ class TestHexSource(TestCase):
         self.hex_source.client = MagicMock()
         self.hex_source.client.get_projects = MagicMock(return_value=[SAMPLE_PROJECT, SAMPLE_PROJECT_2])
         self.hex_source.client.get_project_url = MagicMock(
-            return_value="https://app.hex.tech/app/projects/proj_123456789"
+            return_value="https://app.hex.tech/ws-uuid/app/proj_123456789"
         )
 
-        # Initialize lineage components
+        # Initialize lineage components. The cells API is unavailable here, so
+        # lineage falls back to the warehouse queries.
         self.hex_source.hex_project_lineage = {}
         self.hex_source.query_fetcher = MagicMock()
+        self.hex_source.client.get_project_cells = MagicMock(return_value=None)
+        self.hex_source._cell_lineage = None
+        self.hex_source._kept_data_model = None
+        self.hex_source._data_connections = None
+        self.hex_source._data_connections_denied = False
 
         # Mock register_record
         self.hex_source.register_record = MagicMock()
@@ -269,23 +277,20 @@ class TestHexSource(TestCase):
         tags = self.hex_source._extract_tags_from_project(SAMPLE_PROJECT_NO_OWNER)
         self.assertEqual(tags, [])
 
-    @patch("metadata.ingestion.source.dashboard.hex.metadata.get_tag_labels")
-    def test_get_dashboard_tags(self, mock_get_tag_labels):
-        """Test getting dashboard tags"""
-        mock_tag_labels = [
-            TagLabel(
-                tagFQN="HexCategories.Analytics",
-                labelType=LabelType.Manual,
-                state=State.Suggested,
-                source=TagSource.Classification,
-            )
-        ]
-        mock_get_tag_labels.return_value = mock_tag_labels
-
+    def test_get_dashboard_tags(self):
+        definitions = list(self.hex_source.yield_tags(SAMPLE_PROJECT))
+        assert all(record.left is None for record in definitions)
+        assert {record.right.tag_request.name.root for record in definitions} == {
+            "Analytics",
+            "Sales",
+            "Published",
+        }
+        self.metadata.get_by_name.side_effect = lambda **kwargs: (
+            None if kwargs["fqn"] == "HexCategories.Sales" else object()
+        )
         tags = self.hex_source._get_dashboard_tags(SAMPLE_PROJECT)
-
-        mock_get_tag_labels.assert_called_once()
-        self.assertEqual(tags, mock_tag_labels)
+        assert {tag.tagFQN.root for tag in tags} == {"HexCategories.Analytics", "HexCategories.Published"}
+        assert all(tag.labelType == LabelType.Automated and tag.state == State.Suggested for tag in tags)
 
     def test_yield_dashboard_success(self):
         """Test successful dashboard creation"""
@@ -322,10 +327,21 @@ class TestHexSource(TestCase):
         )
         self.assertEqual(
             dashboard_request.sourceUrl,
-            SourceUrl("https://app.hex.tech/app/projects/proj_123456789"),
+            SourceUrl("https://app.hex.tech/ws-uuid/app/proj_123456789"),
         )
         self.assertEqual(dashboard_request.tags, mock_tag_labels)
         self.assertEqual(dashboard_request.owners, mock_owner_ref)
+
+    def test_yield_dashboard_without_url(self):
+        """The dashboard is still ingested, without a link, when no URL can be built"""
+        self.hex_source.client.get_project_url = MagicMock(return_value=None)
+        self.hex_source._get_dashboard_tags = MagicMock(return_value=None)
+        self.hex_source.get_owner_ref = MagicMock(return_value=None)
+
+        results = list(self.hex_source.yield_dashboard(SAMPLE_PROJECT))
+
+        self.assertIsNone(results[0].left)
+        self.assertIsNone(results[0].right.sourceUrl)
 
     def test_yield_dashboard_error(self):
         """Test dashboard creation with error"""
@@ -360,22 +376,18 @@ class TestHexSource(TestCase):
         self.assertIsInstance(lineage_request, AddLineageRequest)
         self.assertEqual(lineage_request.edge.fromEntity.id, EXAMPLE_TABLE.id)
         self.assertEqual(lineage_request.edge.toEntity.id, EXAMPLE_DASHBOARD.id)
+        self.assertEqual(lineage_request.edge.lineageDetails.source, LineageSource.DashboardLineage)
 
     def test_yield_dashboard_lineage_no_data(self):
         """Test lineage when no lineage data exists"""
         results = list(self.hex_source.yield_dashboard_lineage_details(SAMPLE_PROJECT))
         self.assertEqual(len(results), 0)
 
-    def test_yield_dashboard_chart(self):
-        """Test that Hex doesn't yield separate charts"""
-        # yield_dashboard_chart returns None, not an iterable
-        result = self.hex_source.yield_dashboard_chart(SAMPLE_PROJECT)
-        self.assertIsNone(result)
-
-    @patch("metadata.ingestion.source.dashboard.hex.metadata.get_connection")
-    def test_create_source(self, mock_get_connection):
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
+    def test_create_source(self, mock_create_connection, mock_run_test_connection):
         """Test creating HexSource instance"""
-        mock_get_connection.return_value = MagicMock()
+        mock_create_connection.return_value.client = MagicMock()
 
         config = WorkflowSource.model_validate(MOCK_CONFIG["source"])
         metadata = MagicMock()

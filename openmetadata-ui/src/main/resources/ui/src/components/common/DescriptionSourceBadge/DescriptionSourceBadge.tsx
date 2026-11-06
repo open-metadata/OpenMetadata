@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Automated,
+  CheckCircleFilled,
+  Propagated,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AISuggestionIcon } from '../../../assets/svg/ic-ai-suggestion.svg';
-import { ReactComponent as AutomatedIcon } from '../../../assets/svg/ic-automated.svg';
-import { ReactComponent as CheckCircleIcon } from '../../../assets/svg/ic-check-circle.svg';
-import { ReactComponent as PropagatedIcon } from '../../../assets/svg/ic-propagated.svg';
 import { ChangeSource } from '../../../generated/type/changeSummaryMap';
 import {
   formatDate,
@@ -50,7 +52,7 @@ const BADGE_CONFIG: Partial<Record<ChangeSource, BadgeConfig>> = {
   [ChangeSource.Automated]: {
     labelKey: 'label.automated',
     tooltipKey: 'label.automated-description',
-    icon: <AutomatedIcon height={16} width={16} />,
+    icon: <Automated className="tw:text-utility-gray-500" size={16} />,
     className: 'badge-automated',
     testId: 'automated-badge',
     iconOnly: true,
@@ -58,11 +60,61 @@ const BADGE_CONFIG: Partial<Record<ChangeSource, BadgeConfig>> = {
   [ChangeSource.Propagated]: {
     labelKey: 'label.propagated',
     tooltipKey: 'label.description-inherited-from-parent-entity',
-    icon: <PropagatedIcon height={16} width={16} />,
+    icon: <Propagated className="tw:text-utility-gray-500" size={16} />,
     className: 'badge-propagated',
     testId: 'propagated-badge',
     iconOnly: true,
   },
+};
+
+const getRelativeTime = (changedAt?: number) => {
+  if (!changedAt) {
+    return '';
+  }
+
+  return getShortRelativeTime(changedAt) || formatDate(changedAt);
+};
+
+interface ActorInfoProps {
+  showAcceptedBy: boolean;
+  changedBy?: string;
+  config: BadgeConfig | null;
+  actorLabel: string;
+}
+
+const ActorInfo = ({
+  showAcceptedBy,
+  changedBy,
+  config,
+  actorLabel,
+}: ActorInfoProps) => {
+  if (!showAcceptedBy || !changedBy) {
+    return null;
+  }
+
+  return (
+    <span
+      className={classNames('description-source-text', {
+        'description-source-text-success': Boolean(config),
+      })}
+      data-testid="source-actor">
+      {config ? (
+        <CheckCircleFilled className="tw:text-fg-brand-primary" size={12} />
+      ) : null}
+      <span className="d-flex items-center gap-1">
+        <span className="text-grey-500">{actorLabel}</span>
+
+        <UserPopOverCard
+          showUserName
+          className="text-grey-900 actor-username"
+          displayName={changedBy}
+          profileWidth={16}
+          showUserProfile={false}
+          userName={changedBy || '-'}
+        />
+      </span>
+    </span>
+  );
 };
 
 const DescriptionSourceBadge = ({
@@ -81,9 +133,13 @@ const DescriptionSourceBadge = ({
     return BADGE_CONFIG[changeSummaryEntry.changeSource] ?? null;
   }, [changeSummaryEntry?.changeSource]);
 
-  const tooltipContent = changeSummaryEntry?.changedAt
-    ? formatDateTime(changeSummaryEntry.changedAt)
-    : undefined;
+  const tooltipContent = useMemo(
+    () =>
+      changeSummaryEntry?.changedAt
+        ? formatDateTime(changeSummaryEntry.changedAt)
+        : undefined,
+    [changeSummaryEntry?.changedAt]
+  );
 
   const renderTooltipContent = useMemo(() => {
     if (!showBadge || !config) {
@@ -117,53 +173,52 @@ const DescriptionSourceBadge = ({
     );
   }, [showBadge, config, t, tooltipContent]);
 
-  const isManualChange =
-    changeSummaryEntry?.changeSource === ChangeSource.Manual;
+  const hasNothingToShow = useMemo(() => {
+    const isManualChange =
+      changeSummaryEntry?.changeSource === ChangeSource.Manual;
 
-  if (!config && !isManualChange) {
+    return !config && !isManualChange;
+  }, [changeSummaryEntry?.changeSource, config]);
+
+  const actorLabel = config ? t('label.accepted-by') : t('label.authored-by');
+  const relativeTime = getRelativeTime(changeSummaryEntry?.changedAt);
+  const hasActorInfo = useMemo(
+    () => showAcceptedBy && Boolean(changeSummaryEntry?.changedBy),
+    [showAcceptedBy, changeSummaryEntry?.changedBy]
+  );
+  const hasTimestampInfo = useMemo(
+    () => showTimestamp && Boolean(relativeTime),
+    [showTimestamp, relativeTime]
+  );
+
+  const actorInfo = (
+    <ActorInfo
+      actorLabel={actorLabel}
+      changedBy={changeSummaryEntry?.changedBy}
+      config={config}
+      showAcceptedBy={showAcceptedBy}
+    />
+  );
+
+  const timestampInfo = hasTimestampInfo ? (
+    <span className="description-source-time" data-testid="source-timestamp">
+      {relativeTime}
+    </span>
+  ) : null;
+
+  const hasNoContentToRender = useMemo(
+    () => !showBadge && !hasActorInfo && !hasTimestampInfo,
+    [showBadge, hasActorInfo, hasTimestampInfo]
+  );
+
+  const hasMetadata = hasActorInfo || hasTimestampInfo;
+  const showSeparator = hasActorInfo && hasTimestampInfo;
+
+  if (hasNothingToShow) {
     return null;
   }
 
-  const actorLabel = config ? t('label.accepted-by') : t('label.authored-by');
-
-  const relativeTime = changeSummaryEntry?.changedAt
-    ? getShortRelativeTime(changeSummaryEntry.changedAt) ||
-      formatDate(changeSummaryEntry.changedAt)
-    : '';
-
-  const actorInfo =
-    showAcceptedBy && changeSummaryEntry?.changedBy ? (
-      <span
-        className={classNames('description-source-text', {
-          'description-source-text-success': Boolean(config),
-        })}
-        data-testid="source-actor">
-        {config ? (
-          <CheckCircleIcon className="text-primary" height={12} width={12} />
-        ) : null}
-        <span className="d-flex items-center gap-1">
-          <span className="text-grey-500">{actorLabel}</span>
-
-          <UserPopOverCard
-            showUserName
-            className="text-grey-900 actor-username"
-            displayName={changeSummaryEntry.changedBy}
-            profileWidth={16}
-            showUserProfile={false}
-            userName={changeSummaryEntry.changedBy || '-'}
-          />
-        </span>
-      </span>
-    ) : null;
-
-  const timestampInfo =
-    showTimestamp && relativeTime ? (
-      <span className="description-source-time" data-testid="source-timestamp">
-        {relativeTime}
-      </span>
-    ) : null;
-
-  if (!showBadge && !actorInfo && !timestampInfo) {
+  if (hasNoContentToRender) {
     return null;
   }
 
@@ -172,12 +227,12 @@ const DescriptionSourceBadge = ({
       className="description-source-container"
       data-testid="description-source-container">
       {renderTooltipContent}
-      {(actorInfo || timestampInfo) && (
+      {hasMetadata && (
         <div className="description-source-metadata">
           {actorInfo}
-          {actorInfo && timestampInfo ? (
+          {showSeparator && (
             <span className="description-source-separator">•</span>
-          ) : null}
+          )}
           {timestampInfo}
         </div>
       )}

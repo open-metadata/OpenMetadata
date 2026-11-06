@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
 import Loader from '../../../../common/Loader/Loader';
 import { DimensionalityHeatmapProps } from './DimensionalityHeatmap.interface';
 import './DimensionalityHeatmap.less';
@@ -82,7 +81,12 @@ const DimensionalityHeatmap = ({
         <div className="dimensionality-heatmap__labels-column tw:shrink-0">
           <div className="dimensionality-heatmap__header-corner" />
           {heatmapData.map((row) => (
-            <Tooltip key={row.dimensionValue} title={row.dimensionValue}>
+            <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
+              key={row.dimensionValue}
+              title={row.dimensionValue}
+              triggerClassName="tw:flex">
               <div className="dimensionality-heatmap__dimension-label tw:cursor-default">
                 {row.dimensionValue}
               </div>
@@ -97,7 +101,7 @@ const DimensionalityHeatmap = ({
               className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--left tw:cursor-pointer tw:outline-focus-ring"
               type="button"
               onClick={handleScrollLeft}>
-              <RightArrowIcon />
+              <ChevronRight />
             </button>
           )}
 
@@ -121,11 +125,12 @@ const DimensionalityHeatmap = ({
                 key={`row-${row.dimensionValue}`}>
                 {row.cells.map((cell) => (
                   <Tooltip
+                    excludeTriggerFromTabOrder
+                    containerClassName="tw:bg-transparent tw:p-0 tw:shadow-none"
                     key={`${cell.dimensionValue}-${cell.date}`}
-                    overlayClassName="dimensionality-heatmap-cell-tooltip"
                     placement="top"
-                    showArrow={false}
-                    title={<HeatmapCellTooltip cell={cell} />}>
+                    title={<HeatmapCellTooltip cell={cell} />}
+                    triggerClassName="tw:inline-flex">
                     <div
                       aria-label={`${cell.dimensionValue}, ${getDateLabel(
                         cell.date
@@ -144,7 +149,7 @@ const DimensionalityHeatmap = ({
               className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--right tw:cursor-pointer tw:outline-focus-ring"
               type="button"
               onClick={handleScrollRight}>
-              <RightArrowIcon />
+              <ChevronRight />
             </button>
           )}
         </div>

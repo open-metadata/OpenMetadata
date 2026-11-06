@@ -2,13 +2,15 @@ package org.openmetadata.service.search.indexes;
 
 import java.util.Map;
 import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 
 public class McpServerIndex implements TaggableIndex, LineageIndex {
   final McpServer mcpServer;
 
   public McpServerIndex(McpServer mcpServer) {
-    this.mcpServer = mcpServer;
+    this.mcpServer = McpServerMasker.mask(JsonUtils.deepCopy(mcpServer, McpServer.class));
   }
 
   @Override
@@ -22,6 +24,9 @@ public class McpServerIndex implements TaggableIndex, LineageIndex {
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+    AIGovernanceIndexProjection.project(
+        doc, mcpServer.getGovernanceMetadata(), mcpServer.getServerType());
+
     return doc;
   }
 }

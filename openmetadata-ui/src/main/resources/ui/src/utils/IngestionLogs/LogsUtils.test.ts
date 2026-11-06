@@ -12,7 +12,7 @@
  */
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useDownloadProgressStore } from '../../hooks/useDownloadProgressStore';
-import { IngestionPipelineLogByIdInterface } from '../../pages/LogsViewerPage/LogsViewerPage.interfaces';
+import { IngestionPipelineLogByIdInterface } from '../../interface/IngestionPipelineLogs.interface';
 import {
   downloadIngestionPipelineLogsById,
   getIngestionPipelineLogById,
@@ -52,8 +52,6 @@ jest.mock('../../hooks/useDownloadProgressStore', () => ({
     })),
   },
 }));
-
-import * as utils from './LogsUtils';
 
 describe('LogsUtils', () => {
   describe('getLogsFromResponse', () => {
@@ -95,15 +93,26 @@ describe('LogsUtils', () => {
       );
       expect(getLogsFromResponse(res, 'unknown_pipeline')).toBe('');
     });
+
+    it('should return the generic logs key whatever the pipeline type', () => {
+      const res: IngestionPipelineLogByIdInterface = { logs: 'fqn_logs' };
+
+      expect(getLogsFromResponse(res, PipelineType.Metadata)).toBe('fqn_logs');
+      expect(getLogsFromResponse(res, PipelineType.Profiler)).toBe('fqn_logs');
+      expect(getLogsFromResponse(res, 'unknown_pipeline')).toBe('fqn_logs');
+    });
+
+    it('should prefer the generic logs key over the type-specific field', () => {
+      const res: IngestionPipelineLogByIdInterface = {
+        logs: 'fqn_logs',
+        ingestion_task: 'metadata_logs',
+      };
+
+      expect(getLogsFromResponse(res, PipelineType.Metadata)).toBe('fqn_logs');
+    });
   });
 
   describe('fetchLogsRecursively', () => {
-    let mockGetLogsFromResponse: jest.SpyInstance;
-
-    beforeAll(() => {
-      mockGetLogsFromResponse = jest.spyOn(utils, 'getLogsFromResponse');
-    });
-
     afterAll(() => {
       jest.clearAllMocks();
     });
@@ -134,7 +143,8 @@ describe('LogsUtils', () => {
         ingestionId,
         after
       );
-      expect(mockGetLogsFromResponse).toHaveBeenCalledWith(rest, pipelineType);
+      // The in-module getLogsFromResponse call can't be spied on; the
+      // concatenated per-page logs below prove it ran for each page.
       expect(logs).toBe('metadata_logs_1metadata_logs_1');
     });
 

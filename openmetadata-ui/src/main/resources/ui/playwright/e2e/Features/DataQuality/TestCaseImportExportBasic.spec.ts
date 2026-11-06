@@ -14,6 +14,7 @@ import { expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
@@ -22,7 +23,10 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { validateImportStatus } from '../../../utils/importUtils';
+import {
+  startCsvPreview,
+  validateImportStatus,
+} from '../../../utils/importUtils';
 import {
   cancelBulkEditAndVerifyRedirect,
   clickManageButton,
@@ -72,7 +76,7 @@ const test = base.extend<{
 }>({
   testCaseEditPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await testCaseEditUser.login(page);
+    await testCaseEditUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -108,7 +112,7 @@ const getFqn = (table: TableClass): string => {
 test.describe(
   'Test Case Bulk Import/Export - Admin User',
   {
-    tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`],
+    tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'],
   },
   () => {
     const table = new TableClass();
@@ -254,12 +258,11 @@ test.describe(
         await test.step('Upload Invalid CSV and Verify Errors', async () => {
           await page.locator('[type="file"]').waitFor({ state: 'attached' });
           await page.setInputFiles('[type="file"]', csvFilePath);
-          await page.getByTestId('upload-file-widget').waitFor({
-            state: 'hidden',
-            timeout: 10000,
-          });
-          await expect(page.getByText(/INVALID_HEADER/i).first()).toBeVisible({
-            timeout: 15000,
+          await startCsvPreview(page);
+          await expect(
+            page.getByText(/INVALID_HEADER/i).filter({ visible: true })
+          ).not.toHaveCount(0, {
+            timeout: ACTION_TIMEOUT,
           });
         });
       } finally {
@@ -271,8 +274,10 @@ test.describe(
 
 test.describe(
   'Test Case Import/Export/Edits - Permissions',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
+    test.describe.configure({ mode: 'default' });
+
     const table = new TableClass();
 
     test.beforeAll(async ({ browser }) => {
@@ -555,7 +560,7 @@ test.describe(
 
 test.describe(
   'Test Case Bulk Edit - Cancel Redirect',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
     const table = new TableClass();
 
@@ -608,7 +613,7 @@ test.describe(
 
 test.describe(
   'Logical Test Suite - Bulk Import/Export/Edit Operations',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
     const testSuiteName = `pw-logical-suite-${uuid()}`;
 
@@ -647,7 +652,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -668,7 +675,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -688,7 +697,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -711,7 +722,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 

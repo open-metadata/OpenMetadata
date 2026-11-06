@@ -14,9 +14,9 @@ Tableau Source Model module
 """
 
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AirflowBaseModel(BaseModel):
@@ -30,43 +30,65 @@ class AirflowBaseModel(BaseModel):
 
 
 class AirflowTask(BaseModel):
-    pool: Optional[str] = None
-    doc_md: Optional[str] = None
-    inlets: Optional[List[Any]] = Field(None, alias="_inlets")
+    pool: str | None = None
+    doc: str | None = None
+    doc_md: str | None = None
+    doc_json: str | None = None
+    doc_yaml: str | None = None
+    doc_rst: str | None = None
+    inlets: list[Any] | None = Field(None, alias="_inlets")
     task_id: str
-    outlets: Optional[List[Any]] = Field(None, alias="_outlets")
-    task_type: Optional[Any] = Field(None, alias="_task_type")
-    downstream_task_ids: Optional[List[str]] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    owner: Optional[str] = None
+    outlets: list[Any] | None = Field(None, alias="_outlets")
+    task_type: Any | None = Field(None, alias="_task_type")
+    downstream_task_ids: list[str] | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    owner: str | None = None
 
     # Allow picking up data from key `inlets` and `_inlets`
     model_config = ConfigDict(populate_by_name=True)
 
+    @model_validator(mode="before")
+    @classmethod
+    def lift_mapped_xlets(cls, data: Any) -> Any:
+        """
+        A dynamically mapped task (`.partial(...).expand(...)`) serializes its
+        inlets and outlets inside `partial_kwargs` instead of at the top level.
+        """
+        if not isinstance(data, dict):
+            return data
+        partial_kwargs = data.get("partial_kwargs")
+        if not isinstance(partial_kwargs, dict):
+            return data
+        lifted = dict(data)
+        for key in ("inlets", "outlets"):
+            if not lifted.get(key) and not lifted.get(f"_{key}") and partial_kwargs.get(key):
+                lifted[key] = partial_kwargs[key]
+        return lifted
+
 
 class TaskList(BaseModel):
-    root: List[AirflowTask]
+    root: list[AirflowTask]
 
 
 class Dag(BaseModel):
     fileloc: str
-    tags: Optional[List[str]] = None
-    start_date: Optional[float] = None
+    tags: list[str] | None = None
+    start_date: float | None = None
     _processor_dags_folder: str
 
 
 class AirflowDag(BaseModel):
-    dag: Optional[Dag] = None
+    dag: Dag | None = None
 
 
 class AirflowDagDetails(AirflowBaseModel):
     fileloc: str
     data: AirflowDag
-    max_active_runs: Optional[int] = None
-    description: Optional[str] = None
-    start_date: Optional[datetime] = None
-    tasks: List[AirflowTask]
-    owner: Optional[str] = None
-    state: Optional[str] = None
-    schedule_interval: Optional[str] = None
+    max_active_runs: int | None = None
+    description: str | None = None
+    start_date: datetime | None = None
+    tasks: list[AirflowTask]
+    owner: str | None = None
+    state: str | None = None
+    schedule_interval: str | None = None

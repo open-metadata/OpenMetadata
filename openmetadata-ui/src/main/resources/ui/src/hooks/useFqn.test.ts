@@ -18,7 +18,7 @@ jest.mock('../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn(),
 }));
 
-jest.mock('../utils/StringsUtils', () => ({
+jest.mock('../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn((fqn) => decodeURIComponent(fqn)),
 }));
 
@@ -63,7 +63,7 @@ describe('useFqn', () => {
     });
 
     // We rely on the real EntityUtilClassBase behavior because it's not mocked in this file
-    const { result } = renderHook(() => useFqn({ type: 'table' as any }));
+    const { result } = renderHook(() => useFqn({ type: 'table' }));
 
     expect(result.current).toEqual({
       fqn: 'service.database.schema.table.column',

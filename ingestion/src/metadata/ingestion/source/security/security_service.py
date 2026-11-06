@@ -13,10 +13,9 @@ Base class for ingesting security services
 """
 
 from abc import ABC
-from typing import Set
+from typing import Annotated
 
 from pydantic import Field
-from typing_extensions import Annotated
 
 from metadata.generated.schema.entity.services.securityService import (
     SecurityConnection,
@@ -30,15 +29,20 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import PerSourceState, TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -61,7 +65,6 @@ class SecurityServiceTopology(ServiceTopology):
                 processor="yield_create_request_security_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=[],  # Security services typically don't have child entities like policies, roles, etc.
@@ -69,7 +72,7 @@ class SecurityServiceTopology(ServiceTopology):
     )
 
 
-from metadata.utils.helpers import clean_uri
+from metadata.utils.helpers import clean_uri  # noqa: E402
 
 
 class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
@@ -84,36 +87,41 @@ class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: SecurityConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = SecurityServiceTopology()
-    context = TopologyContextManager(topology)
-    security_source_state: Set = set()
+    security_source_state = PerSourceState(set)
 
     def __init__(
         self,
         config: WorkflowSource,
         metadata: OpenMetadata,
     ):
-        config.serviceConnection.root.config.hostPort = clean_uri(config.serviceConnection.root.config.hostPort)
+        config.serviceConnection.root.config.hostPort = clean_uri(config.serviceConnection.root.config.hostPort)  # pyright: ignore[reportAttributeAccessIssue]
         super().__init__()
         self.config = config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: SecurityServiceMetadataPipeline = self.config.sourceConfig.config
 
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.client = self.get_client()
-        self.test_connection()
+        self.client = self.connection
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @property
     def name(self) -> str:
         return self.service_connection.type.name
 
     def close(self):
-        pass
+        if self._connection is not None:
+            self._connection.close()
 
     def yield_create_request_security_service(self, config: WorkflowSource):
         yield Either(right=self.metadata.get_create_service_from_source(entity=SecurityService, config=config))
 
     def test_connection(self) -> None:
-        self.client.test_connection()
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)

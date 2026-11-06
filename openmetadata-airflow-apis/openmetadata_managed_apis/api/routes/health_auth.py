@@ -12,13 +12,14 @@
 Health endpoint. Globally accessible
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from flask import Blueprint
+
 from openmetadata_managed_apis.operations.health import health_response
 from openmetadata_managed_apis.utils.logger import routes_logger
 
-try:
+try:  # noqa: SIM105
     pass
 except ImportError:
     pass
@@ -36,6 +37,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
     from airflow.security import permissions
+
     from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
     from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,

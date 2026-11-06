@@ -40,8 +40,8 @@ from metadata.ingestion.models.patch_request import (
     RESTRICT_UPDATE_LIST,
 )
 
-from ..integration_base import generate_name
-from .conftest import _safe_create_or_update
+from ..integration_base import generate_name  # noqa: TID252
+from .conftest import _safe_create_or_update  # noqa: TID252
 
 # Module-level tag label constants
 PII_TAG_LABEL = TagLabel(

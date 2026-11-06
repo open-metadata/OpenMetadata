@@ -15,7 +15,7 @@ To be used by OpenMetadata class
 """
 
 import traceback
-from typing import Any, Dict, Optional
+from typing import Any
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -56,7 +56,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
 
     client: REST
 
-    def add_mlmodel_lineage(self, model: MlModel, description: Optional[str] = None) -> Dict[str, Any]:
+    def add_mlmodel_lineage(self, model: MlModel, description: str | None = None) -> dict[str, Any]:
         """
         Iterates over MlModel's Feature Sources and
         add the lineage information.
@@ -89,13 +89,13 @@ class OMetaMlModelMixin(OMetaLineageMixin):
 
         mlmodel_lineage = self.get_lineage_by_id(MlModel, str(model.id.root))
 
-        return mlmodel_lineage
+        return mlmodel_lineage  # noqa: RET504
 
     def get_mlmodel_sklearn(
         self,
         name: str,
         model,
-        description: Optional[str] = None,
+        description: str | None = None,
         service_name: str = "scikit-learn",
     ) -> CreateMlModelRequest:
         """
@@ -120,10 +120,10 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                 "pip install openmetadata-ingestion[sklearn], %s",
                 err,
             )
-            raise err
+            raise err  # noqa: TRY201
 
         if not isinstance(model, BaseEstimator):
-            raise ValueError("Input model is not an instance of sklearn BaseEstimator")
+            raise ValueError("Input model is not an instance of sklearn BaseEstimator")  # noqa: TRY004
 
         # Prepare a sklearn source configuration
         source_config = WorkflowSource(

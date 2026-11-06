@@ -10,24 +10,40 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.CreateMetadataService;
 import org.openmetadata.schema.api.services.CreateMetadataService.MetadataServiceType;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
+import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
 import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 @Execution(ExecutionMode.CONCURRENT)
 public class MetadataServiceResourceIT
     extends BaseServiceIT<MetadataService, CreateMetadataService> {
+
+  private static final String OM_SERVICE = "OpenMetadata";
+  private static final String MASKED = "*********";
+
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    SdkClients.adminClient();
+    UserTestFactory.getDataConsumer(null);
+  }
 
   {
     supportsListHistoryByTimestamp = true;
@@ -150,19 +166,6 @@ public class MetadataServiceResourceIT
   }
 
   @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().metadataServices().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient()
-        .metadataServices()
-        .getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  @Override
   protected MetadataService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().metadataServices().getVersion(id.toString(), version);
   }
@@ -254,6 +257,63 @@ public class MetadataServiceResourceIT
     service.setConnection(new MetadataConnection().withConfig(updatedConn));
     MetadataService updated = patchEntity(service.getId().toString(), service);
     assertNotNull(updated.getConnection());
+  }
+
+  /**
+   * A service connection is returned in full only to bots, masked to admins, and not at all to any
+   * other user account.
+   */
+  @Test
+  void serviceConnection_maskedForEditor_nullForViewer_fullForBot(TestNamespace ns) {
+    final CreateMetadataService request = createMinimalRequest(ns); // sets Amundsen password "test"
+    request.setName(ns.prefix("svc_conn_scope"));
+    final String fqn = createEntity(request).getFullyQualifiedName();
+
+    // An editor (admin holds EDIT_ALL) gets the connection with the password masked, not cleartext.
+    final MetadataService asEditor = SdkClients.adminClient().metadataServices().getByName(fqn);
+    assertNotNull(asEditor.getConnection());
+    final AmundsenConnection editorConn =
+        JsonUtils.convertValue(asEditor.getConnection().getConfig(), AmundsenConnection.class);
+    assertEquals(MASKED, editorConn.getPassword());
+
+    final MetadataService asViewer =
+        SdkClients.dataConsumerClient().metadataServices().getByName(fqn);
+    assertNull(asViewer.getConnection());
+
+    final MetadataService asBot = SdkClients.botClient().metadataServices().getByName(fqn);
+    assertNotNull(asBot.getConnection());
+    final AmundsenConnection botConn =
+        JsonUtils.convertValue(asBot.getConnection().getConfig(), AmundsenConnection.class);
+    assertEquals("test", botConn.getPassword());
+  }
+
+  /**
+   * The built-in OpenMetadata service must not carry the Elasticsearch sink or a stored ingestion-bot
+   * JWT, and a viewer who cannot edit it must not receive its connection.
+   */
+  @Test
+  void builtInOpenMetadataService_hasNoEsSinkOrStoredBotToken() {
+    final MetadataService asEditor =
+        SdkClients.adminClient().metadataServices().getByName(OM_SERVICE);
+    assertNotNull(asEditor.getConnection());
+    final OpenMetadataConnection editorCfg =
+        JsonUtils.convertValue(asEditor.getConnection().getConfig(), OpenMetadataConnection.class);
+    assertNull(editorCfg.getElasticsSearch());
+    assertTrue(
+        editorCfg.getSecurityConfig() == null
+            || editorCfg.getSecurityConfig().getJwtToken() == null);
+
+    final MetadataService asViewer =
+        SdkClients.dataConsumerClient().metadataServices().getByName(OM_SERVICE);
+    assertNull(asViewer.getConnection());
+
+    final MetadataService asBot = SdkClients.botClient().metadataServices().getByName(OM_SERVICE);
+    assertNotNull(asBot.getConnection());
+    final OpenMetadataConnection botCfg =
+        JsonUtils.convertValue(asBot.getConnection().getConfig(), OpenMetadataConnection.class);
+    assertNull(botCfg.getElasticsSearch());
+    assertTrue(
+        botCfg.getSecurityConfig() == null || botCfg.getSecurityConfig().getJwtToken() == null);
   }
 
   @Test
@@ -350,5 +410,82 @@ public class MetadataServiceResourceIT
     MetadataService withFields = getEntityWithFields(service.getId().toString(), "owners,tags");
     assertNotNull(withFields);
     assertEquals(service.getId(), withFields.getId());
+  }
+
+  @Test
+  void put_createOrUpdate_omittingServiceAttributes_preservesAdminSetAttributes(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String serviceName = ns.prefix("put_preserve_attrs");
+
+    ServiceAttributes adminSet =
+        new ServiceAttributes()
+            .withEnvironment(ServiceAttributes.Environment.PRODUCTION)
+            .withRegion("us-east-1")
+            .withDeployment("prod-cluster-01");
+
+    CreateMetadataService withAttributes = createMinimalRequest(ns);
+    withAttributes.setName(serviceName);
+    withAttributes.setServiceAttributes(adminSet);
+
+    MetadataService created = putCreateOrUpdate(admin, withAttributes);
+    assertNotNull(created.getServiceAttributes());
+    assertEquals(
+        ServiceAttributes.Environment.PRODUCTION, created.getServiceAttributes().getEnvironment());
+
+    CreateMetadataService withoutAttributes = createMinimalRequest(ns);
+    withoutAttributes.setName(serviceName);
+
+    putCreateOrUpdate(admin, withoutAttributes);
+
+    MetadataService reloaded = admin.metadataServices().get(created.getId().toString());
+    assertNotNull(
+        reloaded.getServiceAttributes(),
+        "serviceAttributes must be preserved when a PUT create-or-update omits the field");
+    assertEquals(
+        ServiceAttributes.Environment.PRODUCTION,
+        reloaded.getServiceAttributes().getEnvironment(),
+        "admin-set environment must survive a PUT that omits serviceAttributes");
+    assertEquals("us-east-1", reloaded.getServiceAttributes().getRegion());
+    assertEquals("prod-cluster-01", reloaded.getServiceAttributes().getDeployment());
+  }
+
+  @Test
+  void put_createOrUpdate_withExplicitServiceAttributes_updatesAndCanClearEnvironment(
+      TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String serviceName = ns.prefix("put_explicit_attrs");
+
+    CreateMetadataService withInitial = createMinimalRequest(ns);
+    withInitial.setName(serviceName);
+    withInitial.setServiceAttributes(
+        new ServiceAttributes().withEnvironment(ServiceAttributes.Environment.PRODUCTION));
+    MetadataService created = putCreateOrUpdate(admin, withInitial);
+    assertEquals(
+        ServiceAttributes.Environment.PRODUCTION, created.getServiceAttributes().getEnvironment());
+
+    CreateMetadataService withUpdated = createMinimalRequest(ns);
+    withUpdated.setName(serviceName);
+    withUpdated.setServiceAttributes(
+        new ServiceAttributes().withEnvironment(ServiceAttributes.Environment.STAGING));
+    MetadataService updated = putCreateOrUpdate(admin, withUpdated);
+    assertEquals(
+        ServiceAttributes.Environment.STAGING,
+        updated.getServiceAttributes().getEnvironment(),
+        "an explicit non-null serviceAttributes must replace the stored value");
+
+    CreateMetadataService withEmpty = createMinimalRequest(ns);
+    withEmpty.setName(serviceName);
+    withEmpty.setServiceAttributes(new ServiceAttributes());
+    MetadataService cleared = putCreateOrUpdate(admin, withEmpty);
+    assertNotNull(
+        cleared.getServiceAttributes(), "an explicit {} is a real value, not an omission");
+    assertNull(
+        cleared.getServiceAttributes().getEnvironment(), "an explicit {} clears environment");
+  }
+
+  private MetadataService putCreateOrUpdate(OpenMetadataClient admin, CreateMetadataService body) {
+    return admin
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/services/metadataServices", body, MetadataService.class);
   }
 }

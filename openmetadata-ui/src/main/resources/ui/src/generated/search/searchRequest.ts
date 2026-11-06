@@ -57,6 +57,11 @@ export interface SearchRequest {
      */
     includeAggregations?: boolean;
     /**
+     * Include highlights in the search response. Defaults to true. Set to false to skip
+     * highlighting when the caller does not read it.
+     */
+    includeHighlights?: boolean;
+    /**
      * Get only selected fields of the document body for each hit. Empty value will return all
      * fields
      */
@@ -83,10 +88,11 @@ export interface SearchRequest {
      */
     queryFilter?: string;
     /**
-     * When paginating, specify the search_after values. Use it ass
-     * search_after=<val1>,<val2>,...
+     * Pagination cursor. Send one search_after query parameter per sort value
+     * (?search_after=v1&search_after=v2). Each value is its own parameter so values containing
+     * ',' (e.g. a glossary term FQN) are safe.
      */
-    searchAfter?: any;
+    searchAfter?: string[];
     /**
      * Size to limit the no.of results returned.
      */

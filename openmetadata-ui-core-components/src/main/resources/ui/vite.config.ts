@@ -1,9 +1,10 @@
+import { execFileSync } from 'node:child_process';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
-import { readdirSync, statSync } from 'fs';
+import { existsSync, readdirSync, statSync } from 'fs';
 
 /**
  * Dynamically discover all top-level index.ts files in the src directory to use as entry points.
@@ -23,18 +24,14 @@ const getEntries = () => {
       const indexPath = resolve(srcPath, item.name, 'index.ts');
       const indexTsxPath = resolve(srcPath, item.name, 'index.tsx');
 
-      try {
-        if (statSync(indexPath).isFile()) {
-          entries[`${item.name}/index`] = indexPath;
-          continue;
-        }
-      } catch (e) {}
+      if (existsSync(indexPath) && statSync(indexPath).isFile()) {
+        entries[`${item.name}/index`] = indexPath;
+        continue;
+      }
 
-      try {
-        if (statSync(indexTsxPath).isFile()) {
-          entries[`${item.name}/index`] = indexTsxPath;
-        }
-      } catch (e) {}
+      if (existsSync(indexTsxPath) && statSync(indexTsxPath).isFile()) {
+        entries[`${item.name}/index`] = indexTsxPath;
+      }
     }
   }
 
@@ -46,6 +43,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     dts({
+      compilerOptions: { noCheck: true },
       include: ['src'],
       outDir: 'dist/types',
       exclude: [
@@ -57,9 +55,37 @@ export default defineConfig({
       ],
     }),
     {
+      name: 'native-type-check',
+      apply: 'build',
+      // vite-plugin-dts caches its program, while Rollup prunes watches missing from later builds.
+      buildStart: {
+        order: 'post',
+        sequential: true,
+        handler() {
+          const srcPath = resolve(__dirname, 'src');
+          this.addWatchFile(srcPath);
+          for (const file of readdirSync(srcPath, { recursive: true })) {
+            this.addWatchFile(resolve(srcPath, file));
+          }
+          execFileSync(
+            process.execPath,
+            [
+              resolve(__dirname, 'node_modules/typescript-native/bin/tsc'),
+              '--project',
+              resolve(__dirname, 'tsconfig.json'),
+              '--noEmit',
+            ],
+            { stdio: 'inherit' }
+          );
+        },
+      },
+    },
+    {
       name: 'emit-styles-css',
       apply: 'build',
-      async closeBundle() {
+      async closeBundle(error) {
+        if (error) return;
+
         // Build globals.css as a standalone CSS file using a separate Vite build pass.
         // This produces dist/ui-core-components.css which is exported as `./styles.css`.
         const { build } = await import('vite');
@@ -96,22 +122,13 @@ export default defineConfig({
       external: [
         'react',
         'react-dom',
+        'react-dom/server',
         'react/jsx-runtime',
-        '@mui/material',
-        '@mui/system',
-        '@mui/material/styles',
-        '@mui/material/Chip',
-        '@mui/icons-material',
-        '@mui/x-date-pickers',
-        '@emotion/react',
-        '@emotion/styled',
-        '@material/material-color-utilities',
-        'notistack',
-        '@untitledui/icons',
         'react-aria',
         'react-aria-components',
         'react-stately',
         'react-hook-form',
+        'react-helmet-async',
         'tailwind-merge',
         'input-otp',
         '@react-aria/utils',
@@ -119,6 +136,13 @@ export default defineConfig({
         '@react-types/shared',
         '@internationalized/date',
         'tailwindcss-react-aria-components',
+        'i18next',
+        'react-i18next',
+        // Charts: `/charts` imports echarts' modular entries (echarts/core,
+        // echarts/charts, ...) and echarts-for-react/esm/core. Keep every
+        // sub-path external so consumers resolve their own single copy.
+        /^echarts(\/.*)?$/,
+        /^echarts-for-react(\/.*)?$/,
       ],
       output: {
         entryFileNames: (chunkInfo) => {
@@ -128,14 +152,14 @@ export default defineConfig({
           return `${chunkInfo.name}.[format].js`;
         },
         chunkFileNames: `[name].[format].js`,
+        // One output file per source module. Consumers bundle ui-core with their own
+        // chunking; a single shared chunk can't be split, so every component or
+        // icon any route used would load on every route.
+        preserveModules: true,
+        preserveModulesRoot: 'src',
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
-          '@mui/material': 'MaterialUI',
-          '@mui/system': 'MUISystem',
-          '@emotion/react': 'EmotionReact',
-          '@emotion/styled': 'EmotionStyled',
-          notistack: 'notistack',
         },
       },
     },

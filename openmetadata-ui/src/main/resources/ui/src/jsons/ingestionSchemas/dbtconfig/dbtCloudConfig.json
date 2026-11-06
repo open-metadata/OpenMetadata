@@ -1,0 +1,56 @@
+{
+  "title": "DBT Cloud Config",
+  "description": "dbt Cloud configuration.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig",
+  "type": "object",
+  "properties": {
+    "dbtConfigType": {
+      "description": "dbt Configuration type",
+      "type": "string",
+      "enum": [
+        "cloud"
+      ],
+      "default": "cloud"
+    },
+    "dbtCloudAuthToken": {
+      "title": "dbt Cloud Authentication Token",
+      "description": "dbt cloud account authentication token",
+      "type": "string",
+      "format": "password"
+    },
+    "dbtCloudAccountId": {
+      "title": "dbt Cloud Account Id",
+      "description": "dbt cloud account Id",
+      "type": "string"
+    },
+    "dbtCloudProjectId": {
+      "title": "dbt Cloud Project Id",
+      "description": "In case of multiple projects in a dbt cloud account, specify the project's id from which you want to extract the dbt run artifacts",
+      "type": "string"
+    },
+    "dbtCloudJobId": {
+      "title": "dbt Cloud Job Ids",
+      "description": "Comma-separated IDs of the dbt cloud jobs to extract the dbt run artifacts from, using the latest completed run of each job. If left empty, the artifacts of the most recent completed run across all jobs are used.",
+      "type": "string"
+    },
+    "dbtCloudIngestAllJobs": {
+      "title": "Ingest From All Jobs",
+      "description": "When no job IDs are set, extract the dbt run artifacts from the latest completed run of every job of the project (or of the account, when no project is set) instead of only the most recent run. CI jobs are skipped.",
+      "type": "boolean",
+      "default": false
+    },
+    "dbtCloudUrl": {
+      "title": "dbt Cloud URL",
+      "description": "URL to connect to your dbt cloud instance. E.g., https://cloud.getdbt.com or https://emea.dbt.com/",
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "dbtCloudAuthToken",
+    "dbtCloudAccountId",
+    "dbtCloudUrl",
+    "dbtConfigType"
+  ]
+}

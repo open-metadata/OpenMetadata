@@ -37,6 +37,7 @@ public class DataInsightChartResourceIT
     extends BaseEntityIT<DataInsightChart, CreateDataInsightChart> {
 
   public DataInsightChartResourceIT() {
+    supportsEntityStatus = false;
     supportsPatch = false;
     supportsFollowers = false;
     supportsTags = false;
@@ -152,17 +153,6 @@ public class DataInsightChartResourceIT
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return getDataInsightChartService().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return getDataInsightChartService().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return getDataInsightChartService().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

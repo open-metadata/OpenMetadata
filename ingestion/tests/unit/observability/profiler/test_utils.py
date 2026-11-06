@@ -118,7 +118,7 @@ class TestCardinalityDistributionUtils(TestCase):
 
     def test_cardinality_distribution_metric_type(self):
         """Test metric type"""
-        assert self.cardinality_dist.metric_type == dict
+        assert self.cardinality_dist.metric_type == dict  # noqa: E721
 
 
 def test_is_array():

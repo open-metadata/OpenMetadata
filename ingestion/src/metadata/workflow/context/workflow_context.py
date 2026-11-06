@@ -5,11 +5,9 @@ This module defines the WorkflowContext, which holds workflow-level metadata suc
 It is registered with the ContextManager for attribute-based access throughout the workflow system.
 """
 
-from typing import Union
-
 from pydantic import Field
 
-from .base import BaseContext, BaseContextFieldsEnum
+from .base import BaseContext, BaseContextFieldsEnum  # noqa: TID252
 
 
 class WorkflowContextFieldsEnum(BaseContextFieldsEnum):
@@ -25,6 +23,6 @@ class WorkflowContext(BaseContext):
     Context for workflow-level metadata.
     """
 
-    serviceName: Union[str, None] = Field(
+    serviceName: str | None = Field(  # noqa: N815
         default=None, description="Name of the service on which the workflow operates"
     )

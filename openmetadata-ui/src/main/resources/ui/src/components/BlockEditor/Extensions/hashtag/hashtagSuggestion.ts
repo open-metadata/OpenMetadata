@@ -17,9 +17,10 @@ import tippy, { Instance, Props } from 'tippy.js';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { buildMentionLink } from '../../../../utils/FeedUtils';
+import { buildMentionLink } from '../../../../utils/FeedUtilsPure';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { ExtensionRef } from '../../BlockEditor.interface';
+import { getDialogContainer } from '../getDialogContainer';
 import HashList from './HashList';
 
 export const hashtagSuggestion = () => ({
@@ -51,12 +52,16 @@ export const hashtagSuggestion = () => ({
   },
 
   render: () => {
-    let component: ReactRenderer;
+    let component: ReactRenderer | undefined;
+    // Suggestion awaits async items, so a newer query's onUpdate can arrive before onStart.
+    let pendingProps: SuggestionProps | undefined;
     let popup: Instance<Props>[] = [];
     let hasPopup = !isEmpty(popup);
 
     return {
-      onStart: (props: SuggestionProps) => {
+      onStart: (startProps: SuggestionProps) => {
+        const props = pendingProps ?? startProps;
+        pendingProps = undefined;
         // Check if editor is in preview mode
         if (props.editor.isEditable === false) {
           return;
@@ -72,9 +77,8 @@ export const hashtagSuggestion = () => ({
         }
 
         popup = tippy('body', {
-          getReferenceClientRect:
-            props.clientRect as Props['getReferenceClientRect'],
-          appendTo: () => document.body,
+          getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
+          appendTo: () => getDialogContainer(props.editor.view),
           content: component.element,
           showOnCreate: true,
           interactive: true,
@@ -85,6 +89,11 @@ export const hashtagSuggestion = () => ({
       },
 
       onUpdate(props: SuggestionProps) {
+        if (!component) {
+          pendingProps = props;
+
+          return;
+        }
         component.updateProps(props);
 
         if (!props.clientRect) {
@@ -92,8 +101,7 @@ export const hashtagSuggestion = () => ({
         }
         if (hasPopup) {
           popup[0].setProps({
-            getReferenceClientRect:
-              props.clientRect as Props['getReferenceClientRect'],
+            getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
           });
         }
       },

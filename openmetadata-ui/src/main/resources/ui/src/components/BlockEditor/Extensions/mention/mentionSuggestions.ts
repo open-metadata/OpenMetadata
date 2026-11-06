@@ -19,8 +19,9 @@ import {
   ENTITY_URL_MAP,
 } from '../../../../constants/Feeds.constants';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
-import { buildMentionLink } from '../../../../utils/FeedUtils';
+import { buildMentionLink } from '../../../../utils/FeedUtilsPure';
 import { ExtensionRef } from '../../BlockEditor.interface';
+import { getDialogContainer } from '../getDialogContainer';
 import MentionList from './MentionList';
 
 export const mentionSuggestion = () => ({
@@ -42,12 +43,16 @@ export const mentionSuggestion = () => ({
   },
 
   render: () => {
-    let component: ReactRenderer;
+    let component: ReactRenderer | undefined;
+    // Suggestion awaits async items, so a newer query's onUpdate can arrive before onStart.
+    let pendingProps: SuggestionProps | undefined;
     let popup: Instance<Props>[] = [];
     let hasPopup = !isEmpty(popup);
 
     return {
-      onStart: (props: SuggestionProps) => {
+      onStart: (startProps: SuggestionProps) => {
+        const props = pendingProps ?? startProps;
+        pendingProps = undefined;
         component = new ReactRenderer(MentionList, {
           props,
           editor: props.editor,
@@ -58,9 +63,8 @@ export const mentionSuggestion = () => ({
         }
 
         popup = tippy('body', {
-          getReferenceClientRect:
-            props.clientRect as Props['getReferenceClientRect'],
-          appendTo: () => document.body,
+          getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
+          appendTo: () => getDialogContainer(props.editor.view),
           content: component.element,
           showOnCreate: true,
           interactive: true,
@@ -71,6 +75,11 @@ export const mentionSuggestion = () => ({
       },
 
       onUpdate(props: SuggestionProps) {
+        if (!component) {
+          pendingProps = props;
+
+          return;
+        }
         component.updateProps(props);
 
         if (!props.clientRect) {
@@ -79,8 +88,7 @@ export const mentionSuggestion = () => ({
 
         if (hasPopup) {
           popup[0].setProps({
-            getReferenceClientRect:
-              props.clientRect as Props['getReferenceClientRect'],
+            getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
           });
         }
       },

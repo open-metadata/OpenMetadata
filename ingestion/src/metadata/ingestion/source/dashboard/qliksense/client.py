@@ -16,7 +16,6 @@ import json
 import re
 import traceback
 from pathlib import Path
-from typing import Dict, List, Optional, Set
 
 from pydantic import ValidationError
 
@@ -66,7 +65,7 @@ class QlikSenseClient:
         return cert_data.replace("\\n", "\n")
 
     def write_data_to_file(self, file_path: Path, cert_data: str) -> None:
-        with open(
+        with open(  # noqa: PTH123
             file_path,
             "w+",
             encoding=UTF_8,
@@ -75,7 +74,7 @@ class QlikSenseClient:
 
             file.write(data)
 
-    def _get_ssl_context(self) -> Optional[dict]:
+    def _get_ssl_context(self) -> dict | None:
         if isinstance(self.config.certificates, QlikCertificatePath):
             context = {
                 "ca_certs": self.config.certificates.rootCertificate,
@@ -83,7 +82,7 @@ class QlikSenseClient:
                 "keyfile": self.config.certificates.clientKeyCertificate,
                 "check_hostname": self.config.validateHostName,
             }
-            return context
+            return context  # noqa: RET504
 
         self.ssl_manager = SSLManager(
             ca=self.config.certificates.sslConfig.root.caCertificate,
@@ -93,7 +92,7 @@ class QlikSenseClient:
 
         return self.ssl_manager.setup_ssl(self.config)
 
-    def connect_websocket(self, app_id: str = None) -> None:
+    def connect_websocket(self, app_id: str = None) -> None:  # noqa: RUF013
         """
         Method to initialise websocket connection
         """
@@ -130,7 +129,7 @@ class QlikSenseClient:
         self.config = config
         self.socket_connection = None
 
-    def _websocket_send_request(self, request: dict, response: bool = False) -> Optional[Dict]:
+    def _websocket_send_request(self, request: dict, response: bool = False) -> dict | None:
         """
         Method to send request to websocket
 
@@ -143,7 +142,7 @@ class QlikSenseClient:
             return json.loads(resp)
         return None
 
-    def get_dashboards_list(self, create_new_socket: bool = True) -> List[QlikDashboard]:
+    def get_dashboards_list(self, create_new_socket: bool = True) -> list[QlikDashboard]:
         """
         Get List of all dashboards
         """
@@ -153,13 +152,13 @@ class QlikSenseClient:
             self._websocket_send_request(GET_DOCS_LIST_REQ)
             resp = self.socket_connection.recv()
             dashboard_result = QlikDashboardResult(**json.loads(resp))
-            return dashboard_result.result.qDocList
+            return dashboard_result.result.qDocList  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard list")
+            logger.error("Failed to fetch the dashboard list")
         return []
 
-    def get_dashboard_charts(self, dashboard_id: str) -> List[QlikSheet]:
+    def get_dashboard_charts(self, dashboard_id: str) -> list[QlikSheet]:
         """
         Get dahsboard chart list
         """
@@ -169,13 +168,13 @@ class QlikSenseClient:
             self._websocket_send_request(CREATE_SHEET_SESSION)
             sheets = self._websocket_send_request(GET_SHEET_LAYOUT, response=True)
             data = QlikSheetResult(**sheets)
-            return data.result.qLayout.qAppObjectList.qItems
+            return data.result.qLayout.qAppObjectList.qItems  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard charts")
+            logger.error("Failed to fetch the dashboard charts")
         return []
 
-    def _get_tables_via_get_tables_and_keys(self) -> Optional[List[QlikTable]]:
+    def _get_tables_via_get_tables_and_keys(self) -> list[QlikTable] | None:
         """
         Fetch all tables using GetTablesAndKeys API.
         This returns all tables in the app including those
@@ -204,7 +203,7 @@ class QlikSenseClient:
             )
         return tables
 
-    def _get_tables_via_load_model(self) -> List[QlikTable]:
+    def _get_tables_via_load_model(self) -> list[QlikTable]:
         """
         Fallback: fetch tables from the LoadModel object.
         Only returns tables created via Data Manager.
@@ -220,7 +219,7 @@ class QlikSenseClient:
             return tables
         return layout.tables
 
-    def get_dashboard_models(self) -> List[QlikTable]:
+    def get_dashboard_models(self) -> list[QlikTable]:
         """
         Get all data model tables for the current app.
         Uses GetTablesAndKeys to capture all tables including
@@ -238,10 +237,10 @@ class QlikSenseClient:
             return self._get_tables_via_load_model()
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard datamodels")
+            logger.error("Failed to fetch the dashboard datamodels")
         return []
 
-    def get_script(self) -> Optional[str]:
+    def get_script(self) -> str | None:
         """
         Retrieve the load script from the current app
         using the GetScript Engine API.
@@ -253,10 +252,10 @@ class QlikSenseClient:
                 return script_result.result.qScript
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the app load script")
+            logger.error("Failed to fetch the app load script")
         return None
 
-    def get_script_tables(self) -> Dict[str, Set[str]]:
+    def get_script_tables(self) -> dict[str, set[str]]:
         """
         Parse the load script to extract source SQL tables
         for each Qlik table defined in the script.
@@ -264,7 +263,7 @@ class QlikSenseClient:
         Returns a mapping of qlik_table_name -> set of source table names
         found in FROM/JOIN clauses.
         """
-        table_source_map: Dict[str, Set[str]] = {}
+        table_source_map: dict[str, set[str]] = {}
         script = self.get_script()
         if not script:
             return table_source_map
@@ -302,5 +301,5 @@ class QlikSenseClient:
             return QlikDashboardResult(**json.loads(resp))
         except ValidationError:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard datamodels")
+            logger.error("Failed to fetch the dashboard datamodels")
         return None

@@ -18,13 +18,11 @@ import {
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
+  expectFormHint,
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
-import {
-  getEntityDisplayName,
-  waitForAllLoadersToDisappear,
-} from '../../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   visitDataQualityTab,
   waitForTestSuiteIngestionPipelinesListResponse,
@@ -53,28 +51,23 @@ test.describe(
       await page.fill('[id="root\\/table"]', table.entity.name);
       await tableResponse;
       await page
-        .locator(
-          `.ant-select-dropdown [title="${table.entityResponseData.fullyQualifiedName}"]`
-        )
+        .getByRole('option')
+        .filter({ hasText: table.entityResponseData.fullyQualifiedName })
+        .first()
         .click();
 
-      await page.locator('[data-id="selected-entity"]').waitFor({
-        state: 'visible',
-      });
-
-      await expect(page.locator('[data-id="selected-entity"]')).toBeVisible();
+      await expect(page.getByTestId('selected-table-summary')).toBeVisible();
     };
 
     const selectColumn = async (page: Page, columnName: string) => {
       await page.click('[id="root\\/column"]');
-      await page
-        .locator(`.ant-select-dropdown [title="${columnName}"]`)
-        .waitFor({
-          state: 'visible',
-        });
-      await page
-        .locator(`.ant-select-dropdown [title="${columnName}"]`)
-        .click();
+      const columnOption = page
+        .getByRole('option')
+        .filter({ hasText: columnName });
+      await columnOption.waitFor({
+        state: 'visible',
+      });
+      await columnOption.click();
     };
 
     // Helper function to create test case
@@ -84,6 +77,7 @@ test.describe(
       testTypeId: string;
       paramsValue?: string;
       expectSchedulerCard?: boolean;
+      createPipeline?: boolean;
     }) => {
       const {
         page,
@@ -91,41 +85,42 @@ test.describe(
         testTypeId,
         paramsValue,
         expectSchedulerCard = true,
+        createPipeline = true,
       } = data;
+      const expectPipeline = expectSchedulerCard && createPipeline;
       await page.getByTestId('test-case-name').click();
-      await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
-
-      await expect(page.locator('[data-id="name"]')).toBeVisible();
+      await expectFormHint(page, 'Name');
 
       // test case name restriction for `:: " >` character
       const invalidTestCaseNames = ['test::case', 'test"case', 'test>case'];
       for (const name of invalidTestCaseNames) {
-        await page.getByTestId('test-case-name').fill(name);
-        await page.locator('#testCaseFormV1_testName_help').waitFor({
+        await page.getByTestId('test-case-name').locator('input').fill(name);
+        const nameErrorMessage = page
+          .getByTestId('test-case-form-v1')
+          .getByText(
+            'Name cannot contain double colons (::), quotes ("), or greater-than symbols (>).'
+          );
+        await nameErrorMessage.waitFor({
           state: 'visible',
         });
 
-        await expect(page.locator('#testCaseFormV1_testName_help')).toHaveText(
-          'Name cannot contain double colons (::), quotes ("), or greater-than symbols (>).'
-        );
+        await expect(nameErrorMessage).toBeVisible();
 
-        await page.getByTestId('test-case-name').clear();
+        await page.getByTestId('test-case-name').locator('input').clear();
       }
 
-      await page.getByTestId('test-case-name').fill(`${testTypeId}_test_case`);
+      await page
+        .getByTestId('test-case-name')
+        .locator('input')
+        .fill(`${testTypeId}_test_case`);
       await page.click('[id="root\\/testType"]');
-      await page.locator('[data-id="testType"]').waitFor({ state: 'visible' });
+      await expectFormHint(page, 'Select Test Type');
 
-      await expect(page.locator('[data-id="testType"]')).toBeVisible();
-
-      await page.fill('[id="root\\/testType"]', testType);
-      await page.getByTestId(testTypeId).click();
-
-      await page.locator(`[data-id="${testTypeId}"]`).waitFor({
-        state: 'visible',
-      });
-
-      await expect(page.locator(`[data-id="${testTypeId}"]`)).toBeVisible();
+      await page
+        .getByRole('option')
+        .filter({ hasText: testType })
+        .first()
+        .click();
 
       if (paramsValue) {
         await page.fill('#testCaseFormV1_params_value', paramsValue);
@@ -137,6 +132,18 @@ test.describe(
         await expect(page.getByTestId('scheduler-card')).not.toBeVisible();
       }
 
+      if (expectSchedulerCard && !createPipeline) {
+        await page
+          .getByTestId('create-pipeline')
+          .getByTestId('toggle-root')
+          .click();
+
+        await expect(
+          page.getByTestId('create-pipeline').getByRole('switch')
+        ).not.toBeChecked();
+        await expect(page.getByTestId('pipeline-name')).not.toBeVisible();
+      }
+
       // Set up response tracking
       const tableTestCaseResponse = page.waitForResponse(
         (response: Response) =>
@@ -145,7 +152,7 @@ test.describe(
       );
 
       let ingestionPipelineCalled = false;
-      if (expectSchedulerCard) {
+      if (expectPipeline) {
         const ingestionPipeline = page.waitForResponse(
           (response: Response) =>
             response.url().includes('/api/v1/services/ingestionPipelines') &&
@@ -180,6 +187,17 @@ test.describe(
         const response = await tableTestCaseResponse;
 
         expect(response.status()).toBe(201);
+      }
+
+      // The drawer closes only after the pipeline is created and deployed, and on Airflow 3 the
+      // deploy call blocks until the scheduler registers the DAG (up to 60s), so the default
+      // expect timeout on the next page is not enough. Waiting here also lets the no-pipeline
+      // check below see a POST that lands after the test case response.
+      await page
+        .getByTestId('test-case-form-v1')
+        .waitFor({ state: 'detached' });
+
+      if (!expectPipeline) {
         expect(ingestionPipelineCalled).toBe(false);
       }
     };
@@ -211,7 +229,7 @@ test.describe(
     });
 
     const tableTestCaseDetails = {
-      testType: 'table row count to equal',
+      testType: 'Table Row Count To Equal',
       testTypeId: 'tableRowCountToEqual',
       paramsValue: '10',
     };
@@ -269,6 +287,57 @@ test.describe(
               `[data-row-key*="${table.entityResponseData.fullyQualifiedName}.testSuite"]`
             )
         ).toHaveCount(1);
+      });
+    });
+
+    /**
+     * Tests creating a test case without a pipeline
+     * @description Creates a table-level test case with the Create Pipeline switch turned off and verifies no TestSuite pipeline is created for the table.
+     * Steps
+     * 1. Open the test case form and select a table that has no pipeline.
+     * 2. Fill the test details, switch off Create Pipeline, and submit.
+     * 3. Assert no pipeline creation call occurs and the table's pipeline tab stays empty.
+     */
+    test('Add Table Test Case without creating a pipeline', async ({
+      page,
+    }) => {
+      const table = new TableClass();
+      const { apiContext } = await getApiContext(page);
+      await table.create(apiContext);
+
+      await visitDataQualityPage(page);
+
+      await test.step('Create table-level test case with pipeline switched off', async () => {
+        await openTestCaseForm(page);
+        await selectTable(page, table);
+        await createTestCase({
+          page,
+          ...tableTestCaseDetails,
+          createPipeline: false,
+        });
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(page.getByTestId('entity-header-name')).toHaveText(
+          `${tableTestCaseDetails.testTypeId}_test_case`
+        );
+      });
+
+      await test.step('Validate no pipeline on the entity page', async () => {
+        const pipelineCountResponse = page.waitForResponse(
+          (response: Response) =>
+            response.url().includes('/api/v1/services/ingestionPipelines?') &&
+            response.url().includes('pipelineType=TestSuite') &&
+            response.url().includes('limit=0')
+        );
+        await visitDataQualityTab(page, table);
+        await pipelineCountResponse;
+
+        await expect(
+          page.getByTestId('tableRowCountToEqual_test_case')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId('pipeline').getByTestId('count')
+        ).toHaveText('0');
       });
     });
 
@@ -361,11 +430,10 @@ test.describe(
       await page.click('[data-testid="profiler-add-table-test-btn"]');
       await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
 
-      await expect(
-        page
-          .getByTestId('entity-summary-panel-container')
-          .getByTestId('entity-link')
-      ).toContainText(getEntityDisplayName(table.entityResponseData));
+      // Opened from the table's own page, the table comes preselected.
+      await expect(page.getByTestId('selectedTable')).toContainText(
+        table.entityResponseData.fullyQualifiedName ?? ''
+      );
 
       await createTestCase({
         page,
@@ -385,10 +453,6 @@ test.describe(
         page,
         ...columnTestCaseDetails,
         expectSchedulerCard: false,
-      });
-
-      await page.getByTestId('test-case-form-v1').waitFor({
-        state: 'detached',
       });
 
       await expect(
@@ -421,15 +485,13 @@ test.describe(
         .getByTestId('edit-button')
         .click();
 
-      await page.locator('[data-testid="loader"]').waitFor({
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       const selectAllSwitch = page
-        .getByRole('switch')
-        .and(page.getByTestId('select-all-test-cases'));
+        .getByTestId('select-all-test-cases')
+        .getByRole('switch');
       await selectAllSwitch.waitFor({ state: 'visible' });
 
-      await expect(selectAllSwitch).toHaveAttribute('aria-checked', 'true');
+      await expect(selectAllSwitch).toBeChecked();
     });
 
     /**
@@ -459,10 +521,12 @@ test.describe(
         await page.getByTestId('create-btn').click();
 
         await expect(
-          page.locator('#testCaseFormV1_selectedTable_help')
-        ).toContainText(
-          'You do not have the necessary permissions to create a test case on this table.'
-        );
+          page
+            .getByTestId('test-case-form-v1')
+            .getByText(
+              'You do not have the necessary permissions to create a test case on this table.'
+            )
+        ).toBeVisible();
       }
     });
   }

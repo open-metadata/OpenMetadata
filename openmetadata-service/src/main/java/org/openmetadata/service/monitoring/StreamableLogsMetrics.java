@@ -59,6 +59,15 @@ public class StreamableLogsMetrics {
   private final Counter ingestionLogsDropped;
   private final Counter ingestionFallbackActive;
 
+  // Server-side flush observability.
+  private final AtomicLong lastPartialFlushTimestamp;
+  private final AtomicLong partialFlushHeartbeat;
+  private final AtomicLong abandonedCleanupHeartbeat;
+  private final AtomicInteger pendingStreamsCount;
+  private final AtomicLong pendingFlushBytes;
+  private final AtomicLong pendingFlushLines;
+  private final Counter flushFailuresCounter;
+
   public static final int STATE_CLOSED = 0;
   public static final int STATE_OPEN = 1;
   public static final int STATE_HALF_OPEN = 2;
@@ -198,6 +207,104 @@ public class StreamableLogsMetrics {
         Counter.builder("om_ingestion_fallback_active_total")
             .description("Number of times fallback to local logging was activated")
             .register(meterRegistry);
+
+    this.lastPartialFlushTimestamp = new AtomicLong(0);
+    Gauge.builder(
+            "om_streamable_logs_last_partial_flush_ts_ms",
+            lastPartialFlushTimestamp,
+            AtomicLong::get)
+        .description("Epoch millis of the last successful partial.txt flush")
+        .register(meterRegistry);
+
+    this.partialFlushHeartbeat = new AtomicLong(0);
+    Gauge.builder(
+            "om_streamable_logs_partial_flush_heartbeat_ms", partialFlushHeartbeat, AtomicLong::get)
+        .description("Epoch millis of last partial-flush scheduled tick")
+        .register(meterRegistry);
+
+    this.abandonedCleanupHeartbeat = new AtomicLong(0);
+    Gauge.builder(
+            "om_streamable_logs_abandoned_cleanup_heartbeat_ms",
+            abandonedCleanupHeartbeat,
+            AtomicLong::get)
+        .description("Epoch millis of last abandoned-cleanup scheduled tick")
+        .register(meterRegistry);
+
+    this.pendingStreamsCount = new AtomicInteger(0);
+    Gauge.builder("om_streamable_logs_pending_streams", pendingStreamsCount, AtomicInteger::get)
+        .description("Number of active streams with pending log data on the server")
+        .register(meterRegistry);
+
+    this.pendingFlushBytes = new AtomicLong(0);
+    Gauge.builder("om_streamable_logs_pending_flush_bytes", pendingFlushBytes, AtomicLong::get)
+        .description("Total bytes queued for partial-flush across all active streams")
+        .register(meterRegistry);
+
+    this.pendingFlushLines = new AtomicLong(0);
+    Gauge.builder("om_streamable_logs_pending_flush_lines", pendingFlushLines, AtomicLong::get)
+        .description("Total log lines queued for partial-flush across all active streams")
+        .register(meterRegistry);
+
+    this.flushFailuresCounter =
+        Counter.builder("om_streamable_logs_flush_failures_total")
+            .description("Total partial-flush failures (server side)")
+            .register(meterRegistry);
+  }
+
+  public void recordPartialFlushSuccess() {
+    lastPartialFlushTimestamp.set(System.currentTimeMillis());
+  }
+
+  public void recordPartialFlushHeartbeat() {
+    partialFlushHeartbeat.set(System.currentTimeMillis());
+  }
+
+  public void recordAbandonedCleanupHeartbeat() {
+    abandonedCleanupHeartbeat.set(System.currentTimeMillis());
+  }
+
+  public void recordFlushFailure() {
+    flushFailuresCounter.increment();
+  }
+
+  public void updatePendingStreamsCount(int count) {
+    pendingStreamsCount.set(count);
+  }
+
+  public void updatePendingFlushBytes(long bytes) {
+    pendingFlushBytes.set(bytes);
+  }
+
+  public void updatePendingFlushLines(long lines) {
+    pendingFlushLines.set(lines);
+  }
+
+  public long getLastPartialFlushTimestamp() {
+    return lastPartialFlushTimestamp.get();
+  }
+
+  public long getPartialFlushHeartbeat() {
+    return partialFlushHeartbeat.get();
+  }
+
+  public long getAbandonedCleanupHeartbeat() {
+    return abandonedCleanupHeartbeat.get();
+  }
+
+  public int getPendingStreamsCount() {
+    return pendingStreamsCount.get();
+  }
+
+  public long getPendingFlushBytes() {
+    return pendingFlushBytes.get();
+  }
+
+  public long getPendingFlushLines() {
+    return pendingFlushLines.get();
+  }
+
+  public long getFlushFailuresCount() {
+    return (long) flushFailuresCounter.count();
   }
 
   public void recordLogsSent(int count) {

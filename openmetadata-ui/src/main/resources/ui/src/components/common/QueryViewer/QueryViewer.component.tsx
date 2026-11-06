@@ -10,16 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Space, Tag, Tooltip } from 'antd';
+import { Badge, ButtonUtility, Card } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, split } from 'lodash';
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
+import { getSchemaEditorValue } from '../../../utils/SchemaEditor.utils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../EmptyPlaceholder/NoDataPlaceholder';
 import './query-viewer.style.less';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
 
 const QueryViewer = ({
   title,
@@ -34,14 +40,16 @@ const QueryViewer = ({
 
   const hasQuery = !isEmpty(sqlQuery);
 
-  const { queryLine, lineCount } = useMemo(() => {
+  const { formattedQuery, queryLine, lineCount } = useMemo(() => {
     if (!hasQuery) {
-      return { queryLine: '', lineCount: 0 };
+      return { formattedQuery: '', queryLine: '', lineCount: 0 };
     }
 
-    const lineCount = split(sqlQuery, '\n').length;
+    const formattedQuery = getSchemaEditorValue(sqlQuery);
+    const lineCount = split(formattedQuery, '\n').length;
 
     return {
+      formattedQuery,
       queryLine: `${lineCount} ${
         lineCount > 1 ? t('label.line-plural') : t('label.line')
       }`,
@@ -49,43 +57,64 @@ const QueryViewer = ({
     };
   }, [sqlQuery, hasQuery]);
 
-  const { onCopyToClipBoard } = useClipboard(hasQuery ? sqlQuery : '');
+  const { onCopyToClipBoard } = useClipboard(formattedQuery);
 
   return (
-    <Card
-      className="w-auto dbt-tab-container"
-      extra={
-        hasQuery ? (
-          <Space className="m-y-xs">
-            <Tag className="query-lines" data-testid="query-line">
-              {queryLine}
-            </Tag>
-            <Tooltip
-              placement="topRight"
-              title={t('message.copy-to-clipboard')}>
-              <Button
-                className="flex-center button-size bg-white"
-                data-testid="query-entity-copy-button"
-                icon={<CopyIcon height={16} width={16} />}
-                onClick={onCopyToClipBoard}
-              />
-            </Tooltip>
-          </Space>
-        ) : null
-      }
-      title={title}>
-      {hasQuery && (
-        <SchemaEditor
-          className="custom-code-mirror-theme"
-          editorClass={classNames(
-            lineCount > 4 ? 'table-query-editor' : 'query-editor'
-          )}
-          mode={{ name: CSMode.SQL }}
-          options={{ readOnly: true }}
-          refreshEditor={isActive}
-          showCopyButton={false}
-          value={sqlQuery}
+    <Card className="w-auto dbt-tab-container">
+      {(title || hasQuery) && (
+        <Card.Header
+          className={classNames('tw:min-h-14 tw:items-center', {
+            'tw:justify-end': !title,
+          })}
+          extra={
+            hasQuery ? (
+              <div className="tw:flex tw:items-center tw:gap-2">
+                <Badge
+                  className={classNames(
+                    'tw:h-6.5 tw:rounded-xl tw:bg-[var(--om-legacy-color-eeeeee)] tw:px-2',
+                    'tw:text-[var(--om-legacy-color-757575)]',
+                    'tw:outline-utility-gray-blue-100 tw:dark:bg-quaternary',
+                    'tw:dark:text-quaternary tw:dark:outline-secondary'
+                  )}
+                  data-testid="query-line"
+                  size="sm">
+                  {queryLine}
+                </Badge>
+                <ButtonUtility
+                  data-testid="query-entity-copy-button"
+                  icon={Copy01}
+                  size="lg"
+                  tooltip={t('message.copy-to-clipboard')}
+                  tooltipPlacement="top end"
+                  onClick={() => onCopyToClipBoard()}
+                />
+              </div>
+            ) : null
+          }
+          title={
+            title && <span className="tw:text-md tw:font-medium">{title}</span>
+          }
         />
+      )}
+      {hasQuery ? (
+        <div className="tw:pt-px tw:pl-2">
+          <SchemaEditor
+            autoFormat={false}
+            className="custom-code-mirror-theme"
+            editorClass={classNames(
+              lineCount > 4 ? 'table-query-editor' : 'query-editor'
+            )}
+            mode={{ name: CSMode.SQL }}
+            options={{ readOnly: true }}
+            refreshEditor={isActive}
+            showCopyButton={false}
+            value={formattedQuery}
+          />
+        </div>
+      ) : (
+        <div className="tw:relative tw:min-h-60">
+          <NoDataPlaceholder data-testid="no-data-placeholder" />
+        </div>
       )}
     </Card>
   );

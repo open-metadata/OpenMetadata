@@ -384,9 +384,6 @@ export interface EntityReference {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
@@ -403,7 +400,8 @@ export interface ColumnProfile {
     /**
      * No.of Rows that contain duplicates in a column.
      */
-    duplicateCount?: number;
+    duplicateCount?:  number;
+    executionSource?: TableExecutionSource;
     /**
      * First quartile of a column.
      */
@@ -541,6 +539,16 @@ export interface CustomMetricProfile {
      * Profiling results for the metric.
      */
     value?: number;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 export interface HistogramClass {

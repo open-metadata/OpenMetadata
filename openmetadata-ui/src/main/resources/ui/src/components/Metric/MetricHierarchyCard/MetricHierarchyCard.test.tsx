@@ -1,0 +1,332 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import type { Metric } from '../../../generated/entity/data/metric';
+import {
+  EntityStatus,
+  MetricGranularity,
+  MetricType,
+} from '../../../generated/entity/data/metric';
+import MetricHierarchyCard from './MetricHierarchyCard';
+import { useMetricHierarchyCard } from './useMetricHierarchyCard';
+
+jest.mock('./useMetricHierarchyCard', () => ({
+  useMetricHierarchyCard: jest.fn(),
+}));
+
+jest.mock('../AddMetric/useMetricCreateDrawer', () => ({
+  useMetricCreateDrawer: () => ({
+    formDrawer: null,
+    openDrawer: jest.fn(),
+    closeDrawer: jest.fn(),
+  }),
+}));
+
+const metric = {
+  id: 'current-id',
+  name: 'gross_margin_rate',
+  fullyQualifiedName: 'gross_margin_rate',
+  entityStatus: EntityStatus.InReview,
+  granularity: MetricGranularity.Day,
+  metricType: MetricType.Ratio,
+  owners: [{ id: 'owner-id', name: 'finance-team', type: 'team' }],
+} as Metric;
+
+const hierarchy = {
+  group: undefined,
+  ancestors: [],
+  siblings: [],
+  children: [],
+  isPending: false,
+  error: null,
+  refetch: jest.fn(),
+  hasMoreChildren: false,
+  hasMoreSiblings: false,
+  isLoadingChildren: false,
+  isLoadingSiblings: false,
+  loadMoreChildren: jest.fn(),
+  loadMoreSiblings: jest.fn(),
+};
+
+const renderCard = (canAddChild = true) =>
+  render(
+    <MemoryRouter>
+      <MetricHierarchyCard canAddChild={canAddChild} metric={metric} />
+    </MemoryRouter>
+  );
+
+describe('MetricHierarchyCard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useMetricHierarchyCard as jest.Mock).mockReturnValue(hierarchy);
+  });
+
+  it('shows a stable standalone state and a permission-gated Add Child action', () => {
+    renderCard();
+
+    expect(screen.getByTestId('metric-tree-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('metric-hierarchy-header')).toHaveClass(
+      'tw:flex-col',
+      'tw:sm:flex-row'
+    );
+    expect(screen.getByTestId('metric-hierarchy-card')).toHaveClass(
+      'tw:shadow-xs'
+    );
+    expect(screen.getByTestId('metric-hierarchy-header-icon')).toHaveClass(
+      'tw:size-5',
+      'tw:text-fg-quaternary'
+    );
+    expect(
+      screen
+        .getByTestId('metric-hierarchy-header')
+        .querySelector('[data-featured-icon]')
+    ).not.toBeInTheDocument();
+
+    const addChildButton = screen.getByRole('button', {
+      name: 'label.add-child-metric',
+    });
+
+    expect(addChildButton).toBeEnabled();
+  });
+
+  it('renders the complete grouped hierarchy with compact metadata and trailing health', () => {
+    (useMetricHierarchyCard as jest.Mock).mockReturnValue({
+      ...hierarchy,
+      group: { id: 'group-id', name: 'profitability', metricCount: 4 },
+      ancestors: [
+        {
+          id: 'root-id',
+          name: 'profit',
+          fullyQualifiedName: 'profit',
+          metricType: MetricType.Ratio,
+          entityStatus: EntityStatus.Approved,
+        },
+      ],
+      siblings: [
+        {
+          id: 'peer-id',
+          name: 'net_margin',
+          fullyQualifiedName: 'net_margin',
+          metricType: MetricType.Sum,
+          granularity: MetricGranularity.Day,
+          entityStatus: EntityStatus.Approved,
+          owners: [
+            {
+              id: 'peer-owner-id',
+              displayName: 'Alex Brown',
+              type: 'user',
+            },
+          ],
+        },
+      ],
+      children: [
+        {
+          id: 'child-id',
+          name: 'emea_margin',
+          fullyQualifiedName: 'emea_margin',
+          metricType: MetricType.Ratio,
+          granularity: MetricGranularity.Week,
+          entityStatus: EntityStatus.InReview,
+          owners: [
+            {
+              id: 'child-owner-id',
+              displayName: 'Jamie Lee',
+              type: 'user',
+            },
+          ],
+        },
+      ],
+    });
+
+    renderCard();
+
+    expect(screen.getByTestId('metric-tree-group')).toHaveTextContent(
+      'profitability'
+    );
+    expect(
+      screen.getByTestId('metric-tree-ancestor-root-id')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('metric-tree-peer-peer-id')).toBeInTheDocument();
+    expect(screen.getByTestId('metric-tree-current')).toHaveTextContent(
+      'gross_margin_rate'
+    );
+    expect(screen.getByTestId('metric-tree-current')).toHaveClass(
+      'tw:bg-brand-primary_alt'
+    );
+    expect(screen.getByTestId('metric-tree-current')).not.toHaveClass(
+      'tw:bg-brand-primary'
+    );
+    expect(
+      screen.getByTestId('metric-tree-child-child-id')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('metric-tree-current')).toHaveTextContent(
+      'label.in-review'
+    );
+    expect(screen.getByTestId('metric-tree-current-metric-type')).toHaveClass(
+      'tw:font-mono',
+      'tw:uppercase',
+      'tw:bg-utility-purple-50'
+    );
+    expect(screen.getByTestId('metric-tree-current-granularity')).toHaveClass(
+      'tw:font-mono',
+      'tw:uppercase'
+    );
+    expect(screen.getByTestId('metric-tree-current-status')).toHaveClass(
+      'tw:text-xs',
+      'tw:text-tertiary'
+    );
+    expect(screen.getAllByTestId('metric-tree-current-separator')).toHaveLength(
+      2
+    );
+    expect(screen.getByTestId('metric-tree-current')).toHaveTextContent(
+      'label.you-are-here'
+    );
+    expect(
+      screen.queryByTestId('metric-tree-owner-current-id-owner-id')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('metric-tree-owner-peer-id-peer-owner-id')
+    ).toHaveAttribute('aria-label', 'Alex Brown');
+    expect(screen.getByRole('img', { name: 'Alex Brown' })).toBeInTheDocument();
+    expect(
+      screen.getByTestId('metric-tree-owner-child-id-child-owner-id')
+    ).toHaveTextContent(/^J$/);
+    expect(screen.getByLabelText('4 label.metric-plural')).toBeInTheDocument();
+
+    // Graduated indent by hierarchy depth: group(0) > ancestor(1) > peer/current(2) > child(3).
+    // The connector column supplies the first step, so extra padding only starts
+    // at depth 2 (peer/current), keeping each arrow beneath its parent's icon.
+    (
+      [
+        ['metric-tree-ancestor-root-id', 'tw:pl-5'],
+        ['metric-tree-peer-peer-id', 'tw:pl-[54px]'],
+        ['metric-tree-current', 'tw:pl-[54px]'],
+        ['metric-tree-child-child-id', 'tw:pl-[82px]'],
+      ] as const
+    ).forEach(([testId, indentClass]) => {
+      expect(screen.getByTestId(testId)).toHaveClass(indentClass);
+      expect(screen.getByTestId(`${testId}-elbow`)).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('metric-tree-peer-peer-id')).toHaveAttribute(
+      'href',
+      '/metric/net_margin'
+    );
+    expect(screen.getByTestId('metric-tree-child-child-id')).toHaveAttribute(
+      'href',
+      '/metric/emea_margin'
+    );
+  });
+
+  it('loads the next sibling and child pages from explicit controls', () => {
+    const loadMoreChildren = jest.fn();
+    const loadMoreSiblings = jest.fn();
+    (useMetricHierarchyCard as jest.Mock).mockReturnValue({
+      ...hierarchy,
+      children: [{ id: 'child-id', name: 'child' }],
+      hasMoreChildren: true,
+      hasMoreSiblings: true,
+      loadMoreChildren,
+      loadMoreSiblings,
+    });
+
+    renderCard();
+    fireEvent.click(screen.getByTestId('metric-tree-more-peers'));
+    fireEvent.click(screen.getByTestId('metric-tree-more-children'));
+
+    expect(loadMoreSiblings).toHaveBeenCalled();
+    expect(loadMoreChildren).toHaveBeenCalled();
+  });
+
+  it('offers an accessible retry without hiding the rest of the page', () => {
+    const refetch = jest.fn();
+    (useMetricHierarchyCard as jest.Mock).mockReturnValue({
+      ...hierarchy,
+      error: new Error('unavailable'),
+      refetch,
+    });
+
+    renderCard();
+    fireEvent.click(screen.getByRole('button', { name: 'label.try-again' }));
+
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it('does not expose Add Child without create permission', () => {
+    renderCard(false);
+
+    expect(
+      screen.queryByRole('button', { name: 'label.add-child-metric' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('announces the localized hierarchy loading state', () => {
+    (useMetricHierarchyCard as jest.Mock).mockReturnValue({
+      ...hierarchy,
+      isPending: true,
+    });
+
+    renderCard();
+
+    expect(
+      screen.getByRole('status', { name: 'label.loading' })
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the current metric ahead of its siblings so loading more does not move it', () => {
+    (useMetricHierarchyCard as jest.Mock).mockReturnValue({
+      ...hierarchy,
+      siblings: [
+        { id: 'peer-a', name: 'peer_a', fullyQualifiedName: 'peer_a' },
+        { id: 'peer-b', name: 'peer_b', fullyQualifiedName: 'peer_b' },
+      ],
+      hasMoreSiblings: true,
+    });
+    renderCard();
+
+    const current = screen.getByTestId('metric-tree-current');
+    const firstPeer = screen.getByTestId('metric-tree-peer-peer-a');
+    const showMore = screen.getByTestId('metric-tree-more-peers');
+
+    expect(
+      current.compareDocumentPosition(firstPeer) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      current.compareDocumentPosition(showMore) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('shows only the current metric for a deleted metric instead of a fetch error', () => {
+    (useMetricHierarchyCard as jest.Mock).mockReturnValue({
+      ...hierarchy,
+      error: new Error('not found'),
+    });
+    render(
+      <MemoryRouter>
+        <MetricHierarchyCard metric={{ ...metric, deleted: true }} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('metric-tree-current')).toBeInTheDocument();
+    expect(screen.getByTestId('metric-tree-current-status')).toHaveTextContent(
+      'label.deleted'
+    );
+    expect(screen.queryByText('label.try-again')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.add-child-metric' })
+    ).not.toBeInTheDocument();
+  });
+});

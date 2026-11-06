@@ -2,22 +2,45 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.openmetadata.schema.type.DataQualityDimensions;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.Filter;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
+import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 
 public class SearchListFilter extends Filter<SearchListFilter> {
+  private List<ContextMemoryStatus> memoryStatuses =
+      ContextMemorySearchVisibility.SEARCHABLE_STATUSES;
+
   public SearchListFilter() {
     this(Include.NON_DELETED);
   }
 
   public SearchListFilter(Include include) {
     this.include = include;
+  }
+
+  /**
+   * Context memory stages the listing admits. Applied with memory visibility rather than as a
+   * condition, since ordinary search already admits Approved memories only.
+   */
+  public SearchListFilter withMemoryStatuses(List<ContextMemoryStatus> statuses) {
+    memoryStatuses = List.copyOf(statuses);
+    return this;
+  }
+
+  public List<ContextMemoryStatus> getMemoryStatuses() {
+    return memoryStatuses;
   }
 
   static final String SEARCH_LIST_FILTER_EXCLUDE = "fqnParts,entityType,suggest";
@@ -27,12 +50,19 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private static final String FIELD_OWNERS_ID = "owners.id";
   private static final String FIELD_CREATED_BY = "createdBy";
   private static final String FIELD_DOMAINS_FQN = "domains.fullyQualifiedName";
+  public static final String NAV_DOMAIN_PARAM = "navDomain";
+  public static final String NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM = "navDomainKeepsUnassigned";
+  private static final String FIELD_DATA_PRODUCTS_FQN = "dataProducts.fullyQualifiedName";
   private static final String FIELD_SERVICE_NAME = "service.name";
   private static final String FIELD_TEST_CASE_STATUS = "testCaseResult.testCaseStatus";
   private static final String FIELD_TEST_PLATFORMS = "testPlatforms";
   private static final String FIELD_FOLLOWERS_KEYWORD = "followers.keyword";
   private static final String FIELD_TEST_STATUS = "testCaseStatus";
   private static final String FIELD_BASIC = "basic";
+  private static final String FIELD_PINNED = "pinned";
+  private static final String FIELD_PRIMARY_ENTITY_ID =
+      ContextMemoryAnchorPins.FIELD_PRIMARY_ENTITY_ID;
+  private static final String FIELD_RELATED_ENTITIES_ID = "relatedEntities.id";
 
   @Override
   public String getCondition(String entityType) {
@@ -62,6 +92,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     conditions.add(getCreatedByCondition());
 
     if (entityType != null) {
+      conditions.add(entityType.equals(Entity.CONTEXT_MEMORY) ? getContextMemoryCondition() : null);
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
       conditions.add(entityType.equals(Entity.TEST_SUITE) ? getTestSuiteCondition() : null);
       conditions.add(
@@ -128,24 +159,49 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String domain = getQueryParam("domains");
     if (!nullOrEmpty(domain)) {
       return String.format(
-          "{\"term\": {\"%s\": \"%s\"}}", FIELD_DOMAINS_FQN, escapeDoubleQuotes(domain));
+          "{\"term\": {\"%s\": \"%s\"}}", FIELD_DOMAINS_FQN, escapeJsonString(domain));
     }
-    return "";
+    return getNavbarDomainCondition();
   }
 
+  // The navbar pick matches the domain and its sub-domains, and optionally items with no domain.
+  private String getNavbarDomainCondition() {
+    String navDomain = getQueryParam(NAV_DOMAIN_PARAM);
+    if (nullOrEmpty(navDomain)) {
+      return "";
+    }
+    String fqn = escapeJsonString(navDomain);
+    String unassigned =
+        Boolean.parseBoolean(getQueryParam(NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM))
+            ? String.format(
+                ",{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"%s\"}}}}", FIELD_DOMAINS_FQN)
+            : "";
+    return String.format(
+        "{\"bool\":{\"should\":[{\"term\":{\"%s\":\"%s\"}},{\"prefix\":{\"%s\":\"%s.\"}}%s],\"minimum_should_match\":1}}",
+        FIELD_DOMAINS_FQN, fqn, FIELD_DOMAINS_FQN, fqn, unassigned);
+  }
+
+  // A document indexed before its deleted field existed counts as not deleted.
   private String getIncludeCondition(String entityType) {
-    boolean supportsDeleted = true;
-    if (entityType != null) {
-      Class<?> clazz = Entity.getEntityClassFromType(entityType);
-      if (clazz == null) clazz = Entity.getEntityTimeSeriesClassFromType(entityType);
-      supportsDeleted = (clazz != null) && Entity.getEntityFields(clazz).contains("deleted");
+    String deletedField = deletedFieldOf(entityType);
+    String condition = "";
+    if (include == Include.DELETED && deletedField != null) {
+      condition = String.format("{\"term\": {\"%s\": \"true\"}}", deletedField);
+    } else if (include != Include.ALL && deletedField != null) {
+      condition =
+          String.format(
+              "{\"bool\": {\"must_not\": [{\"term\": {\"%s\": \"true\"}}]}}", deletedField);
     }
-    String deleted = "";
-    if (include != Include.ALL && supportsDeleted) {
-      deleted =
-          String.format("{\"term\": {\"%s\": \"%s\"}}", FIELD_DELETED, include == Include.DELETED);
+    return condition;
+  }
+
+  // The field each entity's capability names: an incident takes its deletion from its test case.
+  private static String deletedFieldOf(String entityType) {
+    if (entityType == null) {
+      return FIELD_DELETED;
     }
-    return deleted;
+    EntityIndexCapability capability = EntityIndexCapabilityRegistry.get(entityType);
+    return capability == null ? null : capability.deletedField();
   }
 
   private String getOwnerCondition() {
@@ -164,9 +220,35 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String createdBy = getQueryParam("createdBy");
     if (!nullOrEmpty(createdBy)) {
       return String.format(
-          "{\"term\": {\"%s\": \"%s\"}}", FIELD_CREATED_BY, escapeDoubleQuotes(createdBy));
+          "{\"term\": {\"%s\": \"%s\"}}", FIELD_CREATED_BY, escapeJsonString(createdBy));
     }
     return "";
+  }
+
+  private String getContextMemoryCondition() {
+    ArrayList<String> conditions = new ArrayList<>();
+    String pinned = getQueryParam("pinned");
+    if (!nullOrEmpty(pinned)) {
+      conditions.add(String.format("{\"term\": {\"%s\": %s}}", FIELD_PINNED, pinned));
+    }
+
+    String assets = getQueryParam("assets");
+    if (!nullOrEmpty(assets)) {
+      String assetIds =
+          Arrays.stream(assets.split(","))
+              .map(String::trim)
+              .filter(id -> !id.isEmpty())
+              .map(this::escapeJsonString)
+              .collect(Collectors.joining("\", \"", "\"", "\""));
+      if (!assetIds.isEmpty()) {
+        conditions.add(
+            String.format(
+                "{\"bool\":{\"should\":[{\"terms\":{\"%s\":[%s]}},{\"nested\":{\"path\":\"relatedEntities\",\"query\":{\"terms\":{\"%s\":[%s]}},\"ignore_unmapped\":true}}]}}",
+                FIELD_PRIMARY_ENTITY_ID, assetIds, FIELD_RELATED_ENTITIES_ID, assetIds));
+      }
+    }
+
+    return addCondition(conditions);
   }
 
   private String buildQueryFilter(String conditionFilter, String sourceFilter) {
@@ -217,13 +299,14 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String tier = getQueryParam("tier");
     String serviceName = getQueryParam("serviceName");
     String dataQualityDimension = getQueryParam("dataQualityDimension");
+    String dataProductFqn = getQueryParam("dataProductFqn");
     String followedBy = getQueryParam("followedBy");
     String columnName = getQueryParam("columnName");
 
     if (tags != null) {
       String tagsList =
           Arrays.stream(tags.split(","))
-              .map(this::escapeDoubleQuotes)
+              .map(this::escapeJsonString)
               .collect(Collectors.joining("\", \"", "\"", "\""));
       conditions.add(
           String.format(
@@ -235,27 +318,26 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\":{\"tier.tagFQN\":\"%s\"}}",
-              escapeDoubleQuotes(tier.toLowerCase(java.util.Locale.ROOT))));
+              escapeJsonString(tier.toLowerCase(java.util.Locale.ROOT))));
     }
 
     if (serviceName != null) {
       conditions.add(
           String.format(
-              "{\"term\": {\"%s\": \"%s\"}}", FIELD_SERVICE_NAME, escapeDoubleQuotes(serviceName)));
+              "{\"term\": {\"%s\": \"%s\"}}", FIELD_SERVICE_NAME, escapeJsonString(serviceName)));
     }
 
     if (entityFQN != null) {
       conditions.add(
           includeAllTests
               ? getTestCaseForEntityCondition(entityFQN, "entityFQN")
-              : String.format(
-                  "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
+              : String.format("{\"term\": {\"entityFQN\": \"%s\"}}", escapeJsonString(entityFQN)));
     }
 
     if (testSuiteId != null) conditions.add(getTestSuiteIdCondition(testSuiteId));
 
     if (status != null) {
-      conditions.add(String.format("{\"term\": {\"%s\": \"%s\"}}", FIELD_TEST_CASE_STATUS, status));
+      conditions.add(getTestCaseStatusCondition(status));
     }
 
     if (type != null) conditions.add(getTestCaseTypeCondition(type, "entityLink"));
@@ -275,7 +357,15 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
     if (dataQualityDimension != null)
       conditions.add(
-          getDataQualityDimensionCondition(dataQualityDimension, "dataQualityDimension"));
+          getDataQualityDimensionCondition(
+              dataQualityDimension, TestCaseRepository.DATA_QUALITY_DIMENSION_NAME_FIELD));
+
+    if (dataProductFqn != null) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"%s\": \"%s\"}}",
+              FIELD_DATA_PRODUCTS_FQN, escapeJsonString(dataProductFqn)));
+    }
 
     if (followedBy != null) {
       conditions.add(
@@ -286,7 +376,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"wildcard\": {\"entityLink\": \"*::columns::%s>\"}}",
-              escapeDoubleQuotes(columnName)));
+              escapeJsonString(columnName)));
     }
 
     return addCondition(conditions);
@@ -317,7 +407,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
               "{\"bool\":{\"should\": ["
                   + "{\"term\": {\"testCaseFQN\": \"%1$s\"}},"
                   + "{\"term\": {\"testCase.fullyQualifiedName\": \"%1$s\"}}]}}",
-              escapeDoubleQuotes(testCaseFQN)));
+              escapeJsonString(testCaseFQN)));
     }
     if (testCaseStatus != null)
       conditions.add(
@@ -327,7 +417,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (dataQualityDimension != null)
       conditions.add(
           getDataQualityDimensionCondition(
-              dataQualityDimension, "testDefinition.dataQualityDimension"));
+              dataQualityDimension,
+              TestCaseRepository.TEST_DEFINITION_FIELD
+                  + "."
+                  + TestCaseRepository.DATA_QUALITY_DIMENSION_NAME_FIELD));
     return addCondition(conditions);
   }
 
@@ -351,14 +444,38 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\": {\"fullyQualifiedName\": \"%s\"}}",
-              escapeDoubleQuotes(fullyQualifiedName)));
+              escapeJsonString(fullyQualifiedName)));
     }
 
     return addCondition(conditions);
   }
 
-  private String escapeDoubleQuotes(String str) {
-    return str.replace("\"", "\\\"");
+  /**
+   * Escapes a value for safe interpolation into a JSON string literal: double quotes, backslashes
+   * and control characters alike. None of the values interpolated by this class is enum-bounded —
+   * they are FQNs, names, owners and dimensions, all free-form user input — so every one of them
+   * goes through this rather than through a quotes-only escape that leaves malformed filter JSON
+   * one backslash away.
+   */
+  private String escapeJsonString(String str) {
+    return new String(JsonStringEncoder.getInstance().quoteAsString(str));
+  }
+
+  /** Comma separated statuses are matched as an OR, a single status still matches exactly. */
+  private String getTestCaseStatusCondition(String status) {
+    List<String> statuses =
+        Arrays.stream(status.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(this::escapeJsonString)
+            .toList();
+    String condition = "";
+    if (!statuses.isEmpty()) {
+      String statusList = String.join("\", \"", statuses);
+      condition =
+          String.format("{\"terms\": {\"%s\": [\"%s\"]}}", FIELD_TEST_CASE_STATUS, statusList);
+    }
+    return condition;
   }
 
   private String getTestSuiteIdCondition(String testSuiteId) {
@@ -381,18 +498,17 @@ public class SearchListFilter extends Filter<SearchListFilter> {
         "{\"bool\":{\"should\": ["
             + "{\"prefix\": {\"%s\": \"%s%s\"}},"
             + "{\"term\": {\"%s\": \"%s\"}}]}}",
-        field,
-        escapeDoubleQuotes(entityFQN),
-        Entity.SEPARATOR,
-        field,
-        escapeDoubleQuotes(entityFQN));
+        field, escapeJsonString(entityFQN), Entity.SEPARATOR, field, escapeJsonString(entityFQN));
   }
 
   private String getDataQualityDimensionCondition(String dataQualityDimension, String field) {
-    if (DataQualityDimensions.NO_DIMENSION.value().equals(dataQualityDimension)) {
+    if (DataQualityDimensionRepository.NO_DIMENSION.equals(dataQualityDimension)) {
       return String.format("{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"%s\"}}]}}", field);
     }
-    return String.format("{\"term\": {\"%s\": \"%s\"}}", field, dataQualityDimension);
+    // Dimensions are free-form on a test case (custom dimensions), so the value needs full JSON
+    // escaping - a backslash or control character would otherwise break the filter JSON.
+    return String.format(
+        "{\"term\": {\"%s\": \"%s\"}}", field, escapeJsonString(dataQualityDimension));
   }
 
   private String getTestCaseResolutionStatusCondition() {
@@ -416,21 +532,21 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\": {\"testCaseResolutionStatusType\": \"%s\"}}",
-              escapeDoubleQuotes(testCaseResolutionStatusType)));
+              escapeJsonString(testCaseResolutionStatusType)));
     }
 
     if (assignee != null) {
       conditions.add(
           String.format(
               "{\"term\": {\"testCaseResolutionStatusDetails.assignee.name\": \"%s\"}}",
-              escapeDoubleQuotes(assignee)));
+              escapeJsonString(assignee)));
     }
 
     if (testCaseFqn != null) {
       conditions.add(
           String.format(
               "{\"term\": {\"testCase.fullyQualifiedName.keyword\": \"%s\"}}",
-              escapeDoubleQuotes(testCaseFqn)));
+              escapeJsonString(testCaseFqn)));
     }
 
     if (originEntityFQN != null) {

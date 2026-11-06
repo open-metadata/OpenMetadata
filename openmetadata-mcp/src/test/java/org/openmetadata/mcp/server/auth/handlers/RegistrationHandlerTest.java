@@ -91,6 +91,7 @@ class RegistrationHandlerTest {
     OAuthClientInformation result = handler.handle(metadata).join();
 
     assertThat(result.getTokenEndpointAuthMethod()).isEqualTo("client_secret_post");
+    assertThat(result.getClientSecret()).isNotNull().isNotEmpty();
   }
 
   @Test
@@ -189,6 +190,17 @@ class RegistrationHandlerTest {
   }
 
   @Test
+  void testLoopbackIpv6Http_accepted() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setRedirectUris(List.of(URI.create("http://[::1]:8080/callback")));
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getClientId()).isNotNull();
+    verify(clientRepository).register(any());
+  }
+
+  @Test
   void testPrivateUseScheme_accepted() {
     OAuthClientMetadata metadata = validMetadata();
     metadata.setRedirectUris(List.of(URI.create("cursor://callback")));
@@ -224,6 +236,91 @@ class RegistrationHandlerTest {
   }
 
   @Test
+  void testClientSecretBasic_accepted() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("client_secret_basic");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getTokenEndpointAuthMethod()).isEqualTo("client_secret_basic");
+    verify(clientRepository).register(any());
+  }
+
+  @Test
+  void testClientSecretPost_accepted() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("client_secret_post");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getTokenEndpointAuthMethod()).isEqualTo("client_secret_post");
+    verify(clientRepository).register(any());
+  }
+
+  @Test
+  void testNoneAuthMethod_accepted() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("none");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getTokenEndpointAuthMethod()).isEqualTo("none");
+    verify(clientRepository).register(any());
+  }
+
+  /**
+   * Regression for PR #28552: a public client (token_endpoint_auth_method=none) MUST NOT be issued a
+   * client secret. Before the fix the secret was generated unconditionally, so the token endpoint
+   * then demanded a secret the public PKCE client (Cursor, ChatGPT) never had, failing with
+   * "Client secret required" (401). Public clients are secured by PKCE, not a secret.
+   */
+  @Test
+  void testPublicClient_none_issuesNoSecret() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("none");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getClientSecret()).isNull();
+    assertThat(result.getClientSecretExpiresAt()).isNull();
+    verify(clientRepository).register(any());
+  }
+
+  @Test
+  void testConfidentialClient_clientSecretPost_issuesSecret() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("client_secret_post");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getClientSecret()).isNotNull().isNotEmpty();
+    assertThat(result.getClientSecretExpiresAt()).isEqualTo(0L);
+  }
+
+  @Test
+  void testConfidentialClient_clientSecretBasic_issuesSecret() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("client_secret_basic");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getClientSecret()).isNotNull().isNotEmpty();
+    assertThat(result.getClientSecretExpiresAt()).isEqualTo(0L);
+  }
+
+  @Test
+  void testUnsupportedAuthMethod_throwsRegistrationException() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("private_key_jwt");
+
+    assertThatThrownBy(() -> handler.handle(metadata).join())
+        .isInstanceOf(CompletionException.class)
+        .hasRootCauseInstanceOf(RegistrationException.class);
+
+    verify(clientRepository, never()).register(any());
+  }
+
+  @Test
   void testFieldLengthExceeded_throwsRegistrationException() {
     OAuthClientMetadata metadata = validMetadata();
     metadata.setClientName("x".repeat(256));
@@ -231,6 +328,20 @@ class RegistrationHandlerTest {
     assertThatThrownBy(() -> handler.handle(metadata).join())
         .isInstanceOf(CompletionException.class)
         .hasRootCauseInstanceOf(RegistrationException.class);
+
+    verify(clientRepository, never()).register(any());
+  }
+
+  @Test
+  void testRedirectUriTooLong_throwsRegistrationException() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setRedirectUris(
+        List.of(URI.create("https://example.com/callback?pad=" + "x".repeat(2048))));
+
+    assertThatThrownBy(() -> handler.handle(metadata).join())
+        .isInstanceOf(CompletionException.class)
+        .hasRootCauseInstanceOf(RegistrationException.class)
+        .hasRootCauseMessage("redirect_uri exceeds maximum length of 2048");
 
     verify(clientRepository, never()).register(any());
   }

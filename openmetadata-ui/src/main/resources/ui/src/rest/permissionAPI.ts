@@ -12,12 +12,12 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../enums/permissions.enum';
 import { ResourcePermission } from '../generated/entity/policies/accessControl/resourcePermission';
 import { EntityReference } from '../generated/entity/type';
 import { Paging } from '../generated/type/paging';
-import { getEncodedFqn } from '../utils/StringsUtils';
-import APIClient from './index';
+import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 
 export const getLoggedInUserPermissions = async () => {
   const params = {
@@ -33,11 +33,13 @@ export const getLoggedInUserPermissions = async () => {
 
 export const getEntityPermissionById = async (
   resource: ResourceEntity,
-  entityId: string
+  entityId: string,
+  signal?: AbortSignal
 ) => {
-  const response = await APIClient.get<ResourcePermission>(
-    `/permissions/${resource}/${entityId}`
-  );
+  const path = `/permissions/${resource}/${entityId}`;
+  const response = signal
+    ? await APIClient.get<ResourcePermission>(path, { signal })
+    : await APIClient.get<ResourcePermission>(path);
 
   return response.data;
 };

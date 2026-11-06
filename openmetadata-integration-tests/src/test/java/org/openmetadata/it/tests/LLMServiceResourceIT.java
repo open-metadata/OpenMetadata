@@ -27,6 +27,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class LLMServiceResourceIT extends BaseServiceIT<LLMService, CreateLLMService> {
 
   {
+    supportsEntityStatus = false;
     supportsListHistoryByTimestamp = true;
   }
 
@@ -132,17 +133,6 @@ public class LLMServiceResourceIT extends BaseServiceIT<LLMService, CreateLLMSer
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().llmServices().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().llmServices().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().llmServices().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

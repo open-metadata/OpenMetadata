@@ -23,22 +23,22 @@ def test_get_version_from_string():
     """
     We should be able to parse regular version responses
     """
-    assert "0.11.0" == get_server_version_from_string("0.11.0.dev0")
-    assert "0.11.0" == get_server_version_from_string("0.11.0")
-    assert "1111.11.111" == get_server_version_from_string("1111.11.111")
-    assert "1111.11.111" == get_server_version_from_string("1111.11.111-SNAPSHOT")
-    assert "0.11.1" == get_server_version_from_string("0.11.1.0.0.1.patch")
+    assert "0.11.0" == get_server_version_from_string("0.11.0.dev0")  # noqa: SIM300
+    assert "0.11.0" == get_server_version_from_string("0.11.0")  # noqa: SIM300
+    assert "1111.11.111" == get_server_version_from_string("1111.11.111")  # noqa: SIM300
+    assert "1111.11.111" == get_server_version_from_string("1111.11.111-SNAPSHOT")  # noqa: SIM300
+    assert "0.11.1" == get_server_version_from_string("0.11.1.0.0.1.patch")  # noqa: SIM300
 
 
 def test_get_client_version_from_string():
     """
     We should be able to parse regular version responses
     """
-    assert "0.13.2.5" == get_client_version_from_string("0.13.2.5.dev0")
-    assert "0.11.0.1" == get_client_version_from_string("0.11.0.1")
-    assert "1111.11.111.1" == get_client_version_from_string("1111.11.111.1")
-    assert "1111.11.111.2" == get_client_version_from_string("1111.11.111.2-SNAPSHOT")
-    assert "0.11.1.0" == get_client_version_from_string("0.11.1.0.0.1.patch")
+    assert "0.13.2.5" == get_client_version_from_string("0.13.2.5.dev0")  # noqa: SIM300
+    assert "0.11.0.1" == get_client_version_from_string("0.11.0.1")  # noqa: SIM300
+    assert "1111.11.111.1" == get_client_version_from_string("1111.11.111.1")  # noqa: SIM300
+    assert "1111.11.111.2" == get_client_version_from_string("1111.11.111.2-SNAPSHOT")  # noqa: SIM300
+    assert "0.11.1.0" == get_client_version_from_string("0.11.1.0.0.1.patch")  # noqa: SIM300
 
 
 def test_match_version():

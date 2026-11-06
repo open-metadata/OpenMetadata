@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { Image, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
-import { isInViewport } from '../../../../utils/BlockEditorUtils';
+import { isInViewport } from '../../../../utils/BlockEditorPureUtils';
 import { useEntityAttachment } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 
 export interface SlashCommandRef {
@@ -113,32 +113,49 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
     }
 
     return (
-      <Space
+      <Box
+        inline
         className="slash-menu-wrapper"
-        direction="vertical"
+        direction="col"
+        gap={2}
         id="editor-commands-viewport">
         {filteredItems.map((item, index) => (
-          <Space
+          <Box
+            inline
+            align="center"
             className={classNames('w-full cursor-pointer slash-command-item', {
               'bg-grey-2': index === selectedIndex,
             })}
+            gap={2}
             id={`editor-command-${item.title}`}
             key={item.title}
             onClick={() => selectItem(index)}>
-            <Image
-              className={classNames('slash-command-image', {
-                'svg-image': item.isSvg,
-              })}
-              preview={false}
-              src={item.imgSrc}
-            />
-            <Space direction="vertical" size={0}>
-              <Typography className="font-bold">{item.title}</Typography>
-              <Typography>{item.description}</Typography>
-            </Space>
-          </Space>
+            {item.Icon ? (
+              <span
+                className={classNames(
+                  'slash-command-image svg-image tw:flex tw:items-center tw:justify-center',
+                  item.iconClassName
+                )}>
+                <item.Icon size={24} />
+              </span>
+            ) : (
+              <img
+                alt=""
+                className={classNames('slash-command-image', {
+                  'svg-image': item.isSvg,
+                })}
+                src={item.imgSrc}
+              />
+            )}
+            <Box inline direction="col">
+              <Typography as="article" className="font-bold">
+                {item.title}
+              </Typography>
+              <Typography as="article">{item.description}</Typography>
+            </Box>
+          </Box>
         ))}
-      </Space>
+      </Box>
     );
   }
 );

@@ -17,11 +17,14 @@ This is useful to centralise the running logic
 and manage behavior such as timeouts.
 """
 
-from typing import TYPE_CHECKING, Callable, Dict, Iterator, Optional, Union
+from collections.abc import Callable, Iterator
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Table, text
+from sqlalchemy import Table, inspect, text
 from sqlalchemy.orm import Query, Session
 from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.elements import ColumnClause
+from sqlalchemy.sql.visitors import replacement_traverse
 
 from metadata.utils.logger import query_runner_logger
 from metadata.utils.sqa_utils import (
@@ -112,10 +115,10 @@ class QueryRunner:
     def __init__(
         self,
         session: Session,
-        dataset: Union[type, AliasedClass],
+        dataset: type | AliasedClass,
         raw_dataset: Table,
-        partition_details: Optional[Dict] = None,
-        profile_sample_query: Optional[str] = None,
+        partition_details: dict | None = None,
+        profile_sample_query: str | None = None,
     ):
         self._session = session
         self._dataset = dataset
@@ -182,7 +185,8 @@ class QueryRunner:
         filter_ = get_query_filter_for_runner(kwargs)
         group_by_ = get_query_group_by_for_runner(kwargs)
 
-        query = self._build_query(*entities, **kwargs).select_from(self._dataset)
+        entities = tuple(self._resolve_sample_entity(entity) for entity in entities)
+        query = self._build_query(*entities, **kwargs).select_from(self._dataset)  # type: ignore
 
         if filter_ is not None:
             query = query.filter(filter_)
@@ -191,6 +195,22 @@ class QueryRunner:
             query = query.group_by(*group_by_)
 
         return query
+
+    def _resolve_sample_entity(self, entity):
+        """Bind unbound metric columns to the sampled dataset's column collection."""
+        dataset_columns = inspect(self._dataset, raiseerr=True).c
+        columns_by_name = {column.name: column for column in dataset_columns}
+        columns_by_key = {column.key: column for column in dataset_columns}
+
+        def replace(element, **kw: Any):
+            if not isinstance(element, ColumnClause) or element.table is not None:
+                return None
+            resolved_column = columns_by_key.get(element.name)
+            if resolved_column is not None:
+                return resolved_column
+            return columns_by_name.get(element.name)
+
+        return replacement_traverse(entity, {}, replace)
 
     def _select_from_dataset(self, dataset: type, *entities, **kwargs):
         """This method will use the sample data

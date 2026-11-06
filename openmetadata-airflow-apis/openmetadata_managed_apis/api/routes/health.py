@@ -12,13 +12,14 @@
 Health endpoint. Globally accessible
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from flask import Blueprint
+
 from openmetadata_managed_apis.operations.health import health_response
 from openmetadata_managed_apis.utils.logger import routes_logger
 
-try:
+try:  # noqa: SIM105
     pass
 except ImportError:
     pass

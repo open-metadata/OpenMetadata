@@ -11,58 +11,41 @@
  *  limitations under the License.
  */
 import {
-  MenuItem,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-  useTheme,
-} from '@mui/material';
-import Qs from 'qs';
-import { FC, useCallback, useMemo, useState } from 'react';
+  Box,
+  ButtonUtility,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Map01,
+  Maximize02,
+  ZoomIn,
+  ZoomOut,
+} from '@openmetadata/ui-core-components/icons';
+import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExitFullScreenIcon } from '../../../../assets/svg/ic-exit-fullscreen.svg';
-import { ReactComponent as FitScreenIcon } from '../../../../assets/svg/ic-fit-screen.svg';
-import { ReactComponent as FitViewOptionsIcon } from '../../../../assets/svg/ic-fit-view-options.svg';
-import { ReactComponent as FullscreenIcon } from '../../../../assets/svg/ic-fullscreen.svg';
-import { ReactComponent as HomeIcon } from '../../../../assets/svg/ic-home.svg';
-import { ReactComponent as MapIcon } from '../../../../assets/svg/ic-map.svg';
-import { ReactComponent as RearrangeNodesIcon } from '../../../../assets/svg/ic-rearrange-nodes.svg';
-import { ReactComponent as ZoomInIcon } from '../../../../assets/svg/ic-zoom-in.svg';
-import { ReactComponent as ZoomOutIcon } from '../../../../assets/svg/ic-zoom-out.svg';
-import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../../constants/constants';
-import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
-import { centerNodePosition } from '../../../../utils/EntityLineageUtils';
-import { StyledMenu } from '../../../LineageTable/LineageTable.styled';
+import { ReactFlowInstance, useViewport } from 'reactflow';
+import { useLineageStore } from '../../../../hooks/useLineageStore';
+
+type IconComponent = FC<{ className?: string }>;
 
 const LineageControlButtons: FC<{
   onToggleMiniMap: () => void;
   miniMapVisible?: boolean;
-}> = ({ onToggleMiniMap, miniMapVisible = false }) => {
+  reactFlowInstance?: ReactFlowInstance;
+  onFitView?: () => void;
+}> = ({
+  onToggleMiniMap,
+  miniMapVisible = false,
+  reactFlowInstance: controlledReactFlowInstance,
+  onFitView,
+}) => {
   const { t } = useTranslation();
-  const theme = useTheme();
-  const [lineageViewOptionsAnchorEl, setLineageViewOptionsAnchorEl] =
-    useState<null | HTMLElement>(null);
-
-  const { reactFlowInstance, redraw } = useLineageProvider();
-  const navigate = useNavigate();
-  const location = useCustomLocation();
-
-  const isFullscreen = useMemo(() => {
-    const params = Qs.parse(location.search, { ignoreQueryPrefix: true });
-
-    return params[FULLSCREEN_QUERY_PARAM_KEY] === 'true';
-  }, [location.search]);
-
-  const toggleFullscreenView = useCallback(() => {
-    navigate({
-      search: isFullscreen
-        ? ''
-        : Qs.stringify({ [FULLSCREEN_QUERY_PARAM_KEY]: !isFullscreen }),
-    });
-  }, [isFullscreen]);
-
+  const providerReactFlowInstance = useLineageStore((s) => s.reactFlowInstance);
+  const reactFlowInstance =
+    controlledReactFlowInstance ?? providerReactFlowInstance;
+  const { zoom } = useViewport();
   const handleZoomIn = useCallback(() => {
     reactFlowInstance?.zoomIn();
   }, [reactFlowInstance]);
@@ -72,147 +55,68 @@ const LineageControlButtons: FC<{
   }, [reactFlowInstance]);
 
   const handleFitView = useCallback(() => {
-    const currentZoom = reactFlowInstance?.getZoom() ?? 1;
-    reactFlowInstance?.fitView({ padding: 0.2 });
-    reactFlowInstance?.zoomTo(currentZoom);
+    if (onFitView) {
+      onFitView();
 
-    setLineageViewOptionsAnchorEl(null);
-  }, [reactFlowInstance]);
-
-  const handleRearrange = useCallback(() => {
-    redraw?.();
-    setLineageViewOptionsAnchorEl(null);
-  }, [redraw]);
-
-  const handleRefocusSelected = useCallback(() => {
-    const selectedElement = reactFlowInstance
-      ?.getNodes()
-      .find((el) => el.selected);
-
-    selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
-    setLineageViewOptionsAnchorEl(null);
-  }, [reactFlowInstance]);
-
-  const handleRefocusHome = useCallback(() => {
-    const selectedElement = reactFlowInstance
-      ?.getNodes()
-      .find((el) => el.data.isRootNode);
-    selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
-    setLineageViewOptionsAnchorEl(null);
-  }, [reactFlowInstance]);
+      return;
+    }
+    reactFlowInstance?.fitView({ padding: 0.2, maxZoom: 1 });
+  }, [onFitView, reactFlowInstance]);
 
   return (
-    <ToggleButtonGroup
-      exclusive
-      color="primary"
-      sx={{
-        /* Shadows/shadow-xs */
-        boxShadow: theme.shadows[1],
-        background: theme.palette.background.paper,
-
-        svg: {
-          height: theme.spacing(4),
-          width: theme.spacing(4),
-        },
-      }}>
-      <Tooltip
-        arrow
-        placement="top"
-        title={t('label.lineage-view-option-plural')}>
-        <ToggleButton
-          data-testid="fit-screen"
-          value="fit-view"
-          onClick={(event) =>
-            setLineageViewOptionsAnchorEl(event.currentTarget)
-          }>
-          <FitViewOptionsIcon />
-        </ToggleButton>
-      </Tooltip>
-
-      <StyledMenu
-        anchorEl={lineageViewOptionsAnchorEl}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'left',
-        }}
-        id="lineage-view-options-menu"
-        open={Boolean(lineageViewOptionsAnchorEl)}
-        slotProps={{
-          paper: {
-            sx: {
-              marginTop: '0',
-            },
-          },
-        }}
-        transformOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        onClose={() => setLineageViewOptionsAnchorEl(null)}>
-        <MenuItem onClick={handleFitView}>
-          <FitScreenIcon />
-          {t('label.fit-to-screen')}
-        </MenuItem>
-        <MenuItem onClick={handleRefocusSelected}>
-          <FitViewOptionsIcon />
-          {t('label.refocused-to-selected')}
-        </MenuItem>
-        <MenuItem onClick={handleRearrange}>
-          <RearrangeNodesIcon />
-          {t('label.rearrange-nodes')}
-        </MenuItem>
-        <MenuItem onClick={handleRefocusHome}>
-          <HomeIcon />
-          {t('label.refocused-to-home')}
-        </MenuItem>
-      </StyledMenu>
-
-      <Tooltip arrow placement="top" title={t('label.mind-map')}>
-        <ToggleButton
-          data-testid="toggle-mind-map"
-          selected={miniMapVisible}
-          value="mind-map"
-          onClick={onToggleMiniMap}>
-          <MapIcon />
-        </ToggleButton>
-      </Tooltip>
-
-      <Tooltip arrow placement="top" title={t('label.zoom-in')}>
-        <ToggleButton
-          data-testid="zoom-in"
-          value="zoom-in"
-          onClick={handleZoomIn}>
-          <ZoomInIcon />
-        </ToggleButton>
-      </Tooltip>
-
-      <Tooltip arrow placement="top" title={t('label.zoom-out')}>
-        <ToggleButton
-          data-testid="zoom-out"
-          value="zoom-out"
-          onClick={handleZoomOut}>
-          <ZoomOutIcon />
-        </ToggleButton>
-      </Tooltip>
-
-      <Tooltip
-        arrow
-        placement="top"
-        title={
-          isFullscreen
-            ? t('label.exit-full-screen')
-            : t('label.full-screen-view')
-        }>
-        <ToggleButton
-          data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
-          selected={isFullscreen}
-          size="large"
-          value="full-screen"
-          onClick={toggleFullscreenView}>
-          {isFullscreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
-        </ToggleButton>
-      </Tooltip>
-    </ToggleButtonGroup>
+    <Card variant="elevated">
+      <Card.Content className="tw:p-1.5!">
+        <Box align="center" className="tw:gap-1.5">
+          <ButtonUtility
+            aria-label={t('label.mind-map')}
+            aria-pressed={miniMapVisible}
+            className={
+              miniMapVisible
+                ? 'tw:text-link tw:hover:text-link tw:hover:bg-primary_hover'
+                : ''
+            }
+            data-testid="toggle-mind-map"
+            icon={Map01 as IconComponent}
+            size="lg"
+            tooltip={t('label.mind-map')}
+            onClick={onToggleMiniMap}
+          />
+          <Divider orientation="vertical" />
+          <ButtonUtility
+            aria-label={t('label.zoom-in')}
+            data-testid="zoom-in"
+            icon={ZoomIn as IconComponent}
+            size="lg"
+            tooltip={t('label.zoom-in')}
+            onClick={handleZoomIn}
+          />
+          <Typography
+            as="span"
+            className="tw:min-w-10 tw:text-center tw:tabular-nums tw:text-secondary"
+            data-testid="zoom-level"
+            size="text-sm">
+            {`${Math.round(zoom * 100)}%`}
+          </Typography>
+          <ButtonUtility
+            aria-label={t('label.zoom-out')}
+            data-testid="zoom-out"
+            icon={ZoomOut as IconComponent}
+            size="lg"
+            tooltip={t('label.zoom-out')}
+            onClick={handleZoomOut}
+          />
+          <Divider orientation="vertical" />
+          <ButtonUtility
+            aria-label={t('label.fit-to-screen')}
+            data-testid="fit-screen"
+            icon={Maximize02 as IconComponent}
+            size="lg"
+            tooltip={t('label.fit-to-screen')}
+            onClick={handleFitView}
+          />
+        </Box>
+      </Card.Content>
+    </Card>
   );
 };
 

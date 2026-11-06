@@ -23,8 +23,8 @@ Memory-optimized:
 """
 
 import time
+from collections.abc import Iterable
 from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional
 
 import google.cloud.logging
 from google.api_core.exceptions import ResourceExhausted
@@ -48,13 +48,13 @@ PAGE_SIZE = 10000
 DATASET_BATCH_SIZE = 50
 
 
-def _batch(items: List[str], batch_size: int) -> Iterable[List[str]]:
+def _batch(items: list[str], batch_size: int) -> Iterable[list[str]]:
     """Yield successive batches from a list."""
     for i in range(0, len(items), batch_size):
         yield items[i : i + batch_size]
 
 
-def _build_dataset_filter(datasets: List[str]) -> str:
+def _build_dataset_filter(datasets: list[str]) -> str:
     """Build a Cloud Logging filter clause for a batch of dataset IDs.
 
     Uses the indexed field resource.labels.dataset_id for efficient
@@ -137,7 +137,7 @@ class BigQueryIncrementalTableProcessor:
                         logger.info("Processed %d Cloud Logging entries so far", total)
                 if total > 0:
                     logger.info("Finished processing %d Cloud Logging entries", total)
-                return
+                return  # noqa: TRY300
             except ResourceExhausted:
                 if attempt < MAX_RETRIES - 1:
                     wait = RETRY_BASE_WAIT * (attempt + 1)
@@ -163,7 +163,7 @@ class BigQueryIncrementalTableProcessor:
         self,
         project: str,
         start_date: datetime,
-        datasets: Optional[List[str]] = None,
+        datasets: list[str] | None = None,
     ):
         """Fetch changed tables from Cloud Logging, batching datasets for efficiency.
 
@@ -215,13 +215,13 @@ class BigQueryIncrementalTableProcessor:
         else:
             logger.info("No datasets to query after filtering for project '%s'", project)
 
-    def get_deleted(self, schema_name: SchemaName) -> List[TableName]:
+    def get_deleted(self, schema_name: SchemaName) -> list[TableName]:
         return self._changed_tables_map.get_deleted(schema_name)
 
-    def get_not_deleted(self, schema_name: SchemaName) -> List[TableName]:
+    def get_not_deleted(self, schema_name: SchemaName) -> list[TableName]:
         return self._changed_tables_map.get_not_deleted(schema_name)
 
-    def get_all_deleted(self) -> Dict[SchemaName, List[TableName]]:
+    def get_all_deleted(self) -> dict[SchemaName, list[TableName]]:
         return self._changed_tables_map.get_all_deleted()
 
     @property

@@ -15,7 +15,6 @@ OpenMetadata high-level API Policy test
 
 import uuid
 from copy import deepcopy
-from typing import List
 
 import pytest
 
@@ -43,8 +42,8 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
 from metadata.ingestion.ometa.utils import model_str
 
-from ..integration_base import generate_name
-from .conftest import _safe_delete
+from ..integration_base import generate_name  # noqa: TID252
+from .conftest import _safe_delete  # noqa: TID252
 
 # Conditions
 CONDITION_IS_OWNER = Expression(root="isOwner()")
@@ -56,7 +55,7 @@ RESOURCE_BOT: str = "Bot"
 RESOURCE_PIPELINE: str = "Pipeline"
 RESOURCE_TABLE: str = "Table"
 
-ROLE_FIELDS: List[str] = ["policies", "teams", "users"]
+ROLE_FIELDS: list[str] = ["policies", "teams", "users"]
 
 _RUN_ID = uuid.uuid4().hex[:8]
 POLICY_NAME = f"test-policy-{_RUN_ID}"
@@ -263,7 +262,7 @@ class TestOMetaRolePolicyAPI:
     def test_policy_list_all(self, metadata, create_policy):
         """Validate generator utility to fetch all Policies"""
         fake_create = deepcopy(create_policy)
-        for i in range(0, 10):
+        for i in range(0, 10):  # noqa: PIE808
             fake_create.name = EntityName(create_policy.name.root + str(i))
             metadata.create_or_update(data=fake_create)
 
@@ -322,7 +321,7 @@ class TestOMetaRolePolicyAPI:
         policy: Policy = metadata.create_or_update(create_policy)
         dest_policy = deepcopy(policy)
         if dest_policy.rules is None:
-            dest_policy.rules.root = list()
+            dest_policy.rules.root = list()  # noqa: C408
         dest_policy.rules.root.append(RULE_3)
 
         res: Policy = metadata.patch(entity=Policy, source=policy, destination=dest_policy)
@@ -412,7 +411,7 @@ class TestOMetaRolePolicyAPI:
     def test_role_list_all(self, metadata, create_role):
         """Validate generator utility to fetch all roles"""
         fake_create = deepcopy(create_role)
-        for i in range(0, 10):
+        for i in range(0, 10):  # noqa: PIE808
             fake_create.name = EntityName(create_role.name.root + str(i))
             metadata.create_or_update(data=fake_create)
 

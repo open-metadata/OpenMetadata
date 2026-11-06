@@ -37,10 +37,10 @@ RDL_REPORTS_PREFIX = "rdlreports"
 #   - endswith(name, '{value}')       : ~3 nodes per clause
 #   - contains(name, '{value}')       : ~3 nodes per clause
 #
-# Formula: (nodes_per_clause × N) + (N - 1) ≤ 100
+# Formula: (nodes_per_clause × N) + (N - 1) ≤ 100  # noqa: RUF003
 #
-# Worst case at N=10 (all trim eq): 6×10 + 9 = 69 nodes (within limit)
-# Best case at N=10 (all contains):  3×10 + 9 = 39 nodes (within limit)
+# Worst case at N=10 (all trim eq): 6×10 + 9 = 69 nodes (within limit)  # noqa: RUF003
+# Best case at N=10 (all contains):  3×10 + 9 = 39 nodes (within limit)  # noqa: RUF003
 #
 # Batch size is set to 10 to safely accommodate any mix of filter types
 # while staying well under the 100-node limit.
@@ -49,3 +49,7 @@ RDL_REPORTS_PREFIX = "rdlreports"
 MAX_PROJECT_FILTER_SIZE = 10
 
 SQL_LINE_COMMENT_PATTERN = r"//[^\n]*"
+
+# A Power Query M text literal (group 1) or an M comment. Literals are matched first, so comment
+# markers inside one, such as in the SQL text of a native query, are not taken for comments.
+M_TEXT_LITERAL_OR_COMMENT_PATTERN = r'("(?:[^"]|"")*")|/\*.*?\*/|//[^\n]*'

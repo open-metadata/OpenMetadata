@@ -20,7 +20,7 @@ Replaces the bash/YAML-based tests previously in owner_config_tests/ directory.
 """
 
 import uuid
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from unittest import TestCase
 from unittest.mock import Mock
 
@@ -37,12 +37,12 @@ from metadata.generated.schema.type.basic import (
 
 
 def build_owner_config(
-    default: Optional[str] = None,
+    default: str | None = None,
     enable_inheritance: bool = True,
-    database: Optional[Union[str, Dict[str, Any]]] = None,
-    database_schema: Optional[Union[str, Dict[str, Any]]] = None,
-    table: Optional[Union[str, Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
+    database: str | dict[str, Any] | None = None,
+    database_schema: str | dict[str, Any] | None = None,
+    table: str | dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Build owner configuration dictionary for testing.
 
@@ -56,7 +56,7 @@ def build_owner_config(
     Returns:
         Owner configuration dictionary
     """
-    config: Dict[str, Any] = {"enableInheritance": enable_inheritance}
+    config: dict[str, Any] = {"enableInheritance": enable_inheritance}
 
     if default:
         config["default"] = default
@@ -72,10 +72,10 @@ def build_owner_config(
 
 def build_test_workflow_config(
     service_name: str,
-    owner_config: Dict[str, Any],
+    owner_config: dict[str, Any],
     host_port: str = "localhost:5432",
     database: str = "finance_db",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Build complete workflow configuration for testing.
 
@@ -193,8 +193,10 @@ class TestOwnerConfig(TestCase):
         }
 
         def get_by_name_side_effect(
-            entity: Any, fqn: str, fields: Optional[List[str]] = None
-        ) -> Optional[Union[User, Team]]:
+            entity: Any,
+            fqn: str,
+            fields: list[str] | None = None,
+        ) -> User | Team | None:
             """Mock get_by_name to return users/teams or None"""
             if fqn in mock_users:
                 return mock_users[fqn]

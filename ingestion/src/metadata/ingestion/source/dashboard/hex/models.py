@@ -13,7 +13,6 @@ Hex API Response Models
 """
 
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -21,109 +20,104 @@ from pydantic import BaseModel, Field
 class Creator(BaseModel):
     """Creator information"""
 
-    email: Optional[str] = None
+    email: str | None = None
 
 
 class Owner(BaseModel):
     """Owner information"""
 
-    email: Optional[str] = None
+    email: str | None = None
 
 
 class ProjectStatus(BaseModel):
     """Project status"""
 
-    name: Optional[str] = None
+    name: str | None = None
 
 
 class Category(BaseModel):
     """Project category"""
 
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
 
 
 class Reviews(BaseModel):
     """Project reviews settings"""
 
-    required: Optional[bool] = None
+    required: bool | None = None
 
 
 class AppViews(BaseModel):
     """App view counts"""
 
-    allTime: Optional[int] = Field(None, alias="all_time")
-    lastSevenDays: Optional[int] = Field(None, alias="last_seven_days")
-    lastFourteenDays: Optional[int] = Field(None, alias="last_fourteen_days")
-    lastThirtyDays: Optional[int] = Field(None, alias="last_thirty_days")
+    allTime: int | None = None  # noqa: N815
+    lastSevenDays: int | None = None  # noqa: N815
+    lastFourteenDays: int | None = None  # noqa: N815
+    lastThirtyDays: int | None = None  # noqa: N815
 
 
 class ProjectAnalytics(BaseModel):
     """Project analytics data"""
 
-    appViews: Optional[AppViews] = Field(None, alias="app_views")
-    lastViewedAt: Optional[datetime] = Field(None, alias="last_viewed_at")
-    publishedResultsUpdatedAt: Optional[datetime] = Field(None, alias="published_results_updated_at")
+    appViews: AppViews | None = None  # noqa: N815
+    lastViewedAt: datetime | None = None  # noqa: N815
+    publishedResultsUpdatedAt: datetime | None = None  # noqa: N815
 
 
 class Project(BaseModel):
-    """Hex Project Model"""
+    """Hex Project or Component, told apart by type"""
 
     id: str
     title: str
-    description: Optional[str] = None
-    type: Optional[str] = None
-    creator: Optional[Creator] = None
-    owner: Optional[Owner] = None
-    status: Optional[ProjectStatus] = None
-    categories: List[Category] = Field(default_factory=list)
-    reviews: Optional[Reviews] = None
-    analytics: Optional[ProjectAnalytics] = None
-    lastEditedAt: Optional[datetime] = Field(None, alias="last_edited_at")
-    lastPublishedAt: Optional[datetime] = Field(None, alias="last_published_at")
-    createdAt: Optional[datetime] = Field(None, alias="created_at")
-    archivedAt: Optional[datetime] = Field(None, alias="archived_at")
-    trashedAt: Optional[datetime] = Field(None, alias="trashed_at")
-    schedules: List = Field(default_factory=list)
+    description: str | None = None
+    type: str | None = None
+    creator: Creator | None = None
+    owner: Owner | None = None
+    status: ProjectStatus | None = None
+    categories: list[Category] = Field(default_factory=list)
+    reviews: Reviews | None = None
+    analytics: ProjectAnalytics | None = None
+    lastEditedAt: datetime | None = None  # noqa: N815
+    lastPublishedAt: datetime | None = None  # noqa: N815
+    createdAt: datetime | None = None  # noqa: N815
+    archivedAt: datetime | None = None  # noqa: N815
+    trashedAt: datetime | None = None  # noqa: N815
+    schedules: list = Field(default_factory=list)
 
 
 class Pagination(BaseModel):
     """Pagination information"""
 
-    after: Optional[str] = None
-    before: Optional[str] = None
+    after: str | None = None
+    before: str | None = None
 
 
-class ProjectListResponse(BaseModel):
+class PagedResponse(BaseModel):
+    pagination: Pagination | None = None
+
+
+class ProjectListResponse(PagedResponse):
     """List Projects API Response"""
 
-    values: List[Project] = Field(default_factory=list)
-    pagination: Optional[Pagination] = None
-
-
-class ProjectRunInput(BaseModel):
-    """Project run input parameter"""
-
-    name: str
-    value: Optional[str] = None
+    values: list[Project] = Field(default_factory=list)
 
 
 class ProjectRun(BaseModel):
-    """Project run information"""
+    """A run of a published project"""
 
-    projectId: str = Field(alias="project_id")
-    runId: str = Field(alias="run_id")
-    status: Optional[str] = None
-    startedAt: Optional[datetime] = Field(None, alias="started_at")
-    completedAt: Optional[datetime] = Field(None, alias="completed_at")
-    inputs: List[ProjectRunInput] = Field(default_factory=list)
+    runId: str  # noqa: N815
+    status: str | None = None
+    startTime: datetime | None = None  # noqa: N815
+    endTime: datetime | None = None  # noqa: N815
+    # Milliseconds
+    elapsedTime: float | None = None  # noqa: N815
 
 
 class ProjectRunsResponse(BaseModel):
     """Get Project Runs API Response"""
 
-    runs: List[ProjectRun] = Field(default_factory=list)
-    nextPage: Optional[str] = Field(None, alias="next_page")
+    runs: list[ProjectRun] = Field(default_factory=list)
 
 
 class DataConnection(BaseModel):
@@ -131,12 +125,63 @@ class DataConnection(BaseModel):
 
     id: str
     name: str
-    type: Optional[str] = None
-    description: Optional[str] = None
+    type: str | None = None
+    description: str | None = None
+    # Keyed by type, e.g. {"snowflake": {"database": "analytics", ...}}
+    connectionDetails: dict | None = None  # noqa: N815
+
+    @property
+    def default_database(self) -> str | None:
+        return self._details.get("database")
+
+    @property
+    def default_schema(self) -> str | None:
+        return self._details.get("schema")
+
+    @property
+    def _details(self) -> dict:
+        details = (self.connectionDetails or {}).get(self.type or "")
+        return details if isinstance(details, dict) else {}
 
 
-class DataConnectionsResponse(BaseModel):
-    """Data Connections API Response"""
+class DataConnectionsResponse(PagedResponse):
+    """List Data Connections API Response"""
 
-    connections: List[DataConnection] = Field(default_factory=list)
-    nextPage: Optional[str] = Field(None, alias="next_page")
+    values: list[DataConnection] = Field(default_factory=list)
+
+
+class SqlCellContents(BaseModel):
+    source: str | None = None
+
+
+class CellContents(BaseModel):
+    sqlCell: SqlCellContents | None = None  # noqa: N815
+
+
+class Cell(BaseModel):
+    """Hex notebook cell"""
+
+    id: str
+    staticId: str | None = None  # noqa: N815
+    cellType: str | None = None  # noqa: N815
+    label: str | None = None
+    dataConnectionId: str | None = None  # noqa: N815
+    # Name later SQL cells use to query this cell's result; only the export API returns it
+    resultVariableName: str | None = None  # noqa: N815
+    contents: CellContents | None = None
+
+    @property
+    def sql(self) -> str | None:
+        return self.contents.sqlCell.source if self.contents and self.contents.sqlCell else None
+
+
+class ProjectExport(BaseModel):
+    """Export Project API Response: the project as YAML"""
+
+    content: str
+
+
+class CellListResponse(PagedResponse):
+    """List Cells API Response"""
+
+    values: list[Cell] = Field(default_factory=list)

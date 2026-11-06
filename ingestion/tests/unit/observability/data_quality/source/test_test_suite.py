@@ -51,6 +51,18 @@ MOCK_ENTITY_REFERENCE = EntityReference(id=str(UUID(int=0)), type="test_suite", 
             },
             [],
         ),
+        # Matched on name, which is why the server scopes an on-demand run by name: a fully
+        # qualified name would select nothing and the run would pass having tested nothing.
+        (
+            {
+                "type": "TestSuite",
+                "entityFullyQualifiedName": "MyTestSuite",
+                "testCases": [
+                    "MyTestSuite.test_case1",
+                ],
+            },
+            [],
+        ),
     ],
 )
 def test_source_config(parameters, expected, monkeypatch):
@@ -115,5 +127,5 @@ def test_source_config(parameters, expected, monkeypatch):
     mock_metadata.get_by_id.return_value = TestSuite(name="test_suite", basic=True, id=UUID(int=0))
 
     source = TestSuiteSource(OpenMetadataWorkflowConfig.model_validate(workflow_config), mock_metadata)
-    test_cases = list(source._iter())[0].right.test_cases
+    test_cases = list(source._iter())[0].right.test_cases  # noqa: RUF015
     assert [t.name.root for t in test_cases] == expected

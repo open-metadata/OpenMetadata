@@ -10,13 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Button,
+  Popover,
+  PopoverTrigger,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Popover, Spin, Tabs } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useInView } from 'react-intersection-observer';
 import { UPLOADED_ASSETS_URL } from '../../../../constants/BlockEditor.constants';
+import { useEntityAttachment } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../../common/Loader/Loader';
 import { FileType } from '../../BlockEditor.interface';
 import imageClassBase from '../image/ImageClassBase';
@@ -26,19 +33,181 @@ import FileAttachment from './AttachmentComponents/FileAttachment';
 import ImageAttachment from './AttachmentComponents/ImageAttachment';
 import './file-node.less';
 
+const MediaPlayer: FC<{
+  isVideo: boolean;
+  mediaSrc: string;
+  fileName?: string;
+}> = ({ isVideo, mediaSrc, fileName }) => {
+  const { t } = useTranslation();
+  const label = fileName || t('label.media');
+
+  return isVideo ? (
+    // eslint-disable-next-line jsx-a11y/media-has-caption -- no caption track exists for user-uploaded media
+    <video
+      controls
+      aria-label={label}
+      className="video-player"
+      src={mediaSrc}
+    />
+  ) : (
+    // eslint-disable-next-line jsx-a11y/media-has-caption -- no caption track exists for user-uploaded media
+    <audio
+      controls
+      aria-label={label}
+      className="audio-player"
+      src={mediaSrc}
+    />
+  );
+};
+
+const resolveAttr = <T,>(value: T, fallback: T) => value ?? fallback;
+
+const getFileType = (isVideo: boolean, isAudio: boolean, isImage: boolean) => {
+  if (isVideo) {
+    return FileType.VIDEO;
+  }
+  if (isAudio) {
+    return FileType.AUDIO;
+  }
+
+  return isImage ? FileType.IMAGE : FileType.FILE;
+};
+
+interface AttachmentPopoverProps {
+  isPopupVisible: boolean;
+  onOpenChange: (visible: boolean) => void;
+  popoverContent: React.ReactNode;
+}
+
+const AttachmentButton: FC<
+  AttachmentPopoverProps & {
+    children: React.ReactNode;
+    showUploadOverlay: boolean;
+    uploadingLabel: string;
+  }
+> = ({
+  children,
+  showUploadOverlay,
+  uploadingLabel,
+  isPopupVisible,
+  onOpenChange,
+  popoverContent,
+}) => (
+  <PopoverTrigger isOpen={isPopupVisible} onOpenChange={onOpenChange}>
+    <Button
+      className="tw:relative tw:block tw:w-full tw:p-0 tw:bg-transparent tw:shadow-none tw:after:outline-0 hover:tw:bg-transparent tw:[&>span]:flex"
+      data-testid="add-image-container">
+      {showUploadOverlay && (
+        <div className="upload-overlay">
+          <div className="upload-spinner">
+            <Loader size="small" />
+            <span className="upload-text">{uploadingLabel}</span>
+          </div>
+        </div>
+      )}
+      {children}
+    </Button>
+    {popoverContent}
+  </PopoverTrigger>
+);
+
 const PopoverContent: FC<ImagePopoverContentProps> = (props) => {
+  const { allowFileUpload } = useEntityAttachment();
   const tabs = useMemo(() => {
-    return imageClassBase.getImageComponentPopoverTab().map((tab) => {
-      const TabComponent = tab.children;
+    return imageClassBase
+      .getImageComponentPopoverTab({ allowFileUpload })
+      .map((tab) => {
+        const TabComponent = tab.children;
 
-      return {
-        ...tab,
-        children: <TabComponent {...props} />,
-      };
-    });
-  }, [imageClassBase]);
+        return {
+          ...tab,
+          children: <TabComponent {...props} />,
+        };
+      });
+  }, [allowFileUpload, props]);
 
-  return <Tabs defaultActiveKey="embed" items={tabs} />;
+  return (
+    <Tabs defaultSelectedKey="embed">
+      <Tabs.List type="underline">
+        {tabs.map((tab) => (
+          <Tabs.Item id={tab.key} key={tab.key} label={tab.label} />
+        ))}
+      </Tabs.List>
+      {tabs.map((tab) => (
+        <Tabs.Panel className="tw:pt-3" id={tab.key} key={tab.key}>
+          {tab.children}
+        </Tabs.Panel>
+      ))}
+    </Tabs>
+  );
+};
+
+const useAuthenticatedMediaUrls = (url: string, fileType: FileType) => {
+  // ADR:2026-10-28-block-editor-media-attachments-load-within-200px-of-the-viewport
+  const { ref: inViewRef, inView } = useInView({
+    triggerOnce: true,
+    rootMargin: '200px',
+    fallbackInView: true,
+  });
+  const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
+  // Downloads the whole blob, so only for rendered media that is near the viewport;
+  // plain files are fetched on click by the file hook below.
+  const shouldFetchMedia = fileType !== FileType.FILE && inView;
+  const mediaUrl = shouldFetchMedia ? url : '';
+  const { imageSrc: mediaSrc, isLoading: isMediaLoading } =
+    authenticatedImageUrl
+      ? authenticatedImageUrl(mediaUrl)
+      : { imageSrc: mediaUrl, isLoading: false };
+
+  const authenticatedFileUrl = imageClassBase.getAuthenticatedFileUrl();
+  const { downloadFile, isLoading: isFileLoading } = authenticatedFileUrl
+    ? authenticatedFileUrl(url)
+    : { downloadFile: noop, isLoading: false };
+
+  return { inViewRef, mediaSrc, isMediaLoading, downloadFile, isFileLoading };
+};
+
+const useFileNodeViewState = ({
+  node,
+  editor,
+}: Pick<NodeViewProps, 'node' | 'editor'>) => {
+  const { url, fileName, fileSize, mimeType, isUploading, tempFile, isImage } =
+    node.attrs;
+  const isValidSource = !isEmpty(url) || isUploading;
+  const isVideo = mimeType?.startsWith(FileType.VIDEO);
+  const isAudio = mimeType?.startsWith(FileType.AUDIO);
+  const isMedia = isVideo || isAudio;
+  const isAssetsUrl = isValidSource && url?.includes(UPLOADED_ASSETS_URL);
+  const isEditableMedia = editor.isEditable && !isAssetsUrl;
+  const fileType = getFileType(isVideo, isAudio, isImage);
+
+  const { inViewRef, mediaSrc, isMediaLoading, downloadFile, isFileLoading } =
+    useAuthenticatedMediaUrls(url, fileType);
+  const isMediaSrcReady = !isMediaLoading && !isEmpty(mediaSrc);
+
+  const isPlayableMedia =
+    isMedia && isValidSource && !isUploading && isMediaSrcReady;
+
+  return {
+    inViewRef,
+    url,
+    fileName: resolveAttr(fileName, tempFile?.name),
+    fileSize: resolveAttr(fileSize, tempFile?.size)?.toString(),
+    mimeType: resolveAttr(mimeType, tempFile?.type),
+    isUploading,
+    isImage,
+    isValidSource,
+    isVideo,
+    isAudio,
+    isMedia,
+    isPlayableMedia,
+    isEditableMedia,
+    mediaSrc,
+    isMediaLoading,
+    downloadFile,
+    isFileLoading,
+    fileType,
+  };
 };
 
 const FileNodeView: FC<NodeViewProps> = ({
@@ -48,31 +217,34 @@ const FileNodeView: FC<NodeViewProps> = ({
   editor,
 }) => {
   const { t } = useTranslation();
-  const { url, fileName, fileSize, mimeType, isUploading, tempFile, isImage } =
-    node.attrs;
-  const isValidSource = !isEmpty(url) || isUploading;
-  const isVideo = mimeType?.startsWith(FileType.VIDEO);
-  const isAudio = mimeType?.startsWith(FileType.AUDIO);
-  const isMedia = isVideo || isAudio;
+  const { setPopoverOpen } = useEntityAttachment();
+  const { diffState } = node.attrs;
   const [isPopupVisible, setIsPopupVisible] = useState<boolean>(false);
-
-  const isAssetsUrl = useMemo(() => {
-    return isValidSource && url?.includes(UPLOADED_ASSETS_URL);
-  }, [url, isValidSource]);
-
-  const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
-  const { imageSrc: mediaSrc, isLoading: isMediaLoading } =
-    authenticatedImageUrl
-      ? authenticatedImageUrl(url)
-      : { imageSrc: url, isLoading: false };
-
-  const authenticatedFileUrl = imageClassBase.getAuthenticatedFileUrl();
-  const { downloadFile, isLoading: isFileLoading } = authenticatedFileUrl
-    ? authenticatedFileUrl(url)
-    : { downloadFile: noop, isLoading: false };
+  const {
+    inViewRef,
+    url,
+    fileName,
+    fileSize,
+    mimeType,
+    isUploading,
+    isImage,
+    isValidSource,
+    isVideo,
+    isAudio,
+    isMedia,
+    isPlayableMedia,
+    isEditableMedia,
+    mediaSrc,
+    isMediaLoading,
+    downloadFile,
+    isFileLoading,
+    fileType,
+  } = useFileNodeViewState({ editor, node });
 
   const handlePopoverVisibleChange = (visible: boolean) => {
-    setIsPopupVisible(visible && editor.isEditable);
+    const nextVisible = visible && isEditableMedia;
+    setIsPopupVisible(nextVisible);
+    setPopoverOpen(nextVisible);
   };
 
   const handleFileClick = (e: React.MouseEvent) => {
@@ -83,35 +255,9 @@ const FileNodeView: FC<NodeViewProps> = ({
     }
   };
 
-  const fileType = useMemo(() => {
-    if (isVideo) {
-      return FileType.VIDEO;
-    }
-    if (isAudio) {
-      return FileType.AUDIO;
-    }
-    if (isImage) {
-      return FileType.IMAGE;
-    }
-
-    return FileType.FILE;
-  }, [isVideo, isAudio, isImage]);
-
   const renderContent = () => {
     if (!isValidSource) {
       return <AttachmentPlaceholder fileType={fileType} />;
-    }
-
-    if (isMedia) {
-      return (
-        <div className="media-wrapper">
-          {isVideo ? (
-            <video controls className="video-player" src={mediaSrc} />
-          ) : (
-            <audio controls className="audio-player" src={mediaSrc} />
-          )}
-        </div>
-      );
     }
 
     if (isImage) {
@@ -134,6 +280,28 @@ const FileNodeView: FC<NodeViewProps> = ({
     );
   };
 
+  const popoverContent = (
+    <Popover
+      className="om-image-node-popover tw:w-96 tw:p-4"
+      placement="bottom">
+      <PopoverContent
+        deleteNode={deleteNode}
+        fileType={fileType}
+        isUploading={isUploading}
+        isValidSource={isValidSource}
+        src={isMedia ? mediaSrc : url}
+        updateAttributes={({ src, ...rest }) =>
+          updateAttributes({ url: src, ...rest })
+        }
+        onPopupVisibleChange={(value) => {
+          setIsPopupVisible(value);
+          setPopoverOpen(value);
+        }}
+        onUploadingChange={noop}
+      />
+    </Popover>
+  );
+
   return (
     <NodeViewWrapper
       as="div"
@@ -141,45 +309,36 @@ const FileNodeView: FC<NodeViewProps> = ({
         'file-type-video': isVideo,
         'file-type-audio': isAudio,
         uploading: isUploading,
+        'tw:outline-2 tw:outline-offset-2': Boolean(diffState),
+        'tw:outline-green-600': diffState === 'added',
+        'tw:outline-red-500 tw:opacity-60': diffState === 'removed',
       })}
-      data-filename={fileName || tempFile?.name}
-      data-filesize={(fileSize || tempFile?.size)?.toString()}
-      data-mimetype={mimeType || tempFile?.type}
+      data-filename={fileName}
+      data-filesize={fileSize}
+      data-mimetype={mimeType}
       data-type="file-attachment"
       data-url={url}>
-      <div className={classNames(isMedia ? 'media-content' : 'file-content')}>
-        <Popover
-          align={{ targetOffset: [0, 16] }}
-          content={
-            isAssetsUrl ? null : (
-              <PopoverContent
-                deleteNode={deleteNode}
-                fileType={fileType}
-                isUploading={isUploading}
-                isValidSource={isValidSource}
-                src={isMedia ? mediaSrc : url}
-                updateAttributes={({ src, ...rest }) =>
-                  updateAttributes({ url: src, ...rest })
-                }
-                onPopupVisibleChange={(value) => setIsPopupVisible(value)}
-                onUploadingChange={noop}
-              />
-            )
-          }
-          destroyTooltipOnHide={{ keepParent: false }}
-          open={isPopupVisible}
-          overlayClassName="om-image-node-popover"
-          placement="bottom"
-          showArrow={false}
-          trigger="click"
-          onOpenChange={handlePopoverVisibleChange}>
-          <Spin
-            indicator={<Loader size="small" />}
-            spinning={isMediaLoading || isUploading}
-            tip={isUploading ? t('label.uploading') : t('label.loading')}>
+      <div
+        className={classNames(isMedia ? 'media-content' : 'file-content')}
+        ref={inViewRef}>
+        {isPlayableMedia ? (
+          <MediaPlayer
+            fileName={fileName}
+            isVideo={isVideo}
+            mediaSrc={mediaSrc}
+          />
+        ) : (
+          <AttachmentButton
+            isPopupVisible={isPopupVisible}
+            popoverContent={popoverContent}
+            showUploadOverlay={!isImage && (isMediaLoading || isUploading)}
+            uploadingLabel={
+              isUploading ? t('label.uploading') : t('label.loading')
+            }
+            onOpenChange={handlePopoverVisibleChange}>
             {renderContent()}
-          </Spin>
-        </Popover>
+          </AttachmentButton>
+        )}
       </div>
     </NodeViewWrapper>
   );

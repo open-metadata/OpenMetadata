@@ -14,7 +14,8 @@ Validator for table custom SQL Query test case
 """
 
 import traceback
-from typing import Any, List, Optional, Tuple, cast
+from decimal import Decimal
+from typing import Any, cast
 
 import sqlparse
 from sqlalchemy import text
@@ -39,6 +40,7 @@ from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     BaseTableCustomSQLQueryValidator,
     Strategy,
 )
+from metadata.data_quality.validations.thresholds import ThresholdUnit
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.profiler.metrics.registry import Metrics
@@ -53,7 +55,7 @@ logger = ingestion_logger()
 class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """Validator for table custom SQL Query test case"""
 
-    def _replace_where_clause(self, sql_query: str, partition_expression: str) -> Optional[str]:
+    def _replace_where_clause(self, sql_query: str, partition_expression: str) -> str | None:
         """Replace or add WHERE clause in SQL query using sqlparse.
 
         This method properly handles:
@@ -81,7 +83,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
 
         return "".join(str(token) for token in new_tokens)
 
-    def _find_clause_positions(self, tokens: list) -> Tuple[Optional[int], Optional[int], Optional[int]]:
+    def _find_clause_positions(self, tokens: list) -> tuple[int | None, int | None, int | None]:
         """Find positions of WHERE clause and insertion points in token list.
 
         Args:
@@ -121,13 +123,13 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
         if token.ttype is None and hasattr(token, "tokens"):
             paren_count = str(token).count("(") - str(token).count(")")
             return current_depth + paren_count
-        elif token.value == "(":
+        elif token.value == "(":  # noqa: RET505
             return current_depth + 1
         elif token.value == ")":
             return current_depth - 1
         return current_depth
 
-    def _should_insert_before_token(self, token: Token, insert_before_idx: Optional[int], paren_depth: int) -> bool:
+    def _should_insert_before_token(self, token: Token, insert_before_idx: int | None, paren_depth: int) -> bool:
         """Check if WHERE clause should be inserted before this token.
 
         Args:
@@ -160,9 +162,9 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
     def _build_new_tokens(
         self,
         tokens: list,
-        where_idx: Optional[int],
-        where_end_idx: Optional[int],
-        insert_before_idx: Optional[int],
+        where_idx: int | None,
+        where_end_idx: int | None,
+        insert_before_idx: int | None,
         partition_expression: str,
     ) -> list:
         """Build new token list with WHERE clause inserted or replaced.
@@ -179,7 +181,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
         """
         if where_idx is not None:
             return self._replace_existing_where(tokens, where_idx, where_end_idx, partition_expression)
-        elif insert_before_idx is not None:
+        elif insert_before_idx is not None:  # noqa: RET505
             return self._insert_where_before_clause(tokens, insert_before_idx, partition_expression)
         else:
             return self._append_where_clause(tokens, partition_expression)
@@ -259,7 +261,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
         if not where_clause.split():
             return ""
 
-        last_word = where_clause.split()[-1]
+        last_word = where_clause.split()[-1]  # noqa: PLC0207
         where_content_end = where_clause.rfind(last_word) + len(last_word)
 
         if where_content_end < len(where_clause):
@@ -286,8 +288,11 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             )
             if strategy == Strategy.COUNT:
                 result = cursor.scalar()
+                # Some dialects (e.g. Snowflake) return COUNT(*) as a whole-number Decimal
+                if isinstance(result, Decimal) and result.is_finite() and result == result.to_integral_value():
+                    result = int(result)
                 if not isinstance(result, int):
-                    raise ValueError(
+                    raise ValueError(  # noqa: TRY301
                         f"When using COUNT strategy, the result must be an integer. Received: {type(result)}\n"
                         "Example: SELECT COUNT(*) FROM table_name WHERE my_value IS NOT NULL"
                     )
@@ -295,9 +300,9 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             return cursor.fetchall()
         except Exception as exc:
             self.runner._session.rollback()  # pylint: disable=protected-access
-            raise exc
+            raise exc  # noqa: TRY201
 
-    def compute_row_count(self) -> Optional[int]:
+    def compute_row_count(self) -> int | None:
         """Compute row count for the given column
 
         Raises:
@@ -307,6 +312,20 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             (param.value for param in self.test_case.parameterValues if param.name == "partitionExpression"),
             None,
         )
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
+        if self.get_threshold_unit() is ThresholdUnit.PERCENTAGE:
+            # The verdict divides by the table count, so it cannot come from the catalog or from
+            # rewriting the test query: estimates may be stale, while COUNT queries and joins do
+            # not preserve the table's cardinality.
+            stmt = select(func.count()).select_from(self.runner.table)
+            if partition_expression:
+                stmt = stmt.filter(text(partition_expression))
+            try:
+                return self.runner.session.execute(stmt).scalar()
+            except Exception:
+                self.runner.session.rollback()
+                raise
+
         if partition_expression:
             custom_sql = self.get_test_case_param_value(
                 self.test_case.parameterValues,  # type: ignore
@@ -322,19 +341,18 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
 
                 try:
                     result = self.runner.session.execute(text(count_query)).scalar()
-                    return result
+                    return result  # noqa: RET504, TRY300
                 except Exception as exc:
                     logger.error(
                         f"Failed to execute custom SQL with partition expression. Query: {count_query}\nError: {exc}\n",
                         exc_info=True,
                     )
                     self.runner.session.rollback()
-                    raise exc
+                    raise exc  # noqa: TRY201
             else:
                 stmt = select(func.count()).select_from(self.runner.table).filter(text(partition_expression))
                 return self.runner.session.execute(stmt).scalar()
 
-        self.runner = cast(QueryRunner, self.runner)
         dialect = self.runner._session.get_bind().dialect.name
         table_metric_computer: TableMetricComputer = TableMetricComputer(
             dialect,
@@ -348,18 +366,11 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             return row._asdict().get(Metrics.rowCount.name)
         return None
 
-    def _get_strategy(self):
-        return self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "strategy",
-            Strategy,
-        )
-
     def fetch_failed_rows_sample(self):
         cols, rows = self._get_custom_sql_failed_rows()
         return TableData(columns=cols, rows=rows)
 
-    def _get_custom_sql_failed_rows(self) -> Tuple[List[str], List[List[Any]]]:
+    def _get_custom_sql_failed_rows(self) -> tuple[list[str], list[list[Any]]]:
         sql_expression = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "sqlExpression",
@@ -370,7 +381,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             return [], []
         return [str(col) for col in rows[0]._fields], [list(row) for row in rows]
 
-    def get_inspection_query(self):
+    def get_inspection_query(self) -> str | None:
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "sqlExpression",
@@ -378,18 +389,23 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
         )
 
     def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:
-        """Override: tableCustomSQLQuery uses ROWS strategy check instead of
-        computePassedFailedRowCount, and sets validateColumns=False."""
-        if result.testCaseResult.testCaseStatus == TestCaseStatus.Failed and self._get_strategy() == Strategy.ROWS:
-            result.validateColumns = False
-            try:
-                result.failedRowsSample = self.fetch_failed_rows_sample()
-            except Exception:
-                logger.debug(traceback.format_exc())
-                logger.error("Failed to fetch failed rows sample")
+        """Collect failed-row samples when consent is given and strategy is ROWS."""
+        if not (
+            getattr(result.testCase, "computePassedFailedRowCount", False)
+            and result.testCaseResult.testCaseStatus == TestCaseStatus.Failed
+            and self._get_strategy() == Strategy.ROWS
+        ):
+            return
 
-            try:
-                result.inspectionQuery = self.get_inspection_query()
-            except Exception:
-                logger.debug(traceback.format_exc())
-                logger.error("Failed to get inspection query")
+        result.validateColumns = False
+        try:
+            result.failedRowsSample = self.fetch_failed_rows_sample()
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.error("Failed to fetch failed rows sample")
+
+        try:
+            result.inspectionQuery = self.get_inspection_query()
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.error("Failed to get inspection query")

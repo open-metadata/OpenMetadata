@@ -19,22 +19,18 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 import AdminProtectedRoute from './AdminProtectedRoute';
-import withSuspenseFallback from './withSuspenseFallback';
+import ClassicObservabilityRedirect from './ClassicObservabilityRedirect';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
 
 // Previously statically imported — lazify so they stay out of the main chunk
-const AddCustomMetricPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/AddCustomMetricPage/AddCustomMetricPage')
-  )
-);
 
-const CustomizablePage = withSuspenseFallback(
+const CustomizablePage = withPageSuspenseFallback(
   React.lazy(() =>
     import('../../pages/CustomizablePage/CustomizablePage').then((m) => ({
       default: m.CustomizablePage,
@@ -42,118 +38,130 @@ const CustomizablePage = withSuspenseFallback(
   )
 );
 
-const DataQualityPage = withSuspenseFallback(
+const DataQualityPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/DataQuality/DataQualityPage'))
 );
 
-const ForbiddenPage = withSuspenseFallback(
+const ForbiddenPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/ForbiddenPage/ForbiddenPage'))
 );
 
-const PlatformLineage = withSuspenseFallback(
+const PlatformLineage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/PlatformLineage/PlatformLineage'))
 );
 
-const TagPage = withSuspenseFallback(
+const TagPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/TagPage/TagPage'))
 );
 
-const DomainRouter = withSuspenseFallback(
+const DomainRouter = withPageSuspenseFallback(
   React.lazy(() => import('./DomainRouter'))
 );
-const DataProductListPage = withSuspenseFallback(
+
+const DataProductListPage = withPageSuspenseFallback(
   React.lazy(() => import('../DataProduct/DataProductListPage'))
 );
-const SettingsRouter = withSuspenseFallback(
+
+const SettingsRouter = withPageSuspenseFallback(
   React.lazy(() => import('./SettingsRouter'))
 );
-const EntityRouter = withSuspenseFallback(
+
+const EntityRouter = withPageSuspenseFallback(
   React.lazy(() => import('./EntityRouter'))
 );
-const ClassificationRouter = withSuspenseFallback(
+
+const ClassificationRouter = withPageSuspenseFallback(
   React.lazy(() => import('./ClassificationRouter'))
 );
-const GlossaryRouter = withSuspenseFallback(
+
+const GlossaryRouter = withPageSuspenseFallback(
   React.lazy(() => import('./GlossaryRouter/GlossaryRouter'))
 );
 
-const GlossaryTermRouter = withSuspenseFallback(
+const GlossaryTermRouter = withPageSuspenseFallback(
   React.lazy(() => import('./GlossaryTermRouter/GlossaryTermRouter'))
 );
 
-const MyDataPage = withSuspenseFallback(
+const MyDataPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/MyDataPage/MyDataPage.component'))
 );
 
-const TestSuiteIngestionPage = withSuspenseFallback(
+const TestSuiteIngestionRedirect = withPageSuspenseFallback(
   React.lazy(
-    () => import('../../pages/TestSuiteIngestionPage/TestSuiteIngestionPage')
+    () =>
+      import(
+        '../../pages/TestSuiteIngestionRedirect/TestSuiteIngestionRedirect'
+      )
   )
 );
 
-const TestSuiteDetailsPage = withSuspenseFallback(
+const TestSuiteDetailsPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import('../../pages/TestSuiteDetailsPage/TestSuiteDetailsPage.component')
   )
 );
 
-const AddCustomProperty = withSuspenseFallback(
+const AddCustomProperty = withPageSuspenseFallback(
   React.lazy(
     () =>
       import('../Settings/CustomProperty/AddCustomProperty/AddCustomProperty')
   )
 );
 
-const MarketPlacePage = withSuspenseFallback(
+const MarketPlacePage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/MarketPlacePage/MarketPlacePage'))
 );
 
-const DataMarketplacePage = withSuspenseFallback(
+const DataMarketplacePage = withPageSuspenseFallback(
   React.lazy(
     () =>
-      import(
-        /* webpackChunkName: "DataMarketplacePage" */ '../../pages/DataMarketplacePage/DataMarketplacePage.component'
-      )
+      import('../../pages/DataMarketplacePage/DataMarketplacePage.component')
   )
 );
 
-const BotDetailsPage = withSuspenseFallback(
+const BotDetailsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/BotDetailsPage/BotDetailsPage'))
 );
-const ServicePage = withSuspenseFallback(
+
+const ServicePage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/ServiceDetailsPage/ServiceDetailsPage'))
 );
 
-const SwaggerPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/SwaggerPage'))
+const SwaggerPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/SwaggerPage/SwaggerPage'))
 );
-const TourPageComponent = withSuspenseFallback(
-  React.lazy(() => import('../../pages/TourPage/TourPage.component'))
+
+const ProductTourPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/product-tour/ProductTourPage/ProductTourPage')
+  )
 );
-const UserPage = withSuspenseFallback(
+
+const UserPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/UserPage/UserPage.component'))
 );
 
-const DomainVersionPage = withSuspenseFallback(
+const DomainVersionPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import('../../components/Domain/DomainVersion/DomainVersion.component')
   )
 );
 
-const AddIngestionPage = withSuspenseFallback(
+const AddIngestionPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/AddIngestionPage/AddIngestionPage.component')
   )
 );
-const AddServicePage = withSuspenseFallback(
+
+const AddServicePage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/AddServicePage/AddServicePage.component')
   )
 );
 
-const MarketPlaceAppDetails = withSuspenseFallback(
+const MarketPlaceAppDetails = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -162,11 +170,11 @@ const MarketPlaceAppDetails = withSuspenseFallback(
   )
 );
 
-const AppInstallPage = withSuspenseFallback(
+const AppInstallPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/AppInstall/AppInstall.component'))
 );
 
-const EditConnectionFormPage = withSuspenseFallback(
+const EditConnectionFormPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -175,49 +183,52 @@ const EditConnectionFormPage = withSuspenseFallback(
   )
 );
 
-const CreateUserPage = withSuspenseFallback(
+const CreateUserPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/CreateUserPage/CreateUserPage.component')
   )
 );
-const EditIngestionPage = withSuspenseFallback(
+
+const EditIngestionPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/EditIngestionPage/EditIngestionPage.component')
   )
 );
-const ServiceVersionPage = withSuspenseFallback(
+
+const ServiceVersionPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/ServiceVersionPage/ServiceVersionPage'))
 );
 
-const ExplorePageV1 = withSuspenseFallback(
+const ExplorePageV1 = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/ExplorePage/ExplorePageV1.component'))
 );
 
-const OntologyExplorerPage = withSuspenseFallback(
+const OntologyExplorerPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/OntologyExplorerPage/OntologyExplorerPage')
   )
 );
 
-const WorkflowsListPage = withSuspenseFallback(
+const SparqlPlaygroundPage = withPageSuspenseFallback(
   React.lazy(
-    () =>
-      import(
-        /* webpackChunkName: "WorkflowsPage" */ '../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage'
-      )
+    () => import('../../pages/SparqlPlayground/SparqlPlayground.component')
   )
 );
 
-const WorkflowBuilderPage = withSuspenseFallback(
+const WorkflowsListPage = withPageSuspenseFallback(
   React.lazy(
-    () =>
-      import(
-        /* webpackChunkName: "WorkflowBuilderPage" */ '../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder'
-      )
+    () => import('../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage')
   )
 );
 
-const RequestDescriptionPage = withSuspenseFallback(
+const WorkflowBuilderPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder')
+  )
+);
+
+const RequestDescriptionPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -226,13 +237,19 @@ const RequestDescriptionPage = withSuspenseFallback(
   )
 );
 
-const RequestTagsPage = withSuspenseFallback(
+const TaskDetailsPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/entity/tasks/TaskDetailsPage/TaskDetailsPage')
+  )
+);
+
+const RequestTagsPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/TasksPage/RequestTagPage/RequestTagPage')
   )
 );
 
-const UpdateDescriptionPage = withSuspenseFallback(
+const UpdateDescriptionPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -241,44 +258,41 @@ const UpdateDescriptionPage = withSuspenseFallback(
   )
 );
 
-const UpdateTagsPage = withSuspenseFallback(
+const UpdateTagsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/TasksPage/UpdateTagPage/UpdateTagPage'))
 );
 
-const LogsViewerPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/LogsViewerPage/LogsViewerPage'))
-);
-
-const DataInsightPage = withSuspenseFallback(
+const DataInsightPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/DataInsightPage/DataInsightPage.component')
   )
 );
 
-const AddKPIPage = withSuspenseFallback(
+const AddKPIPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/KPIPage/AddKPIPage'))
 );
 
-const EditKPIPage = withSuspenseFallback(
+const EditKPIPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/KPIPage/EditKPIPage'))
 );
 
-const QueryPage = withSuspenseFallback(
+const QueryPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/QueryPage/QueryPage.component'))
 );
-const AddQueryPage = withSuspenseFallback(
+
+const AddQueryPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/AddQueryPage/AddQueryPage.component'))
 );
 
-const IncidentManagerPage = withSuspenseFallback(
+const IncidentManagerPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/IncidentManager/IncidentManagerPage'))
 );
 
-const TestLibraryPage = withSuspenseFallback(
+const TestLibraryPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/TestLibrary/TestLibraryPage'))
 );
 
-const IncidentManagerDetailPage = withSuspenseFallback(
+const IncidentManagerDetailPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -287,41 +301,39 @@ const IncidentManagerDetailPage = withSuspenseFallback(
   )
 );
 
-const TestCaseVersionPage = withSuspenseFallback(
+const TestCaseVersionPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/TestCaseVersionPage/TestCaseVersionPage')
   )
 );
 
-const ObservabilityAlertsPage = withSuspenseFallback(
+const ObservabilityAlertsPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage')
   )
 );
 
-const AlertDetailsPage = withSuspenseFallback(
+const AlertDetailsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
 );
 
-const AddObservabilityPage = withSuspenseFallback(
+const AddObservabilityPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
   )
 );
 
-const MetricListPage = withSuspenseFallback(
+const ContextCenterRouter = withPageSuspenseFallback(
+  React.lazy(() => import('./ContextCenterRouter/ContextCenterRouter'))
+);
+
+const MetricListPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/MetricsPage/MetricListPage/MetricListPage')
   )
 );
 
-const AddMetricPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
-  )
-);
-
-const ColumnBulkOperationsPage = withSuspenseFallback(
+const ColumnBulkOperationsPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import('../../pages/ColumnBulkOperations/ColumnBulkOperations.component')
@@ -360,7 +372,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.FORBIDDEN}
       />
       <Route element={<MyDataPage />} path={ROUTES.MY_DATA} />
-      <Route element={<TourPageComponent />} path={ROUTES.TOUR} />
+      <Route element={<ProductTourPage />} path={ROUTES.TOUR} />
       <Route
         element={<ExplorePageV1 pageTitle={t('label.explore')} />}
         path={ROUTES.EXPLORE}
@@ -373,6 +385,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={<ExplorePageV1 pageTitle={t('label.explore')} />}
         path={ROUTES.EXPLORE_WITH_TAB}
+      />
+      <Route
+        element={<SparqlPlaygroundPage />}
+        path={ROUTES.SPARQL_PLAYGROUND}
       />
       <Route
         element={<OntologyExplorerPage />}
@@ -498,23 +514,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={
           <AdminProtectedRoute
             hasPermission={checkPermission(
-              Operation.EditDataProfile,
-              ResourceEntity.TABLE,
-              permissions
-            )}>
-            <AddCustomMetricPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.custom-metric'),
-              })}
-            />
-          </AdminProtectedRoute>
-        }
-        path={ROUTES.ADD_CUSTOM_METRIC}
-      />
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={checkPermission(
               Operation.Create,
               ResourceEntity.USER,
               permissions
@@ -533,6 +532,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.CREATE_USER_WITH_BOT}
       />
       <Route element={<BotDetailsPage />} path={ROUTES.BOTS_PROFILE} />
+      <Route element={<TaskDetailsPage />} path={ROUTES.TASK_DETAIL} />
       <Route
         element={<AddCustomProperty />}
         path={ROUTES.ADD_CUSTOM_PROPERTY}
@@ -569,25 +569,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<TestSuiteDetailsPage />}
         path={ROUTES.TEST_SUITES_WITH_FQN}
       />
-      <Route element={<LogsViewerPage />} path={ROUTES.LOGS} />
       <Route
-        element={
-          <TestSuiteIngestionPage
-            pageTitle={t('label.add-entity', {
-              entity: t('label.test-suite'),
-            })}
-          />
-        }
+        element={<TestSuiteIngestionRedirect />}
         path={ROUTES.TEST_SUITES_ADD_INGESTION}
       />
       <Route
-        element={
-          <TestSuiteIngestionPage
-            pageTitle={t('label.add-entity', {
-              entity: t('label.test-suite'),
-            })}
-          />
-        }
+        element={<TestSuiteIngestionRedirect />}
         path={ROUTES.TEST_SUITES_EDIT_INGESTION}
       />
       <Route
@@ -597,11 +584,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_SUITE,
               permissions
             )}>
-            <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
-              })}
-            />
+            <DataQualityPage pageTitle={t('label.data-quality')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DATA_QUALITY_WITH_SUB_TAB}
@@ -613,11 +596,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_SUITE,
               permissions
             )}>
-            <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
-              })}
-            />
+            <DataQualityPage pageTitle={t('label.data-quality')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DATA_QUALITY_WITH_TAB}
@@ -629,11 +608,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_SUITE,
               permissions
             )}>
-            <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
-              })}
-            />
+            <DataQualityPage pageTitle={t('label.data-quality')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DATA_QUALITY}
@@ -662,6 +637,20 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.TEST_LIBRARY}
       />
+      {[
+        ROUTES.OBSERVABILITY,
+        `${ROUTES.OBSERVABILITY}${ROUTES.DATA_QUALITY}/*`,
+        `${ROUTES.OBSERVABILITY}${ROUTES.INCIDENT_MANAGER}`,
+        `${ROUTES.OBSERVABILITY}${ROUTES.TEST_LIBRARY}`,
+        `${ROUTES.OBSERVABILITY}/test-suites/*`,
+        `${ROUTES.OBSERVABILITY}/test-case/*`,
+      ].map((path) => (
+        <Route
+          element={<ClassicObservabilityRedirect />}
+          key={path}
+          path={path}
+        />
+      ))}
 
       {[
         ROUTES.TEST_CASE_DETAILS,
@@ -746,8 +735,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <AddObservabilityPage
-            pageTitle={t('label.add-entity', {
-              entity: t('label.observability'),
+            pageTitle={t('label.edit-entity', {
+              entity: t('label.observability-alert'),
             })}
           />
         }
@@ -787,7 +776,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         return <Route key={route.path ?? route.id} {...route} />;
       })}
 
-      <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.HOME} />
+      <Route element={<MyDataPage />} path={ROUTES.HOME} />
       <Route
         element={
           <AdminProtectedRoute>
@@ -810,16 +799,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />
       <Route
-        element={
-          <AddMetricPage
-            pageTitle={t('label.add-new-entity', {
-              entity: t('label.metric'),
-            })}
-          />
-        }
-        path={ROUTES.ADD_METRIC}
-      />
-      <Route
         element={<ColumnBulkOperationsPage />}
         path={ROUTES.COLUMN_BULK_OPERATIONS}
       />
@@ -828,14 +807,15 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<EntityRouter />}
         path={`/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/*`}
       />
-      <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.SIGNIN} />
+      <Route element={<Navigate to={ROUTES.HOME} />} path={ROUTES.SIGNIN} />
+      <Route element={<Navigate to={ROUTES.HOME} />} path={ROUTES.REGISTER} />
       <Route
-        element={<Navigate to={ROUTES.MY_DATA} />}
-        path={ROUTES.REGISTER}
+        element={<Navigate to={ROUTES.HOME} />}
+        path={ROUTES.FORGOT_PASSWORD}
       />
       <Route
-        element={<Navigate to={ROUTES.MY_DATA} />}
-        path={ROUTES.FORGOT_PASSWORD}
+        element={<ContextCenterRouter />}
+        path={`${ROUTES.CONTEXT_CENTER}/*`}
       />
       <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>

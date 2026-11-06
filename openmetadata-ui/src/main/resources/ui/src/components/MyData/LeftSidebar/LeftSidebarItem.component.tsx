@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from 'antd';
+import { Badge } from '@openmetadata/ui-core-components';
+
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import { LeftSidebarItemProps } from './LeftSidebar.interface';
 
 const LeftSidebarItem = ({
-  data: { title, redirect_url, dataTestId, isBeta },
+  data: { title, redirect_url, dataTestId, isBeta, onClick },
 }: LeftSidebarItemProps) => {
   const { t } = useTranslation();
 
@@ -26,16 +27,18 @@ const LeftSidebarItem = ({
       data-testid={dataTestId}
       to={{
         pathname: redirect_url,
-      }}>
+      }}
+      onClick={onClick}>
       {t(title)}
 
       {isBeta && (
         <Badge
           className="service-beta-tag"
-          count={t('label.beta')}
-          size="small"
-          style={{ marginLeft: 8 }}
-        />
+          color="brand"
+          size="sm"
+          style={{ marginLeft: 8 }}>
+          {t('label.beta')}
+        </Badge>
       )}
     </NavLink>
   ) : (

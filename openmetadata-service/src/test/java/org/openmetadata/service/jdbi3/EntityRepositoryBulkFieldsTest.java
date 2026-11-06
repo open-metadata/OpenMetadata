@@ -1,0 +1,305 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package org.openmetadata.service.jdbi3;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Folder;
+import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+
+/**
+ * Regression for the Context Center 404 bug. When a Knowledge Page / Memory linked a column as a
+ * related entity, the {@code entity_relationship} table held a row with
+ * {@code fromEntity="tableColumn"} and {@code relation=HAS}. The bulk relationship loader's HAS
+ * query (run when the LIST endpoint asks for domains/dataProducts) returned that row and called
+ * {@code Entity.getEntityReferencesByIds("tableColumn", …)}, which has no registered
+ * {@link EntityRepository} — surfacing as a 404 to the client.
+ */
+class EntityRepositoryBulkFieldsTest {
+
+  private CollectionDAO daoCollection;
+  private CollectionDAO.EntityRelationshipDAO relationshipDAO;
+  private CollectionDAO.PipelineDAO pipelineDAO;
+
+  private static class DomainAwarePipelineRepo extends EntityRepository<Pipeline> {
+    DomainAwarePipelineRepo(CollectionDAO.PipelineDAO dao) {
+      super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "domains", "domains");
+    }
+
+    @Override
+    protected void setFields(Pipeline entity, Fields fields, RelationIncludes r) {}
+
+    @Override
+    protected void clearFields(Pipeline entity, Fields fields) {}
+
+    @Override
+    protected void prepare(Pipeline entity, boolean update) {}
+
+    @Override
+    protected void storeEntity(Pipeline entity, boolean update) {}
+
+    @Override
+    protected void storeRelationships(Pipeline entity) {}
+  }
+
+  @BeforeEach
+  void setUp() {
+    daoCollection = mock(CollectionDAO.class);
+    relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
+    pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
+    when(daoCollection.relationshipDAO()).thenReturn(relationshipDAO);
+    Entity.setCollectionDAO(daoCollection);
+  }
+
+  @AfterEach
+  void tearDown() {
+    Entity.cleanup();
+  }
+
+  @Test
+  void resolveRelationshipEntityReferencesByType_skipsUnregisteredEntityType() {
+    DomainAwarePipelineRepo repo = new DomainAwarePipelineRepo(pipelineDAO);
+
+    UUID pipelineId = UUID.randomUUID();
+    Pipeline entity =
+        new Pipeline().withId(pipelineId).withName("p").withFullyQualifiedName("svc.p");
+
+    UUID domainId = UUID.randomUUID();
+    EntityRelationshipObject domainRecord =
+        EntityRelationshipObject.builder()
+            .fromId(domainId.toString())
+            .toId(pipelineId.toString())
+            .fromEntity(Entity.DOMAIN)
+            .toEntity(Entity.PIPELINE)
+            .relation(Relationship.HAS.ordinal())
+            .build();
+    EntityRelationshipObject columnRecord =
+        EntityRelationshipObject.builder()
+            .fromId(UUID.randomUUID().toString())
+            .toId(pipelineId.toString())
+            .fromEntity(Entity.TABLE_COLUMN)
+            .toEntity(Entity.PIPELINE)
+            .relation(Relationship.HAS.ordinal())
+            .build();
+
+    when(relationshipDAO.findFromBatchWithRelations(
+            anyList(), eq(Entity.PIPELINE), anyList(), eq(Include.ALL)))
+        .thenReturn(List.of(domainRecord, columnRecord));
+
+    EntityReference domainRef =
+        new EntityReference().withId(domainId).withType(Entity.DOMAIN).withName("sales");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entityMock.when(() -> Entity.hasEntityRepository(Entity.DOMAIN)).thenReturn(true);
+      entityMock.when(() -> Entity.hasEntityRepository(Entity.TABLE_COLUMN)).thenReturn(false);
+      entityMock
+          .when(() -> Entity.getEntityReferencesByIds(eq(Entity.DOMAIN), anyList(), any()))
+          .thenReturn(List.of(domainRef));
+
+      assertDoesNotThrow(
+          () -> repo.setFieldsInBulk(new Fields(Set.of(Entity.FIELD_DOMAINS)), List.of(entity)));
+
+      entityMock.verify(
+          () -> Entity.getEntityReferencesByIds(eq(Entity.TABLE_COLUMN), anyList(), any()),
+          never());
+    }
+
+    assertNotNull(entity.getDomains());
+    assertEquals(1, entity.getDomains().size());
+    assertEquals(domainId, entity.getDomains().get(0).getId());
+  }
+
+  @Test
+  void resolveTargetsBySource_batchesPerTypeKeepsRowOrderAndDropsMissingTargets() {
+    DomainAwarePipelineRepo repo = new DomainAwarePipelineRepo(pipelineDAO);
+    UUID teamA = UUID.randomUUID();
+    UUID teamB = UUID.randomUUID();
+    EntityReference table = reference(Entity.TABLE);
+    EntityReference container = reference(Entity.CONTAINER);
+    EntityReference otherTable = reference(Entity.TABLE);
+    // An OWNS row can outlive its target; the per-row lookup it replaces skipped such rows.
+    EntityReference deletedTable = reference(Entity.TABLE);
+    List<EntityRelationshipObject> rows =
+        List.of(
+            owns(teamA, table),
+            owns(teamB, otherTable),
+            owns(teamA, deletedTable),
+            owns(teamA, container));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entityMock.when(() -> Entity.hasEntityRepository(Entity.TABLE)).thenReturn(true);
+      entityMock.when(() -> Entity.hasEntityRepository(Entity.CONTAINER)).thenReturn(true);
+      entityMock
+          .when(() -> Entity.getEntityReferencesByIds(eq(Entity.TABLE), anyList(), any()))
+          .thenReturn(List.of(otherTable, table));
+      entityMock
+          .when(() -> Entity.getEntityReferencesByIds(eq(Entity.CONTAINER), anyList(), any()))
+          .thenReturn(List.of(container));
+
+      Map<UUID, List<EntityReference>> owned = repo.resolveTargetsBySource(rows, Include.ALL);
+
+      assertEquals(List.of(table, container), owned.get(teamA));
+      assertEquals(List.of(otherTable), owned.get(teamB));
+      entityMock.verify(
+          () -> Entity.getEntityReferencesByIds(eq(Entity.TABLE), anyList(), eq(Include.ALL)),
+          times(1));
+      entityMock.verify(
+          () -> Entity.getEntityReferencesByIds(eq(Entity.CONTAINER), anyList(), eq(Include.ALL)),
+          times(1));
+    }
+  }
+
+  @Test
+  void folderChildrenCount_isBatchedIntoOneQueryPerPage() {
+    Folder f0 = folder("drive.f0");
+    Folder f1 = folder("drive.f1");
+    when(relationshipDAO.countNonDeletedChildFilesBatch(
+            anyList(), anyString(), anyInt(), anyString()))
+        .thenReturn(
+            List.of(
+                CollectionDAO.EntityRelationshipCount.builder().id(f0.getId()).count(3).build()));
+
+    newFolderRepository()
+        .setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>(List.of(f0, f1)));
+
+    verify(relationshipDAO, times(1))
+        .countNonDeletedChildFilesBatch(anyList(), anyString(), anyInt(), anyString());
+    verify(relationshipDAO, never())
+        .countNonDeletedChildFiles(any(UUID.class), anyString(), anyInt(), anyString());
+    assertEquals(3, f0.getChildrenCount());
+    assertEquals(0, f1.getChildrenCount());
+  }
+
+  @Test
+  void folderChildrenCount_queriesContainsRelationBetweenFolderAndContextFile() {
+    Folder f0 = folder("drive.f0");
+    when(relationshipDAO.countNonDeletedChildFilesBatch(
+            anyList(), anyString(), anyInt(), anyString()))
+        .thenReturn(List.of());
+
+    newFolderRepository()
+        .setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>(List.of(f0)));
+
+    verify(relationshipDAO)
+        .countNonDeletedChildFilesBatch(
+            anyList(),
+            eq(FolderRepository.FOLDER_ENTITY),
+            eq(Relationship.CONTAINS.ordinal()),
+            eq(ContextFileRepository.CONTEXT_FILE_ENTITY));
+  }
+
+  @Test
+  void folderChildrenCount_loadsForTheSearchIndexWithoutClearingOtherFields() {
+    Folder f0 = folder("drive.f0").withDescription("kept");
+    when(relationshipDAO.countNonDeletedChildFilesBatch(
+            anyList(), anyString(), anyInt(), anyString()))
+        .thenReturn(
+            List.of(
+                CollectionDAO.EntityRelationshipCount.builder().id(f0.getId()).count(2).build()));
+
+    newFolderRepository().loadFieldsForSearchIndex(List.of(f0), Set.of("childrenCount"));
+
+    // Without a registered fetcher this throws, and every folder write lands in the retry queue.
+    assertEquals(2, f0.getChildrenCount());
+    assertEquals("kept", f0.getDescription());
+  }
+
+  @Test
+  void loadFieldsForSearchIndex_rejectsAFieldWithNoFetcher() {
+    // Folder parent is loaded in setFieldsInBulk, not by a fetcher, so the search write path
+    // cannot load it and must fail loud rather than index it as missing.
+    FolderRepository repository = newFolderRepository();
+    List<Folder> folders = List.of(folder("drive.f0"));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.loadFieldsForSearchIndex(folders, Set.of("parent")));
+  }
+
+  @Test
+  void folderChildrenCount_forEmptyPage_issuesNoQuery() {
+    newFolderRepository().setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>());
+
+    verify(relationshipDAO, never())
+        .countNonDeletedChildFilesBatch(anyList(), anyString(), anyInt(), anyString());
+  }
+
+  @Test
+  void folderChildrenCount_notRequested_issuesNoQueryAndClearsField() {
+    Folder f0 = folder("drive.f0");
+
+    newFolderRepository().setFieldsInBulk(new Fields(Set.of()), new ArrayList<>(List.of(f0)));
+
+    verify(relationshipDAO, never())
+        .countNonDeletedChildFilesBatch(anyList(), anyString(), anyInt(), anyString());
+    assertNull(f0.getChildrenCount());
+  }
+
+  private static EntityReference reference(String type) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(type);
+  }
+
+  private static EntityRelationshipObject owns(UUID teamId, EntityReference target) {
+    return EntityRelationshipObject.builder()
+        .fromId(teamId.toString())
+        .toId(target.getId().toString())
+        .fromEntity(Entity.TEAM)
+        .toEntity(target.getType())
+        .relation(Relationship.OWNS.ordinal())
+        .build();
+  }
+
+  private FolderRepository newFolderRepository() {
+    when(daoCollection.folderDAO()).thenReturn(mock(CollectionDAO.FolderDAO.class));
+    Jdbi jdbi = mock(Jdbi.class);
+    when(jdbi.onDemand(CollectionDAO.class)).thenReturn(daoCollection);
+    return new FolderRepository(jdbi);
+  }
+
+  private Folder folder(String fqn) {
+    String name = fqn.substring(fqn.lastIndexOf('.') + 1);
+    return new Folder().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(fqn);
+  }
+}

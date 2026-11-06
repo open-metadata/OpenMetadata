@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
+import { Badge } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { iconsV2 } from '../../../constants/StatusBadge.constant';
-import './status-badge.less';
+import {
+  iconsV2,
+  STATUS_TYPE_TO_BADGE_COLOR,
+} from '../../../constants/StatusBadge.constant';
 import { StatusBadgeProps, StatusType } from './StatusBadge.interface';
 
 const StatusBadgeV2 = ({
@@ -28,12 +30,19 @@ const StatusBadgeV2 = ({
   const StatusIcon = externalIcon ?? iconsV2[status as StatusType];
 
   return (
-    <div
-      className={classNames('status-badge status-badge-v2', status, className)}
-      data-testid={dataTestId}>
-      {showIcon && StatusIcon && <Icon component={StatusIcon} />}
-      <span className={`status-badge-label ${status}`}>{label}</span>
-    </div>
+    <Badge
+      className={classNames(
+        'status-badge status-badge-v2 tw:gap-1',
+        status,
+        className
+      )}
+      color={STATUS_TYPE_TO_BADGE_COLOR[status] ?? 'gray'}
+      data-testid={dataTestId}
+      size="sm"
+      type="color">
+      {showIcon && StatusIcon && <StatusIcon height={14} width={14} />}
+      <span className={classNames('status-badge-label', status)}>{label}</span>
+    </Badge>
   );
 };
 

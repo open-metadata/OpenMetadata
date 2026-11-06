@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as setup } from '@playwright/test';
+import { Page, test as setup } from '@playwright/test';
+import { mkdir, writeFile } from 'fs/promises';
 import {
   EDIT_DESCRIPTION_RULE,
   EDIT_GLOSSARY_TERM_RULE,
@@ -19,9 +20,24 @@ import {
 } from '../constant/permission';
 import { AdminClass } from '../support/user/AdminClass';
 import { UserClass } from '../support/user/UserClass';
-import { getApiContext, uuid } from '../utils/common';
+import { settleAll } from '../utils/apiResponse';
+import {
+  disableEtagConditionalReads,
+  getApiContext,
+  getToken,
+  uuid,
+} from '../utils/common';
 import { loginAsAdmin } from '../utils/initialSetup';
 
+/**
+ * Opt every E2E session out of client-side conditional (If-None-Match) reads.
+ *
+ * The server ETag only covers the entity's version/updatedAt, so it does not change for
+ * relationship-only or child mutations (followers, votes, customMetrics, testSuite). A refetch
+ * racing such a mutation can be answered "not modified" and render a stale body, which surfaces
+ * as flaky assertions across the suite. Setting the flag here persists it into storageState, so
+ * every spec in both OpenMetadata and Collate inherits it without a per-test helper.
+ */
 const adminFile = 'playwright/.auth/admin.json';
 const dataConsumerFile = 'playwright/.auth/dataConsumer.json';
 const dataStewardFile = 'playwright/.auth/dataSteward.json';
@@ -30,6 +46,7 @@ const editTagsFile = 'playwright/.auth/editTags.json';
 const editGlossaryTermFile = 'playwright/.auth/editGlossaryTerm.json';
 const viewOnlyFile = 'playwright/.auth/viewOnly.json';
 const ownerFile = 'playwright/.auth/owner.json';
+const adminApiTokenFile = 'playwright/.auth/admin-api-token.json';
 
 const userUUID = uuid();
 
@@ -77,8 +94,36 @@ const ownerUser = new UserClass({
   password: 'User@OMD123',
 });
 
+/**
+ * Capture a signed-in context's storage state, and fail loudly if it is missing
+ * the session cookie.
+ *
+ * The app authenticates from the token in IndexedDB, so a state without
+ * `OM_SESSION` still drives every test locally — which is exactly what makes its
+ * absence easy to ship. CI's `.github/scripts/rotate_playwright_auth_state.py`
+ * rotates the cached preseeded state by replacing that cookie, and without it
+ * every shard dies in "Setup Openmetadata Test Environment" with
+ * "Playwright auth state has no OM_SESSION cookie" — a failure that names
+ * neither the test nor the sign-in path that dropped it.
+ */
+const saveStorageState = async (page: Page, path: string) => {
+  const state = await page.context().storageState({ path, indexedDB: true });
+
+  if (!state.cookies.some((cookie) => cookie.name === 'OM_SESSION')) {
+    throw new Error(
+      `Refusing to write ${path}: the signed-in context has no OM_SESSION cookie, so CI's auth-state rotation would fail. The login request must go through the browser context (page.context().request), not a standalone request context, or the Set-Cookie is discarded.`
+    );
+  }
+
+  return state;
+};
+
 setup('authenticate all users', async ({ browser }) => {
-  setup.setTimeout(120 * 1000);
+  // With PW_PRESEEDED_STATE this project has no dependents, so it is scheduled
+  // alongside the shard's own specs and competes with them for workers. Eight
+  // user creations, nine logins and the security-config round trip below do not
+  // fit the old 2-minute budget under that contention.
+  setup.setTimeout(180 * 1000);
   // Create separate pages for each user
   const [
     adminPage,
@@ -106,17 +151,83 @@ setup('authenticate all users', async ({ browser }) => {
 
     await loginAsAdmin(adminPage, admin);
 
-    // Create a new page to login with admin user after token expiry is set to 4 hours
-    // This is done to avoid logging out the user to get the new token
+    // Create a new page to sign the admin in after token expiry is set to 4
+    // hours. This is done to avoid logging out the user to get the new token.
+    //
+    // Every sign-in here goes through `UserClass.signIn()` — one POST to
+    // /api/v1/auth/login, then the token written where the app reads it —
+    // rather than driving the sign-in form eight times. The storage state this
+    // captures is what every worker in every lane reuses, so the only thing
+    // that matters is that the session is real; how it was established is not
+    // part of the fixture's contract. `loginAsAdmin` above already took this
+    // path. A spec that is testing the sign-in *form* calls
+    // `signInThroughForm(page, user)` from utils/formSignIn instead.
     const newAdminPage = await browser.newPage();
-    await admin.login(newAdminPage);
+    await admin.signIn(newAdminPage);
 
-    await newAdminPage.waitForURL('**/my-data');
+    await newAdminPage.waitForURL(
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { waitUntil: 'domcontentloaded' }
+    );
+
+    await mkdir('playwright/.auth', { recursive: true });
+    await writeFile(
+      adminApiTokenFile,
+      JSON.stringify({ token: await getToken(newAdminPage) }),
+      { mode: 0o600 }
+    );
 
     const { apiContext, afterAction } = await getApiContext(adminPage);
 
-    // Create all users, Using allSettled to avoid failing the setup if one of the users fails to create
-    await Promise.allSettled([
+    // TODO(collate#4484): Remove this block once the auth-config env reconcile bug is fixed.
+    // AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER is ignored on an existing/upgraded DB
+    // (the authenticationConfiguration settings row is seeded once and never reconciled),
+    // so the per-user session cap stays at the default of 5. That evicts the long-lived
+    // storageState session and causes 401 "Invalid session" on reused bearer tokens.
+    // Raise it at runtime via the security-config endpoint as a temporary workaround.
+    // Uses GET + PUT (not PATCH): PATCH /security/config runs a validator that rejects
+    // the basic-auth provider, whereas PUT persists + reloads without it. The unused
+    // oidc/ldap/saml blocks are nulled before the PUT because PUT's bean validation
+    // rejects their empty stubs (@NotNull ldap host/port/...); nulling them also avoids
+    // re-persisting the OIDC secret / LDAP password that GET returns masked. Basic auth
+    // does not use these blocks. Guarded to provider === 'basic'.
+    // https://github.com/open-metadata/openmetadata-collate/issues/4484
+    const securityConfigResponse = await apiContext.get(
+      '/api/v1/system/security/config'
+    );
+    if (!securityConfigResponse.ok()) {
+      // 404 == older build without the endpoint, tolerate it. Any other non-2xx
+      // (401/403/5xx) is a real failure that would otherwise silently leave the
+      // cap at 5, so surface it instead of skipping.
+      if (securityConfigResponse.status() !== 404) {
+        throw new Error(
+          `collate#4484 workaround: GET security config failed - HTTP ${securityConfigResponse.status()} ${await securityConfigResponse.text()}`
+        );
+      }
+    } else {
+      const securityConfig = await securityConfigResponse.json();
+      const authConfig = securityConfig?.authenticationConfiguration;
+      if (
+        authConfig?.provider === 'basic' &&
+        authConfig?.maxActiveSessionsPerUser !== 1000
+      ) {
+        authConfig.maxActiveSessionsPerUser = 1000;
+        authConfig.oidcConfiguration = null;
+        authConfig.ldapConfiguration = null;
+        authConfig.samlConfiguration = null;
+        const putResponse = await apiContext.put(
+          '/api/v1/system/security/config',
+          { data: securityConfig }
+        );
+        if (!putResponse.ok()) {
+          throw new Error(
+            `collate#4484 workaround: failed to raise maxActiveSessionsPerUser - HTTP ${putResponse.status()} ${await putResponse.text()}`
+          );
+        }
+      }
+    }
+
+    await settleAll([
       dataConsumer.create(apiContext, false),
       dataSteward.create(apiContext, false),
       editDescriptionUser.create(apiContext, false),
@@ -126,8 +237,7 @@ setup('authenticate all users', async ({ browser }) => {
       ownerUser.create(apiContext, false),
     ]);
 
-    // Set up roles and policies, Using allSettled to avoid failing the setup if one of the users fails to create
-    await Promise.allSettled([
+    await settleAll([
       dataConsumer.setDataConsumerRole(apiContext),
       dataSteward.setDataStewardRole(apiContext),
       editDescriptionUser.setCustomRulePolicy(
@@ -160,45 +270,37 @@ setup('authenticate all users', async ({ browser }) => {
     await adminPage.waitForTimeout(2000);
 
     // Save admin state
-    await newAdminPage
-      .context()
-      .storageState({ path: adminFile, indexedDB: true });
+    await disableEtagConditionalReads(newAdminPage);
+    await saveStorageState(newAdminPage, adminFile);
 
     // Save states for each user sequentially to avoid file operation conflicts
-    await dataConsumer.login(dataConsumerPage);
-    await dataConsumerPage
-      .context()
-      .storageState({ path: dataConsumerFile, indexedDB: true });
+    await dataConsumer.signIn(dataConsumerPage);
+    await disableEtagConditionalReads(dataConsumerPage);
+    await saveStorageState(dataConsumerPage, dataConsumerFile);
 
-    await dataSteward.login(dataStewardPage);
-    await dataStewardPage
-      .context()
-      .storageState({ path: dataStewardFile, indexedDB: true });
+    await dataSteward.signIn(dataStewardPage);
+    await disableEtagConditionalReads(dataStewardPage);
+    await saveStorageState(dataStewardPage, dataStewardFile);
 
-    await editDescriptionUser.login(editDescriptionPage);
-    await editDescriptionPage
-      .context()
-      .storageState({ path: editDescriptionFile, indexedDB: true });
+    await editDescriptionUser.signIn(editDescriptionPage);
+    await disableEtagConditionalReads(editDescriptionPage);
+    await saveStorageState(editDescriptionPage, editDescriptionFile);
 
-    await editTagsUser.login(editTagsPage);
-    await editTagsPage
-      .context()
-      .storageState({ path: editTagsFile, indexedDB: true });
+    await editTagsUser.signIn(editTagsPage);
+    await disableEtagConditionalReads(editTagsPage);
+    await saveStorageState(editTagsPage, editTagsFile);
 
-    await editGlossaryTermUser.login(editGlossaryTermPage);
-    await editGlossaryTermPage
-      .context()
-      .storageState({ path: editGlossaryTermFile, indexedDB: true });
+    await editGlossaryTermUser.signIn(editGlossaryTermPage);
+    await disableEtagConditionalReads(editGlossaryTermPage);
+    await saveStorageState(editGlossaryTermPage, editGlossaryTermFile);
 
-    await viewOnlyUser.login(viewOnlyPage);
-    await viewOnlyPage
-      .context()
-      .storageState({ path: viewOnlyFile, indexedDB: true });
+    await viewOnlyUser.signIn(viewOnlyPage);
+    await disableEtagConditionalReads(viewOnlyPage);
+    await saveStorageState(viewOnlyPage, viewOnlyFile);
 
-    await ownerUser.login(ownerPage);
-    await ownerPage
-      .context()
-      .storageState({ path: ownerFile, indexedDB: true });
+    await ownerUser.signIn(ownerPage);
+    await disableEtagConditionalReads(ownerPage);
+    await saveStorageState(ownerPage, ownerFile);
 
     await afterAction();
 

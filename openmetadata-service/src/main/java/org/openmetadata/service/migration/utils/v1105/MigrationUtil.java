@@ -394,9 +394,9 @@ public class MigrationUtil {
     // Add edges for ApprovalForUpdates outcomes
     edgesModified |=
         addEdgeIfNotExists(
-            edges, "ApprovalForUpdates", "SetGlossaryTermStatusToApprovedAfterReview", "true");
+            edges, "ApprovalForUpdates", "SetGlossaryTermStatusToApprovedAfterReview", "approve");
     edgesModified |=
-        addEdgeIfNotExists(edges, "ApprovalForUpdates", "RollbackGlossaryTermChanges", "false");
+        addEdgeIfNotExists(edges, "ApprovalForUpdates", "RollbackGlossaryTermChanges", "reject");
 
     // Add edges for final nodes
     edgesModified |= addEdgeIfNotExists(edges, "RollbackGlossaryTermChanges", "RollbackEnd", null);

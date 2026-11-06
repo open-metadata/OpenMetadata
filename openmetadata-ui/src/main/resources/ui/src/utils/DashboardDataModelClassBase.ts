@@ -17,9 +17,10 @@ import {
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
-import { DASHBOARD_DATA_MODEL_DUMMY_DATA } from '../constants/Dashboard.constnats';
+import { DASHBOARD_DATA_MODEL_DUMMY_DATA } from '../constants/Dashboard.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
@@ -27,7 +28,7 @@ import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel'
 import { Tab } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import {
   getDashboardDataModelDetailPageTabs,
   getDashboardDataModelWidgetsFromKey,
@@ -53,7 +54,8 @@ type DashboardDataModelWidgetKeys =
   | DetailPageWidgetKeys.DATA_PRODUCTS
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
-  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
 
 class DashboardDataModelBase {
   defaultWidgetHeight: Record<DashboardDataModelWidgetKeys, number>;
@@ -66,6 +68,7 @@ class DashboardDataModelBase {
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
   }
 
@@ -151,6 +154,14 @@ class DashboardDataModelBase {
         static: false,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.KNOWLEDGE_ARTICLE],
+        i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+        w: 2,
+        x: 6,
+        y: 5,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
@@ -179,6 +190,7 @@ class DashboardDataModelBase {
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 

@@ -12,102 +12,279 @@
  */
 
 import {
+  Badge,
   Box,
+  ButtonUtility,
   Dialog,
-  IconButton,
-  Tooltip,
+  Modal,
+  ModalOverlay,
+  Skeleton,
   Typography,
-  useTheme,
-} from '@mui/material';
-import { Maximize01, Minimize01, XClose } from '@untitledui/icons';
+} from '@openmetadata/ui-core-components';
+import {
+  Maximize01,
+  Minimize01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import { DateTime } from 'luxon';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_IDS, ResourceType } from '../../../constants/Learning.constants';
 import type { LearningResource } from '../../../rest/learningResourceAPI';
 import { getLearningResourceById } from '../../../rest/learningResourceAPI';
-import { LEARNING_CATEGORIES } from '../Learning.interface';
+import { getDurationUnitLabelKey } from '../../../utils/platform/learning.utils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import {
+  CATEGORY_BADGE_COLORS,
+  LEARNING_CATEGORIES,
+  ResourceCategory,
+} from '../Learning.interface';
 import { ArticleViewer } from './ArticleViewer.component';
+import { PdfViewer } from './PdfViewer';
 import { ResourcePlayerModalProps } from './ResourcePlayerModal.interface';
 import { StorylaneTour } from './StorylaneTour.component';
 import { VideoPlayer } from './VideoPlayer.component';
 
-export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
-  open,
+const FULLSCREEN_CONTAINER_ID = 'resource-player-fullscreen';
+
+const FULLSCREEN_PLAYER_CLASS = [
+  'tw:flex-1 tw:min-h-0',
+  'tw:[&>*]:size-full! tw:[&>*]:p-4!',
+  'tw:[&>*>*]:size-full! tw:[&>*>*]:max-h-none! tw:[&>*>*]:max-w-none! tw:[&>*>*]:aspect-auto!',
+].join(' ');
+
+const getFormattedDuration = (
+  resource: LearningResource,
+  t: TFunction
+): string | null =>
+  resource.estimatedDuration
+    ? `${Math.floor(resource.estimatedDuration / 60)} ${t(
+        getDurationUnitLabelKey(resource.resourceType)
+      )}`
+    : null;
+
+const getFormattedDate = (resource: LearningResource): string | null =>
+  resource.updatedAt
+    ? DateTime.fromMillis(resource.updatedAt).toFormat('LLL d, yyyy')
+    : null;
+
+const getContextLabel = (pageId: string) =>
+  PAGE_IDS.find((c) => c.value === pageId)?.label ?? pageId;
+
+const getCategoryLabel = (category: string) =>
+  LEARNING_CATEGORIES[category as ResourceCategory]?.label ?? category;
+
+const getCategoryColor = (category: string) =>
+  CATEGORY_BADGE_COLORS[category as ResourceCategory] ?? 'gray';
+
+interface ResourceHeaderProps {
+  resource: LearningResource;
+  isFullScreen: boolean;
+  onFullScreenToggle: () => void;
+  onClose?: () => void;
+}
+
+const ResourceDateDuration: FC<{ resource: LearningResource }> = ({
   resource,
+}) => {
+  const { t } = useTranslation();
+  const formattedDate = getFormattedDate(resource);
+  const formattedDuration = getFormattedDuration(resource, t);
+
+  if (!formattedDate && !formattedDuration) {
+    return null;
+  }
+
+  // The extra right margin separates the metadata from the header icon buttons,
+  // which stay tightly grouped by the parent's gap.
+  return (
+    <Box
+      align="center"
+      className="tw:mr-2"
+      data-testid="resource-date-duration"
+      gap={1}>
+      {formattedDate && (
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
+          {formattedDate}
+        </Typography>
+      )}
+      {formattedDate && formattedDuration && (
+        <Typography as="span" className="tw:text-quaternary" size="text-xs">
+          |
+        </Typography>
+      )}
+      {formattedDuration && (
+        <Typography as="span" className="tw:text-quaternary" size="text-xs">
+          {formattedDuration}
+        </Typography>
+      )}
+    </Box>
+  );
+};
+
+const ResourceHeaderTitleRow: FC<ResourceHeaderProps> = ({
+  resource,
+  isFullScreen,
+  onFullScreenToggle,
   onClose,
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
-  const fullscreenRef = useRef<HTMLDivElement>(null);
+  const categoryTags = resource.categories ?? [];
+
+  return (
+    <Box align="start" className="tw:justify-between" gap={2}>
+      <Box className="tw:flex-1 tw:min-w-0" direction="col">
+        <Box align="center" className="tw:flex-wrap tw:gap-1.5">
+          <Typography
+            className="tw:text-primary tw:break-words"
+            size="text-md"
+            weight="semibold">
+            {resource.displayName || resource.name}
+          </Typography>
+          {categoryTags.map((category) => (
+            <Badge
+              color={getCategoryColor(category)}
+              key={category}
+              size="sm"
+              type="color">
+              {getCategoryLabel(category)}
+            </Badge>
+          ))}
+        </Box>
+
+        {resource.description && (
+          <Typography
+            aria-label={resource.description}
+            className="tw:pt-1 tw:text-[13px] tw:text-tertiary"
+            size="text-sm">
+            {resource.description}
+          </Typography>
+        )}
+      </Box>
+
+      <Box align="center" className="tw:shrink-0" gap={1}>
+        <ResourceDateDuration resource={resource} />
+        <ButtonUtility
+          aria-label={
+            isFullScreen ? t('label.exit-full-screen') : t('label.fullscreen')
+          }
+          data-testid={isFullScreen ? 'minimize-button' : 'maximize-button'}
+          icon={isFullScreen ? Minimize01 : Maximize01}
+          size="lg"
+          tooltip={
+            isFullScreen ? t('label.exit-full-screen') : t('label.fullscreen')
+          }
+          onClick={onFullScreenToggle}
+        />
+        {onClose && (
+          <ButtonUtility
+            aria-label={t('label.close')}
+            data-testid="close-resource-player"
+            icon={XClose}
+            size="lg"
+            onClick={onClose}
+          />
+        )}
+      </Box>
+    </Box>
+  );
+};
+
+const ResourceHeaderMetaRow: FC<{ resource: LearningResource }> = ({
+  resource,
+}) => {
+  const contextItems = resource.contexts ?? [];
+
+  if (contextItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <Box className="tw:flex-wrap tw:gap-2 tw:pt-3">
+      {contextItems.map((ctx) => (
+        <Badge color="gray" key={ctx.pageId} size="sm" type="color">
+          {getContextLabel(ctx.pageId)}
+        </Badge>
+      ))}
+    </Box>
+  );
+};
+
+const ResourceHeader: FC<ResourceHeaderProps> = ({
+  resource,
+  isFullScreen,
+  onFullScreenToggle,
+  onClose,
+}) => (
+  <Box
+    className={classNames(
+      'tw:border-b tw:border-secondary tw:px-6 tw:py-3',
+      isFullScreen && 'tw:shrink-0'
+    )}
+    direction="col">
+    <ResourceHeaderTitleRow
+      isFullScreen={isFullScreen}
+      resource={resource}
+      onClose={onClose}
+      onFullScreenToggle={onFullScreenToggle}
+    />
+    <ResourceHeaderMetaRow resource={resource} />
+  </Box>
+);
+
+interface ResourcePlayerProps {
+  /** Shown while the full resource loads; the player fetches it by id. */
+  resource?: LearningResource;
+  resourceId: string;
+  /** Renders a close button in the header when set. */
+  onClose?: () => void;
+  className?: string;
+}
+
+/** Header (title, badges, meta) plus the player for one learning resource. */
+export const ResourcePlayer: FC<ResourcePlayerProps> = ({
+  resource,
+  resourceId,
+  onClose,
+  className,
+}) => {
+  const { t } = useTranslation();
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [fetchedResource, setFetchedResource] =
     useState<LearningResource | null>(null);
 
+  const [hasFetchFailed, setHasFetchFailed] = useState(false);
+  const hasFallback = Boolean(resource);
+
+  // Only the current id's response may land, and a failure matters only when
+  // there is no list row to fall back on (the settings sub-page).
   useEffect(() => {
-    if (open && resource?.id) {
-      getLearningResourceById(resource.id)
-        .then(setFetchedResource)
-        .catch(() => setFetchedResource(null));
-    } else {
-      setFetchedResource(null);
-    }
-  }, [open, resource?.id]);
+    let isCurrent = true;
+    setFetchedResource(null);
+    setHasFetchFailed(false);
+    getLearningResourceById(resourceId)
+      .then((data) => {
+        if (isCurrent) {
+          setFetchedResource(data);
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setHasFetchFailed(true);
+          if (!hasFallback) {
+            showErrorToast(error as AxiosError);
+          }
+        }
+      });
 
-  const displayResource = fetchedResource ?? resource;
-
-  const formattedDuration = displayResource.estimatedDuration
-    ? `${Math.floor(displayResource.estimatedDuration / 60)} ${
-        displayResource.resourceType === 'Article'
-          ? t('label.min-read')
-          : t('label.min-watch')
-      }`
-    : null;
-
-  const formattedDate = displayResource.updatedAt
-    ? DateTime.fromMillis(displayResource.updatedAt).toFormat('LLL d, yyyy')
-    : null;
-
-  const categoryTags =
-    !displayResource.categories || displayResource.categories.length === 0
-      ? []
-      : displayResource.categories;
-
-  const contextItems =
-    !displayResource.contexts || displayResource.contexts.length === 0
-      ? []
-      : displayResource.contexts;
-
-  const getContextLabel = (pageId: string) =>
-    PAGE_IDS.find((c) => c.value === pageId)?.label ?? pageId;
-
-  const getCategoryColors = (category: string) => {
-    const info =
-      LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
-
-    return {
-      bgColor: info?.bgColor ?? '#f8f9fc',
-      borderColor: info?.borderColor ?? '#d5d9eb',
-      color: info?.color ?? '#363f72',
+    return () => {
+      isCurrent = false;
     };
-  };
-
-  const handleFullScreenToggle = async () => {
-    if (!fullscreenRef.current) {
-      return;
-    }
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-        setIsFullScreen(false);
-      } else {
-        await fullscreenRef.current.requestFullscreen();
-        setIsFullScreen(true);
-      }
-    } catch {
-      setIsFullScreen((prev) => !prev);
-    }
-  };
+  }, [resourceId, hasFallback]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -115,15 +292,48 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
-    return () =>
+    return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      if (document.fullscreenElement) {
+        void document.exitFullscreen();
+      }
+    };
   }, []);
 
-  useEffect(() => {
-    if (!open && document.fullscreenElement) {
-      document.exitFullscreen();
+  const displayResource = fetchedResource ?? resource;
+
+  if (!displayResource) {
+    return hasFetchFailed ? (
+      <Box className="tw:relative tw:min-h-90">
+        <NoDataPlaceholder
+          data-testid="resource-not-found"
+          title={t('label.no-entity-found', {
+            entity: t('label.learning-resource'),
+          })}
+        />
+      </Box>
+    ) : (
+      <Skeleton height={400} variant="rounded" width="100%" />
+    );
+  }
+
+  const handleFullScreenToggle = async () => {
+    const element = document.getElementById(FULLSCREEN_CONTAINER_ID);
+    if (!element) {
+      return;
     }
-  }, [open]);
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        setIsFullScreen(false);
+      } else {
+        await element.requestFullscreen();
+        setIsFullScreen(true);
+      }
+    } catch {
+      setIsFullScreen((prev) => !prev);
+    }
+  };
 
   const renderPlayer = () => {
     switch (displayResource.resourceType) {
@@ -133,295 +343,68 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
         return <StorylaneTour resource={displayResource} />;
       case ResourceType.Article:
         return <ArticleViewer resource={displayResource} />;
+      case ResourceType.PDF:
+        return <PdfViewer resource={displayResource} />;
       default:
-        return <div>{t('message.unsupported-resource-type')}</div>;
+        return (
+          <Typography as="span" className="tw:p-4" size="text-sm">
+            {t('message.unsupported-resource-type')}
+          </Typography>
+        );
     }
   };
 
   return (
-    <Dialog
-      PaperProps={{
-        sx: {
-          borderRadius: 1.5,
-          maxWidth: 1143,
-          overflow: 'hidden',
-          padding: 0,
-        },
-      }}
-      maxWidth={false}
-      open={open}
-      slotProps={{
-        backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.5)' } },
-      }}
-      onClose={onClose}>
+    <Box
+      className={classNames(
+        'tw:flex tw:flex-col tw:min-h-0',
+        isFullScreen
+          ? 'tw:h-screen tw:w-screen tw:overflow-hidden tw:bg-tertiary'
+          : className
+      )}
+      direction="col"
+      id={FULLSCREEN_CONTAINER_ID}>
+      <ResourceHeader
+        isFullScreen={isFullScreen}
+        resource={displayResource}
+        onClose={onClose}
+        onFullScreenToggle={handleFullScreenToggle}
+      />
+
       <Box
-        ref={fullscreenRef}
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-          maxHeight: isFullScreen ? undefined : '90vh',
-          overflow: isFullScreen ? 'hidden' : 'auto',
-          '&:fullscreen': {
-            backgroundColor: theme.palette.allShades?.gray?.[100],
-            borderRadius: 0,
-            height: '100vh',
-            width: '100vw',
-            maxHeight: 'none',
-            overflow: 'hidden',
-          },
-        }}>
-        <Box
-          sx={{
-            borderBottom: '1px solid',
-            borderColor: theme.palette.allShades?.gray?.[200],
-            display: 'flex',
-            flexDirection: 'column',
-            padding: theme.spacing(3, 6),
-            ...(isFullScreen && { flexShrink: 0 }),
-          }}>
-          <Box
-            sx={{
-              alignItems: 'flex-start',
-              display: 'flex',
-              gap: 2,
-              justifyContent: 'space-between',
-            }}>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                component="div"
-                fontWeight={600}
-                sx={{
-                  color: theme.palette.allShades?.gray?.[900],
-                  display: 'block',
-                  fontSize: theme.typography.body1.fontSize,
-                  lineHeight: theme.typography.body1.lineHeight,
-                  marginBottom: theme.spacing(0.5),
-                  overflowWrap: 'break-word',
-                  wordBreak: 'break-word',
-                }}>
-                {displayResource.displayName || displayResource.name}
-              </Typography>
-
-              {displayResource.description && (
-                <Typography
-                  aria-label={displayResource.description}
-                  component="div"
-                  sx={{
-                    color: theme.palette.allShades?.gray?.[600],
-                    fontSize: theme.typography.pxToRem(13),
-                    lineHeight: theme.typography.body2.lineHeight,
-                    paddingTop: theme.spacing(3),
-                  }}>
-                  {displayResource.description}
-                </Typography>
-              )}
-
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: theme.spacing(1.5),
-                  paddingTop: theme.spacing(3),
-                }}>
-                {categoryTags.map((category) => {
-                  const colors = getCategoryColors(category);
-
-                  return (
-                    <Box
-                      component="span"
-                      key={category}
-                      sx={{
-                        margin: 0,
-                        fontSize: theme.typography.caption.fontSize,
-                        lineHeight: 1.5,
-                        padding: theme.spacing(0.25, 0.75),
-                        borderRadius: theme.spacing(0.75),
-                        fontWeight: theme.typography.fontWeightMedium,
-                        borderWidth: 1,
-                        borderStyle: 'solid',
-                        backgroundColor: colors.bgColor,
-                        borderColor: colors.borderColor,
-                        color: colors.color,
-                        flexShrink: 1,
-                        minWidth: 0,
-                        maxWidth: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                      {LEARNING_CATEGORIES[
-                        category as keyof typeof LEARNING_CATEGORIES
-                      ]?.label ?? category}
-                    </Box>
-                  );
-                })}
-              </Box>
-            </Box>
-
-            <Box
-              sx={{
-                alignItems: 'center',
-                display: 'flex',
-                flexShrink: 0,
-                gap: 1,
-              }}>
-              <Tooltip
-                title={
-                  isFullScreen
-                    ? t('label.exit-full-screen')
-                    : t('label.fullscreen')
-                }>
-                <IconButton
-                  color="inherit"
-                  data-testid={
-                    isFullScreen ? 'minimize-button' : 'maximize-button'
-                  }
-                  sx={{
-                    color: theme.palette.allShades?.gray?.[600],
-                    '&:hover': {
-                      color: theme.palette.allShades?.gray?.[700],
-                    },
-                    '& svg': {
-                      height: 16,
-                      width: 16,
-                    },
-                  }}
-                  onClick={handleFullScreenToggle}>
-                  {isFullScreen ? <Minimize01 /> : <Maximize01 />}
-                </IconButton>
-              </Tooltip>
-              <IconButton
-                aria-label={t('label.close')}
-                color="inherit"
-                data-testid="close-resource-player"
-                sx={{
-                  color: theme.palette.allShades?.gray?.[600],
-                  '&:hover': {
-                    color: theme.palette.allShades?.gray?.[700],
-                  },
-                  '& svg': {
-                    height: 16,
-                    width: 16,
-                  },
-                }}
-                onClick={onClose}>
-                <XClose />
-              </IconButton>
-            </Box>
-          </Box>
-
-          <Box
-            sx={{
-              alignItems: 'center',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: theme.spacing(1.5),
-              justifyContent: 'space-between',
-              paddingTop: theme.spacing(3),
-            }}>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              {contextItems.length > 0 && (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: theme.spacing(1),
-                  }}>
-                  {contextItems.map((ctx, idx) => (
-                    <Box
-                      component="span"
-                      key={`${ctx.pageId}-${idx}`}
-                      sx={{
-                        backgroundColor: theme.palette.grey[50],
-                        border: `1px solid ${theme.palette.grey[200]}`,
-                        borderRadius: theme.spacing(0.75),
-                        color: theme.palette.grey[700],
-                        fontSize: theme.typography.caption.fontSize,
-                        fontWeight: theme.typography.fontWeightMedium,
-                        padding: theme.spacing(0.25, 0.75),
-                        flexShrink: 1,
-                        minWidth: 0,
-                        maxWidth: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                      {getContextLabel(ctx.pageId)}
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Box>
-            {(formattedDate || formattedDuration) && (
-              <Box
-                sx={{
-                  alignItems: 'center',
-                  display: 'flex',
-                  flexShrink: 0,
-                  gap: 0.5,
-                }}>
-                {formattedDate && (
-                  <Typography
-                    component="span"
-                    sx={{
-                      color: theme.palette.allShades?.gray?.[600],
-                      fontSize: theme.typography.caption.fontSize,
-                    }}>
-                    {formattedDate}
-                  </Typography>
-                )}
-                {formattedDate && formattedDuration && (
-                  <Typography
-                    component="span"
-                    sx={{
-                      color: theme.palette.allShades?.gray?.[400],
-                      fontSize: theme.typography.caption.fontSize,
-                      px: theme.spacing(0.875),
-                    }}>
-                    |
-                  </Typography>
-                )}
-                {formattedDuration && (
-                  <Typography
-                    component="span"
-                    sx={{
-                      color: theme.palette.allShades?.gray?.[500],
-                      fontSize: theme.typography.caption.fontSize,
-                    }}>
-                    {formattedDuration}
-                  </Typography>
-                )}
-              </Box>
-            )}
-          </Box>
-        </Box>
-
-        <Box
-          sx={{
-            backgroundColor: theme.palette.allShades?.gray?.[100],
-            width: '100%',
-            flex: isFullScreen ? 1 : undefined,
-            minHeight: isFullScreen ? 0 : undefined,
-            '& .video-player-wrapper, & .storylane-tour-wrapper, & .article-viewer-wrapper':
-              isFullScreen ? { height: '100%', padding: 2, width: '100%' } : {},
-            '& .video-player-container, & .storylane-tour-container':
-              isFullScreen
-                ? {
-                    aspectRatio: 'unset',
-                    maxHeight: 'none',
-                    maxWidth: 'none',
-                    height: '100%',
-                    width: '100%',
-                  }
-                : {},
-            '& .article-viewer-container': isFullScreen
-              ? { maxHeight: 'none', maxWidth: 'none', height: '100%' }
-              : {},
-          }}>
-          {renderPlayer()}
-        </Box>
+        className={classNames(
+          'tw:w-full tw:bg-tertiary',
+          isFullScreen && FULLSCREEN_PLAYER_CLASS
+        )}
+        direction="col">
+        {renderPlayer()}
       </Box>
-    </Dialog>
+    </Box>
   );
 };
+
+export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
+  open,
+  resource,
+  onClose,
+}) => (
+  <ModalOverlay
+    isDismissable
+    isOpen={open}
+    onOpenChange={(isOpenState) => {
+      if (!isOpenState) {
+        onClose();
+      }
+    }}>
+    <Modal>
+      <Dialog data-testid="resource-player-dialog" width={1143}>
+        <ResourcePlayer
+          className="tw:max-h-[90vh] tw:overflow-auto"
+          resource={resource}
+          resourceId={resource.id}
+          onClose={onClose}
+        />
+      </Dialog>
+    </Modal>
+  </ModalOverlay>
+);

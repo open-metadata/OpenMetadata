@@ -13,8 +13,8 @@ Trino usage module
 """
 
 import traceback
+from collections.abc import Iterable
 from datetime import timedelta
-from typing import Iterable
 
 from sqlalchemy import text
 
@@ -51,7 +51,7 @@ class TrinoUsageSource(TrinoQueryParserSource, UsageSource):
             query = None
             offset = 0
             total_fetched = 0
-            max_results = self.source_config.resultLimit
+            max_results = self.source_config.resultLimit  # pyright: ignore[reportAttributeAccessIssue]
             try:
                 for engine in self.get_engine():
                     while total_fetched < max_results:
@@ -68,7 +68,7 @@ class TrinoUsageSource(TrinoQueryParserSource, UsageSource):
                             queries = []
                             row_count = 0
                             for row in rows:
-                                row = row._asdict()
+                                row = row._asdict()  # noqa: PLW2901
                                 row_count += 1
                                 try:
                                     row.update({k.lower(): v for k, v in row.items()})
@@ -109,10 +109,11 @@ class TrinoUsageSource(TrinoQueryParserSource, UsageSource):
                             f"Fetching next page with offset {offset} (fetched {total_fetched}/{max_results}) "
                             f"for {(self.start + timedelta(days=days)).date()}"
                         )
+                    self.warn_if_query_log_truncated(total_fetched, "usage")
             except Exception as exc:
                 if query:
                     logger.debug(
-                        (
+                        (  # noqa: UP034
                             f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"
                             "\n##########################"
                         )

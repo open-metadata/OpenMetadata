@@ -37,6 +37,7 @@ import org.openmetadata.service.resources.kpi.KpiResource;
 public class KpiResourceIT extends BaseEntityIT<Kpi, CreateKpiRequest> {
 
   public KpiResourceIT() {
+    supportsEntityStatus = false;
     supportsPatch = false;
     supportsFollowers = false;
     supportsTags = false;
@@ -165,17 +166,6 @@ public class KpiResourceIT extends BaseEntityIT<Kpi, CreateKpiRequest> {
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return getKpiService().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return getKpiService().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return getKpiService().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

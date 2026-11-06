@@ -11,39 +11,19 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Tooltip } from 'antd';
+import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import CloseIcon from '../../../components/Modals/CloseIcon.component';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  entityDisplayName,
-  getEntityField,
-  getEntityFieldDisplay,
-  getEntityFQN,
-  getEntityType,
-  getFeedPanelHeaderText,
-} from '../../../utils/FeedUtils';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
-
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   className,
-  entityLink,
-  noun,
-  feed,
   onShowNewConversation,
-  threadType,
   onCancel,
   hideCloseIcon = false,
 }) => {
   const { t } = useTranslation();
-  const entityType = getEntityType(entityLink);
-  const entityFQN = getEntityFQN(entityLink);
-  const entityField = getEntityField(entityLink);
 
   return (
     <header
@@ -51,49 +31,30 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
         'd-flex justify-between items-center p-y-md',
         className
       )}>
-      <p data-testid="header-title">
-        <span data-testid="header-noun">
-          {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
-          {t('label.on-lowercase')}{' '}
-        </span>
-        <span className="font-medium" data-testid="entity-attribute">
-          {entityField ? (
-            getEntityFieldDisplay(entityField)
-          ) : (
-            <Link
-              className="break-all"
-              data-testid="entitylink"
-              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-              <span>
-                {feed?.entityRef
-                  ? getEntityName(feed.entityRef)
-                  : entityDisplayName(entityType, entityFQN)}
-              </span>
-            </Link>
-          )}
-        </span>
-      </p>
+      <p data-testid="header-title">{t('label.conversation')}</p>
       <div className="d-flex items-center">
         {onShowNewConversation ? (
-          <Tooltip
-            placement="bottom"
-            title={t('label.start-entity', {
+          <Button
+            color="secondary"
+            data-testid="add-new-conversation"
+            iconLeading={Plus}
+            size="sm"
+            onPress={() => {
+              onShowNewConversation(true);
+            }}>
+            {t('label.new-entity', {
               entity: t('label.conversation-lowercase'),
             })}
-            trigger="hover">
-            <Button
-              data-testid="add-new-conversation"
-              icon={<PlusOutlined />}
-              size="small"
-              type="primary"
-              onClick={() => {
-                onShowNewConversation(true);
-              }}
-            />
-          </Tooltip>
+          </Button>
         ) : null}
         {hideCloseIcon ? null : (
-          <CloseIcon dataTestId="closeDrawer" handleCancel={onCancel} />
+          <ButtonUtility
+            data-testid="closeDrawer"
+            icon={XClose}
+            size="lg"
+            tooltip={t('label.close')}
+            onClick={onCancel}
+          />
         )}
       </div>
     </header>

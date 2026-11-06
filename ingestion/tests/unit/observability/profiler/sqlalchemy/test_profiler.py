@@ -73,7 +73,7 @@ class ProfilerTest(TestCase):
     Run checks on different metrics
     """
 
-    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")  # noqa: PTH118, PTH120, PTH122
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -238,7 +238,7 @@ class ProfilerTest(TestCase):
             )
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             profiler._check_profile_and_handle(
                 CreateTableProfileRequest(
                     tableProfile=TableProfile(
@@ -310,4 +310,4 @@ class ProfilerTest(TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        os.remove(cls.db_path)
+        os.remove(cls.db_path)  # noqa: PTH107

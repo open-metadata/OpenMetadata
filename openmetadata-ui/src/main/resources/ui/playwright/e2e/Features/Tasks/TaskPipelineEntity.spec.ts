@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 
@@ -22,7 +22,7 @@ import { performAdminLogin } from '../../../utils/admin';
  *
  * Tests task workflows for Pipeline entities including:
  * - Entity-level description tasks
- * - Pipeline task description tasks (tasks::taskName::description)
+ * - Pipeline task description tasks (tasks.taskName.description)
  * - Ownership update tasks for pipelines
  * - Tier update tasks for pipelines
  * - Domain update tasks for pipelines
@@ -88,8 +88,7 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
       // Create DescriptionUpdate task for entity level
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: pipeline.entityResponseData?.fullyQualifiedName,
-          aboutType: 'pipeline',
+          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -148,16 +147,15 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
       const newTaskDescription = 'Updated pipeline task description from task';
 
       // Create DescriptionUpdate task for pipeline task
-      // Format: tasks::taskName::description
+      // Format: tasks.taskName.description
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: pipeline.entityResponseData?.fullyQualifiedName,
-          aboutType: 'pipeline',
+          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `tasks::${pipelineTaskName}::description`,
+            fieldPath: `tasks.${pipelineTaskName}.description`,
             newDescription: newTaskDescription,
           },
         },
@@ -205,8 +203,7 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
       // Create OwnershipUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: pipeline.entityResponseData?.fullyQualifiedName,
-          aboutType: 'pipeline',
+          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
           type: 'OwnershipUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -254,8 +251,7 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
       // Create TierUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: pipeline.entityResponseData?.fullyQualifiedName,
-          aboutType: 'pipeline',
+          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
           type: 'TierUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -306,8 +302,7 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
       // Create DomainUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: pipeline.entityResponseData?.fullyQualifiedName,
-          aboutType: 'pipeline',
+          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
           type: 'DomainUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],

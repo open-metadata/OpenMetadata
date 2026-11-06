@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
+import { UserClass } from '../../../support/user/UserClass';
 import {
   createNewPage,
   redirectToExplorePage,
@@ -22,11 +24,32 @@ import {
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
+  waitForLandingPageWidget,
 } from '../../../utils/customizeLandingPage';
-import { selectDomainFromNavbar } from '../../../utils/domain';
+import {
+  clearPersistedDomain,
+  selectDomainFromNavbar,
+} from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { performUserLogin } from '../../../utils/user';
 
-test.use({ storageState: 'playwright/.auth/admin.json' });
+// The navbar pick is persisted per user: run as a dedicated admin and clear the pick after each
+// test so it never leaks into other specs' list views.
+const domainAdmin = new UserClass(undefined, true);
+
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const { page, apiContext, afterAction } = await performUserLogin(
+      browser,
+      domainAdmin
+    );
+    await use(page);
+    await clearPersistedDomain(apiContext);
+    await afterAction();
+  },
+});
+
+test.describe.configure({ mode: 'default' });
 
 const domainA = new Domain();
 const domainB = new Domain();
@@ -38,12 +61,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await domainA.create(apiContext);
   await domainB.create(apiContext);
 
-  const adminResponse = await apiContext.get(
-    '/api/v1/users/name/admin?fields=id'
-  );
-  const adminData = await adminResponse.json();
-
-  await persona.create(apiContext, [adminData.id]);
+  await domainAdmin.create(apiContext);
+  await persona.create(apiContext, [domainAdmin.responseData.id]);
   await afterAction();
 });
 
@@ -52,11 +71,13 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await domainA.delete(apiContext);
   await domainB.delete(apiContext);
   await persona.delete(apiContext);
+  await domainAdmin.delete(apiContext);
   await afterAction();
 });
 
 test.describe.serial('Domain Widget Filter', () => {
   test('Setup Domains widget on landing page', async ({ page }) => {
+    test.slow();
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
 
@@ -74,16 +95,20 @@ test.describe.serial('Domain Widget Filter', () => {
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    const domainAId = String(domainA.responseData.id);
+    const domainBId = String(domainB.responseData.id);
 
-    const domainWidget = page.getByTestId('KnowledgePanel.Domains');
-    await expect(domainWidget).toBeVisible();
+    const domainWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.Domains'
+    );
 
-    await expect(
-      domainWidget.getByTestId(`domain-card-${domainA.responseData.id}`)
-    ).toBeVisible();
-    await expect(
-      domainWidget.getByTestId(`domain-card-${domainB.responseData.id}`)
-    ).toBeVisible();
+    // The card lists one page of the estate's domains, so whether these two
+    // make that page depends on how many other specs have created domains.
+    // Both exist, though, so unfiltered it must list more than one.
+    await expect
+      .poll(() => domainWidget.locator('[data-testid^="domain-card-"]').count())
+      .toBeGreaterThan(1);
 
     // Navigate to explore page where domain-dropdown is available in navbar
     await redirectToExplorePage(page);
@@ -96,11 +121,19 @@ test.describe.serial('Domain Widget Filter', () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
+    const filteredDomainWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.Domains'
+    );
+
     await expect(
-      domainWidget.getByTestId(`domain-card-${domainA.responseData.id}`)
+      filteredDomainWidget.getByTestId(`domain-card-${domainAId}`)
     ).toBeVisible();
     await expect(
-      domainWidget.getByTestId(`domain-card-${domainB.responseData.id}`)
+      filteredDomainWidget.locator('[data-testid^="domain-card-"]')
+    ).toHaveCount(1);
+    await expect(
+      filteredDomainWidget.getByTestId(`domain-card-${domainBId}`)
     ).not.toBeVisible();
   });
 });

@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TableDataCardV2 from './TableDataCardV2';
 
-jest.mock('../../../utils/TableUtils', () => ({
-  getServiceIcon: jest.fn(),
-  getEntityIcon: jest.fn().mockReturnValue(<p>icon</p>),
+jest.mock('../../../utils/TablePureUtils', () => ({
   getUsagePercentile: jest
     .fn()
     .mockImplementation((value = 0) => `${value} value`),
+}));
+
+jest.mock('../../../utils/EntityServiceIconUtils', () => ({
+  getServiceIcon: jest.fn(),
 }));
 
 jest.mock('../../Database/TableDataCardBody/TableDataCardBody', () => {
@@ -52,5 +54,42 @@ describe('Test TableDataCard Component', () => {
 
     expect(tableDataCard).toBeInTheDocument();
     expect(entityHeader).toBeInTheDocument();
+  });
+
+  it('should call handleSummaryPanelDisplay once when the checkbox is clicked', () => {
+    mockHandleSummaryPanelDisplay.mockClear();
+    render(
+      <TableDataCardV2
+        showCheckboxes
+        checked={false}
+        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
+        id="1"
+        source={{ id: '1', name: 'Name1', fullyQualifiedName: 'test' }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    expect(mockHandleSummaryPanelDisplay).toHaveBeenCalledTimes(1);
+  });
+
+  it('should mark an errored card with a red border only', () => {
+    render(
+      <TableDataCardV2
+        errorMessage="Asset already belongs to another domain"
+        id="1"
+        source={{ id: '1', name: 'Name1', fullyQualifiedName: 'test' }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const card = screen.getByTestId('table-data-card_test');
+
+    expect(card).toHaveClass('tw:border-error');
+    expect(card.className).not.toMatch(/tw:bg-utility-error/);
+    expect(screen.getByTestId('table-data-card-error')).toHaveTextContent(
+      'Asset already belongs to another domain'
+    );
   });
 });

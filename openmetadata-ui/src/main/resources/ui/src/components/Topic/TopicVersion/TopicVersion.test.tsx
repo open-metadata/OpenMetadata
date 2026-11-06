@@ -17,6 +17,12 @@ import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { topicVersionMockProps } from '../../../mocks/TopicVersion.mock';
 import TopicVersion from './TopicVersion.component';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 const mockPush = jest.fn();
 
 jest.mock(
@@ -38,12 +44,8 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockImplementation(() => <div>CustomPropertyTable</div>),
 }));
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () =>
-  jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
-);
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
+jest.mock('../../common/EntityDescription/Description', () =>
+  jest.fn().mockImplementation(() => <div>Description</div>)
 );
 
 jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
@@ -86,7 +88,7 @@ describe('TopicVersion tests', () => {
     });
 
     const dataAssetsVersionHeader = screen.getByText('DataAssetsVersionHeader');
-    const description = screen.getByText('DescriptionV1');
+    const description = screen.getByText('Description');
     const schemaTabLabel = screen.getByText('label.schema');
     const customPropertyTabLabel = screen.getByText(
       'label.custom-property-plural'

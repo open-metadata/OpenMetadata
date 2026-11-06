@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row } from 'antd';
+import { Button, Grid } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined } from 'lodash';
-import { useMemo, useState } from 'react';
+import { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ChangeDescription } from '../../../../generated/tests/testCase';
@@ -23,14 +23,21 @@ import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentMana
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
-  getChangedEntityStatus,
   getDiffByFieldName,
-  getDiffDisplayValue,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityDiffPureUtils';
+import { getDiffDisplayValue } from '../../../../utils/EntityDiffUtils';
+import { getChangedEntityStatus } from '../../../../utils/EntityVersionUtilsPure';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../common/Loader/Loader';
-import QueryViewer from '../../../common/QueryViewer/QueryViewer.component';
 import '../TestCaseResultTab/test-case-result-tab.style.less';
-import AddSqlQueryFormModal from './AddSqlQueryFormModal/AddSqlQueryFormModal.component';
+
+const QueryViewer = withSuspenseFallback(
+  lazy(() => import('../../../common/QueryViewer/QueryViewer.component'))
+);
+
+const AddSqlQueryFormModal = withSuspenseFallback(
+  lazy(() => import('./AddSqlQueryFormModal/AddSqlQueryFormModal.component'))
+);
 
 const SqlQueryTab = () => {
   const { testCase, isLoading } = useTestCaseStore();
@@ -71,35 +78,38 @@ const SqlQueryTab = () => {
   }
 
   return (
-    <Row className="p-md" gutter={[16, 16]}>
+    <Grid
+      className="layout-row layout-grid sql-query-tab p-md tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+      rowGap="4">
       {permissions.query?.Create && !isVersionPage && (
-        <Col className="d-flex justify-end" span={24}>
+        <Grid.Item className="layout-column d-flex justify-end" span={24}>
           <Button
+            color="primary"
             data-testid="add-to-table-button"
-            type="primary"
-            onClick={() => setIsOpen(true)}>
+            size="md"
+            onPress={() => setIsOpen(true)}>
             {t('label.add-to-table')}
           </Button>
-        </Col>
+        </Grid.Item>
       )}
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         {isVersionPage ? (
           versionDiffInspectionQuery
         ) : (
           <QueryViewer sqlQuery={testCase?.inspectionQuery ?? ''} />
         )}
-      </Col>
+      </Grid.Item>
       {isOpen && (
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <AddSqlQueryFormModal
             open={isOpen}
             onCancel={() => {
               setIsOpen(false);
             }}
           />
-        </Col>
+        </Grid.Item>
       )}
-    </Row>
+    </Grid>
   );
 };
 

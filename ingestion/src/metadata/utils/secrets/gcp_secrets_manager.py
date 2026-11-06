@@ -40,7 +40,7 @@ def _() -> Optional["GCPCredentials"]:  # noqa: F821
     if project_id:
         config = gcpValues.GcpCredentialsValues(projectId=project_id)
         credentials = GCPCredentials(gcpConfig=config)
-        return credentials
+        return credentials  # noqa: RET504
 
     return None
 
@@ -58,7 +58,7 @@ def _() -> Optional["GCPCredentials"]:  # noqa: F821
     if project_id:
         config = gcpValues.GcpCredentialsValues(projectId=project_id)
         credentials = GCPCredentials(gcpConfig=config)
-        return credentials
+        return credentials  # noqa: RET504
 
     return None
 
@@ -75,7 +75,7 @@ def _() -> Optional["GCPCredentials"]:  # noqa: F821
     if project_id:
         config = gcpValues.GcpCredentialsValues(projectId=project_id)
         credentials = GCPCredentials(gcpConfig=config)
-        return credentials
+        return credentials  # noqa: RET504
 
     return None
 
@@ -123,4 +123,4 @@ class GCPSecretsManager(ExternalSecretsManager, ABC):
             loader_fn = secrets_manager_client_loader.registry.get(self.loader.value)
             return loader_fn()
         except Exception as err:
-            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")
+            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")  # noqa: B904

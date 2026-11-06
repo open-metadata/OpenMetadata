@@ -18,7 +18,7 @@
       "name": "LineageBotRule-Allow",
       "description" : "Allow creating and updating lineage",
       "resources" : ["All"],
-      "operations": ["EditAll", "ViewAll"],
+      "operations": ["EditAll", "ViewAll", "Trigger"],
       "effect": "allow"
     },
     {

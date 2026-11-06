@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DefaultOptionType, RefSelectProps } from 'antd/lib/select';
 import { EntityReference } from '../../../generated/entity/type';
 
 export interface DomainSelectableTreeProps {
@@ -20,11 +19,7 @@ export interface DomainSelectableTreeProps {
   onCancel: () => void;
   isMultiple?: boolean;
   initialDomains?: EntityReference[];
-  dropdownRef?: React.RefObject<RefSelectProps>;
-  handleDropdownChange?: (open: boolean) => void;
   showAllDomains?: boolean;
+  restrictedDomains?: EntityReference[];
   isClearable?: boolean;
-  open?: boolean;
 }
-
-export type TreeListItem = Omit<DefaultOptionType, 'label'>;

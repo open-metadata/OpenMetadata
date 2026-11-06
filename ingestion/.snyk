@@ -1,0 +1,33 @@
+# Snyk policy file for `snyk code test` runs scoped to this directory.
+#
+# Why this file exists (and is separate from the repo-root .snyk):
+#
+# `snyk code test` only reads .snyk from the directory it is invoked in.
+# There is no --policy-path flag on the Code subcommand, and no --exclude
+# flag either. Exclusions are driven only by a sibling .snyk file.
+# Docs:
+#   https://docs.snyk.io/manage-risk/policies/the-.snyk-file
+#   https://docs.snyk.io/developer-tools/snyk-cli/scan-and-maintain-projects-using-the-cli/snyk-cli-for-snyk-code/exclude-directories-and-files-from-snyk-code-cli-tests
+#
+# The repo has two Snyk Code scans (see ../Makefile):
+#   1. snyk-server-report runs `snyk code test --all-projects` from repo
+#      root. It reads ../.snyk. Paths in that file are relative to repo
+#      root.
+#   2. snyk-ingestion-report runs `cd ingestion; snyk code test ...`. It
+#      reads THIS file. Paths below are relative to ingestion/ with no
+#      ingestion/ prefix.
+#
+# When you want to exclude a path that is in ingestion/ and should be
+# silent for BOTH scans (for example SDK example placeholders), add the
+# pattern in both files. The repo-root version keeps the ingestion/
+# prefix. This file's version drops it.
+
+version: v1.25.0
+ignore: {}
+patch: {}
+exclude:
+  global:
+    - examples/**
+    - tests/**
+    - src/_openmetadata_testutils/**
+    - src/metadata/sdk/examples/**

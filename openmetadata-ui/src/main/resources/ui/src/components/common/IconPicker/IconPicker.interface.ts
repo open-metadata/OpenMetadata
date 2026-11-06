@@ -11,33 +11,10 @@
  *  limitations under the License.
  */
 
-import { FC, ReactNode } from 'react';
+import { FC } from 'react';
 
 export interface IconDefinition {
   name: string;
   component: FC<{ size?: number; style?: React.CSSProperties }>;
   category?: string;
-}
-
-export type IconPickerTabValue = 'icons' | 'url';
-
-export interface IconPickerValue {
-  type: IconPickerTabValue;
-  value: string;
-}
-
-export interface MUIIconPickerProps {
-  value?: string | IconPickerValue;
-  onChange?: (value: string | IconPickerValue) => void;
-  label?: string;
-  placeholder?: string;
-  disabled?: boolean;
-  error?: boolean;
-  helperText?: string;
-  allowUrl?: boolean;
-  backgroundColor?: string;
-  toolTip?: ReactNode;
-  defaultIcon?: IconDefinition;
-  customStyles?: Record<string, string | number>;
-  'data-testid'?: string;
 }

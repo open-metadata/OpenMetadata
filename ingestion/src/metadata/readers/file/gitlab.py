@@ -15,7 +15,7 @@ Gitlab client to read files with token auth
 import base64
 import traceback
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import quote_plus
 
 import requests
@@ -53,7 +53,7 @@ class GitlabReader(ApiReader):
         self._encoded_project_path = None
 
     @property
-    def auth_headers(self) -> Dict[str, str]:
+    def auth_headers(self) -> dict[str, str]:
         """
         Build the headers to authenticate
         to the API
@@ -85,7 +85,7 @@ class GitlabReader(ApiReader):
         return self._encoded_project_path
 
     @staticmethod
-    def _decode_content(json_response: Dict[str, Any]) -> str:
+    def _decode_content(json_response: dict[str, Any]) -> str:
         """
         Return the content of the response
 
@@ -122,7 +122,7 @@ class GitlabReader(ApiReader):
 
         except Exception as err:
             logger.debug(traceback.format_exc())
-            raise ReadException(f"Error fetching file [{path}] from repo: {err}")
+            raise ReadException(f"Error fetching file [{path}] from repo: {err}")  # noqa: B904
 
         raise ReadException(f"Could not fetch file [{path}] from repo")
 
@@ -142,7 +142,7 @@ class GitlabReader(ApiReader):
         res.raise_for_status()
         raise RuntimeError("Could not fetch the default branch")
 
-    def _get_tree(self, url: str = None) -> Optional[List[str]]:
+    def _get_tree(self, url: str = None) -> list[str] | None:  # noqa: RUF013
         """
         Use the Gitlab Repository Tree API to iterate over tree pages recursively
         """

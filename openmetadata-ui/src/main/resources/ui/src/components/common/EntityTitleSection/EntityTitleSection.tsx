@@ -12,29 +12,76 @@
  */
 
 import {
-  Button,
+  ButtonUtility,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
+import { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { updateTableColumn } from '../../../rest/tableAPI';
-import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
+import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { EntityTitleSectionProps } from './EntityTitleSection.interface';
+
+const updateColumnDisplayName = async (
+  fullyQualifiedName: string,
+  displayName: string | undefined,
+  onDisplayNameUpdate?: (name: string) => void
+): Promise<void> => {
+  const res = await updateTableColumn(fullyQualifiedName, { displayName });
+  onDisplayNameUpdate?.(res.displayName ?? displayName ?? '');
+};
+
+const patchEntityDisplayName = async (
+  id: string,
+  entityType: EntityType,
+  displayName: string | undefined,
+  isReplace: boolean,
+  t: TFunction,
+  onDisplayNameUpdate?: (name: string) => void
+): Promise<void> => {
+  const jsonPatch = [
+    {
+      op: isReplace ? 'replace' : 'add',
+      path: '/displayName',
+      value: displayName,
+    },
+  ];
+
+  const patchAPI = entityUtilClassBase.getEntityPatchAPI(entityType);
+  const response = await patchAPI(id, jsonPatch as Operation[]);
+
+  showSuccessToast(
+    t('server.update-entity-success', {
+      entity: t('label.display-name'),
+    })
+  );
+
+  if (onDisplayNameUpdate) {
+    const updatedDisplayName =
+      typeof response === 'object' &&
+      response !== null &&
+      'displayName' in response
+        ? response.displayName
+        : undefined;
+    const responseDisplayName =
+      typeof updatedDisplayName === 'string' ? updatedDisplayName : undefined;
+    onDisplayNameUpdate(responseDisplayName || displayName || '');
+  }
+};
 
 export const EntityTitleSection = ({
   entityDetails,
@@ -43,6 +90,7 @@ export const EntityTitleSection = ({
   tooltipPlacement = 'top left',
   testId = 'entity-link',
   className,
+  plain = false,
   hasEditPermission = false,
   onDisplayNameUpdate,
   entityDisplayName,
@@ -69,40 +117,23 @@ export const EntityTitleSection = ({
 
       try {
         if (entityType === EntityType.TABLE_COLUMN) {
-          const res = await updateTableColumn(
+          await updateColumnDisplayName(
             entityDetails.fullyQualifiedName ?? '',
-            {
-              displayName: data.displayName,
-            }
+            data.displayName,
+            onDisplayNameUpdate
           );
-          onDisplayNameUpdate?.(res.displayName ?? data.displayName ?? '');
 
           return;
         }
 
-        const jsonPatch = [
-          {
-            op: entityDisplayName ? 'replace' : 'add',
-            path: '/displayName',
-            value: data.displayName,
-          },
-        ];
-
-        const patchAPI = entityUtilClassBase.getEntityPatchAPI(entityType);
-        const response = await patchAPI(
+        await patchEntityDisplayName(
           entityDetails.id,
-          jsonPatch as Operation[]
+          entityType,
+          data.displayName,
+          Boolean(entityDisplayName),
+          t,
+          onDisplayNameUpdate
         );
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.display-name'),
-          })
-        );
-
-        if (onDisplayNameUpdate) {
-          onDisplayNameUpdate(response.displayName || data.displayName || '');
-        }
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -127,39 +158,38 @@ export const EntityTitleSection = ({
   return (
     <div
       className={classNames(
-        'tw:sticky tw:p-1 tw:z-999 tw:top-0 tw:bg-white',
+        'tw:sticky tw:p-1 tw:z-999 tw:top-0 tw:bg-primary',
         className
       )}>
-      <div className="tw:flex tw:gap-2 tw:items-center tw:rounded-lg tw:px-1 tw:bg-gray-blue-50 tw:py-2">
-        <span className="tw:text-blue-700 tw:w-4.5 tw:h-4.5 tw:ml-1 tw:shrink-0">
-          {searchClassBase.getEntityIcon(entityTypeValue)}
+      <div
+        className={classNames(
+          'tw:flex tw:gap-2 tw:items-center tw:rounded-lg tw:px-1 tw:py-2',
+          { 'tw:bg-gray-blue-50 tw:dark:bg-secondary': !plain }
+        )}>
+        <span className="tw:text-blue-700 tw:ml-1 tw:shrink-0 tw:leading-0">
+          {searchClassBase.getEntityIcon(entityTypeValue, 'tw:w-4.5 tw:h-4.5')}
         </span>
         <Tooltip
           placement={tooltipPlacement}
           title={getTextFromHtmlString(entityName)}
           trigger="hover">
-          <TooltipTrigger>
+          <TooltipTrigger className="tw:max-w-[75%]">
             <Link
               className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:font-semibold tw:truncate tw:no-underline tw:text-blue-700 tw:block"
               data-testid={testId}
               to={linkHref}>
-              {stringToHTML(entityName)}
+              {renderHighlightedText(entityName)}
             </Link>
           </TooltipTrigger>
         </Tooltip>
         {hasEditPermission && entityType && entityDetails.id && (
-          <Tooltip placement="top" title={t('label.edit')}>
-            <TooltipTrigger>
-              <Button
-                color="tertiary"
-                data-testid="edit-displayName-button"
-                iconLeading={
-                  <IconEdit color={DE_ACTIVE_COLOR} height={16} width={16} />
-                }
-                onClick={() => setIsEditModalOpen(true)}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+          <ButtonUtility
+            data-testid="edit-displayName-button"
+            icon={Edit01}
+            size="sm"
+            tooltip={t('label.edit')}
+            onClick={() => setIsEditModalOpen(true)}
+          />
         )}
       </div>
       {isEditModalOpen && (

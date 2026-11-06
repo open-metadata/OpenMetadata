@@ -15,15 +15,25 @@
 
 .incident-manager-header {
   display: flex;
-  border-radius: 12px;
-  border: 1px solid @grey-15;
-  padding: 16px 20px;
-  gap: 16px;
-  background-color: @background-color;
-  justify-content: space-evenly;
+  align-items: flex-start;
+  gap: var(--om-space-12);
+  justify-content: flex-start;
   flex-wrap: wrap;
 
-  .ant-divider {
-    height: 50px;
+  .owner-label-container,
+  .domain-label-container {
+    max-width: 220px;
+  }
+
+  .domain-link-container {
+    max-width: 148px;
+
+    .domain-link-text.render-domain-lebel-style {
+      display: inline-block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 148px;
+    }
   }
 }

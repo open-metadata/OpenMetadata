@@ -11,12 +11,28 @@
  *  limitations under the License.
  */
 
+import customSearchConnection from '../../public/jsons/connectionSchemas/connections/search/customSearchConnection.json';
+import elasticSearchConnection from '../../public/jsons/connectionSchemas/connections/search/elasticSearchConnection.json';
+import openSearchConnection from '../../public/jsons/connectionSchemas/connections/search/openSearchConnection.json';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { SearchServiceType } from '../generated/entity/services/searchService';
-import customSearchConnection from '../jsons/connectionSchemas/connections/search/customSearchConnection.json';
-import elasticSearchConnection from '../jsons/connectionSchemas/connections/search/elasticSearchConnection.json';
-import openSearchConnection from '../jsons/connectionSchemas/connections/search/openSearchConnection.json';
 import { getSearchServiceConfig } from './SearchServiceUtils';
+
+// jest.mock() is hoisted above imports; require() inside the factory to avoid
+// referencing top-level import bindings before they're initialized.
+jest.mock('./loadConnectionSchema', () => {
+  const schemas: Record<string, unknown> = {
+    'connections/search/customSearchConnection.json': require('../../public/jsons/connectionSchemas/connections/search/customSearchConnection.json'),
+    'connections/search/elasticSearchConnection.json': require('../../public/jsons/connectionSchemas/connections/search/elasticSearchConnection.json'),
+    'connections/search/openSearchConnection.json': require('../../public/jsons/connectionSchemas/connections/search/openSearchConnection.json'),
+  };
+
+  return {
+    loadConnectionSchema: jest.fn((relativePath: string) =>
+      Promise.resolve(schemas[relativePath] ?? {})
+    ),
+  };
+});
 
 const mockGetSearchServiceConfigReturnValue = {
   schema: {},
@@ -24,8 +40,8 @@ const mockGetSearchServiceConfigReturnValue = {
 };
 
 describe('SearchServiceUtils tests', () => {
-  it('getSearchServiceConfig should return correct config for ElasticSearch connector', () => {
-    const elasticSearchConfig = getSearchServiceConfig(
+  it('getSearchServiceConfig should return correct config for ElasticSearch connector', async () => {
+    const elasticSearchConfig = await getSearchServiceConfig(
       SearchServiceType.ElasticSearch
     );
 
@@ -35,8 +51,8 @@ describe('SearchServiceUtils tests', () => {
     });
   });
 
-  it('getSearchServiceConfig should return correct config for OpenSearch connector', () => {
-    const elasticSearchConfig = getSearchServiceConfig(
+  it('getSearchServiceConfig should return correct config for OpenSearch connector', async () => {
+    const elasticSearchConfig = await getSearchServiceConfig(
       SearchServiceType.OpenSearch
     );
 
@@ -46,8 +62,8 @@ describe('SearchServiceUtils tests', () => {
     });
   });
 
-  it('getSearchServiceConfig should return correct config for CustomSearch connector', () => {
-    const elasticSearchConfig = getSearchServiceConfig(
+  it('getSearchServiceConfig should return correct config for CustomSearch connector', async () => {
+    const elasticSearchConfig = await getSearchServiceConfig(
       SearchServiceType.CustomSearch
     );
 
@@ -57,8 +73,10 @@ describe('SearchServiceUtils tests', () => {
     });
   });
 
-  it('getSearchServiceConfig should return only common UI schema in config for invalid connectors', () => {
-    const elasticSearchConfig = getSearchServiceConfig('' as SearchServiceType);
+  it('getSearchServiceConfig should return only common UI schema in config for invalid connectors', async () => {
+    const elasticSearchConfig = await getSearchServiceConfig(
+      '' as SearchServiceType
+    );
 
     expect(elasticSearchConfig).toEqual(mockGetSearchServiceConfigReturnValue);
   });

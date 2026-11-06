@@ -55,7 +55,7 @@ class HelloPipelines(AppRunner):
                 self.app_config
             )
         except Exception as e:
-            raise InvalidAppConfiguration(f"Hello pipelines received invalid configuration: {e}")
+            raise InvalidAppConfiguration(f"Hello pipelines received invalid configuration: {e}")  # noqa: B904
 
     @property
     def name(self) -> str:

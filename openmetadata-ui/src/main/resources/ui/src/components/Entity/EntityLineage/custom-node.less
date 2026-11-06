@@ -10,31 +10,152 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../styles/variables.less';
-
-@lineage-border: #b1b1b7;
-@lineage-collapse-header: #fafafa;
-
-.ant-btn.ant-btn-background-ghost.expand-btn {
-  background-color: white;
-  box-shadow: none;
-
-  &:hover {
-    background-color: white;
-  }
-}
+// Node, badge and handle borders read --lineage-node-border so dark can swap
+// it for border-primary via LINEAGE_NODE_DARK_CLASS on the node element; light
+// keeps these static greys.
 
 .react-flow__node {
   box-shadow: none;
+
+  &.lineage-path-highlight > .lineage-node {
+    border-color: var(--tw-color-fg-brand-primary);
+    box-shadow: 0 0 0 3px var(--tw-color-utility-brand-100), var(--om-shadow-md);
+  }
+
+  &.lineage-path-highlight > .lineage-scene-layer-node {
+    border-color: var(--tw-color-fg-brand-primary);
+    box-shadow: 0 0 0 1px var(--tw-color-fg-brand-primary),
+      0 2px 8px var(--om-legacy-color-16-24-40-0-12);
+  }
+}
+
+// Temp tables are transient lineage hops (no service, no columns): a lighter,
+// dashed card rather than a full asset node.
+.lineage-node.lineage-temp-node {
+  border-style: dashed;
+}
+
+// Keep an asset node's header row clear of the drill button. Only the header
+// row: the footer below it still spans the full node. Container
+// cards reserve the cue's space in their own padding instead.
+.lineage-node:not(.lineage-scene-layer-node)
+  .lineage-node-content.has-scene-drill-button:not(.has-lineage-node-menu)
+  .lineage-node-label-row {
+  margin-right: var(--om-space-36);
 }
 
 // Node default state
 .lineage-node {
   width: 100%;
   max-width: 400px; //  Max width of Lineage Node, in case of long columns names
-  border: 1px solid @lineage-border;
-  border-radius: 10px;
+  border: 1px solid var(--lineage-node-border, var(--tw-border-color-primary));
+  border-radius: var(--om-radius-10);
   overflow: hidden;
+  transition: border-color var(--om-duration-150) ease,
+    box-shadow var(--om-duration-150) ease, opacity var(--om-duration-150) ease;
+
+  &.lineage-path-highlight {
+    border-color: var(--tw-color-fg-brand-primary);
+    box-shadow: 0 0 0 3px var(--tw-color-utility-brand-100), var(--om-shadow-md);
+  }
+
+  &.lineage-scene-layer-node {
+    min-height: 66px;
+    border-color: var(--lineage-node-border, var(--tw-border-color-secondary));
+    border-radius: var(--om-radius-xl);
+    box-shadow: 0 1px 3px var(--om-legacy-color-16-24-40-0-12);
+
+    &.lineage-path-highlight,
+    &.custom-node-header-active {
+      border-color: var(--tw-color-fg-brand-primary);
+      box-shadow: 0 0 0 1px var(--tw-color-fg-brand-primary),
+        0 2px 8px var(--om-legacy-color-16-24-40-0-12);
+    }
+
+    .lineage-node-content {
+      min-height: 66px;
+
+      // The Layer-band drill button is always shown, 14px in and 22px wide.
+      &.has-scene-drill-button .label-container {
+        padding-right: var(--om-space-44);
+      }
+
+      // No .has-lineage-node-menu offset needed here: Layer-band scene nodes
+      // are never editable (canEditScene excludes LineageBand.Layer), so
+      // LineageNodeMenu never renders alongside this drill button variant.
+      .lineage-scene-drill-button {
+        top: 50%;
+        right: 14px;
+        width: 22px;
+        height: 22px;
+        border: none;
+        border-radius: var(--om-radius-md);
+        background: var(--tw-background-color-tertiary);
+        box-shadow: none;
+        transform: translateY(-50%);
+        opacity: 1;
+
+        svg {
+          width: 13px;
+          height: 13px;
+        }
+      }
+
+      .label-container {
+        border-radius: var(--om-radius-xl);
+      }
+    }
+
+    .custom-node-label-container {
+      .entity-label-container {
+        min-height: 64px;
+        padding: var(--om-space-10) var(--om-space-46) var(--om-space-10)
+          var(--om-space-14);
+
+        .entity-service-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 22px;
+          height: 22px;
+          margin-right: var(--om-space-10);
+
+          svg,
+          img {
+            width: 22px;
+            height: 22px;
+            margin-bottom: 0;
+          }
+        }
+
+        .entity-header-display-name {
+          width: auto !important;
+          max-width: 100%;
+          color: var(--tw-text-color-primary);
+          font-size: var(--om-font-size-sm);
+          font-weight: var(--om-font-weight-semibold);
+          line-height: 18px;
+        }
+
+        .lineage-breadcrumbs {
+          margin-bottom: 0;
+
+          .lineage-breadcrumb-item {
+            max-width: 72px;
+            font-size: var(--om-font-size-11_5);
+            line-height: 16px;
+          }
+        }
+
+        .lineage-service-subtitle {
+          display: block;
+          color: var(--tw-text-color-tertiary);
+          font-size: var(--om-font-size-11_5);
+          line-height: 16px;
+        }
+      }
+    }
+  }
 
   .lineage-expand-icon {
     width: 12px;
@@ -43,157 +164,178 @@
   }
 
   .profiler-item {
-    margin-right: 4px;
-    border-radius: 4px;
+    margin-right: var(--om-space-4);
+    border-radius: var(--om-radius-sm);
+    // The node footer sets no colour, so without this the count inherits React
+    // Flow's fixed #222 node text, which disappears on dark cards.
+    color: var(--tw-text-color-primary);
 
     &.medium {
       width: 36px;
       height: 36px;
       line-height: 36px;
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
     }
 
     &.small {
       width: 24px;
       height: 24px;
       line-height: 24px;
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
     }
 
     &.green {
-      border: 1px solid #23aa66;
+      border: 1px solid var(--om-legacy-color-23aa66);
     }
 
     &.amber {
-      border: 1px solid #dc6803;
+      border: 1px solid var(--tw-color-fg-warning-primary);
     }
 
     &.red {
-      border: 1px solid #d92d20;
+      border: 1px solid var(--tw-color-fg-error-primary);
     }
   }
 
   .lineage-node-content {
+    // Anchor only the scene drill button. A positioned content box inside the
+    // node's overflow: hidden would also anchor, and so clip, the expand /
+    // collapse handles that sit half outside the node edge.
+    &.has-scene-drill-button {
+      position: relative;
+    }
+
+    .lineage-scene-drill-button {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: var(--om-z-2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid var(--tw-border-color-secondary);
+      border-radius: var(--om-radius-md);
+      background: var(--tw-background-color-tertiary);
+      color: var(--tw-color-fg-tertiary);
+      cursor: pointer;
+      opacity: 0;
+      box-shadow: var(--om-shadow-md);
+      transition: opacity var(--om-duration-150) ease,
+        background-color var(--om-duration-150) ease;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      &:hover,
+      &:focus-visible {
+        background: var(--tw-background-color-surface);
+        opacity: 1;
+      }
+    }
+
+    &:hover,
+    &:focus-within {
+      .lineage-scene-drill-button {
+        opacity: 1;
+      }
+    }
+
+    // The node ⋮ menu sits in the same top-right spot as the absolutely
+    // positioned drill button, so shift the drill button clear of the 24px
+    // menu with enough gap that the two hit areas never overlap.
+    &.has-lineage-node-menu .lineage-scene-drill-button {
+      right: 34px;
+    }
+
+    &.has-scene-drill-button .label-container .lineage-node-menu {
+      margin-left: var(--om-space-36);
+    }
+
     .label-container {
       .custom-node-label-container {
         width: 100%;
 
-        .lineage-breadcrumbs {
-          .lineage-breadcrumb-item {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            font-size: 12px;
-            max-width: 80px;
-          }
-
-          .lineage-breadcrumb-item-separator {
-            position: relative;
-            display: inline-block;
-            width: 7px;
-            height: 7px;
-            margin: 0 6px 0 4px;
-
-            &::after {
-              content: '';
-              position: absolute;
-              inset: 1px;
-              border-top: 1px solid @grey-400;
-              border-right: 1px solid @grey-400;
-              transform: rotate(45deg);
-            }
-          }
-        }
-
         .entity-header-name {
           .node-service-type::after {
             content: '|';
-            margin-left: 6px;
+            margin-left: var(--om-space-6);
           }
 
           svg {
             width: 18px;
-            color: @grey-4;
+            color: var(--tw-text-color-quaternary);
           }
         }
 
         .entity-label-container {
-          padding: 8px 16px 0 16px;
+          padding: calc(var(--tw-spacing) * 3) var(--om-space-16) 0
+            var(--om-space-16);
 
           .entity-service-icon svg {
             height: 32px;
             width: 32px;
-            margin-bottom: 6px;
+            margin-bottom: var(--om-space-6);
           }
 
           .entity-service-icon img {
             height: 32px;
             width: 32px;
-            margin-bottom: 6px;
-          }
-
-          &.with-footer::after {
-            display: block;
-            width: 100%;
-            height: 1px;
-
-            background: @grey-200;
-            content: '';
+            margin-bottom: var(--om-space-6);
           }
         }
 
         .entity-footer {
           display: flex;
           justify-content: space-between;
-          gap: 20px;
-          padding: 8px 16px;
+          gap: var(--om-space-20);
+          padding: var(--om-space-8) var(--om-space-16);
 
           &__entity-type-and-dropdown {
             display: flex;
-            gap: 6px;
-
-            .MuiChip-root {
-              background-color: @grey-9;
-              border-color: @grey-15;
-              color: @grey-600;
-            }
+            gap: var(--om-space-6);
           }
 
           &__test-summary-and-filter {
             display: flex;
-            gap: 6px;
+            gap: var(--om-space-6);
           }
 
           .test-summary-and-mapping {
             display: flex;
-            gap: 5px;
+            gap: var(--om-space-5);
           }
 
           .children-info-dropdown-label {
             min-width: fit-content;
-            padding: 2px @size-xs 2px @size-sm;
+            padding: var(--om-space-2) var(--om-space-8) var(--om-space-2)
+              var(--om-space-12);
             border: none;
-            border-radius: 8px;
+            border-radius: var(--om-radius-lg);
             box-shadow: none;
 
-            background-color: @primary-1;
-            color: @blue-7;
-            font-size: 12px;
-            font-weight: 500;
+            background-color: var(--tw-color-utility-brand-100);
+            color: var(--tw-color-utility-brand-700);
+            font-size: var(--om-font-size-xs);
+            font-weight: var(--om-font-weight-medium);
             line-height: 18px;
             text-transform: none;
             cursor: pointer;
 
             &:hover {
               box-shadow: none;
-              background-color: @primary-1;
-              color: @blue-7;
+              background-color: var(--tw-color-utility-brand-100);
+              color: var(--tw-color-utility-brand-700);
             }
 
             &::after {
-              margin-left: @size-xxs;
-              width: @size-sm;
-              height: @size-sm;
+              margin-left: var(--om-space-4);
+              width: var(--om-space-12);
+              height: var(--om-space-12);
               content: '';
             }
 
@@ -219,8 +361,8 @@
             }
 
             &.active {
-              background-color: @primary-1;
-              color: @blue-7;
+              background-color: var(--tw-color-utility-brand-100);
+              color: var(--tw-color-fg-brand-primary);
             }
 
             &:disabled:hover {
@@ -233,12 +375,11 @@
 
     .column-container {
       min-height: 48px;
-      padding: 12px;
+      padding: var(--om-space-12);
       padding-top: 0;
-      background-color: @grey-9;
 
       .inside-current-page-item {
-        margin-top: 0px;
+        margin-top: 0;
         display: block;
 
         .custom-node-header-column-tracing {
@@ -252,51 +393,30 @@
 
       .outside-current-page-item:has(.custom-node-header-column-tracing) {
         display: block;
-        margin-top: 0px;
+        margin-top: 0;
       }
 
       .outside-current-page-items:has(.custom-node-header-column-tracing) {
-        border-top: 1px solid silver;
-        margin-top: 8px;
-        padding-top: 8px;
-      }
-
-      .lineage-collapse-column.ant-collapse {
-        border: none;
-        border-radius: 0;
-
-        .ant-collapse-header {
-          padding: 4px;
-          font-size: 12px;
-          display: inherit; // to fix the overflow issue of parent column node, which has children.
-        }
-
-        .ant-collapse-content-box {
-          padding: 4px;
-        }
-
-        .ant-collapse-item {
-          border: none;
-          border-radius: 0;
-        }
+        margin-top: var(--om-space-8);
+        padding-top: var(--om-space-8);
       }
 
       .custom-node-column-container {
-        padding: 6px 8px;
+        padding: var(--om-space-6) var(--om-space-8);
         background-color: inherit;
         position: relative;
-        font-size: 12px;
-        font-weight: 400;
-        border: 1px solid @grey-1;
-        border-left: 6px solid transparent;
-        border-radius: 4px;
-        border-top-left-radius: 6px;
-        border-bottom-left-radius: 6px;
+        font-size: var(--om-font-size-xs);
+        font-weight: var(--om-font-weight-regular);
+        border: 1px solid transparent;
+        border-left-width: 6px;
+        border-radius: var(--om-radius-sm);
+        border-top-left-radius: var(--om-radius-md);
+        border-bottom-left-radius: var(--om-radius-md);
 
         .custom-node-column-row {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: var(--om-space-12);
         }
 
         .custom-node-summary {
@@ -309,138 +429,117 @@
           display: flex;
           align-items: center;
           text-align: left;
-          gap: 4px;
+          gap: var(--om-space-4);
 
           .custom-node-name-icon {
             width: 14px;
             display: flex;
           }
-
-          .custom-node-column-label {
-            width: 100%;
-            display: block;
-          }
         }
 
         .custom-node-constraint {
-          padding-left: 4px;
-          padding-right: 12px;
-        }
-
-        .ant-skeleton-element {
-          .ant-skeleton-button-sm {
-            height: 32px; // Height of the skeleton button, to match the height of the column name
-          }
+          padding-left: var(--om-space-4);
+          padding-right: var(--om-space-12);
         }
       }
 
       &:not(.any-column-selected) {
         .custom-node-column-container {
           &:hover {
-            background-color: @primary-1;
-            border-left-color: @primary-6;
+            background-color: var(--tw-color-utility-brand-100);
+            border-left-color: var(--tw-color-fg-brand-primary);
           }
         }
       }
     }
   }
 
-  &.columns-expanded {
-    .lineage-node-content {
-      .label-container {
-        .custom-node-label-container {
-          .entity-footer {
-            background-color: @grey-9;
-          }
-        }
-      }
-    }
-  }
-
+  // Only the node carries the tint: bg-brand-primary is translucent in dark,
+  // so repeating it on nested containers stacks into a saturated fill.
   &.custom-node-header-active {
-    background-color: #eff8ff;
+    background-color: var(--tw-background-color-brand-primary);
 
     .lineage-node-content {
       .label-container {
-        background-color: #eff8ff;
+        background-color: transparent;
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: #eff8ff;
+            background-color: transparent;
           }
         }
       }
     }
 
     .lineage-node-badge-container {
-      background-color: #eff8ff;
+      background-color: var(--tw-background-color-brand-primary);
     }
 
     &.columns-expanded {
-      background-color: @primary-1;
+      background-color: var(--tw-color-utility-brand-100);
 
       .lineage-node-content {
         .label-container {
-          background-color: @primary-1;
+          background-color: var(--tw-color-utility-brand-100);
 
           .custom-node-label-container {
             .entity-footer {
-              background-color: #eff8ff;
+              background-color: var(--tw-background-color-brand-primary);
             }
           }
         }
 
         .column-container {
-          background-color: #eff8ff;
+          background-color: var(--tw-background-color-brand-primary);
         }
       }
 
       .lineage-node-badge-container {
-        background-color: @primary-1;
+        background-color: var(--tw-color-utility-brand-100);
       }
     }
   }
 
   &.custom-node-header-active.data-quality-failed-custom-node-header {
-    background-color: #fffbfa;
+    background-color: var(--tw-background-color-error-primary);
 
     .lineage-node-content {
       .label-container {
-        background-color: #fffbfa;
+        background-color: var(--tw-background-color-error-primary);
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: #fffbfa;
+            background-color: var(--tw-background-color-error-primary);
           }
         }
       }
     }
 
     .lineage-node-badge-container {
-      background-color: #fffbfa;
-      border-color: #d92d20;
+      background-color: var(--tw-background-color-error-primary);
+      border-color: var(--tw-color-fg-error-primary);
     }
 
     &.columns-expanded {
-      background-color: #fee4e2;
+      background-color: var(--tw-background-color-error-secondary);
 
       .lineage-node-badge-container {
-        background-color: #fee4e2;
+        background-color: var(--tw-background-color-error-secondary);
       }
 
       .lineage-node-content {
         .label-container {
-          background-color: #fee4e2;
+          background-color: var(--tw-background-color-error-secondary);
 
           .custom-node-label-container {
             .entity-footer {
-              background-color: #fffbfa;
+              background-color: var(--tw-background-color-error-primary);
             }
           }
         }
 
         .column-container {
-          background-color: #fffbfa;
+          background-color: var(--tw-background-color-error-primary);
         }
       }
     }
@@ -448,7 +547,7 @@
 
   &.custom-node-header-tracing {
     .lineage-node-badge-container {
-      border-color: @primary-color;
+      border-color: var(--tw-color-fg-brand-primary);
     }
   }
 
@@ -465,22 +564,22 @@
 
     .column-container {
       .custom-node-column-container.custom-node-header-column-tracing {
-        background-color: @primary-1;
-        border-left-color: @primary-6;
+        background-color: var(--tw-color-utility-brand-100);
+        border-left-color: var(--tw-color-fg-brand-primary);
 
         &:hover {
-          background-color: @primary-1;
+          background-color: var(--tw-color-utility-brand-100);
         }
       }
 
       &.any-column-selected {
         .custom-node-column-container.custom-node-header-column-tracing {
-          background-color: @indigo-100;
-          border-left-color: @indigo-600;
+          background-color: var(--tw-color-utility-indigo-100);
+          border-left-color: var(--tw-color-utility-indigo-600);
 
           &:hover {
-            background-color: @indigo-100;
-            border-left-color: @indigo-600;
+            background-color: var(--tw-color-utility-indigo-100);
+            border-left-color: var(--tw-color-utility-indigo-600);
           }
         }
       }
@@ -489,16 +588,33 @@
         .custom-node-column-container:not(
             .custom-node-header-column-tracing
           ):hover {
-          background-color: @primary-1;
-          border-left-color: @primary-6;
+          background-color: var(--tw-color-utility-brand-100);
+          border-left-color: var(--tw-color-fg-brand-primary);
         }
       }
     }
   }
 }
 
+// The base node is a light brand card (its fill is BASE_NODE_FILL_CLASS in
+// CustomNode.utils); selected / DQ states above still win.
+.lineage-node.lineage-base-node {
+  --lineage-node-border: var(--tw-border-color-brand);
+
+  &:not(.custom-node-header-active) {
+    .lineage-node-content .label-container,
+    .lineage-node-content .column-container,
+    .lineage-node-content
+      .label-container
+      .custom-node-label-container
+      .entity-footer {
+      background-color: transparent;
+    }
+  }
+}
+
 .lineage-base-node {
-  border-top-left-radius: 0px;
+  border-top-left-radius: var(--om-radius-none);
 
   .lineage-node-badge-container {
     position: absolute;
@@ -507,12 +623,10 @@
     width: 68px;
     height: 15px;
 
-    border: 1px solid rgb(177, 177, 183);
+    border: 1px solid var(--lineage-node-border, var(--tw-border-color-primary));
     border-bottom: 0px;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-
-    background: rgb(255, 255, 255);
+    border-top-left-radius: var(--om-radius-10);
+    border-top-right-radius: var(--om-radius-10);
 
     .lineage-node-badge {
       position: absolute;
@@ -522,17 +636,17 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 4px;
+      gap: var(--om-space-4);
 
       width: 60px;
-      padding: 2px;
-      border-radius: 7px;
+      padding: var(--om-space-2);
+      border-radius: var(--om-radius-7);
 
-      background-color: #175cd3;
-      color: white;
+      background-color: var(--tw-background-color-brand-solid_hover);
+      color: var(--tw-text-color-primary_on-brand);
 
-      font-size: 12px;
-      font-weight: 500;
+      font-size: var(--om-font-size-xs);
+      font-weight: var(--om-font-weight-medium);
 
       &::before {
         display: inline-block;
@@ -551,10 +665,6 @@
       }
     }
   }
-
-  .lineage-node-content {
-    margin-top: 10px;
-  }
 }
 
 .react-flow__node-default,
@@ -564,14 +674,16 @@
   padding: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  background-color: @white !important;
+  // The node inside draws the fill and the rounded corners; a filled wrapper
+  // shows its own square corners behind them.
+  background-color: transparent !important;
 }
 
 .react-flow__node-load-more {
   padding: 0 !important;
   box-shadow: none !important;
-  font-weight: 500;
-  font-size: 16px;
+  font-weight: var(--om-font-weight-medium);
+  font-size: var(--om-font-size-md);
 }
 
 // Node hovered state
@@ -581,34 +693,34 @@
 .react-flow__node-output.selectable:hover,
 .react-flow__node-group.selectable:hover {
   .lineage-node-handle {
-    border-color: @primary-color;
+    border-color: var(--tw-color-fg-brand-primary);
   }
 
   .lineage-node {
-    border-color: @primary-color;
+    border-color: var(--tw-color-fg-brand-primary);
 
     .lineage-node-badge-container {
-      border-color: rgb(53, 111, 231);
+      border-color: var(--om-legacy-color-356fe7);
     }
   }
 
   .data-quality-failed-custom-node-header {
-    border-color: @red-3;
+    border-color: var(--tw-color-fg-error-primary);
 
     .lineage-node-badge-container {
-      border-color: @red-3;
+      border-color: var(--tw-color-fg-error-primary);
     }
 
     .lineage-node-content {
       .column-container {
         .custom-node-column-container {
           &:hover {
-            background-color: #fef3f2;
-            color: #bc1b06;
-            border-left-color: #d92d20;
+            background-color: var(--tw-background-color-error-primary);
+            color: var(--tw-color-utility-orange-dark-700);
+            border-left-color: var(--tw-color-fg-error-primary);
 
             .profiler-item {
-              color: black;
+              color: var(--tw-text-color-primary);
             }
           }
         }
@@ -621,8 +733,8 @@
       .column-container {
         .custom-node-column-container {
           &:hover {
-            background-color: #fef3f2;
-            border-left-color: #d92d20;
+            background-color: var(--tw-background-color-error-primary);
+            border-left-color: var(--tw-color-fg-error-primary);
           }
         }
       }
@@ -636,9 +748,9 @@
     .lineage-node-content {
       .column-container {
         .custom-node-column-container.custom-node-header-column-tracing {
-          border-color: #d92d20;
-          background-color: #ffffff;
-          color: black;
+          border-color: var(--tw-color-fg-error-primary);
+          background-color: var(--tw-background-color-surface);
+          color: var(--tw-text-color-primary);
         }
       }
     }
@@ -646,7 +758,7 @@
 }
 
 .react-flow__handle.connectable {
-  background-color: @text-color;
+  background-color: var(--tw-background-color-quaternary);
 }
 
 .react-flow {
@@ -664,14 +776,17 @@
     width: max-content !important;
     min-width: 20px !important;
     height: 20px !important;
-    border-radius: 4px !important;
-    border-color: @lineage-border !important;
-    background: @white !important;
+    border-radius: var(--om-radius-sm) !important;
+    border-color: var(
+      --lineage-node-border,
+      var(--tw-border-color-primary)
+    ) !important;
+    background: var(--tw-background-color-raised) !important;
     top: min(58px, 50%) !important;
 
-    gap: 1px;
+    gap: var(--om-space-1);
     border: 1px solid;
-    transition: transform 0.2s ease;
+    transition: transform var(--om-duration-200) ease;
 
     &.react-flow__handle-right {
       left: 100%;
@@ -692,16 +807,16 @@
     }
 
     svg {
-      color: @grey-4;
+      color: var(--tw-text-color-quaternary);
       cursor: pointer;
-      padding: 1px;
+      padding: var(--om-space-1);
       width: 18px;
       height: 18px;
-      border-radius: 3px;
+      border-radius: var(--om-radius-3);
 
       &:hover {
-        color: @primary-color;
-        background-color: #eff8ff;
+        color: var(--tw-color-fg-brand-primary);
+        background-color: var(--tw-background-color-brand-primary);
       }
     }
 
@@ -712,7 +827,7 @@
       top: 2px;
       width: 1px;
       height: 14px;
-      background: @blue-20;
+      background: var(--tw-background-color-quaternary);
       transform: translateX(-50%);
     }
   }
@@ -723,26 +838,31 @@
   min-width: 20px !important;
   height: 20px !important;
   border-radius: 20% !important;
-  border-color: @lineage-border !important;
-  background: @white !important;
+  border-color: var(
+    --lineage-node-border,
+    var(--tw-border-color-primary)
+  ) !important;
+  background: var(--tw-background-color-raised) !important;
   top: 60px !important; // Need to show handles on top half
   top: min(58px, 50%) !important;
 
   svg {
-    color: @text-grey-muted;
+    color: var(--tw-text-color-quaternary);
   }
 }
 
 .react-flow .lineage-column-node-handle {
   width: 30px;
   border-radius: 0;
-  border-color: @lineage-border;
+  border-color: var(--lineage-node-border, var(--tw-border-color-primary));
   background: transparent;
   top: 5px;
   height: 25px;
   transform: none;
   border: none;
-  z-index: 1; // Adding as column text and data type should be behind handles
+  z-index: var(
+    --om-z-1
+  ); // Adding as column text and data type should be behind handles
 
   &.react-flow__handle-left {
     left: -10px;
@@ -763,16 +883,16 @@
   }
 
   svg:first-child {
-    border-right: 1px solid @grey-15;
+    border-right: 1px solid var(--tw-border-color-secondary);
     width: 22px;
-    padding-right: 6px;
+    padding-right: var(--om-space-6);
   }
 }
 
 .custom-node-deleted-icon {
-  border-radius: 4px;
-  border: 1px solid @error-color;
-  background-color: @white;
+  border-radius: var(--om-radius-sm);
+  border: 1px solid var(--tw-color-fg-error-primary);
+  background-color: var(--tw-background-color-surface);
 }
 
 .manage-node {
@@ -781,12 +901,25 @@
   right: 4px;
 }
 
-.manage-node-menu .MuiMenuItem-root {
-  display: flex;
-  gap: 10px;
-  margin: 0px;
+.react-flow__edge :hover {
+  stroke: var(--tw-color-fg-brand-primary);
 }
 
-.react-flow__edge :hover {
-  stroke: @primary-color;
+// Asset lineage handles and their expand / collapse controls appear only while
+// the node is hovered, focused or selected, so idle cards stay clean.
+.react-flow__node {
+  .lineage-node-handle,
+  .lineage-node-handle-expand-all {
+    opacity: 0;
+    transition: opacity var(--om-duration-150) ease;
+  }
+
+  &:hover,
+  &:focus-within,
+  &.selected {
+    .lineage-node-handle,
+    .lineage-node-handle-expand-all {
+      opacity: 1;
+    }
+  }
 }

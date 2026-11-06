@@ -20,6 +20,8 @@ export interface ApplicationCardProps {
   className?: string;
   showDescription?: boolean;
   deleted?: boolean;
+  disabled?: boolean;
+  disabledReason?: string;
   onClick: () => void;
   appName: string;
 }

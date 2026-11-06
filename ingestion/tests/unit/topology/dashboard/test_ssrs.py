@@ -161,9 +161,10 @@ EXPECTED_DASHBOARDS = [
 @pytest.fixture(scope="function")
 def ssrs_source():
     with (
-        patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"),
-        patch("metadata.ingestion.source.dashboard.ssrs.connection.get_connection"),
+        patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+        patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection") as mock_create,
     ):
+        mock_create.return_value.client = SimpleNamespace()
         config = OpenMetadataWorkflowConfig.model_validate(mock_config)
         source = SsrsSource.create(
             mock_config["source"],
@@ -208,7 +209,7 @@ class TestSsrsSource:
         assert ssrs_source.get_project_name(MOCK_REPORTS[2]) is None
 
     def test_yield_dashboard(self, ssrs_source):
-        for report, expected in zip(MOCK_REPORTS[:2], EXPECTED_DASHBOARDS):
+        for report, expected in zip(MOCK_REPORTS[:2], EXPECTED_DASHBOARDS):  # noqa: B905
             ssrs_source.context.get().__dict__["project_name"] = ssrs_source.get_project_name(report)
             results = list(ssrs_source.yield_dashboard(report))
             assert len(results) == 1

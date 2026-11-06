@@ -120,16 +120,18 @@ export const unmockDeleteApi = async (
  */
 export const openDeleteModal = async (page: Page) => {
   await page.click('[data-testid="manage-button"]');
+  await page
+    .locator('[data-testid="delete-button"]')
+    .waitFor({ state: 'visible' });
   await page.click('[data-testid="delete-button"]');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.getByTestId('delete-modal')).toBeVisible();
 };
 
 /**
  * Fills the DELETE confirmation and clicks confirm button.
  */
 export const confirmDelete = async (page: Page) => {
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   await page.click('[data-testid="confirm-button"]');
 };
 
@@ -144,12 +146,16 @@ export const initiateDelete = async (page: Page) => {
 /**
  * Waits for a response from the glossaries list API.
  */
-export const waitForGlossaryListRefetch = (page: Page) => {
-  return page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/glossaries') && response.status() === 200
+export const waitForGlossaryListRefetch = (page: Page) =>
+  page.waitForResponse(
+    (r) =>
+      r.request().method() === 'GET' && r.url().includes('/api/v1/glossaries')
   );
-};
+
+const getGlossaryLeftPanelItem = (page: Page, displayName: string) =>
+  page
+    .getByTestId('glossary-left-panel')
+    .getByRole('link', { name: displayName });
 
 /**
  * Verifies that a glossary is visible in the sidebar menu.
@@ -158,7 +164,7 @@ export const expectGlossaryVisible = async (
   page: Page,
   displayName: string
 ) => {
-  await expect(page.getByRole('menuitem', { name: displayName })).toBeVisible();
+  await expect(getGlossaryLeftPanelItem(page, displayName)).toBeVisible();
 };
 
 /**
@@ -168,7 +174,5 @@ export const expectGlossaryNotVisible = async (
   page: Page,
   displayName: string
 ) => {
-  await expect(
-    page.getByRole('menuitem', { name: displayName })
-  ).not.toBeVisible();
+  await expect(getGlossaryLeftPanelItem(page, displayName)).not.toBeVisible();
 };

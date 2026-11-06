@@ -49,10 +49,10 @@ class TestAllResources(TestCase):
 
         run_all_resources(str(summary_file), str(locust_file))
 
-        with open(manifest_file, "r", encoding="utf-8") as f:
+        with open(manifest_file, "r", encoding="utf-8") as f:  # noqa: PTH123
             manifest = yaml.safe_load(f)
 
-        with open(str(summary_file) + "_stats.csv", "r", encoding="utf-8") as f:
+        with open(str(summary_file) + "_stats.csv", "r", encoding="utf-8") as f:  # noqa: PTH123
             reader = csv.DictReader(f)
 
             for row in reader:

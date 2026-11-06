@@ -13,7 +13,11 @@
 
 import { TextArea } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import {
+  getWidgetAriaProps,
+  getWidgetHint,
+  getWidgetLabel,
+} from './coreWidgetUtils';
 
 const CoreTextAreaWidget = ({
   id,
@@ -32,20 +36,25 @@ const CoreTextAreaWidget = ({
   onBlur,
   onFocus,
 }: WidgetProps) => {
+  const handleChange = (nextValue: string) =>
+    onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
+
   return (
     <TextArea
+      {...getWidgetAriaProps({ label, schema })}
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is schema-driven per RJSF widget contract
       autoFocus={autofocus}
       hint={getWidgetHint({ rawErrors, schema, options })}
       isDisabled={disabled || readonly}
       isInvalid={!!rawErrors?.length}
       isRequired={required}
-      label={getWidgetLabel({ hideLabel, label })}
+      label={getWidgetLabel({ hideLabel, label, schema })}
       placeholder={placeholder}
       rows={Number(options.rows) || 5}
       textAreaRef={undefined}
       value={value ?? ''}
       onBlur={() => onBlur(id, value)}
-      onChange={onChange}
+      onChange={handleChange}
       onFocus={() => onFocus(id, value)}
     />
   );

@@ -4,8 +4,6 @@ import static org.openmetadata.service.socket.SocketAddressFilter.validatePrefix
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.server.McpTransportContextExtractor;
-import io.modelcontextprotocol.spec.McpError;
-import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,8 +13,12 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.JdbiException;
+import org.openmetadata.mcp.AuthEnrichedMcpContextExtractor;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
@@ -29,12 +31,20 @@ import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
+import org.openmetadata.mcp.server.auth.html.HtmlTemplates;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
+import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
+import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor;
+import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor.InvalidClientCredentialsException;
+import org.openmetadata.mcp.server.auth.util.UriUtils;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration.TokenValidationAlgorithm;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 
 /**
  * Extended transport provider that handles both MCP messages and OAuth routes. This class
@@ -62,7 +72,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private volatile URI resourceMetadataUrl;
 
-  private final JwtFilter jwtFilter;
+  private volatile JwtFilter jwtFilter;
 
   private volatile List<String> allowedOrigins;
 
@@ -73,12 +83,48 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private volatile org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet
       basicAuthLoginServlet;
 
+  private volatile String contextPath;
+
+  static final String BEARER_PREFIX = "Bearer ";
+
+  // Headers a browser-based MCP client sends on its POST. Any header missing from this list makes
+  // the CORS preflight fail, and the user just sees a network error.
+  //   MCP-Protocol-Version - required since protocol 2025-06-18
+  //   Mcp-Method, Mcp-Name - required since protocol 2026-07-28, so gateways can route and meter
+  //                          requests without reading the JSON body
+  //   Mcp-Client-Name      - our own header, read by AuthEnrichedMcpContextExtractor
+  //   X-OpenMetadata-Persona - selects an assigned persona for scoped searches
+  static final String CORS_ALLOWED_HEADERS =
+      String.join(
+          ", ",
+          List.of(
+              "Content-Type",
+              "Authorization",
+              "Accept",
+              "MCP-Protocol-Version",
+              "Mcp-Method",
+              "Mcp-Name",
+              AuthEnrichedMcpContextExtractor.CLIENT_NAME,
+              AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER));
+
+  // Browsers hide response headers unless we expose them. A client reads WWW-Authenticate after a
+  // 401 to find this authorization server, and Retry-After after a 503 to know when to try again.
+  private static final String CORS_EXPOSED_HEADERS = "WWW-Authenticate, Retry-After";
+
+  // Public key set for the tokens JWTTokenGenerator signs, MCP access tokens included.
+  private static final String JWKS_PATH = "/api/v1/system/config/jwks";
+  private static final String OPENID_CONFIGURATION_PATH = "/mcp/.well-known/openid-configuration";
+
   // In-memory rate limiters for registration and token endpoints.
   // These are per-JVM-instance; in clustered deployments the effective limit is N × limit per hour.
   // For multi-node production deployments, consider database-backed rate limiting.
   private static final int REGISTRATION_MAX_PER_HOUR = 10;
   private static final int TOKEN_MAX_PER_MINUTE = 30;
   private static final int MAX_RATE_LIMIT_ENTRIES = 10_000;
+  // Client metadata that passes RegistrationHandler's field limits is at most about 31 KB (ten
+  // 2048-character redirect URIs alone are 20 KiB); 64 KiB leaves room for an inline jwks.
+  // ADR:2026-11-02-mcp-request-bodies-are-bounded-before-parsing
+  static final int MAX_REGISTRATION_BODY_BYTES = 64 * 1024;
   private static final java.util.regex.Pattern IP_PATTERN =
       java.util.regex.Pattern.compile("[0-9a-fA-F.:]+");
   private final java.util.concurrent.ConcurrentHashMap<
@@ -117,18 +163,22 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // Create Authorization Server metadata (RFC 8414)
     // Endpoints are relative to /mcp prefix since servlet is mounted there
     List<String> supportedScopes = getSupportedScopesForProvider();
+    String issuer = baseUrl + mcpEndpoint;
     OAuthMetadata metadata = new OAuthMetadata();
-    metadata.setIssuer(URI.create(baseUrl + mcpEndpoint));
+    metadata.setIssuer(URI.create(issuer));
     metadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
     metadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
     metadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
     metadata.setScopesSupported(supportedScopes);
     metadata.setResponseTypesSupported(List.of("code"));
     metadata.setGrantTypesSupported(List.of("authorization_code", "refresh_token"));
-    metadata.setTokenEndpointAuthMethodsSupported(List.of("client_secret_post"));
+    metadata.setTokenEndpointAuthMethodsSupported(
+        List.of("client_secret_basic", "client_secret_post", "none"));
     metadata.setCodeChallengeMethodsSupported(List.of("S256"));
     metadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
-    metadata.setRevocationEndpointAuthMethodsSupported(List.of("client_secret_post"));
+    metadata.setRevocationEndpointAuthMethodsSupported(
+        List.of("client_secret_basic", "client_secret_post"));
+    addOpenIdDiscoveryFields(metadata, baseUrl);
 
     // Create Protected Resource metadata (RFC 9728) - MCP requirement
     this.resourceMetadataUrl =
@@ -141,6 +191,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     this.oauthMetadata = metadata;
     this.protectedResourceMetadata = protectedResourceMetadata;
+    // Same ordering as rebuildMetadata: the metadata is in place before the issuer is published.
+    authProvider.setIssuer(issuer);
     this.authorizationHandler = new AuthorizationHandler(authProvider);
     this.registrationHandler = new RegistrationHandler(new OAuthClientRepository());
     this.revocationHandler = new RevocationHandler(new OAuthTokenRepository());
@@ -163,6 +215,35 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     this.basicAuthLoginServlet = servlet;
   }
 
+  /** The servlet context path (BASE_PATH), so a base URL set at runtime is checked against it. */
+  public void setContextPath(String contextPath) {
+    this.contextPath = contextPath;
+  }
+
+  /**
+   * Under a non-root BASE_PATH every URL the MCP OAuth flow advertises is built from baseUrl, so it
+   * has to carry that path. Only warns: behind a proxy that rewrites the path, a baseUrl without
+   * it is correct, and appending it here would break that setup.
+   * ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
+   */
+  public static void warnIfBaseUrlMissesContextPath(
+      final String baseUrl, final String contextPath) {
+    final boolean hasSubPathContext = contextPath != null && contextPath.length() > 1;
+    final String baseUrlPath = Objects.toString(URI.create(baseUrl).getPath(), "");
+    // Whole segments only, so /om-other does not pass for /om
+    final boolean carriesContextPath =
+        baseUrlPath.equals(contextPath) || baseUrlPath.startsWith(contextPath + "/");
+    if (hasSubPathContext && !carriesContextPath) {
+      LOG.warn(
+          "MCP base URL {} does not include the server base path {}. MCP OAuth endpoints will not"
+              + " resolve unless a proxy adds it; set the MCP base URL to the external URL ending"
+              + " in {}.",
+          baseUrl,
+          contextPath,
+          contextPath);
+    }
+  }
+
   /**
    * ConfigurationChangeListener implementation.
    * Called when configuration is reloaded, updates CORS origins dynamically without restart.
@@ -172,6 +253,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       org.openmetadata.schema.api.security.AuthenticationConfiguration authConfig,
       org.openmetadata.schema.api.security.AuthorizerConfiguration authzConfig,
       org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig) {
+    // Tokens must be checked against the reloaded security settings, not the ones at startup.
+    this.jwtFilter = new JwtFilter(authConfig, authzConfig);
     if (mcpConfig != null) {
       if (mcpConfig.getAllowedOrigins() != null) {
         updateAllowedOrigins(mcpConfig.getAllowedOrigins());
@@ -179,27 +262,32 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             "Updated CORS origins from configuration reload: {}", mcpConfig.getAllowedOrigins());
       }
       if (mcpConfig.getBaseUrl() != null && !mcpConfig.getBaseUrl().isEmpty()) {
-        rebuildMetadata(mcpConfig.getBaseUrl());
+        rebuildMetadata(UriUtils.withoutTrailingSlash(mcpConfig.getBaseUrl()));
       }
     }
   }
 
   private void rebuildMetadata(String baseUrl) {
     LOG.info("Rebuilding OAuth metadata with new base URL: {}", baseUrl);
+    warnIfBaseUrlMissesContextPath(baseUrl, contextPath);
     List<String> supportedScopes = getSupportedScopesForProvider();
+    String issuer = baseUrl + mcpEndpoint;
 
     OAuthMetadata newMetadata = new OAuthMetadata();
-    newMetadata.setIssuer(URI.create(baseUrl + mcpEndpoint));
+    newMetadata.setIssuer(URI.create(issuer));
     newMetadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
     newMetadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
     newMetadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
     newMetadata.setScopesSupported(supportedScopes);
     newMetadata.setResponseTypesSupported(List.of("code"));
     newMetadata.setGrantTypesSupported(List.of("authorization_code", "refresh_token"));
-    newMetadata.setTokenEndpointAuthMethodsSupported(List.of("client_secret_post"));
+    newMetadata.setTokenEndpointAuthMethodsSupported(
+        List.of("client_secret_basic", "client_secret_post", "none"));
     newMetadata.setCodeChallengeMethodsSupported(List.of("S256"));
     newMetadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
-    newMetadata.setRevocationEndpointAuthMethodsSupported(List.of("client_secret_post"));
+    newMetadata.setRevocationEndpointAuthMethodsSupported(
+        List.of("client_secret_basic", "client_secret_post"));
+    addOpenIdDiscoveryFields(newMetadata, baseUrl);
     this.oauthMetadata = newMetadata;
 
     ProtectedResourceMetadata newResourceMetadata = new ProtectedResourceMetadata();
@@ -211,6 +299,13 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     this.resourceMetadataUrl =
         URI.create(baseUrl + mcpEndpoint + "/.well-known/oauth-protected-resource");
+
+    // Publish the response issuer last, once the new metadata is already being served. Setting it
+    // first would leave a gap where responses carry the new issuer while discovery still returns
+    // the old one, and a client comparing the two would reject a valid authorization response.
+    // Note this only closes the gap inside this method. A base URL change while a login is already
+    // in progress still moves the issuer under that client, which no ordering here can prevent.
+    authProvider.setIssuer(issuer);
 
     LOG.info("OAuth metadata rebuilt with base URL: {}", baseUrl);
   }
@@ -277,16 +372,26 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * Sets CORS headers with origin validation.
    * Only allows specific origins from the allowedOrigins list.
    * Rejects requests from origins not in the allowed list.
+   *
+   * <p>Must be called on every path that answers a browser, including the ones handled by the base
+   * transport - it writes the 401 challenge and the JSON-RPC response itself and never sets these.
    * @param request The HTTP request
    * @param response The HTTP response
    */
   private void setCorsHeaders(HttpServletRequest request, HttpServletResponse response) {
+    applyCorsHeaders(request, response, allowedOrigins);
+  }
+
+  /** Split out from {@link #setCorsHeaders} so the header emission can be unit tested. */
+  static void applyCorsHeaders(
+      HttpServletRequest request, HttpServletResponse response, List<String> allowedOrigins) {
     String origin = request.getHeader("Origin");
 
     if (origin != null && allowedOrigins.contains(origin)) {
       response.setHeader("Access-Control-Allow-Origin", origin);
       response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
+      response.setHeader("Access-Control-Allow-Headers", CORS_ALLOWED_HEADERS);
+      response.setHeader("Access-Control-Expose-Headers", CORS_EXPOSED_HEADERS);
       response.setHeader("Access-Control-Max-Age", "3600");
       response.setHeader("Vary", "Origin");
       LOG.debug("CORS headers set for allowed origin: {}", origin);
@@ -305,10 +410,13 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       throws ServletException, IOException {
 
     LOG.debug("Handling OAuth GET request: {}", request.getRequestURI());
-    String path = request.getRequestURI();
+    String path = pathInContext(request);
 
     // Handle OAuth GET routes (exact path matching to prevent path confusion attacks)
-    if (path.equals("/mcp/.well-known/oauth-authorization-server")) {
+    // openid-configuration appended to the issuer is the one authorization server discovery URL
+    // the MCP spec lists that stays inside a non-root BASE_PATH; the others sit at the host root.
+    if (path.equals("/mcp/.well-known/oauth-authorization-server")
+        || path.equals(OPENID_CONFIGURATION_PATH)) {
       handleMetadataRequest(request, response);
     } else if (path.equals("/mcp/.well-known/oauth-protected-resource")) {
       handleProtectedResourceMetadataRequest(request, response);
@@ -318,6 +426,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       basicAuthLoginServlet.doGet(request, response);
     } else {
       // Unknown GET path: base class returns 404 for sub-paths, 405 for /mcp exactly
+      setCorsHeaders(request, response);
       super.doGet(request, response);
     }
   }
@@ -332,16 +441,38 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   protected boolean authenticateRequest(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     String tokenWithType = request.getHeader("Authorization");
+    boolean authenticated = false;
 
-    try {
-      validatePrefixedTokenRequest(jwtFilter, tokenWithType);
-      return true;
-    } catch (Exception e) {
-      LOG.debug("Bearer token authentication failed", e);
-      sendAuthErrorWithChallenge(
-          response, "Invalid or expired token", HttpServletResponse.SC_UNAUTHORIZED);
-      return false;
+    if (!presentsBearerCredentials(tokenWithType)) {
+      sendAuthErrorWithChallenge(response, AuthFailure.MISSING_CREDENTIALS);
+    } else {
+      try {
+        validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+        authenticated = true;
+      } catch (CredentialUnavailableException e) {
+        LOG.debug("Bearer token could not be confirmed", e);
+        writeUnavailable(response, e.retryAfterSeconds());
+      } catch (Exception e) {
+        LOG.debug("Bearer token authentication failed", e);
+        sendAuthErrorWithChallenge(response, AuthFailure.INVALID_TOKEN);
+      }
     }
+    return authenticated;
+  }
+
+  /**
+   * RFC 6750 section 3: {@code invalid_token} may only answer a request that actually presented a
+   * bearer credential. No {@code Authorization} header, or one using another auth-scheme, is a
+   * request that simply did not authenticate, and telling that caller their token is invalid sends
+   * them hunting for a token they never had. The scheme is matched case-insensitively per RFC 7235.
+   */
+  static boolean presentsBearerCredentials(String authorizationHeader) {
+    boolean presented = false;
+    if (authorizationHeader != null
+        && authorizationHeader.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+      presented = !authorizationHeader.substring(BEARER_PREFIX.length()).isBlank();
+    }
+    return presented;
   }
 
   /**
@@ -372,37 +503,132 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   }
 
   /**
-   * Sends an authentication error response with WWW-Authenticate header (MCP requirement).
-   * @param response The HTTP response
-   * @param message The error message
-   * @param statusCode The HTTP status code
+   * The fields OpenID Connect Discovery requires on top of RFC 8414, so one document answers both
+   * the oauth-authorization-server and the openid-configuration routes. The TypeScript MCP SDK
+   * rejects an openid-configuration response without them, and under a non-root BASE_PATH that is
+   * the only discovery URL it can reach.
+   * ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
    */
-  private void sendAuthErrorWithChallenge(
-      HttpServletResponse response, String message, int statusCode) throws IOException {
+  private static void addOpenIdDiscoveryFields(final OAuthMetadata metadata, final String baseUrl) {
+    final TokenValidationAlgorithm signingAlgorithm =
+        Optional.ofNullable(SecurityConfigurationManager.getCurrentAuthConfig())
+            .map(AuthenticationConfiguration::getTokenValidationAlgorithm)
+            .orElse(TokenValidationAlgorithm.RS_256);
+    metadata.setJwksUri(URI.create(baseUrl + JWKS_PATH));
+    metadata.setSubjectTypesSupported(List.of("public"));
+    metadata.setIdTokenSigningAlgValuesSupported(List.of(signingAlgorithm.value()));
+  }
 
-    // Build WWW-Authenticate header per RFC 6750 and MCP spec
-    StringBuilder challenge = new StringBuilder("Bearer");
-    challenge.append(" resource_metadata=\"").append(resourceMetadataUrl).append("\"");
+  /**
+   * How a bearer credential failed. RFC 6750 section 3 keeps these apart on the wire: the challenge
+   * carries {@code error="invalid_token"} only when a token was supplied and rejected, and must
+   * carry no {@code error} parameter at all when the request presented no credentials.
+   *
+   * <p>Each kind owns its JSON-RPC code rather than sharing one, so a kind added later for a
+   * different HTTP status cannot silently inherit an authentication code that does not describe it.
+   */
+  enum AuthFailure {
+    MISSING_CREDENTIALS(
+        HttpServletResponse.SC_UNAUTHORIZED,
+        JsonRpcErrorBody.UNAUTHORIZED,
+        null,
+        "Missing bearer token"),
+    INVALID_TOKEN(
+        HttpServletResponse.SC_UNAUTHORIZED,
+        JsonRpcErrorBody.UNAUTHORIZED,
+        "invalid_token",
+        "Invalid or expired bearer token");
 
-    // Use provider-aware scopes
-    List<String> scopes = getSupportedScopesForProvider();
-    challenge.append(", scope=\"").append(String.join(" ", scopes)).append("\"");
+    private final int statusCode;
+    private final int jsonRpcCode;
+    private final String challengeError;
+    private final String message;
 
-    if (statusCode == HttpServletResponse.SC_FORBIDDEN) {
-      challenge.append(", error=\"insufficient_scope\"");
+    AuthFailure(int statusCode, int jsonRpcCode, String challengeError, String message) {
+      this.statusCode = statusCode;
+      this.jsonRpcCode = jsonRpcCode;
+      this.challengeError = challengeError;
+      this.message = message;
     }
 
-    response.setHeader("WWW-Authenticate", challenge.toString());
+    int statusCode() {
+      return statusCode;
+    }
+
+    int jsonRpcCode() {
+      return jsonRpcCode;
+    }
+
+    String challengeError() {
+      return challengeError;
+    }
+
+    String message() {
+      return message;
+    }
+  }
+
+  /**
+   * Sends an authentication error response with WWW-Authenticate header (MCP requirement).
+   * @param response The HTTP response
+   * @param failure How the bearer credential failed
+   */
+  private void sendAuthErrorWithChallenge(HttpServletResponse response, AuthFailure failure)
+      throws IOException {
+    writeAuthError(response, failure, resourceMetadataUrl, getSupportedScopesForProvider());
+  }
+
+  /**
+   * Split out from {@link #sendAuthErrorWithChallenge} so the challenge and the 401 body can be unit
+   * tested — the constructor needs a full running auth stack.
+   */
+  static void writeAuthError(
+      HttpServletResponse response,
+      AuthFailure failure,
+      URI resourceMetadataUrl,
+      List<String> scopes)
+      throws IOException {
+    response.setHeader(
+        "WWW-Authenticate", buildAuthChallenge(failure, resourceMetadataUrl, scopes));
     response.setContentType("application/json");
     response.setCharacterEncoding("UTF-8");
-    response.setStatus(statusCode);
-
-    McpError error = McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR).message(message).build();
-    String jsonError = getObjectMapper().writeValueAsString(error);
+    response.setStatus(failure.statusCode());
 
     PrintWriter writer = response.getWriter();
-    writer.write(jsonError);
+    // The id is null and not echoed: authentication runs before the request body is read.
+    writer.write(JsonRpcErrorBody.of(null, failure.jsonRpcCode(), failure.message()));
     writer.flush();
+  }
+
+  /**
+   * 503 for a bearer token whose stored credential could not be confirmed. It carries no
+   * challenge: the token is not invalid, so the client retries it rather than starting OAuth again.
+   */
+  static void writeUnavailable(HttpServletResponse response, long retryAfterSeconds)
+      throws IOException {
+    response.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
+    response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+
+    PrintWriter writer = response.getWriter();
+    writer.write(
+        JsonRpcErrorBody.of(
+            null, JsonRpcErrorBody.UNAVAILABLE, CredentialUnavailableException.CLIENT_MESSAGE));
+    writer.flush();
+  }
+
+  /** Builds the WWW-Authenticate challenge per RFC 6750 and the MCP spec. */
+  static String buildAuthChallenge(
+      AuthFailure failure, URI resourceMetadataUrl, List<String> scopes) {
+    StringBuilder challenge = new StringBuilder("Bearer");
+    challenge.append(" resource_metadata=\"").append(resourceMetadataUrl).append("\"");
+    challenge.append(", scope=\"").append(String.join(" ", scopes)).append("\"");
+
+    if (failure.challengeError() != null) {
+      challenge.append(", error=\"").append(failure.challengeError()).append("\"");
+    }
+    return challenge.toString();
   }
 
   @Override
@@ -420,7 +646,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       throws ServletException, IOException {
 
     LOG.debug("Handling OAuth POST request: {}", request.getRequestURI());
-    String path = request.getRequestURI();
+    String path = pathInContext(request);
 
     // Handle OAuth POST routes (exact path matching to prevent path confusion attacks)
     if (path.equals("/mcp/token")) {
@@ -433,8 +659,16 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       handleRevocationRequest(request, response);
     } else if (path.equals("/mcp/login") && basicAuthLoginServlet != null) {
       basicAuthLoginServlet.doPost(request, response);
+    } else if (path.equals(UserSSOOAuthProvider.CONSENT_PATH)
+        && authProvider instanceof UserSSOOAuthProvider ssoProvider) {
+      handleConsentRequest(ssoProvider, request, response);
     } else {
-      // Handle other POST requests using the parent class
+      // The MCP message endpoint. Everything below this line is written by the base transport,
+      // which knows nothing about CORS: the 401 challenge, the JSON-RPC response, the SSE stream.
+      // The headers have to go on here, before the response is committed, or a browser client
+      // gets a CORS failure instead of the response - including the 401 that carries the
+      // WWW-Authenticate challenge it needs to start the OAuth flow.
+      setCorsHeaders(request, response);
       super.doPost(request, response);
     }
   }
@@ -490,11 +724,39 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
           authorizationHandler.handle(params).join();
 
       String redirectUrl = authResponse.getRedirectUrl();
-      if (redirectUrl != null) {
+      if (redirectUrl != null && response.isCommitted()) {
+        // The SSO handler already committed the response, so a redirect URL produced by
+        // AuthorizationHandler cannot be sent: the browser is already navigating away.
+        LOG.warn(
+            "Cannot send MCP OAuth redirect — response already committed by SSO provider. "
+                + "Redirect target (sanitized): {}",
+            sanitizeRedirectUrlForLogging(redirectUrl));
+      } else if (redirectUrl != null && authResponse.isRedirect()) {
         response.setHeader("Location", redirectUrl);
         response.setHeader("Cache-Control", "no-store");
         setCorsHeaders(request, response);
         response.sendRedirect(redirectUrl);
+      } else if (redirectUrl != null) {
+        // An error for a remote web callback: the user follows it by clicking, never by itself.
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        response.setContentType("text/html; charset=UTF-8");
+        response.setHeader("Cache-Control", "no-store");
+        response
+            .getWriter()
+            .write(
+                HtmlTemplates.generateErrorReturnPage(
+                    "Authorization Failed",
+                    "The application's sign-in request could not be completed ("
+                        + authResponse.getError().getError()
+                        + ").",
+                    redirectUrl,
+                    UriUtils.describeRedirectTarget(URI.create(redirectUrl))));
+      } else if (response.isCommitted()) {
+        // SSO_REDIRECT_INITIATED: the provider (e.g. SAML AuthnRequest, or OIDC handleLogin)
+        // already wrote the login redirect straight to the browser and committed the response.
+        // There is no redirect URL to return and nothing more to write — attempting to write here
+        // would hit a closed stream (EofException).
+        LOG.debug("SSO login redirect already initiated by provider; response committed");
       } else {
         // No redirect URL — error case where redirect_uri is invalid or client is unknown.
         // Per RFC 6749, display the error to the user instead of redirecting.
@@ -570,8 +832,16 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     try {
       String grantType = params.get("grant_type");
-      String clientId = params.get("client_id");
-      String clientSecret = params.get("client_secret");
+      ClientCredentialsExtractor.Credentials credentials;
+      try {
+        credentials =
+            ClientCredentialsExtractor.extract(
+                request, params.get("client_id"), params.get("client_secret"));
+      } catch (InvalidClientCredentialsException e) {
+        throw new TokenException("invalid_request", e.getMessage());
+      }
+      String clientId = credentials.clientId();
+      String clientSecret = credentials.clientSecret();
       OAuthToken token = null;
 
       // Authenticate the client before processing any grant type
@@ -800,9 +1070,22 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       LOG.info("Client registration request received");
 
+      // Registration needs no credentials and RegistrationHandler only checks the parsed object,
+      // so the body is bounded before Jackson reads it.
+      byte[] body = readBody(request, MAX_REGISTRATION_BODY_BYTES);
+      if (body == null) {
+        LOG.warn("Registration request body exceeds {} bytes", MAX_REGISTRATION_BODY_BYTES);
+        sendOAuthError(
+            request,
+            response,
+            HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE,
+            "invalid_client_metadata",
+            "Registration request is too large");
+        return;
+      }
+
       // Parse registration request
-      OAuthClientMetadata metadata =
-          getObjectMapper().readValue(request.getInputStream(), OAuthClientMetadata.class);
+      OAuthClientMetadata metadata = getObjectMapper().readValue(body, OAuthClientMetadata.class);
 
       // Register client
       OAuthClientInformation clientInfo = registrationHandler.handle(metadata).join();
@@ -880,19 +1163,21 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
               });
 
       // Authenticate client before revocation (RFC 7009 Section 2.1)
-      String clientId = params.get("client_id");
-      String clientSecret = params.get("client_secret");
+      ClientCredentialsExtractor.Credentials credentials;
       try {
-        clientAuthenticator.authenticate(clientId, clientSecret).join();
+        credentials =
+            ClientCredentialsExtractor.extract(
+                request, params.get("client_id"), params.get("client_secret"));
+      } catch (InvalidClientCredentialsException e) {
+        LOG.warn("Malformed client credentials on revocation request: {}", e.getMessage());
+        sendOAuthError(request, response, 400, "invalid_request", e.getMessage());
+        return;
+      }
+      try {
+        clientAuthenticator.authenticate(credentials.clientId(), credentials.clientSecret()).join();
       } catch (Exception e) {
         LOG.warn("Client authentication failed for revocation request");
-        setCorsHeaders(request, response);
-        response.setContentType("application/json");
-        response.setStatus(401);
-        Map<String, String> error = new HashMap<>();
-        error.put("error", "invalid_client");
-        error.put("error_description", "Client authentication failed");
-        getObjectMapper().writeValue(response.getOutputStream(), error);
+        sendOAuthError(request, response, 401, "invalid_client", "Client authentication failed");
         return;
       }
 
@@ -901,52 +1186,84 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       if (token == null || token.trim().isEmpty()) {
         LOG.warn("Revocation request missing token parameter");
-        setCorsHeaders(request, response);
-        response.setContentType("application/json");
-        response.setStatus(400);
-
-        Map<String, String> error = new HashMap<>();
-        error.put("error", "invalid_request");
-        error.put("error_description", "token parameter is required");
-        getObjectMapper().writeValue(response.getOutputStream(), error);
+        sendOAuthError(request, response, 400, "invalid_request", "token parameter is required");
         return;
       }
 
-      revocationHandler.revokeToken(token, tokenTypeHint).join();
+      revocationHandler.revokeToken(token, tokenTypeHint, credentials.clientId()).join();
 
       setCorsHeaders(request, response);
       response.setStatus(200);
       LOG.info("Token revocation completed successfully");
 
     } catch (CompletionException ex) {
-      // Per RFC 7009, return 200 for "token not found" to prevent token guessing
-      // But return 500 for actual server errors
-      Throwable cause = ex.getCause();
-      if (cause instanceof IllegalArgumentException) {
-        // Token not found or invalid - this is OK per RFC 7009
-        LOG.debug("Token revocation: token not found or invalid", ex);
-        setCorsHeaders(request, response);
-        response.setStatus(200);
-      } else {
-        // Actual server error
-        LOG.error("Token revocation failed with server error", ex);
-        setCorsHeaders(request, response);
-        response.setContentType("application/json");
-        response.setStatus(500);
-        Map<String, String> error = new HashMap<>();
-        error.put("error", "server_error");
-        error.put("error_description", "Token revocation failed due to server error");
-        getObjectMapper().writeValue(response.getOutputStream(), error);
-      }
+      // RevocationHandler answers an unknown token 200 (RFC 7009); only server errors get here.
+      LOG.error("Token revocation failed with server error", ex);
+      sendOAuthError(
+          request, response, 500, "server_error", "Token revocation failed due to server error");
     } catch (Exception ex) {
       LOG.error("Unexpected error during token revocation", ex);
-      setCorsHeaders(request, response);
-      response.setContentType("application/json");
-      response.setStatus(500);
-      Map<String, String> error = new HashMap<>();
-      error.put("error", "server_error");
-      error.put("error_description", "Unexpected error during token revocation");
-      getObjectMapper().writeValue(response.getOutputStream(), error);
+      sendOAuthError(
+          request, response, 500, "server_error", "Unexpected error during token revocation");
     }
+  }
+
+  /**
+   * Browser-facing like /mcp/login: the consent page served after an SSO sign-in posts the user's
+   * decision here. The provider answers the browser itself; this turns the two failures it can
+   * raise into a plain error page instead of a raw container one.
+   */
+  private void handleConsentRequest(
+      UserSSOOAuthProvider ssoProvider, HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
+    try {
+      ssoProvider.handleConsentDecision(request, response);
+    } catch (IllegalStateException ex) {
+      // The client was removed or its redirect URI changed after the consent page was served.
+      LOG.warn("MCP consent no longer matches a registered client: {}", ex.getMessage());
+      sendConsentError(
+          response,
+          HttpServletResponse.SC_BAD_REQUEST,
+          "This application is no longer registered. Please restart the authorization flow.");
+    } catch (JdbiException ex) {
+      LOG.error("MCP consent processing failed", ex);
+      sendConsentError(
+          response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Consent processing failed");
+    }
+  }
+
+  private static void sendConsentError(HttpServletResponse response, int status, String message)
+      throws IOException {
+    if (!response.isCommitted()) {
+      response.sendError(status, message);
+    }
+  }
+
+  /**
+   * Sends a uniform OAuth error response per RFC 6749 §5.2 / RFC 7009 §2.2.1: JSON body with
+   * {@code error} and {@code error_description}, plus standard CORS + content-type headers.
+   */
+  private void sendOAuthError(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      int status,
+      String error,
+      String description)
+      throws IOException {
+    setCorsHeaders(request, response);
+    response.setContentType("application/json");
+    response.setStatus(status);
+    Map<String, String> body = new HashMap<>();
+    body.put("error", error);
+    body.put("error_description", description);
+    getObjectMapper().writeValue(response.getOutputStream(), body);
+  }
+
+  private static String sanitizeRedirectUrlForLogging(String url) {
+    if (url == null) {
+      return "null";
+    }
+    int qIdx = url.indexOf('?');
+    return qIdx >= 0 ? url.substring(0, qIdx) + "?[params_redacted]" : url;
   }
 }

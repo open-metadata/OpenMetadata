@@ -17,8 +17,9 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import {
@@ -28,6 +29,49 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <button {...props}>{children}</button>
+    )),
+  Dropdown: {
+    Root: jest.fn().mockImplementation(({ children, ...props }) => (
+      <div data-testid="dropdown" {...props}>
+        {children}
+      </div>
+    )),
+    Popover: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    Menu: jest.fn().mockImplementation(({ children, ...props }) => (
+      <div role="menu" {...props}>
+        {children}
+      </div>
+    )),
+    Item: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
+      <div
+        role="menuitem"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={onClick}
+        {...props}>
+        {children}
+      </div>
+    )),
+  },
+}));
+
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
+  ChevronDown: () => <span>ChevronDown</span>,
+  Plus: () => <span>Plus</span>,
+  SortAscending: () => <span>SortAscending</span>,
+  SortDescending: () => <span>SortDescending</span>,
+  XCircle: () => <span>XCircle</span>,
+}));
 
 const mockTableQueriesProp: TableQueriesProp = {
   tableId: 'id',
@@ -51,7 +95,7 @@ jest.mock('../../PaginationComponent/PaginationComponent', () => {
   ));
 });
 
-jest.mock('../../SearchDropdown/SearchDropdown', () => {
+jest.mock('../../common/FilterSelectDropdown/FilterSelectDropdown', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>SearchDropdown.component</div>);
@@ -96,10 +140,10 @@ jest.mock('../../../rest/miscAPI', () => ({
 jest.mock('../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
     currentPage: 1,
-    pageSize: 25,
+    pageSize: 15,
     paging: {
       currentPage: 1,
-      pageSize: 25,
+      pageSize: 15,
     },
     showPagination: true,
     handlePageChange: jest.fn(),
@@ -107,6 +151,10 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
     handlePageSizeChange: jest.fn(),
   }),
 }));
+
+const LocationDisplay = () => (
+  <div data-testid="location">{useLocation().pathname}</div>
+);
 
 describe('Test TableQueries Component', () => {
   it('Check if TableQueries component has all child elements', async () => {
@@ -146,9 +194,12 @@ describe('Test TableQueries Component', () => {
         hits: { total: { value: 0 }, hits: [] },
       })
     );
-    render(<TableQueries {...mockTableQueriesProp} />, {
-      wrapper: MemoryRouter,
-    });
+    render(
+      <MemoryRouter>
+        <TableQueries {...mockTableQueriesProp} />
+        <LocationDisplay />
+      </MemoryRouter>
+    );
     const queryCards = screen.queryAllByText('QueryCard');
     const noDataPlaceholder = await screen.findByTestId(
       'create-error-placeholder-label.query-lowercase-plural'
@@ -156,6 +207,15 @@ describe('Test TableQueries Component', () => {
 
     expect(queryCards).toHaveLength(0);
     expect(noDataPlaceholder).toBeInTheDocument();
+    expect(
+      screen.getByText(/message.adding-new-entity-is-easy-just-give-it-a-spin/)
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('add-query-btn'));
+
+    expect(await screen.findByTestId('location')).toHaveTextContent(
+      /\/add-query$/
+    );
   });
 
   it('If paging count is more than 15, pagination should be visible', async () => {
@@ -179,5 +239,14 @@ describe('Test TableQueries Component', () => {
       mockUsePaging.mock.results[0].value.handlePageSizeChange;
 
     expect(mockHandlePageSizeChange).toHaveBeenCalledWith(25);
+
+    await waitFor(() =>
+      expect(searchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          pageNumber: 1,
+          pageSize: 25,
+        })
+      )
+    );
   });
 });

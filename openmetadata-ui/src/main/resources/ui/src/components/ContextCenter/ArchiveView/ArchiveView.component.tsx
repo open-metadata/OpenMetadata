@@ -1,0 +1,200 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  Dot,
+  FileIcon,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Archive,
+  Restore,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
+import { FC, UIEvent } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { ArchiveItem, ArchiveViewProps } from './ArchiveView.interface';
+
+const ArchiveRowSkeleton: FC = () => (
+  <div className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:last:border-0">
+    <Skeleton
+      className="tw:shrink-0"
+      height="32px"
+      variant="rounded"
+      width="32px"
+    />
+    <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-2">
+      <Skeleton height="14px" variant="rounded" width="35%" />
+      <Skeleton height="12px" variant="rounded" width="55%" />
+    </div>
+    <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
+      <Skeleton height="32px" variant="rounded" width="80px" />
+      <Skeleton height="32px" variant="rounded" width="72px" />
+    </div>
+  </div>
+);
+
+interface ArchiveRowProps {
+  item: ArchiveItem;
+  canRestore?: boolean;
+  canDelete?: boolean;
+  onRestore: (item: ArchiveItem) => void;
+  onDelete: (item: ArchiveItem) => void;
+}
+
+const ArchiveRow: FC<ArchiveRowProps> = ({
+  item,
+  canRestore,
+  canDelete,
+  onDelete,
+  onRestore,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      align="center"
+      className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
+      data-testid={`archive-row-${item.id}`}
+      gap={4}>
+      <FileIcon
+        className="tw:size-8 tw:shrink-0"
+        theme="light"
+        type={item.fileExtension ?? ''}
+        variant="default"
+      />
+
+      <Box className="tw:min-w-0 tw:flex-1" direction="col">
+        <Typography ellipsis size="text-sm" weight="medium">
+          {item.name}
+        </Typography>
+        <Box align="center" gap={2}>
+          {item.updatedBy && (
+            <Typography className="tw:text-quaternary" size="text-xs">
+              {t('label.archived-by', { name: item.updatedBy })}
+            </Typography>
+          )}
+          {item.updatedAt && (
+            <>
+              <Dot className="tw:text-quaternary" size="micro" />
+              <Typography className="tw:text-quaternary" size="text-xs">
+                {getShortRelativeTime(item.updatedAt)}
+              </Typography>
+            </>
+          )}
+        </Box>
+      </Box>
+
+      <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
+        {canRestore && (
+          <ButtonUtility
+            data-testid="restore-btn"
+            icon={Restore}
+            size="lg"
+            tooltip={t('label.restore')}
+            onClick={() => onRestore(item)}
+          />
+        )}
+        {canDelete && (
+          <ButtonUtility
+            data-testid="delete-btn"
+            icon={Trash01}
+            size="lg"
+            tooltip={t('label.delete')}
+            onClick={() => onDelete(item)}
+          />
+        )}
+      </div>
+    </Box>
+  );
+};
+
+const SCROLL_THRESHOLD = 100;
+
+const ArchiveView: FC<ArchiveViewProps> = ({
+  data,
+  isLoading,
+  isLoadingMore,
+  canRestore,
+  canDelete,
+  onDelete,
+  onRestore,
+  onScrollEnd,
+}) => {
+  const { t } = useTranslation();
+
+  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
+    if (isLoadingMore) {
+      return;
+    }
+    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD) {
+      onScrollEnd?.();
+    }
+  };
+  if (isLoading) {
+    return (
+      <Card className="tw:flex tw:flex-col">
+        {Array.from({ length: 8 }, (_, idx) => `archive-skeleton-${idx}`).map(
+          (skeletonKey) => (
+            <ArchiveRowSkeleton key={skeletonKey} />
+          )
+        )}
+      </Card>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="tw:relative tw:flex-1 tw:min-h-0">
+        <NoDataPlaceholder
+          description={t('message.archived-items-appear-here')}
+          icon={<Archive />}
+          title={t('label.no-archived-item-plural-yet')}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto"
+      data-testid="archive-view"
+      onScroll={handleScroll}>
+      {data.map((item) => (
+        <ArchiveRow
+          canDelete={canDelete}
+          canRestore={canRestore}
+          item={item}
+          key={item.id}
+          onDelete={onDelete}
+          onRestore={onRestore}
+        />
+      ))}
+      {isLoadingMore && (
+        <>
+          <ArchiveRowSkeleton />
+          <ArchiveRowSkeleton />
+        </>
+      )}
+    </div>
+  );
+};
+
+export default ArchiveView;

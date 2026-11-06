@@ -12,10 +12,7 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import {
-  ContractAllResult,
-  ContractResultFilter,
-} from '../components/DataContract/ContractDetailTab/contract.interface';
+import { PagingResponse } from 'Models';
 import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
 import {
@@ -25,9 +22,15 @@ import {
 import { ContractValidation } from '../generated/entity/datacontract/contractValidation';
 import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import {
+  ContractAllResult,
+  ContractResultFilter,
+} from '../interface/data-contract/contract.interface';
+import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/dataContracts';
+const APPLICATION_YAML_CONTENT_TYPE = 'application/yaml';
 
 interface ListContractsParams extends ListParams {
   /**
@@ -48,9 +51,27 @@ export const listContracts = async (params: ListContractsParams) => {
   return response.data;
 };
 
+export const searchContracts = async (
+  query: string,
+  limit = 25
+): Promise<DataContract[]> => {
+  const response = await APIClient.get<PagingResponse<DataContract[]>>(
+    `${BASE_URL}/search`,
+    {
+      params: {
+        q: query || undefined,
+        limit,
+        offset: 0,
+      },
+    }
+  );
+
+  return response.data.data;
+};
+
 export const getContract = async (fqn: string) => {
   const response = await APIClient.get<CreateDataContract>(
-    `/dataContracts/name/${fqn}`
+    `/dataContracts/name/${getEncodedFqn(fqn)}`
   );
 
   return response.data;
@@ -85,10 +106,17 @@ export const getContractByEntityId = async (
   entityType: EntityType = EntityType.TABLE,
   fields: string[] = []
 ) => {
+  // Build the query string conditionally: previously we always appended
+  // `&fields=${fields.join(',')}`, which produced `?fields=` (empty string)
+  // when callers omitted the fields argument. The backend treated that as
+  // a request to evaluate every field and the call could time out at 1
+  // minute on heavyweight contracts. Drop the param entirely when empty.
+  const params = new URLSearchParams({ entityId, entityType });
+  if (fields.length > 0) {
+    params.set('fields', fields.join(','));
+  }
   const response = await APIClient.get<DataContract>(
-    `/dataContracts/entity?entityId=${entityId}&entityType=${entityType}&fields=${fields.join(
-      ','
-    )}`
+    `/dataContracts/entity?${params.toString()}`
   );
 
   return response.data;
@@ -322,7 +350,7 @@ export const exportContractToODCSYaml = async (
     `${BASE_URL}/${contractId}/odcs/yaml`,
     {
       params: { fields },
-      headers: { Accept: 'application/yaml' },
+      headers: { Accept: APPLICATION_YAML_CONTENT_TYPE },
       responseType: 'text',
     }
   );
@@ -367,7 +395,7 @@ export const parseODCSYaml = async (
     `${BASE_URL}/odcs/parse/yaml`,
     yamlContent,
     {
-      headers: { 'Content-Type': 'application/yaml' },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 
@@ -401,14 +429,15 @@ export const importContractFromODCSYaml = async (
   yamlContent: string,
   entityId: string,
   entityType: string,
-  objectName?: string
+  objectName?: string,
+  createTestCases = true
 ): Promise<DataContract> => {
   const response = await APIClient.post<DataContract>(
     `${BASE_URL}/odcs/yaml`,
     yamlContent,
     {
-      params: { entityId, entityType, objectName },
-      headers: { 'Content-Type': 'application/yaml' },
+      params: { entityId, entityType, objectName, createTestCases },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 
@@ -446,21 +475,24 @@ export interface SchemaValidation {
 /**
  * Validate ODCS YAML against an entity without importing
  * Returns comprehensive validation results including entity errors, constraint errors,
- * and schema field mismatches
+ * and schema field mismatches, plus the import report: what the import keeps, changes and
+ * leaves out, and what each quality rule becomes
  * @param objectName Schema object name to validate (for multi-object ODCS contracts)
+ * @param createTestCases Whether the import would create test cases from the quality rules
  */
 export const validateODCSYaml = async (
   yamlContent: string,
   entityId: string,
   entityType: string,
-  objectName?: string
+  objectName?: string,
+  createTestCases = true
 ): Promise<ContractValidation> => {
   const response = await APIClient.post<ContractValidation>(
     `${BASE_URL}/odcs/validate/yaml`,
     yamlContent,
     {
-      params: { entityId, entityType, objectName },
-      headers: { 'Content-Type': 'application/yaml' },
+      params: { entityId, entityType, objectName, createTestCases },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 
@@ -495,7 +527,7 @@ export const validateContractYaml = async (
     `${BASE_URL}/validate/yaml`,
     yamlContent,
     {
-      headers: { 'Content-Type': 'application/yaml' },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 
@@ -506,20 +538,22 @@ export const validateContractYaml = async (
  * Create or update a data contract from ODCS v3.1.0 YAML format
  * @param mode 'merge' preserves existing fields, 'replace' overwrites all fields but preserves ID and history
  * @param objectName Schema object name to import (for multi-object ODCS contracts)
+ * @param createTestCases Whether the contract's ODCS quality rules become test cases
  */
 export const createOrUpdateContractFromODCSYaml = async (
   yamlContent: string,
   entityId: string,
   entityType: string,
   mode: 'merge' | 'replace' = 'merge',
-  objectName?: string
+  objectName?: string,
+  createTestCases = true
 ): Promise<DataContract> => {
   const response = await APIClient.put<DataContract>(
     `${BASE_URL}/odcs/yaml`,
     yamlContent,
     {
-      params: { entityId, entityType, mode, objectName },
-      headers: { 'Content-Type': 'application/yaml' },
+      params: { entityId, entityType, mode, objectName, createTestCases },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 

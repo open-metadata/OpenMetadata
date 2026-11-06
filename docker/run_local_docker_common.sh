@@ -43,6 +43,36 @@ run_with_timeout() {
   fi
 }
 
+prepare_sample_data_validation_env() {
+  local trigger_succeeded=$1
+  local validation_timeout=$2
+  local retry_interval=$3
+  local logical_date=$4
+  local dag_run_id=$5
+  local max_retries=$6
+
+  validate_compose_env=(
+    -e "VALIDATE_COMPOSE_TIMEOUT_SECONDS=${validation_timeout}"
+    -e "VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS=${retry_interval}"
+  )
+
+  # The logical date only identifies a run when the POST creating that run
+  # succeeded. Falling back to a scheduled/latest run could accept stale data.
+  if [ "$trigger_succeeded" != "true" ]; then
+    return 1
+  fi
+
+  validate_compose_env+=(-e "VALIDATE_COMPOSE_LOGICAL_DATE=${logical_date}")
+  if [ -n "$dag_run_id" ]; then
+    validate_compose_env+=(-e "VALIDATE_COMPOSE_DAG_RUN_ID=${dag_run_id}")
+  fi
+  if [ -n "$max_retries" ]; then
+    validate_compose_env+=(-e "VALIDATE_COMPOSE_MAX_RETRIES=${max_retries}")
+  fi
+
+  return 0
+}
+
 parse_app_run_status_line() {
   local payload=$1
   local payload_shape=$2
@@ -187,6 +217,26 @@ PY
   echo "✗ Failed to install app ${app_name} (HTTP ${http_code})"
   echo "  Response: ${body}"
   return 1
+}
+
+disable_app_schedule() {
+  local app_name=$1
+  local response
+  local http_code
+
+  response=$(curl -s -w "\n%{http_code}" --request PATCH "http://localhost:8585/api/v1/apps/name/${app_name}" \
+    --header "Authorization: Bearer $authorizationToken" \
+    --header 'Content-Type: application/json-patch+json' \
+    --data-raw '[{"op": "replace", "path": "/appSchedule", "value": {"scheduleTimeline": "None"}}]')
+  http_code=$(echo "$response" | tail -n1)
+
+  if [ "$http_code" != "200" ]; then
+    echo "✗ Failed to disable the ${app_name} schedule (HTTP ${http_code})"
+    echo "  Response: $(echo "$response" | sed '$d')"
+    return 1
+  fi
+
+  echo "✓ ${app_name} schedule disabled"
 }
 
 wait_for_app_run_completion() {
@@ -432,8 +482,18 @@ run_local_docker_main() {
   fi
 
   if [[ $includeIngestion == "true" ]]; then
-    echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
-    docker compose "${COMPOSE_ARGS[@]}" build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && \
+    # CI builds the ingestion image on its own runner and loads it here, so
+    # building it again would only repeat that work; `up` runs the loaded image.
+    build_services=()
+    if [[ "${OM_INGESTION_IMAGE_PRELOADED:-false}" == "true" ]]; then
+      while IFS= read -r service; do
+        [[ "$service" == "ingestion" ]] || build_services+=("$service")
+      done < <(docker compose "${COMPOSE_ARGS[@]}" config --services)
+      echo "Building all services except the preloaded ingestion image"
+    else
+      echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
+    fi
+    docker compose "${COMPOSE_ARGS[@]}" build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" ${build_services[@]+"${build_services[@]}"} && \
       docker compose "${COMPOSE_ARGS[@]}" up -d
   else
     echo "Building services without ingestion"
@@ -487,7 +547,7 @@ run_local_docker_main() {
     until curl -s -f -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/dags/sample_data" >/dev/null 2>&1; do
       IMPORT_ERRORS=$(curl -s -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/importErrors" 2>/dev/null)
       if [ -n "$IMPORT_ERRORS" ]; then
-        echo "$IMPORT_ERRORS" | grep "/airflow_sample_data.py" > /dev/null 2>&1
+        echo "$IMPORT_ERRORS" | grep "airflow_sample_data.py" > /dev/null 2>&1
         if [ "$?" == "0" ]; then
           echo -e "${RED}Airflow found an error importing \`sample_data\` DAG"
           echo "$IMPORT_ERRORS" | python3 -c "import sys, json; data=json.load(sys.stdin); [print(json.dumps(e, indent=2)) for e in data.get('import_errors', []) if e.get('filename', '').endswith('airflow_sample_data.py')]" 2>/dev/null || echo "$IMPORT_ERRORS"
@@ -505,6 +565,15 @@ run_local_docker_main() {
     echo 'Checking if OM Server is reachable...\n'
     sleep 5
   done
+
+  # A scheduled recreate-reindex that overlaps later writes swaps in indexes
+  # rebuilt from an earlier read, so those writes vanish from search. Reindex
+  # only through the explicit trigger below.
+  # ADR:2026-10-26-local-docker-stacks-reindex-on-demand-only
+  ensure_app_installed "SearchIndexingApplication"
+  if ! disable_app_schedule "SearchIndexingApplication"; then
+    exit 1
+  fi
 
   if [[ $includeIngestion == "true" ]]; then
     unpause_dag() {
@@ -560,37 +629,79 @@ run_local_docker_main() {
       --data-raw "{\"logical_date\": \"$LOGICAL_DATE\"}")
 
     http_code=$(echo "$response" | tail -n1)
-    if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+    trigger_response_body=$(echo "$response" | sed '$d')
+    triggered_dag_run_id=""
+    trigger_succeeded=false
+    if [[ "$http_code" =~ ^2[0-9][0-9]$ ]]; then
+      trigger_succeeded=true
+      triggered_dag_run_id=$(printf '%s' "$trigger_response_body" | python3 -c "import json, sys; response = json.load(sys.stdin); print(response.get('dag_run_id', '') if isinstance(response, dict) else '')" 2>/dev/null || echo "")
       echo "✓ Successfully triggered sample_data DAG"
+      if [ -z "$triggered_dag_run_id" ]; then
+        echo "⚠ Trigger response did not include a DAG run id; validating only the trigger logical date."
+      fi
     else
       echo "⚠ Could not trigger sample_data DAG (HTTP ${http_code})"
-      echo "  Response: $(echo "$response" | sed '$d')"
-      echo "  Note: DAG may run automatically on schedule"
+      echo "  Response: ${trigger_response_body}"
+      echo "  Scheduled runs cannot be validated as belonging to this startup."
     fi
 
-    echo 'Validate sample data DAG...'
-    sleep 5
-    make install
-
-    echo "Running DAG validation (this may take a few minutes)..."
     sample_data_validation_failed=false
     validation_timeout_seconds="${VALIDATION_TIMEOUT_SECONDS:-300}"
+    validate_compose_margin=60
 
-    run_with_timeout "$validation_timeout_seconds" python docker/validate_compose.py || {
-      local exit_code=$?
+    if ! [[ "$validation_timeout_seconds" =~ ^[1-9][0-9]*$ ]] || [ "$validation_timeout_seconds" -le "$validate_compose_margin" ]; then
+      echo "✗ VALIDATION_TIMEOUT_SECONDS must be an integer greater than ${validate_compose_margin} seconds to preserve timeout diagnostics."
+      exit 1
+    fi
+
+    # docker exec starts a process in the container's own environment — the
+    # VALIDATE_COMPOSE_* exports above (and in run_local_docker_rdf.sh) do NOT
+    # cross the boundary unless forwarded explicitly. Without this the validator
+    # silently fell back to its module defaults, capping the wait at 150s while
+    # the RDF lane believed it had granted 600s.
+    validate_compose_retry_interval="${VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS:-10}"
+    # Leave the inner deadline below the outer `timeout` so we exit with the
+    # validator's own diagnostics instead of being SIGTERMed mid-report. The margin
+    # has to cover the validator's whole post-deadline diagnostic pass
+    # (DIAGNOSTIC_BUDGET_SECONDS plus one in-flight poll), so every accepted
+    # validation window reserves the same 60-second margin.
+    validate_compose_timeout=$(( validation_timeout_seconds - validate_compose_margin ))
+
+    if ! prepare_sample_data_validation_env \
+      "$trigger_succeeded" \
+      "$validate_compose_timeout" \
+      "$validate_compose_retry_interval" \
+      "$LOGICAL_DATE" \
+      "$triggered_dag_run_id" \
+      "${VALIDATE_COMPOSE_MAX_RETRIES:-}"; then
       sample_data_validation_failed=true
-      if [ $exit_code -eq 124 ]; then
-        echo "⚠ Warning: DAG validation timed out after ${validation_timeout_seconds} seconds"
-        echo "  The DAG may still be running. Check Airflow UI at http://localhost:8080"
-      else
-        echo "⚠ Warning: DAG validation failed with exit code $exit_code"
-      fi
-      echo "  Continuing with remaining setup..."
-    }
+      echo "⚠ Skipping sample_data DAG validation because its trigger did not succeed."
+    else
+      echo 'Validate sample data DAG...'
+      sleep 5
+
+      echo "Running DAG validation (this may take a few minutes)..."
+      docker exec -i \
+        "${validate_compose_env[@]}" \
+        openmetadata_ingestion \
+        timeout --kill-after=10s "$validation_timeout_seconds" python -u - < docker/validate_compose.py || {
+        local exit_code=$?
+        sample_data_validation_failed=true
+        if [ $exit_code -eq 124 ]; then
+          echo "⚠ Warning: DAG validation timed out after ${validation_timeout_seconds} seconds"
+          echo "  The DAG may still be running. Check Airflow UI at http://localhost:8080"
+        else
+          echo "⚠ Warning: DAG validation failed with exit code $exit_code"
+        fi
+      }
+    fi
 
     if [[ "${STRICT_DAG_VALIDATION:-false}" == "true" && "$sample_data_validation_failed" == "true" ]]; then
       echo "✗ Startup requires sample data ingestion to complete before continuing."
       exit 1
+    fi
+    if [[ "$sample_data_validation_failed" == "true" ]]; then
+      echo "⚠ Continuing with remaining setup despite sample-data validation failure."
     fi
 
     sleep 5
@@ -604,7 +715,6 @@ run_local_docker_main() {
   fi
 
   echo "✔running reindexing"
-  ensure_app_installed "SearchIndexingApplication"
   if ! trigger_app_and_wait "SearchIndexingApplication" "" "$APP_RUN_WAIT_TIMEOUT_SECONDS"; then
     exit 1
   fi

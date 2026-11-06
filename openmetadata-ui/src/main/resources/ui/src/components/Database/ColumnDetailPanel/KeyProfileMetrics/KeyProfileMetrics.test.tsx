@@ -25,17 +25,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => {
-  const actual = jest.requireActual('../../../../utils/CommonUtils');
-
-  return {
-    ...actual,
-    formatNumberWithComma: jest.fn((number: number) => {
-      // Use en-US locale to ensure consistent formatting (1,234,567 not 12,34,567)
-      return new Intl.NumberFormat('en-US').format(number);
-    }),
-  };
-});
+jest.mock('../../../../utils/NumberUtils', () => ({
+  formatNumberWithComma: jest.fn((number: number) => {
+    // Use en-US locale to ensure consistent formatting (1,234,567 not 12,34,567)
+    return new Intl.NumberFormat('en-US').format(number);
+  }),
+  calculatePercentage: jest.fn(
+    (value: number) => (value * 100).toFixed(0) + '%'
+  ),
+}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({

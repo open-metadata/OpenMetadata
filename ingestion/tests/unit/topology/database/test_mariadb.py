@@ -65,7 +65,7 @@ mock_mariadb_config = {
 class MariaDBUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     @patch("metadata.ingestion.source.database.mariadb.metadata.MariadbSource.__init__")
-    def __init__(self, methodName, mock_init, test_connection) -> None:
+    def __init__(self, methodName, mock_init, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         mock_init.return_value = None

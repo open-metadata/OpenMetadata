@@ -95,9 +95,9 @@ class MigrationUtilTest {
     assertTrue(
         edges.contains("CheckIfGlossaryTermIsNew->SetGlossaryTermStatusToInReviewForUpdate:false"));
     assertTrue(edges.contains("SetGlossaryTermStatusToInReviewForUpdate->ApprovalForUpdates:null"));
-    assertTrue(edges.contains("ApprovalForUpdates->RollbackGlossaryTermChanges:false"));
+    assertTrue(edges.contains("ApprovalForUpdates->RollbackGlossaryTermChanges:reject"));
     assertTrue(
-        edges.contains("ApprovalForUpdates->SetGlossaryTermStatusToApprovedAfterReview:true"));
+        edges.contains("ApprovalForUpdates->SetGlossaryTermStatusToApprovedAfterReview:approve"));
   }
 
   @Test
@@ -491,12 +491,12 @@ class MigrationUtilTest {
             {
               "from": "ApprovalForUpdates",
               "to": "SetGlossaryTermStatusToApprovedAfterReview",
-              "condition": "true"
+              "condition": "approve"
             },
             {
               "from": "ApprovalForUpdates",
               "to": "RollbackGlossaryTermChanges",
-              "condition": "false"
+              "condition": "reject"
             },
             {
               "from": "RollbackGlossaryTermChanges",

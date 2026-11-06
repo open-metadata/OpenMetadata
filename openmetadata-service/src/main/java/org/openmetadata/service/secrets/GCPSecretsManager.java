@@ -2,6 +2,7 @@ package org.openmetadata.service.secrets;
 
 import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.GCP;
 
+import com.google.api.gax.rpc.NotFoundException;
 import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
 import com.google.cloud.secretmanager.v1.ProjectName;
 import com.google.cloud.secretmanager.v1.Replication;
@@ -20,12 +21,13 @@ import org.openmetadata.service.exception.SecretsManagerUpdateException;
 
 public class GCPSecretsManager extends ExternalSecretsManager {
   private static final String FIXED_VERSION_ID = "latest";
+  private static final int MAX_SECRET_ID_LENGTH = 255;
   public static final String PROJECT_ID_NAME = "projectId";
   private static GCPSecretsManager instance = null;
   private final String projectId;
 
   private GCPSecretsManager(SecretsConfig secretsConfig) {
-    super(GCP, secretsConfig, 100);
+    super(GCP, secretsConfig);
 
     this.projectId =
         (String)
@@ -39,6 +41,11 @@ public class GCPSecretsManager extends ExternalSecretsManager {
   @Override
   protected SecretsIdConfig builSecretsIdConfig() {
     return new SecretsIdConfig("_", Boolean.FALSE, "", Pattern.compile("[^A-Za-z0-9_]"));
+  }
+
+  @Override
+  protected int maxSecretIdLength() {
+    return MAX_SECRET_ID_LENGTH;
   }
 
   @Override
@@ -122,6 +129,11 @@ public class GCPSecretsManager extends ExternalSecretsManager {
     } catch (IOException e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e);
     }
+  }
+
+  @Override
+  protected boolean isNotFoundException(Exception exception) {
+    return exception instanceof NotFoundException;
   }
 
   public static GCPSecretsManager getInstance(SecretsConfig secretsConfig) {

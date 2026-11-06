@@ -18,7 +18,8 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import {
   Container,
   DataType as ContainerDataType,
@@ -36,7 +37,14 @@ import {
 import { Topic } from '../generated/entity/data/topic';
 import { DataType } from '../generated/settings/settings';
 import { DataTypeTopic, Field } from '../generated/type/schema';
+import { getContainerByFQN } from '../rest/storageAPI';
 import { getEntityChildDetailsV1 } from './EntitySummaryPanelUtilsV1';
+import { showErrorToast } from './ToastUtils';
+
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
+  Nested: jest.fn(() => <div data-testid="nested-icon">Nested Icon</div>),
+}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -72,8 +80,47 @@ jest.mock('../rest/dataModelsAPI', () => ({
   getDataModelColumnsByFQN: jest.fn(),
 }));
 
-jest.mock('../components/common/FieldCard', () => ({
-  FieldCard: jest.fn(({ fieldName, dataType, description }) => (
+jest.mock('../rest/storageAPI', () => ({
+  getContainerByFQN: jest
+    .fn()
+    .mockResolvedValue({ dataModel: { columns: [] } }),
+}));
+
+jest.mock('./ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('./ColorUtils', () => ({
+  reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  ClassificationTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
+  GlossaryTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
+}));
+
+jest.mock('../components/common/FieldCard/FieldCard', () => ({
+  __esModule: true,
+  default: jest.fn(({ fieldName, dataType, description }) => (
     <div data-testid={`field-card-${fieldName}`}>
       <div data-testid={`field-name-${fieldName}`}>{fieldName}</div>
       <div data-testid={`field-type-${fieldName}`}>{dataType}</div>
@@ -87,15 +134,9 @@ jest.mock('../components/common/Loader/Loader', () => ({
   default: jest.fn(() => <div data-testid="loader">Loading...</div>),
 }));
 
-jest.mock('../utils/TableUtils', () => ({
-  ...jest.requireActual('../utils/TableUtils'),
+jest.mock('../utils/TablePureUtils', () => ({
+  ...jest.requireActual('../utils/TablePureUtils'),
   pruneEmptyChildren: jest.fn((columns) => columns),
-}));
-
-jest.mock('../assets/svg/nested.svg', () => ({
-  ReactComponent: jest.fn(() => (
-    <div data-testid="nested-icon">Nested Icon</div>
-  )),
 }));
 
 const { getTableColumnsByFQN, searchTableColumnsByFQN } =
@@ -1190,7 +1231,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       ).not.toBeInTheDocument();
     });
 
-    it('should show no-data when search text matches nothing', () => {
+    it('should show no matching results when search text matches nothing', () => {
       const result = getEntityChildDetailsV1(
         EntityType.TOPIC,
         mockTopicWithNestedFields,
@@ -1201,7 +1242,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+      expect(
+        screen.getByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
     });
   });
 
@@ -1288,7 +1331,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       ).not.toBeInTheDocument();
     });
 
-    it('should show no-data when search text matches nothing', () => {
+    it('should show no matching results when search text matches nothing', () => {
       const result = getEntityChildDetailsV1(
         EntityType.CONTAINER,
         mockContainerWithNestedColumns,
@@ -1299,7 +1342,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+      expect(
+        screen.getByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
     });
   });
 
@@ -1386,7 +1431,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       ).not.toBeInTheDocument();
     });
 
-    it('should show no-data when search text matches nothing', () => {
+    it('should show no matching results when search text matches nothing', () => {
       const result = getEntityChildDetailsV1(
         EntityType.SEARCH_INDEX,
         mockSearchIndexWithNestedFields,
@@ -1397,7 +1442,111 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+      expect(
+        screen.getByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
     });
+  });
+
+  describe('ContainerFieldCardsV1 - on-demand dataModel fetch', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('fetches dataModel on demand when columns are absent from the search hit', async () => {
+      (getContainerByFQN as jest.Mock).mockResolvedValue({
+        dataModel: {
+          columns: [
+            { name: 'fetched_col', dataType: ContainerDataType.String },
+          ],
+        },
+      });
+      const containerWithoutColumns = {
+        id: 'c1',
+        name: 'no-cols',
+        fullyQualifiedName: 's3.no-cols',
+      } as Container;
+
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        containerWithoutColumns,
+        undefined,
+        false,
+        ''
+      );
+      render(<div>{result}</div>);
+
+      await waitFor(() => {
+        expect(getContainerByFQN).toHaveBeenCalledWith('s3.no-cols', {
+          fields: TabSpecificField.DATAMODEL,
+        });
+      });
+    });
+
+    it('does not fetch when columns are already inline on the search hit', async () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        mockContainerWithNestedColumns,
+        undefined,
+        false,
+        ''
+      );
+      render(<div>{result}</div>);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('field-card-top_column')).toBeInTheDocument();
+      });
+
+      expect(getContainerByFQN).not.toHaveBeenCalled();
+    });
+
+    it('surfaces an error toast when the on-demand fetch fails', async () => {
+      (getContainerByFQN as jest.Mock).mockRejectedValue(new Error('boom'));
+      const containerWithoutColumns = {
+        id: 'c2',
+        name: 'err',
+        fullyQualifiedName: 's3.err',
+      } as Container;
+
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        containerWithoutColumns,
+        undefined,
+        false,
+        ''
+      );
+      render(<div>{result}</div>);
+
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalled();
+      });
+    });
+  });
+});
+
+describe('EntitySummaryPanelUtilsV1 - API endpoint with no schema', () => {
+  // The search filters only the active schema's fields, so an endpoint with
+  // no schema at all is empty whatever the search: it is no data, not no match.
+  it('shows no data rather than no matching results while searching', () => {
+    const endpointWithoutSchema = {
+      name: 'endpoint',
+      requestSchema: { schemaFields: [] },
+      responseSchema: { schemaFields: [] },
+    } as unknown as APIEndpoint;
+
+    const result = getEntityChildDetailsV1(
+      EntityType.API_ENDPOINT,
+      endpointWithoutSchema,
+      undefined,
+      false,
+      'anything'
+    );
+
+    render(<div>{result}</div>);
+
+    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.no-matching-result-plural')
+    ).not.toBeInTheDocument();
   });
 });

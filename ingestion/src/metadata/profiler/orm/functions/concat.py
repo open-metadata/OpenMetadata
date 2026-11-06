@@ -31,7 +31,7 @@ class ConcatFn(FunctionElement):
 
 @compiles(ConcatFn)
 def _(element, compiler, **kw):
-    return "CONCAT(%s)" % compiler.process(element.clauses, **kw)
+    return "CONCAT(%s)" % compiler.process(element.clauses, **kw)  # noqa: UP031
 
 
 @compiles(ConcatFn, Dialects.Redshift)
@@ -43,4 +43,4 @@ def _(element, compiler, **kw):
 
     concat = "||".join([compiler.process(elem, **kw) for elem in element.clauses])
 
-    return concat
+    return concat  # noqa: RET504

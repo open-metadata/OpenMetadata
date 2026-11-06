@@ -4,17 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Callable, Mapping
 from functools import partial
 from typing import (
     Any,
-    Callable,
     ClassVar,
-    List,
-    Mapping,
-    Optional,
     Protocol,
     TypeVar,
-    Union,
     cast,
     runtime_checkable,
 )
@@ -22,14 +18,14 @@ from urllib.parse import urlencode
 
 from requests import Response
 
-from ..client import OpenMetadata
-from ..types import JsonDict, OMetaClient
+from ..client import OpenMetadata  # noqa: TID252
+from ..types import JsonDict, OMetaClient  # noqa: TID252
 
 T = TypeVar("T")
 R = TypeVar("R")
 
 SearchCallback = Callable[..., JsonDict]
-SuggestCallback = Callable[..., List[str]]
+SuggestCallback = Callable[..., list[str]]
 AggregateCallback = Callable[..., JsonDict]
 ReindexCallback = Callable[..., JsonDict]
 ReindexAllCallback = Callable[..., JsonDict]
@@ -48,7 +44,7 @@ def _encode_params(params: Mapping[str, Any]) -> str:
     return urlencode(filtered, doseq=True)
 
 
-RestReturn = Union[JsonDict, Response, None]
+RestReturn = JsonDict | Response | None
 
 
 def _build_query_filter(filters: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -85,7 +81,7 @@ def _http_get(client: OMetaClient, path: str, params: Mapping[str, Any]) -> Json
     resource = f"{path}?{query}" if query else path
     response = getattr(client, "client", None)
     if not isinstance(response, RestClientProtocol):
-        raise RuntimeError("OpenMetadata client does not expose a REST client")
+        raise RuntimeError("OpenMetadata client does not expose a REST client")  # noqa: TRY004
     rest_client: RestClientProtocol = response
     payload = rest_client.get(resource)
     if isinstance(payload, Response):
@@ -94,7 +90,7 @@ def _http_get(client: OMetaClient, path: str, params: Mapping[str, Any]) -> Json
         parsed = payload.json()
         if not isinstance(parsed, Mapping):
             raise TypeError("Expected JSON response body to be a mapping")
-        typed_parsed = cast(Mapping[str, Any], parsed)
+        typed_parsed = cast(Mapping[str, Any], parsed)  # noqa: TC006
         return dict(typed_parsed)
     if payload is None:
         return {}
@@ -104,7 +100,7 @@ def _http_get(client: OMetaClient, path: str, params: Mapping[str, Any]) -> Json
 def _http_post(client: OMetaClient, path: str, body: JsonDict) -> JsonDict:
     response = getattr(client, "client", None)
     if not isinstance(response, RestClientProtocol):
-        raise RuntimeError("OpenMetadata client does not expose a REST client")
+        raise RuntimeError("OpenMetadata client does not expose a REST client")  # noqa: TRY004
     rest_client: RestClientProtocol = response
     payload = rest_client.post(path, json=body)
     if isinstance(payload, Response):
@@ -113,7 +109,7 @@ def _http_post(client: OMetaClient, path: str, body: JsonDict) -> JsonDict:
         parsed = payload.json()
         if not isinstance(parsed, Mapping):
             raise TypeError("Expected JSON response body to be a mapping")
-        typed_parsed = cast(Mapping[str, Any], parsed)
+        typed_parsed = cast(Mapping[str, Any], parsed)  # noqa: TC006
         return dict(typed_parsed)
     if payload is None:
         return {}
@@ -123,10 +119,10 @@ def _http_post(client: OMetaClient, path: str, body: JsonDict) -> JsonDict:
 class Search:
     """Static fluent API for search operations."""
 
-    _default_client: ClassVar[Optional[OMetaClient]] = None
+    _default_client: ClassVar[OMetaClient | None] = None
 
     @classmethod
-    def set_default_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:
+    def set_default_client(cls, client: OpenMetadata | OMetaClient) -> None:
         """Set the default client for static methods."""
         cls._default_client = client.ometa if isinstance(client, OpenMetadata) else client
 
@@ -141,12 +137,12 @@ class Search:
     def search(  # pylint: disable=too-many-arguments
         cls,
         query: str,
-        index: Optional[str] = None,
+        index: str | None = None,
         from_: int = 0,
         size: int = 10,
-        sort_field: Optional[str] = None,
-        sort_order: Optional[str] = None,
-        filters: Optional[Mapping[str, Any]] = None,
+        sort_field: str | None = None,
+        sort_order: str | None = None,
+        filters: Mapping[str, Any] | None = None,
         include_aggregations: bool = True,
     ) -> JsonDict:
         """Perform a search query.
@@ -179,7 +175,7 @@ class Search:
 
         search_fn_raw = getattr(client, "es_search_from_es", None)
         if callable(search_fn_raw):
-            search_callback: SearchCallback = cast(SearchCallback, search_fn_raw)
+            search_callback: SearchCallback = cast(SearchCallback, search_fn_raw)  # noqa: TC006
             return search_callback(**params)  # pylint: disable=not-callable
 
         http_params = {
@@ -199,14 +195,14 @@ class Search:
     def suggest(
         cls,
         query: str,
-        field: Optional[str] = None,
+        field: str | None = None,
         size: int = 5,
-    ) -> List[str]:
+    ) -> list[str]:
         """Fetch entity suggestions."""
         client = cls._get_client()
         suggest_fn_raw = getattr(client, "get_suggest_entities", None)
         if callable(suggest_fn_raw):
-            suggest_callback: SuggestCallback = cast(SuggestCallback, suggest_fn_raw)
+            suggest_callback: SuggestCallback = cast(SuggestCallback, suggest_fn_raw)  # noqa: TC006
             return suggest_callback(  # pylint: disable=not-callable
                 query_string=query, field=field, size=size
             )
@@ -224,8 +220,8 @@ class Search:
     def aggregate(
         cls,
         query: str,
-        index: Optional[str] = None,
-        field: Optional[str] = None,
+        index: str | None = None,
+        field: str | None = None,
     ) -> JsonDict:
         """Perform aggregation query."""
         client = cls._get_client()
@@ -236,7 +232,7 @@ class Search:
             "field": field,
         }
         if callable(aggregate_fn_raw):
-            aggregate_callback: AggregateCallback = cast(AggregateCallback, aggregate_fn_raw)
+            aggregate_callback: AggregateCallback = cast(AggregateCallback, aggregate_fn_raw)  # noqa: TC006
             return aggregate_callback(**params)  # pylint: disable=not-callable
 
         body: JsonDict = {
@@ -252,7 +248,7 @@ class Search:
         client = cls._get_client()
         search_fn_raw = getattr(client, "es_search_from_es", None)
         if callable(search_fn_raw):
-            search_callback: SearchCallback = cast(SearchCallback, search_fn_raw)
+            search_callback: SearchCallback = cast(SearchCallback, search_fn_raw)  # noqa: TC006
             return search_callback(body=search_request)  # pylint: disable=not-callable
         params = {"query_filter": json.dumps(search_request)}
         return _http_get(client, "/search/query", params)
@@ -263,7 +259,7 @@ class Search:
         client = cls._get_client()
         reindex_fn_raw = getattr(client, "reindex", None)
         if callable(reindex_fn_raw):
-            reindex_callback: ReindexCallback = cast(ReindexCallback, reindex_fn_raw)
+            reindex_callback: ReindexCallback = cast(ReindexCallback, reindex_fn_raw)  # noqa: TC006
             return reindex_callback(  # pylint: disable=not-callable
                 entity_type=entity_type
             )
@@ -275,7 +271,7 @@ class Search:
         client = cls._get_client()
         reindex_all_fn_raw = getattr(client, "reindex_all", None)
         if callable(reindex_all_fn_raw):
-            reindex_all_callback: ReindexAllCallback = cast(ReindexAllCallback, reindex_all_fn_raw)
+            reindex_all_callback: ReindexAllCallback = cast(ReindexAllCallback, reindex_all_fn_raw)  # noqa: TC006
             return reindex_all_callback()  # pylint: disable=not-callable
         return _http_post(client, "/search/reindex", {})
 
@@ -283,12 +279,12 @@ class Search:
     async def search_async(  # pylint: disable=too-many-arguments
         cls,
         query: str,
-        index: Optional[str] = None,
+        index: str | None = None,
         from_: int = 0,
         size: int = 10,
-        sort_field: Optional[str] = None,
-        sort_order: Optional[str] = None,
-        filters: Optional[Mapping[str, Any]] = None,
+        sort_field: str | None = None,
+        sort_order: str | None = None,
+        filters: Mapping[str, Any] | None = None,
         include_aggregations: bool = True,
     ) -> JsonDict:
         """Async variant of :meth:`search`."""
@@ -308,9 +304,9 @@ class Search:
     async def suggest_async(
         cls,
         query: str,
-        field: Optional[str] = None,
+        field: str | None = None,
         size: int = 5,
-    ) -> List[str]:
+    ) -> list[str]:
         """Async variant of :meth:`suggest`."""
         return await _run_async(cls.suggest, query, field, size)
 
@@ -318,8 +314,8 @@ class Search:
     async def aggregate_async(
         cls,
         query: str,
-        index: Optional[str] = None,
-        field: Optional[str] = None,
+        index: str | None = None,
+        field: str | None = None,
     ) -> JsonDict:
         """Async variant of :meth:`aggregate`."""
         return await _run_async(cls.aggregate, query, index, field)
@@ -335,7 +331,7 @@ class Search:
         return await _run_async(cls.reindex_all)
 
     @classmethod
-    def builder(cls) -> "SearchBuilder":
+    def builder(cls) -> "SearchBuilder":  # noqa: UP037
         """Create a search builder."""
         return SearchBuilder()
 
@@ -344,51 +340,51 @@ class SearchBuilder:
     """Builder for search queries."""
 
     def __init__(self) -> None:
-        self._query: Optional[str] = None
-        self._index: Optional[str] = None
+        self._query: str | None = None
+        self._index: str | None = None
         self._from: int = 0
         self._size: int = 10
-        self._sort_field: Optional[str] = None
-        self._sort_order: Optional[str] = None
+        self._sort_field: str | None = None
+        self._sort_order: str | None = None
         self._filters: JsonDict = {}
         self._include_aggregations: bool = True
 
-    def query(self, query: str) -> "SearchBuilder":
+    def query(self, query: str) -> "SearchBuilder":  # noqa: UP037
         """Set search query."""
         self._query = query
         return self
 
-    def index(self, index: str) -> "SearchBuilder":
+    def index(self, index: str) -> "SearchBuilder":  # noqa: UP037
         """Set search index."""
         self._index = index
         return self
 
-    def from_(self, from_: int) -> "SearchBuilder":
+    def from_(self, from_: int) -> "SearchBuilder":  # noqa: UP037
         """Set starting offset."""
         self._from = from_
         return self
 
-    def size(self, size: int) -> "SearchBuilder":
+    def size(self, size: int) -> "SearchBuilder":  # noqa: UP037
         """Set result size."""
         self._size = size
         return self
 
-    def sort_field(self, field: str) -> "SearchBuilder":
+    def sort_field(self, field: str) -> "SearchBuilder":  # noqa: UP037
         """Set sort field."""
         self._sort_field = field
         return self
 
-    def sort_order(self, order: str) -> "SearchBuilder":
+    def sort_order(self, order: str) -> "SearchBuilder":  # noqa: UP037
         """Set sort order."""
         self._sort_order = order
         return self
 
-    def filter(self, key: str, value: Any) -> "SearchBuilder":
+    def filter(self, key: str, value: Any) -> "SearchBuilder":  # noqa: UP037
         """Add a filter."""
         self._filters[key] = value
         return self
 
-    def include_aggregations(self, include: bool = True) -> "SearchBuilder":
+    def include_aggregations(self, include: bool = True) -> "SearchBuilder":  # noqa: UP037
         """Set whether to include aggregations. Defaults to True."""
         self._include_aggregations = include
         return self

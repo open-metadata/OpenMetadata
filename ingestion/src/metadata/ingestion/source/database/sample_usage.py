@@ -14,8 +14,8 @@ Sample Usage source ingestion
 
 import csv
 import json
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Dict, Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
@@ -55,19 +55,19 @@ class SampleUsageSource(UsageSource):
             raise ValueError("Cannot get sampleDataFolder from connection options")
 
         self.service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/datasets/service.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.query_log_csv = sample_data_folder + "/datasets/query_log"
-        with open(self.query_log_csv, "r", encoding="utf-8") as fin:
+        with open(self.query_log_csv, "r", encoding="utf-8") as fin:  # noqa: PTH123
             self.query_logs = [dict(i) for i in csv.DictReader(fin)]
         self.service = self.metadata.get_service_or_create(entity=DatabaseService, config=config)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.root.config
@@ -75,7 +75,7 @@ class SampleUsageSource(UsageSource):
             raise InvalidSourceException(f"Expected CustomDatabaseConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_table_query(self) -> Optional[Iterable[Dict[str, str]]]:
+    def get_table_query(self) -> Iterable[dict[str, str]] | None:
         yield TableQueries(
             queries=[
                 TableQuery(

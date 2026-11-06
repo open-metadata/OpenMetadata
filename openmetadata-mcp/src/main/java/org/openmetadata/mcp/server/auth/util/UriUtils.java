@@ -1,10 +1,14 @@
 package org.openmetadata.mcp.server.auth.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -13,6 +17,43 @@ import java.util.stream.Collectors;
  */
 public class UriUtils {
 
+  /** RFC 9207 authorization response issuer identifier parameter. */
+  public static final String ISSUER_PARAM = "iss";
+
+  // URI.getHost() keeps the brackets of an IPv6 literal.
+  private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "[::1]");
+  private static final Set<String> WEB_SCHEMES = Set.of("http", "https");
+
+  public static boolean isLoopback(URI uri) {
+    return uri.getHost() != null && LOOPBACK_HOSTS.contains(uri.getHost());
+  }
+
+  /**
+   * True for an http(s) URI on another machine. Any client can register one, so an OAuth error is
+   * never redirected to it automatically: the user gets a page with a link instead.
+   * ADR:2026-11-02-mcp-authorization-errors-reach-a-remote-callback-through-a-link
+   */
+  public static boolean isRemoteWebUri(URI uri) {
+    String scheme = uri.getScheme();
+    return scheme != null
+        && WEB_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT))
+        && !isLoopback(uri);
+  }
+
+  /**
+   * What a page shows as the place the browser will be sent to. The client name is chosen by
+   * whoever registered the client, so this is the one thing on the page the user can check.
+   * Userinfo, path and query are left out because they can be made to look like a host. The raw
+   * authority is used rather than {@link URI#getHost()}, which is null for hosts such as {@code
+   * a_b.example} that a browser still navigates to.
+   */
+  public static String describeRedirectTarget(URI redirectUri) {
+    final String authority = redirectUri.getRawAuthority();
+    final String hostAndPort =
+        authority == null ? "" : "//" + authority.substring(authority.lastIndexOf('@') + 1);
+    return redirectUri.getScheme() + ":" + hostAndPort;
+  }
+
   /**
    * Constructs a redirect URI with query parameters.
    * @param redirectUriBase The base redirect URI.
@@ -20,46 +61,67 @@ public class UriUtils {
    * @return The constructed redirect URI.
    */
   public static String constructRedirectUri(String redirectUriBase, Map<String, String> params) {
-    try {
-      URI uri = new URI(redirectUriBase);
+    URI uri = URI.create(redirectUriBase);
 
-      // Get existing query
-      String query = uri.getQuery();
-      StringBuilder queryBuilder = new StringBuilder();
-
-      // Append existing query parameters if any
-      if (query != null && !query.isEmpty()) {
-        queryBuilder.append(query);
-        if (!params.isEmpty()) {
-          queryBuilder.append("&");
-        }
-      }
-
-      // Append new parameters
-      if (!params.isEmpty()) {
-        String newParams =
-            params.entrySet().stream()
-                .filter(entry -> entry.getValue() != null)
-                .map(
-                    entry ->
-                        URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8)
-                            + "="
-                            + URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8))
-                .collect(Collectors.joining("&"));
-        queryBuilder.append(newParams);
-      }
-
-      // Create new URI with updated query
-      return new URI(
-              uri.getScheme(),
-              uri.getAuthority(),
-              uri.getPath(),
-              queryBuilder.toString(),
-              uri.getFragment())
-          .toString();
-    } catch (URISyntaxException e) {
-      throw new IllegalArgumentException("Invalid redirect URI: " + redirectUriBase, e);
+    StringBuilder queryBuilder = new StringBuilder();
+    String existingQuery = uri.getRawQuery();
+    if (existingQuery != null && !existingQuery.isEmpty()) {
+      queryBuilder.append(existingQuery);
     }
+
+    String newParams =
+        params.entrySet().stream()
+            .filter(entry -> entry.getValue() != null)
+            .map(
+                entry ->
+                    URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8)
+                        + "="
+                        + URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8))
+            .collect(Collectors.joining("&"));
+    if (!newParams.isEmpty()) {
+      if (queryBuilder.length() > 0) {
+        queryBuilder.append("&");
+      }
+      queryBuilder.append(newParams);
+    }
+
+    // Reassemble the URI by string concatenation. The query is already percent-encoded above;
+    // passing it through the multi-argument URI constructor would re-encode the '%' characters
+    // (e.g. a base64 state "a==" -> "a%3D%3D" -> "a%253D%253D"), corrupting opaque values such as
+    // the OAuth state and breaking clients that compare it byte-for-byte (e.g. VS Code loopback).
+    String base = redirectUriBase;
+    int fragmentIdx = base.indexOf('#');
+    if (fragmentIdx >= 0) {
+      base = base.substring(0, fragmentIdx);
+    }
+    int queryIdx = base.indexOf('?');
+    if (queryIdx >= 0) {
+      base = base.substring(0, queryIdx);
+    }
+    String fragment = uri.getRawFragment() != null ? "#" + uri.getRawFragment() : "";
+    return queryBuilder.length() > 0 ? base + "?" + queryBuilder + fragment : base + fragment;
+  }
+
+  /**
+   * Constructs an authorization response redirect URI, adding the RFC 9207 {@code iss} parameter.
+   *
+   * <p>RFC 9207 asks the authorization server to name itself in every authorization response, both
+   * success and error. The client checks it before redeeming the code, so it cannot be tricked into
+   * sending the code to a different authorization server. Under MCP protocol 2026-07-28 clients must
+   * validate this parameter whenever it is present.
+   *
+   * @param redirectUriBase The base redirect URI.
+   * @param params The authorization response parameters (code/state, or error parameters).
+   * @param issuer The issuer identifier of this authorization server, or null if not resolved yet.
+   * @return The constructed redirect URI.
+   */
+  public static String constructAuthorizationResponseUri(
+      String redirectUriBase, Map<String, String> params, String issuer) {
+    Map<String, String> paramsWithIssuer = new LinkedHashMap<>(params);
+    if (!nullOrEmpty(issuer)) {
+      paramsWithIssuer.put(ISSUER_PARAM, issuer);
+    }
+    return constructRedirectUri(redirectUriBase, paramsWithIssuer);
   }
 
   /**
@@ -122,15 +184,20 @@ public class UriUtils {
    * @return The endpoint URL
    */
   public static URI buildEndpointUrl(URI issuerUrl, String path) {
-    String baseUrl = issuerUrl.toString();
-    if (baseUrl.endsWith("/")) {
-      baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
-    }
+    String baseUrl = withoutTrailingSlash(issuerUrl.toString());
 
     if (!path.startsWith("/")) {
       path = "/" + path;
     }
 
     return URI.create(baseUrl + path);
+  }
+
+  /**
+   * The MCP base URL as configured may end in a slash, the way BASE_PATH is written. Every MCP
+   * OAuth URL is built as baseUrl + "/mcp/...", so the slash has to go or it doubles.
+   */
+  public static String withoutTrailingSlash(final String url) {
+    return url != null && url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
   }
 }

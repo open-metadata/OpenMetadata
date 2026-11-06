@@ -55,8 +55,8 @@ from metadata.utils.time_utils import (
     get_end_of_day_timestamp_mill,
 )
 
-from ..integration_base import generate_name, get_create_entity, get_create_service
-from .conftest import _safe_delete
+from ..integration_base import generate_name, get_create_entity, get_create_service  # noqa: TID252
+from .conftest import _safe_delete  # noqa: TID252
 
 
 @pytest.fixture(scope="module")
@@ -79,7 +79,7 @@ def ts_service(metadata):
 def ts_database(metadata, ts_service):
     """Module-scoped database for test suite tests."""
     db = metadata.create_or_update(data=get_create_entity(entity=Database, reference=ts_service.fullyQualifiedName))
-    return db
+    return db  # noqa: RET504
 
 
 @pytest.fixture(scope="module")
@@ -88,14 +88,14 @@ def ts_schema(metadata, ts_database):
     schema = metadata.create_or_update(
         data=get_create_entity(entity=DatabaseSchema, reference=ts_database.fullyQualifiedName)
     )
-    return schema
+    return schema  # noqa: RET504
 
 
 @pytest.fixture(scope="module")
 def ts_table(metadata, ts_schema):
     """Module-scoped table for test suite tests."""
     table = metadata.create_or_update(data=get_create_entity(entity=Table, reference=ts_schema.fullyQualifiedName))
-    return table
+    return table  # noqa: RET504
 
 
 @pytest.fixture(scope="module")

@@ -11,27 +11,36 @@
  *  limitations under the License.
  */
 import { useNavigate } from 'react-router-dom';
+import bigQueryConnection from '../../public/jsons/connectionSchemas/connections/database/bigQueryConnection.json';
+import customDatabaseConnection from '../../public/jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
+import mysqlConnection from '../../public/jsons/connectionSchemas/connections/database/mysqlConnection.json';
+import postgresConnection from '../../public/jsons/connectionSchemas/connections/database/postgresConnection.json';
+import snowflakeConnection from '../../public/jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
-import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
-import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
-import customDatabaseConnection from '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
-import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
-import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
-import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
-import {
-  ExtraDatabaseServiceDropdownOptions,
-  getDatabaseConfig,
-} from './DatabaseServiceUtils';
+import { getDatabaseConfig } from './DatabaseServicePureUtils';
+import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 
-jest.mock(
-  '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
-  () => ({
-    useEntityExportModalProvider: jest.fn().mockReturnValue({
-      showModal: jest.fn(),
-    }),
-  })
-);
+// jest.mock() is hoisted above imports, so we require() the JSON inside the
+// factory rather than referencing the top-level imports (which are still in
+// their temporal dead zone at factory-run time).
+jest.mock('./loadConnectionSchema', () => {
+  const schemas: Record<string, unknown> = {
+    'connections/database/bigQueryConnection.json': require('../../public/jsons/connectionSchemas/connections/database/bigQueryConnection.json'),
+    'connections/database/customDatabaseConnection.json': require('../../public/jsons/connectionSchemas/connections/database/customDatabaseConnection.json'),
+    'connections/database/mysqlConnection.json': require('../../public/jsons/connectionSchemas/connections/database/mysqlConnection.json'),
+    'connections/database/postgresConnection.json': require('../../public/jsons/connectionSchemas/connections/database/postgresConnection.json'),
+    'connections/database/snowflakeConnection.json': require('../../public/jsons/connectionSchemas/connections/database/snowflakeConnection.json'),
+  };
+
+  return {
+    loadConnectionSchema: jest.fn((relativePath: string) =>
+      Promise.resolve(schemas[relativePath] ?? {})
+    ),
+  };
+});
+
 jest.mock(
   '../components/common/ManageButtonContentItem/ManageButtonContentItem.component',
   () => ({
@@ -46,6 +55,8 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockNavigate = jest.fn();
+
+const mockShowModal = jest.fn();
 
 describe('ExtraDatabaseServiceDropdownOptions', () => {
   beforeEach(() => {
@@ -63,7 +74,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(1);
@@ -80,11 +92,31 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(1);
     expect(result[0].key).toBe('export-button');
+  });
+
+  // Callers build these options inside useMemo, so the helper must not call
+  // hooks: a hook here broke ServiceDetailsPage's hook order. Run outside any
+  // component, a hook call would throw.
+  it('should use the passed showModal instead of calling a hook', () => {
+    const result = ExtraDatabaseServiceDropdownOptions(
+      'databaseServiceFqn',
+      { ViewAll: true, EditAll: false } as OperationPermission,
+      false,
+      mockNavigate,
+      mockShowModal
+    );
+
+    result[0].onClick?.();
+
+    expect(mockShowModal).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'databaseServiceFqn' })
+    );
   });
 
   it('should render both button when user has viewAll & editAll permission', () => {
@@ -97,7 +129,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(2);
@@ -114,7 +147,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(0);
@@ -130,7 +164,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       true,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(0);
@@ -139,8 +174,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
 });
 
 describe('getDatabaseConfig', () => {
-  it('should return correct schema and UI schema for MySQL', () => {
-    const result = getDatabaseConfig(DatabaseServiceType.Mysql);
+  it('should return correct schema and UI schema for MySQL', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.Mysql);
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');
@@ -148,8 +183,8 @@ describe('getDatabaseConfig', () => {
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 
-  it('should return correct schema and UI schema for Postgres', () => {
-    const result = getDatabaseConfig(DatabaseServiceType.Postgres);
+  it('should return correct schema and UI schema for Postgres', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.Postgres);
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');
@@ -157,8 +192,8 @@ describe('getDatabaseConfig', () => {
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 
-  it('should return correct schema and UI schema for Snowflake', () => {
-    const result = getDatabaseConfig(DatabaseServiceType.Snowflake);
+  it('should return correct schema and UI schema for Snowflake', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.Snowflake);
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');
@@ -166,8 +201,8 @@ describe('getDatabaseConfig', () => {
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 
-  it('should return correct schema and UI schema for BigQuery', () => {
-    const result = getDatabaseConfig(DatabaseServiceType.BigQuery);
+  it('should return correct schema and UI schema for BigQuery', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.BigQuery);
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');
@@ -175,8 +210,8 @@ describe('getDatabaseConfig', () => {
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 
-  it('should return correct schema and UI schema for CustomDatabase', () => {
-    const result = getDatabaseConfig(DatabaseServiceType.CustomDatabase);
+  it('should return correct schema and UI schema for CustomDatabase', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.CustomDatabase);
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');
@@ -184,8 +219,10 @@ describe('getDatabaseConfig', () => {
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 
-  it('should return empty schema and default UI schema for unknown database type', () => {
-    const result = getDatabaseConfig('UnknownType' as DatabaseServiceType);
+  it('should return empty schema and default UI schema for unknown database type', async () => {
+    const result = await getDatabaseConfig(
+      'UnknownType' as DatabaseServiceType
+    );
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');

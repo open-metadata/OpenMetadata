@@ -1,0 +1,337 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import {
+  Bell01,
+  Bot,
+  Customize,
+  GridView,
+  Key01,
+  PermissionDebugger,
+  Persona as PersonaIcon,
+  Policy,
+  Settings01,
+  ShieldTick,
+  SingleSignOn,
+  Sliders02,
+  User01,
+  Users01,
+} from '@openmetadata/ui-core-components/icons';
+import type { Key } from 'react';
+import React, { FC } from 'react';
+import type { ProfileNavId } from '../../../../constants/Profile.constants';
+import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
+import { User } from '../../../../generated/entity/teams/user';
+import { userPermissions } from '../../../../utils/PermissionsUtils';
+import AccessTokenPanel from './components/AccessTokenPanel';
+import ProfileTabPanel from './ProfileTabPanel';
+import AccessControlPanel from './tabs/access-control/AccessControlPanel';
+import ApplicationsPanel from './tabs/applications/ApplicationsPanel';
+import BotsPanel from './tabs/bots/BotsPanel';
+import CustomPropertiesPanel from './tabs/custom-properties/CustomPropertiesPanel';
+import GovernancePanel from './tabs/governance/GovernancePanel';
+import { canOpenMembers, getMembersAccess } from './tabs/members/Members.utils';
+import MembersPanel from './tabs/members/MembersPanel';
+import NotificationPanel from './tabs/notification/NotificationPanel';
+import PermissionsTab from './tabs/PermissionsTab';
+import PersonasPanel from './tabs/personas/PersonasPanel';
+import PlatformSettingsPanel from './tabs/platform-settings/PlatformSettingsPanel';
+import PreferencesPanel from './tabs/preferences/PreferencesPanel';
+import SsoPanel from './tabs/sso/SsoPanel';
+
+// Single source of truth lives in Profile.constants (hook-safe layer); re-exported
+// here so existing imports of `ProfileNavId` from this module keep working.
+export type { ProfileNavId };
+
+/** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
+export type ProfileNavGroup =
+  | 'account'
+  | 'administration'
+  | 'features'
+  | 'workspace'
+  | 'credentials';
+
+/** Translation key for each group's sidebar header + breadcrumb root. */
+export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
+  account: 'label.account',
+  administration: 'label.administration',
+  features: 'label.feature-plural',
+  workspace: 'label.workspace',
+  credentials: 'label.credential-plural',
+};
+
+/** Group render order in the sidebar. */
+export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
+  'account',
+  'administration',
+  'features',
+  'workspace',
+  'credentials',
+];
+
+/**
+ * Dynamic overrides a panel can push up to ProfilePage so ProfileContentHeader
+ * can reflect the panel's internal state (e.g. multi-level breadcrumbs, entity icon).
+ * All fields are optional — panels provide only what they need to override.
+ */
+export interface ProfileHeaderOverride {
+  breadcrumbs?: BreadcrumbItemType[];
+  title?: string;
+  description?: string;
+  icon?: FC<{ className?: string }>;
+  /** Pre-rendered icon node; takes precedence over `icon` in ProfileContentHeader. */
+  iconNode?: React.ReactNode;
+  onBreadcrumbAction?: (id: Key) => void;
+  /** Action buttons rendered on the right of the header title row. */
+  actions?: React.ReactNode;
+  /** When set, renders in place of the title text (e.g. an inline rename input). */
+  titleInput?: React.ReactNode;
+  /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
+  titleSuffix?: React.ReactNode;
+  /** Extra row rendered under the description (e.g. installed / developer details). */
+  meta?: React.ReactNode;
+  /** Tab strip rendered at the bottom of the header (e.g. an app's detail tabs). */
+  tabs?: React.ReactNode;
+  /** Render only the breadcrumb row (a full-page detail that draws its own title). */
+  compact?: boolean;
+}
+
+/**
+ * Context handed to each nav item's `render`. Mirrors the data ProfilePage
+ * already fetches so the individual row / tab components keep their existing
+ * props.
+ */
+export interface ProfileNavRenderContext {
+  userData: User;
+  isProfileLoading: boolean;
+  /** The full profile failed to load; userData is only the partial store copy. */
+  loadError?: boolean;
+  onReload?: () => void;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
+  /** Allows a panel to override the header breadcrumbs/title shown by ProfilePage. */
+  onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
+}
+
+export interface ProfileNavItem {
+  id: ProfileNavId;
+  /** Sidebar group this item belongs to. */
+  group: ProfileNavGroup;
+  /** Translation key for the nav label + content-header title. */
+  label: string;
+  /** Translation key for the content-header description (per page). */
+  description: string;
+  icon: FC<{ className?: string }>;
+  render: (ctx: ProfileNavRenderContext) => React.ReactNode;
+  /**
+   * When true, ProfilePage skips the standard content scroll wrapper
+   * (`overflow-y-auto p-8`) and lets the panel manage its own layout.
+   * The header is still rendered by ProfilePage.
+   */
+  selfContainedLayout?: boolean;
+  /**
+   * When present, the item is shown only when this returns true.
+   * Receives the UIPermission map and the isAdmin flag of the current user.
+   */
+  isVisible?: (permissions: UIPermission, isAdmin: boolean) => boolean;
+}
+
+export const DEFAULT_PROFILE_NAV_ID: ProfileNavId = 'profile';
+
+export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'profile',
+    group: 'account',
+    label: 'label.profile',
+    description: 'message.profile-page-description',
+    icon: User01,
+    // Draws its own scroll body: another user's detail needs the Members layout.
+    selfContainedLayout: true,
+    render: (ctx) => <ProfileTabPanel {...ctx} />,
+  },
+  {
+    id: 'permissions',
+    group: 'account',
+    label: 'label.permission-plural',
+    description: 'message.permissions-page-description',
+    icon: ShieldTick,
+    render: ({ userData, updateUserDetails }) => (
+      <PermissionsTab
+        updateUserDetails={updateUserDetails}
+        userData={userData}
+      />
+    ),
+  },
+  {
+    id: 'preferences',
+    group: 'account',
+    label: 'label.preference-plural',
+    description: 'message.preferences-page-description',
+    icon: Settings01,
+    render: () => <PreferencesPanel />,
+  },
+  {
+    id: 'access-token',
+    group: 'credentials',
+    label: 'label.access-token',
+    description: 'message.access-token-page-description',
+    icon: Key01,
+    render: () => <AccessTokenPanel />,
+  },
+  {
+    id: 'access-control',
+    group: 'administration',
+    label: 'label.access-control',
+    description: 'message.access-control-description',
+    icon: PermissionDebugger,
+    // Admin-only whatever view permissions a non-admin holds
+    // (ADR:2026-10-21-settings-pages-are-classic-only).
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <AccessControlPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'bots',
+    group: 'administration',
+    label: 'label.bot-plural',
+    description: 'message.page-sub-header-for-bots',
+    icon: Bot as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <BotsPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'platform-settings',
+    group: 'administration',
+    label: 'label.platform-setting-plural',
+    description: 'message.customize-brand-description',
+    icon: Sliders02,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'sso',
+    group: 'administration',
+    label: 'label.single-sign-on',
+    description: 'message.sso-configuration-directly-from-the-ui',
+    icon: SingleSignOn,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <SsoPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  // The "My Connections" tab is contributed by the Query Runner plugin through
+  // the `profile.tabs` extension point (see ProfilePage), so the app-mode
+  // profile works standalone in OSS when the plugin is absent.
+];
+
+export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'personas',
+    group: 'workspace',
+    label: 'label.persona-plural',
+    description: 'message.page-sub-header-for-persona',
+    icon: PersonaIcon as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <PersonasPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'members',
+    group: 'workspace',
+    label: 'label.member-plural',
+    description: 'message.team-member-management-description',
+    icon: Users01,
+    // As in classic: anyone who may view teams or users; the panel gates each
+    // section (ADR:2026-10-21-settings-pages-are-classic-only).
+    isVisible: (permissions, isAdmin) =>
+      canOpenMembers(getMembersAccess(permissions, isAdmin)),
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <MembersPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'custom-properties',
+    group: 'workspace',
+    label: 'label.custom-property-plural',
+    description: 'message.custom-properties-settings-description',
+    icon: Customize as FC<{ className?: string }>,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <CustomPropertiesPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+];
+
+export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'governance',
+    group: 'features',
+    label: 'label.governance',
+    description: 'message.governance-settings-description',
+    icon: Policy as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <GovernancePanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'applications',
+    group: 'features',
+    label: 'label.application-plural',
+    description: 'message.application-settings-description',
+    icon: GridView,
+    // Classic shows the Applications settings card to admins only.
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <ApplicationsPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'notification',
+    group: 'features',
+    label: 'label.alerts-and-notifications',
+    description: 'message.alerts-description',
+    icon: Bell01 as FC<{ className?: string }>,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(
+        ResourceEntity.EVENT_SUBSCRIPTION,
+        permissions
+      ),
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <NotificationPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+];
+
+export const getProfileNavItem = (id: ProfileNavId): ProfileNavItem =>
+  [...PROFILE_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS, ...FEATURES_NAV_ITEMS].find(
+    (item) => item.id === id
+  ) ?? PROFILE_NAV_ITEMS[0];

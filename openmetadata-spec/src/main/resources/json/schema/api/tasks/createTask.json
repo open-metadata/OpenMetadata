@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/tasks/createTask.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateTaskRequest",
   "description": "Request to create a new Task.",
   "javaType": "org.openmetadata.schema.api.tasks.CreateTask",
@@ -31,12 +31,8 @@
       "$ref": "../../entity/tasks/task.json#/definitions/taskPriority"
     },
     "about": {
-      "description": "FQN of the entity this task is about.",
-      "type": "string"
-    },
-    "aboutType": {
-      "description": "Type of the entity this task is about.",
-      "type": "string"
+      "description": "Entity link of the asset this task is about. Format: `<#E::{entityType}::{fqn}>`. The link is parsed and validated server-side; the target entity must exist and not be soft-deleted.",
+      "$ref": "../../type/basic.json#/definitions/entityLink"
     },
     "domain": {
       "description": "FQN of the domain this task belongs to.",

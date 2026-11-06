@@ -28,6 +28,15 @@ export interface Container {
      */
     children?: EntityReference[];
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * Reference to the data contract for this entity.
      */
     dataContract?: EntityReference;
@@ -768,9 +777,6 @@ export interface CustomMetric {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
@@ -787,7 +793,8 @@ export interface ColumnProfile {
     /**
      * No.of Rows that contain duplicates in a column.
      */
-    duplicateCount?: number;
+    duplicateCount?:  number;
+    executionSource?: TableExecutionSource;
     /**
      * First quartile of a column.
      */
@@ -927,6 +934,16 @@ export interface CustomMetricProfile {
     value?: number;
 }
 
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
+}
+
 export interface HistogramClass {
     /**
      * Boundaries of Histogram.
@@ -941,8 +958,10 @@ export interface HistogramClass {
 /**
  * Status of the Container.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -1022,7 +1041,8 @@ export interface TableData {
     /**
      * List of local column names (not fully qualified column names) of the table.
      */
-    columns?: string[];
+    columns?:         string[];
+    executionSource?: TableExecutionSource;
     /**
      * Data for multiple rows of the table.
      */

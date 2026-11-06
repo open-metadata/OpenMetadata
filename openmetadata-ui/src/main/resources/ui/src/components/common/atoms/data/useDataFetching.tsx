@@ -12,21 +12,25 @@
  */
 
 import { AxiosError } from 'axios';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
   Aggregations,
+  SearchIndexValue,
   SearchResponse,
 } from '../../../../interface/search.interface';
-import { searchQuery } from '../../../../rest/searchAPI';
-import { domainBuildESQuery } from '../../../../utils/DomainUtils';
+import { nlqSearch, searchQuery } from '../../../../rest/searchAPI';
+import { domainBuildESQuery } from '../../../../utils/DomainFilterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
-export interface DataFetchingConfig<T> {
-  searchIndex: SearchIndex;
+export interface DataFetchingConfig<T, SI extends SearchIndex> {
+  searchIndex: SI;
   baseFilter?: string;
   pageSize?: number;
-  transform?: (data: SearchResponse<SearchIndex>) => T[];
+  transform: (data: SearchResponse<SearchIndexValue<SI>>) => T[];
+  /** Use the NLQ endpoint instead of plain ES. Ignored for an empty term. */
+  useNlq?: boolean;
 }
 
 export interface DataFetchingResult<T> {
@@ -43,8 +47,11 @@ export interface DataFetchingResult<T> {
   ) => Promise<void>;
 }
 
-export const useDataFetching = <T extends { id: string }>(
-  config: DataFetchingConfig<T>
+export const useDataFetching = <
+  T extends { id: string },
+  SI extends SearchIndex
+>(
+  config: DataFetchingConfig<T, SI>
 ): DataFetchingResult<T> => {
   const [entities, setEntities] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,22 +59,23 @@ export const useDataFetching = <T extends { id: string }>(
   const [totalEntities, setTotalEntities] = useState(0);
   const [aggregations, setAggregations] = useState<Aggregations | null>(null);
 
-  const { searchIndex, baseFilter = '', pageSize = 10, transform } = config;
-
-  // Default transform function
-  const defaultTransform = useCallback(
-    (data: SearchResponse<SearchIndex>) =>
-      data.hits?.hits?.map((hit) => hit._source) || [],
-    []
-  );
-
-  const transformData = transform || defaultTransform;
+  const {
+    searchIndex,
+    baseFilter = '',
+    pageSize = PAGE_SIZE_BASE,
+    transform,
+    useNlq = false,
+  } = config;
 
   const buildESQuery = useCallback(
     (filters: Record<string, string[]>): Record<string, unknown> =>
       domainBuildESQuery(filters, baseFilter),
     [baseFilter]
   );
+
+  // Only the newest request may write state: NLQ is slower and more variable
+  // than plain ES, so a superseded response can otherwise land last and win.
+  const requestIdRef = useRef(0);
 
   // Main search function with comprehensive handling
   const searchEntities = useCallback(
@@ -76,6 +84,8 @@ export const useDataFetching = <T extends { id: string }>(
       searchTerm = '',
       filters: Record<string, string[]> = {}
     ) => {
+      const requestId = ++requestIdRef.current;
+      const isStale = () => requestId !== requestIdRef.current;
       try {
         setLoading(true);
         setError(null);
@@ -85,7 +95,9 @@ export const useDataFetching = <T extends { id: string }>(
         // Build Elasticsearch query with filters
         const esQuery = buildESQuery(filters);
 
-        const response = await searchQuery({
+        const searchRequest = useNlq && searchTerm ? nlqSearch : searchQuery;
+
+        const response = await searchRequest({
           query: searchTerm || '',
           pageNumber: validPage,
           pageSize,
@@ -94,27 +106,37 @@ export const useDataFetching = <T extends { id: string }>(
           includeDeleted: false,
         });
 
+        if (isStale()) {
+          return;
+        }
+
         // Process response
-        const transformedEntities = transformData(response);
+        const transformedEntities = transform(response);
         const total = response?.hits?.total?.value || 0;
         const responseAggregations = response?.aggregations || null;
 
         // Update state
         setEntities(transformedEntities);
         setTotalEntities(total);
-        setAggregations(responseAggregations);
+        // NLQ may omit aggregations; dropping them would empty the filters.
+        setAggregations((previous) => responseAggregations ?? previous);
         setError(null);
       } catch (err) {
+        if (isStale()) {
+          return;
+        }
         setError(err instanceof Error ? err : new Error('Search failed'));
         setEntities([]);
         setTotalEntities(0);
         setAggregations(null);
         showErrorToast(err as AxiosError);
       } finally {
-        setLoading(false);
+        if (!isStale()) {
+          setLoading(false);
+        }
       }
     },
-    [searchIndex, pageSize, transformData, buildESQuery]
+    [searchIndex, pageSize, transform, buildESQuery, useNlq]
   );
 
   // Refetch function

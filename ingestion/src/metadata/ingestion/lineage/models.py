@@ -13,7 +13,6 @@ Models related to lineage parsing
 """
 
 from enum import Enum
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -34,9 +33,6 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 )
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Type,
-)
-from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
-    DeltaLakeType,
 )
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisType,
@@ -128,6 +124,7 @@ class Dialect(Enum):
     SOQL = "soql"
     SPARKSQL = "sparksql"
     SQLITE = "sqlite"
+    STARROCKS = "starrocks"
     TERADATA = "teradata"
     TSQL = "tsql"
     MARIADB = "mariadb"
@@ -135,7 +132,7 @@ class Dialect(Enum):
     VERTICA = "vertica"
 
 
-MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
+MAP_CONNECTION_TYPE_DIALECT: dict[str, Dialect] = {
     str(AthenaType.Athena.value): Dialect.ATHENA,
     str(BigqueryType.BigQuery.value): Dialect.BIGQUERY,
     str(ClickhouseType.Clickhouse.value): Dialect.CLICKHOUSE,
@@ -149,7 +146,6 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(PostgresType.Postgres.value): Dialect.POSTGRES,
     str(RedshiftType.Redshift.value): Dialect.REDSHIFT,
     str(SnowflakeType.Snowflake.value): Dialect.SNOWFLAKE,
-    str(DeltaLakeType.DeltaLake.value): Dialect.SPARKSQL,
     str(SQLiteType.SQLite.value): Dialect.SQLITE,
     str(MssqlType.Mssql.value): Dialect.TSQL,
     str(AzureSQLType.AzureSQL.value): Dialect.TSQL,
@@ -161,7 +157,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(VerticaType.Vertica.value): Dialect.VERTICA,
     str(GreenplumType.Greenplum.value): Dialect.POSTGRES,
     str(DorisType.Doris.value): Dialect.MYSQL,
-    str(StarrocksType.StarRocks.value): Dialect.MYSQL,
+    str(StarrocksType.StarRocks.value): Dialect.STARROCKS,
     str(MicrosoftFabricType.MicrosoftFabric.value): Dialect.TSQL,
     str(InformixType.Informix.value): Dialect.ANSI,
 }
@@ -197,7 +193,7 @@ class QueryParsingError(BaseModel):
     )
 
     query: str = Field(..., description="query text of the failed query")
-    error: Optional[str] = Field(None, description="error message of the failed query")
+    error: str | None = Field(None, description="error message of the failed query")
 
 
 class QueryParsingFailures(metaclass=Singleton):
@@ -205,7 +201,7 @@ class QueryParsingFailures(metaclass=Singleton):
 
     def __init__(self):
         """Initializes the list of parsing failures."""
-        self._query_list: List[QueryParsingError] = []
+        self._query_list: list[QueryParsingError] = []
 
     def add(self, parsing_error: QueryParsingError):
         self._query_list.append(parsing_error)

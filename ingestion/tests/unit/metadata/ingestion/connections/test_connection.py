@@ -62,9 +62,6 @@ def test_connection(mock_service_connection):
                 lastUpdatedAt=Timestamp(int(datetime.now().timestamp() * 1000)),
             )
 
-        def get_connection_dict(self):
-            return {}
-
     return TestConnection(mock_service_connection)
 
 
@@ -114,9 +111,6 @@ class TestBaseConnection:
                     ],
                     lastUpdatedAt=Timestamp(int(datetime.now().timestamp() * 1000)),
                 )
-
-            def get_connection_dict(self):
-                return {}
 
         connection = TestConnectionWithMockClient(test_connection.service_connection)
         client = connection.client

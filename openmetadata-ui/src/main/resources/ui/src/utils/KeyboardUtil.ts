@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { KeyboardEvent } from 'react';
 import { NavigatorHelper } from './NavigatorUtils';
 
 export enum Keys {
@@ -18,7 +19,31 @@ export enum Keys {
   ESC = 'Escape',
 }
 
-export const isCommandKeyPress = (event: KeyboardEvent): boolean => {
+/**
+ * Returns an `onKeyDown` handler that runs `callback` when Enter or Space is
+ * pressed (preventing the default scroll/submit) — used to make a non-native
+ * clickable element keyboard-operable.
+ *
+ * @param callback   action to run on activation.
+ * @param onlyIfSelf when true, ignores keydowns that bubbled up from nested
+ *   interactive children (guards on `target === currentTarget`) — for clickable
+ *   containers that also hold real controls.
+ */
+export const handleKeyboardActivation =
+  (callback: () => void, onlyIfSelf = false) =>
+  (event: KeyboardEvent): void => {
+    if (onlyIfSelf && event.target !== event.currentTarget) {
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      callback();
+    }
+  };
+
+export const isCommandKeyPress = (
+  event: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey'>
+): boolean => {
   if (NavigatorHelper.isMacOs()) {
     return event.metaKey;
   } else if (!NavigatorHelper.isMacOs()) {

@@ -13,7 +13,6 @@ Spline source processing utilities
 """
 
 import traceback
-from typing import Optional, Tuple
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
@@ -30,16 +29,16 @@ logger = ingestion_logger()
 MULTI_DB_SOURCE = {"postgresql", "oracle:thin", "vertica", "redshift"}
 
 
-def parse_dbfs_path(path: str) -> Optional[str]:
+def parse_dbfs_path(path: str) -> str | None:
     try:
-        return path.split("/")[-1]
+        return path.split("/")[-1]  # noqa: PLC0207
     except Exception as exc:
-        logger.warning(f"Failed to parse dbfs: {exc}")
+        logger.error(f"Failed to parse dbfs: {exc}")
         logger.error(traceback.format_exc())
     return None
 
 
-def clean_name(name: str) -> Optional[str]:
+def clean_name(name: str) -> str | None:
     """
     replace empty string with None
     """
@@ -49,7 +48,7 @@ def clean_name(name: str) -> Optional[str]:
     return None
 
 
-def parse_jdbc_url(url: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+def parse_jdbc_url(url: str) -> tuple[str | None, str | None, str | None]:
     """
     Handle parsing of jdbc url to extract table, schema and database name
     """
@@ -69,9 +68,9 @@ def parse_jdbc_url(url: str) -> Tuple[Optional[str], Optional[str], Optional[str
         if tree.DATABASE_TYPE() and tree.DATABASE_TYPE().getText() in MULTI_DB_SOURCE:
             return database, schema, table
 
-        return DEFAULT_DATABASE, database, table
+        return DEFAULT_DATABASE, database, table  # noqa: TRY300
     except Exception as exc:
-        logger.warning(f"Failed to parse jdbc url: {exc}")
+        logger.error(f"Failed to parse jdbc url: {exc}")
         logger.error(traceback.format_exc())
 
     return None, None, None

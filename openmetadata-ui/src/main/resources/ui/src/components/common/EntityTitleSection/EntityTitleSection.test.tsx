@@ -17,11 +17,11 @@ import { EntityType } from '../../../enums/entity.enum';
 import { EntityTitleSection } from './EntityTitleSection';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Button: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
-    <button onClick={onClick} {...props}>
-      {children}
-    </button>
-  )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(({ onClick, 'data-testid': testId, tooltip }) => (
+      <button aria-label={tooltip} data-testid={testId} onClick={onClick} />
+    )),
   Tooltip: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
@@ -49,7 +49,7 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((entity) => {
     return entity?.displayName || entity?.name || '';
   }),
@@ -59,7 +59,7 @@ jest.mock('../../../utils/BlockEditorUtils', () => ({
   getTextFromHtmlString: jest.fn().mockImplementation((str) => str),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn().mockImplementation((str) => str),
 }));
 

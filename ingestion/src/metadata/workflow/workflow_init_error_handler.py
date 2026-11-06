@@ -16,7 +16,7 @@ Module handles the init error messages from different workflows
 import logging
 import traceback
 from pathlib import Path
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any
 
 from metadata.config.common import ConfigurationError
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -32,7 +32,7 @@ from metadata.utils.logger import ANSI, log_ansi_encoded_string, utils_logger
 EXAMPLES_WORKFLOW_PATH: Path = Path(__file__).parent / "../examples" / "workflows"
 
 
-URLS: Dict[PipelineType, str] = {
+URLS: dict[PipelineType, str] = {
     PipelineType.metadata: "https://docs.open-metadata.org/connectors/ingestion/workflows/metadata",
     PipelineType.profiler: "https://docs.open-metadata.org/connectors/ingestion/workflows/profiler",
     PipelineType.TestSuite: "https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality",
@@ -42,7 +42,7 @@ URLS: Dict[PipelineType, str] = {
 }
 
 
-DEFAULT_EXAMPLE_FILE: Dict[PipelineType, str] = {
+DEFAULT_EXAMPLE_FILE: dict[PipelineType, str] = {
     PipelineType.metadata: "bigquery",
     PipelineType.profiler: "bigquery_profiler",
     PipelineType.TestSuite: "test_suite",
@@ -56,8 +56,8 @@ class WorkflowInitErrorHandler:
 
     @staticmethod
     def print_init_error(
-        exc: Union[Exception, Type[Exception]],
-        config: Dict[str, Any],
+        exc: Exception | type[Exception],
+        config: dict[str, Any],
         pipeline_type: PipelineType = PipelineType.metadata,
     ):
         """
@@ -78,18 +78,18 @@ class WorkflowInitErrorHandler:
         WorkflowInitErrorHandler._print_more_info(pipeline_type)
 
     @staticmethod
-    def _get_source_type_name(config: Dict[str, Any]) -> Optional[str]:
+    def _get_source_type_name(config: dict[str, Any]) -> str | None:
         """Returns the Source Type Name based on the Configuration passed."""
         source_type_name = None
 
-        if config and config.get("source", None) is not None and config["source"].get("type", None) is not None:
+        if config and config.get("source", None) is not None and config["source"].get("type", None) is not None:  # noqa: SIM910
             source_type_name = config["source"].get("type")
             source_type_name = source_type_name.replace("-", "-")
 
         return source_type_name
 
     @staticmethod
-    def _print_file_example(source_type_name: Optional[str], pipeline_type: PipelineType):
+    def _print_file_example(source_type_name: str | None, pipeline_type: PipelineType):
         """
         Print an example file for a given configuration
         """
@@ -103,7 +103,7 @@ class WorkflowInitErrorHandler:
                 message=f"\nMake sure you are following the following format e.g. '{example_file}':"
             )
             log_ansi_encoded_string(message="------------")
-            with open(example_path, encoding=UTF_8) as file:
+            with open(example_path, encoding=UTF_8) as file:  # noqa: PTH123
                 log_ansi_encoded_string(message=file.read())
             log_ansi_encoded_string(message="------------")
 

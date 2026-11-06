@@ -60,4 +60,22 @@ describe('ApplicationCard', () => {
 
     expect(onClick).toHaveBeenCalledTimes(1);
   });
+
+  it('renders disabled state when runtime disabled', () => {
+    render(<ApplicationCard {...props} disabled />);
+
+    expect(screen.getByTestId('deleted-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('search-index-card')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+  });
+
+  it('does not call onClick when the card is disabled', () => {
+    const onClick = jest.fn();
+    render(<ApplicationCard {...props} disabled onClick={onClick} />);
+    fireEvent.click(screen.getByTestId('config-btn'));
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
 });

@@ -17,18 +17,17 @@ code.
 """
 
 import re
-from typing import List, Optional
 
 from metadata.generated.schema.type.filterPattern import FilterPattern
 
 
-class InvalidPatternException(Exception):
+class InvalidPatternException(Exception):  # noqa: N818
     """
     Raised when an invalid pattern is configured in the workflow
     """
 
 
-def validate_regex(regex_list: Optional[List[str]]) -> None:
+def validate_regex(regex_list: list[str] | None) -> None:
     """
     Check that the given include/exclude regexes
     are well formatted
@@ -41,21 +40,22 @@ def validate_regex(regex_list: Optional[List[str]]) -> None:
             raise InvalidPatternException(msg) from err
 
 
-def _filter(filter_pattern: Optional[FilterPattern], name: Optional[str]) -> bool:
+def _filter(filter_pattern: FilterPattern | None, name: str | None) -> bool:
     """
     Return True if the name needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include: a name matching both an include and an
+    exclude pattern is filtered out.
 
     :param filter_pattern: Model defining filtering logic
     :param name: table or schema name
     :return: True for filtering, False otherwise
     """
-    if not filter_pattern:
-        # No filter pattern, nothing to filter
+    if filter_pattern is None or not filter_pattern_enabled(filter_pattern):
+        # No filter pattern, or one without includes/excludes: nothing to filter
         return False
 
-    if filter_pattern and not name:
+    if not name:
         # Filter pattern is present but not the name so we'll filter it out
         return True
 
@@ -76,7 +76,29 @@ def _filter(filter_pattern: Optional[FilterPattern], name: Optional[str]) -> boo
     return False
 
 
-def filter_by_schema(schema_filter_pattern: Optional[FilterPattern], schema_name: str) -> bool:
+def _filter_server_compatible(
+    filter_pattern: FilterPattern | None,
+    name: str | None,
+) -> bool:
+    """Apply case-insensitive substring filters, as the listing API does.
+
+    Includes take precedence when both lists are configured, matching
+    ``_build_regex_from_filter``. Explicit regex anchors remain effective.
+    """
+    if not filter_pattern:
+        return False
+    if not name:
+        return True
+
+    validate_regex(filter_pattern.includes)
+    validate_regex(filter_pattern.excludes)
+
+    if filter_pattern.includes:
+        return not any(re.search(regex, name, re.IGNORECASE) for regex in filter_pattern.includes)
+    return any(re.search(regex, name, re.IGNORECASE) for regex in filter_pattern.excludes or [])
+
+
+def filter_by_schema(schema_filter_pattern: FilterPattern | None, schema_name: str) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
 
@@ -89,7 +111,7 @@ def filter_by_schema(schema_filter_pattern: Optional[FilterPattern], schema_name
     return _filter(schema_filter_pattern, schema_name)
 
 
-def filter_by_table(table_filter_pattern: Optional[FilterPattern], table_name: str) -> bool:
+def filter_by_table(table_filter_pattern: FilterPattern | None, table_name: str) -> bool:
     """
     Return True if the table needs to be filtered, False otherwise
 
@@ -102,7 +124,18 @@ def filter_by_table(table_filter_pattern: Optional[FilterPattern], table_name: s
     return _filter(table_filter_pattern, table_name)
 
 
-def filter_by_chart(chart_filter_pattern: Optional[FilterPattern], chart_name: str) -> bool:
+def filter_by_column(column_filter_pattern: FilterPattern | None, column_name: str) -> bool:
+    """
+    Return True if the column needs to be filtered, False otherwise
+
+    :param column_filter_pattern: Model defining column filtering logic
+    :param column_name: column name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(column_filter_pattern, column_name)
+
+
+def filter_by_chart(chart_filter_pattern: FilterPattern | None, chart_name: str) -> bool:
     """
     Return True if the chart needs to be filtered, False otherwise
 
@@ -115,7 +148,7 @@ def filter_by_chart(chart_filter_pattern: Optional[FilterPattern], chart_name: s
     return _filter(chart_filter_pattern, chart_name)
 
 
-def filter_by_topic(topic_filter_pattern: Optional[FilterPattern], topic_name: str) -> bool:
+def filter_by_topic(topic_filter_pattern: FilterPattern | None, topic_name: str) -> bool:
     """
     Return True if the topic needs to be filtered, False otherwise
 
@@ -128,7 +161,7 @@ def filter_by_topic(topic_filter_pattern: Optional[FilterPattern], topic_name: s
     return _filter(topic_filter_pattern, topic_name)
 
 
-def filter_by_dashboard(dashboard_filter_pattern: Optional[FilterPattern], dashboard_name: str) -> bool:
+def filter_by_dashboard(dashboard_filter_pattern: FilterPattern | None, dashboard_name: str) -> bool:
     """
     Return True if the dashboard needs to be filtered, False otherwise
 
@@ -142,7 +175,8 @@ def filter_by_dashboard(dashboard_filter_pattern: Optional[FilterPattern], dashb
 
 
 def filter_by_stored_procedure(
-    stored_procedure_filter_pattern: Optional[FilterPattern], stored_procedure_name: str
+    stored_procedure_filter_pattern: FilterPattern | None,
+    stored_procedure_name: str,
 ) -> bool:
     """
     Return True if the stored procedure needs to be filtered, False otherwise
@@ -156,7 +190,7 @@ def filter_by_stored_procedure(
     return _filter(stored_procedure_filter_pattern, stored_procedure_name)
 
 
-def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool:
+def filter_by_fqn(fqn_filter_pattern: FilterPattern | None, fqn: str) -> bool:
     """
     Return True if the FQN needs to be filtered, False otherwise
 
@@ -169,7 +203,7 @@ def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool
     return _filter(fqn_filter_pattern, fqn)
 
 
-def filter_by_database(database_filter_pattern: Optional[FilterPattern], database_name: str) -> bool:
+def filter_by_database(database_filter_pattern: FilterPattern | None, database_name: str) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
 
@@ -182,7 +216,7 @@ def filter_by_database(database_filter_pattern: Optional[FilterPattern], databas
     return _filter(database_filter_pattern, database_name)
 
 
-def filter_by_pipeline(pipeline_filter_pattern: Optional[FilterPattern], pipeline_name: str) -> bool:
+def filter_by_pipeline(pipeline_filter_pattern: FilterPattern | None, pipeline_name: str) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
 
@@ -195,7 +229,7 @@ def filter_by_pipeline(pipeline_filter_pattern: Optional[FilterPattern], pipelin
     return _filter(pipeline_filter_pattern, pipeline_name)
 
 
-def filter_by_mlmodel(mlmodel_filter_pattern: Optional[FilterPattern], mlmodel_name: str) -> bool:
+def filter_by_mlmodel(mlmodel_filter_pattern: FilterPattern | None, mlmodel_name: str) -> bool:
     """
     Return True if the mlmodel needs to be filtered, False otherwise
 
@@ -208,7 +242,7 @@ def filter_by_mlmodel(mlmodel_filter_pattern: Optional[FilterPattern], mlmodel_n
     return _filter(mlmodel_filter_pattern, mlmodel_name)
 
 
-def filter_by_container(container_filter_pattern: Optional[FilterPattern], container_name: str) -> bool:
+def filter_by_container(container_filter_pattern: FilterPattern | None, container_name: str) -> bool:
     """
     Return True if the container needs to be filtered, False otherwise
 
@@ -221,7 +255,7 @@ def filter_by_container(container_filter_pattern: Optional[FilterPattern], conta
     return _filter(container_filter_pattern, container_name)
 
 
-def filter_by_datamodel(datamodel_filter_pattern: Optional[FilterPattern], datamodel_name: str) -> bool:
+def filter_by_datamodel(datamodel_filter_pattern: FilterPattern | None, datamodel_name: str) -> bool:
     """
     Return True if the models needs to be filtered, False otherwise
 
@@ -234,7 +268,7 @@ def filter_by_datamodel(datamodel_filter_pattern: Optional[FilterPattern], datam
     return _filter(datamodel_filter_pattern, datamodel_name)
 
 
-def filter_by_project(project_filter_pattern: Optional[FilterPattern], project_name: str) -> bool:
+def filter_by_project(project_filter_pattern: FilterPattern | None, project_name: str) -> bool:
     """
     Return True if the project needs to be filtered, False otherwise
 
@@ -247,7 +281,7 @@ def filter_by_project(project_filter_pattern: Optional[FilterPattern], project_n
     return _filter(project_filter_pattern, project_name)
 
 
-def filter_by_search_index(search_index_filter_pattern: Optional[FilterPattern], search_index_name: str) -> bool:
+def filter_by_search_index(search_index_filter_pattern: FilterPattern | None, search_index_name: str) -> bool:
     """
     Return True if the models needs to be filtered, False otherwise
 
@@ -260,7 +294,7 @@ def filter_by_search_index(search_index_filter_pattern: Optional[FilterPattern],
     return _filter(search_index_filter_pattern, search_index_name)
 
 
-def filter_by_classification(classification_pattern: Optional[FilterPattern], classification_name: str) -> bool:
+def filter_by_classification(classification_pattern: FilterPattern | None, classification_name: str) -> bool:
     """
     Return True if the models needs to be filtered, False otherwise
 
@@ -273,7 +307,42 @@ def filter_by_classification(classification_pattern: Optional[FilterPattern], cl
     return _filter(classification_pattern, classification_name)
 
 
-def filter_by_collection(collection_pattern: Optional[FilterPattern], collection_name: str) -> bool:
+def _any_match(regex_list: list[str] | None, names: list[str]) -> bool:
+    """Return True if any name matches any regex in the list (case-insensitive)."""
+    validate_regex(regex_list)
+    return any(re.match(regex, name, re.IGNORECASE) for regex in regex_list or [] for name in names)
+
+
+def filter_by_classifications(
+    classification_pattern: FilterPattern | None,
+    classification_names: list[str],
+) -> bool:
+    """
+    Return True if an entity carrying these classification tags must be filtered
+    out, False otherwise. Unlike ``filter_by_classification`` this evaluates the
+    whole set of tags an entity holds, so a single matching tag is enough to keep
+    (or, for excludes, to drop) the entity.
+
+    Exclude takes precedence over include:
+      - drop if ANY tag matches an exclude pattern
+      - otherwise, when includes are set, drop unless AT LEAST ONE tag matches an
+        include pattern
+
+    :param classification_pattern: Model defining classification filtering logic
+    :param classification_names: the entity's tag names (or FQNs)
+    :return: True for filtering out, False otherwise
+    """
+    result = False
+    if classification_pattern:
+        names = [name for name in classification_names if name]
+        if _any_match(classification_pattern.excludes, names):
+            result = True
+        elif classification_pattern.includes and not _any_match(classification_pattern.includes, names):
+            result = True
+    return result
+
+
+def filter_by_collection(collection_pattern: FilterPattern | None, collection_name: str) -> bool:
     """
     Return True if the models needs to be filtered, False otherwise
 
@@ -286,7 +355,7 @@ def filter_by_collection(collection_pattern: Optional[FilterPattern], collection
     return _filter(collection_pattern, collection_name)
 
 
-def filter_by_endpoint(endpoint_pattern: Optional[FilterPattern], endpoint_name: str) -> bool:
+def filter_by_endpoint(endpoint_pattern: FilterPattern | None, endpoint_name: str) -> bool:
     """
     Return True if the endpoint needs to be filtered, False otherwise
 
@@ -299,7 +368,7 @@ def filter_by_endpoint(endpoint_pattern: Optional[FilterPattern], endpoint_name:
     return _filter(endpoint_pattern, endpoint_name)
 
 
-def filter_by_tag(tag_pattern: Optional[FilterPattern], tag_name: str) -> bool:
+def filter_by_tag(tag_pattern: FilterPattern | None, tag_name: str) -> bool:
     """
     Return True if the models needs to be filtered, False otherwise
 
@@ -312,7 +381,7 @@ def filter_by_tag(tag_pattern: Optional[FilterPattern], tag_name: str) -> bool:
     return _filter(tag_pattern, tag_name)
 
 
-def filter_by_spreadsheet(spreadsheet_filter_pattern: Optional[FilterPattern], spreadsheet_name: str) -> bool:
+def filter_by_spreadsheet(spreadsheet_filter_pattern: FilterPattern | None, spreadsheet_name: str) -> bool:
     """
     Return True if the spreadsheet needs to be filtered, False otherwise
 
@@ -325,7 +394,7 @@ def filter_by_spreadsheet(spreadsheet_filter_pattern: Optional[FilterPattern], s
     return _filter(spreadsheet_filter_pattern, spreadsheet_name)
 
 
-def filter_by_directory(directory_filter_pattern: Optional[FilterPattern], directory_name: str) -> bool:
+def filter_by_directory(directory_filter_pattern: FilterPattern | None, directory_name: str) -> bool:
     """
     Return True if the directory needs to be filtered, False otherwise
 
@@ -338,7 +407,7 @@ def filter_by_directory(directory_filter_pattern: Optional[FilterPattern], direc
     return _filter(directory_filter_pattern, directory_name)
 
 
-def filter_by_file(file_filter_pattern: Optional[FilterPattern], file_name: str) -> bool:
+def filter_by_file(file_filter_pattern: FilterPattern | None, file_name: str) -> bool:
     """
     Return True if the file needs to be filtered, False otherwise
 
@@ -351,7 +420,7 @@ def filter_by_file(file_filter_pattern: Optional[FilterPattern], file_name: str)
     return _filter(file_filter_pattern, file_name)
 
 
-def filter_by_worksheet(worksheet_filter_pattern: Optional[FilterPattern], worksheet_name: str) -> bool:
+def filter_by_worksheet(worksheet_filter_pattern: FilterPattern | None, worksheet_name: str) -> bool:
     """
     Return True if the worksheet needs to be filtered, False otherwise
 
@@ -364,7 +433,7 @@ def filter_by_worksheet(worksheet_filter_pattern: Optional[FilterPattern], works
     return _filter(worksheet_filter_pattern, worksheet_name)
 
 
-def filter_by_server(server_filter_pattern: Optional[FilterPattern], server_name: str) -> bool:
+def filter_by_server(server_filter_pattern: FilterPattern | None, server_name: str) -> bool:
     """
     Return True if the MCP server needs to be filtered, False otherwise
 
@@ -375,3 +444,15 @@ def filter_by_server(server_filter_pattern: Optional[FilterPattern], server_name
     :return: True for filtering, False otherwise
     """
     return _filter(server_filter_pattern, server_name)
+
+
+def filter_pattern_enabled(filter_pattern: FilterPattern | None) -> bool:
+    """
+    Return True when the pattern would actually include or exclude something,
+    i.e. the user configured includes or excludes. An unset (None) or empty
+    pattern returns False.
+
+    :param filter_pattern: Model defining filtering logic
+    :return: True when includes/excludes are configured, False otherwise
+    """
+    return bool(filter_pattern and (filter_pattern.includes or filter_pattern.excludes))

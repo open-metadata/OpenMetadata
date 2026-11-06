@@ -10,13 +10,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.AppType;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -34,7 +37,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -48,13 +50,14 @@ import org.quartz.SchedulerException;
 @Getter
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
-  protected Set<String> getFieldsToEncryptDecrypt() {
-    return Set.of();
-  }
-
   protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
+
+  // Set on the freshly built instance by ApplicationHandler rather than passed to triggerOnDemand:
+  // apps such as AutoPilotApp override the single-argument triggerOnDemand, so adding an argument
+  // would silently route them to the base implementation instead of their override.
+  @Setter private String triggeredBy;
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
@@ -74,11 +77,11 @@ public class AbstractNativeApplication implements NativeApplication {
   public void install(String installedBy) {
     // If the app does not have any Schedule Return without scheduling
     if (Boolean.TRUE.equals(app.getDeleted())
-        || (app.getAppSchedule() == null)
         || Set.of(ScheduleType.NoSchedule, ScheduleType.OnlyManual)
             .contains(app.getScheduleType())) {
       LOG.debug("App {} does not support scheduling.", app.getName());
     } else if (app.getAppType().equals(AppType.Internal)
+        && app.getAppSchedule() != null
         && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
       try {
         ApplicationHandler.getInstance().removeOldJobs(app);
@@ -120,7 +123,7 @@ public class AbstractNativeApplication implements NativeApplication {
         appConfig.putAll(config);
       }
       validateConfig(appConfig);
-      AppScheduler.getInstance().triggerOnDemandApplication(app, config);
+      AppScheduler.getInstance().triggerOnDemandApplication(app, config, triggeredBy);
     } else {
       throw new IllegalArgumentException(NO_MANUAL_TRIGGER_ERR);
     }
@@ -196,19 +199,16 @@ public class AbstractNativeApplication implements NativeApplication {
     return appConfig;
   }
 
-  protected void decryptEncrypt(Map<String, Object> configMap, boolean encrypt) {
-    if (configMap == null || configMap.isEmpty()) {
-      return;
+  private static String deriveInterval(AppSchedule schedule) {
+    String result = null;
+    if (schedule != null
+        && schedule.getScheduleTimeline() != null
+        && schedule.getScheduleTimeline() != ScheduleTimeline.NONE
+        && schedule.getCronExpression() != null
+        && !schedule.getCronExpression().isBlank()) {
+      result = schedule.getCronExpression();
     }
-    Fernet instance = Fernet.getInstance();
-    Set<String> fieldsToProcess = getFieldsToEncryptDecrypt();
-    for (Map.Entry<String, Object> entry : configMap.entrySet()) {
-      if (fieldsToProcess.contains(entry.getKey()) && entry.getValue() instanceof String value) {
-        String updatedValue =
-            encrypt ? instance.encryptIfApplies(value) : instance.decryptIfApplies(value);
-        configMap.put(entry.getKey(), updatedValue);
-      }
-    }
+    return result;
   }
 
   private void updateAppConfig(
@@ -222,6 +222,12 @@ public class AbstractNativeApplication implements NativeApplication {
     IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
     updated.setSourceConfig(
         updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
+    AirflowConfig airflowConfig = updated.getAirflowConfig();
+    if (airflowConfig == null) {
+      airflowConfig = new AirflowConfig();
+      updated.setAirflowConfig(airflowConfig);
+    }
+    airflowConfig.withScheduleInterval(deriveInterval(this.getApp().getAppSchedule()));
     repository.update(null, original, updated, updatedBy);
   }
 
@@ -250,7 +256,7 @@ public class AbstractNativeApplication implements NativeApplication {
                             .withAppPrivateConfig(this.getApp().getPrivateConfiguration())))
             .withAirflowConfig(
                 new AirflowConfig()
-                    .withScheduleInterval(this.getApp().getAppSchedule().getCronExpression()))
+                    .withScheduleInterval(deriveInterval(this.getApp().getAppSchedule())))
             .withService(service);
 
     // Get Pipeline

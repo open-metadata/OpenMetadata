@@ -1,0 +1,34 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import React from 'react';
+
+export interface WidgetCardProps {
+  children?: React.ReactNode;
+  title?: string;
+  titleIcon?: React.ReactNode;
+  headerExtra?: React.ReactNode;
+  /** Rendered at the right end of the header, before the collapse button. */
+  headerActions?: React.ReactNode;
+  /** Replaces the whole header (title, extras, collapse button), e.g. an open search field. */
+  headerContent?: React.ReactNode;
+  defaultExpanded?: boolean;
+  onExpandStateChange?: (isExpanded: boolean) => void;
+  isExpandDisabled?: boolean;
+  forceExpand?: boolean;
+  dataTestId?: string;
+  className?: string;
+  contentClassName?: string;
+  helperText?: React.ReactNode;
+  /** Rendered in Card.Footer, below the body and with its own divider, e.g. Save/Cancel actions. */
+  footer?: React.ReactNode;
+}

@@ -31,27 +31,11 @@ jest.mock('../../../assets/svg/ic-ai-suggestion.svg', () => ({
   ReactComponent: () => <div data-testid="ai-suggestion-icon" />,
 }));
 
-jest.mock('../../../assets/svg/ic-automated.svg', () => ({
-  ReactComponent: () => <div data-testid="automated-icon" />,
-}));
-
-jest.mock('../../../assets/svg/ic-propagated.svg', () => ({
-  ReactComponent: () => <div data-testid="propagated-icon" />,
-}));
-
-jest.mock('../../../assets/svg/ic-check-circle.svg', () => ({
-  ReactComponent: () => <div data-testid="check-circle-icon" />,
-}));
-
 jest.mock('../PopOverCard/UserPopOverCard', () => ({
   __esModule: true,
   default: ({ displayName }: { displayName: string }) => (
     <span data-testid="user-popover">{displayName}</span>
   ),
-}));
-
-jest.mock('antd', () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 describe('DescriptionSourceBadge', () => {

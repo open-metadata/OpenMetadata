@@ -2,7 +2,7 @@
 
 This guide helps developers (and AI agents like Claude Code, Codex, Copilot) write correct, production-quality code in the OpenMetadata codebase. It covers the preferred workflow for each language, architecture patterns you must understand, and how to use the available skills.
 
-For environment setup, build commands, and coding standards, see [CLAUDE.md](CLAUDE.md).
+For environment setup, build commands, and coding standards, see [AGENTS.md](AGENTS.md).
 For connector-specific development, see [skills/README.md](skills/README.md).
 
 ---
@@ -57,10 +57,11 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 5. /test-enforcement   — Verify Jest coverage + Playwright E2E if user-facing
 6. /verification       — Show lint + test output
 7. /code-review        — Run frontend-reviewer agent
+8. /ui-pr-recording    — When creating a UI feature/task PR: run Docker, record the feature, upload
 ```
 
 **Key rules:**
-- Use components from `openmetadata-ui-core-components`, never MUI
+- Use components from `openmetadata-ui-core-components`, never Ant Design
 - All Tailwind classes use `tw:` prefix, all colors use CSS custom properties
 - No string literals in JSX — use `t('label.key-name')` from `useTranslation()`
 - No `any` type — use generated types from `generated/` or define proper interfaces
@@ -69,12 +70,14 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 
 ### Python Ingestion
 
+For local setup and test commands, see [Python commands](#locked-local-python-environments).
+
 ```
 1. /planning          — Choose connector architecture (SQLAlchemy vs REST vs SDK)
 2. /connector-standards — Load the relevant standards
 3. /tdd               — Write pytest tests first
 4.                       Implement using topology pattern
-5.                       make py_format && make lint
+5.                       make py_format && make py_format_check
 6. /test-enforcement   — Verify 90% coverage
 7. /verification       — Show test + lint output
 8. /connector-review   — Full review against golden standards (for connectors)
@@ -107,6 +110,7 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 | `/connector-review` | Reviewing connector PRs | Multi-agent review against golden standards |
 | `/scaffold-connector` | Building a new connector | Generates JSON Schema, Python boilerplate, AI context |
 | `/test-locally` | Testing in full environment | Builds and deploys local Docker stack |
+| `/ui-pr-recording` | Creating a PR for a UI feature or feature task | Runs the PR build in Docker with sample data and embeds a verified GitHub-hosted recording in the PR description |
 
 ### Workflow Routing
 
@@ -370,7 +374,7 @@ Authorization uses the `Authorizer` interface, injected into all resource classe
 
 **Pattern in resources:**
 ```java
-// All mutating operations must authorize:
+// All endpoints — including reads, listings, and sub-resource accesses — must authorize:
 authorizer.authorize(securityContext, operationContext, resourceContext);
 
 // OperationContext wraps the MetadataOperation enum:
@@ -387,7 +391,7 @@ new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TAGS)
 - `PolicyEvaluator` — evaluates rules against `SubjectContext` + `ResourceContextInterface` + `OperationContext`
 - `SubjectCache` — caches permission evaluations per user
 
-**When adding new resources:** ensure all mutating methods call `authorizer.authorize()` before execution. Override `getEntitySpecificOperations()` in the resource to register field-level view permissions.
+**When adding new resources:** ensure all endpoints (including reads, listings, and sub-resource accesses) call `authorizer.authorize()` before execution. Override `getEntitySpecificOperations()` in the resource to register field-level view permissions.
 
 ### Search Infrastructure
 
@@ -580,3 +584,66 @@ Always import from `generated/` for API response types. Never hand-write interfa
 6. **Unit tests**: `ingestion/tests/unit/topology/{type}/test_{connector}.py`
 7. **UI integration**: Update `{type}ServiceUtils.tsx`, add MDX doc file
 8. **Run**: `yarn parse-schema` for UI form generation
+
+## Locked local Python environments
+
+From the **repository root**, install the test dependencies and activate the environment:
+
+```bash
+make install_test PYTHON=python3.11
+source env/bin/activate
+export PYTHON_VERSIONS=3.11
+```
+
+Set `PYTHON_VERSIONS` to your environment's version to run one Nox matrix entry.
+Python 3.10–3.12 are validated; newer versions remain available for experimentation
+(`requires-python` has no upper bound). Native build tools and ANTLR are required;
+use `./scripts/dev_setup.sh` for first-time toolchain setup.
+
+**Unit tests** — run from root or `ingestion/`; paths in `ARGS` are always relative to `ingestion/`:
+
+```bash
+make unit_ingestion                                      # Full unit suite
+make unit_ingestion ARGS="-n 0 tests/unit/models/"         # One directory
+make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_pydantic.py"  # One file
+# One test by node ID
+make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_pydantic.py::test_model_dump_secrets"
+# Filter names within a directory
+make unit_ingestion ARGS="-n 2 tests/unit/models/ -k 'secrets or validation'"
+```
+
+The default is **four workers**. Override with `-n 2` for less load, `-n 0` for debugging,
+or `-n auto` for CPU-based selection. Use `-m 'not slow'` to omit slow-marked tests.
+An explicit path replaces the default suite; `-k` and `-m` filter that selection.
+
+| Command | Purpose |
+| --- | --- |
+| `make install_dev` | Smaller development setup; use `install_test` for tests |
+| `make install` / `make install_all` | Base SDK / all-connector installation |
+| `make py_format` / `make py_format_check` | Fix / check Python formatting and lint |
+| `make static-checks` | Type checks |
+| `make generate ARGS=--python-only` | Regenerate Python models/parsers; **root only** |
+| `python scripts/check_generated_models.py --check` | Check generated-file freshness |
+| `make run_ometa_integration_tests` | Integration tests; prepare required services first; accepts `ARGS` |
+| `make coverage` | Unit and integration suites plus coverage reports; requires their services |
+
+Make prepares pinned uv/Nox automatically. Application profiles reuse `env/` and remove
+packages outside the selected profile; switching from `test` to `dev` removes test-only
+packages. Formatting, generation and coverage tools use separate `ingestion/.nox/`
+environments. The test profile locks the four classification models and validates them locally;
+repeat runs reuse matching models. Updating their versions requires a manifest/lock update.
+
+For another interpreter/environment, use Nox explicitly after setup:
+
+```bash
+ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py \
+  -s install -- test --python python3.12 --environment /tmp/om-test-env
+```
+
+Existing environments keep their interpreter. `OM_VENV_DIR` selects another application
+environment for Make. `make install_dev_env` aliases `install_test`;
+`make unit_ingestion_dev_env` aliases `unit_ingestion`.
+
+Dependency selections are in `ingestion/pyproject.toml`; sessions are in
+`ingestion/noxfile.py`. Commands reject a stale lock. After intentionally editing dependencies,
+run `ingestion/.nox/bootstrap/bin/uv lock --project ingestion` and review the diff.

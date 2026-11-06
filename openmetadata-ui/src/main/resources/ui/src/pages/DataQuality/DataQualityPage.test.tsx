@@ -16,10 +16,20 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+import DataQualityClassBase from './DataQualityClassBase';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
+import DataQualityProvider from './DataQualityProvider';
 
 const DATA_QUALITY_TEST_PATHS = {
   testCases: `/data-quality/${DataQualityPageTabs.TEST_CASES}`,
@@ -31,29 +41,88 @@ const mockProps = {
   pageTitle: 'data-quality',
 };
 
+const dataQualityPageAt = (initialPath: string) => (
+  <MemoryRouter initialEntries={[initialPath]}>
+    <Routes>
+      <Route
+        element={<DataQualityPage {...mockProps} />}
+        path="/data-quality/:tab/:subTab"
+      />
+      <Route
+        element={<DataQualityPage {...mockProps} />}
+        path="/data-quality/:tab"
+      />
+    </Routes>
+  </MemoryRouter>
+);
+
 const renderDataQualityPage = (initialPath: string) =>
-  render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <Routes>
-        <Route
-          element={<DataQualityPage {...mockProps} />}
-          path="/data-quality/:tab/:subTab"
-        />
-        <Route
-          element={<DataQualityPage {...mockProps} />}
-          path="/data-quality/:tab"
-        />
-      </Routes>
-    </MemoryRouter>
+  render(dataQualityPageAt(initialPath));
+
+// Renders the live URL so tab switches can be asserted on the real router's
+// location instead of on navigate-call wiring.
+const LocationProbe = () => {
+  const location = useLocation();
+
+  return (
+    <span data-testid="location-probe">
+      {location.pathname}
+      {location.search}
+    </span>
   );
+};
+
+// Drives the URL the same ways real users do: a filter change pushes a new
+// search onto the history, and browser back jumps across entries, both
+// bypassing the page's own tab handler.
+const UrlMutator = () => {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <button
+        aria-label="Mutate search"
+        data-testid="mutate-search"
+        onClick={() => navigate({ search: '?testSuiteFqn=suite1' })}
+      />
+      <button
+        aria-label="Go back"
+        data-testid="go-back"
+        onClick={() => navigate(-2)}
+      />
+    </>
+  );
+};
 
 // Mock navigation function
 const mockNavigate = jest.fn();
+const mockShowModal = jest.fn();
+// Tab-preservation tests drive the real router; the rest assert on mockNavigate.
+let mockUseRealNavigate = false;
+const HOOK_ERROR =
+  /Do not call Hooks|change in the order of Hooks|Rendered (more|fewer) hooks/;
 
-// mock components
-jest.mock('./DataQualityProvider', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
+// A real context read stands in for the provider, so a call that moves back
+// inside a memo (or a menu helper it runs) trips React's hook-order checks.
+jest.mock(
+  '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => {
+    const { createContext, useContext } = jest.requireActual('react');
+    const context = createContext({
+      showModal: (data: unknown) => mockShowModal(data),
+    });
+
+    return { useEntityExportModalProvider: () => useContext(context) };
+  }
+);
+
+jest.mock('./DataQualityProvider', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  useDataQualityProvider: jest.fn().mockImplementation(() => ({})),
+}));
 jest.mock('../../components/common/LeftPanelCard/LeftPanelCard', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
@@ -71,9 +140,6 @@ jest.mock('./DataQualityClassBase', () => {
           key: 'tables',
           label: 'Tables',
           icon: jest.fn(),
-          iconProps: {
-            className: 'side-panel-icons',
-          },
         },
       ]),
       getDataQualityTab: jest.fn().mockReturnValue([
@@ -118,13 +184,29 @@ jest.mock('../../hoc/withPageLayout', () => ({
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+  useNavigate: jest
+    .fn()
+    .mockImplementation((...args) =>
+      mockUseRealNavigate
+        ? jest.requireActual('react-router-dom').useNavigate(...args)
+        : mockNavigate
+    ),
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       testSuite: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        ViewBasic: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+      testCase: {
         Create: true,
         Delete: true,
         ViewAll: true,
@@ -149,56 +231,54 @@ jest.mock('../../components/PageHeader/PageHeader.component', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(({ data }) => (
     <div className="page-header-container" data-testid="page-header-container">
-      <h5 className="ant-typography heading" data-testid="heading">
+      <h5 className="heading" data-testid="heading">
         {data?.header}
       </h5>
-      <div className="ant-typography sub-heading" data-testid="sub-heading">
+      <div className="sub-heading" data-testid="sub-heading">
         {data?.subHeader}
       </div>
     </div>
   )),
 }));
 
-// Mock TestCaseFormV1 and BundleSuiteForm components
+// Mock TestCaseFormDrawer and BundleSuiteFormDrawer components
 jest.mock(
-  '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1',
+  '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () => {
-    return jest.fn().mockImplementation(({ drawerProps, onCancel }) => (
-      <div data-testid="test-case-form-v1-modal">
-        <div>TestCaseFormV1 Modal</div>
-        <button data-testid="test-case-cancel-btn" onClick={onCancel}>
+    return jest.fn().mockImplementation(({ open, onClose }) => (
+      <div data-testid="test-case-form-drawer">
+        <div>TestCaseFormDrawer</div>
+        <button data-testid="test-case-cancel-btn" onClick={onClose}>
           Cancel
         </button>
-        <div>title: {drawerProps?.title}</div>
-        <div>open: {drawerProps?.open ? 'true' : 'false'}</div>
+        <div>open: {open ? 'true' : 'false'}</div>
       </div>
     ));
   }
 );
 
 jest.mock(
-  '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm',
+  '../../components/DataQuality/BundleSuiteForm/BundleSuiteFormDrawer',
   () => {
-    return jest
-      .fn()
-      .mockImplementation(({ drawerProps, onCancel, onSuccess }) => (
-        <div data-testid="bundle-suite-form-modal">
-          <div>BundleSuiteForm Modal</div>
-          <button data-testid="bundle-suite-cancel-btn" onClick={onCancel}>
-            Cancel
-          </button>
-          <button data-testid="bundle-suite-success-btn" onClick={onSuccess}>
-            Success
-          </button>
-          <div>open: {drawerProps?.open ? 'true' : 'false'}</div>
-        </div>
-      ));
+    return jest.fn().mockImplementation(({ onClose, onSuccess, open }) => (
+      <div data-testid="bundle-suite-form-drawer">
+        <div>BundleSuiteFormDrawer</div>
+        <button data-testid="bundle-suite-cancel-btn" onClick={onClose}>
+          Cancel
+        </button>
+        <button data-testid="bundle-suite-success-btn" onClick={onSuccess}>
+          Success
+        </button>
+        <div>open: {open ? 'true' : 'false'}</div>
+      </div>
+    ));
   }
 );
 
 describe('DataQualityPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseRealNavigate = false;
   });
 
   describe('Component Rendering', () => {
@@ -243,9 +323,36 @@ describe('DataQualityPage', () => {
     });
   });
 
-  describe('Modal Functionality', () => {
-    it('should open TestCaseFormV1 modal when Add Test Case button is clicked', async () => {
+  describe('DataQualityContext create-action registration', () => {
+    it('should pass create handlers and permissions into DataQualityProvider', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
+
+      await screen.findByTestId('data-insight-container');
+
+      await waitFor(() => {
+        const calls = (DataQualityProvider as unknown as jest.Mock).mock.calls;
+        const lastProps = calls[calls.length - 1][0];
+
+        expect(lastProps.createActions).toEqual(
+          expect.objectContaining({
+            canCreateTestCase: true,
+            canCreateBundleSuite: true,
+            onAddTestCase: expect.any(Function),
+            onAddBundleSuite: expect.any(Function),
+          })
+        );
+      });
+    });
+  });
+
+  describe('Modal Functionality', () => {
+    it('should open TestCaseFormDrawer when Add Test Case button is clicked', async () => {
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
+
+      const drawer = await screen.findByTestId('test-case-form-drawer');
+
+      expect(drawer).toBeInTheDocument();
+      expect(within(drawer).getByText('open: false')).toBeInTheDocument();
 
       const addButton = await screen.findByTestId('add-test-case-btn');
 
@@ -254,24 +361,22 @@ describe('DataQualityPage', () => {
       });
 
       expect(
-        await screen.findByTestId('test-case-form-v1-modal')
+        within(drawer).getByText('TestCaseFormDrawer')
       ).toBeInTheDocument();
-      expect(screen.getByText('TestCaseFormV1 Modal')).toBeInTheDocument();
-      expect(screen.getByText('open: true')).toBeInTheDocument();
+      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
     });
 
-    it('should close TestCaseFormV1 modal when cancel is clicked', async () => {
+    it('should close TestCaseFormDrawer when cancel is clicked', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
+      const drawer = await screen.findByTestId('test-case-form-drawer');
       const addButton = await screen.findByTestId('add-test-case-btn');
 
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      expect(
-        await screen.findByTestId('test-case-form-v1-modal')
-      ).toBeInTheDocument();
+      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
 
       const cancelButton = screen.getByTestId('test-case-cancel-btn');
 
@@ -280,14 +385,17 @@ describe('DataQualityPage', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.queryByTestId('test-case-form-v1-modal')
-        ).not.toBeInTheDocument();
+        expect(within(drawer).getByText('open: false')).toBeInTheDocument();
       });
     });
 
-    it('should open BundleSuiteForm modal when Add Test Suite button is clicked', async () => {
+    it('should open BundleSuiteFormDrawer when Add Test Suite button is clicked', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testSuites);
+
+      const drawer = await screen.findByTestId('bundle-suite-form-drawer');
+
+      expect(drawer).toBeInTheDocument();
+      expect(within(drawer).getByText('open: false')).toBeInTheDocument();
 
       const addButton = await screen.findByTestId('add-test-suite-btn');
 
@@ -296,24 +404,22 @@ describe('DataQualityPage', () => {
       });
 
       expect(
-        await screen.findByTestId('bundle-suite-form-modal')
+        within(drawer).getByText('BundleSuiteFormDrawer')
       ).toBeInTheDocument();
-      expect(screen.getByText('BundleSuiteForm Modal')).toBeInTheDocument();
-      expect(screen.getByText('open: true')).toBeInTheDocument();
+      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
     });
 
-    it('should close BundleSuiteForm modal when cancel is clicked', async () => {
+    it('should close BundleSuiteFormDrawer when cancel is clicked', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testSuites);
 
+      const drawer = await screen.findByTestId('bundle-suite-form-drawer');
       const addButton = await screen.findByTestId('add-test-suite-btn');
 
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      expect(
-        await screen.findByTestId('bundle-suite-form-modal')
-      ).toBeInTheDocument();
+      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
 
       const cancelButton = screen.getByTestId('bundle-suite-cancel-btn');
 
@@ -322,9 +428,7 @@ describe('DataQualityPage', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.queryByTestId('bundle-suite-form-modal')
-        ).not.toBeInTheDocument();
+        expect(within(drawer).getByText('open: false')).toBeInTheDocument();
       });
     });
   });
@@ -345,6 +449,136 @@ describe('DataQualityPage', () => {
         await screen.findByTestId('data-quality-add-button-menu')
       ).toBeInTheDocument();
       expect(screen.getByText('label.add')).toBeInTheDocument();
+    });
+
+    it('should restore each tab query string when switching between tabs', async () => {
+      mockUseRealNavigate = true;
+      const initialSearch =
+        '?testCaseStatus%5B%5D=Failed&lastRunRange%5BstartTs%5D=100&lastRunRange%5BendTs%5D=200';
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      const dataQualityTabs = (activeTab: string) => (
+        <MemoryRouter initialEntries={[activeTab]}>
+          <LocationProbe />
+          <Routes>
+            <Route
+              element={<DataQualityPage {...mockProps} />}
+              path="/data-quality/:tab/:subTab"
+            />
+            <Route
+              element={<DataQualityPage {...mockProps} />}
+              path="/data-quality/:tab"
+            />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      render(
+        dataQualityTabs(`${DATA_QUALITY_TEST_PATHS.testCases}${initialSearch}`)
+      );
+
+      await screen.findByTestId('tabs');
+
+      // Leaving Test Cases must not carry its filters into the next tab. The
+      // full-URL equality catches a leaked query string, which a substring
+      // match on the path alone would let through.
+      await user.click(screen.getByRole('tab', { name: 'Test Suites' }));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        DATA_QUALITY_TEST_PATHS.testSuites
+      );
+
+      // Coming back must re-send the filters the user had selected.
+      await user.click(screen.getByRole('tab', { name: 'Test Cases' }));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        `${DATA_QUALITY_TEST_PATHS.testCases}${initialSearch}`
+      );
+    });
+
+    it('should restore a tab latest URL even when the user left it via history back', async () => {
+      mockUseRealNavigate = true;
+      const initialSearch = '?testCaseStatus%5B%5D=Failed';
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      const dataQualityTabs = (initialPath: string) => (
+        <MemoryRouter initialEntries={[initialPath]}>
+          <LocationProbe />
+          <UrlMutator />
+          <Routes>
+            <Route
+              element={<DataQualityPage {...mockProps} />}
+              path="/data-quality/:tab/:subTab"
+            />
+            <Route
+              element={<DataQualityPage {...mockProps} />}
+              path="/data-quality/:tab"
+            />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      render(
+        dataQualityTabs(`${DATA_QUALITY_TEST_PATHS.testCases}${initialSearch}`)
+      );
+
+      await screen.findByTestId('tabs');
+
+      // Switching to Test Suites records its (empty) search.
+      await user.click(screen.getByRole('tab', { name: 'Test Suites' }));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        DATA_QUALITY_TEST_PATHS.testSuites
+      );
+
+      // A filter change on Test Suites rewrites its URL…
+      await user.click(screen.getByTestId('mutate-search'));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        `${DATA_QUALITY_TEST_PATHS.testSuites}?testSuiteFqn=suite1`
+      );
+
+      // …and leaving Test Suites via history back (not a tab click) must not
+      // lose that search — returning to the tab must restore the latest URL.
+      await user.click(screen.getByTestId('go-back'));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        `${DATA_QUALITY_TEST_PATHS.testCases}${initialSearch}`
+      );
+
+      await user.click(screen.getByRole('tab', { name: 'Test Suites' }));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        `${DATA_QUALITY_TEST_PATHS.testSuites}?testSuiteFqn=suite1`
+      );
+    });
+
+    it('should read the export modal hook outside the export button memo and hand its showModal to the builder', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error');
+      const exportData = { name: 'data-quality', onExport: jest.fn() };
+
+      const { rerender } = renderDataQualityPage(
+        DATA_QUALITY_TEST_PATHS.dashboard
+      );
+      await screen.findByTestId('tabs');
+      rerender(dataQualityPageAt(DATA_QUALITY_TEST_PATHS.dashboard));
+
+      const [activeTab, showModal] = (
+        DataQualityClassBase.getExportDataQualityDashboardButton as jest.Mock
+      ).mock.calls.at(-1);
+      showModal(exportData);
+
+      expect(activeTab).toBe(DataQualityPageTabs.DASHBOARD);
+      expect(mockShowModal).toHaveBeenCalledWith(exportData);
+      expect(
+        consoleErrorSpy.mock.calls.filter(([message]) =>
+          HOOK_ERROR.test(String(message))
+        )
+      ).toEqual([]);
+
+      consoleErrorSpy.mockRestore();
     });
   });
 });

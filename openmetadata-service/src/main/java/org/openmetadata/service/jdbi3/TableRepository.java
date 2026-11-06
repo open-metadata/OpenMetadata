@@ -24,15 +24,22 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TABLE_COLUMN;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.SYSTEM_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.TABLE_COLUMN_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
@@ -75,9 +82,9 @@ import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateTableProfile;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
@@ -105,7 +112,6 @@ import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -115,21 +121,23 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.LikeEscape;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidatorUtil;
 
@@ -137,23 +145,22 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  public static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
+  public static final String PATCH_FIELDS =
+      "tableConstraints,tablePartition,tableSharding,columns,schemaDefinition";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
-      "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
+      "tableConstraints,tablePartition,tableSharding,dataModel,sourceUrl,columns,schemaDefinition";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
-  public static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
-  public static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
-  public static final String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
-
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
   public static final String TABLE_PIPELINE_OBSERVABILITY_EXTENSION = "table.pipelineObservability";
-  public static final String TABLE_COLUMN_EXTENSION = "table.column";
-  public static final String TABLE_EXTENSION = "table.table";
-  public static final String CUSTOM_METRICS_EXTENSION = "customMetrics.";
+  public static final String TABLE_COLUMN_EXTENSION = TableMetadataLoader.TABLE_COLUMN_EXTENSION;
+  public static final String TABLE_EXTENSION = TableMetadataLoader.TABLE_EXTENSION;
+  public static final String CUSTOM_METRICS_EXTENSION =
+      TableMetadataLoader.CUSTOM_METRICS_EXTENSION;
+  public static final String COLUMN_EXTENSION_JSON_SCHEMA = "columnExtension";
   public static final String TABLE_PROFILER_CONFIG = "tableProfilerConfig";
   private static final ReadPrefetchKey PREFETCH_DEFAULT_FIELDS =
       ReadPrefetchKey.TABLE_DEFAULT_FIELDS;
@@ -165,6 +172,7 @@ public class TableRepository extends EntityRepository<Table> {
   private static final String RETENTION_PERIOD_FIELD = "retentionPeriod";
   private static final Set<String> CHANGE_SUMMARY_FIELDS =
       Set.of("description", "owners", "columns.description");
+  private final TableMetadataLoader metadataLoader;
 
   public TableRepository() {
     super(
@@ -176,6 +184,14 @@ public class TableRepository extends EntityRepository<Table> {
         UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // A recursive hard-delete of an ancestor (database service / database / schema) removes table
+    // docs from search (deleteOrUpdateChildren by service.id / database.id / databaseSchema.id) and
+    // field_relationship / tag_usage via the root cleanup() FQN prefix, so the bulk path skips the
+    // per-table search dispatch and FQN-satellite deletes.
+    descendantsCoveredByAncestorCascade = true;
+    metadataLoader =
+        new TableMetadataLoader(
+            () -> daoCollection.entityExtensionDAO(), this::customPropertyReferences, Entity.TABLE);
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
@@ -183,7 +199,8 @@ public class TableRepository extends EntityRepository<Table> {
     fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndSetTableProfilerConfigs);
     fieldFetchers.put("joins", this::fetchAndSetJoins);
     fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
-    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetTableTags);
+    fieldFetchers.put(COLUMN_FIELD, this::fetchAndSetColumnTags);
     fieldFetchers.put("pipelineObservability", this::fetchAndSetPipelineObservability);
   }
 
@@ -196,7 +213,7 @@ public class TableRepository extends EntityRepository<Table> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
               : table.getUsageSummary());
     }
-    if (fields.contains(COLUMN_FIELD) && fields.contains(FIELD_TAGS)) {
+    if (fields.contains(COLUMN_FIELD)) {
       populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
@@ -205,19 +222,13 @@ public class TableRepository extends EntityRepository<Table> {
             ? getTableProfilerConfig(table)
             : table.getTableProfilerConfig());
     table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : table.getTestSuite());
-    table.setCustomMetrics(
-        fields.contains(CUSTOM_METRICS) ? getCustomMetrics(table, null) : table.getCustomMetrics());
-    if ((fields.contains(COLUMN_FIELD)) && (fields.contains(CUSTOM_METRICS))) {
-      for (Column column : table.getColumns()) {
-        column.setCustomMetrics(getCustomMetrics(table, column.getName()));
-      }
+    if (fields.contains(CUSTOM_METRICS)) {
+      metadataLoader.loadMetrics(List.of(table), fields.contains(COLUMN_FIELD));
     }
-    if ((fields.contains(COLUMN_FIELD)) && (fields.contains("extension"))) {
-      if (table.getColumns() != null) {
-        for (Column column : table.getColumns()) {
-          column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
-        }
-      }
+    if (fields.contains(COLUMN_FIELD) && fields.contains("extension")) {
+      metadataLoader.loadColumnExtensions(table.getId(), table.getColumns());
+    } else if (fields.contains(COLUMN_FIELD)) {
+      applyColumnReferences(List.of(table), Table::getColumns, false);
     }
   }
 
@@ -228,9 +239,10 @@ public class TableRepository extends EntityRepository<Table> {
 
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
+    if (fields.contains(COLUMN_FIELD)) {
+      applyColumnReferences(entities, Table::getColumns, fields.contains("extension"));
+    }
 
-    // Column tags come from tag_usage, not table JSON — fetched via fetchAndSetColumnTags when tags
-    // requested
     entities.forEach(table -> clearFieldsInternal(table, fields));
   }
 
@@ -272,14 +284,10 @@ public class TableRepository extends EntityRepository<Table> {
     if (!fields.contains(CUSTOM_METRICS) || tables == null || tables.isEmpty()) {
       return;
     }
-    setFieldFromMap(
-        true,
-        tables,
-        batchFetchCustomMetrics(tables, fields.contains(COLUMN_FIELD)),
-        Table::setCustomMetrics);
+    metadataLoader.loadMetrics(tables, fields.contains(COLUMN_FIELD));
   }
 
-  private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
+  private void fetchAndSetTableTags(List<Table> tables, Fields fields) {
     if (!fields.contains(FIELD_TAGS) || tables == null || tables.isEmpty()) {
       return;
     }
@@ -290,9 +298,12 @@ public class TableRepository extends EntityRepository<Table> {
           addDerivedTagsGracefully(
               tagsMap.getOrDefault(table.getFullyQualifiedName(), Collections.emptyList())));
     }
+  }
 
+  private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
     if (fields.contains(COLUMN_FIELD)) {
       bulkPopulateEntityFieldTags(tables, Table::getColumns);
+      inheritEntityTermsOnFields(tables, Table::getColumns);
     }
   }
 
@@ -329,20 +340,19 @@ public class TableRepository extends EntityRepository<Table> {
       return;
     }
 
-    boolean needsOwnersOrDomains = super.requiresParentForInheritance(table, fields);
+    boolean needsOwnersOrDomains = requiresParentForOwnersOrDomains(table, fields);
     boolean needsRetention =
         shouldResolveRetentionInheritance(fields) && table.getRetentionPeriod() == null;
-    if (!needsOwnersOrDomains && !needsRetention) {
+    boolean needsTags = requiresParentForPropagatedTags(fields);
+    if (!needsOwnersOrDomains && !needsRetention && !needsTags) {
       return;
     }
 
-    String inheritanceFields =
-        needsOwnersOrDomains
-            ? (needsRetention ? "owners,domains,retentionPeriod" : "owners,domains")
-            : "retentionPeriod";
     DatabaseSchema schema =
-        getOrLoadInheritanceParent(
-            table.getDatabaseSchema(), inheritanceFields, DatabaseSchema.class);
+        loadInheritanceParentLeniently(
+            table.getDatabaseSchema(),
+            inheritanceParentFields(needsOwnersOrDomains, needsRetention, needsTags),
+            DatabaseSchema.class);
     if (schema == null) {
       return;
     }
@@ -353,6 +363,9 @@ public class TableRepository extends EntityRepository<Table> {
     if (needsRetention) {
       table.withRetentionPeriod(schema.getRetentionPeriod());
     }
+    // The schema was loaded through the inheritance path, so its own tags already carry the
+    // database's and the service's -- that is what makes propagation transitive.
+    inheritTags(table, fields, schema);
   }
 
   private void setDefaultFields(Table table) {
@@ -1277,12 +1290,12 @@ public class TableRepository extends EntityRepository<Table> {
       return latestProfiles;
     }
 
-    List<CollectionDAO.ProfilerDataTimeSeriesDAO.LatestExtensionRecord> records =
+    List<TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.LatestExtensionRecord> records =
         daoCollection
             .profilerDataTimeSeriesDao()
             .getLatestExtensionsBatch(columnFqns, TABLE_COLUMN_PROFILE_EXTENSION);
 
-    for (CollectionDAO.ProfilerDataTimeSeriesDAO.LatestExtensionRecord record : records) {
+    for (TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.LatestExtensionRecord record : records) {
       EntityProfile entityProfile = JsonUtils.readValue(record.json(), EntityProfile.class);
       if (entityProfile != null) {
         latestProfiles.put(record.entityFQNHash(), entityProfile);
@@ -1416,7 +1429,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     List<TagLabel> mergedTableTags =
         mergeTagsWithIncomingPrecedence(table.getTags(), dataModel.getTags());
-    daoCollection.tagUsageDAO().deleteTagsByTarget(table.getFullyQualifiedName());
+    deleteTagsPreservingCertification(table.getFullyQualifiedName());
     table.setTags(mergedTableTags);
     applyTags(table);
 
@@ -1445,8 +1458,15 @@ public class TableRepository extends EntityRepository<Table> {
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
     // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
     // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
-    // merged tags/dataModel instead of stale pre-merge JSON.
-    invalidateCacheForEntity(entityType, table.getId(), table.getFullyQualifiedName());
+    // merged tags/dataModel instead of stale pre-merge JSON. It also bypasses postUpdate, which is
+    // normally what triggers the RDF snapshot write — trigger it explicitly so the tags merged
+    // above (entity- and column-level) actually reach RDF.
+    EntityRepository.invalidateCacheForEntity(
+        entityType, table.getId(), table.getFullyQualifiedName());
+    RdfUpdater.updateEntity(table);
+    // Skipping postUpdate skips the search update as well: rebuild the table's document from the
+    // merged row, so that its tags, owners and column tags show the model.
+    searchRepository.updateEntity(table.getEntityReference());
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
@@ -1454,12 +1474,22 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table, boolean update) {
+    DatabaseUtil.validateTableSharding(table);
     var schema = (DatabaseSchema) getCachedParentOrLoad(table.getDatabaseSchema(), "", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
+
+    if (table.getTableSharding() != null) {
+      var source = table.getTableSharding().getRepresentative();
+      if (!source.getDatabaseName().equals(table.getDatabase().getName())
+          || !source.getSchemaName().equals(schema.getName())) {
+        throw new IllegalArgumentException(
+            "Shard representative must belong to the table database and schema");
+      }
+    }
 
     // For create operations (update=false), validate constraints immediately.
     // For update operations (PATCH/PUT), constraint validation happens in updateTableConstraints()
@@ -1614,6 +1644,11 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  protected List<Column> getColumnsForExtensionPersistence(Table entity) {
+    return entity.getColumns();
+  }
+
+  @Override
   protected void clearEntitySpecificRelationshipsForMany(List<Table> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Table::getId).toList();
@@ -1669,7 +1704,73 @@ public class TableRepository extends EntityRepository<Table> {
               TABLE,
               Relationship.CONTAINS));
     }
+    // Re-add the FK/ER (RELATED_TO) edges that clearEntitySpecificRelationshipsForMany removed. The
+    // single-entity store path does this via storeEntity() -> addConstraintRelationship(); the bulk
+    // path (recursive CSV import, bulk create) only restored CONTAINS, so a table's foreign-key
+    // relationship disappeared even though its tableConstraints JSON was preserved.
+    relationships.addAll(buildConstraintRelationships(entities));
     bulkInsertRelationships(relationships);
+  }
+
+  /**
+   * Build the FK RELATED_TO edges for a batch of tables, folded into the caller's bulk insert (no
+   * per-foreign-key lookup or insert). A referred table that is not persisted yet (e.g. created in a
+   * later bulk chunk) is skipped rather than failing the whole request.
+   */
+  private List<CollectionDAO.EntityRelationshipObject> buildConstraintRelationships(
+      List<Table> entities) {
+    Map<UUID, Set<String>> referredByTable = collectReferredTables(entities);
+    if (referredByTable.isEmpty()) {
+      return List.of();
+    }
+    Map<String, UUID> fqnToId = resolveTableIds(entities, referredByTable);
+    List<CollectionDAO.EntityRelationshipObject> edges = new ArrayList<>();
+    referredByTable.forEach(
+        (fromId, referredFqns) ->
+            referredFqns.stream()
+                .map(fqnToId::get)
+                .filter(Objects::nonNull)
+                .forEach(
+                    toId ->
+                        edges.add(
+                            newRelationship(fromId, toId, TABLE, TABLE, Relationship.RELATED_TO))));
+    return edges;
+  }
+
+  /** Referred parent-table FQNs per table, deduplicated (a composite FK yields one entry). */
+  private Map<UUID, Set<String>> collectReferredTables(List<Table> entities) {
+    Map<UUID, Set<String>> referredByTable = new HashMap<>();
+    for (Table table : entities) {
+      Set<String> referredFqns =
+          listOrEmpty(table.getTableConstraints()).stream()
+              .flatMap(constraint -> listOrEmpty(constraint.getReferredColumns()).stream())
+              .map(FullyQualifiedName::getParentFQN)
+              .collect(Collectors.toSet());
+      if (!referredFqns.isEmpty()) {
+        referredByTable.put(table.getId(), referredFqns);
+      }
+    }
+    return referredByTable;
+  }
+
+  /**
+   * Resolve referred table ids from the batch first and query only the rest, since a recursive
+   * import usually carries the referred table in the same batch (no need to reload its JSON).
+   */
+  private Map<String, UUID> resolveTableIds(
+      List<Table> batch, Map<UUID, Set<String>> referredByTable) {
+    Set<String> wanted =
+        referredByTable.values().stream().flatMap(Set::stream).collect(Collectors.toSet());
+    Map<String, UUID> fqnToId = new HashMap<>();
+    batch.stream()
+        .filter(table -> wanted.contains(table.getFullyQualifiedName()))
+        .forEach(table -> fqnToId.put(table.getFullyQualifiedName(), table.getId()));
+    List<String> missing = wanted.stream().filter(fqn -> !fqnToId.containsKey(fqn)).toList();
+    if (!missing.isEmpty()) {
+      findByNames(missing, ALL)
+          .forEach(table -> fqnToId.put(table.getFullyQualifiedName(), table.getId()));
+    }
+    return fqnToId;
   }
 
   @Override
@@ -1698,12 +1799,97 @@ public class TableRepository extends EntityRepository<Table> {
     for (Table table : entities) {
       collectColumnTags(table.getColumns(), columnTagsByTarget);
     }
-    applyTagsBatchWithRdf(columnTagsByTarget);
+    applyTagsBatch(columnTagsByTarget);
   }
 
   @Override
   protected EntityReference getParentReference(Table entity) {
     return entity.getDatabaseSchema();
+  }
+
+  /** Only reached on hard delete, so soft-deleted tables keep serving their satellite data. */
+  @Override
+  protected void entitySpecificCleanup(String deletedBy, Table table) {
+    deleteResidualTestCases(table, deletedBy);
+    deleteResidualExecutableTestSuite(table, deletedBy);
+  }
+
+  /**
+   * The profiler purge runs here rather than in {@link #entitySpecificCleanup}, which executes
+   * inside the delete transaction: a table with a long profiling history can own millions of
+   * profiler rows, and draining them inline holds every row lock for the life of the request. Two
+   * ordering properties keep that safe, and they cover different failures. Running after the delete
+   * has committed means a rolled-back delete can never purge a live table's history, since those
+   * rows legitimately predate the attempt. Bounding the purge to profiles recorded at or before the
+   * delete means it cannot touch a successor table created at the same FQN, whose profiles are all
+   * recorded later -- see {@link TimeSeriesDAOs.ProfilerDataTimeSeriesDAO#deleteTableProfilerData}.
+   */
+  @Override
+  protected void postDelete(Table table, boolean hardDelete) {
+    super.postDelete(table, hardDelete);
+    if (hardDelete) {
+      long deletedAt = System.currentTimeMillis();
+      AsyncService.getInstance()
+          .executeDatabaseTask(
+              DatabaseOperation.PROFILER_CLEANUP,
+              "profiler-purge:" + table.getFullyQualifiedName(),
+              () -> deleteProfilerData(table, deletedAt));
+    }
+  }
+
+  /**
+   * profiler_data_time_series is keyed by FQN hash rather than by table id, so rows left behind by
+   * a hard delete are silently adopted by the next table created with the same FQN. Table and
+   * system profiles are stored under the table FQN; column profiles under each (possibly nested)
+   * column FQN, which is why those need a descendant purge.
+   */
+  private void deleteProfilerData(Table table, long deletedAt) {
+    String tableFqn = table.getFullyQualifiedName();
+    try {
+      int deleted =
+          daoCollection.profilerDataTimeSeriesDao().deleteTableProfilerData(tableFqn, deletedAt);
+      if (deleted > 0) {
+        LOG.info("Purged {} profiler row(s) for hard-deleted table {}", deleted, tableFqn);
+      }
+    } catch (RuntimeException exception) {
+      LOG.error(
+          "Failed to purge profiler data for hard-deleted table {}. "
+              + "The orphaned time-series cleanup will reclaim it unless the FQN is reused.",
+          tableFqn,
+          exception);
+    }
+  }
+
+  /**
+   * Safety net for the table hard-delete cascade. The normal flow goes
+   * {@code table -> executable test suite -> test cases} via CONTAINS relationships, but if that
+   * chain is broken (legacy data, an earlier partial-failure cascade, or a test case linked only
+   * to a logical suite) test cases keep pointing at the deleted table through {@code entityLink}.
+   * Those orphans then break listing and search indexing. Here we explicitly delete any test case
+   * whose {@code entityFQN} resolves under the table being deleted, going through the standard
+   * delete path so test case results, resolution status, and search docs are also cleaned up.
+   */
+  private void deleteResidualTestCases(Table table, String deletedBy) {
+    String tableFqn = table.getFullyQualifiedName();
+    String likePrefix = LikeEscape.escape(tableFqn) + Entity.SEPARATOR + "%";
+    List<String> testCaseIds = daoCollection.testCaseDAO().findIdsByEntityFQN(tableFqn, likePrefix);
+    if (testCaseIds.isEmpty()) {
+      return;
+    }
+    LOG.info("Deleting {} residual test case(s) linked to table {}", testCaseIds.size(), tableFqn);
+    for (String testCaseId : testCaseIds) {
+      Entity.deleteEntity(deletedBy, Entity.TEST_CASE, UUID.fromString(testCaseId), true, true);
+    }
+  }
+
+  private void deleteResidualExecutableTestSuite(Table table, String deletedBy) {
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        daoCollection
+            .relationshipDAO()
+            .findTo(table.getId(), TABLE, Relationship.CONTAINS.ordinal(), TEST_SUITE);
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      Entity.deleteEntity(deletedBy, TEST_SUITE, record.getId(), true, true);
+    }
   }
 
   @Override
@@ -1715,21 +1901,34 @@ public class TableRepository extends EntityRepository<Table> {
   public List<PropagationDescriptor> getSearchPropagationDescriptors() {
     List<PropagationDescriptor> descriptors =
         new ArrayList<>(super.getSearchPropagationDescriptors());
+    // A column entry carries what ColumnSearchIndex builds: its own tags and the glossary terms it
+    // inherits from the table, and no data products. Propagating more is how table tags leaked onto
+    // columns. ADR:2026-10-08-column-entries-carry-only-their-own-tags
     descriptors.add(
         new PropagationDescriptor(
-            FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+                FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null)
+            .inheritedTermsOnlyFor(TABLE_COLUMN));
     descriptors.add(
         new PropagationDescriptor(
-            FIELD_DATA_PRODUCTS,
-            PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
-            null));
+                FIELD_DATA_PRODUCTS,
+                PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
+                null)
+            .skipping(TABLE_COLUMN));
+    // Required so SearchRepository.requiresPropagation opens the gate on a cert-only PATCH;
+    // the actual cascade onto child docs (test_case, test_case_result, test_case_resolution_status,
+    // test_suite, column) is handled by SearchRepository.cascadeCertificationToChildren, not by
+    // the generic descriptor-driven script.
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_CERTIFICATION, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     return descriptors;
   }
 
   @Override
-  protected void applyInheritance(Table entity, Fields fields, EntityInterface parent) {
+  protected void applyInheritance(Table entity, Fields fields, EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
     if (parent instanceof DatabaseSchema schema) {
       entity.withRetentionPeriod(
           entity.getRetentionPeriod() == null
@@ -1739,7 +1938,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Table entity, String fields) {
+  public EntityInterface<?> getParentEntity(Table entity, String fields) {
     return Entity.getEntity(entity.getDatabaseSchema(), fields, ALL);
   }
 
@@ -1750,35 +1949,25 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
-    List<TagLabel> allTags = new ArrayList<>();
-    Table table = (Table) entity;
-    EntityUtil.mergeTags(allTags, table.getTags());
-    table.getColumns().forEach(column -> EntityUtil.mergeTags(allTags, column.getTags()));
-    if (table.getDataModel() != null) {
-      EntityUtil.mergeTags(allTags, table.getDataModel().getTags());
-      for (Column column : listOrEmpty(table.getDataModel().getColumns())) {
-        EntityUtil.mergeTags(allTags, column.getTags());
-      }
-    }
-    return allTags;
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,columns,dataModel");
   }
 
   @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals(COLUMN_FIELD)) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new ColumnDescriptionWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new ColumnTagWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
+    return allTags((Table) entity);
+  }
+
+  /** The tags a tag condition on a table reads: its own, its columns' and its data model's. */
+  public static List<TagLabel> allTags(Table table) {
+    List<TagLabel> allTags = new ArrayList<>();
+    EntityUtil.mergeTags(allTags, table.getTags());
+    EntityUtil.mergeColumnTags(allTags, table.getColumns());
+    if (table.getDataModel() != null) {
+      EntityUtil.mergeTags(allTags, table.getDataModel().getTags());
+      EntityUtil.mergeColumnTags(allTags, table.getDataModel().getColumns());
     }
-    return super.getTaskWorkflow(threadContext);
+    return allTags;
   }
 
   @Override
@@ -1889,87 +2078,6 @@ public class TableRepository extends EntityRepository<Table> {
             new Fields(
                 allowedFields, "owners,domains,tags,columns,database,service,databaseSchema"));
     return new TableCsv(table, user).importCsv(csv, dryRun, callback);
-  }
-
-  static class ColumnDescriptionWorkflow extends DescriptionTaskWorkflow {
-    private final Column column;
-
-    ColumnDescriptionWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      Table table =
-          Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), COLUMN_FIELD, ALL);
-      threadContext.setAboutEntity(table);
-      column =
-          getColumn(
-              (Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      column.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class ColumnTagWorkflow extends TagTaskWorkflow {
-    private final Column column;
-
-    ColumnTagWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      Table table =
-          Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
-      threadContext.setAboutEntity(table);
-      column =
-          getColumn(
-              (Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      column.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  private static Column getColumn(Table table, String columnName) {
-    String childrenName = "";
-    if (columnName.contains(".")) {
-      String fieldNameWithoutQuotes = columnName.substring(1, columnName.length() - 1);
-      columnName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
-      childrenName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
-    }
-
-    Column column = EntityUtil.findColumn(table.getColumns(), columnName);
-    if (!childrenName.isEmpty() && column != null) {
-      column = getChildColumn(column.getChildren(), childrenName);
-    }
-    if (column == null) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidFieldName("column", columnName));
-    }
-    return column;
-  }
-
-  private static Column getChildColumn(List<Column> column, String childrenName) {
-    Column childrenColumn = null;
-    for (Column col : column) {
-      if (col.getName().equals(childrenName)) {
-        childrenColumn = col;
-        break;
-      }
-    }
-    if (childrenColumn == null) {
-      for (Column value : column) {
-        if (value.getChildren() != null) {
-          childrenColumn = getChildColumn(value.getChildren(), childrenName);
-          if (childrenColumn != null) {
-            break;
-          }
-        }
-      }
-    }
-    return childrenColumn;
   }
 
   private void validateTableFQN(String fqn) {
@@ -2181,41 +2289,6 @@ public class TableRepository extends EntityRepository<Table> {
         CustomMetric.class);
   }
 
-  private Object getColumnExtension(UUID tableId, String columnFQN) {
-    try {
-      String extensionKey = FullyQualifiedName.buildHash(columnFQN);
-      String extensionJson = daoCollection.entityExtensionDAO().getExtension(tableId, extensionKey);
-      if (extensionJson != null) {
-        return JsonUtils.readValue(extensionJson, Object.class);
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to get extension for column {}: {}", columnFQN, e.getMessage());
-    }
-    return null;
-  }
-
-  private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
-    String extension = columnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
-    extension = CUSTOM_METRICS_EXTENSION + extension;
-
-    List<ExtensionRecord> extensionRecords =
-        daoCollection.entityExtensionDAO().getExtensions(table.getId(), extension);
-    List<CustomMetric> customMetrics = new ArrayList<>();
-    for (ExtensionRecord extensionRecord : extensionRecords) {
-      customMetrics.add(JsonUtils.readValue(extensionRecord.extensionJson(), CustomMetric.class));
-    }
-
-    if (columnName != null) {
-      // Filter custom metrics by column name
-      customMetrics =
-          customMetrics.stream()
-              .filter(metric -> metric.getColumnName().equals(columnName))
-              .collect(Collectors.toList());
-    }
-
-    return customMetrics;
-  }
-
   private void validateTableConstraints(Table table, Set<String> columnsBeingRemoved) {
     if (!nullOrEmpty(table.getTableConstraints())) {
       Set<TableConstraint> constraintSet = new HashSet<>();
@@ -2256,13 +2329,28 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    protected boolean supportsColumnExtension() {
+      return true;
+    }
+
+    @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       Table origTable = original;
       Table updatedTable = updated;
       if (updatedTable.getDataModel() == null && origTable.getDataModel() != null) {
         updatedTable.withDataModel(origTable.getDataModel());
       }
+      if (updatedTable.getSchemaDefinition() == null && origTable.getSchemaDefinition() != null) {
+        updatedTable.withSchemaDefinition(origTable.getSchemaDefinition());
+      }
 
+      compareAndUpdate(
+          "schemaDefinition",
+          () ->
+              recordChange(
+                  "schemaDefinition",
+                  original.getSchemaDefinition(),
+                  updated.getSchemaDefinition()));
       compareAndUpdate(
           "columns",
           () -> {
@@ -2275,19 +2363,36 @@ public class TableRepository extends EntityRepository<Table> {
           "tableType",
           () -> recordChange("tableType", origTable.getTableType(), updatedTable.getTableType()));
       compareAndUpdate(
+          "tableSharding",
+          () ->
+              recordChange(
+                  "tableSharding", origTable.getTableSharding(), updatedTable.getTableSharding()));
+      compareAndUpdate(
           "dataModel",
           () -> recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel()));
       compareAndUpdate(
           TABLE_CONSTRAINTS_FIELD,
           () -> updateTableConstraints(origTable, updatedTable, operation));
       compareAndUpdate(
+          "tablePartition",
+          () -> {
+            DatabaseUtil.validateTablePartition(
+                updatedTable.getColumns(), updatedTable.getTablePartition());
+            recordChange(
+                "tablePartition", origTable.getTablePartition(), updatedTable.getTablePartition());
+          });
+      compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
+      compareAndUpdate("aliases", () -> updateAliases(origTable, updatedTable));
       compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
+              updateUserOnlyField(
+                  "retentionPeriod",
+                  original.getRetentionPeriod(),
+                  updated.getRetentionPeriod(),
+                  updated::setRetentionPeriod));
       compareAndUpdate(
           "compressionEnabled",
           () ->
@@ -2341,7 +2446,26 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
+    private void updateAliases(Table origTable, Table updatedTable) {
+      List<String> origAliases = listOrEmpty(origTable.getAliases());
+      List<String> updatedAliases = listOrEmpty(updatedTable.getAliases());
+
+      List<String> added = new ArrayList<>();
+      List<String> deleted = new ArrayList<>();
+      recordListChange(
+          "aliases", origAliases, updatedAliases, added, deleted, EntityUtil.stringMatch);
+    }
+
     private void updateTableConstraints(Table origTable, Table updatedTable, Operation operation) {
+      // Many sources (e.g. Trino) never report constraints, so a bot PUT without any must not
+      // read that absence as "delete them" and wipe user-curated ones. Constraints on columns the
+      // source dropped are still cleaned up below.
+      if (operation.isPut()
+          && updatedByBot()
+          && nullOrEmpty(updatedTable.getTableConstraints())
+          && !nullOrEmpty(origTable.getTableConstraints())) {
+        updatedTable.setTableConstraints(new ArrayList<>(origTable.getTableConstraints()));
+      }
       // Detect columns that were removed (exist in original but not in updated).
       // This also handles null column entries produced by JSON patch operations.
       Set<String> removedColumns = detectRemovedColumns(origTable, updatedTable);
@@ -2372,18 +2496,10 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> origConstraints = listOrEmpty(origTable.getTableConstraints());
       List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
       origConstraints.sort(EntityUtil.compareTableConstraint);
-      origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      origConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
+      origConstraints.forEach(EntityUtil::sortConstraintPairs);
 
       updatedConstraints.sort(EntityUtil.compareTableConstraint);
-      updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      updatedConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
+      updatedConstraints.forEach(EntityUtil::sortConstraintPairs);
 
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
@@ -2400,41 +2516,41 @@ public class TableRepository extends EntityRepository<Table> {
       deleteConstraintRelationship(origTable, deleted);
     }
 
+    /**
+     * Reconcile stored and indexed column lineage with a column rename/delete.
+     *
+     * <p>Both stores mirror the persisted table, so the only diff pass that yields a delta they can
+     * apply is the one baselined on it. Session consolidation replays the diff up to three more
+     * times against reverted baselines: those renames name FQNs neither store holds, and — the
+     * destructive case — the revert pass diffs the persisted table against the pre-session version,
+     * so a column added by an earlier request in the same session reads as deleted and its lineage
+     * is dropped even though the column still exists.
+     */
     @Override
     protected void handleColumnLineageUpdates(
         List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       boolean hasRenames = !originalUpdatedColumnFqnMap.isEmpty();
       boolean hasDeletes = !deletedColumns.isEmpty();
 
-      // Update lineage relationships stored in the database
-      if (hasRenames || hasDeletes) {
+      if (isIndexBaselinePass() && (hasRenames || hasDeletes)) {
         LineageRepository lineageRepository = Entity.getLineageRepository();
         if (lineageRepository != null) {
           lineageRepository.updateColumnLineage(
-              updated.getId(),
-              hasRenames ? originalUpdatedColumnFqnMap : Collections.emptyMap(),
-              hasDeletes ? deletedColumns : Collections.emptyList(),
-              updated.getSchemaDefinition(),
-              updated.getUpdatedBy());
+              updated.getId(), originalUpdatedColumnFqnMap, deletedColumns, updated.getUpdatedBy());
         }
+        List<String> deletedColumnFqns = List.copyOf(deletedColumns);
+        HashMap<String, String> renamedColumnFqns = new HashMap<>(originalUpdatedColumnFqnMap);
+        deferReactOperation(
+            () -> flushColumnLineageSearchUpdates(deletedColumnFqns, renamedColumnFqns));
       }
+    }
 
-      if (hasRenames) {
-        HashMap<String, String> renames = new HashMap<>(originalUpdatedColumnFqnMap);
-        deferReactOperation(
-            () ->
-                searchRepository
-                    .getSearchClient()
-                    .updateColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, renames));
-      }
-      if (hasDeletes) {
-        List<String> deletedColumnsCopy = List.copyOf(deletedColumns);
-        deferReactOperation(
-            () ->
-                searchRepository
-                    .getSearchClient()
-                    .deleteColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, deletedColumnsCopy));
-      }
+    private void flushColumnLineageSearchUpdates(
+        List<String> deletedColumnFqns, HashMap<String, String> renamedColumnFqns) {
+      searchRepository
+          .getSearchClient()
+          .reconcileColumnsInUpstreamLineage(
+              GLOBAL_SEARCH_ALIAS, renamedColumnFqns, deletedColumnFqns);
     }
   }
 
@@ -2516,13 +2632,16 @@ public class TableRepository extends EntityRepository<Table> {
         CSVRecord csvRecord = getNextRecord(printer, csvRecords);
         if (csvRecord != null) {
           updateColumnsFromCsv(printer, csvRecord);
-          String violations = ValidatorUtil.validate(table);
-          if (violations != null) {
-            // JSON schema based validation failed for the entity
-            importFailure(printer, violations, csvRecord);
-            return;
-          }
         }
+      }
+
+      // Validate the whole table once, after every row is applied, rather than re-walking all of
+      // its
+      // columns on each row — which made a large import quadratic in the number of columns.
+      String violations = ValidatorUtil.validate(table);
+      if (violations != null) {
+        importFailure(printer, violations, csvRecords.get(csvRecords.size() - 1));
+        return;
       }
 
       if (processRecord) {
@@ -2535,10 +2654,15 @@ public class TableRepository extends EntityRepository<Table> {
         throws IOException {
       EntityRepository<Table> repository =
           (EntityRepository<Table>) Entity.getEntityRepository(TABLE);
+      String result = ENTITY_UPDATED;
       if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         try {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, table);
-          repository.patch(null, table.getId(), importedBy, jsonPatch);
+          UUID pendingChangeRequestId =
+              repository.patch(null, table.getId(), importedBy, jsonPatch).pendingChangeRequestId();
+          if (pendingChangeRequestId != null) {
+            result = pendingApprovalDetail(pendingChangeRequestId);
+          }
         } catch (Exception ex) {
           for (int i = 1; i < records.size(); i++) {
             importFailure(resultsPrinter, ex.getMessage(), records.get(i));
@@ -2554,10 +2678,19 @@ public class TableRepository extends EntityRepository<Table> {
         // created
         // during import
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
+        if (wouldBeHeld(repository, originalTable, table)) {
+          result = ENTITY_PENDING_APPROVAL;
+        }
       }
 
+      // The columns are written as one patch; when it is held, every row reports the pending
+      // change request instead of an update.
+      boolean pending = !ENTITY_UPDATED.equals(result);
       for (int i = 1; i < records.size(); i++) {
-        importSuccess(resultsPrinter, records.get(i), ENTITY_UPDATED);
+        importSuccess(resultsPrinter, records.get(i), result);
+        if (pending) {
+          countPendingApproval();
+        }
       }
     }
 
@@ -2614,6 +2747,9 @@ public class TableRepository extends EntityRepository<Table> {
                 printer,
                 "Parent Column not found. Check the order of the columns in the CSV file.",
                 csvRecord);
+            // Without the parent there is nowhere to attach the column; going on would dereference
+            // a null parent below.
+            return;
           }
 
           // Update Name And Ordinal position in the parent column
@@ -2853,70 +2989,150 @@ public class TableRepository extends EntityRepository<Table> {
       Authorizer authorizer,
       SecurityContext securityContext) {
 
-    List<Column> allColumns = table.getColumns();
-    if (allColumns == null || allColumns.isEmpty()) {
-      return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
-    }
+    ResultList<FieldInterface> page =
+        new ChildFieldPageReader(this, ChildFieldResolver.specFor(Entity.TABLE))
+            .read(
+                table,
+                limit,
+                offset,
+                fieldsParam,
+                sortBy,
+                sortOrder,
+                (parent, columns, requestedFields) ->
+                    enrichColumnPage(
+                        table, columns, requestedFields, piiOwners, authorizer, securityContext));
+    return toColumnResultList(page);
+  }
 
-    // Sort columns based on sortBy and sortOrder parameters
-    List<Column> sortedColumns = new ArrayList<>(allColumns);
-    Comparator<Column> comparator;
-    if ("ordinalPosition".equals(sortBy)) {
-      comparator =
-          Comparator.comparing(
-              Column::getOrdinalPosition, Comparator.nullsLast(Comparator.naturalOrder()));
+  /** A table column page carries custom metrics, custom-property extensions and a masked profile. */
+  private List<FieldInterface> enrichColumnPage(
+      Table table,
+      List<FieldInterface> page,
+      String fieldsParam,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    List<Column> columns = page.stream().map(Column.class::cast).collect(Collectors.toList());
+    if (fieldsParam == null || !fieldsParam.contains("extension")) {
+      metadataLoader.stripColumnReferences(columns);
+    }
+    if (fieldsParam == null) {
+      return page;
+    }
+    if (fieldsParam.contains("customMetrics")) {
+      metadataLoader.loadColumnMetrics(table.getId(), columns);
+    }
+    if (fieldsParam.contains("extension")) {
+      metadataLoader.loadColumnExtensions(table.getId(), columns);
+    }
+    if (fieldsParam.contains("profile")) {
+      columns =
+          addMaskedProfile(table, columns, fieldsParam, piiOwners, authorizer, securityContext);
+    }
+    return new ArrayList<>(columns);
+  }
+
+  /**
+   * Profile data is masked per column, and masking reads a column's tags, so a profile request that
+   * did not also ask for tags has to hydrate them here before masking can decide anything.
+   */
+  private List<Column> addMaskedProfile(
+      Table table,
+      List<Column> columns,
+      String fieldsParam,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    setColumnProfile(columns);
+    if (!fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, columns, table.getFullyQualifiedName(), true);
+    }
+    return piiOwners != null
+        ? PIIMasker.getTableProfile(piiOwners, columns, authorizer, securityContext)
+        : PIIMasker.getTableProfile(
+            table.getFullyQualifiedName(), columns, authorizer, securityContext);
+  }
+
+  /** Narrows a generic child page back to the Column-typed result this API has always returned. */
+  private ResultList<Column> toColumnResultList(ResultList<FieldInterface> page) {
+    ResultList<Column> result = new ResultList<>();
+    result.setData(page.getData().stream().map(Column.class::cast).toList());
+    result.setPaging(page.getPaging());
+    return result;
+  }
+
+  public Column enrichSingleColumnFields(
+      Table table,
+      Column column,
+      String fieldsParam,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    if (fieldsParam == null) {
+      return column;
+    }
+    List<Column> singleton = new ArrayList<>(List.of(column));
+    if (fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
+    }
+    if (fieldsParam.contains("customMetrics")) {
+      metadataLoader.loadColumnMetrics(table.getId(), singleton);
+    }
+    if (fieldsParam.contains("extension")) {
+      metadataLoader.loadColumnExtensions(table.getId(), singleton);
     } else {
-      // Default: sort by name
-      comparator =
-          Comparator.comparing(
-              Column::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+      metadataLoader.stripColumnReferences(singleton);
     }
-
-    // Apply sort order (desc reverses the comparator)
-    if ("desc".equalsIgnoreCase(sortOrder)) {
-      comparator = comparator.reversed();
+    if (fieldsParam.contains("profile")) {
+      setColumnProfile(singleton);
+      maskSingleColumnProfile(table, column, singleton, piiOwners, authorizer, securityContext);
     }
-    sortedColumns.sort(comparator);
+    return column;
+  }
 
-    // Apply pagination
-    int total = sortedColumns.size();
-    int fromIndex = Math.min(offset, total);
-    int toIndex = Math.min(offset + limit, total);
-
-    List<Column> paginatedColumns = sortedColumns.subList(fromIndex, toIndex);
-
-    // Apply field processing if needed
-    if (fieldsParam != null && fieldsParam.contains("tags")) {
-      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+  /**
+   * Masking walks only the columns it is handed: a nested child alone cannot carry the
+   * {@code PII.Sensitive} tag an ancestor column above it holds, so the ancestors are resolved out
+   * of the table's columns and their tags hydrated for the decision.
+   */
+  private void maskSingleColumnProfile(
+      Table table,
+      Column column,
+      List<Column> singleton,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    List<Column> ancestors = columnAncestors(table, column);
+    // Hydrating the ancestors flattens to the child's own subtree, so no second pass is needed;
+    // with none resolved, only the column itself has to be hydrated before the masker decides.
+    populateEntityFieldTags(
+        entityType,
+        nullOrEmpty(ancestors) ? singleton : ancestors,
+        table.getFullyQualifiedName(),
+        true);
+    if (piiOwners != null) {
+      PIIMasker.getSingleColumnProfile(piiOwners, ancestors, column, authorizer, securityContext);
+    } else {
+      PIIMasker.getSingleColumnProfile(
+          table.getFullyQualifiedName(), ancestors, column, authorizer, securityContext);
     }
+  }
 
-    if (fieldsParam != null && fieldsParam.contains("customMetrics")) {
-      for (Column column : paginatedColumns) {
-        column.setCustomMetrics(getCustomMetrics(table, column.getName()));
-      }
+  /** The columns a nested child hangs beneath, resolved out of the table's columns. */
+  private List<Column> columnAncestors(Table table, Column column) {
+    String tableFqn = FullyQualifiedName.getTableFQN(column.getFullyQualifiedName());
+    if (tableFqn.equals(column.getFullyQualifiedName())) {
+      return List.of();
     }
-
-    if (fieldsParam != null && fieldsParam.contains("extension")) {
-      for (Column column : paginatedColumns) {
-        column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
-      }
+    List<Column> columnChain =
+        ColumnUtil.resolveColumnChainByPath(
+            table.getColumns(), column.getFullyQualifiedName().substring(tableFqn.length() + 1));
+    if (columnChain.size() > 1 && columnChain.getLast() == column) {
+      return new ArrayList<>(columnChain.subList(0, columnChain.size() - 1));
     }
-
-    if (fieldsParam != null && fieldsParam.contains("profile")) {
-      setColumnProfile(paginatedColumns);
-      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
-      paginatedColumns =
-          piiOwners != null
-              ? PIIMasker.getTableProfile(piiOwners, paginatedColumns, authorizer, securityContext)
-              : PIIMasker.getTableProfile(
-                  table.getFullyQualifiedName(), paginatedColumns, authorizer, securityContext);
-    }
-
-    // Calculate pagination metadata
-    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
-    String after = toIndex < total ? String.valueOf(toIndex) : null;
-
-    return new ResultList<>(paginatedColumns, before, after, total);
+    // A single-element resolution names the column itself (no chain above it); anything whose leaf
+    // is not the requested column matched a different node, and both leave no ancestor context.
+    return List.of();
   }
 
   private static void validateTableColumns(List<Column> columns) {
@@ -3074,26 +3290,6 @@ public class TableRepository extends EntityRepository<Table> {
     return joinsMap;
   }
 
-  private Map<UUID, List<CustomMetric>> batchFetchCustomMetrics(
-      List<Table> tables, boolean includeColumnFields) {
-    Map<UUID, List<CustomMetric>> customMetricsMap = new HashMap<>();
-    if (tables == null || tables.isEmpty()) {
-      return customMetricsMap;
-    }
-
-    for (Table table : tables) {
-      List<CustomMetric> tableMetrics = getCustomMetrics(table, null);
-      if (includeColumnFields && table.getColumns() != null) {
-        for (Column column : table.getColumns()) {
-          column.setCustomMetrics(getCustomMetrics(table, column.getName()));
-        }
-      }
-      customMetricsMap.put(table.getId(), tableMetrics);
-    }
-
-    return customMetricsMap;
-  }
-
   public ResultList<Column> searchTableColumnsById(
       UUID id,
       String query,
@@ -3104,7 +3300,17 @@ public class TableRepository extends EntityRepository<Table> {
       Authorizer authorizer,
       SecurityContext securityContext) {
     return searchTableColumnsById(
-        id, query, limit, offset, fieldsParam, include, "name", "asc", authorizer, securityContext);
+        id,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        include,
+        "name",
+        "asc",
+        null,
+        authorizer,
+        securityContext);
   }
 
   public ResultList<Column> searchTableColumnsById(
@@ -3116,11 +3322,21 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       String sortBy,
       String sortOrder,
+      ColumnTagFilter columnTagFilter,
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = get(null, id, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
+        table,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        sortBy,
+        sortOrder,
+        columnTagFilter,
+        authorizer,
+        securityContext);
   }
 
   public ResultList<Column> searchTableColumnsByFQN(
@@ -3141,6 +3357,7 @@ public class TableRepository extends EntityRepository<Table> {
         include,
         "name",
         "asc",
+        null,
         authorizer,
         securityContext);
   }
@@ -3154,11 +3371,21 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       String sortBy,
       String sortOrder,
+      ColumnTagFilter columnTagFilter,
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
+        table,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        sortBy,
+        sortOrder,
+        columnTagFilter,
+        authorizer,
+        securityContext);
   }
 
   private ResultList<Column> searchTableColumnsInternal(
@@ -3169,84 +3396,180 @@ public class TableRepository extends EntityRepository<Table> {
       String fieldsParam,
       String sortBy,
       String sortOrder,
+      ColumnTagFilter columnTagFilter,
       Authorizer authorizer,
       SecurityContext securityContext) {
-    List<Column> allColumns = table.getColumns();
-    if (allColumns == null || allColumns.isEmpty()) {
+    if (nullOrEmpty(table.getColumns())) {
       return new ResultList<>(List.of(), null, null, 0);
     }
+    // Copy so pruning and field population never mutate the loaded entity's column tree.
+    List<Column> allColumns = JsonUtils.deepCopyList(table.getColumns(), Column.class);
 
-    // Flatten nested columns for search
-    List<Column> flattenedColumns = flattenTableColumns(allColumns);
+    String searchTerm = nullOrEmpty(query) ? null : query.toLowerCase().trim();
+    boolean hasTagFilter = columnTagFilter != null && !columnTagFilter.isEmpty();
+    Map<String, List<TagLabel>> tagsByHash =
+        hasTagFilter ? resolveColumnTagsForFilter(table) : Map.of();
 
-    List<Column> matchingColumns;
-    if (query == null || query.trim().isEmpty()) {
-      matchingColumns = new ArrayList<>(flattenedColumns);
-    } else {
-      String searchTerm = query.toLowerCase().trim();
-      matchingColumns =
-          new ArrayList<>(
-              flattenedColumns.stream()
-                  .filter(
-                      column -> {
-                        if (column.getName() != null
-                            && column.getName().toLowerCase().contains(searchTerm)) {
-                          return true;
-                        }
-                        return column.getDisplayName() != null
-                            && column.getDisplayName().toLowerCase().contains(searchTerm);
-                      })
-                  .toList());
+    List<Column> matchingTree =
+        pruneColumnsToMatches(allColumns, searchTerm, columnTagFilter, tagsByHash);
+    matchingTree.sort(columnComparator(sortBy, sortOrder));
+
+    int total = matchingTree.size();
+    int startIndex = Math.min(offset, total);
+    int endIndex = Math.min(offset + limit, total);
+    List<Column> paginatedRoots =
+        startIndex < total
+            ? new ArrayList<>(matchingTree.subList(startIndex, endIndex))
+            : List.of();
+
+    List<Column> paginatedColumns = flattenTableColumns(paginatedRoots);
+    Fields fields = getFields(fieldsParam);
+    if (fields.contains("customMetrics") || fields.contains("*")) {
+      metadataLoader.loadColumnMetrics(table.getId(), paginatedColumns);
     }
 
-    // Sort matching columns based on sortBy and sortOrder parameters
+    if (fields.contains("tags") || fields.contains("*")) {
+      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+    }
+    if (fields.contains("extension")) {
+      metadataLoader.loadColumnExtensions(table.getId(), paginatedColumns);
+    } else {
+      metadataLoader.stripColumnReferences(paginatedColumns);
+    }
+
+    if (fieldsParam != null && fieldsParam.contains("profile")) {
+      setColumnProfile(paginatedColumns);
+      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+      PIIMasker.getTableProfile(
+          table.getFullyQualifiedName(), paginatedColumns, authorizer, securityContext);
+    }
+
+    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    String after = endIndex < total ? String.valueOf(endIndex) : null;
+    return new ResultList<>(paginatedRoots, before, after, total);
+  }
+
+  /**
+   * Prune the column tree to nodes that match the search term and tag filter, keeping every matched
+   * node at its real depth together with its ancestor path. Mirrors the UI's getFilteredTagsData so
+   * the server-side filter renders the same nested view, paginated across the whole table instead of
+   * the loaded page. A node is kept when it matches itself or has a kept descendant; a kept node's
+   * children are pruned to the matched paths only.
+   */
+  private List<Column> pruneColumnsToMatches(
+      List<Column> columns,
+      String searchTerm,
+      ColumnTagFilter columnTagFilter,
+      Map<String, List<TagLabel>> tagsByHash) {
+    List<Column> pruned = new ArrayList<>();
+    for (Column column : columns) {
+      List<Column> prunedChildren =
+          nullOrEmpty(column.getChildren())
+              ? new ArrayList<>()
+              : pruneColumnsToMatches(
+                  column.getChildren(), searchTerm, columnTagFilter, tagsByHash);
+      boolean matches = columnMatchesSearch(column, searchTerm, columnTagFilter, tagsByHash);
+      if (matches || !prunedChildren.isEmpty()) {
+        column.setChildren(prunedChildren);
+        pruned.add(column);
+      }
+    }
+    return pruned;
+  }
+
+  private boolean columnMatchesSearch(
+      Column column,
+      String searchTerm,
+      ColumnTagFilter columnTagFilter,
+      Map<String, List<TagLabel>> tagsByHash) {
+    boolean matchesQuery = searchTerm == null || columnNameMatches(column, searchTerm);
+    boolean matchesTags =
+        columnTagFilter == null
+            || columnTagFilter.isEmpty()
+            || columnMatchesTagFilter(column, columnTagFilter, tagsByHash);
+    return matchesQuery && matchesTags;
+  }
+
+  private boolean columnNameMatches(Column column, String searchTerm) {
+    boolean nameMatches =
+        column.getName() != null && column.getName().toLowerCase().contains(searchTerm);
+    boolean displayNameMatches =
+        column.getDisplayName() != null
+            && column.getDisplayName().toLowerCase().contains(searchTerm);
+    return nameMatches || displayNameMatches;
+  }
+
+  private Comparator<Column> columnComparator(String sortBy, String sortOrder) {
     Comparator<Column> comparator;
     if ("ordinalPosition".equals(sortBy)) {
       comparator =
           Comparator.comparing(
               Column::getOrdinalPosition, Comparator.nullsLast(Comparator.naturalOrder()));
     } else {
-      // Default: sort by name
       comparator =
           Comparator.comparing(
               Column::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
     }
-
-    // Apply sort order (desc reverses the comparator)
     if ("desc".equalsIgnoreCase(sortOrder)) {
       comparator = comparator.reversed();
     }
-    matchingColumns.sort(comparator);
+    return comparator;
+  }
 
-    int total = matchingColumns.size();
-    int startIndex = Math.min(offset, total);
-    int endIndex = Math.min(offset + limit, total);
-
-    List<Column> paginatedResults =
-        startIndex < total ? matchingColumns.subList(startIndex, endIndex) : List.of();
-
-    Fields fields = getFields(fieldsParam);
-    if (fields.contains("customMetrics") || fields.contains("*")) {
-      for (Column column : paginatedResults) {
-        column.setCustomMetrics(getCustomMetrics(table, column.getName()));
-      }
+  /**
+   * Column-level tag filter. {@code tagFQNs} and {@code glossaryTermFQNs} mirror the two
+   * independent column filters in the UI. Values within each group are OR-ed; the two groups are
+   * AND-ed when both are present (matching AntD's cross-column filter semantics).
+   */
+  public record ColumnTagFilter(Set<String> tagFQNs, Set<String> glossaryTermFQNs) {
+    public boolean isEmpty() {
+      return nullOrEmpty(tagFQNs) && nullOrEmpty(glossaryTermFQNs);
     }
+  }
 
-    if (fields.contains("tags") || fields.contains("*")) {
-      populateEntityFieldTags(entityType, paginatedResults, table.getFullyQualifiedName(), true);
+  /**
+   * Resolve column tags the same way the column list responses (and therefore the UI filter
+   * dropdown) see them: direct tag_usage rows enriched with glossary-derived tags. The raw DAO is
+   * used instead of {@link #getTagsByPrefix} so certification-classification tags are not stripped,
+   * keeping the filter consistent with the tags shown on each column.
+   */
+  private Map<String, List<TagLabel>> resolveColumnTagsForFilter(Table table) {
+    Map<String, List<TagLabel>> directTagsByHash =
+        daoCollection.tagUsageDAO().getTagsByPrefix(table.getFullyQualifiedName(), ".%", true);
+    if (nullOrEmpty(directTagsByHash)) {
+      return Map.of();
     }
-
-    if (fieldsParam != null && fieldsParam.contains("profile")) {
-      setColumnProfile(matchingColumns);
-      populateEntityFieldTags(entityType, matchingColumns, table.getFullyQualifiedName(), true);
-      matchingColumns =
-          PIIMasker.getTableProfile(
-              table.getFullyQualifiedName(), matchingColumns, authorizer, securityContext);
+    List<TagLabel> allDirectTags =
+        directTagsByHash.values().stream().flatMap(List::stream).collect(Collectors.toList());
+    Map<String, List<TagLabel>> derivedTagsMap;
+    try {
+      derivedTagsMap = batchFetchDerivedTags(allDirectTags);
+    } catch (Exception ex) {
+      LOG.warn("Failed to fetch derived tags for column tag filter; matching direct tags only", ex);
+      derivedTagsMap = Map.of();
     }
+    Map<String, List<TagLabel>> effectiveTagsByHash = new HashMap<>();
+    for (Map.Entry<String, List<TagLabel>> entry : directTagsByHash.entrySet()) {
+      effectiveTagsByHash.put(
+          entry.getKey(), addDerivedTagsWithPreFetched(entry.getValue(), derivedTagsMap));
+    }
+    return effectiveTagsByHash;
+  }
 
-    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
-    String after = endIndex < total ? String.valueOf(endIndex) : null;
-    return new ResultList<>(paginatedResults, before, after, total);
+  private boolean columnMatchesTagFilter(
+      Column column, ColumnTagFilter columnTagFilter, Map<String, List<TagLabel>> tagsByHash) {
+    List<TagLabel> tags =
+        tagsByHash.get(FullyQualifiedName.buildHash(column.getFullyQualifiedName()));
+    Set<String> columnTagFQNs =
+        nullOrEmpty(tags)
+            ? Set.of()
+            : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+    return matchesTagGroup(columnTagFQNs, columnTagFilter.tagFQNs())
+        && matchesTagGroup(columnTagFQNs, columnTagFilter.glossaryTermFQNs());
+  }
+
+  private boolean matchesTagGroup(Set<String> columnTagFQNs, Set<String> filterGroup) {
+    return nullOrEmpty(filterGroup) || filterGroup.stream().anyMatch(columnTagFQNs::contains);
   }
 
   private List<Column> flattenTableColumns(List<Column> columns) {
@@ -3313,13 +3636,19 @@ public class TableRepository extends EntityRepository<Table> {
 
     doc.put("deleted", false);
     doc.put("entityType", "pipelineStatus");
+    // The run index is searched under the pipeline's access rules, so the document carries the
+    // pipeline's access fields; one whose pipeline does not resolve is not written.
+    doc.putAll(
+        PipelineExecutionIndex.accessFields(
+            PipelineExecutionIndex.withAccessFields(observability.getPipeline())));
 
     String docId = pipelineFqn + "_" + table.getId().toString();
     String docJson = JsonUtils.pojoToJson(doc);
 
     // Use getIndexOrAliasName to get the correct index name with prefix
     String indexName =
-        Entity.getSearchRepository().getIndexOrAliasName("pipeline_status_search_index");
+        searchRepository.routeToStagedIfActive(
+            searchRepository.getIndexOrAliasName("pipeline_status_search_index"));
     searchRepository.getSearchClient().createEntity(indexName, docId, docJson);
 
     LOG.debug(

@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.monitoring;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import io.micrometer.core.instrument.Counter;
@@ -29,8 +31,12 @@ import java.util.function.Consumer;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetricsBatch;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @Singleton
@@ -47,6 +53,11 @@ public class IngestionProgressTracker {
   private final Counter progressUpdatesReceived;
   private final Counter metricsBatchesReceived;
   private final AtomicInteger activeProgressStreams;
+
+  private final Map<String, Map<String, ServiceProgressSnapshot>> serviceActiveRuns =
+      new ConcurrentHashMap<>();
+  private final Map<String, List<Consumer<ServiceProgressSnapshot>>> serviceListeners =
+      new ConcurrentHashMap<>();
 
   @Inject
   public IngestionProgressTracker(MeterRegistry meterRegistry) {
@@ -77,6 +88,11 @@ public class IngestionProgressTracker {
   }
 
   public void updateProgress(String pipelineFqn, UUID runId, ProgressUpdate update) {
+    updateProgress(pipelineFqn, runId, update, null);
+  }
+
+  public void updateProgress(
+      String pipelineFqn, UUID runId, ProgressUpdate update, IngestionPipeline ingestionPipeline) {
     String key = buildKey(pipelineFqn, runId);
     progressUpdatesReceived.increment();
 
@@ -88,6 +104,7 @@ public class IngestionProgressTracker {
     }
 
     notifyListeners(key, update);
+    routeToService(pipelineFqn, runId, update, ingestionPipeline);
   }
 
   public void addMetricsBatch(String pipelineFqn, UUID runId, OperationMetricsBatch batch) {
@@ -158,66 +175,122 @@ public class IngestionProgressTracker {
     return pipelineFqn + "/" + runId.toString();
   }
 
+  private void routeToService(
+      String pipelineFqn, UUID runId, ProgressUpdate update, IngestionPipeline ingestionPipeline) {
+    String serviceFqn = FullyQualifiedName.getParentFQN(pipelineFqn);
+    if (!nullOrEmpty(serviceFqn)) {
+      String runKey = buildKey(pipelineFqn, runId);
+      ServiceProgressEvent event =
+          new ServiceProgressEvent()
+              .withPipelineFqn(pipelineFqn)
+              .withRunId(runId.toString())
+              .withEvent(update)
+              .withIngestionPipeline(
+                  update.getUpdateType() == ProgressUpdateType.DISCOVERY
+                      ? ingestionPipeline
+                      : null);
+      ServiceProgressSnapshot snapshot =
+          new ServiceProgressSnapshot(
+              ingestionPipeline == null ? null : ingestionPipeline.getId(), event);
+      snapshot = recordActiveRun(serviceFqn, runKey, snapshot);
+      notifyServiceListeners(serviceFqn, snapshot);
+      dropRunIfTerminal(serviceFqn, runKey, update);
+    }
+  }
+
+  private ServiceProgressSnapshot recordActiveRun(
+      String serviceFqn, String runKey, ServiceProgressSnapshot event) {
+    // A reporting worker can outlive its pipeline; never rebind its run to a replacement.
+    return serviceActiveRuns
+        .computeIfAbsent(serviceFqn, k -> new ConcurrentHashMap<>())
+        .compute(
+            runKey,
+            (key, previous) ->
+                previous == null
+                    ? event
+                    : new ServiceProgressSnapshot(previous.pipelineId(), event.event()));
+  }
+
+  private void dropRunIfTerminal(String serviceFqn, String runKey, ProgressUpdate update) {
+    if (isTerminal(update)) {
+      Map<String, ServiceProgressSnapshot> runs = serviceActiveRuns.get(serviceFqn);
+      if (runs != null) {
+        runs.remove(runKey);
+        if (runs.isEmpty()) {
+          serviceActiveRuns.remove(serviceFqn);
+        }
+      }
+    }
+  }
+
+  private boolean isTerminal(ProgressUpdate update) {
+    return update.getUpdateType() == ProgressUpdateType.PIPELINE_COMPLETE
+        || update.getUpdateType() == ProgressUpdateType.ERROR;
+  }
+
+  private void notifyServiceListeners(String serviceFqn, ServiceProgressSnapshot event) {
+    List<Consumer<ServiceProgressSnapshot>> listeners = serviceListeners.get(serviceFqn);
+    if (listeners != null) {
+      for (Consumer<ServiceProgressSnapshot> listener : listeners) {
+        try {
+          listener.accept(event);
+        } catch (Exception e) {
+          LOG.warn("Error notifying service progress listener: {}", e.getMessage());
+        }
+      }
+    }
+  }
+
+  public void registerServiceListener(
+      String serviceFqn, Consumer<ServiceProgressSnapshot> listener) {
+    serviceListeners.compute(
+        serviceFqn,
+        (key, listeners) -> {
+          List<Consumer<ServiceProgressSnapshot>> current =
+              listeners == null ? new CopyOnWriteArrayList<>() : listeners;
+          current.add(listener);
+          return current;
+        });
+    activeProgressStreams.incrementAndGet();
+  }
+
+  public void unregisterServiceListener(
+      String serviceFqn, Consumer<ServiceProgressSnapshot> listener) {
+    serviceListeners.compute(
+        serviceFqn,
+        (key, listeners) -> {
+          List<Consumer<ServiceProgressSnapshot>> remaining = listeners;
+          if (listeners != null && listeners.remove(listener)) {
+            activeProgressStreams.decrementAndGet();
+            remaining = listeners.isEmpty() ? null : listeners;
+          }
+          return remaining;
+        });
+  }
+
+  public List<ServiceProgressSnapshot> getActiveRunSnapshots(String serviceFqn) {
+    Map<String, ServiceProgressSnapshot> runs = serviceActiveRuns.get(serviceFqn);
+    if (runs == null) {
+      return List.of();
+    }
+    return List.copyOf(runs.values());
+  }
+
+  public record ServiceProgressSnapshot(UUID pipelineId, ServiceProgressEvent event) {}
+
   public static class ProgressState {
     private volatile ProgressUpdate latestUpdate;
-    private final Map<String, EntityProgressState> entityProgress = new ConcurrentHashMap<>();
 
     public void applyUpdate(ProgressUpdate update) {
       this.latestUpdate = update;
-      if (update.getProgress() != null) {
-        update
-            .getProgress()
-            .forEach(
-                (entityType, progress) ->
-                    entityProgress
-                        .computeIfAbsent(entityType, k -> new EntityProgressState())
-                        .update(progress));
-      }
     }
 
     public ProgressUpdate getLatestUpdate() {
       return latestUpdate;
     }
 
-    public Map<String, EntityProgressState> getEntityProgress() {
-      return entityProgress;
-    }
-
     public ProgressUpdate toProgressUpdate() {
       return latestUpdate;
-    }
-  }
-
-  public static class EntityProgressState {
-    private volatile int total;
-    private volatile int processed;
-    private volatile Integer estimatedRemainingSeconds;
-
-    public void update(Object progress) {
-      if (progress instanceof Map<?, ?> map) {
-        if (map.get("total") != null) {
-          this.total = ((Number) map.get("total")).intValue();
-        }
-        if (map.get("processed") != null) {
-          this.processed = ((Number) map.get("processed")).intValue();
-        }
-        if (map.get("estimatedRemainingSeconds") != null) {
-          this.estimatedRemainingSeconds =
-              ((Number) map.get("estimatedRemainingSeconds")).intValue();
-        }
-      }
-    }
-
-    public int getTotal() {
-      return total;
-    }
-
-    public int getProcessed() {
-      return processed;
-    }
-
-    public Integer getEstimatedRemainingSeconds() {
-      return estimatedRemainingSeconds;
     }
   }
 }

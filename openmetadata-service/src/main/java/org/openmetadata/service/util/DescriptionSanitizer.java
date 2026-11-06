@@ -131,11 +131,25 @@ public final class DescriptionSanitizer {
           .allowElements("details", "summary")
           // Definition lists
           .allowElements("dl", "dt", "dd")
+          // Math equation node (BlockEditor MathEquation extension)
+          .allowElements("block-math-equation")
+          .allowAttributes("math_equation")
+          .onElements("block-math-equation")
+          .allowAttributes("isediting")
+          .matching(
+              (elementName, attributeName, value) -> {
+                if ("true".equals(value) || "false".equals(value)) {
+                  return value;
+                }
+                return null;
+              })
+          .onElements("block-math-equation")
           .toFactory();
 
   private static final Pattern ENTITY_LINK_PATTERN = Pattern.compile("<#E::[^<>]+>");
 
   private static final String ENTITY_LINK_PLACEHOLDER_PREFIX = "__OM_ENTITY_LINK_";
+  private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
 
   private DescriptionSanitizer() {}
 
@@ -151,25 +165,93 @@ public final class DescriptionSanitizer {
    * @return sanitized description safe for storage and rendering, or null if input is null
    */
   public static String sanitize(String description) {
+    return sanitizeWith(MARKDOWN_POLICY, description);
+  }
+
+  /**
+   * Sanitizes with a caller-supplied policy, preserving entity-link tokens exactly as {@link
+   * #sanitize(String)} does.
+   *
+   * <p>Exists so consumers that need a different trade-off can reuse the token-preservation step
+   * instead of copying it. The AI-context renderer is one: it strips markup a model cannot read
+   * (inline images, CSS classes) that the storage policy here must keep for the browser.
+   *
+   * @param policy the element/attribute policy to apply
+   * @param description the raw description from user input
+   * @return the sanitized description, or null if input is null
+   */
+  public static String sanitizeWith(PolicyFactory policy, String description) {
     if (description == null) {
       return null;
     }
+    // A per-call nonce so a description cannot carry a literal placeholder that the restore would
+    // expand, and the restore happens in one pass only where the placeholder is element text, so a
+    // placeholder the sanitizer moved into a tag or attribute is left inert
+    // (ADR:2026-11-03-input-parsing-is-bounded).
+    String token = ENTITY_LINK_PLACEHOLDER_PREFIX + Long.toHexString(RANDOM.nextLong()) + "_";
     Matcher matcher = ENTITY_LINK_PATTERN.matcher(description);
     List<String> entityLinks = new ArrayList<>();
     StringBuilder replaced = new StringBuilder();
     while (matcher.find()) {
       entityLinks.add(matcher.group());
       matcher.appendReplacement(
-          replaced, ENTITY_LINK_PLACEHOLDER_PREFIX + entityLinks.size() + "__");
+          replaced, Matcher.quoteReplacement(token + entityLinks.size() + "__"));
     }
     matcher.appendTail(replaced);
 
-    String sanitized = MARKDOWN_POLICY.sanitize(replaced.toString());
+    String toSanitize = replaced.toString();
+    String sanitized = toSanitize.contains("<") ? policy.sanitize(toSanitize) : toSanitize;
 
-    for (int i = 0; i < entityLinks.size(); i++) {
-      sanitized =
-          sanitized.replace(ENTITY_LINK_PLACEHOLDER_PREFIX + (i + 1) + "__", entityLinks.get(i));
+    return restoreEntityLinksInTextPositions(sanitized, token, entityLinks);
+  }
+
+  /**
+   * Puts each entity-link token back where its placeholder is element text, in a single pass. A
+   * placeholder inside a tag ({@code <...>}) is left as the inert placeholder, so a restored token
+   * can never land in an attribute. The sanitizer escapes any text {@code <}/{@code >} to entities,
+   * so the only unescaped angle brackets delimit tags.
+   */
+  private static String restoreEntityLinksInTextPositions(
+      String sanitized, String token, List<String> entityLinks) {
+    if (entityLinks.isEmpty()) {
+      return sanitized;
     }
-    return sanitized;
+    StringBuilder out = new StringBuilder(sanitized.length());
+    boolean inTag = false;
+    int i = 0;
+    while (i < sanitized.length()) {
+      char c = sanitized.charAt(i);
+      if (c == '<') {
+        inTag = true;
+      } else if (c == '>') {
+        inTag = false;
+      } else if (!inTag && c == '_' && sanitized.startsWith(token, i)) {
+        int numberStart = i + token.length();
+        int numberEnd = sanitized.indexOf("__", numberStart);
+        if (numberEnd > numberStart) {
+          Integer index = parseIndex(sanitized.substring(numberStart, numberEnd));
+          if (index != null && index >= 1 && index <= entityLinks.size()) {
+            out.append(entityLinks.get(index - 1));
+            i = numberEnd + 2;
+            continue;
+          }
+        }
+      }
+      out.append(c);
+      i++;
+    }
+    return out.toString();
+  }
+
+  private static Integer parseIndex(String digits) {
+    if (digits.isEmpty() || digits.length() > 7) {
+      return null;
+    }
+    for (int i = 0; i < digits.length(); i++) {
+      if (!Character.isDigit(digits.charAt(i))) {
+        return null;
+      }
+    }
+    return Integer.parseInt(digits);
   }
 }

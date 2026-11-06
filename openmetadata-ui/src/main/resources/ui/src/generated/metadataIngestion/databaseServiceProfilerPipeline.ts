@@ -34,6 +34,13 @@ export interface DatabaseServiceProfilerPipeline {
      */
     databaseFilterPattern?: FilterPattern;
     /**
+     * Use the partition metadata collected during metadata ingestion to only profile the most
+     * recent time or integer range partitions of tables without an explicit partition
+     * configuration. Tables with a partition configuration defined in their profiler settings
+     * are not affected.
+     */
+    enableAutoPartitionDetection?: boolean;
+    /**
      * Optional configuration to turn off fetching metadata for views.
      */
     includeViews?: boolean;
@@ -205,6 +212,11 @@ export interface ProfileSampleConfig {
  * Configuration for static sampling based on table row count.
  */
 export interface ICSamplingConfig {
+    /**
+     * Set to true to dynamically determine sampling percentage based on row count thresholds.
+     * If false, the thresholds values passed will be used as the sampling configuration.
+     */
+    smartSampling?: boolean;
     /**
      * Row count thresholds for sampling. Evaluated in order from highest to lowest threshold.
      * Tables below the lowest threshold are profiled at 100% (no sampling).

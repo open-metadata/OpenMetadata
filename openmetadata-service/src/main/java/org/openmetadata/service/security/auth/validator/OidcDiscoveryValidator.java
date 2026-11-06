@@ -348,23 +348,20 @@ public class OidcDiscoveryValidator {
   }
 
   /**
-   * Auto-populates publicKeyUrls from OIDC discovery document if not already set
+   * Re-derives publicKeyUrls from the OIDC discovery document. publicKeyUrls is a derived value for
+   * confidential clients (the UI never exposes it), so it must follow discoveryUri on every save --
+   * populating it only when empty leaves a stale JWKS URL behind when discoveryUri changes.
    *
    * @param discoveryUri The OIDC discovery URI
    * @param authConfig The authentication configuration to populate
-   * @throws Exception if discovery document cannot be fetched or parsed
+   * @throws Exception if discovery document cannot be fetched or parsed; the existing value is left
+   *     untouched in that case
    */
-  public void autoPopulatePublicKeyUrls(String discoveryUri, AuthenticationConfiguration authConfig)
-      throws Exception {
-
-    // Skip if publicKeyUrls already populated
-    if (authConfig.getPublicKeyUrls() != null && !authConfig.getPublicKeyUrls().isEmpty()) {
-      LOG.debug("publicKeyUrls already set, skipping auto-population");
-      return;
-    }
+  public void syncPublicKeyUrlsFromDiscovery(
+      String discoveryUri, AuthenticationConfiguration authConfig) throws Exception {
 
     if (nullOrEmpty(discoveryUri)) {
-      throw new IOException("Discovery URI is required for auto-populating publicKeyUrls");
+      throw new IOException("Discovery URI is required to resolve publicKeyUrls");
     }
 
     // Fetch discovery document
@@ -389,8 +386,7 @@ public class OidcDiscoveryValidator {
       throw new IOException("Discovery document contains empty 'jwks_uri' field");
     }
 
-    // Auto-populate publicKeyUrls
     authConfig.setPublicKeyUrls(List.of(jwksUri));
-    LOG.debug("Auto-populated publicKeyUrls from discovery document: {}", jwksUri);
+    LOG.debug("Resolved publicKeyUrls from discovery document: {}", jwksUri);
   }
 }

@@ -184,7 +184,7 @@ class TestDbtHttpConfigErrorHandling:
             dbtSSLConfig=ssl_config,
         )
 
-        with patch(
+        with patch(  # noqa: SIM117
             "requests.get",
             side_effect=requests.exceptions.SSLError("cert verify failed"),
         ):
@@ -201,7 +201,7 @@ class TestDbtHttpConfigErrorHandling:
         http_error = requests.exceptions.HTTPError(response=mock_resp)
         mock_resp.raise_for_status.side_effect = http_error
 
-        with patch(
+        with patch(  # noqa: SIM117
             "metadata.ingestion.source.database.dbt.dbt_config.requests.get",
             return_value=mock_resp,
         ):
@@ -217,7 +217,7 @@ class TestDbtHttpConfigErrorHandling:
         http_error = requests.exceptions.HTTPError(response=mock_resp)
         mock_resp.raise_for_status.side_effect = http_error
 
-        with patch(
+        with patch(  # noqa: SIM117
             "metadata.ingestion.source.database.dbt.dbt_config.requests.get",
             return_value=mock_resp,
         ):

@@ -1,13 +1,10 @@
-from typing import Optional
-
-
 def get_source_tables(lineage: dict) -> set:
     table_id = lineage["entity"]["id"]
 
     # upstream edges
     source_tables = set()
     for upstream_edge in lineage["upstreamEdges"]:
-        if not upstream_edge["toEntity"] == table_id:
+        if not upstream_edge["toEntity"] == table_id:  # noqa: SIM201
             continue
 
         source_table_id = upstream_edge["fromEntity"]
@@ -24,7 +21,7 @@ def get_target_tables(lineage: dict) -> set:
     # downstream edges
     target_tables = set()
     for downstream_edge in lineage["downstreamEdges"]:
-        if not downstream_edge["fromEntity"] == table_id:
+        if not downstream_edge["fromEntity"] == table_id:  # noqa: SIM201
             continue
 
         target_table_id = downstream_edge["toEntity"]
@@ -35,7 +32,7 @@ def get_target_tables(lineage: dict) -> set:
     return target_tables
 
 
-def assert_lineage_sources(lineage: dict, expected_source_tables: Optional[set[str]]) -> None:
+def assert_lineage_sources(lineage: dict, expected_source_tables: set[str] | None) -> None:
     if expected_source_tables is None:
         return
 
@@ -47,7 +44,7 @@ def assert_lineage_sources(lineage: dict, expected_source_tables: Optional[set[s
     )
 
 
-def assert_lineage_targets(lineage: dict, expected_target_tables: Optional[set[str]]) -> None:
+def assert_lineage_targets(lineage: dict, expected_target_tables: set[str] | None) -> None:
     if expected_target_tables is None:
         return
 
@@ -59,7 +56,7 @@ def assert_lineage_targets(lineage: dict, expected_target_tables: Optional[set[s
     )
 
 
-def assert_column_lineage(lineage: dict, expected_column_lineage: Optional[list[tuple[str, str]]]) -> None:
+def assert_column_lineage(lineage: dict, expected_column_lineage: list[tuple[str, str]] | None) -> None:
     if expected_column_lineage is None:
         return
 
@@ -76,9 +73,9 @@ def assert_column_lineage(lineage: dict, expected_column_lineage: Optional[list[
 
 def assert_lineage(
     lineage: dict,
-    expected_source_tables: Optional[set[str]],
-    expected_target_tables: Optional[set[str]],
-    expected_column_lineage: Optional[list[tuple[str, str]]],
+    expected_source_tables: set[str] | None,
+    expected_target_tables: set[str] | None,
+    expected_column_lineage: list[tuple[str, str]] | None,
 ) -> None:
     # check if lineage is present
     assert lineage is not None, "Lineage object is None"
@@ -90,15 +87,15 @@ def assert_lineage(
 
 
 def print_lineage(lineage: dict) -> None:
-    print("Lineage Nodes:")
+    print("Lineage Nodes:")  # noqa: T201
     for node in lineage["nodes"]:
-        print(f" - {node['id']}: {node['name']}")
+        print(f" - {node['id']}: {node['name']}")  # noqa: T201
 
-    print("\nUpstream Edges:")
+    print("\nUpstream Edges:")  # noqa: T201
     for edge in lineage["upstreamEdges"]:
-        print(f" - From {edge['fromEntity']['name']} to {edge['toEntity']['name']} (Edge ID: {edge['id']})")
+        print(f" - From {edge['fromEntity']['name']} to {edge['toEntity']['name']} (Edge ID: {edge['id']})")  # noqa: T201
 
-    print("\nDownstream Edges:")
+    print("\nDownstream Edges:")  # noqa: T201
     for edge in lineage["downstreamEdges"]:
-        print(f" - From {edge['fromEntity']['name']} to {edge['toEntity']['name']} (Edge ID: {edge['id']})")
-    print("\n")
+        print(f" - From {edge['fromEntity']['name']} to {edge['toEntity']['name']} (Edge ID: {edge['id']})")  # noqa: T201
+    print("\n")  # noqa: T201

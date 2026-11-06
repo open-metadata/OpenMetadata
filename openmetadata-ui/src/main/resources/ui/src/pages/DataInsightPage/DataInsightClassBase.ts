@@ -10,14 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as AppAnalyticsIcon } from '../../assets/svg/app-analytics.svg';
-import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-asset.svg';
-import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
+import {
+  AppAnalytics,
+  Assets,
+  Kpi,
+} from '@openmetadata/ui-core-components/icons';
+import { ManageMenuItem as ItemType } from '../../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import AppAnalyticsTab from '../../components/DataInsight/AppAnalyticsTab/AppAnalyticsTab.component';
 import DataAssetsTab from '../../components/DataInsight/DataAssetsTab/DataAssetsTab.component';
+import type { ExportData } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
-import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
+import { getDataInsightPathWithFqn } from '../../utils/DataInsightPureUtils';
 import i18n from '../../utils/i18next/LocalUtil';
 import DataInsightLeftPanel from './DataInsightLeftPanel/DataInsightLeftPanel';
 import KPIList from './KPIList';
@@ -26,7 +29,7 @@ type LeftSideBarType = {
   key: DataInsightTabs;
   label: string;
   icon: SvgComponent;
-  iconProps: React.SVGProps<SVGSVGElement>;
+  iconProps?: React.SVGProps<SVGSVGElement>;
 };
 
 class DataInsightClassBase {
@@ -39,26 +42,17 @@ class DataInsightClassBase {
       {
         key: DataInsightTabs.DATA_ASSETS,
         label: i18n.t('label.data-asset-plural'),
-        icon: AppAnalyticsIcon,
-        iconProps: {
-          className: 'side-panel-icons',
-        },
+        icon: Assets,
       },
       {
         key: DataInsightTabs.APP_ANALYTICS,
         label: i18n.t('label.app-analytic-plural'),
-        icon: DataAssetsIcon,
-        iconProps: {
-          className: 'side-panel-icons',
-        },
+        icon: AppAnalytics,
       },
       {
         key: DataInsightTabs.KPIS,
         label: i18n.t('label.kpi-uppercase-plural'),
-        icon: KPIIcon,
-        iconProps: {
-          className: 'side-panel-icons',
-        },
+        icon: Kpi,
       },
     ];
   }
@@ -91,7 +85,10 @@ class DataInsightClassBase {
     return currentTab?.component;
   }
 
-  public getManageExtraOptions(): ItemType[] {
+  // Hook-free; the page passes showModal in. ADR:2026-10-21-class-base-menu-helpers-take-showmodal
+  public getManageExtraOptions(
+    _showModal: (data: ExportData) => void
+  ): ItemType[] {
     return [];
   }
 }

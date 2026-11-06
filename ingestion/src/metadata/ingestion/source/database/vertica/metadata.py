@@ -12,17 +12,24 @@
 Vertica source implementation.
 """
 
+import contextlib
 import re
 import traceback
+from collections.abc import Iterable
 from textwrap import dedent
-from typing import Iterable, Optional
 
-from sqlalchemy import sql, util
-from sqlalchemy.engine import reflection
+from sqlalchemy import Table, sql, text, util
+from sqlalchemy.dialects import registry
+from sqlalchemy.engine import Inspector, reflection
+from sqlalchemy.engine.default import DefaultDialect
+from sqlalchemy.engine.interfaces import ReflectedColumn
+from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
 from sqlalchemy.sql import sqltypes
 from sqlalchemy_vertica.base import VerticaDialect, ischema_names
+from sqlalchemy_vertica.dialect_vertica_python import VerticaDialect as VerticaPythonDialect
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
@@ -34,11 +41,20 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.vertica.comment_batch import (
+    COMMENT_BATCH_SIZE,
+    CommentBatch,
+    batched,
+    fetch_comment_batch,
+)
 from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
-    VERTICA_GET_PRIMARY_KEYS,
+    VERTICA_GET_COLUMNS_WITHOUT_COMMENTS,
+    VERTICA_GET_CURRENT_SCHEMA,
+    VERTICA_GET_SERVER_VERSION,
     VERTICA_LIST_DATABASES,
     VERTICA_SCHEMA_COMMENTS,
+    VERTICA_SUPPORTS_COLUMN_COMMENTS,
     VERTICA_TABLE_COMMENTS,
     VERTICA_VIEW_DEFINITION,
 )
@@ -47,11 +63,15 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_schema_descriptions,
     get_table_comment_wrapper,
+    get_table_ddl,
 )
 
 logger = ingestion_logger()
+
+VERTICA_VERSION_PATTERN = re.compile(r".*Vertica Analytic Database v(\d+)\.(\d+)\.(\d+).*")
 
 ischema_names.update(
     {
@@ -73,28 +93,85 @@ ischema_names.update(
 )
 
 
+def _rollback_quietly(connection) -> None:
+    """A failed statement leaves the transaction unusable for whatever follows,
+    and the caller goes straight on to read columns.
+    """
+    with contextlib.suppress(Exception):
+        connection.rollback()
+
+
+def supports_column_comments(self, connection) -> bool:
+    """Whether this server exposes v_catalog.comments.child_object.
+
+    Vertica 10 added it. Without it the column query cannot be expressed, and
+    the failure takes out the whole column read rather than just the comments,
+    so tables end up with no columns and no schema definition.
+
+    A definite answer is remembered on the dialect, since it cannot change while
+    connected and re-asking would log once per table. An inconclusive one is not,
+    so a passing timeout cannot quietly cost every later table its comments.
+    """
+    remembered = getattr(self, "_column_comment_support", None)
+    if remembered is not None:
+        return remembered
+
+    try:
+        connection.execute(sql.text(VERTICA_SUPPORTS_COLUMN_COMMENTS))
+    except ProgrammingError as exc:
+        # The server rejected the statement itself, so it will keep rejecting it.
+        # Remember that and stop asking.
+        logger.warning(
+            "This Vertica server does not expose v_catalog.comments.child_object, "
+            "so column comments cannot be read. Columns and schema definitions are "
+            "still ingested, without comments. Vertica 10 and later expose it: %s",
+            exc,
+        )
+        _rollback_quietly(connection)
+        self._column_comment_support = False  # pylint: disable=protected-access
+        return False
+    except Exception as exc:
+        # Anything else, a timeout or a dropped connection, says nothing about
+        # what this server supports. Read columns without comments this once so
+        # the table still arrives, and leave the question open for the next call
+        # rather than stripping comments for the rest of the session.
+        logger.warning("Could not determine Vertica column comment support, reading columns without them: %s", exc)
+        _rollback_quietly(connection)
+        return False
+
+    self._column_comment_support = True  # pylint: disable=protected-access
+    return True
+
+
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: disable=too-many-locals,unused-argument
     """
-    Method to handle column details
+    Method to handle column details.
+
+    ``vertica_include_comments=False`` skips the per-table comments join, for callers that
+    attach comments themselves from a batch (see `VerticaSource`).
+
+    Primary keys are not looked up here: nothing reads a per-column primary-key flag,
+    since they are reflected through `get_pk_constraint`, so the query only cost a
+    catalog read per table (issue #29429).
     """
     if schema is not None:
         schema_condition = f"lower(table_schema) = '{schema.lower()}'"
     else:
         schema_condition = "1"
 
-    sql_query = sql.text(
-        dedent(VERTICA_GET_COLUMNS.format(table=table_name.lower(), schema_condition=schema_condition))
+    include_comments = kw.get("vertica_include_comments", True)
+    columns_query = (
+        VERTICA_GET_COLUMNS
+        if include_comments and supports_column_comments(self, connection)
+        else VERTICA_GET_COLUMNS_WITHOUT_COMMENTS
     )
+    sql_query = sql.text(dedent(columns_query.format(table=table_name.lower(), schema_condition=schema_condition)))
 
-    spk = sql.text(dedent(VERTICA_GET_PRIMARY_KEYS.format(table=table_name.lower(), schema_condition=schema_condition)))
-
-    pk_columns = [x[0] for x in connection.execute(spk)]
     columns = {}
     for row in connection.execute(sql_query):
         name = row.column_name
         dtype = row.data_type.lower()
-        primary_key = name in pk_columns
         default = row.column_default
         nullable = row.is_nullable
         comment = row.comment
@@ -107,13 +184,12 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
             schema,
             comment,
         )
-        column_info.update({"primary_key": primary_key})
         if columns.get(name) is None or comment:
             columns[name] = column_info
     return columns.values()
 
 
-def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements  # noqa: C901
     self,
     name,
     format_type,
@@ -200,7 +276,7 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
         "autoincrement": autoincrement,
         "comment": comment,
     }
-    return column_info
+    return column_info  # noqa: RET504
 
 
 @reflection.cache
@@ -240,6 +316,8 @@ def get_table_comment(
     schema=None,
     **kw,  # pylint: disable=unused-argument
 ):
+    if not kw.get("vertica_include_comments", True):
+        return {"text": None}
     return get_table_comment_wrapper(
         self,
         connection,
@@ -249,11 +327,94 @@ def get_table_comment(
     )
 
 
+def _get_server_version_info(self, connection):  # pylint: disable=unused-argument
+    """Read the server version while the dialect initializes.
+
+    sqlalchemy-vertica passes this statement to Connection.scalar() as a bare
+    string, which SQLAlchemy 2.x refuses to execute, so the first
+    engine.connect() raises instead of returning a connection and the
+    CheckAccess step of Test Connection fails.
+    """
+    version = connection.scalar(text(VERTICA_GET_SERVER_VERSION))
+    match = VERTICA_VERSION_PATTERN.match(version or "")
+    if not match:
+        raise AssertionError(f"Could not determine version from string '{version}'")
+    return tuple(int(group) for group in match.group(1, 2, 3) if group is not None)
+
+
+def _get_default_schema_name(self, connection):  # pylint: disable=unused-argument
+    """Read the default schema while the dialect initializes.
+
+    initialize() calls this straight after the server version and the upstream
+    dialect has the same bare-string defect here, so correcting only the version
+    moves the failure rather than clearing it.
+    """
+    return connection.scalar(text(VERTICA_GET_CURRENT_SCHEMA))
+
+
+class VerticaInspector(Inspector):
+    """Vertica inspector with comment-free DDL reflection."""
+
+    def get_all_table_ddls(self, connection, query, schema_name, **kw):
+        kw["vertica_include_comments"] = False
+        return get_all_table_ddls(self, connection, query, schema_name, **kw)
+
+
+# Table argument registration mutates the nested dictionaries inherited from PostgreSQL.
+assert VerticaDialect.construct_arguments is not None
+VerticaDialect.construct_arguments = [
+    (construct, dict(arguments)) for construct, arguments in VerticaDialect.construct_arguments
+]
+registry.register("vertica", "sqlalchemy_vertica.dialect_vertica_python", "VerticaDialect")
+Table.argument_for("vertica", "include_comments", True)
+VerticaDialect.reflection_options = (*VerticaDialect.reflection_options, "vertica_include_comments")
+VerticaDialect.inspector = VerticaInspector  # pyright: ignore[reportAttributeAccessIssue] -- Replace the inherited PostgreSQL inspector.
+
 VerticaDialect.get_columns = get_columns
 VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-access
-VerticaDialect.get_view_definition = get_view_definition
+VerticaDialect.get_view_definition = get_view_definition  # pyright: ignore[reportAttributeAccessIssue]
 VerticaDialect.get_all_table_comments = get_all_table_comments
-VerticaDialect.get_table_comment = get_table_comment
+VerticaDialect.get_table_comment = get_table_comment  # pyright: ignore[reportAttributeAccessIssue]
+VerticaDialect._get_server_version_info = _get_server_version_info  # pylint: disable=protected-access
+VerticaDialect._get_default_schema_name = _get_default_schema_name  # pylint: disable=protected-access
+
+# The reflection statements embed their literal values in the statement text or
+# use bound parameters, so SQLAlchemy's compiled-statement cache is safe to enable
+# and avoids recompiling every statement (matching the MSSQL dialect). SQLAlchemy
+# reads the flag from the concrete dialect class only, so it has to be set on the
+# one the vertica+vertica_python scheme builds, not on the base class it extends.
+VerticaPythonDialect.supports_statement_cache = True
+
+# get_schema_definition only reaches for table DDL when the inspector carries
+# these, and they are registered globally rather than per dialect. Vertica does
+# import a connector that installs them, but only as a side effect of sharing
+# Postgres helpers, so declare them here rather than depend on that chain.
+Inspector.get_all_table_ddls = get_all_table_ddls  # pyright: ignore[reportAttributeAccessIssue]
+Inspector.get_table_ddl = get_table_ddl  # pyright: ignore[reportAttributeAccessIssue]
+
+# sqlalchemy-vertica predates SQLAlchemy 2.0 and overrides only the singular
+# get_* reflection methods. The batched get_multi_* API that MetaData.reflect()
+# now calls is therefore inherited from PGDialect, which reads pg_catalog, a
+# schema Vertica does not have. Reflection fails with MissingSchema, and because
+# get_all_table_ddls swallows that at debug level, tables silently end up with no
+# schema definition while views, reflected one at a time, are unaffected.
+#
+# DefaultDialect's versions are generic loops over the singular methods, so this
+# routes the batched API back onto the Vertica implementations above.
+for _batched_reflection_method in (
+    "get_multi_columns",
+    "get_multi_pk_constraint",
+    "get_multi_foreign_keys",
+    "get_multi_indexes",
+    "get_multi_table_comment",
+    "get_multi_unique_constraints",
+    "get_multi_check_constraints",
+):
+    setattr(
+        VerticaDialect,
+        _batched_reflection_method,
+        getattr(DefaultDialect, _batched_reflection_method),
+    )
 
 
 class VerticaSource(CommonDbSourceService, MultiDBSource):
@@ -265,16 +426,19 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
         self.schema_desc_map = {}
+        # The comment batch each worker thread is processing: at most one per thread,
+        # so this holds at most `threads` batches of COMMENT_BATCH_SIZE tables.
+        self._comment_batches: dict[int, CommentBatch] = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: VerticaConnection = config.serviceConnection.root.config
         if not isinstance(connection, VerticaConnection):
             raise InvalidSourceException(f"Expected VerticaConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:
+    def get_schema_description(self, schema_name: str) -> str | None:
         """
         Method to fetch the schema description
         """
@@ -283,14 +447,14 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
     def set_schema_description_map(self) -> None:
         self.schema_desc_map = get_schema_descriptions(self.engine, VERTICA_SCHEMA_COMMENTS)
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> str | None:
         return self.service_connection.database
 
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(VERTICA_LIST_DATABASES)
 
     def get_database_names(self) -> Iterable[str]:
-        configured_db = self.config.serviceConnection.root.config.database
+        configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
         if configured_db:
             self.set_inspector(database_name=configured_db)
             self.set_schema_description_map()
@@ -318,3 +482,76 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
+
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
+        """
+        Yield the filtered tables and views as usual, but in batches: before the
+        tables of a batch are yielded, their table and column comments are fetched
+        with a single query, and the batch is released before the next one is loaded
+        (issue #29429). Tables are processed as they are yielded, so a batch is
+        consumed before the next one is fetched and only one is ever resident per
+        worker.
+        """
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue] -- Schema context is generated by the topology.
+        try:
+            for batch in batched(super().get_tables_name_and_type() or [], COMMENT_BATCH_SIZE):
+                self._load_comment_batch(schema_name, [table_name for table_name, _ in batch])
+                yield from batch
+        finally:
+            self._comment_batches.pop(self.context.get_current_thread_id(), None)
+
+    def _load_comment_batch(self, schema_name: str, table_names: list[str]) -> None:
+        thread_id = self.context.get_current_thread_id()
+        self._comment_batches.pop(thread_id, None)
+        connection = self.connection
+        if supports_column_comments(self.inspector.dialect, connection):
+            try:
+                self._comment_batches[thread_id] = fetch_comment_batch(connection, schema_name, table_names)
+            except SQLAlchemyError as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    "Could not fetch the comments of a batch of %d tables in schema %s, "
+                    "reading them table by table instead: %s",
+                    len(table_names),
+                    schema_name,
+                    exc,
+                )
+                _rollback_quietly(connection)
+
+    def _comment_batch_for(self, schema_name: str, table_name: str) -> CommentBatch | None:
+        batch = self._comment_batches.get(self.context.get_current_thread_id())
+        return batch if batch is not None and batch.covers(schema_name, table_name) else None
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType | None = None,
+    ) -> list[ReflectedColumn]:
+        batch = self._comment_batch_for(schema_name, table_name)
+        if batch is None:
+            return super()._get_columns_internal(schema_name, table_name, db_name, inspector, table_type)  # pyright: ignore[reportArgumentType] -- The base accepts None but omits it from its annotation.
+        columns = inspector.get_columns(
+            table_name,
+            schema_name,
+            table_type=table_type,
+            db_name=db_name,
+            vertica_include_comments=False,
+        )
+        # Without a comment the join yielded NULL for a table column and '' for a view
+        # column; keep that so unchanged entities are not seen as changed.
+        missing_comment = "" if table_type == TableType.View else None
+        columns = [column.copy() for column in columns]
+        for column in columns:
+            column["comment"] = batch.column_comment(table_name, column["name"]) or missing_comment
+        return columns
+
+    def get_table_description(  # pyright: ignore[reportIncompatibleMethodOverride] -- The static base method cannot access the active batch.
+        self, schema_name: str, table_name: str, inspector: Inspector
+    ) -> str | None:
+        batch = self._comment_batch_for(schema_name, table_name)
+        if batch is None:
+            return super().get_table_description(schema_name, table_name, inspector)
+        return batch.table_comment(table_name)

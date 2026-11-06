@@ -11,16 +11,21 @@
  *  limitations under the License.
  */
 
+import {
+  LIGHT_CHART_PALETTE,
+  PieChart,
+  type PieChartProps,
+} from '@openmetadata/ui-core-components/charts';
 import { render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ColumnProfile } from '../../../../generated/entity/data/container';
-import { Table } from '../../../../generated/entity/data/table';
+import { Table, TableType } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { DataType } from '../../../../generated/tests/testDefinition';
+import { SuffixFormat } from '../../../../generated/type/tableSharding';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
-import '../../../../test/unit/mocks/mui.mock';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import SingleColumnProfile from './SingleColumnProfile';
 import { useTableProfiler } from './TableProfilerProvider';
@@ -84,25 +89,22 @@ jest.mock('../../../../utils/DocumentationLinksClassBase', () => ({
   }),
 }));
 
-jest.mock('recharts', () => ({
-  PieChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="pie-chart">{children}</div>
-  ),
-  Pie: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="pie">{children}</div>
-  ),
-  Cell: () => <div data-testid="cell" />,
-  Tooltip: () => <div data-testid="tooltip" />,
-}));
+// LocalUtil and LocalUtilClassBase import each other; mocking the latter keeps
+// requireActual below from reading LocalUtil's exports mid-initialization.
+jest.mock('../../../../utils/i18next/LocalUtilClassBase');
 
-jest.mock('../../../../utils/CommonUtils', () => ({
-  formatNumberWithComma: (value: number) => value.toString(),
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  ...jest.requireActual('../../../../utils/i18next/LocalUtil'),
   Transi18next: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/NumberUtils', () => ({
+  formatNumberWithComma: (value: number) => value.toString(),
+}));
+
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: (entity: { name?: string }) => entity.name ?? '',
 }));
 
@@ -329,6 +331,7 @@ const defaultTableProfilerContext = {
   },
   isTestCaseDrawerOpen: false,
   onTestCaseDrawerOpen: jest.fn(),
+  onCustomMetricDrawerOpen: jest.fn(),
   testCaseSummary: {
     'db.schema.test_table.test_column': {
       success: 5,
@@ -351,6 +354,10 @@ const mockUseTableProfiler = useTableProfiler as jest.MockedFunction<
 const mockShowErrorToast = showErrorToast as jest.MockedFunction<
   typeof showErrorToast
 >;
+const pieProps = () =>
+  (PieChart as unknown as jest.Mock<null, [PieChartProps]>).mock.calls.at(
+    -1
+  )?.[0] as PieChartProps;
 
 describe('SingleColumnProfile', () => {
   beforeEach(() => {
@@ -373,6 +380,136 @@ describe('SingleColumnProfile', () => {
     activeColumnFqn: 'db.schema.test_table.test_column',
     tableDetails: mockTableDetails,
   };
+
+  it.each([TableType.Regular, TableType.Sharded])(
+    'uses the latest recorded source independently of the representative (%s)',
+    async (tableType) => {
+      const records = [
+        {
+          name: 'test_column',
+          timestamp: MOCK_START_TS,
+          executionSource: {
+            databaseName: 'my_db',
+            schemaName: 'my_schema',
+            tableName: 'events_20260101',
+          },
+        },
+        {
+          name: 'test_column',
+          timestamp: MOCK_END_TS,
+          executionSource: {
+            databaseName: 'my_db',
+            schemaName: 'my_schema',
+            tableName: 'events_20260102',
+          },
+        },
+        { name: 'test_column', timestamp: MOCK_START_TS - 1000 },
+      ];
+      mockGetColumnProfilerList.mockResolvedValue({
+        data: records,
+        paging: { total: 3 },
+      });
+      const tableSharding =
+        tableType === TableType.Sharded
+          ? {
+              prefix: 'events_',
+              suffixFormat: SuffixFormat.Yyyymmdd,
+              shardCount: 2,
+              firstShardDate: new Date('2026-01-01'),
+              lastShardDate: new Date('2026-01-02'),
+              representative: {
+                databaseName: 'my_db',
+                schemaName: 'my_schema',
+                tableName: 'events_20260101',
+              },
+            }
+          : undefined;
+      const { rerender } = render(
+        <SingleColumnProfile
+          {...defaultProps}
+          tableDetails={{ ...mockTableDetails, tableType, tableSharding }}
+        />
+      );
+
+      expect(
+        await screen.findByText(/my_db.my_schema.events_20260102/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/my_db.my_schema.events_20260102/)
+      ).toBeInTheDocument();
+
+      rerender(
+        <SingleColumnProfile
+          {...defaultProps}
+          tableDetails={{
+            ...mockTableDetails,
+            tableType,
+            tableSharding: tableSharding
+              ? {
+                  ...tableSharding,
+                  representative: {
+                    databaseName: 'my_db',
+                    schemaName: 'my_schema',
+                    tableName: 'events_20260102',
+                  },
+                }
+              : undefined,
+          }}
+        />
+      );
+
+      expect(
+        screen.getByText(/my_db.my_schema.events_20260102/)
+      ).toBeInTheDocument();
+
+      expect(
+        screen.queryByText(/my_db.my_schema.events_20260101/)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('message.execution-source-unavailable')
+      ).not.toBeInTheDocument();
+    }
+  );
+
+  describe('Column test donut', () => {
+    it('draws the column test results as a status donut with the total', async () => {
+      render(<SingleColumnProfile {...defaultProps} />);
+
+      await waitFor(() => expect(PieChart).toHaveBeenCalled());
+      const props = pieProps();
+
+      expect(props.track).toBe(true);
+      expect(props.data.map(({ name, status }) => ({ name, status }))).toEqual([
+        { name: 'Success', status: 'success' },
+        { name: 'Failed', status: 'failed' },
+        { name: 'Aborted', status: 'warning' },
+      ]);
+      expect(screen.getByTestId('column-test-total')).toHaveTextContent('8');
+      expect(screen.getByText('label.total-test-plural')).toBeInTheDocument();
+    });
+
+    it('colours the side legend like the donut slices', async () => {
+      render(<SingleColumnProfile {...defaultProps} />);
+
+      expect(await screen.findByText('Failed')).toHaveStyle({
+        borderLeft: `4px solid ${LIGHT_CHART_PALETTE.status.failed}`,
+      });
+    });
+
+    it('shows the track and a zero total for a column without tests', async () => {
+      mockUseTableProfiler.mockReturnValue({
+        ...defaultTableProfilerContext,
+        testCaseSummary: {},
+      });
+      render(<SingleColumnProfile {...defaultProps} />);
+
+      await waitFor(() => expect(PieChart).toHaveBeenCalled());
+
+      expect(pieProps().data.every(({ value }) => value === 0)).toBe(true);
+      expect(pieProps().track).toBe(true);
+      expect(screen.getByTestId('column-test-total')).toHaveTextContent('0');
+    });
+  });
 
   describe('Rendering', () => {
     it('should render all profiler detail cards', async () => {

@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { Column } from 'react-data-grid';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import DataGrid, { Column } from 'react-data-grid';
 import { MemoryRouter } from 'react-router-dom';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { CSVImportResult, Status } from '../../generated/type/csvImportResult';
+import { exportTestCasesInCSV } from '../../rest/testAPI';
+import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import BulkEditEntity from './BulkEditEntity.component';
 import { BulkEditEntityProps } from './BulkEditEntity.interface';
 
@@ -77,6 +79,14 @@ jest.mock('react-data-grid', () => {
     <div data-testid="data-grid">
       <span data-testid="row-count">{rows?.length ?? 0}</span>
       <span data-testid="column-count">{columns?.length ?? 0}</span>
+      {columns?.map((column: Column<Record<string, string>>) => (
+        <span
+          data-frozen={String(Boolean(column.frozen))}
+          data-testid={`column-${column.key}`}
+          data-width={String(column.width ?? '')}
+          key={column.key}
+        />
+      ))}
     </div>
   ));
 
@@ -84,18 +94,6 @@ jest.mock('react-data-grid', () => {
     __esModule: true,
     default: MockDataGrid,
   };
-});
-
-jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => {
-  return jest.fn(({ titleLinks }) => (
-    <div data-testid="title-breadcrumb">
-      {titleLinks?.map((link: { name: string }, idx: number) => (
-        <span data-testid="breadcrumb-item" key={idx}>
-          {link.name}
-        </span>
-      ))}
-    </div>
-  ));
 });
 
 jest.mock(
@@ -131,6 +129,10 @@ jest.mock('../common/EntityImport/ImportStatus/ImportStatus.component', () => ({
 jest.mock('../common/Loader/Loader', () => {
   return jest.fn(() => <div data-testid="loader">Loading...</div>);
 });
+
+jest.mock('../../rest/testAPI', () => ({
+  exportTestCasesInCSV: jest.fn(),
+}));
 
 jest.mock('../../utils/EntityBulkEdit/EntityBulkEditUtils', () => ({
   getBulkEditCSVExportEntityApi: jest.fn(() => jest.fn()),
@@ -171,24 +173,36 @@ const mockValidateCSVData = {
 
 const defaultProps: BulkEditEntityProps = {
   dataSource: mockDataSource,
-  columns: mockColumns as unknown as Column<Record<string, string>[]>[],
+  initialDataSource: mockDataSource,
+  columns: mockColumns,
   breadcrumbList: mockBreadcrumbList,
   activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+  changedCellCount: 0,
+  changedCellKeysByRowId: {},
+  changedRowCount: 0,
   isValidating: false,
   handleBack: jest.fn(),
   handleValidate: jest.fn().mockResolvedValue(undefined),
+  handleRevertChanges: jest.fn(),
   onCSVReadComplete: jest.fn(),
   setGridContainer: jest.fn(),
   handleCopy: jest.fn(),
   handlePaste: jest.fn().mockReturnValue({}),
   pushToUndoStack: jest.fn(),
   handleOnRowsChange: jest.fn(),
+  searchText: '',
+  visibleRows: mockDataSource,
+  onSearchTextChange: jest.fn(),
 };
 
 const renderComponent = (props: Partial<BulkEditEntityProps> = {}) => {
   return render(
     <MemoryRouter>
-      <BulkEditEntity {...defaultProps} {...props} />
+      <BulkEditEntity
+        {...defaultProps}
+        visibleRows={props.dataSource ?? defaultProps.visibleRows}
+        {...props}
+      />
     </MemoryRouter>
   );
 };
@@ -216,11 +230,15 @@ describe('BulkEditEntity', () => {
     it('should render breadcrumb with correct links', () => {
       renderComponent();
 
-      const breadcrumbItems = screen.getAllByTestId('breadcrumb-item');
+      const breadcrumbItems = within(
+        screen.getByTestId('title-breadcrumb')
+      ).getAllByRole('listitem');
 
-      expect(breadcrumbItems).toHaveLength(2);
-      expect(breadcrumbItems[0]).toHaveTextContent('Home');
-      expect(breadcrumbItems[1]).toHaveTextContent('Entity');
+      expect(breadcrumbItems).toHaveLength(4);
+      expect(breadcrumbItems[0]).toHaveTextContent('label.governance');
+      expect(breadcrumbItems[1]).toHaveTextContent('Home');
+      expect(breadcrumbItems[2]).toHaveTextContent('Entity');
+      expect(breadcrumbItems[3]).toHaveTextContent('label.bulk-edit');
     });
 
     it('should render stepper with correct active step', () => {
@@ -246,6 +264,35 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+    });
+  });
+
+  describe('Search and editing', () => {
+    it('shows the no-results placeholder instead of an empty grid when search matches nothing', () => {
+      renderComponent({ searchText: 'zzz', visibleRows: [] });
+
+      expect(
+        screen.getByTestId('bulk-edit-no-search-results')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('data-grid')).not.toBeInTheDocument();
+    });
+
+    it('grows the row whose editor reports a taller height', async () => {
+      // No ids, like rows added in bulk edit: the lookup must key on the row, not row.id.
+      const rows = [{ col1: 'a' }, { col1: 'b' }];
+      renderComponent({
+        dataSource: rows,
+        visibleRows: rows,
+        editingRowHeight: { rowIdx: 1, height: 140 },
+      });
+      await screen.findByTestId('data-grid');
+
+      const { rowHeight, rows: gridRows } = (
+        DataGrid as unknown as jest.Mock
+      ).mock.calls.at(-1)[0];
+
+      expect(rowHeight(gridRows[0])).toBe(52);
+      expect(rowHeight(gridRows[1])).toBe(140);
     });
   });
 
@@ -277,6 +324,25 @@ describe('BulkEditEntity', () => {
       ).toBeInTheDocument();
     });
 
+    it('should disable next button when there are no bulk edit changes', () => {
+      renderComponent({ activeStep: VALIDATION_STEP.EDIT_VALIDATE });
+
+      expect(screen.getByRole('button', { name: 'label.next' })).toBeDisabled();
+    });
+
+    it('should allow metric import preview validation without additional edits', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        isExportHydrationRequired: false,
+        isNextDisabled: false,
+        workflowMode: 'import',
+      });
+
+      expect(
+        screen.getByRole('button', { name: 'label.next' })
+      ).not.toBeDisabled();
+    });
+
     it('should show update button at step 2', () => {
       renderComponent({
         activeStep: VALIDATION_STEP.UPDATE,
@@ -305,6 +371,9 @@ describe('BulkEditEntity', () => {
       const handleValidate = jest.fn().mockResolvedValue(undefined);
       renderComponent({
         activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        changedCellCount: 1,
+        changedCellKeysByRowId: { '0': ['col1'] },
+        changedRowCount: 1,
         handleValidate,
       });
 
@@ -459,6 +528,44 @@ describe('BulkEditEntity', () => {
       );
     });
 
+    it('should not trigger export when source data is hydrated by parent', () => {
+      renderComponent({ isExportHydrationRequired: false });
+
+      expect(mockTriggerExportForBulkEdit).not.toHaveBeenCalled();
+    });
+
+    it('should not re-trigger export when the provider callback identity changes for the same entity', () => {
+      const firstTrigger = jest.fn();
+      const secondTrigger = jest.fn();
+      useEntityExportModalProvider.mockReturnValue({
+        triggerExportForBulkEdit: firstTrigger,
+        csvExportData: 'col1,col2\nval1,val2',
+        clearCSVExportData: mockClearCSVExportData,
+      });
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <BulkEditEntity {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      expect(firstTrigger).toHaveBeenCalledTimes(1);
+
+      useEntityExportModalProvider.mockReturnValue({
+        triggerExportForBulkEdit: secondTrigger,
+        csvExportData: 'col1,col2\nval1,val2\nval3,val4',
+        clearCSVExportData: mockClearCSVExportData,
+      });
+
+      rerender(
+        <MemoryRouter>
+          <BulkEditEntity {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      expect(secondTrigger).not.toHaveBeenCalled();
+    });
+
     it('should call clearCSVExportData on unmount', () => {
       const { unmount } = renderComponent();
 
@@ -487,14 +594,16 @@ describe('BulkEditEntity', () => {
       renderComponent({ columns: [] });
 
       expect(screen.getByTestId('data-grid')).toBeInTheDocument();
-      expect(screen.getByTestId('column-count')).toHaveTextContent('0');
+      expect(screen.getByTestId('column-count')).toHaveTextContent('1');
     });
 
     it('should handle empty breadcrumbList', () => {
       renderComponent({ breadcrumbList: [] });
 
       expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
-      expect(screen.queryByTestId('breadcrumb-item')).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('title-breadcrumb')).getAllByRole('listitem')
+      ).toHaveLength(2);
     });
 
     it('should handle undefined validationData at UPDATE step', () => {
@@ -547,6 +656,28 @@ describe('BulkEditEntity', () => {
       expect(mockTriggerExportForBulkEdit).toHaveBeenCalled();
     });
 
+    it('labels the rows of a table bulk edit as columns', () => {
+      mockEntityType = EntityType.TABLE;
+      renderComponent();
+
+      expect(
+        screen.getByText(
+          `label.edit ${mockDataSource.length} label.column-plural`
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('labels the rows of a glossary bulk edit as glossary terms', () => {
+      mockEntityType = EntityType.GLOSSARY;
+      renderComponent();
+
+      expect(
+        screen.getByText(
+          `label.edit ${mockDataSource.length} label.glossary-term-plural`
+        )
+      ).toBeInTheDocument();
+    });
+
     it('should handle DATABASE entity type', () => {
       mockEntityType = EntityType.DATABASE;
       renderComponent();
@@ -566,6 +697,38 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(mockTriggerExportForBulkEdit).toHaveBeenCalled();
+    });
+
+    it('should load the test case grid with the filters the list was opened with', async () => {
+      mockEntityType = EntityType.TEST_CASE;
+      (getBulkEditCSVExportEntityApi as jest.Mock).mockImplementation(
+        jest.requireActual('../../utils/EntityBulkEdit/EntityBulkEditUtils')
+          .getBulkEditCSVExportEntityApi
+      );
+
+      try {
+        render(
+          <MemoryRouter
+            initialEntries={[
+              '/bulk/edit/testCase/test.entity.fqn?sourceEntityType=table&testCaseStatus=Failed,Aborted&q=nulls&currentPage=2',
+            ]}>
+            <BulkEditEntity {...defaultProps} />
+          </MemoryRouter>
+        );
+        const { name, onExport } =
+          mockTriggerExportForBulkEdit.mock.calls[0][0];
+        await onExport(name, { recursive: false });
+
+        expect(exportTestCasesInCSV).toHaveBeenCalledWith('test.entity.fqn', {
+          recursive: false,
+          testCaseStatus: ['Failed', 'Aborted'],
+          q: 'nulls',
+        });
+      } finally {
+        (getBulkEditCSVExportEntityApi as jest.Mock).mockImplementation(() =>
+          jest.fn()
+        );
+      }
     });
   });
 
@@ -637,11 +800,104 @@ describe('BulkEditEntity', () => {
     it('should pass correct props to DataGrid', () => {
       renderComponent({
         dataSource: mockDataSource,
-        columns: mockColumns as unknown as Column<Record<string, string>[]>[],
+        initialDataSource: mockDataSource,
+        columns: mockColumns,
       });
 
       expect(screen.getByTestId('row-count')).toHaveTextContent('2');
-      expect(screen.getByTestId('column-count')).toHaveTextContent('2');
+      expect(screen.getByTestId('column-count')).toHaveTextContent('3');
+    });
+
+    it('should add an operation column to the edit grid', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        changedCellKeysByRowId: { '0': ['col1'] },
+        changedCellCount: 1,
+        changedRowCount: 1,
+      });
+
+      expect(
+        screen.getByTestId('bulk-edit-operation-summary')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('column-count')).toHaveTextContent('3');
+    });
+
+    it('should freeze operation and metric name columns in the edit grid', () => {
+      mockEntityType = EntityType.METRIC;
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        columns: [
+          { key: 'name*', name: 'Name' },
+          { key: 'displayName', name: 'Display Name' },
+        ] as Column<Record<string, string>>[],
+      });
+
+      expect(screen.getByTestId('column-__bulkEditOperation')).toHaveAttribute(
+        'data-frozen',
+        'true'
+      );
+      expect(screen.getByTestId('column-name*')).toHaveAttribute(
+        'data-frozen',
+        'true'
+      );
+      expect(screen.getByTestId('column-name*')).toHaveAttribute(
+        'data-width',
+        '200'
+      );
+      expect(screen.getByTestId('column-displayName')).toHaveAttribute(
+        'data-frozen',
+        'false'
+      );
+    });
+
+    it('should classify a blank new metric row as skip and show an error pill', () => {
+      mockEntityType = EntityType.METRIC;
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        dataSource: [
+          {
+            id: 'new-1',
+            __bulkEditNewRow: 'true',
+            'name*': '',
+            metricType: 'COUNT',
+          },
+        ],
+        initialDataSource: [],
+        columns: [
+          { key: 'name*', name: 'Name' },
+          { key: 'metricType', name: 'Metric Type' },
+        ] as Column<Record<string, string>>[],
+        changedCellCount: 1,
+        changedCellKeysByRowId: { 'new-1': ['metricType'] },
+        changedRowCount: 1,
+      });
+
+      const operationSummary = within(
+        screen.getByTestId('bulk-edit-operation-summary')
+      );
+
+      expect(operationSummary.getByText('1')).toBeInTheDocument();
+      expect(screen.getByText('1 label.error')).toBeInTheDocument();
+    });
+
+    it('hides the add-metric footer while a search is active', () => {
+      mockEntityType = EntityType.METRIC;
+      const { rerender } = renderComponent({
+        searchText: 'zzz',
+        visibleRows: [],
+      });
+
+      expect(
+        screen.queryByTestId('bulk-edit-add-metric')
+      ).not.toBeInTheDocument();
+
+      rerender(
+        <MemoryRouter>
+          <BulkEditEntity {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByTestId('bulk-edit-add-metric')).toBeInTheDocument();
     });
   });
 
@@ -675,6 +931,15 @@ describe('BulkEditEntity', () => {
 
       expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
     });
+
+    it('should show loader while parent-hydrated source data is loading', () => {
+      renderComponent({
+        isExportHydrationRequired: false,
+        isLoadingSourceData: true,
+      });
+
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+    });
   });
 
   describe('Banner Loading State', () => {
@@ -700,6 +965,31 @@ describe('BulkEditEntity', () => {
       });
 
       expect(screen.getByTestId('banner-loading')).toHaveTextContent('false');
+    });
+  });
+
+  describe('Export hydration error', () => {
+    it('should show a retriable error instead of the loader when export hydration fails', () => {
+      const triggerExport = jest.fn();
+      const clearData = jest.fn();
+      useEntityExportModalProvider.mockReturnValue({
+        triggerExportForBulkEdit: triggerExport,
+        csvExportData: undefined,
+        csvExportError: 'Entity not found: databaseService BigQuery',
+        clearCSVExportData: clearData,
+      });
+
+      renderComponent();
+
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(screen.getByTestId('banner-message')).toHaveTextContent(
+        'Entity not found: databaseService BigQuery'
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.try-again' }));
+
+      expect(clearData).toHaveBeenCalled();
+      expect(triggerExport).toHaveBeenCalled();
     });
   });
 });

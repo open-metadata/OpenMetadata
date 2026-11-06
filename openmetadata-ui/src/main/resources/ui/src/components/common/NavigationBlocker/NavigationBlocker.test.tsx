@@ -12,7 +12,15 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { NavigationBlocker } from './NavigationBlocker';
+
+const mockNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -40,7 +48,8 @@ describe('NavigationBlocker component', () => {
     render(
       <NavigationBlocker enabled={false}>
         <div data-testid="test-content">Test Content</div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     expect(screen.getByTestId('test-content')).toBeInTheDocument();
@@ -50,7 +59,8 @@ describe('NavigationBlocker component', () => {
     render(
       <NavigationBlocker enabled>
         <div data-testid="test-content">Test Content</div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     expect(screen.getByTestId('test-content')).toBeInTheDocument();
@@ -60,25 +70,24 @@ describe('NavigationBlocker component', () => {
     render(
       <NavigationBlocker enabled>
         <div>Test Content</div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     // Modal should not be visible initially
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('should show custom modal content when props are provided', () => {
-    const customTitle = 'Custom Title';
-    const customMessage = 'Custom message';
-
+  it('should show the default unsaved-changes content in the modal', () => {
     render(
-      <NavigationBlocker enabled message={customMessage} title={customTitle}>
+      <NavigationBlocker enabled>
         <div>
           <a data-testid="test-link" href="/new-page">
             Navigate Away
           </a>
         </div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     // Click link to trigger modal
@@ -106,7 +115,8 @@ describe('NavigationBlocker component', () => {
             Navigate Away
           </a>
         </div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     // Click link to show modal
@@ -134,7 +144,8 @@ describe('NavigationBlocker component', () => {
             Navigate Away
           </a>
         </div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     // Click link to show modal
@@ -144,7 +155,7 @@ describe('NavigationBlocker component', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
 
     // Close modal by clicking the X button
-    const closeButton = screen.getByLabelText('Close');
+    const closeButton = screen.getByRole('button', { name: /close/i });
     await act(async () => {
       await fireEvent.click(closeButton);
     });
@@ -160,7 +171,8 @@ describe('NavigationBlocker component', () => {
             Navigate Away
           </a>
         </div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     const link = screen.getByTestId('test-link');
@@ -178,7 +190,8 @@ describe('NavigationBlocker component', () => {
             Navigate Away
           </a>
         </div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     // Click link to trigger modal with default props
@@ -195,5 +208,64 @@ describe('NavigationBlocker component', () => {
     expect(
       screen.getByRole('button', { name: 'Save changes' })
     ).toBeInTheDocument();
+  });
+
+  describe('confirmed browser-back navigation', () => {
+    beforeEach(() => jest.useFakeTimers());
+
+    afterEach(() => jest.useRealTimers());
+
+    it('navigates to leaveTo when set', async () => {
+      render(
+        <NavigationBlocker enabled leaveTo="/home">
+          <div>content</div>
+        </NavigationBlocker>,
+        { wrapper: MemoryRouter }
+      );
+
+      act(() => {
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+      act(() => {
+        fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+      });
+      act(() => {
+        jest.advanceTimersByTime(50);
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith('/home');
+    });
+
+    it('falls back to history.go(-2) when leaveTo is not provided', async () => {
+      const goSpy = jest
+        .spyOn(globalThis.history, 'go')
+        .mockImplementation(() => undefined);
+
+      render(
+        <NavigationBlocker enabled>
+          <div>content</div>
+        </NavigationBlocker>,
+        { wrapper: MemoryRouter }
+      );
+
+      act(() => {
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+
+      act(() => {
+        fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+      });
+      act(() => {
+        jest.advanceTimersByTime(50);
+      });
+
+      expect(goSpy).toHaveBeenCalledWith(-2);
+      expect(mockNavigate).not.toHaveBeenCalled();
+
+      goSpy.mockRestore();
+    });
   });
 });

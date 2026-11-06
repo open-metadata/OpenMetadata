@@ -41,3 +41,24 @@ export const UN_AUTHORIZED_EXCLUDED_PATHS = [
   '/auth/refresh',
   '/users/login',
 ];
+
+// 401 messages on the polled `/users/loggedInUser` that a silent token refresh
+// can actually fix (so the interceptor should refresh rather than log out).
+// Kept as substrings to match the backend's `Not Authorized! ...` wrapping.
+export const REFRESHABLE_AUTH_ERRORS = [
+  'Expired token!',
+  // Unknown JWT signing-key id (IdP key rotation / stale token) — a refresh
+  // mints a token signed with a currently-published key.
+  'Token signing key not found',
+  // A time-valid JWT whose OpenMetadata session has ended. Routing it through
+  // the coordinator lets an expired session be re-established at the identity
+  // provider instead of landing on /signin, while /auth/refresh answers a
+  // revoked one with SESSION_REVOKED_ERROR, which signs out. /auth/refresh
+  // itself is excluded above, so this cannot loop.
+  'Invalid session.',
+];
+
+// /auth/refresh's answer for a session OpenMetadata revoked on purpose (the
+// per-user session cap, an administrator). Re-authenticating would mint a new
+// session that evicts another one under the cap, so the browser signs out.
+export const SESSION_REVOKED_ERROR = 'Session revoked';

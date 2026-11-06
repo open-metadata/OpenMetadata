@@ -1,0 +1,487 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  PaginationCardWithControls,
+  Popover,
+  PopoverTrigger,
+  Skeleton,
+  Table,
+  TableCard,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
+import {
+  NO_PERMISSION_FOR_ACTION,
+  NO_PERMISSION_TO_VIEW,
+} from '../../../../../../constants/HelperTextUtil';
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { EntityType } from '../../../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
+import {
+  Operation,
+  Policy,
+} from '../../../../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../../../../generated/entity/type';
+import { Paging } from '../../../../../../generated/type/paging';
+import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
+import { getPolicies } from '../../../../../../rest/rolesAPIV1';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
+import {
+  checkPermission,
+  LIST_CAP,
+  userPermissions,
+} from '../../../../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import type { AccessControlView } from './AccessControl.types';
+
+const MAX_CURSOR_CACHE_PAGES = 100;
+
+type PolicyColumnId = 'name' | 'description' | 'roles' | 'actions';
+type PolicyColumn = { id: PolicyColumnId; label: string; className?: string };
+
+interface AccessControlPoliciesPanelProps {
+  onNavigate: (view: AccessControlView) => void;
+}
+
+const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
+  onNavigate,
+}) => {
+  const { t } = useTranslation();
+  const {
+    page: currentPage,
+    resolvedPageSize: pageSize,
+    savePageSize,
+    cursor: hashCursor,
+    cursorType: hashCursorType,
+    setPage: setHashPage,
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
+
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [paging, setPaging] = useState<Paging>({ total: 0 });
+  const [cursorCache, setCursorCache] = useState<Map<number, Paging>>(
+    new Map()
+  );
+  const fetchRequestIdRef = useRef(0);
+
+  const showPagination = shouldShowPager(policies);
+
+  const { permissions } = usePermissionProvider();
+
+  const deletePolicyPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Delete, ResourceEntity.POLICY, permissions),
+    [permissions]
+  );
+
+  const viewRolePermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      userPermissions?.hasViewPermissions(ResourceEntity.ROLE, permissions),
+    [permissions]
+  );
+
+  const columns = useMemo<PolicyColumn[]>(
+    () => [
+      { id: 'name', label: t('label.name'), className: 'tw:w-70' },
+      { id: 'description', label: t('label.description') },
+      { id: 'roles', label: t('label.role-plural'), className: 'tw:w-60' },
+      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
+    ],
+    [t]
+  );
+
+  const fetchPolicies = async (
+    pagingParam?: Partial<Paging>,
+    targetPage = 1
+  ): Promise<Paging | undefined> => {
+    const requestId = ++fetchRequestIdRef.current;
+    setIsLoading(true);
+    try {
+      const data = await getPolicies(
+        'roles',
+        pagingParam?.after,
+        pagingParam?.before,
+        pageSize
+      );
+
+      if (requestId !== fetchRequestIdRef.current) {
+        return undefined;
+      }
+
+      setPolicies(data.data || []);
+      setPaging(data.paging);
+      setCursorCache((prev) => {
+        const next = new Map(prev).set(targetPage, data.paging);
+
+        if (next.size > MAX_CURSOR_CACHE_PAGES) {
+          [...next.keys()]
+            .sort((a, b) => a - b)
+            .slice(0, next.size - MAX_CURSOR_CACHE_PAGES)
+            .forEach((k) => next.delete(k));
+        }
+
+        return next;
+      });
+
+      return data.paging;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return undefined;
+    } finally {
+      if (requestId === fetchRequestIdRef.current) {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleAfterDeleteAction = useCallback(() => {
+    setHashPage(1, undefined, undefined, pageSize);
+    setCursorCache(new Map());
+    fetchPolicies(undefined, 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setHashPage, pageSize]);
+
+  const handlePolicyClick = (policy: Policy) => {
+    onNavigate({
+      type: 'policies-detail',
+      fqn: policy.fullyQualifiedName ?? '',
+      name: getEntityName(policy),
+    });
+  };
+
+  const navigateSequentially = async (newPage: number) => {
+    const requestId = ++fetchRequestIdRef.current;
+    setIsLoading(true);
+    try {
+      let page = currentPage;
+      let currentPaging: Paging = paging;
+
+      while (page < newPage && currentPaging.after) {
+        page++;
+        // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- sequential page walk
+        const data = await getPolicies(
+          'roles',
+          currentPaging.after,
+          undefined,
+          pageSize
+        );
+
+        if (requestId !== fetchRequestIdRef.current) {
+          return;
+        }
+
+        currentPaging = data.paging;
+        setCursorCache((prev) => {
+          const next = new Map(prev).set(page, data.paging);
+
+          if (next.size > MAX_CURSOR_CACHE_PAGES) {
+            [...next.keys()]
+              .sort((a, b) => a - b)
+              .slice(0, next.size - MAX_CURSOR_CACHE_PAGES)
+              .forEach((k) => next.delete(k));
+          }
+
+          return next;
+        });
+
+        if (page === newPage) {
+          setPolicies(data.data || []);
+          setPaging(data.paging);
+          setHashPage(newPage, undefined, currentPaging.after, pageSize);
+        }
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      if (requestId === fetchRequestIdRef.current) {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handlePageNavigation = async (newPage: number) => {
+    if (newPage === currentPage) {
+      return;
+    }
+
+    if (newPage === 1) {
+      setHashPage(1, undefined, undefined, pageSize);
+      fetchPolicies(undefined, 1);
+
+      return;
+    }
+
+    const cachedCursor = cursorCache.get(newPage - 1)?.after;
+    if (cachedCursor) {
+      setHashPage(newPage, undefined, cachedCursor, pageSize);
+      fetchPolicies({ after: cachedCursor }, newPage);
+
+      return;
+    }
+
+    // Sequential forward navigation through uncached pages
+    if (newPage > currentPage) {
+      await navigateSequentially(newPage);
+    }
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
+    setHashPage(1, undefined, undefined, size);
+    setCursorCache(new Map());
+  };
+
+  useEffect(() => {
+    if (currentPage <= 1 || !hashCursor) {
+      if (currentPage > 1) {
+        setHashPage(1, undefined, undefined, pageSize);
+      }
+      fetchPolicies(undefined, 1);
+    } else if (hashCursorType === 'before') {
+      fetchPolicies({ before: hashCursor }, currentPage);
+    } else {
+      fetchPolicies({ after: hashCursor }, currentPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSize]);
+
+  const renderRoleItem = (role: EntityReference) => {
+    const key = role.id ?? role.fullyQualifiedName ?? role.name;
+
+    if (!viewRolePermission) {
+      return (
+        <Typography ellipsis key={key} tooltip={t(NO_PERMISSION_TO_VIEW)}>
+          {getEntityName(role)}
+        </Typography>
+      );
+    }
+
+    return (
+      <Button
+        className="tw:truncate tw:block tw:text-left"
+        color="link-color"
+        key={key}
+        size="sm"
+        tooltip={getEntityName(role)}
+        tooltipPlacement="top"
+        onPress={() =>
+          onNavigate({
+            type: 'roles-detail',
+            fqn: role.fullyQualifiedName ?? '',
+            name: getEntityName(role),
+          })
+        }>
+        {getEntityName(role)}
+      </Button>
+    );
+  };
+
+  // Extracted to keep renderCell complexity under the threshold.
+  const renderRolesCell = (roles: EntityReference[] | undefined) => {
+    const listLength = roles?.length ?? 0;
+    const hasMore = listLength > LIST_CAP;
+
+    if (!roles?.length) {
+      return '--';
+    }
+
+    return (
+      <Box data-testid="role-link" direction="row" gap={1} wrap="wrap">
+        {roles.slice(0, LIST_CAP).map(renderRoleItem)}
+        {hasMore && (
+          <PopoverTrigger>
+            <Button
+              className="tw:py-0.5 tw:bg-tertiary"
+              color="secondary"
+              data-testid="plus-more-count"
+              size="xs">
+              {t('label.plus-count-more', { count: listLength - LIST_CAP })}
+            </Button>
+            <Popover className="tw:overflow-y-auto" maxHeight={320}>
+              <Box className="tw:p-3" direction="col" gap={1}>
+                {roles.slice(LIST_CAP).map(renderRoleItem)}
+              </Box>
+            </Popover>
+          </PopoverTrigger>
+        )}
+      </Box>
+    );
+  };
+
+  const renderCell = (policy: Policy, colId: PolicyColumnId) => {
+    switch (colId) {
+      case 'name':
+        return (
+          <Button
+            className="tw:max-w-full tw:truncate tw:block tw:text-left"
+            color="link-color"
+            data-testid="policy-name"
+            size="sm"
+            tooltip={getEntityName(policy)}
+            tooltipPlacement="top"
+            onPress={() => handlePolicyClick(policy)}>
+            {getEntityName(policy)}
+          </Button>
+        );
+
+      case 'description':
+        return policy.description ? (
+          <RichTextEditorPreviewerV1
+            markdown={policy.description}
+            maxLength={200}
+          />
+        ) : (
+          <span className="tw:text-sm tw:text-secondary">--</span>
+        );
+
+      case 'roles':
+        return renderRolesCell(policy.roles);
+
+      case 'actions':
+        return (
+          <DeleteEntityPopover
+            afterDeleteAction={handleAfterDeleteAction}
+            allowSoftDelete={false}
+            data-testid="delete-policy-popover"
+            entityId={policy.id}
+            entityName={getEntityName(policy)}
+            entityType={EntityType.POLICY}>
+            <ButtonUtility
+              data-testid={`delete-action-${getEntityName(policy)}`}
+              icon={Trash01}
+              isDisabled={!deletePolicyPermission}
+              size="lg"
+              tooltip={
+                deletePolicyPermission
+                  ? t('label.delete-entity', { entity: t('label.policy') })
+                  : t(NO_PERMISSION_FOR_ACTION)
+              }
+              tooltipPlacement="left"
+            />
+          </DeleteEntityPopover>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const renderEmptyState = useCallback(
+    () =>
+      isLoading ? (
+        <Box className="tw:p-3" direction="col" gap={2}>
+          {Array.from({ length: pageSize }, (_, i) => (
+            <Skeleton height={28} key={i} variant="rounded" />
+          ))}
+        </Box>
+      ) : (
+        <Box
+          align="center"
+          className="tw:min-h-32 tw:relative"
+          justify="center">
+          <NoDataPlaceholder
+            title={t('label.no-entity-found', {
+              entity: t('label.policy-plural'),
+            })}
+          />
+        </Box>
+      ),
+    [isLoading, pageSize, t]
+  );
+
+  const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
+
+  return (
+    <Box
+      className="tw:pt-1 tw:h-full tw:px-8 tw:pb-8"
+      data-testid="policies-list-container"
+      direction="col"
+      gap={4}>
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
+        <div className="tw:overflow-y-auto">
+          <Table
+            aria-label={t('label.policy-plural')}
+            className="tw:table-fixed"
+            data-testid="policies-list-table"
+            size="compact">
+            <Table.Header columns={columns}>
+              {(col) => (
+                <Table.Head
+                  className={col.className}
+                  id={col.id}
+                  isRowHeader={col.id === 'name'}
+                  key={col.id}
+                  label={col.label}
+                />
+              )}
+            </Table.Header>
+            <Table.Body
+              items={isLoading ? [] : policies}
+              renderEmptyState={renderEmptyState}>
+              {(policy) => (
+                <Table.Row
+                  columns={columns}
+                  data-testid={`policy-${getEntityName(policy)}`}
+                  id={policy.id ?? policy.name}
+                  key={policy.id ?? policy.name}>
+                  {(col) => (
+                    <Table.Cell className={col.className} key={col.id}>
+                      {renderCell(policy, col.id as PolicyColumnId)}
+                    </Table.Cell>
+                  )}
+                </Table.Row>
+              )}
+            </Table.Body>
+          </Table>
+        </div>
+        {showPagination && (
+          <PaginationCardWithControls
+            page={currentPage}
+            pageSize={pageSize}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
+            total={totalPages}
+            onPageChange={handlePageNavigation}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        )}
+      </TableCard.Root>
+    </Box>
+  );
+};
+
+export default AccessControlPoliciesPanel;

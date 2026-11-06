@@ -1,0 +1,503 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import {
+  isBoolean,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  map,
+  omitBy,
+  startCase,
+} from 'lodash';
+import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
+import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { MASKED_PASSWORD_VALUE } from '../../constants/Secrets.constants';
+import { OPEN_METADATA } from '../../constants/Services.constant';
+import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
+import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
+import type {
+  ChangeEvent,
+  TypedEvent,
+} from '../../generated/events/api/typedEvent';
+import { Status } from '../../generated/events/api/typedEvent';
+import {
+  Destination,
+  SubscriptionCategory,
+  SubscriptionType,
+  Type,
+  type Webhook,
+} from '../../generated/events/eventSubscription';
+import type { ModifiedDestination } from '../../utils/AlertsClassBase.interface';
+import type { ModifiedWebhookConfig } from '../AlertsClassBase.interface';
+import { t } from '../i18next/LocalUtil';
+
+export const getFunctionDisplayName = (func: string): string => {
+  const displayNameByFunction: Record<string, string> = {
+    matchAnyEntityFqn: t('label.fqn-uppercase'),
+    matchAnyOwnerName: t('label.owner-plural'),
+    matchAnyEventType: t('label.event-type'),
+    matchTestResult: t('label.test-entity', {
+      entity: t('label.result-plural'),
+    }),
+    matchUpdatedBy: t('label.updated-by'),
+    matchAnyFieldChange: t('label.field-change'),
+    matchPipelineState: t('label.pipeline-state'),
+    matchIngestionPipelineState: t('label.pipeline-state'),
+    matchAnySource: t('label.source-match'),
+    matchAnyEntityId: t('label.entity-id-match'),
+  };
+
+  return displayNameByFunction[func] ?? '';
+};
+
+export const getAlertActionTypeDisplayName = (
+  alertActionType: SubscriptionType
+) => {
+  switch (alertActionType) {
+    case SubscriptionType.ActivityFeed:
+      return t('label.activity-feed-plural');
+    case SubscriptionType.Email:
+      return t('label.email');
+    case SubscriptionType.Webhook:
+      return t('label.webhook');
+    case SubscriptionType.Slack:
+      return t('label.slack');
+    case SubscriptionType.MSTeams:
+      return t('label.ms-team-plural');
+    case SubscriptionType.GChat:
+      return t('label.g-chat');
+    default:
+      return '';
+  }
+};
+
+export const getDisplayNameForEntities = (entity: string) => {
+  switch (entity) {
+    case 'kpi':
+      return t('label.kpi-uppercase');
+    case 'mlmodel':
+      return t('label.ml-model');
+    default:
+      return startCase(entity);
+  }
+};
+
+export const getSelectOptionsFromEnum = (type: { [s: number]: string }) =>
+  map(type, (value) => ({
+    label: startCase(value),
+    value,
+  }));
+
+// Same shape as getSelectOptionsFromEnum, for values a resource declares at runtime
+export const getSelectOptionsFromValues = (values: string[]) =>
+  values.map((value) => ({
+    label: startCase(value),
+    value,
+  }));
+
+// Disabling all options except Email for SubscriptionCategory Users, Followers and Admins
+// Since there is no provision for webhook subscription for users
+export const getSubscriptionTypeOptions = (destinationType: string) => {
+  return EXTERNAL_CATEGORY_OPTIONS.map((item) => {
+    const isEmailType = isEqual(item.value, SubscriptionType.Email);
+    const shouldDisable =
+      isEqual(destinationType, SubscriptionCategory.Users) ||
+      isEqual(destinationType, SubscriptionCategory.Followers) ||
+      isEqual(destinationType, SubscriptionCategory.Admins);
+
+    return {
+      ...item,
+      disabled: !isEmailType && shouldDisable,
+    };
+  });
+};
+
+/**
+ * @description Function to get header object of webhook config from the form data
+ * Since the form data is in the form of { key: string, value: string }[]
+ */
+export const getConfigHeaderObjectFromArray = (
+  headers?: {
+    key: string;
+    value: string;
+  }[]
+) =>
+  headers?.reduce(
+    (prev, curr) => ({
+      ...prev,
+      [curr.key]: curr.value,
+    }),
+    {} as { [key: string]: string }
+  );
+
+/**
+ * @description Function to get header webhook config converted from an object
+ * in the form of { key: string, value: string }[]
+ * to render Form.List
+ */
+export const getConfigHeaderArrayFromObject = (headers?: Webhook['headers']) =>
+  isUndefined(headers)
+    ? headers
+    : Object.entries(headers).map(([key, value]) => ({
+        key,
+        value,
+      }));
+
+/**
+ * @description Function to get query params webhook config converted from an array
+ */
+export const getConfigQueryParamsObjectFromArray = (
+  queryParams?: {
+    key: string;
+    value: string;
+  }[]
+) =>
+  queryParams?.reduce(
+    (prev, curr) => ({
+      ...prev,
+      [curr.key]: curr.value,
+    }),
+    {} as { [key: string]: string }
+  );
+
+/**
+ * @description Function to get query params webhook config converted from an object
+ */
+export const getConfigQueryParamsArrayFromObject = (
+  queryParams?: Webhook['queryParams']
+) =>
+  isUndefined(queryParams)
+    ? queryParams
+    : Object.entries(queryParams).map(([key, value]) => ({
+        key,
+        value,
+      }));
+
+/**
+ * @description Pairs each tested destination with the status returned for it. The API redacts
+ * destination configs from its response, since they carry credentials, so the config has to come
+ * from the destinations that were submitted. Results are matched positionally: the API returns one
+ * entry per requested destination, in request order.
+ */
+export const getDestinationsWithTestStatus = <T extends Destination>(
+  testedDestinations: T[],
+  testResults: Destination[]
+): T[] =>
+  testedDestinations.map((destination, index) => ({
+    ...destination,
+    statusDetails: testResults[index]?.statusDetails,
+  }));
+
+/**
+ * @description Normalizes API objects and form arrays to the same destination config shape for comparison.
+ */
+export const normalizeDestinationConfig = (
+  config?: Destination['config'] | ModifiedDestination['config']
+) => {
+  const headers = Array.isArray(config?.headers)
+    ? config.headers
+    : getConfigHeaderArrayFromObject(config?.headers);
+  const queryParams = Array.isArray(config?.queryParams)
+    ? config.queryParams
+    : getConfigQueryParamsArrayFromObject(config?.queryParams);
+
+  return omitBy(
+    {
+      ...config,
+      headers: isEmpty(headers) ? undefined : headers,
+      queryParams: isEmpty(queryParams) ? undefined : queryParams,
+    },
+    isUndefined
+  );
+};
+
+export const getFormattedDestinations = (
+  destinations?: ModifiedDestination[]
+) => {
+  const formattedDestinations = destinations?.map((destination) => {
+    const {
+      destinationType: _destinationType,
+      config,
+      ...otherData
+    } = destination;
+
+    const headers = getConfigHeaderObjectFromArray(config?.headers);
+    const queryParams = getConfigQueryParamsObjectFromArray(
+      config?.queryParams
+    );
+
+    return {
+      ...otherData,
+      config: omitBy(
+        {
+          ...config,
+          headers: isEmpty(headers) ? undefined : headers,
+          queryParams: isEmpty(queryParams) ? undefined : queryParams,
+        },
+        isUndefined
+      ),
+    };
+  });
+
+  return formattedDestinations;
+};
+
+export const getAlertEventsFilterLabels = (status: AlertRecentEventFilters) => {
+  switch (status) {
+    case AlertRecentEventFilters.SUCCESSFUL:
+      return t('label.successful');
+    case AlertRecentEventFilters.FAILED:
+      return t('label.failed');
+    case AlertRecentEventFilters.ALL:
+      return t('label.all');
+    default:
+      return '';
+  }
+};
+
+export const getLabelsForEventDetails = (
+  prop: keyof AlertEventDetailsToDisplay
+) => {
+  switch (prop) {
+    case 'eventType':
+      return t('label.event-type');
+    case 'entityId':
+      return t('label.entity-id', { entity: t('label.entity') });
+    case 'userName':
+      return t('label.user-name');
+    case 'previousVersion':
+      return t('label.previous-version');
+    case 'currentVersion':
+      return t('label.current-version');
+    case 'reason':
+      return t('label.reason');
+    case 'source':
+      return t('label.source');
+    case 'failingSubscriptionId':
+      return t('label.failing-subscription-id');
+    default:
+      return '';
+  }
+};
+
+export const getChangeEventDataFromTypedEvent = (
+  typedEvent: TypedEvent
+): {
+  changeEventData: ChangeEvent;
+  changeEventDataToDisplay: AlertEventDetailsToDisplay;
+} => {
+  const outer = typedEvent.data[0];
+
+  if (!outer) {
+    // Status is part of the id so a failed and a successful unreadable row
+    // sharing a timestamp still get distinct React keys.
+    const fallbackId = `unreadable-${typedEvent.status}-${typedEvent.timestamp}`;
+
+    return {
+      changeEventData: {
+        id: fallbackId,
+        timestamp: typedEvent.timestamp,
+      },
+      changeEventDataToDisplay: {
+        eventType: undefined,
+        entityId: undefined,
+        userName: undefined,
+        previousVersion: undefined,
+        currentVersion: undefined,
+        reason: undefined,
+        source: undefined,
+        failingSubscriptionId: undefined,
+      },
+    };
+  }
+
+  let changeEventData: ChangeEvent = outer;
+
+  // If the event is failed, the changeEventData object is nested inside the changeEventData object.
+  if (typedEvent.status === Status.Failed && !isUndefined(outer.changeEvent)) {
+    changeEventData = outer.changeEvent;
+  }
+
+  const { eventType, entityId, userName, previousVersion, currentVersion } =
+    changeEventData;
+
+  // Extracting the reason, source, and failingSubscriptionId from the failed changeEventData object.
+  const { reason, source, failingSubscriptionId } = outer;
+
+  return {
+    changeEventData,
+    changeEventDataToDisplay: {
+      reason,
+      source,
+      failingSubscriptionId,
+      eventType,
+      entityId,
+      userName,
+      previousVersion,
+      currentVersion,
+    },
+  };
+};
+
+export const getDiagnosticItems = (
+  diagnosticData: EventSubscriptionDiagnosticInfo | undefined
+) => [
+  {
+    key: t('label.latest-offset'),
+    value: diagnosticData?.latestOffset,
+    description: t('message.latest-offset-description'),
+  },
+  {
+    key: t('label.current-offset'),
+    value: diagnosticData?.currentOffset,
+    description: t('message.current-offset-description'),
+  },
+  {
+    key: t('label.starting-offset'),
+    value: diagnosticData?.startingOffset,
+    description: t('message.starting-offset-description'),
+  },
+  {
+    key: t('label.successful-event-plural'),
+    value: diagnosticData?.successfulEventsCount,
+    description: t('message.successful-events-description'),
+  },
+  {
+    key: t('label.failed-event-plural'),
+    value: diagnosticData?.failedEventsCount,
+    description: t('message.failed-events-description'),
+  },
+  {
+    key: t('label.processed-all-event-plural'),
+    value: diagnosticData?.hasProcessedAllEvents,
+    description: t('message.processed-all-events-description'),
+  },
+];
+
+/** Formats a diagnostic value for display: Yes/No for flags, a placeholder when unset. */
+export const formatDiagnosticValue = (value?: number | boolean) => {
+  if (isBoolean(value)) {
+    return t(value ? 'label.yes' : 'label.no');
+  }
+
+  return isUndefined(value) ? NO_DATA_PLACEHOLDER : String(value);
+};
+
+export const getRandomizedAlertName = () => {
+  return `${OPEN_METADATA}_alert_${cryptoRandomString({
+    length: 9,
+    type: 'alphanumeric',
+  })}`;
+};
+
+export const getMessageFromArgumentName = (argumentName: string) => {
+  const requiredList = (entity: string) =>
+    t('message.field-text-is-required', {
+      fieldText: t('label.entity-list', { entity }),
+    });
+  const namedEntity = (entity: string) => t('label.entity-name', { entity });
+
+  const fieldTextEntityByArgument: Record<string, string> = {
+    fqnList: t('label.fqn-uppercase'),
+    domainList: t('label.domain'),
+    tableNameList: namedEntity(t('label.table')),
+    entityNameList: namedEntity(t('label.entity')),
+    ownerNameList: namedEntity(t('label.owner-plural')),
+    updateByUserList: namedEntity(t('label.user')),
+    userList: namedEntity(t('label.user')),
+    eventTypeList: namedEntity(t('label.event')),
+    entityIdList: t('label.entity-id', { entity: t('label.data-asset') }),
+    pipelineStateList: t('label.pipeline-state'),
+    ingestionPipelineStateList: t('label.pipeline-state'),
+    testStatusList: t('label.test-suite-status'),
+    testResultList: t('label.test-case-result'),
+    contractStatusList: t('label.data-contract-status'),
+    testSuiteList: t('label.test-suite'),
+  };
+
+  const entity = fieldTextEntityByArgument[argumentName];
+
+  return entity ? requiredList(entity) : '';
+};
+
+/**
+ * An event count as the alert page shows it: with a trailing "+" when the server evaluated only
+ * the first unread events, so the real count is at least this one.
+ */
+export const formatEventCount = (
+  count: number | undefined,
+  isLowerBound?: boolean
+): string => `${count ?? 0}${isLowerBound ? '+' : ''}`;
+
+const SECRET_AUTH_FIELDS = ['secretKey', 'clientId', 'clientSecret'];
+
+const withoutMask = (value: unknown) =>
+  value === MASKED_PASSWORD_VALUE ? '' : value;
+
+/**
+ * The webhook settings with every secret that still shows the mask emptied. A destination whose
+ * URL or token URL changes sends its secrets somewhere new, so each one must be entered again;
+ * the form then asks for every emptied field before it saves.
+ */
+export const clearMaskedSecrets = (
+  config?: ModifiedWebhookConfig
+): ModifiedWebhookConfig | undefined => {
+  if (!config) {
+    return config;
+  }
+  const authType = (config.authType ?? {}) as Record<string, unknown>;
+  const clearedAuth = Object.fromEntries(
+    SECRET_AUTH_FIELDS.filter((key) => key in authType).map((key) => [
+      key,
+      withoutMask(authType[key]),
+    ])
+  );
+
+  return {
+    ...config,
+    ...(config.endpoint !== undefined && {
+      endpoint: withoutMask(config.endpoint) as string,
+    }),
+    ...(config.headers && {
+      headers: config.headers.map((header) => ({
+        ...header,
+        value: withoutMask(header.value) as string,
+      })),
+    }),
+    ...(config.authType && {
+      authType: { ...config.authType, ...clearedAuth },
+    }),
+  };
+};
+
+/**
+ * The webhook settings once the authentication type changes. Only the new type is kept, so no
+ * credential of the old type is stored beside it. OAuth2 alone sends through a token URL, so
+ * leaving or choosing it changes where the secrets go, and every hidden value is asked for again.
+ */
+export const withAuthType = (
+  config: ModifiedWebhookConfig | undefined,
+  type: Type
+): ModifiedWebhookConfig => {
+  const previousType = (config?.authType as { type?: Type } | undefined)?.type;
+  if (previousType === type) {
+    return config ?? {};
+  }
+  const switched = { ...config, authType: { type } };
+  const changesTokenUrl = previousType === Type.Oauth2 || type === Type.Oauth2;
+
+  return changesTokenUrl ? clearMaskedSecrets(switched) ?? switched : switched;
+};

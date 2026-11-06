@@ -13,9 +13,10 @@ Return the last DagRun logs for each task
 """
 
 import traceback
-from typing import Callable
+from collections.abc import Callable
 
 from flask import Blueprint, Response, request
+
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import (
     get_arg_dag_id,
@@ -38,6 +39,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
     from airflow.security import permissions
+
     from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
     from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,

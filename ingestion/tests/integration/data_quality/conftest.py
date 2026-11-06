@@ -31,7 +31,7 @@ __all__ = [
 
 @pytest.fixture(scope="package")
 def mysql_container():
-    with try_bind(MySqlContainer("mysql:8"), 3306, 3307) as container:
+    with try_bind(MySqlContainer("mysql:8.4.5"), 3306, 3307) as container:
         yield container
 
 
@@ -125,7 +125,7 @@ def ingest_postgres_metadata(postgres_service, metadata: OpenMetadata, sink_conf
 @pytest.fixture(scope="module")
 def patch_password(postgres_container):
     def inner(service: DatabaseService):
-        service.connection.config = cast(PostgresConnection, service.connection.config)
+        service.connection.config = cast(PostgresConnection, service.connection.config)  # noqa: TC006
         service.connection.config.authType.password = type(service.connection.config.authType.password)(
             postgres_container.password
         )

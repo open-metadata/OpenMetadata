@@ -12,7 +12,7 @@
 Looker pydantic models
 """
 
-from typing import Dict, List, NewType, Optional
+from typing import NewType
 
 from pydantic import BaseModel, Field
 
@@ -21,16 +21,23 @@ ViewName = NewType("ViewName", str)
 
 
 class LookMlField(BaseModel):
-    description: Optional[str] = Field(None, description="Field description")
-    label: Optional[str] = Field(None, description="Field display name")
-    type: Optional[str] = Field(None, description="Field type to be mapped to OM")
+    description: str | None = Field(None, description="Field description")
+    label: str | None = Field(None, description="Field display name")
+    type: str | None = Field(None, description="Field type to be mapped to OM")
     name: str = Field(..., description="Field name")
-    sql: Optional[str] = Field(None, description="Field SQL")
+    sql: str | None = Field(None, description="Field SQL")
+    # `lkml` emits both filter syntaxes under `filters__all`, so the attribute name has to match
+    # that key exactly. Declaring an alias instead would need `populate_by_name` to stay usable
+    # from Python, and silently yield None without it.
+    filters__all: list | None = Field(None, description="Measure filters, in either LookML syntax")
+    value_format_name: str | None = Field(None, description="Named value format, e.g. usd or percent_2")
+    hidden: str | None = Field(None, description="LookML `hidden` flag, a yes/no string")
+    tags: list[str] | None = Field(None, description="Tags for the field")
 
 
 class LookMlDerivedTableField(BaseModel):
-    sql: Optional[str] = Field(None, description="Declares the SQL query for a derived table.")
-    sql_create: Optional[str] = Field(
+    sql: str | None = Field(None, description="Declares the SQL query for a derived table.")
+    sql_create: str | None = Field(
         None,
         description="Defines a SQL CREATE statement",
     )
@@ -38,14 +45,18 @@ class LookMlDerivedTableField(BaseModel):
 
 class LookMlView(BaseModel):
     name: ViewName = Field(..., description="View name")
-    description: Optional[str] = Field(None, description="View description")
-    sql_table_name: Optional[str] = Field(None, description="To track lineage with the source")
-    measures: List[LookMlField] = Field([], description="Measures to ingest as cols")
-    dimensions: List[LookMlField] = Field([], description="Dimensions to ingest as cols")
-    source_file: Optional[Includes] = Field(None, description="lkml file path")
-    derived_table: Optional[LookMlDerivedTableField] = Field(None, description="To track lineage with the source")
-    tags: Optional[List[str]] = Field(None, description="Tags for the view")
-    extends__all: Optional[List[List[str]]] = Field(
+    description: str | None = Field(None, description="View description")
+    sql_table_name: str | None = Field(None, description="To track lineage with the source")
+    measures: list[LookMlField] = Field([], description="Measures to ingest as cols")
+    dimensions: list[LookMlField] = Field([], description="Dimensions to ingest as cols")
+    # `_extract_column_lineage` has always iterated "dimension_groups"; without this field the
+    # getattr returned [] and dimension-group column lineage never ran. `get_model_fields` has
+    # to carry them as columns too, or the lineage it builds has no target to resolve against.
+    dimension_groups: list[LookMlField] = Field([], description="Dimension groups to ingest as cols")
+    source_file: Includes | None = Field(None, description="lkml file path")
+    derived_table: LookMlDerivedTableField | None = Field(None, description="To track lineage with the source")
+    tags: list[str] | None = Field(None, description="Tags for the view")
+    extends__all: list[list[str]] | None = Field(
         None, alias="extends__all", description="List of views this view extends"
     )
 
@@ -56,8 +67,8 @@ class LkmlFile(BaseModel):
     We'll pick explores from the API
     """
 
-    includes: List[Includes] = Field([], description="Full include list")
-    views: List[LookMlView] = Field([], description="Views we want to parse")
+    includes: list[Includes] = Field([], description="Full include list")
+    views: list[LookMlView] = Field([], description="Views we want to parse")
 
 
 class LookMLRepo(BaseModel):
@@ -68,4 +79,4 @@ class LookMLRepo(BaseModel):
 class LookMLManifest(BaseModel):
     project_name: str = Field(None, description="LookML project name")
     remote_dependency: dict = Field(None, description="Remote dependency information")
-    constants: Optional[List[Dict[str, str]]] = Field(None, description="LookML constants defined in the manifest")
+    constants: list[dict[str, str]] | None = Field(None, description="LookML constants defined in the manifest")

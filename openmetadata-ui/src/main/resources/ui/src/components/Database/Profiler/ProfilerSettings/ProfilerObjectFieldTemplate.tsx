@@ -10,16 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { FC, Fragment } from 'react';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 
-export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
-  props: ObjectFieldTemplateProps
+export const ProfilerObjectFieldTemplate = <T,>(
+  props: ObjectFieldTemplateProps<T>
 ) => {
   const { t } = useTranslation();
 
@@ -27,37 +31,42 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
 
   return (
     <Fragment>
-      <Space className="w-full justify-between">
-        <label
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-between"
+        gap={2}
+        itemClassName="layout-space-item">
+        <span
           className={classNames('control-label', {
             'font-medium text-base-color text-md': !schema.additionalProperties,
           })}
           id={`${idSchema.$id}__title`}>
           {title}
-        </label>
+        </span>
 
         {schema.additionalProperties && (
-          <Button
+          <ButtonUtility
+            color="primary"
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            icon={Plus}
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
+            tooltip={t('label.add-entity', { entity: title })}
             onClick={() => {
               onAddClick(schema)();
             }}
           />
         )}
-      </Space>
+      </Box>
       {isEmpty(properties) ? (
-        <Typography>{t('message.no-config-plural')}</Typography>
+        <Typography as="article">{t('message.no-config-plural')}</Typography>
       ) : (
-        properties.map((element, index) => (
+        properties.map((element) => (
           <div
             className={classNames('property-wrapper', {
               'additional-fields': schema.additionalProperties,
             })}
-            key={`${element.content.key}-${index}`}>
+            key={element.content.key}>
             {element.content}
           </div>
         ))

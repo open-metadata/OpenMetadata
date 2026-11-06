@@ -14,16 +14,21 @@ import { ReactRenderer } from '@tiptap/react';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import { isEmpty } from 'lodash';
 import tippy, { Instance, Props } from 'tippy.js';
+import { getDialogContainer } from '../getDialogContainer';
 import { SlashCommandList, SlashCommandRef } from './SlashCommandList';
 
 const renderItems = () => {
-  let component: ReactRenderer;
+  let component: ReactRenderer | undefined;
+  // Suggestion awaits async items, so a newer query's onUpdate can arrive before onStart.
+  let pendingProps: SuggestionProps | undefined;
   let popup: Instance<Props>[] = [];
   let suggestionProps: SuggestionProps;
   let hasPopup = !isEmpty(popup);
 
   return {
-    onStart: (props: SuggestionProps) => {
+    onStart: (startProps: SuggestionProps) => {
+      const props = pendingProps ?? startProps;
+      pendingProps = undefined;
       suggestionProps = props;
       component = new ReactRenderer(SlashCommandList, {
         props,
@@ -39,9 +44,8 @@ const renderItems = () => {
       }
 
       popup = tippy('body', {
-        getReferenceClientRect:
-          props.clientRect as Props['getReferenceClientRect'],
-        appendTo: () => document.body,
+        getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
+        appendTo: () => getDialogContainer(props.editor.view),
         content: component.element,
         showOnCreate: true,
         interactive: true,
@@ -52,6 +56,11 @@ const renderItems = () => {
     },
     onUpdate: (props: SuggestionProps) => {
       suggestionProps = props;
+      if (!component) {
+        pendingProps = props;
+
+        return;
+      }
       component.updateProps(props);
 
       if (!props.clientRect) {
@@ -59,8 +68,7 @@ const renderItems = () => {
       }
       if (hasPopup) {
         popup[0].setProps({
-          getReferenceClientRect:
-            props.clientRect as Props['getReferenceClientRect'],
+          getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
         });
       }
     },
@@ -75,16 +83,15 @@ const renderItems = () => {
         return true;
       }
 
-      if (props.event.key === 'Enter') {
-        if (
-          suggestionProps.items.filter((item) =>
-            item.title
-              .toLowerCase()
-              .startsWith(suggestionProps.query.toLowerCase())
-          ).length === 0
-        ) {
-          this.onExit();
-        }
+      if (
+        props.event.key === 'Enter' &&
+        suggestionProps.items.filter((item) =>
+          item.title
+            .toLowerCase()
+            .startsWith(suggestionProps.query.toLowerCase())
+        ).length === 0
+      ) {
+        this.onExit();
       }
 
       return (component?.ref as SlashCommandRef)?.onKeyDown(props) || false;

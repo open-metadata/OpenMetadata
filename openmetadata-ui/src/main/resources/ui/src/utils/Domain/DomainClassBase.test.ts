@@ -12,6 +12,8 @@
  */
 
 import { createElement } from 'react';
+import { EntityFields } from '../../enums/AdvancedSearch.enum';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import domainClassBase, {
   DomainClassBase,
@@ -20,6 +22,10 @@ import domainClassBase, {
 
 jest.mock('../../constants/Domain.constants', () => ({
   DOMAIN_DUMMY_DATA: {},
+  DOMAIN_FILTERS: [{ label: 'label.owner-plural', key: 'owners.displayName' }],
+  SUB_DOMAIN_FILTERS: [{ label: 'label.tag-plural', key: 'tags.tagFQN' }],
+  DOMAIN_DEFAULT_QUICK_FILTERS: ['owners.displayName'],
+  SUBDOMAIN_DEFAULT_QUICK_FILTERS: ['tags.tagFQN'],
 }));
 
 jest.mock('../DomainUtils', () => ({
@@ -42,10 +48,6 @@ jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => ({
 jest.mock('../i18next/LocalUtil', () => ({
   __esModule: true,
   default: { t: jest.fn((key: string) => key) },
-}));
-
-jest.mock('../CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelFromId: jest.fn((tab: string) => tab),
 }));
 
 const mockProps = {
@@ -80,7 +82,7 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabs(mockProps);
       const dqTab = tabs.at(-1);
       const childProps = (dqTab?.children as ReturnType<typeof createElement>)
-        .props;
+        .props as Record<string, unknown>;
 
       expect(childProps.isGovernanceView).toBe(true);
     });
@@ -89,9 +91,12 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabs(mockProps);
       const childProps = (
         tabs.at(-1)?.children as ReturnType<typeof createElement>
-      ).props;
+      ).props as Record<string, unknown>;
 
-      expect(childProps.initialFilters?.domainFqn).toBe('Finance');
+      expect(
+        (childProps.initialFilters as Record<string, unknown> | undefined)
+          ?.domainFqn
+      ).toBe('Finance');
     });
 
     it('DQ tab passes undefined initialFilters when domain.fullyQualifiedName is absent', () => {
@@ -102,7 +107,7 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabs(props);
       const childProps = (
         tabs.at(-1)?.children as ReturnType<typeof createElement>
-      ).props;
+      ).props as Record<string, unknown>;
 
       expect(childProps.initialFilters).toBeUndefined();
     });
@@ -111,7 +116,7 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabs(mockProps);
       const childProps = (
         tabs.at(-1)?.children as ReturnType<typeof createElement>
-      ).props;
+      ).props as Record<string, unknown>;
 
       expect(childProps.className).toBe('data-quality-governance-tab-wrapper');
     });
@@ -143,6 +148,71 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabsIds();
 
       expect(tabs.at(-1)?.id).toBe(EntityTabs.DATA_OBSERVABILITY);
+    });
+  });
+
+  describe('getCommonWidgetList', () => {
+    it('lets the Custom Properties widget be added back to the layout', () => {
+      expect(
+        instance.getCommonWidgetList().map((w) => w.fullyQualifiedName)
+      ).toContain(DetailPageWidgetKeys.CUSTOM_PROPERTIES);
+    });
+  });
+
+  describe('getReviewersField', () => {
+    it('returns null so OSS never renders the Collate-only reviewers field', () => {
+      expect(instance.getReviewersField()).toBeNull();
+    });
+  });
+
+  describe('listing filters', () => {
+    it('returns the domain filter set by default', () => {
+      expect(instance.getListingFilters()).toEqual([
+        { label: 'label.owner-plural', key: 'owners.displayName' },
+      ]);
+    });
+
+    it('returns the sub-domain filter set when isSubDomain is true', () => {
+      expect(instance.getListingFilters(true)).toEqual([
+        { label: 'label.tag-plural', key: 'tags.tagFQN' },
+      ]);
+    });
+
+    it('omits the Collate-only status filter from both sets', () => {
+      const keys = [
+        ...instance.getListingFilters(),
+        ...instance.getListingFilters(true),
+      ].map((filter) => filter.key);
+
+      expect(keys).not.toContain(EntityFields.ENTITY_STATUS);
+    });
+
+    it('returns the matching quick-filter keys for each listing', () => {
+      expect(instance.getListingQuickFilterKeys()).toEqual([
+        'owners.displayName',
+      ]);
+      expect(instance.getListingQuickFilterKeys(true)).toEqual(['tags.tagFQN']);
+    });
+
+    it('omits the Collate-only status key from both quick-filter sets', () => {
+      expect([
+        ...instance.getListingQuickFilterKeys(),
+        ...instance.getListingQuickFilterKeys(true),
+      ]).not.toContain(EntityFields.ENTITY_STATUS);
+    });
+  });
+
+  describe('getListingExtraColumns', () => {
+    it('contributes no extra listing column in OSS', () => {
+      expect(instance.getListingExtraColumns()).toEqual([]);
+    });
+
+    // Callers feed the result straight into a useMemo dep list, so a fresh
+    // array per call would recompute the columns on every render.
+    it('returns the same array identity on every call', () => {
+      expect(instance.getListingExtraColumns()).toBe(
+        instance.getListingExtraColumns()
+      );
     });
   });
 

@@ -12,6 +12,7 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -26,8 +27,14 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ingestion.models.patch_request import (
+    ARRAY_ENTITY_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    _sort_array_entity_fields,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
+from metadata.ingestion.source.dashboard.tableau.client import TableauClient
 from metadata.ingestion.source.dashboard.tableau.metadata import (
     TableauDashboard,
     TableauSource,
@@ -40,6 +47,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     TableauOwner,
     UpstreamColumn,
     UpstreamTable,
+    UpstreamTableColumn,
 )
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
@@ -182,7 +190,7 @@ class TableauUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.tableau.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         get_connection.return_value = False
         test_connection.return_value = False
@@ -191,7 +199,7 @@ class TableauUnitTest(TestCase):
             mock_tableau_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.tableau.client = SimpleNamespace()
+        self.tableau.client = SimpleNamespace(metadata_api_backfill_running=False)
         self.tableau.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_dashboard_name(self):
@@ -205,9 +213,9 @@ class TableauUnitTest(TestCase):
         results = self.tableau.yield_dashboard_chart(MOCK_DASHBOARD)
         for result in results:
             if isinstance(result, CreateChartRequest):
-                chart_list.append(result)
+                chart_list.append(result)  # noqa: PERF401
 
-        for _, (exptected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
+        for _, (exptected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):  # noqa: B905
             self.assertEqual(exptected, original)
 
     def test_yield_dashboard_usage(self):
@@ -357,7 +365,7 @@ class TableauUnitTest(TestCase):
 
         self.tableau.source_config.projectFilterPattern = FilterPattern(includes=["^FilteredProject.OtherProject$"])
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.tableau,
             "get_dashboards_list",
             return_value=mock_dashboard_details_list,
@@ -391,7 +399,7 @@ class TableauUnitTest(TestCase):
             ]
         )
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.tableau,
             "get_dashboards_list",
             return_value=mock_dashboard_details_list,
@@ -426,7 +434,7 @@ class TableauUnitTest(TestCase):
             excludes=[".*ExcludedProject2.*"],
         )
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.tableau,
             "get_dashboards_list",
             return_value=mock_dashboard_details_list,
@@ -620,7 +628,7 @@ class TableauUnitTest(TestCase):
         self.tableau.client.get_custom_sql_table_queries = MagicMock(return_value=["SELECT * FROM test_table"])
 
         # Mock the _get_datamodel method
-        with patch.object(self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity):
+        with patch.object(self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity):  # noqa: SIM117
             # Mock the metadata search to return empty results (simulating no table entities found)
             with patch.object(self.tableau.metadata, "search_in_any_service", return_value=[]):
                 # Mock the _get_add_lineage_request method to avoid actual lineage creation
@@ -695,7 +703,7 @@ class TableauUnitTest(TestCase):
         self.tableau.client.get_custom_sql_table_queries = MagicMock(return_value=["SELECT * FROM test_table_2"])
 
         # Mock the _get_datamodel method
-        with patch.object(self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity):
+        with patch.object(self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity):  # noqa: SIM117
             # Mock the metadata search to return None (simulating search failure)
             with patch.object(self.tableau.metadata, "search_in_any_service", return_value=None):
                 # Mock the _get_add_lineage_request method to avoid actual lineage creation
@@ -785,7 +793,7 @@ class TableauUnitTest(TestCase):
             database={"id": "db1", "name": "test_database"},
         )
 
-        with patch.object(self.tableau.metadata, "get_by_name", return_value=None) as mock_get_by_name:
+        with patch.object(self.tableau.metadata, "get_by_name", return_value=None) as mock_get_by_name:  # noqa: SIM117
             with patch.object(self.tableau.metadata, "search_in_any_service", return_value=None):
                 result = self.tableau._get_table_entities_from_api(
                     db_service_prefix="non_existent_service",
@@ -794,6 +802,67 @@ class TableauUnitTest(TestCase):
 
                 mock_get_by_name.assert_called_once()
                 assert result is None
+
+    def _search_finds_only_sales_orders(self, entity_type, fqn_search_string, **_):
+        """OM holds svc.dev.sales.orders and nothing else."""
+        return MagicMock(spec=Table) if fqn_search_string.endswith("dev.sales.orders") else None
+
+    def _lineage_tables_for_prefix(self, db_service_prefix, schema="sales"):
+        table = UpstreamTable(
+            id="t1",
+            luid="t1-luid",
+            name="sales.orders" if schema else "orders",
+            fullName="[dev].[sales].[orders]",
+            schema_=schema,
+            database={"id": "db1", "name": "dev"},
+        )
+        with (
+            patch.object(self.tableau.metadata, "get_by_name", return_value=None),
+            patch.object(
+                self.tableau.metadata, "search_in_any_service", side_effect=self._search_finds_only_sales_orders
+            ) as search,
+        ):
+            return self.tableau._get_table_entities_from_api(db_service_prefix=db_service_prefix, table=table), search
+
+    def test_table_lineage_matches_a_schema_prefix(self):
+        result, _ = self._lineage_tables_for_prefix("svc.dev.sales")
+
+        assert result is not None and len(result) == 1
+
+    def test_table_lineage_skips_a_table_outside_the_schema_prefix(self):
+        # dbServicePrefixes svc.dev.inventory must not link a table of schema sales
+        result, search = self._lineage_tables_for_prefix("svc.dev.inventory")
+
+        assert result is None
+        search.assert_not_called()
+
+    def test_table_lineage_skips_a_table_other_than_the_table_prefix(self):
+        result, search = self._lineage_tables_for_prefix("svc.dev.sales.customers")
+
+        assert result is None
+        search.assert_not_called()
+
+    def test_table_lineage_full_name_fallback_respects_the_schema_prefix(self):
+        # Tableau reports no schema, so only the fullName [dev].[sales].[orders] carries it
+        result, _ = self._lineage_tables_for_prefix("svc.dev.inventory", schema=None)
+
+        assert result is None
+
+    def test_datamodel_dashboard_lineage_skipped_when_the_dashboard_failed(self):
+        # A workbook whose yield_dashboard failed leaves no dashboard in the context; its
+        # data models must not try to build a lineage edge to it.
+        context = self.tableau.context.get()
+        context.__dict__["dataModels"] = ["ds-bad"]
+        context.__dict__["dashboard"] = None
+        datamodel = MagicMock(spec=DashboardDataModel, dataModelType="TableauEmbeddedDatasource")
+        with (
+            patch.object(self.tableau.metadata, "get_by_name", return_value=datamodel),
+            patch("metadata.ingestion.source.dashboard.tableau.metadata.logger") as log,
+        ):
+            lineage = list(self.tableau.yield_datamodel_dashboard_lineage())
+
+        assert lineage == []
+        log.error.assert_not_called()
 
     def test_datamodel_uses_own_project_over_dashboard_project(self):
         """
@@ -998,6 +1067,155 @@ class TableauUnitTest(TestCase):
         assert len(columns) == 1
         assert columns[0].description is None
 
+    def test_embedded_column_inherits_published_formula(self):
+        """
+        An embedded datasource reports a field it reads from a published datasource as a bare
+        field with no formula; its column takes the formula from the published definition, and
+        a formula the embedded datasource defines itself still wins.
+        """
+        published = DataSource(
+            id="pds-1",
+            name="Sales Summary",
+            fields=[
+                DatasourceField(id="pub-calc", name="Has Activity", formula="LOOKUP(ZN([Net Flow $]),0)<>0"),
+                DatasourceField(id="pub-local", name="Local Calc", formula="[a] + 1"),
+            ],
+        )
+        embedded = DataSource(
+            id="eds-1",
+            name="Sales Summary",
+            fields=[
+                DatasourceField(id="emb-calc", name="Has Activity"),
+                DatasourceField(id="emb-local", name="Local Calc", formula="[a] + 2"),
+                DatasourceField(id="emb-plain", name="Region"),
+            ],
+            upstreamDatasources=[published],
+        )
+
+        descriptions = {
+            column.displayName: column.description.root if column.description else None
+            for column in self.tableau.get_column_info(embedded)
+        }
+
+        assert descriptions == {
+            "Has Activity": "**Formula:** `LOOKUP(ZN([Net Flow $]),0)<>0`",
+            "Local Calc": "**Formula:** `[a] + 2`",
+            "Region": None,
+        }
+
+    def test_datamodel_col_lineage_carries_published_formula(self):
+        """The published -> embedded column edge of a calculated field carries its formula."""
+
+        def model(name: str, columns: list[str]) -> DashboardDataModel:
+            return DashboardDataModel(
+                id=uuid.uuid4(),
+                name=name,
+                service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+                dataModelType="TableauDataModel",
+                columns=[
+                    Column(
+                        name=column,
+                        displayName=column,
+                        dataType=DataType.RECORD,
+                        fullyQualifiedName=f"svc.model.{name}.{column}",
+                    )
+                    for column in columns
+                ],
+            )
+
+        published = DataSource(
+            id="pds-1",
+            fields=[DatasourceField(id="pub-calc", name="Has Activity", formula="LOOKUP(ZN([Net Flow $]),0)<>0")],
+        )
+
+        lineage = self.tableau._get_datamodel_col_lineage(
+            data_model_entity=model("emb", ["Has Activity", "Region"]),
+            upstream_data_model_entity=model("pub", ["Has Activity", "Region"]),
+            upstream_formulas=self.tableau._get_field_formulas(published),
+        )
+
+        functions = {line.toColumn.root: line.function.root if line.function else None for line in lineage}
+        assert functions == {
+            "svc.model.emb.Has Activity": "LOOKUP(ZN([Net Flow $]),0)<>0",
+            "svc.model.emb.Region": None,
+        }
+
+    def test_column_data_length_set_for_guid_mirrored_column(self):
+        """
+        Test that a GUID column (mapped to DataType.BINARY) gets a non-null
+        dataLength, since the server rejects char/varchar/binary/varbinary
+        columns with dataLength=None, and Tableau never reports a real length.
+        """
+        data_source = DataSource(
+            id="ds-guid-001",
+            name="Job Runs",
+            fields=[
+                DatasourceField(
+                    id="fld-005",
+                    name="Job Id",
+                    description=None,
+                    formula=None,
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-005",
+                            name="Job Id",
+                            remoteType="GUID",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+        assert len(columns) == 1
+        assert columns[0].dataType == DataType.BINARY
+        assert columns[0].dataLength is not None
+
+    def test_column_data_length_set_for_guid_child_column(self):
+        """
+        Test that a nested (non-mirrored) GUID child column also gets a
+        non-null dataLength.
+        """
+        data_source = DataSource(
+            id="ds-guid-002",
+            name="Job Runs Detail",
+            fields=[
+                DatasourceField(
+                    id="fld-006",
+                    name="Job Reference",
+                    description=None,
+                    formula="[Job Id] + [Job Name]",
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-006",
+                            name="Job Id",
+                            remoteType="GUID",
+                        ),
+                        UpstreamColumn(
+                            id="col-007",
+                            name="Job Name",
+                            remoteType="VARCHAR",
+                        ),
+                        UpstreamColumn(
+                            id="col-008",
+                            name="Job Count",
+                            remoteType="INTEGER",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+        assert len(columns) == 1
+        children = {child.name.root: child for child in columns[0].children}
+        assert children["col-006"].dataType == DataType.BINARY
+        assert children["col-006"].dataLength is not None
+        assert children["col-007"].dataType == DataType.VARCHAR
+        assert children["col-007"].dataLength is not None
+        assert children["col-008"].dataType != DataType.BINARY
+        assert children["col-008"].dataLength is None
+
     def test_yield_lineage_emits_both_paths_when_upstream_datasources_and_tables_present(
         self,
     ):
@@ -1028,7 +1246,7 @@ class TableauUnitTest(TestCase):
             dataModelType="TableauDataModel",
             columns=[],
         )
-        with patch.object(self.tableau, "_get_datamodel", return_value=mock_data_model_entity):
+        with patch.object(self.tableau, "_get_datamodel", return_value=mock_data_model_entity):  # noqa: SIM117
             with patch.object(
                 self.tableau, "_get_datamodel_table_lineage", return_value=iter([])
             ) as mock_datasource_lineage:
@@ -1046,3 +1264,719 @@ class TableauUnitTest(TestCase):
         assert len(self.tableau.chart_source_state) == 3
         for fqn in self.tableau.chart_source_state:
             assert "tableau_source_test" in fqn
+
+    def test_get_dashboards_list_declares_totals(self):
+        self.tableau.client = SimpleNamespace(
+            get_workbook_count=MagicMock(return_value=7),
+            get_workbooks=MagicMock(return_value=iter([])),
+        )
+
+        list(self.tableau.get_dashboards_list())
+
+        registry = self.tableau.progress_tracking.registry
+        assert registry._global["Dashboard"].total == 7
+
+    def test_get_dashboards_list_reconcilable_when_filtered(self):
+        self.tableau.client = SimpleNamespace(
+            get_workbook_count=MagicMock(return_value=7),
+            get_workbooks=MagicMock(return_value=iter([])),
+        )
+        self.tableau.source_config.dashboardFilterPattern = FilterPattern(excludes=["^skip$"])
+
+        list(self.tableau.get_dashboards_list())
+
+        registry = self.tableau.progress_tracking.registry
+        assert registry._global["Dashboard"].reconcilable is True
+        assert registry._global["Dashboard"].total is None
+        self.tableau.client.get_workbook_count.assert_not_called()
+
+    def test_get_dashboards_list_reconcilable_when_count_fails(self):
+        self.tableau.client = SimpleNamespace(
+            get_workbook_count=MagicMock(side_effect=Exception("boom")),
+            get_workbooks=MagicMock(return_value=iter([])),
+        )
+
+        list(self.tableau.get_dashboards_list())
+
+        registry = self.tableau.progress_tracking.registry
+        assert registry._global["Dashboard"].reconcilable is True
+        assert registry._global["Dashboard"].total is None
+
+    def test_get_workbooks_dashboard_filter_skips_populate_views(self):
+        """
+        A workbook whose name matches the exclude pattern must never reach
+        populate_views -- filtering happens on the listing data.
+        """
+        client = TableauClient.__new__(TableauClient)
+        client.tableau_server = MagicMock()
+        client.owner_cache = {}
+        client.custom_sql_table_queries = {}
+        client.all_projects = {}
+
+        workbook = SimpleNamespace(
+            id="wb-1",
+            name="skip_me",
+            project_id="p1",
+            project_name="Sales",
+            views=[],
+            owner_id=None,
+            description=None,
+            tags=[],
+            webpage_url="http://tableauHost.com/wb-1",
+        )
+
+        with (
+            patch.object(TableauClient, "get_all_projects"),
+            patch.object(TableauClient, "cache_custom_sql_tables"),
+            patch(
+                "metadata.ingestion.source.dashboard.tableau.client.Pager",
+                side_effect=lambda endpoint: iter([workbook]),
+            ),
+        ):
+            on_filtered = MagicMock()
+            dashboards = list(
+                client.get_workbooks(
+                    dashboard_filter_pattern=FilterPattern(excludes=["^skip_me$"]),
+                    on_filtered=on_filtered,
+                )
+            )
+
+        assert dashboards == []
+        client.tableau_server.workbooks.populate_views.assert_not_called()
+        on_filtered.assert_called_once_with("skip_me", "Dashboard Filtered Out")
+
+    def test_get_workbooks_project_filter_skips_populate_views(self):
+        """
+        A workbook in an excluded project must never reach populate_views, even
+        when the project is resolved through the parent hierarchy.
+        """
+        client = TableauClient.__new__(TableauClient)
+        client.tableau_server = MagicMock()
+        client.owner_cache = {}
+        client.custom_sql_table_queries = {}
+        client.all_projects = {
+            "parent": SimpleNamespace(id="parent", name="Finance", parent_id=None),
+            "child": SimpleNamespace(id="child", name="Reporting", parent_id="parent"),
+        }
+
+        workbook = SimpleNamespace(
+            id="wb-2",
+            name="finance_dashboard",
+            project_id="child",
+            project_name="Reporting",
+            views=[],
+            owner_id=None,
+            description=None,
+            tags=[],
+            webpage_url="http://tableauHost.com/wb-2",
+        )
+
+        with (
+            patch.object(TableauClient, "get_all_projects"),
+            patch.object(TableauClient, "cache_custom_sql_tables"),
+            patch(
+                "metadata.ingestion.source.dashboard.tableau.client.Pager",
+                side_effect=lambda endpoint: iter([workbook]),
+            ),
+        ):
+            on_filtered = MagicMock()
+            dashboards = list(
+                client.get_workbooks(
+                    project_filter_pattern=FilterPattern(excludes=["^Finance.Reporting$"]),
+                    on_filtered=on_filtered,
+                )
+            )
+
+        assert dashboards == []
+        client.tableau_server.workbooks.populate_views.assert_not_called()
+        on_filtered.assert_called_once_with("Finance.Reporting", "Project / Workspace Filtered Out")
+
+    def test_get_workbooks_not_filtered_calls_populate_views(self):
+        """
+        A workbook that passes both filters still goes through populate_views
+        and is yielded as usual.
+        """
+        client = TableauClient.__new__(TableauClient)
+        client.tableau_server = MagicMock()
+        client.owner_cache = {}
+        client.custom_sql_table_queries = {}
+        client.all_projects = {}
+
+        workbook = SimpleNamespace(
+            id="wb-3",
+            name="keep_me",
+            project_id="p1",
+            project_name="Sales",
+            views=[],
+            owner_id=None,
+            description="desc",
+            tags=[],
+            webpage_url="http://tableauHost.com/wb-3",
+        )
+
+        with (
+            patch.object(TableauClient, "get_all_projects"),
+            patch.object(TableauClient, "cache_custom_sql_tables"),
+            patch(
+                "metadata.ingestion.source.dashboard.tableau.client.Pager",
+                side_effect=lambda endpoint: iter([workbook]),
+            ),
+        ):
+            dashboards = list(client.get_workbooks(include_owners=False))
+
+        assert len(dashboards) == 1
+        assert dashboards[0].name == "keep_me"
+        client.tableau_server.workbooks.populate_views.assert_called_once_with(workbook, usage=True)
+
+    def test_get_project_parents_by_id_dict_lookup(self):
+        """
+        get_project_parents_by_id resolves the parent chain via the id-keyed
+        all_projects dict instead of scanning a list.
+        """
+        client = TableauClient.__new__(TableauClient)
+        client.all_projects = {
+            "parent": SimpleNamespace(id="parent", name="Finance", parent_id=None),
+            "child": SimpleNamespace(id="child", name="Reporting", parent_id="parent"),
+        }
+
+        assert client.get_project_parents_by_id("child") == "Finance.Reporting"
+        assert client.get_project_parents_by_id("missing") is None
+
+    def test_yield_dashboard_tracks_progress(self):
+        self.tableau.progress_tracking.manual.set_total(Dashboard.__name__, 3)
+
+        list(self.tableau.yield_dashboard(MOCK_DASHBOARD))
+
+        assert self.tableau.progress_tracking.registry._global["Dashboard"].done == 1
+
+    def test_plain_column_field_collapses_mirror_child(self):
+        """
+        A plain ColumnField wraps a single same-named physical column. Nesting it would render an
+        identical-looking duplicate row, so the field absorbs the column's type instead.
+        """
+        data_source = DataSource(
+            id="ds-mirror-001",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="fld-revenue",
+                    name="revenue",
+                    upstreamColumns=[UpstreamColumn(id="col-revenue", name="revenue", remoteType="NUMERIC")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].children == []
+        assert "children" in columns[0].model_fields_set
+        assert columns[0].displayName == "revenue"
+        assert columns[0].dataTypeDisplay == "NUMERIC"
+        assert columns[0].dataType == DataType.NUMERIC
+
+    def test_collapse_mirror_child_is_case_insensitive(self):
+        """Tableau keeps the field label casing while the database column may differ."""
+        data_source = DataSource(
+            id="ds-mirror-002",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="fld-perf",
+                    name="Perf",
+                    upstreamColumns=[UpstreamColumn(id="col-perf", name="perf", remoteType="STRING")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].children == []
+        assert "children" in columns[0].model_fields_set
+        assert columns[0].dataType == DataType.STRING
+
+    def test_tableau_titled_column_collapses(self):
+        """
+        Tableau titles database column names when it builds fields, so a Databricks column
+        `order_date` surfaces as a field named `Order Date`. Those are the same column, so the
+        mirror must still collapse -- raw comparison would leave a near-duplicate row nested.
+        """
+        data_source = DataSource(
+            id="ds-databricks-001",
+            name="lineage_destination",
+            fields=[
+                DatasourceField(
+                    id="fld-order-date",
+                    name="Order Date",
+                    upstreamColumns=[UpstreamColumn(id="col-order-date", name="order_date", remoteType="DATE")],
+                ),
+                DatasourceField(
+                    id="fld-order-amount",
+                    name="Order Amount",
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-order-amount",
+                            name="order_amount",
+                            remoteType="NUMERIC",
+                        )
+                    ],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert [column.children for column in columns] == [[], []]
+        assert [column.dataTypeDisplay for column in columns] == ["DATE", "NUMERIC"]
+
+    def test_differently_named_field_keeps_child(self):
+        """Normalization must not collapse a field genuinely renamed to something else."""
+        data_source = DataSource(
+            id="ds-renamed-002",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="fld-revenue-usd",
+                    name="Revenue (USD)",
+                    upstreamColumns=[UpstreamColumn(id="col-revenue", name="revenue", remoteType="R8")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns[0].children) == 1
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+
+    def test_uppercase_snake_case_column_collapses(self):
+        """
+        `SIGNUP_DATE` surfacing as a field named `Signup Date` is Tableau's own titling of the
+        physical column, not a user rename, so it collapses like any other mirror.
+        """
+        data_source = DataSource(
+            id="ds-renamed-001",
+            name="Customer Facts",
+            fields=[
+                DatasourceField(
+                    id="fld-signup",
+                    name="Signup Date",
+                    upstreamColumns=[UpstreamColumn(id="col-signup", name="SIGNUP_DATE", remoteType="DATE")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].children == []
+        assert columns[0].dataTypeDisplay == "DATE"
+        assert columns[0].dataType == DataType.DATE
+
+    def test_non_ascii_column_collapses(self):
+        """
+        Stripping to `[0-9a-z]` normalized an all-CJK name to an empty string, which the mirror
+        guard reads as "no name" and never collapses. Unicode letters have to survive
+        normalization so a Japanese column collapses like an ASCII one.
+        """
+        data_source = DataSource(
+            id="ds-cjk-001",
+            name="売上データ",
+            fields=[
+                DatasourceField(
+                    id="fld-uriage",
+                    name="売上",
+                    upstreamColumns=[UpstreamColumn(id="col-uriage", name="売上", remoteType="NUMERIC")],
+                ),
+                DatasourceField(
+                    id="fld-kokyaku",
+                    name="顧客 名",
+                    upstreamColumns=[UpstreamColumn(id="col-kokyaku", name="顧客_名", remoteType="STRING")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert [column.children for column in columns] == [[], []]
+        assert [column.dataTypeDisplay for column in columns] == ["NUMERIC", "STRING"]
+
+    def test_non_ascii_differently_named_field_keeps_child(self):
+        """Unicode-aware normalization must still tell genuinely different CJK names apart."""
+        data_source = DataSource(
+            id="ds-cjk-002",
+            name="売上データ",
+            fields=[
+                DatasourceField(
+                    id="fld-uriage-daka",
+                    name="売上",
+                    upstreamColumns=[UpstreamColumn(id="col-uriage-daka", name="売上高", remoteType="NUMERIC")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns[0].children) == 1
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+
+    def test_calculated_field_keeps_children(self):
+        """A field fanning out to several columns keeps them all: they are not duplicates."""
+        data_source = DataSource(
+            id="ds-calc-003",
+            name="Margins",
+            fields=[
+                DatasourceField(
+                    id="fld-margin",
+                    name="margin",
+                    formula="[revenue] - [cost]",
+                    upstreamColumns=[
+                        UpstreamColumn(id="col-revenue", name="revenue", remoteType="NUMERIC"),
+                        UpstreamColumn(id="col-cost", name="cost", remoteType="NUMERIC"),
+                    ],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+        assert len(columns[0].children) == 2
+
+    def test_calculated_field_with_single_same_named_upstream_keeps_child(self):
+        """
+        A CalculatedField referencing one same-named column is not a mirror: its value is a
+        transformation, so the physical column must stay visible and its remoteType must not be
+        reported as the field's own type.
+        """
+        data_source = DataSource(
+            id="ds-calc-004",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="fld-revenue-calc",
+                    name="revenue",
+                    formula="ZN([revenue])",
+                    upstreamColumns=[UpstreamColumn(id="col-revenue", name="revenue", remoteType="NUMERIC")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+        assert columns[0].dataType == DataType.RECORD
+        assert len(columns[0].children) == 1
+        assert columns[0].children[0].displayName == "revenue"
+
+    def test_field_without_upstream_columns_stays_tableau_field(self):
+        """Nothing to absorb, so the synthetic Tableau Field type is retained."""
+        data_source = DataSource(
+            id="ds-noupstream-001",
+            name="Territory Analysis",
+            fields=[DatasourceField(id="fld-bucket", name="Region Bucket", upstreamColumns=[])],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].children == []
+        assert "children" in columns[0].model_fields_set
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+        assert columns[0].dataType == DataType.RECORD
+
+    def test_build_upstream_column_map(self):
+        """Each physical column maps to every field consuming it."""
+        data_source = DataSource(
+            id="ds-map-001",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="fld-revenue",
+                    name="revenue",
+                    upstreamColumns=[UpstreamColumn(id="col-revenue", name="revenue")],
+                ),
+                DatasourceField(
+                    id="fld-margin",
+                    name="margin",
+                    upstreamColumns=[
+                        UpstreamColumn(id="col-revenue", name="revenue"),
+                        UpstreamColumn(id="col-cost", name="cost"),
+                        None,
+                    ],
+                ),
+            ],
+        )
+
+        upstream_column_map = self.tableau._build_upstream_column_map(data_source)
+
+        assert upstream_column_map["col-revenue"] == {"fld-revenue", "fld-margin"}
+        assert upstream_column_map["col-cost"] == {"fld-margin"}
+
+    def test_data_model_column_fqn_resolves_collapsed_parent(self):
+        """A collapsed field has no child, so lineage must land on the field column itself."""
+        data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Sales",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="fld-revenue",
+                    displayName="revenue",
+                    dataType=DataType.NUMERIC,
+                    fullyQualifiedName="svc.model.Sales.fld-revenue",
+                )
+            ],
+        )
+
+        columns = self.tableau._get_data_model_column_fqn(
+            data_model_entity=data_model_entity,
+            column_id="col-revenue",
+            field_names={"fld-revenue"},
+        )
+
+        assert columns == ["svc.model.Sales.fld-revenue"]
+
+    def test_data_model_column_fqn_resolves_child_without_parent(self):
+        """
+        A fan-out field keeps children, and only the matching child is linked. Returning the parent
+        as well would recreate the duplicate lineage edges reported in issue #30639.
+        """
+        data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Margins",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="fld-margin",
+                    displayName="margin",
+                    dataType=DataType.RECORD,
+                    fullyQualifiedName="svc.model.Margins.fld-margin",
+                    children=[
+                        Column(
+                            name="col-revenue",
+                            displayName="revenue",
+                            dataType=DataType.NUMERIC,
+                            fullyQualifiedName="svc.model.Margins.fld-margin.col-revenue",
+                        ),
+                        Column(
+                            name="col-cost",
+                            displayName="cost",
+                            dataType=DataType.NUMERIC,
+                            fullyQualifiedName="svc.model.Margins.fld-margin.col-cost",
+                        ),
+                    ],
+                )
+            ],
+        )
+
+        columns = self.tableau._get_data_model_column_fqn(
+            data_model_entity=data_model_entity,
+            column_id="col-revenue",
+            field_names={"fld-margin"},
+        )
+
+        assert columns == ["svc.model.Margins.fld-margin.col-revenue"]
+
+    def test_data_model_column_fqn_matches_truncated_child_name(self):
+        """
+        Child names are stored truncated to 256 chars. Matching the raw id would miss the child and
+        fall back to the parent, pointing lineage at the wrong column.
+        """
+        long_column_id = "col-" + ("x" * 300)
+        data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Margins",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="fld-margin",
+                    displayName="margin",
+                    dataType=DataType.RECORD,
+                    fullyQualifiedName="svc.model.Margins.fld-margin",
+                    children=[
+                        Column(
+                            name=long_column_id[:256],
+                            displayName="revenue",
+                            dataType=DataType.NUMERIC,
+                            fullyQualifiedName="svc.model.Margins.fld-margin.truncated",
+                        ),
+                    ],
+                )
+            ],
+        )
+
+        columns = self.tableau._get_data_model_column_fqn(
+            data_model_entity=data_model_entity,
+            column_id=long_column_id,
+            field_names={"fld-margin"},
+        )
+
+        assert columns == ["svc.model.Margins.fld-margin.truncated"]
+
+    def test_data_model_column_fqn_ignores_unrelated_fields(self):
+        """Only the fields actually consuming the physical column are linked."""
+        data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Sales",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="fld-revenue",
+                    displayName="revenue",
+                    dataType=DataType.NUMERIC,
+                    fullyQualifiedName="svc.model.Sales.fld-revenue",
+                ),
+                Column(
+                    name="fld-perf",
+                    displayName="perf",
+                    dataType=DataType.STRING,
+                    fullyQualifiedName="svc.model.Sales.fld-perf",
+                ),
+            ],
+        )
+
+        columns = self.tableau._get_data_model_column_fqn(
+            data_model_entity=data_model_entity,
+            column_id="col-revenue",
+            field_names={"fld-revenue"},
+        )
+
+        assert columns == ["svc.model.Sales.fld-revenue"]
+
+    @staticmethod
+    def _sales_data_model_entity():
+        return DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Sales",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="fld-revenue",
+                    displayName="revenue",
+                    dataType=DataType.NUMERIC,
+                    fullyQualifiedName="svc.model.Sales.fld-revenue",
+                )
+            ],
+        )
+
+    @staticmethod
+    def _sales_table_entity():
+        return Table(
+            id=uuid.uuid4(),
+            name="sales",
+            columns=[
+                Column(
+                    name="revenue",
+                    dataType=DataType.NUMERIC,
+                    fullyQualifiedName="db.schema.sales.revenue",
+                )
+            ],
+        )
+
+    def test_column_lineage_emits_single_edge_to_collapsed_column(self):
+        """
+        A physical column feeding a collapsed field yields exactly one edge, landing on the
+        top-level data model column. Columns no field consumes are skipped.
+        """
+        upstream_table = UpstreamTable(
+            id="tbl-001",
+            luid="tbl-luid-001",
+            name="sales",
+            columns=[
+                UpstreamTableColumn(id="col-revenue", name="revenue"),
+                UpstreamTableColumn(id="col-unused", name="unused"),
+            ],
+        )
+
+        column_lineage = self.tableau._get_column_lineage(
+            upstream_table,
+            self._sales_table_entity(),
+            self._sales_data_model_entity(),
+            {"col-revenue": {"fld-revenue"}},
+        )
+
+        assert len(column_lineage) == 1
+        assert column_lineage[0].fromColumns[0].root == "db.schema.sales.revenue"
+        assert column_lineage[0].toColumn.root == "svc.model.Sales.fld-revenue"
+
+    def test_collapsed_column_clears_previously_ingested_children(self):
+        """
+        Issue #30639: the patch path merges each incoming column onto the stored one via
+        `source_attr.model_copy(update=...)`, overlaying only fields present in
+        `model_fields_set`. Leaving `children` unset therefore resurrects children ingested
+        before the collapse, leaving the duplicate row visible in the UI forever.
+        """
+        data_source = DataSource(
+            id="ds-mirror-003",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="047ffe96",
+                    name="revenue_provision",
+                    upstreamColumns=[UpstreamColumn(id="610f77a9", name="revenue_provision", remoteType="NUMERIC")],
+                ),
+            ],
+        )
+        stored_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Sales",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="047ffe96",
+                    displayName="revenue_provision",
+                    dataType=DataType.RECORD,
+                    dataTypeDisplay="Tableau Field",
+                    fullyQualifiedName="svc.model.Sales.047ffe96",
+                    children=[
+                        Column(
+                            name="610f77a9",
+                            displayName="revenue_provision",
+                            dataType=DataType.NUMERIC,
+                            dataTypeDisplay="NUMERIC",
+                            fullyQualifiedName="svc.model.Sales.047ffe96.610f77a9",
+                        )
+                    ],
+                )
+            ],
+        )
+        incoming_entity = stored_entity.model_copy(update={"columns": self.tableau.get_column_info(data_source)})
+
+        _sort_array_entity_fields(
+            source=stored_entity,
+            destination=incoming_entity,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            override_metadata=False,
+        )
+
+        merged_column = incoming_entity.columns[0]
+        assert merged_column.children == []
+        assert merged_column.dataTypeDisplay == "NUMERIC"
+
+    def test_column_lineage_skips_upstream_column_without_name(self):
+        """A nameless physical column cannot be resolved to a table column FQN."""
+        upstream_table = UpstreamTable(
+            id="tbl-002",
+            luid="tbl-luid-002",
+            name="sales",
+            columns=[UpstreamTableColumn(id="col-revenue")],
+        )
+
+        column_lineage = self.tableau._get_column_lineage(
+            upstream_table,
+            self._sales_table_entity(),
+            self._sales_data_model_entity(),
+            {"col-revenue": {"fld-revenue"}},
+        )
+
+        assert column_lineage == []

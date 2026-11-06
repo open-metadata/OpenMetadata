@@ -82,14 +82,6 @@ const crudColumnDisplayName = async (
   );
 };
 
-test.beforeEach(
-  async ({ editDescriptionPage, editTagsPage, editGlossaryTermPage }) => {
-    await redirectToHomePage(editDescriptionPage);
-    await redirectToHomePage(editTagsPage);
-    await redirectToHomePage(editGlossaryTermPage);
-  }
-);
-
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await table.create(apiContext);
@@ -165,6 +157,7 @@ test('Copy column link button should copy the column URL to clipboard', async ({
     page,
     buttonTestId: 'copy-column-link-button',
     containerTestId: 'entity-table',
+    rowName: table.columnsName[0],
     expectedUrlPath: '/table/',
     entityFqn: table.entityResponseData?.['fullyQualifiedName'] ?? '',
   });
@@ -197,27 +190,24 @@ test('Copy column link should have valid URL format', async ({ page }) => {
   expect(validationResult.pathname).toContain('table');
 
   // Visit the copied link to verify it opens the side panel
-  const tableFqn = table.entityResponseData?.['fullyQualifiedName'] ?? '';
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
-        response.url().includes('fields=') &&
-        response.request().method() === 'GET'
-    ),
-    page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
-        response.url().includes('profile') &&
-        response.request().method() === 'GET',
-      { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
-    ),
-    page.goto(clipboardText),
-  ]);
+  const columnGetResponsePromise = page.waitForResponse((response) => {
+    if (
+      !response.url().includes('/api/v1/columns/name/') ||
+      response.request().method() !== 'GET'
+    ) {
+      return false;
+    }
+    const url = new URL(response.url());
+
+    return (
+      url.searchParams.get('entityType') === 'table' &&
+      url.searchParams.get('fields') === 'tags,customMetrics,extension,profile'
+    );
+  });
+  await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
+  const columnGetResponse = await columnGetResponsePromise;
+
+  expect(columnGetResponse.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 
   // Verify side panel is open
@@ -271,31 +261,13 @@ test('Copy nested column link should include full hierarchical path', async ({
       );
 
       // Visit the copied link to verify it opens the side panel
-      const nestedTableFqn =
-        table.entityResponseData?.['fullyQualifiedName'] ?? '';
       await Promise.all([
         page.waitForResponse(
           (response) =>
-            response
-              .url()
-              .includes(
-                `/api/v1/tables/name/${encodeURIComponent(nestedTableFqn)}`
-              ) &&
-            response.url().includes('fields=') &&
+            response.url().includes('/api/v1/columns/name/') &&
             response.request().method() === 'GET'
         ),
-        page.waitForResponse(
-          (response) =>
-            response
-              .url()
-              .includes(
-                `/api/v1/tables/name/${encodeURIComponent(nestedTableFqn)}`
-              ) &&
-            response.url().includes('profile') &&
-            response.request().method() === 'GET',
-          { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
-        ),
-        page.goto(clipboardText),
+        page.goto(clipboardText, { waitUntil: 'domcontentloaded' }),
       ]);
       await waitForAllLoadersToDisappear(page);
 

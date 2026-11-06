@@ -14,10 +14,10 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
+  Column,
   ColumnProfile,
   Table,
   TableProfile,
@@ -28,8 +28,9 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
-import APIClient from './index';
+import { QueryVote } from '../interface/entity/vote.interface';
+import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 
 export type TableListParams = {
   fields?: string;
@@ -45,13 +46,10 @@ export type TableListParams = {
 
 const BASE_URL = '/tables';
 
-export const getTableVersions = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getTableVersions = async (id: string) => {
   const url = `${BASE_URL}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };
@@ -66,11 +64,13 @@ export const getTableVersion = async (id: string, version?: string) => {
 
 export const getTableDetailsByFQN = async (
   fqn: string,
-  params?: ListParams
+  params?: ListParams,
+  signal?: AbortSignal
 ) => {
   const response = await APIClient.get<Table>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
     {
+      signal,
       params: {
         ...params,
         include: params?.include ?? Include.All,
@@ -289,11 +289,13 @@ export type GetTableColumnsParams = {
 
 export const getTableColumnsById = async (
   id: string,
-  params?: GetTableColumnsParams
+  params?: GetTableColumnsParams,
+  signal?: AbortSignal
 ) => {
   const response = await APIClient.get<PagingResponse<Table['columns']>>(
     `${BASE_URL}/${id}/columns`,
     {
+      signal,
       params: { ...params, include: params?.include ?? Include.All },
     }
   );
@@ -317,6 +319,8 @@ export const getTableColumnsByFQN = async (
 
 export interface SearchTableColumnsParams extends GetTableColumnsParams {
   q?: string; // Search query
+  tags?: string; // Comma-separated classification tag FQNs to filter columns by
+  glossaryTerms?: string; // Comma-separated glossary term FQNs to filter columns by
 }
 
 export const searchTableColumnsById = async (
@@ -355,6 +359,23 @@ export const updateTableColumn = async (
     Partial<Table['columns'][number]>,
     AxiosResponse<Table['columns'][number]>
   >(`/columns/name/${getEncodedFqn(fqn)}?entityType=table`, data);
+
+  return response.data;
+};
+
+export interface GetColumnByFQNParams {
+  entityType: string;
+  fields?: string;
+}
+
+export const getColumnByFQN = async (
+  columnFqn: string,
+  params: GetColumnByFQNParams
+) => {
+  const response = await APIClient.get<Column>(
+    `/columns/name/${getEncodedFqn(columnFqn)}`,
+    { params }
+  );
 
   return response.data;
 };

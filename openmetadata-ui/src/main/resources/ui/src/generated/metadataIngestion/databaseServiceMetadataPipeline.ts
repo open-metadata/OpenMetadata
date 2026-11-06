@@ -25,6 +25,12 @@ export interface DatabaseServiceMetadataPipeline {
      */
     extractJsonSchema?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
+     * Iceberg table properties) onto the entity extension. When disabled, no custom property
+     * definitions are registered and no extension values are set.
+     */
+    includeCustomProperties?: boolean;
+    /**
      * Optional configuration to toggle the DDL Statements ingestion.
      */
     includeDDL?: boolean;
@@ -86,7 +92,9 @@ export interface DatabaseServiceMetadataPipeline {
      * Any related entities such as test suites or lineage information that were associated with
      * those tables will also be deleted.
      */
-    markDeletedTables?: boolean;
+    markDeletedTables?:       boolean;
+    maxChildrenPerColumn?:    number;
+    maxSchemaInferenceDepth?: number;
     /**
      * Set the 'Override Metadata' toggle to control whether to override the existing metadata
      * in the OpenMetadata server with the metadata fetched from the source. If the toggle is
@@ -114,6 +122,10 @@ export interface DatabaseServiceMetadataPipeline {
      * Regex to only include/exclude schemas that matches the pattern.
      */
     schemaFilterPattern?: FilterPattern;
+    /**
+     * BigQuery daily shard grouping. Omitted configuration remains disabled.
+     */
+    shardedTables?: BigQueryShardedTables;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -217,6 +229,19 @@ export interface OwnerConfiguration {
      * owner(s).
      */
     table?: { [key: string]: string[] | string } | string;
+}
+
+/**
+ * BigQuery daily shard grouping. Omitted configuration remains disabled.
+ *
+ * Group native daily shard tables into stable logical families.
+ */
+export interface BigQueryShardedTables {
+    /**
+     * Group BigQuery daily shards into a stable logical table using the newest shard for
+     * columns and execution.
+     */
+    enabled?: boolean;
 }
 
 /**

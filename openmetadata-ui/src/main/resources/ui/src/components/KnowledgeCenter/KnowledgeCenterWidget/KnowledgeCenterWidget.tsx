@@ -1,0 +1,224 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Article,
+  ContextCenter,
+  QuickLink as QuickLinkIcon,
+} from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import { isEmpty, map } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'react-router-dom';
+import { ReactComponent as KnowledgeCenterNoDataPlaceholder } from '../../../assets/svg/no-folder-data.svg';
+import WidgetEmptyState from '../../../components/MyData/Widgets/Common/WidgetEmptyState/WidgetEmptyState';
+import WidgetFooter from '../../../components/MyData/Widgets/Common/WidgetFooter/WidgetFooter';
+import WidgetHeader from '../../../components/MyData/Widgets/Common/WidgetHeader/WidgetHeader';
+import WidgetWrapper from '../../../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../constants/constants';
+import { SIZE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  KnowledgePage,
+  PageType,
+  QuickLink,
+} from '../../../interface/knowledge-center.interface';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getKnowledgePagePath } from '../../../utils/KnowledgePagePureUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import './KnowledgeCenterWidget.less';
+
+const KnowledgeCenterWidget = ({
+  isEditView = false,
+  widgetKey,
+  handleRemoveWidget,
+  currentLayout,
+  handleLayoutUpdate,
+}: WidgetCommonProps) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { currentUser } = useApplicationStore();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [data, setData] = useState<KnowledgePage[]>([]);
+
+  const isFullSizeWidget = useMemo(() => {
+    return currentLayout?.find((layout) => layout.i === widgetKey)?.w === 2;
+  }, [currentLayout, widgetKey]);
+
+  const fetchUserKnowledgeArticles = useCallback(async () => {
+    if (!currentUser?.id) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data: responseData } = await getListKnowledgePages({
+        entityId: currentUser.id,
+        entityType: EntityType.USER,
+        limit: PAGE_SIZE_MEDIUM,
+      });
+      setData(responseData);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUser?.id]);
+
+  const emptyState = useMemo(() => {
+    return (
+      <WidgetEmptyState
+        actionButtonLink={ROUTES.CONTEXT_CENTER_ARTICLES}
+        actionButtonText={t('label.create-entity', {
+          entity: t('label.article'),
+        })}
+        description={t('message.no-article-data')}
+        icon={
+          <KnowledgeCenterNoDataPlaceholder
+            height={SIZE.MEDIUM}
+            width={SIZE.MEDIUM}
+          />
+        }
+        title={t('label.no-articles-available')}
+      />
+    );
+  }, [t]);
+
+  const articlesContent = useMemo(() => {
+    return (
+      <div className="entity-list-body">
+        <div
+          className={classNames('cards-scroll-container')}
+          style={{
+            gridTemplateColumns: isFullSizeWidget
+              ? 'repeat(3, 1fr)'
+              : 'repeat(1, 1fr)',
+          }}>
+          {map(data, (knowledgePage) => {
+            const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
+            const quickLink = knowledgePage.page as QuickLink;
+            const KnowledgeIcon = isQuickLink ? QuickLinkIcon : Article;
+
+            return (
+              <Box
+                align="center"
+                className="article-entry tw:hover:bg-primary_hover"
+                data-testid="article-entry"
+                gap={2}
+                key={knowledgePage.id}>
+                <Box
+                  align="center"
+                  className="knowledge-icon tw:shrink-0 tw:bg-utility-blue-light-100 tw:text-brand-tertiary"
+                  data-testid={isQuickLink ? 'link-icon' : 'article-icon'}
+                  justify="center">
+                  <KnowledgeIcon height="1em" width="1em" />
+                </Box>
+                <Link
+                  className="no-underline w-full"
+                  data-testid={`${
+                    isQuickLink ? 'quick-link' : 'knowledge-page'
+                  }-link`}
+                  target={isQuickLink ? '_blank' : '_self'}
+                  to={
+                    isQuickLink
+                      ? getSafeHttpUrl(quickLink.url) ?? '#'
+                      : {
+                          pathname: getKnowledgePagePath(
+                            knowledgePage.fullyQualifiedName
+                          ),
+                        }
+                  }>
+                  <Typography
+                    className="article-header tw:text-primary text-sm font-regular text-left cursor-pointer ellipsis-text"
+                    ellipsis={{
+                      tooltip: true,
+                      excludeTriggerFromTabOrder: true,
+                    }}>
+                    {getEntityName(knowledgePage)}
+                  </Typography>
+                </Link>
+              </Box>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }, [data, isFullSizeWidget]);
+
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!isLoading) && data?.length > 10,
+    [data, isLoading]
+  );
+
+  const footer = useMemo(() => {
+    return (
+      <WidgetFooter
+        moreButtonLink={ROUTES.CONTEXT_CENTER_ARTICLES}
+        moreButtonText={t('label.view-more')}
+        showMoreButton={showWidgetFooterMoreButton}
+      />
+    );
+  }, [showWidgetFooterMoreButton, t]);
+
+  const widgetHeader = useMemo(() => {
+    return (
+      <WidgetHeader
+        className="items-center"
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<ContextCenter size={24} />}
+        isEditView={isEditView}
+        title={t('label.context-center')}
+        widgetKey={widgetKey}
+        onTitleClick={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
+      />
+    );
+  }, [
+    currentLayout,
+    handleLayoutUpdate,
+    handleRemoveWidget,
+    isEditView,
+    navigate,
+    t,
+    widgetKey,
+  ]);
+
+  useEffect(() => {
+    void fetchUserKnowledgeArticles();
+  }, [currentUser, fetchUserKnowledgeArticles]);
+
+  return (
+    <WidgetWrapper
+      dataLength={!isEmpty(data) ? data.length : 10}
+      dataTestId="KnowledgePanel.KnowledgeCenter"
+      header={widgetHeader}
+      loading={isLoading}>
+      <div className="knowledge-center-widget-container d-flex flex-column h-full">
+        <div className="widget-content flex-1 knowledge-center-widget h-full">
+          {isEmpty(data) ? emptyState : articlesContent}
+        </div>
+        {!isEmpty(data) && !isFullSizeWidget && footer}
+      </div>
+    </WidgetWrapper>
+  );
+};
+
+export default KnowledgeCenterWidget;

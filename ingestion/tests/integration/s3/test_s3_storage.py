@@ -22,14 +22,16 @@ def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
 
     # We should have the bucket and all its structured children
     bucket: Container = metadata.get_by_name(entity=Container, fqn=f"{service_name}.test-bucket", fields=["*"])
-    # The bucket has children and no dataModel
-    assert 7 == len(bucket.children.root)
+    # The bucket has children (via the dedicated paginated endpoint, not inlined
+    # into the parent payload) and no dataModel
     assert not bucket.dataModel
+    children = metadata.list_container_children(f"{service_name}.test-bucket")
+    assert 7 == len(children.entities)  # noqa: SIM300
 
     # We can validate the children
     cities: Container = metadata.get_by_name(entity=Container, fqn=f"{service_name}.test-bucket.cities", fields=["*"])
     assert cities.dataModel.isPartitioned
-    assert 9 == len(cities.dataModel.columns)
+    assert 9 == len(cities.dataModel.columns)  # noqa: SIM300
     assert FileFormat.parquet in cities.fileFormats
 
     cities_multiple: Container = metadata.get_by_name(
@@ -38,7 +40,7 @@ def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
         fields=["*"],
     )
     assert cities_multiple.dataModel.isPartitioned
-    assert 11 == len(cities_multiple.dataModel.columns)
+    assert 11 == len(cities_multiple.dataModel.columns)  # noqa: SIM300
     assert FileFormat.parquet in cities_multiple.fileFormats
 
     cities_multiple_simple: Container = metadata.get_by_name(
@@ -47,14 +49,14 @@ def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
         fields=["*"],
     )
     assert cities_multiple_simple.dataModel.isPartitioned
-    assert 10 == len(cities_multiple_simple.dataModel.columns)
+    assert 10 == len(cities_multiple_simple.dataModel.columns)  # noqa: SIM300
     assert FileFormat.parquet in cities_multiple_simple.fileFormats
 
     transactions: Container = metadata.get_by_name(
         entity=Container, fqn=f"{service_name}.test-bucket.transactions", fields=["*"]
     )
     assert not transactions.dataModel.isPartitioned
-    assert 2 == len(transactions.dataModel.columns)
+    assert 2 == len(transactions.dataModel.columns)  # noqa: SIM300
     assert FileFormat.csv in transactions.fileFormats
 
     transactions_separator: Container = metadata.get_by_name(
@@ -63,7 +65,7 @@ def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
         fields=["*"],
     )
     assert not transactions_separator.dataModel.isPartitioned
-    assert 2 == len(transactions_separator.dataModel.columns)
+    assert 2 == len(transactions_separator.dataModel.columns)  # noqa: SIM300
     assert FileFormat.csv in transactions_separator.fileFormats
 
     png_file: Container = metadata.get_by_name(

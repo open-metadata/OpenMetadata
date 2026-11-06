@@ -13,35 +13,80 @@
 
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.unboundid.ldap.listener.InMemoryDirectoryServer;
+import com.unboundid.ldap.listener.InMemoryDirectoryServerConfig;
+import com.unboundid.ldap.listener.InMemoryListenerConfig;
+import com.unboundid.ldap.sdk.LDAPException;
+import com.unboundid.ldif.LDIFException;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.util.EntityRulesUtil;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
+import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.MetricConfigurationDefinition;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -54,22 +99,72 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.api.security.ResponseType;
+import org.openmetadata.schema.api.tasks.CreateTask;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.profiler.MetricType;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.FieldError;
+import org.openmetadata.schema.system.SecurityValidationResponse;
+import org.openmetadata.schema.system.TestLoginCredentialsRequest;
+import org.openmetadata.schema.system.TestLoginProtocol;
+import org.openmetadata.schema.system.TestLoginResult;
+import org.openmetadata.schema.system.TestLoginSession;
+import org.openmetadata.schema.system.TestLoginStage;
+import org.openmetadata.schema.system.TestLoginStartRequest;
+import org.openmetadata.schema.system.TestLoginTokenRequest;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.DescriptionUpdatePayload;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.fluent.Databases;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.security.TestLoginCallbackPage;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Integration tests for System Resource endpoints.
@@ -87,7 +182,539 @@ import org.openmetadata.sdk.network.RequestOptions;
 @ExtendWith(TestNamespaceExtension.class)
 public class SystemResourceIT {
 
+  /** A task takes its target's domains in prepare; a PATCH must not hide them from the rules. */
+  @Test
+  void test_taskPatchKeepsItsTargetsInheritedDomainsForTheRules(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("task_rule_domain"))
+                    .withDescription("task rule domain")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create()
+            .name(ns.prefix("task_rule_db"))
+            .in(service.getFullyQualifiedName())
+            .execute();
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("task_rule_schema"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    Task task =
+        client
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("task_rule_task"))
+                    .withDescription("before")
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+                    .withPayload(
+                        new DescriptionUpdatePayload()
+                            .withFieldPath("description")
+                            .withCurrentDescription(table.getDescription())
+                            .withNewDescription("proposed")));
+    // The generated with* setters mutate in place, so the original is kept as its own JSON copy.
+    String original = JsonUtils.pojoToJson(EntityRulesUtil.getEntityRulesSettings(client));
+    Settings withRule = JsonUtils.readValue(original, Settings.class);
+    EntityRulesSettings rules =
+        new ObjectMapper().convertValue(withRule.getConfigValue(), EntityRulesSettings.class);
+    List<SemanticsRule> withTaskRule = new ArrayList<>(rules.getEntitySemantics());
+    withTaskRule.add(
+        new SemanticsRule()
+            .withName(ns.prefix("tasksNeedADomain"))
+            .withDescription("Tasks must belong to a domain")
+            .withRule("{\"!!\":[{\"var\":\"domains\"}]}")
+            .withEntityType(Entity.TASK)
+            .withEnabled(true));
+    try {
+      EntityRulesUtil.updateSettings(
+          client, withRule.withConfigValue(rules.withEntitySemantics(withTaskRule)));
+
+      client
+          .tasks()
+          .patch(
+              task.getId().toString(),
+              new ObjectMapper()
+                  .readTree(
+                      "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"after\"}]"));
+
+      assertEquals("after", client.tasks().get(task.getId().toString()).getDescription());
+    } finally {
+      EntityRulesUtil.updateSettings(client, JsonUtils.readValue(original, Settings.class));
+    }
+    assertFalse(
+        JsonUtils.pojoToJson(EntityRulesUtil.getEntityRulesSettings(client))
+            .contains("tasksNeedADomain"),
+        "The temporary task rule must be gone after the test");
+  }
+
+  @Test
+  void testDisabledGlossaryPropagationStillValidatesConflicts(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String original =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/settings/glossarySettings",
+                null,
+                RequestOptions.builder().build());
+    try {
+      setGlossaryTagPropagation(false);
+      Classification classification =
+          ns.trackRoot(
+              Entity.CLASSIFICATION,
+              client
+                  .classifications()
+                  .create(
+                      new CreateClassification()
+                          .withName(ns.shortPrefix("exclusive"))
+                          .withDescription("Exclusive glossary tags")
+                          .withMutuallyExclusive(true)));
+      TagLabel sensitive =
+          new TagLabel()
+              .withTagFQN(
+                  client
+                      .tags()
+                      .create(
+                          new CreateTag()
+                              .withName("Sensitive")
+                              .withClassification(classification.getFullyQualifiedName())
+                              .withDescription("Sensitive"))
+                      .getFullyQualifiedName());
+      TagLabel nonSensitive =
+          new TagLabel()
+              .withTagFQN(
+                  client
+                      .tags()
+                      .create(
+                          new CreateTag()
+                              .withName("NonSensitive")
+                              .withClassification(classification.getFullyQualifiedName())
+                              .withDescription("Non-sensitive"))
+                      .getFullyQualifiedName());
+      Glossary classifiedGlossary =
+          ns.trackRoot(
+              Entity.GLOSSARY,
+              client
+                  .glossaries()
+                  .create(
+                      new CreateGlossary()
+                          .withName(ns.shortPrefix("classifiedGlossary"))
+                          .withDescription("Classified glossary")
+                          .withTags(List.of(sensitive))));
+      GlossaryTerm classifiedTerm =
+          client
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName("classified")
+                      .withGlossary(classifiedGlossary.getFullyQualifiedName())
+                      .withDescription("Classified term")
+                      .withTags(List.of(sensitive)));
+      Glossary glossary = GlossaryTestFactory.createSimple(ns);
+      GlossaryTerm term =
+          client
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName("unclassified")
+                      .withGlossary(glossary.getFullyQualifiedName())
+                      .withDescription("Unclassified term"));
+      TagLabel termLabel =
+          new TagLabel()
+              .withTagFQN(term.getFullyQualifiedName())
+              .withSource(TagLabel.TagSource.GLOSSARY);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+      Table table =
+          client
+              .tables()
+              .create(
+                  new CreateTable()
+                      .withName(ns.shortPrefix("conflict"))
+                      .withDatabaseSchema(schema.getFullyQualifiedName())
+                      .withTags(List.of(nonSensitive, termLabel))
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("customer")
+                                  .withDataType(ColumnDataType.STRING)
+                                  .withTags(List.of(nonSensitive, termLabel)))));
+
+      EntityReference column =
+          new EntityReference()
+              .withId(UUID.randomUUID())
+              .withType(Entity.TABLE_COLUMN)
+              .withFullyQualifiedName(table.getColumns().getFirst().getFullyQualifiedName());
+      for (EntityReference asset : List.of(table.getEntityReference(), column)) {
+        BulkOperationResult result =
+            client
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PUT,
+                    "/v1/glossaryTerms/" + classifiedTerm.getId() + "/assets/add",
+                    new AddGlossaryToAssetsRequest().withDryRun(true).withAssets(List.of(asset)),
+                    BulkOperationResult.class);
+        assertEquals(ApiStatus.FAILURE, result.getStatus(), asset.getType());
+        assertEquals(1, result.getNumberOfRowsFailed());
+        assertTrue(
+            result.getFailedRequest().getFirst().getMessage().contains("mutually exclusive"));
+      }
+
+      BulkOperationResult validation =
+          client
+              .getHttpClient()
+              .execute(
+                  HttpMethod.PUT,
+                  "/v1/glossaryTerms/" + term.getId() + "/tags/validate",
+                  new ValidateGlossaryTagsRequest().withGlossaryTags(List.of(sensitive)),
+                  BulkOperationResult.class);
+      assertEquals(ApiStatus.FAILURE, validation.getStatus());
+      assertTrue(validation.getNumberOfRowsFailed() > 0);
+      assertEquals(
+          400,
+          statusOf(
+              () ->
+                  client
+                      .glossaryTerms()
+                      .patch(term.getId(), glossaryTagsPatch("/tags", List.of(sensitive)))));
+
+      TagLabel classifiedTermLabel =
+          new TagLabel()
+              .withTagFQN(classifiedTerm.getFullyQualifiedName())
+              .withSource(TagLabel.TagSource.GLOSSARY);
+      for (String field : List.of("/tags", "/columns/0/tags")) {
+        assertEquals(
+            400,
+            statusOf(
+                () ->
+                    client
+                        .tables()
+                        .patch(
+                            table.getId(),
+                            glossaryTagsPatch(field, List.of(nonSensitive, classifiedTermLabel)))));
+      }
+
+      assertDisabledGlossaryCsvValidation(client, table, termLabel, classifiedTermLabel);
+      assertDisabledGlossaryColumnValidation(client, table, nonSensitive, classifiedTermLabel);
+
+      setGlossaryTagPropagation(true);
+      Table updated =
+          client
+              .tables()
+              .patch(
+                  table.getId(),
+                  MAPPER.valueToTree(
+                      List.of(
+                          Map.of(
+                              "op",
+                              "add",
+                              "path",
+                              "/description",
+                              "value",
+                              "Writable after re-enabling"))));
+      assertEquals("Writable after re-enabling", updated.getDescription());
+    } finally {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT, "/v1/system/settings", original, RequestOptions.builder().build());
+    }
+  }
+
+  private JsonNode glossaryTagsPatch(String path, List<TagLabel> tags) {
+    return MAPPER.valueToTree(List.of(Map.of("op", "add", "path", path, "value", tags)));
+  }
+
+  private void assertDisabledGlossaryCsvValidation(
+      OpenMetadataClient client, Table table, TagLabel term, TagLabel classifiedTerm)
+      throws Exception {
+    String csv = client.tables().exportCsv(table.getFullyQualifiedName());
+    assertTrue(csv.contains(term.getTagFQN()));
+    String conflictingCsv = csv.replace(term.getTagFQN(), classifiedTerm.getTagFQN());
+    for (boolean dryRun : List.of(true, false)) {
+      CsvImportResult result =
+          MAPPER.readValue(
+              client.tables().importCsv(table.getFullyQualifiedName(), conflictingCsv, dryRun),
+              CsvImportResult.class);
+      assertEquals(ApiStatus.FAILURE, result.getStatus(), result.getImportResultsCsv());
+      assertEquals(1, result.getNumberOfRowsFailed());
+      assertTrue(result.getImportResultsCsv().contains("mutually exclusive"));
+      assertEquals(csv, client.tables().exportCsv(table.getFullyQualifiedName()));
+    }
+  }
+
+  private void assertDisabledGlossaryColumnValidation(
+      OpenMetadataClient client, Table table, TagLabel direct, TagLabel classifiedTerm) {
+    Table before = client.tables().get(table.getId().toString(), "tags,columns");
+    String columnFqn = table.getColumns().getFirst().getFullyQualifiedName();
+    assertEquals(
+        400,
+        statusOf(
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        "/v1/columns/name/"
+                            + URLEncoder.encode(columnFqn, StandardCharsets.UTF_8)
+                            + "?entityType=table",
+                        new UpdateColumn().withTags(List.of(direct, classifiedTerm)),
+                        Column.class)));
+    Table unchanged = client.tables().get(table.getId().toString(), "tags,columns");
+    assertEquals(
+        before.getColumns().getFirst().getTags(), unchanged.getColumns().getFirst().getTags());
+  }
+
+  @Test
+  void testGlossaryTagPropagationPreference(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String settingsPath = "/v1/system/settings/" + SettingsType.GLOSSARY_SETTINGS.value();
+    String original =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, settingsPath, null, RequestOptions.builder().build());
+    String userSettings =
+        SdkClients.user1Client()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, settingsPath, null, RequestOptions.builder().build());
+    assertEquals(MAPPER.readTree(original), MAPPER.readTree(userSettings));
+    assertEquals(
+        403,
+        statusOf(
+            () ->
+                SdkClients.user1Client()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/system/settings",
+                        original,
+                        RequestOptions.builder().build())));
+    assertEquals(
+        400,
+        statusOf(
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/system/settings",
+                        "{\"config_type\":\"glossarySettings\",\"config_value\":{\"enableTagPropagation\":\"invalid\"}}",
+                        RequestOptions.builder().build())));
+
+    try {
+      setGlossaryTagPropagation(true);
+      Classification classification =
+          ns.trackRoot(
+              Entity.CLASSIFICATION,
+              client
+                  .classifications()
+                  .create(
+                      new CreateClassification()
+                          .withName(ns.shortPrefix("propagation"))
+                          .withDescription("Propagation test")));
+      Tag propagated =
+          client
+              .tags()
+              .create(
+                  new CreateTag()
+                      .withName("propagated")
+                      .withClassification(classification.getFullyQualifiedName())
+                      .withDescription("Derived tag"));
+      Tag direct =
+          client
+              .tags()
+              .create(
+                  new CreateTag()
+                      .withName("direct")
+                      .withClassification(classification.getFullyQualifiedName())
+                      .withDescription("Direct tag"));
+      TagLabel propagatedLabel = new TagLabel().withTagFQN(propagated.getFullyQualifiedName());
+      TagLabel directLabel = new TagLabel().withTagFQN(direct.getFullyQualifiedName());
+      Glossary glossary = GlossaryTestFactory.createSimple(ns);
+      GlossaryTerm term =
+          client
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName(ns.shortPrefix("term"))
+                      .withGlossary(glossary.getFullyQualifiedName())
+                      .withDescription("Propagation test")
+                      .withTags(List.of(propagatedLabel, directLabel)));
+      TagLabel termLabel =
+          new TagLabel()
+              .withTagFQN(term.getFullyQualifiedName())
+              .withSource(TagLabel.TagSource.GLOSSARY);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+      Table created =
+          client
+              .tables()
+              .create(
+                  new CreateTable()
+                      .withName(ns.shortPrefix("table"))
+                      .withDatabaseSchema(schema.getFullyQualifiedName())
+                      .withTags(List.of(termLabel, directLabel))
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("customer")
+                                  .withDataType(ColumnDataType.STRING)
+                                  .withTags(List.of(termLabel, directLabel)))));
+
+      for (boolean enabled : List.of(true, false, true)) {
+        setGlossaryTagPropagation(enabled);
+        for (int read = 0; read < 2; read++) {
+          Table table = client.tables().get(created.getId().toString(), "tags,columns");
+          assertGlossaryPropagation(
+              table.getTags(), termLabel, directLabel, propagatedLabel, enabled);
+          assertGlossaryPropagation(
+              table.getColumns().getFirst().getTags(),
+              termLabel,
+              directLabel,
+              propagatedLabel,
+              enabled);
+        }
+        Table listed =
+            client
+                .tables()
+                .list(
+                    new ListParams()
+                        .setFields("tags,columns")
+                        .addQueryParam("databaseSchema", schema.getFullyQualifiedName()))
+                .getData()
+                .stream()
+                .filter(table -> table.getId().equals(created.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertGlossaryPropagation(
+            listed.getTags(), termLabel, directLabel, propagatedLabel, enabled);
+        assertGlossaryPropagation(
+            listed.getColumns().getFirst().getTags(),
+            termLabel,
+            directLabel,
+            propagatedLabel,
+            enabled);
+
+        // Reindexing must use the current preference, including after caches were populated.
+        Entity.getSearchRepository()
+            .createEntityIndex(client.tables().get(created.getId().toString(), "*"));
+        await()
+            .atMost(Duration.ofSeconds(30))
+            .untilAsserted(
+                () -> {
+                  JsonNode hits =
+                      MAPPER
+                          .readTree(
+                              client
+                                  .search()
+                                  .query("id:" + created.getId())
+                                  .index("table_search_index")
+                                  .execute())
+                          .path("hits")
+                          .path("hits");
+                  assertEquals(1, hits.size());
+                  JsonNode source = hits.get(0).path("_source");
+                  assertGlossaryPropagation(
+                      JsonUtils.readObjects(source.path("tags").toString(), TagLabel.class),
+                      termLabel,
+                      directLabel,
+                      propagatedLabel,
+                      enabled);
+                  assertGlossaryPropagation(
+                      JsonUtils.readObjects(
+                          source.path("columns").get(0).path("tags").toString(), TagLabel.class),
+                      termLabel,
+                      directLabel,
+                      propagatedLabel,
+                      enabled);
+                });
+      }
+    } finally {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT, "/v1/system/settings", original, RequestOptions.builder().build());
+    }
+  }
+
+  private void setGlossaryTagPropagation(boolean enabled) throws Exception {
+    Settings settings =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_SETTINGS)
+            .withConfigValue(new GlossarySettings().withEnableTagPropagation(enabled));
+    String saved =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/system/settings",
+                JsonUtils.pojoToJson(settings),
+                RequestOptions.builder().build());
+    assertEquals(
+        enabled,
+        MAPPER.readTree(saved).path("config_value").path("enableTagPropagation").asBoolean());
+  }
+
+  private void assertGlossaryPropagation(
+      List<TagLabel> tags, TagLabel term, TagLabel direct, TagLabel propagated, boolean enabled) {
+    assertTrue(tags.stream().anyMatch(tag -> tag.getTagFQN().equals(term.getTagFQN())));
+    assertTrue(
+        tags.stream()
+            .anyMatch(
+                tag ->
+                    tag.getTagFQN().equals(direct.getTagFQN())
+                        && tag.getLabelType() == TagLabel.LabelType.MANUAL));
+    List<TagLabel> derived =
+        tags.stream().filter(tag -> tag.getTagFQN().equals(propagated.getTagFQN())).toList();
+    assertEquals(enabled ? 1 : 0, derived.size());
+    if (enabled) {
+      assertEquals(TagLabel.LabelType.DERIVED, derived.getFirst().getLabelType());
+    }
+  }
+
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String SECURITY_CONFIG_PATH = "/v1/system/security/config";
+  private static final String ALLOWED_DOMAIN = "open-metadata.org";
+  private static final String OUT_OF_DOMAIN = "not-allowed.example";
+  private static final String TEST_LOGIN_PATH = "/v1/system/security/test-login";
+  private static final String ADMIN_EMAIL = "admin@open-metadata.org";
+  // Mirrors TestLoginRoundTrip.MAX_CREDENTIAL_TESTS_PER_WINDOW, which is package-private.
+  private static final int CREDENTIAL_TESTS_PER_WINDOW = 10;
+  private static final String LDAP_BASE_DN = "dc=example,dc=com";
+  private static final String LDAP_LOOKUP_DN = "cn=Directory Manager";
+  private static final String LDAP_LOOKUP_PASSWORD = "lookup-password";
+  private static final String LDAP_STEWARDS_DN = "cn=stewards,ou=groups," + LDAP_BASE_DN;
+
+  @AfterEach
+  void resetSearchSettingsAfterTest() throws Exception {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/system/settings/reset/" + SettingsType.SEARCH_SETTINGS.value(),
+            null,
+            RequestOptions.builder().build());
+  }
+
+  private SearchSettings loadCanonicalSearchSettings() throws Exception {
+    List<String> resources =
+        EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
+    String json =
+        CommonUtil.getResourceAsStream(
+            EntityRepository.class.getClassLoader(), resources.getFirst());
+    return JsonUtils.readValue(json, SearchSettings.class);
+  }
 
   @Test
   void test_getSystemVersion() throws Exception {
@@ -137,6 +764,15 @@ public class SystemResourceIT {
 
     Boolean migrationsPassed = migrations.get("passed").asBoolean();
     assertTrue(migrationsPassed, "Database migrations should have passed");
+    JsonNode systemBots = statusNode.get("System Bots");
+    assertNotNull(systemBots, "Status should report system bots");
+    assertTrue(
+        systemBots.get("passed").asBoolean(),
+        "A clean server has every system bot with a usable token: "
+            + systemBots.get("message").asText());
+    assertFalse(
+        statusNode.has("LDAP"),
+        "The status reports on an LDAP directory only when LDAP is the login provider");
   }
 
   @Test
@@ -701,6 +1337,7 @@ public class SystemResourceIT {
   @Test
   void test_getDefaultSearchSettings() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
+    SearchSettings canonicalSearchSettings = loadCanonicalSearchSettings();
 
     // Ensure deterministic baseline even when other tests mutate search settings.
     client
@@ -725,9 +1362,15 @@ public class SystemResourceIT {
         MAPPER.convertValue(settings.getConfigValue(), SearchSettings.class);
 
     assertNotNull(searchConfig.getGlobalSettings());
-    assertEquals(10000, searchConfig.getGlobalSettings().getMaxAggregateSize());
-    assertEquals(10000, searchConfig.getGlobalSettings().getMaxResultHits());
-    assertEquals(1000, searchConfig.getGlobalSettings().getMaxAnalyzedOffset());
+    assertEquals(
+        canonicalSearchSettings.getGlobalSettings().getMaxAggregateSize(),
+        searchConfig.getGlobalSettings().getMaxAggregateSize());
+    assertEquals(
+        canonicalSearchSettings.getGlobalSettings().getMaxResultHits(),
+        searchConfig.getGlobalSettings().getMaxResultHits());
+    assertEquals(
+        canonicalSearchSettings.getGlobalSettings().getMaxAnalyzedOffset(),
+        searchConfig.getGlobalSettings().getMaxAnalyzedOffset());
 
     assertNotNull(searchConfig.getGlobalSettings().getAggregations());
     assertFalse(searchConfig.getGlobalSettings().getAggregations().isEmpty());
@@ -749,6 +1392,7 @@ public class SystemResourceIT {
   @Test
   void test_defaultSearchRankingBoostConfiguration() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
+    SearchSettings canonicalSearchSettings = loadCanonicalSearchSettings();
 
     client
         .getHttpClient()
@@ -776,54 +1420,82 @@ public class SystemResourceIT {
             .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Table configuration not found"));
+    AssetTypeConfiguration canonicalTableConfig =
+        canonicalSearchSettings.getAssetTypeConfigurations().stream()
+            .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Canonical table configuration not found"));
 
     assertEquals(
-        AssetTypeConfiguration.BoostMode.MULTIPLY,
+        canonicalTableConfig.getBoostMode(),
         tableConfig.getBoostMode(),
-        "Table boost mode should be multiply for tiebreaker scoring");
+        "Table boost mode should match the canonical search settings");
 
     assertNotNull(tableConfig.getFieldValueBoosts());
-    assertEquals(2, tableConfig.getFieldValueBoosts().size());
-
-    FieldValueBoost usageCountBoost =
-        tableConfig.getFieldValueBoosts().stream()
-            .filter(b -> "usageSummary.monthlyStats.count".equals(b.getField()))
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("Usage count field value boost not found"));
-    assertEquals(0.002, usageCountBoost.getFactor(), 1e-6);
-
-    FieldValueBoost percentileBoost =
-        tableConfig.getFieldValueBoosts().stream()
-            .filter(b -> "usageSummary.monthlyStats.percentileRank".equals(b.getField()))
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("Percentile rank field value boost not found"));
-    assertEquals(0.0005, percentileBoost.getFactor(), 1e-6);
+    assertNotNull(canonicalTableConfig.getFieldValueBoosts());
+    assertEquals(
+        canonicalTableConfig.getFieldValueBoosts().size(),
+        tableConfig.getFieldValueBoosts().size());
+    for (FieldValueBoost canonicalBoost : canonicalTableConfig.getFieldValueBoosts()) {
+      FieldValueBoost actualBoost =
+          tableConfig.getFieldValueBoosts().stream()
+              .filter(boost -> canonicalBoost.getField().equals(boost.getField()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new AssertionError(
+                          "Field value boost not found: " + canonicalBoost.getField()));
+      assertEquals(canonicalBoost.getField(), actualBoost.getField());
+      assertEquals(canonicalBoost.getFactor(), actualBoost.getFactor(), 1e-12);
+      assertTrue(actualBoost.getFactor() > 0, "Field value boost factors must be positive");
+    }
 
     List<TermBoost> globalTermBoosts = searchConfig.getGlobalSettings().getTermBoosts();
+    List<TermBoost> canonicalGlobalTermBoosts =
+        canonicalSearchSettings.getGlobalSettings().getTermBoosts();
     assertNotNull(globalTermBoosts);
-    assertEquals(3, globalTermBoosts.size());
+    assertNotNull(canonicalGlobalTermBoosts);
+    assertEquals(canonicalGlobalTermBoosts.size(), globalTermBoosts.size());
+    for (TermBoost canonicalBoost : canonicalGlobalTermBoosts) {
+      TermBoost actualBoost =
+          globalTermBoosts.stream()
+              .filter(
+                  boost ->
+                      canonicalBoost.getField().equals(boost.getField())
+                          && canonicalBoost.getValue().equals(boost.getValue()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new AssertionError(
+                          "Term boost not found: "
+                              + canonicalBoost.getField()
+                              + "="
+                              + canonicalBoost.getValue()));
+      assertEquals(canonicalBoost.getField(), actualBoost.getField());
+      assertEquals(canonicalBoost.getValue(), actualBoost.getValue());
+      assertEquals(canonicalBoost.getBoost(), actualBoost.getBoost(), 1e-12);
+    }
 
     TermBoost tier1Boost =
         globalTermBoosts.stream()
             .filter(t -> "Tier.Tier1".equals(t.getValue()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Tier1 term boost not found"));
-    assertEquals("tier.tagFQN", tier1Boost.getField());
-    assertEquals(0.05, tier1Boost.getBoost(), 1e-6);
 
     TermBoost tier2Boost =
         globalTermBoosts.stream()
             .filter(t -> "Tier.Tier2".equals(t.getValue()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Tier2 term boost not found"));
-    assertEquals(0.03, tier2Boost.getBoost(), 1e-6);
 
     TermBoost tier3Boost =
         globalTermBoosts.stream()
             .filter(t -> "Tier.Tier3".equals(t.getValue()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Tier3 term boost not found"));
-    assertEquals(0.01, tier3Boost.getBoost(), 1e-6);
+    assertTrue(tier1Boost.getBoost() > tier2Boost.getBoost());
+    assertTrue(tier2Boost.getBoost() > tier3Boost.getBoost());
+    assertTrue(tier3Boost.getBoost() > 0);
   }
 
   @Test
@@ -1641,60 +2313,753 @@ public class SystemResourceIT {
     assertFalse(retrievedEntityTypes.contains("test"));
   }
 
+  private SecurityConfiguration buildBasicSecurityConfig() {
+    return new SecurityConfiguration()
+        .withAuthenticationConfiguration(
+            new AuthenticationConfiguration()
+                .withClientType(ClientType.PUBLIC)
+                .withProvider(AuthProvider.BASIC)
+                .withResponseType(ResponseType.ID_TOKEN)
+                .withProviderName("OpenMetadata")
+                .withPublicKeyUrls(Arrays.asList("http://localhost:8585/api/v1/system/config/jwks"))
+                .withTokenValidationAlgorithm(
+                    AuthenticationConfiguration.TokenValidationAlgorithm.RS_256)
+                .withAuthority("http://localhost:8585")
+                .withClientId("open-metadata")
+                .withCallbackUrl("http://localhost:8585/callback")
+                .withJwtPrincipalClaims(Arrays.asList("email", "preferred_username", "sub"))
+                .withJwtPrincipalClaimsMapping(new ArrayList<>())
+                .withEnableSelfSignup(true))
+        .withAuthorizerConfiguration(
+            new AuthorizerConfiguration()
+                .withClassName("org.openmetadata.service.security.DefaultAuthorizer")
+                .withContainerRequestFilter("org.openmetadata.service.security.JwtFilter")
+                .withAdminPrincipals(Set.of("admin"))
+                .withAllowedEmailRegistrationDomains(Set.of("all"))
+                .withPrincipalDomain("open-metadata.org")
+                .withAllowedDomains(new HashSet<>())
+                .withEnforcePrincipalDomain(false)
+                .withEnableSecureSocketConnection(false)
+                .withUseRolesFromProvider(false));
+  }
+
   @Test
   void test_updateSecurityConfig() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-
-    SecurityConfiguration securityConfig =
-        new SecurityConfiguration()
-            .withAuthenticationConfiguration(
-                new AuthenticationConfiguration()
-                    .withClientType(ClientType.PUBLIC)
-                    .withProvider(AuthProvider.BASIC)
-                    .withResponseType(ResponseType.ID_TOKEN)
-                    .withProviderName("OpenMetadata")
-                    .withPublicKeyUrls(
-                        Arrays.asList("http://localhost:8585/api/v1/system/config/jwks"))
-                    .withTokenValidationAlgorithm(
-                        AuthenticationConfiguration.TokenValidationAlgorithm.RS_256)
-                    .withAuthority("http://localhost:8585")
-                    .withClientId("open-metadata")
-                    .withCallbackUrl("http://localhost:8585/callback")
-                    .withJwtPrincipalClaims(Arrays.asList("email", "preferred_username", "sub"))
-                    .withJwtPrincipalClaimsMapping(new ArrayList<>())
-                    .withEnableSelfSignup(true))
-            .withAuthorizerConfiguration(
-                new AuthorizerConfiguration()
-                    .withClassName("org.openmetadata.service.security.DefaultAuthorizer")
-                    .withContainerRequestFilter("org.openmetadata.service.security.JwtFilter")
-                    .withAdminPrincipals(Set.of("admin"))
-                    .withAllowedEmailRegistrationDomains(Set.of("all"))
-                    .withPrincipalDomain("open-metadata.org")
-                    .withAllowedDomains(new HashSet<>())
-                    .withEnforcePrincipalDomain(false)
-                    .withEnableSecureSocketConnection(false)
-                    .withUseRolesFromProvider(false));
-
-    String securityConfigJson = MAPPER.writeValueAsString(securityConfig);
-    String updatedJson =
+    String originalSecurityConfigJson =
         client
             .getHttpClient()
             .executeForString(
-                HttpMethod.PUT,
+                HttpMethod.GET,
                 "/v1/system/security/config",
+                null,
+                RequestOptions.builder().build());
+
+    try {
+      SecurityConfiguration securityConfig = buildBasicSecurityConfig();
+      String securityConfigJson = MAPPER.writeValueAsString(securityConfig);
+      String updatedJson =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.PUT,
+                  "/v1/system/security/config",
+                  securityConfigJson,
+                  RequestOptions.builder().build());
+
+      assertNotNull(updatedJson);
+      SecurityConfiguration updated = MAPPER.readValue(updatedJson, SecurityConfiguration.class);
+
+      assertNotNull(updated);
+      assertEquals(
+          securityConfig.getAuthenticationConfiguration().getProvider(),
+          updated.getAuthenticationConfiguration().getProvider());
+      assertEquals(
+          securityConfig.getAuthorizerConfiguration().getClassName(),
+          updated.getAuthorizerConfiguration().getClassName());
+    } finally {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT,
+              "/v1/system/security/config",
+              originalSecurityConfigJson,
+              RequestOptions.builder().build());
+    }
+  }
+
+  @Test
+  void test_allowedEmailDomains_rejectsOutOfDomainUserCreation() throws Throwable {
+    String postRejected = uniqueUserName("postrejected");
+    String putRejected = uniqueUserName("putrejected");
+    String accepted = uniqueUserName("accepted");
+
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          restrictToAllowedEmailDomain(config);
+        },
+        () -> {
+          OpenMetadataException postRejection =
+              assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      SdkClients.adminClient()
+                          .users()
+                          .create(createUserRequest(postRejected, OUT_OF_DOMAIN)));
+          assertEquals(400, postRejection.getStatusCode(), postRejection.getMessage());
+          assertTrue(
+              postRejection.getMessage().contains(OUT_OF_DOMAIN), postRejection.getMessage());
+          assertTrue(
+              postRejection.getMessage().contains(ALLOWED_DOMAIN), postRejection.getMessage());
+
+          OpenMetadataException putRejection =
+              assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      SdkClients.adminClient()
+                          .getHttpClient()
+                          .executeForString(
+                              HttpMethod.PUT,
+                              "/v1/users",
+                              createUserRequest(putRejected, OUT_OF_DOMAIN)));
+          assertEquals(400, putRejection.getStatusCode(), putRejection.getMessage());
+
+          User created =
+              SdkClients.adminClient().users().create(createUserRequest(accepted, ALLOWED_DOMAIN));
+          assertEquals(accepted + "@" + ALLOWED_DOMAIN, created.getEmail());
+        });
+
+    assertUserAbsent(postRejected);
+    assertUserAbsent(putRejected);
+  }
+
+  @Test
+  void test_deprecatedEnforcePrincipalDomain_rejectsOutOfDomainUserCreation() throws Throwable {
+    String rejected = uniqueUserName("legacyrejected");
+    String accepted = uniqueUserName("legacyaccepted");
+
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          enforceDeprecatedPrincipalDomain(config);
+        },
+        () -> {
+          OpenMetadataException rejection =
+              assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      SdkClients.adminClient()
+                          .users()
+                          .create(createUserRequest(rejected, OUT_OF_DOMAIN)));
+          assertEquals(400, rejection.getStatusCode(), rejection.getMessage());
+
+          User created =
+              SdkClients.adminClient().users().create(createUserRequest(accepted, ALLOWED_DOMAIN));
+          assertEquals(accepted + "@" + ALLOWED_DOMAIN, created.getEmail());
+        });
+
+    assertUserAbsent(rejected);
+  }
+
+  @Test
+  void test_allowedEmailDomains_leavesCreationAloneUnderNativePasswordProvider() throws Throwable {
+    // Native-password sessions use OpenMetadata-issued tokens, which login never domain-checks, so
+    // creation does not check either. This server runs the openmetadata provider.
+    String outsider = uniqueUserName("nativeoutsider");
+
+    withSecurityConfig(
+        SystemResourceIT::restrictToAllowedEmailDomain,
+        () -> {
+          User created =
+              SdkClients.adminClient().users().create(createUserRequest(outsider, OUT_OF_DOMAIN));
+          assertEquals(outsider + "@" + OUT_OF_DOMAIN, created.getEmail());
+        });
+  }
+
+  @Test
+  void test_allowedEmailDomains_keepsExistingOutOfDomainUsersEditable() throws Throwable {
+    // Created before the restriction is switched on, as on a deployment that enables it later
+    User existing =
+        SdkClients.adminClient()
+            .users()
+            .create(createUserRequest(uniqueUserName("existing"), OUT_OF_DOMAIN));
+
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          restrictToAllowedEmailDomain(config);
+        },
+        () -> {
+          existing.setDescription("edited while the restriction is on");
+          User updated = SdkClients.adminClient().users().update(existing.getId(), existing);
+
+          assertEquals("edited while the restriction is on", updated.getDescription());
+          assertEquals(existing.getEmail(), updated.getEmail());
+        });
+  }
+
+  @Test
+  void test_allowedEmailDomains_failsOnlyOutOfDomainCsvRows() throws Throwable {
+    Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(uniqueUserName("csvteam"))
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    String allowed = uniqueUserName("csvallowed");
+    String rejected = uniqueUserName("csvrejected");
+
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          restrictToAllowedEmailDomain(config);
+        },
+        () -> {
+          String header = exportUserCsv(team.getName()).lines().findFirst().orElseThrow();
+          String csv =
+              String.join(
+                      "\n",
+                      header,
+                      userCsvRow(header, allowed, ALLOWED_DOMAIN, team.getName()),
+                      userCsvRow(header, rejected, OUT_OF_DOMAIN, team.getName()))
+                  + "\n";
+
+          // A dry run reports the row too, and writes nothing
+          CsvImportResult dryRun = importUserCsv(team.getName(), csv, true);
+          assertEquals(1, dryRun.getNumberOfRowsFailed(), dryRun.getImportResultsCsv());
+          assertTrue(
+              dryRun.getImportResultsCsv().contains(OUT_OF_DOMAIN), dryRun.getImportResultsCsv());
+          assertUserAbsent(allowed);
+
+          CsvImportResult result = importUserCsv(team.getName(), csv, false);
+          assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus(), result.getImportResultsCsv());
+          assertEquals(1, result.getNumberOfRowsFailed(), result.getImportResultsCsv());
+          assertTrue(
+              result.getImportResultsCsv().contains(OUT_OF_DOMAIN), result.getImportResultsCsv());
+        });
+
+    assertEquals(
+        allowed + "@" + ALLOWED_DOMAIN,
+        SdkClients.adminClient().users().getByName(allowed).getEmail());
+    assertUserAbsent(rejected);
+  }
+
+  // An SSO provider, so creation applies the sign-in domain rule. A public client needs no
+  // discovery round-trip, and the SDK's OpenMetadata-issued tokens keep validating under it
+  private static void signInThroughSso(ObjectNode securityConfig) {
+    ((ObjectNode) securityConfig.get("authenticationConfiguration"))
+        .put("provider", "custom-oidc")
+        .put("clientType", "public");
+  }
+
+  private static void restrictToAllowedEmailDomain(ObjectNode securityConfig) {
+    ObjectNode authorizer = (ObjectNode) securityConfig.get("authorizerConfiguration");
+    authorizer.put("enforcePrincipalDomain", false);
+    authorizer.putArray("allowedEmailDomains").add(ALLOWED_DOMAIN);
+  }
+
+  private static void enforceDeprecatedPrincipalDomain(ObjectNode securityConfig) {
+    // allowedEmailDomains takes precedence, so clear it for the deprecated settings to apply
+    ObjectNode authorizer = (ObjectNode) securityConfig.get("authorizerConfiguration");
+    authorizer.putArray("allowedEmailDomains");
+    authorizer.putArray("allowedDomains");
+    authorizer.put("enforcePrincipalDomain", true).put("principalDomain", ALLOWED_DOMAIN);
+  }
+
+  /**
+   * Applies {@code configure} to the security configuration for the duration of {@code body}, then
+   * restores the original. Safe for the rest of the suite: this class is @Isolated, and every
+   * SdkClients token is OpenMetadata-issued, which validates under any provider and which login
+   * exempts from domain restrictions, so authentication keeps working throughout.
+   */
+  private static void withSecurityConfig(Consumer<ObjectNode> configure, Executable body)
+      throws Throwable {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String original = getSecurityConfigJson(client);
+    ObjectNode updated = (ObjectNode) MAPPER.readTree(original);
+    configure.accept(updated);
+    try {
+      putSecurityConfigJson(client, MAPPER.writeValueAsString(updated));
+      JsonNode applied = MAPPER.readTree(getSecurityConfigJson(client));
+      JsonNode before = MAPPER.readTree(original);
+      for (String section : List.of("authenticationConfiguration", "authorizerConfiguration")) {
+        assertChangesApplied(before.get(section), updated.get(section), applied.get(section));
+      }
+      body.execute();
+    } finally {
+      putSecurityConfigJson(client, original);
+    }
+  }
+
+  // Guards against a change the server silently ignored, which would let the tests pass vacuously.
+  // Emptied lists are skipped because the server may return them as absent rather than [].
+  private static void assertChangesApplied(JsonNode before, JsonNode wanted, JsonNode actual) {
+    wanted
+        .fieldNames()
+        .forEachRemaining(
+            field -> {
+              JsonNode value = wanted.get(field);
+              boolean emptiedList = value.isArray() && value.isEmpty();
+              if (!value.equals(before.get(field)) && !emptiedList) {
+                assertEquals(value, actual.get(field), field + " did not take effect");
+              }
+            });
+  }
+
+  private static String getSecurityConfigJson(OpenMetadataClient client) throws Exception {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET, SECURITY_CONFIG_PATH, null, RequestOptions.builder().build());
+  }
+
+  private static void putSecurityConfigJson(OpenMetadataClient client, String json)
+      throws Exception {
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, SECURITY_CONFIG_PATH, json, RequestOptions.builder().build());
+  }
+
+  private static String exportUserCsv(String teamName) throws Exception {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/users/export",
+            null,
+            RequestOptions.builder().queryParam("team", teamName).build());
+  }
+
+  // User import lives at /v1/users/import?team=..., not the /name/{name}/import path the SDK's
+  // generic importCsv targets
+  private static CsvImportResult importUserCsv(String teamName, String csv, boolean dryRun)
+      throws Exception {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users/import",
+                csv,
+                RequestOptions.builder()
+                    .header("Content-Type", "text/plain; charset=UTF-8")
+                    .queryParam("team", teamName)
+                    .queryParam("dryRun", String.valueOf(dryRun))
+                    .build());
+    return JsonUtils.readValue(response, CsvImportResult.class);
+  }
+
+  private static String userCsvRow(String header, String userName, String domain, String team) {
+    Map<String, String> values =
+        Map.of(
+            "name", userName, "email", userName + "@" + domain, "teams", team, "isAdmin", "false");
+    return Arrays.stream(header.split(","))
+        .map(column -> values.getOrDefault(column.replace("*", "").trim(), ""))
+        .collect(Collectors.joining(","));
+  }
+
+  private static CreateUser createUserRequest(String userName, String domain) {
+    return new CreateUser().withName(userName).withEmail(userName + "@" + domain);
+  }
+
+  // Lowercase alphanumerics only: user CSV import requires the name to equal the email local part
+  private static String uniqueUserName(String purpose) {
+    return "pd" + purpose + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+  }
+
+  private static void assertUserAbsent(String userName) {
+    OpenMetadataException notFound =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().users().getByName(userName));
+    assertEquals(404, notFound.getStatusCode(), notFound.getMessage());
+  }
+
+  @Test
+  void test_validateSecurityConfig_adminCanValidate() throws Exception {
+    String securityConfigJson = MAPPER.writeValueAsString(buildBasicSecurityConfig());
+
+    String responseJson =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/system/security/validate",
                 securityConfigJson,
                 RequestOptions.builder().build());
 
-    assertNotNull(updatedJson);
-    SecurityConfiguration updated = MAPPER.readValue(updatedJson, SecurityConfiguration.class);
+    assertNotNull(responseJson);
+    assertTrue(
+        MAPPER.readTree(responseJson).has("status"),
+        "Validate response should contain a status field");
+  }
 
-    assertNotNull(updated);
+  @Test
+  void test_validateSecurityConfig_nonAdminForbidden() throws Exception {
+    String securityConfigJson = MAPPER.writeValueAsString(buildBasicSecurityConfig());
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.user1Client()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        "/v1/system/security/validate",
+                        securityConfigJson,
+                        RequestOptions.builder().build()),
+            "Non-admin must not be able to test/validate the SSO configuration");
+
+    String message = exception.getMessage();
+    assertTrue(
+        message != null
+            && (message.contains("admin")
+                || message.contains("Admin")
+                || message.contains("Authorization")
+                || message.contains("Forbidden")
+                || message.contains("403")),
+        "Expected an admin-only / 403 authorization error but got: " + message);
+  }
+
+  @Test
+  void test_validateSecurityConfig_checksAMaskedBindPasswordWithTheSavedOne(TestNamespace ns)
+      throws Exception {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "Restores the embedded server's configuration and needs an LDAP directory in this JVM");
+    InMemoryDirectoryServer directory =
+        startDirectory("ldapmasked" + ns.shortPrefix(), "directory-password");
+    String liveConfigJson =
+        JsonUtils.pojoToJson(SecurityConfigurationManager.getInstance().getCurrentSecurityConfig());
+    try {
+      // Basic stays the login provider so this server's own sign-in is untouched; the bind password
+      // is restored from the saved LDAP block whichever provider is active.
+      SecurityConfiguration saved = ldapCandidate(directory.getListenPort());
+      saved
+          .getAuthenticationConfiguration()
+          .withProvider(AuthProvider.BASIC)
+          .withProviderName("OpenMetadata");
+      putSecurityConfig(MAPPER.writeValueAsString(saved));
+
+      // What the SSO form holds: the configuration as read back, with the bind password masked.
+      SecurityConfiguration fromForm = getSecurityConfig();
+      fromForm
+          .getAuthenticationConfiguration()
+          .withProvider(AuthProvider.LDAP)
+          .withProviderName("LDAP");
+      assertEquals(
+          PasswordEntityMasker.PASSWORD_MASK,
+          fromForm.getAuthenticationConfiguration().getLdapConfiguration().getDnAdminPassword());
+
+      SecurityValidationResponse response = validateSecurityConfig(fromForm);
+
+      assertEquals(
+          SecurityValidationResponse.Status.SUCCESS,
+          response.getStatus(),
+          String.valueOf(response.getErrors()));
+    } finally {
+      putSecurityConfig(liveConfigJson);
+      directory.shutDown(true);
+    }
+  }
+
+  @Test
+  void test_testLoginValidateToken_adminGetsResultWithoutCredentials() throws Exception {
+    TestLoginTokenRequest request =
+        new TestLoginTokenRequest()
+            .withSecurityConfiguration(buildBasicSecurityConfig())
+            .withIdToken("not-a-real-id-token");
+
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/system/security/test-login/validate-token",
+                MAPPER.writeValueAsString(request),
+                RequestOptions.builder().build());
+
+    assertNotNull(json);
+    JsonNode node = MAPPER.readTree(json);
+    assertTrue(node.has("status"), "Test login result should contain a status field");
+    assertFalse(node.has("accessToken"), "Test login must not return an access token");
+    assertFalse(node.has("refreshToken"), "Test login must not return a refresh token");
+    assertFalse(node.has("jwtToken"), "Test login must not return a JWT token");
+  }
+
+  @Test
+  void test_testLoginValidateToken_nonAdminForbidden() throws Exception {
+    TestLoginTokenRequest request =
+        new TestLoginTokenRequest()
+            .withSecurityConfiguration(buildBasicSecurityConfig())
+            .withIdToken("not-a-real-id-token");
+    String body = MAPPER.writeValueAsString(request);
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.user1Client()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        "/v1/system/security/test-login/validate-token",
+                        body,
+                        RequestOptions.builder().build()),
+            "Non-admin must not be able to run a test login");
+
+    String message = exception.getMessage();
+    assertTrue(
+        message != null
+            && (message.contains("admin")
+                || message.contains("Admin")
+                || message.contains("Authorization")
+                || message.contains("Forbidden")
+                || message.contains("403")),
+        "Expected an admin-only / 403 authorization error but got: " + message);
+  }
+
+  @Test
+  void test_testLoginRoundTrip_nonAdminForbidden() {
+    OpenMetadataClient nonAdmin = SdkClients.user1Client();
+
+    assertEquals(403, statusOf(() -> startTestLogin(nonAdmin, buildBasicSecurityConfig())));
+    assertEquals(403, statusOf(() -> getTestLoginResult(nonAdmin, "any-test-session")));
     assertEquals(
-        securityConfig.getAuthenticationConfiguration().getProvider(),
-        updated.getAuthenticationConfiguration().getProvider());
+        403,
+        statusOf(
+            () -> submitTestLoginCredentials(nonAdmin, "any-test-session", ADMIN_EMAIL, "guess")));
+  }
+
+  @Test
+  void test_testLoginRoundTrip_basicCandidateTakesCredentialsOnceAndIssuesNoToken()
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    TestLoginSession session = startTestLogin(admin, buildBasicSecurityConfig());
+    String testSessionId = session.getTestSessionId();
+
+    assertEquals(TestLoginProtocol.BASIC, session.getProtocol());
+    assertTrue(session.getRequiresCredentials());
+    assertNull(session.getAuthorizationUrl());
+    assertTrue(session.getExpiresAt() > System.currentTimeMillis());
     assertEquals(
-        securityConfig.getAuthorizerConfiguration().getClassName(),
-        updated.getAuthorizerConfiguration().getClassName());
+        TestLoginResult.Status.PENDING, getTestLoginResult(admin, testSessionId).getStatus());
+
+    JsonNode outcome =
+        MAPPER.readTree(
+            submitTestLoginCredentials(admin, testSessionId, ADMIN_EMAIL, "not-the-password"));
+
+    assertEquals(TestLoginResult.Status.FAILED.value(), outcome.get("status").asText());
+    assertEquals(TestLoginStage.CREDENTIALS_VERIFIED.value(), outcome.get("stage").asText());
+    assertFalse(outcome.has("accessToken"), "Test login must not return an access token");
+    assertFalse(outcome.has("refreshToken"), "Test login must not return a refresh token");
+    assertFalse(outcome.has("jwtToken"), "Test login must not return a JWT token");
+    // One guess per test: the dry-run never locks an account, so replays would make it an oracle.
+    assertEquals(
+        400,
+        statusOf(
+            () -> submitTestLoginCredentials(admin, testSessionId, ADMIN_EMAIL, "another-guess")));
+    assertEquals(
+        TestLoginResult.Status.FAILED, getTestLoginResult(admin, testSessionId).getStatus());
+  }
+
+  @Test
+  void test_testLoginRoundTrip_anotherAdminsTestLooksLikeAnUnknownOne(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String testSessionId = startTestLogin(admin, buildBasicSecurityConfig()).getTestSessionId();
+    User otherAdmin = createAdminUser("testloginother" + ns.shortPrefix());
+    try {
+      OpenMetadataClient other = clientFor(otherAdmin);
+
+      assertEquals(404, statusOf(() -> getTestLoginResult(other, testSessionId)));
+      assertEquals(
+          404,
+          statusOf(() -> submitTestLoginCredentials(other, testSessionId, ADMIN_EMAIL, "guess")));
+      assertEquals(404, statusOf(() -> getTestLoginResult(admin, "no-such-test-session")));
+      assertEquals(
+          TestLoginResult.Status.PENDING, getTestLoginResult(admin, testSessionId).getStatus());
+    } finally {
+      admin.users().delete(otherAdmin.getId());
+    }
+  }
+
+  @Test
+  void test_testLoginRoundTrip_credentialTestsAreRateLimitedPerAdmin(TestNamespace ns)
+      throws Exception {
+    User limitedAdmin = createAdminUser("testloginlimited" + ns.shortPrefix());
+    try {
+      OpenMetadataClient limited = clientFor(limitedAdmin);
+      for (int attempt = 0; attempt < CREDENTIAL_TESTS_PER_WINDOW; attempt++) {
+        submitTestLoginCredentials(
+            limited, startBasicTest(limited), ADMIN_EMAIL, "guess" + attempt);
+      }
+      String oneTooMany = startBasicTest(limited);
+
+      assertEquals(
+          429,
+          statusOf(() -> submitTestLoginCredentials(limited, oneTooMany, ADMIN_EMAIL, "guess")));
+
+      OpenMetadataClient admin = SdkClients.adminClient();
+      assertNotNull(
+          submitTestLoginCredentials(admin, startBasicTest(admin), ADMIN_EMAIL, "guess"),
+          "Another admin's allowance is separate");
+    } finally {
+      SdkClients.adminClient().users().delete(limitedAdmin.getId());
+    }
+  }
+
+  @Test
+  void test_testLoginRoundTrip_ldapResolvesTheIdentityWithoutProvisioningIt(TestNamespace ns)
+      throws Exception {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "The server must reach the LDAP directory this test runs in its own JVM");
+    String userName = "ldapdryrun" + ns.shortPrefix();
+    String email = userName + "@open-metadata.org";
+    String password = "directory-password";
+    InMemoryDirectoryServer directory = startDirectory(userName, password);
+    try {
+      OpenMetadataClient admin = SdkClients.adminClient();
+      TestLoginSession session = startTestLogin(admin, ldapCandidate(directory.getListenPort()));
+
+      TestLoginResult result =
+          MAPPER.readValue(
+              submitTestLoginCredentials(admin, session.getTestSessionId(), email, password),
+              TestLoginResult.class);
+
+      assertEquals(TestLoginResult.Status.SUCCESS, result.getStatus(), String.valueOf(result));
+      assertEquals(email, result.getResolvedEmail());
+      assertEquals(List.of("DataSteward"), result.getMappedRoles());
+      // A real LDAP login would have created this user; the dry-run must leave no trace.
+      assertEquals(404, statusOf(() -> admin.users().getByName(userName)));
+    } finally {
+      directory.shutDown(true);
+    }
+  }
+
+  @Test
+  void test_testLoginRoundTrip_keepsItsStateSharedAndEncrypted(TestNamespace ns) throws Exception {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "Reads the embedded server's database and needs an LDAP directory in this JVM");
+    String userName = "ldapshared" + ns.shortPrefix();
+    InMemoryDirectoryServer directory = startDirectory(userName, "directory-password");
+    try {
+      OpenMetadataClient admin = SdkClients.adminClient();
+      String testSessionId =
+          startTestLogin(admin, ldapCandidate(directory.getListenPort())).getTestSessionId();
+
+      // Every server reads the test from this table, so none depends on the one that started it.
+      OAuthRecords.SsoTestLoginSession pending = storedTestLogin(testSessionId);
+      assertTrue(Fernet.isTokenized(pending.pendingState()), "the candidate must be encrypted");
+      assertFalse(pending.pendingState().contains(LDAP_LOOKUP_PASSWORD));
+
+      submitTestLoginCredentials(
+          admin, testSessionId, userName + "@open-metadata.org", "directory-password");
+
+      OAuthRecords.SsoTestLoginSession completed = storedTestLogin(testSessionId);
+      assertNull(completed.pendingState(), "a finished test must keep no secrets");
+      assertEquals(
+          TestLoginResult.Status.SUCCESS,
+          MAPPER.readValue(completed.result(), TestLoginResult.class).getStatus());
+    } finally {
+      directory.shutDown(true);
+    }
+  }
+
+  @Test
+  void test_testLoginRoundTrip_concurrentCredentialSubmissionsAreVerifiedOnce() throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String testSessionId = startBasicTest(admin);
+    CountDownLatch go = new CountDownLatch(1);
+    List<CompletableFuture<Integer>> submissions = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      submissions.add(
+          CompletableFuture.supplyAsync(
+              () -> {
+                awaitQuietly(go);
+                try {
+                  submitTestLoginCredentials(admin, testSessionId, ADMIN_EMAIL, "guess");
+                  return 200;
+                } catch (Exception e) {
+                  return e instanceof OpenMetadataException failure ? failure.getStatusCode() : -1;
+                }
+              }));
+    }
+    go.countDown();
+
+    List<Integer> statuses = submissions.stream().map(CompletableFuture::join).sorted().toList();
+
+    assertEquals(List.of(200, 400), statuses);
+  }
+
+  @Test
+  void test_testLoginCallback_answersWithAConstantPageThatEchoesNothing() throws Exception {
+    String probe = "probe" + UUID.randomUUID();
+
+    HttpResponse<String> response =
+        HttpClient.newHttpClient()
+            .send(
+                HttpRequest.newBuilder(
+                        URI.create(
+                            serverRoot() + "/callback?state=omtest%3Aunknown-test&code=" + probe))
+                    .GET()
+                    .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+    assertEquals(200, response.statusCode());
+    assertEquals(
+        TestLoginCallbackPage.CONTENT_SECURITY_POLICY,
+        response.headers().firstValue("Content-Security-Policy").orElse(null));
+    assertTrue(response.headers().firstValue("Cache-Control").orElse("").contains("no-store"));
+    assertFalse(response.body().contains(probe), "The page must carry nothing from the request");
+  }
+
+  @Test
+  void test_samlAcs_refusesAnythingButATestLoginWhileSamlIsNotLive() throws Exception {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "Relies on the embedded server's live provider not being SAML");
+    String acs = serverRoot() + "/api/v1/saml/acs";
+
+    HttpResponse<String> liveLogin = postForm(acs, "SAMLResponse=bm90LXNhbWw%3D&RelayState=%2F");
+    assertEquals(404, liveLogin.statusCode(), liveLogin.body());
+
+    HttpResponse<String> testLogin =
+        postForm(acs, "SAMLResponse=bm90LXNhbWw%3D&RelayState=omtest%3Aunknown-test");
+    assertEquals(200, testLogin.statusCode(), testLogin.body());
+    assertEquals(
+        TestLoginCallbackPage.CONTENT_SECURITY_POLICY,
+        testLogin.headers().firstValue("Content-Security-Policy").orElse(null));
+  }
+
+  @Test
+  void test_callbackPost_treatsASamlTestLoginRelayStateAsATestNeverTheLiveHandler()
+      throws Exception {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "Relies on the embedded server's live provider not completing a SAML test login");
+    // /callback is the default SAML ACS URL for new configs, so the IdP POSTs the SAMLResponse
+    // here with RelayState=omtest:<sessionId>. doPost must fork on the marker before the live
+    // handler, exactly as /api/v1/saml/acs does.
+    String callback = serverRoot() + "/callback";
+    String probe = UUID.randomUUID().toString();
+
+    HttpResponse<String> testLogin =
+        postForm(callback, "SAMLResponse=bm90LXNhbWw%3D&RelayState=omtest%3Aunknown-test");
+    assertEquals(200, testLogin.statusCode(), testLogin.body());
+    assertEquals(
+        TestLoginCallbackPage.CONTENT_SECURITY_POLICY,
+        testLogin.headers().firstValue("Content-Security-Policy").orElse(null));
+    assertTrue(
+        testLogin.headers().firstValue("Cache-Control").orElse("").contains("no-store"),
+        "The test login callback page must not be cacheable");
+    assertFalse(testLogin.body().contains(probe), "The page must carry nothing from the request");
   }
 
   @Test
@@ -1754,5 +3119,485 @@ public class SystemResourceIT {
     assertTrue(
         teamRules.stream()
             .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")));
+  }
+
+  @Test
+  void test_patchEntityRule_changesOneRuleAndPreservesOthers() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+    List<SemanticsRule> originalRules = entityRules(original);
+    assertFalse(originalRules.isEmpty(), "Pre-condition: seed entity rules must exist");
+
+    try {
+      final SemanticsRule target = originalRules.getFirst();
+      final boolean isEnabled = !Boolean.TRUE.equals(target.getEnabled());
+
+      Settings response =
+          EntityRulesUtil.patchRule(client, target.getName(), replaceEnabled(isEnabled));
+
+      List<SemanticsRule> expected =
+          originalRules.stream()
+              .map(
+                  rule ->
+                      rule.getName().equals(target.getName()) ? copyWith(rule, isEnabled) : rule)
+              .toList();
+      assertEquals(expected, entityRules(response));
+      assertEquals(expected, entityRules(EntityRulesUtil.getEntityRulesSettings(client)));
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  /**
+   * #35639: toggling a rule used to send back the toggling client's copy of the whole list, which
+   * dropped a rule another writer added after that copy was read. The patch sends only the change.
+   */
+  @Test
+  void test_patchEntityRule_keepsARuleAddedByAnotherWriter() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+    List<SemanticsRule> originalRules = entityRules(original);
+    final SemanticsRule target = originalRules.getFirst();
+    final SemanticsRule addedElsewhere =
+        copyWith(target, false).withName("it-concurrent-rule-" + UUID.randomUUID());
+
+    try {
+      Settings withAddedRule =
+          new Settings()
+              .withConfigType(SettingsType.ENTITY_RULES_SETTINGS)
+              .withConfigValue(
+                  new EntityRulesSettings()
+                      .withEntitySemantics(
+                          Stream.concat(originalRules.stream(), Stream.of(addedElsewhere))
+                              .toList()));
+      EntityRulesUtil.updateSettings(client, withAddedRule);
+
+      EntityRulesUtil.patchRule(
+          client, target.getName(), replaceEnabled(!Boolean.TRUE.equals(target.getEnabled())));
+
+      List<SemanticsRule> stored = entityRules(EntityRulesUtil.getEntityRulesSettings(client));
+      assertTrue(
+          stored.contains(addedElsewhere),
+          "A rule added by another writer must survive a patch on a different rule");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  @Test
+  void test_patchEntityRule_rejectsNonAdminsUnknownRulesAndPatchesThatBreakTheList()
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+    final String ruleName = entityRules(original).getFirst().getName();
+
+    try {
+      assertPatchFails(SdkClients.user1Client(), ruleName, replaceEnabled(true), 403);
+      assertPatchFails(client, "no-such-rule-name", replaceEnabled(true), 404);
+      assertPatchFails(
+          client, ruleName, "[{\"op\":\"replace\",\"path\":\"/name\",\"value\":\"renamed\"}]", 400);
+      assertPatchFails(client, ruleName, "[{\"op\":\"remove\",\"path\":\"\"}]", 400);
+      assertPatchFails(client, ruleName, "[{\"op\":\"remove\",\"path\":\"/rule\"}]", 400);
+      assertPatchFails(
+          client, ruleName, "[{\"op\":\"replace\",\"path\":\"enabled\",\"value\":true}]", 400);
+
+      assertEquals(
+          entityRules(original),
+          entityRules(EntityRulesUtil.getEntityRulesSettings(client)),
+          "A rejected patch must leave the stored rules unchanged");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  /**
+   * The rule patch writes through {@code replaceSettingIfCurrent} with the JSON it read; a write
+   * that lands in between must turn the stale write into a 412 and keep the newer row.
+   */
+  @Test
+  void test_entityRulesCompareAndSet_rejectsAStaleWriteWith412() {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SystemDAO dao = Entity.getCollectionDAO().systemDAO();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+
+    try {
+      final String expectedJson =
+          dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value());
+      final EntityRulesSettings concurrent =
+          JsonUtils.readValue(expectedJson, EntityRulesSettings.class);
+      final SemanticsRule changed = concurrent.getEntitySemantics().getLast();
+      changed.setEnabled(!Boolean.TRUE.equals(changed.getEnabled()));
+      final String concurrentJson = JsonUtils.pojoToJson(concurrent);
+      dao.insertSettings(SettingsType.ENTITY_RULES_SETTINGS.value(), concurrentJson);
+
+      final Settings stale =
+          new Settings()
+              .withConfigType(SettingsType.ENTITY_RULES_SETTINGS)
+              .withConfigValue(JsonUtils.readValue(expectedJson, EntityRulesSettings.class));
+      assertThrows(
+          PreconditionFailedException.class,
+          () -> Entity.getSystemRepository().replaceSettingIfCurrent(stale, expectedJson));
+      assertEquals(
+          JsonUtils.readTree(concurrentJson),
+          JsonUtils.readTree(dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value())),
+          "The newer row must survive the rejected stale write");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  private static void assertPatchFails(
+      OpenMetadataClient client, String ruleName, String jsonPatch, int expectedStatus) {
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> EntityRulesUtil.patchRule(client, ruleName, jsonPatch));
+    assertEquals(expectedStatus, error.getStatusCode(), jsonPatch);
+  }
+
+  private static String replaceEnabled(boolean isEnabled) {
+    return "[{\"op\":\"replace\",\"path\":\"/enabled\",\"value\":" + isEnabled + "}]";
+  }
+
+  private static List<SemanticsRule> entityRules(Settings settings) {
+    return MAPPER
+        .convertValue(settings.getConfigValue(), EntityRulesSettings.class)
+        .getEntitySemantics();
+  }
+
+  private static SemanticsRule copyWith(SemanticsRule rule, boolean isEnabled) {
+    return MAPPER.convertValue(rule, SemanticsRule.class).withEnabled(isEnabled);
+  }
+
+  @Test
+  void test_updateSecurityConfig_emailFirstFieldsRoundTrip() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String originalSecurityConfigJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/security/config",
+                null,
+                RequestOptions.builder().build());
+
+    try {
+      SecurityConfiguration legacyConfig = buildBasicSecurityConfig();
+      SecurityConfiguration legacyUpdated = putSecurityConfig(client, legacyConfig);
+      assertNull(legacyUpdated.getAuthenticationConfiguration().getEmailClaim());
+      assertNull(legacyUpdated.getAuthenticationConfiguration().getDisplayNameClaim());
+      assertNull(legacyUpdated.getAuthorizerConfiguration().getBotDomain());
+
+      SecurityConfiguration emailFirstConfig = buildBasicSecurityConfig();
+      emailFirstConfig.getAuthenticationConfiguration().withEmailClaim("email");
+      emailFirstConfig.getAuthenticationConfiguration().withDisplayNameClaim("name");
+      emailFirstConfig
+          .getAuthorizerConfiguration()
+          .withAllowedEmailDomains(Set.of("open-metadata.org"))
+          .withBotDomain("bots.open-metadata.org");
+
+      SecurityConfiguration emailFirstUpdated = putSecurityConfig(client, emailFirstConfig);
+      assertEquals("email", emailFirstUpdated.getAuthenticationConfiguration().getEmailClaim());
+      assertEquals(
+          "name", emailFirstUpdated.getAuthenticationConfiguration().getDisplayNameClaim());
+      assertEquals(
+          Set.of("open-metadata.org"),
+          emailFirstUpdated.getAuthorizerConfiguration().getAllowedEmailDomains());
+      assertEquals(
+          "bots.open-metadata.org", emailFirstUpdated.getAuthorizerConfiguration().getBotDomain());
+      assertEquals(
+          legacyConfig.getAuthorizerConfiguration().getPrincipalDomain(),
+          emailFirstUpdated.getAuthorizerConfiguration().getPrincipalDomain());
+
+      SecurityConfiguration reverted = putSecurityConfig(client, buildBasicSecurityConfig());
+      assertNull(reverted.getAuthenticationConfiguration().getEmailClaim());
+      assertNull(reverted.getAuthenticationConfiguration().getDisplayNameClaim());
+      assertNull(reverted.getAuthorizerConfiguration().getBotDomain());
+    } finally {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT,
+              "/v1/system/security/config",
+              originalSecurityConfigJson,
+              RequestOptions.builder().build());
+    }
+  }
+
+  /**
+   * The SSO page's self-signup switch sends exactly this one-operation patch (#28379). Like a
+   * configuration seeded from the environment before field validation existed, the stored
+   * configuration fails full validation, here on an empty callback URL the test server's provider
+   * never uses. No check reads enableSelfSignup, so the patch must still be saved.
+   */
+  @Test
+  void test_patchSecurityConfig_savesSelfSignupDespiteErrorsTheStoredConfigAlreadyHas()
+      throws Exception {
+    SecurityConfiguration original = getSecurityConfig();
+    SecurityConfiguration failing = getSecurityConfig();
+    failing.getAuthenticationConfiguration().setCallbackUrl("");
+    boolean selfSignup = failing.getAuthenticationConfiguration().getEnableSelfSignup();
+
+    try {
+      putSecurityConfig(MAPPER.writeValueAsString(failing));
+      assertEquals(
+          SecurityValidationResponse.Status.FAILED,
+          validateSecurityConfig(getSecurityConfig()).getStatus(),
+          "The stored configuration must fail validation for this test to mean anything");
+
+      patchSecurityConfig("/authenticationConfiguration/enableSelfSignup", !selfSignup);
+
+      assertEquals(
+          !selfSignup, getSecurityConfig().getAuthenticationConfiguration().getEnableSelfSignup());
+    } finally {
+      putSecurityConfig(MAPPER.writeValueAsString(original));
+    }
+  }
+
+  /**
+   * A patch to a setting validation reads is validated in full. Validators stop at the first
+   * failure, so an error the stored configuration already has could hide one the patch introduces:
+   * the rejection lists the older errors too.
+   */
+  @Test
+  void test_patchSecurityConfig_rejectsAChangeToACheckedSettingWithEveryError() throws Exception {
+    SecurityConfiguration stored = getSecurityConfig();
+    List<FieldError> storedErrors = validateSecurityConfig(stored).getErrors();
+
+    try {
+      InvalidRequestException rejection =
+          assertThrows(
+              InvalidRequestException.class,
+              () -> patchSecurityConfig("/authenticationConfiguration/callbackUrl", ""));
+
+      List<FieldError> reported =
+          MAPPER
+              .readValue(rejection.getResponseBody(), SecurityValidationResponse.class)
+              .getErrors();
+      assertTrue(
+          reported.stream()
+              .anyMatch(
+                  error -> "authenticationConfiguration.callbackUrl".equals(error.getField())),
+          "The rejection must report the callback URL the patch cleared: " + reported);
+      assertTrue(
+          reported.containsAll(CommonUtil.listOrEmpty(storedErrors)),
+          "The rejection must also report the errors the stored configuration already had: "
+              + reported);
+    } finally {
+      putSecurityConfig(MAPPER.writeValueAsString(stored));
+    }
+  }
+
+  private SecurityConfiguration putSecurityConfig(
+      OpenMetadataClient client, SecurityConfiguration config) throws Exception {
+    String updatedJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/system/security/config",
+                MAPPER.writeValueAsString(config),
+                RequestOptions.builder().build());
+    assertNotNull(updatedJson);
+    return MAPPER.readValue(updatedJson, SecurityConfiguration.class);
+  }
+
+  private static TestLoginSession startTestLogin(
+      OpenMetadataClient client, SecurityConfiguration candidate) throws Exception {
+    String json =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                TEST_LOGIN_PATH + "/start",
+                MAPPER.writeValueAsString(
+                    new TestLoginStartRequest().withSecurityConfiguration(candidate)),
+                RequestOptions.builder().build());
+    return MAPPER.readValue(json, TestLoginSession.class);
+  }
+
+  private String startBasicTest(OpenMetadataClient client) throws Exception {
+    return startTestLogin(client, buildBasicSecurityConfig()).getTestSessionId();
+  }
+
+  private static TestLoginResult getTestLoginResult(OpenMetadataClient client, String testSessionId)
+      throws Exception {
+    String json =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                TEST_LOGIN_PATH + "/result/" + testSessionId,
+                null,
+                RequestOptions.builder().build());
+    return MAPPER.readValue(json, TestLoginResult.class);
+  }
+
+  private static String submitTestLoginCredentials(
+      OpenMetadataClient client, String testSessionId, String email, String password)
+      throws Exception {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            TEST_LOGIN_PATH + "/credentials",
+            MAPPER.writeValueAsString(
+                new TestLoginCredentialsRequest()
+                    .withTestSessionId(testSessionId)
+                    .withEmail(email)
+                    .withPassword(password)),
+            RequestOptions.builder().build());
+  }
+
+  private static SecurityConfiguration getSecurityConfig() throws Exception {
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/security/config",
+                null,
+                RequestOptions.builder().build());
+    return MAPPER.readValue(json, SecurityConfiguration.class);
+  }
+
+  private static void putSecurityConfig(String securityConfigJson) throws Exception {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/system/security/config",
+            securityConfigJson,
+            RequestOptions.builder().build());
+  }
+
+  private static void patchSecurityConfig(String path, Object value) {
+    ArrayNode patch = MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", path)
+        .set("value", MAPPER.valueToTree(value));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/system/security/config", patch);
+  }
+
+  private static SecurityValidationResponse validateSecurityConfig(
+      SecurityConfiguration securityConfig) throws Exception {
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/system/security/validate",
+                MAPPER.writeValueAsString(securityConfig),
+                RequestOptions.builder().build());
+    return MAPPER.readValue(json, SecurityValidationResponse.class);
+  }
+
+  private static OAuthRecords.SsoTestLoginSession storedTestLogin(String testSessionId) {
+    OAuthRecords.SsoTestLoginSession row =
+        Entity.getCollectionDAO()
+            .ssoTestLoginSessionDAO()
+            .findLive(testSessionId, System.currentTimeMillis());
+    assertNotNull(row, "the test login must be stored");
+    return row;
+  }
+
+  private static void awaitQuietly(CountDownLatch latch) {
+    try {
+      latch.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  private static int statusOf(Executable call) {
+    return assertThrows(OpenMetadataException.class, call).getStatusCode();
+  }
+
+  private static User createAdminUser(String name) {
+    return SdkClients.adminClient()
+        .users()
+        .create(
+            new CreateUser()
+                .withName(name)
+                .withEmail(name + "@open-metadata.org")
+                .withIsAdmin(true));
+  }
+
+  private static OpenMetadataClient clientFor(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+
+  /** The unauthenticated servlets (/callback, the SAML ACS) live beside the API, not under it. */
+  private static String serverRoot() {
+    return SdkClients.baseUrl().replaceFirst("/api$", "");
+  }
+
+  private static HttpResponse<String> postForm(String url, String form)
+      throws IOException, InterruptedException {
+    return HttpClient.newHttpClient()
+        .send(
+            HttpRequest.newBuilder(URI.create(url))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(form))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+  }
+
+  private static InMemoryDirectoryServer startDirectory(String uid, String password)
+      throws LDAPException, LDIFException {
+    InMemoryDirectoryServerConfig config = new InMemoryDirectoryServerConfig(LDAP_BASE_DN);
+    config.addAdditionalBindCredentials(LDAP_LOOKUP_DN, LDAP_LOOKUP_PASSWORD);
+    config.setListenerConfigs(
+        InMemoryListenerConfig.createLDAPConfig(
+            "default", InetAddress.getLoopbackAddress(), 0, null));
+    config.setSchema(null);
+    InMemoryDirectoryServer directory = new InMemoryDirectoryServer(config);
+    String userDn = "uid=" + uid + ",ou=users," + LDAP_BASE_DN;
+    directory.add("dn: " + LDAP_BASE_DN, "objectClass: domain", "dc: example");
+    directory.add("dn: ou=users," + LDAP_BASE_DN, "objectClass: organizationalUnit", "ou: users");
+    directory.add("dn: ou=groups," + LDAP_BASE_DN, "objectClass: organizationalUnit", "ou: groups");
+    directory.add(
+        "dn: " + userDn,
+        "objectClass: inetOrgPerson",
+        "uid: " + uid,
+        "cn: " + uid,
+        "sn: " + uid,
+        "mail: " + uid + "@open-metadata.org",
+        "userPassword: " + password);
+    directory.add(
+        "dn: " + LDAP_STEWARDS_DN,
+        "objectClass: groupOfNames",
+        "cn: stewards",
+        "member: " + userDn);
+    directory.startListening();
+    return directory;
+  }
+
+  private SecurityConfiguration ldapCandidate(int port) {
+    SecurityConfiguration candidate = buildBasicSecurityConfig();
+    candidate
+        .getAuthenticationConfiguration()
+        .withProvider(AuthProvider.LDAP)
+        .withProviderName("LDAP")
+        .withLdapConfiguration(
+            new LdapConfiguration()
+                .withHost(InetAddress.getLoopbackAddress().getHostAddress())
+                .withPort(port)
+                .withDnAdminPrincipal(LDAP_LOOKUP_DN)
+                .withDnAdminPassword(LDAP_LOOKUP_PASSWORD)
+                .withUserBaseDN("ou=users," + LDAP_BASE_DN)
+                .withMailAttributeName("mail")
+                .withGroupBaseDN("ou=groups," + LDAP_BASE_DN)
+                .withGroupAttributeName("objectClass")
+                .withGroupAttributeValue("groupOfNames")
+                .withGroupMemberAttributeName("member")
+                .withAllAttributeName("*")
+                .withAuthRolesMapping("{\"" + LDAP_STEWARDS_DN + "\":[\"DataSteward\"]}")
+                .withSslEnabled(false));
+    return candidate;
   }
 }

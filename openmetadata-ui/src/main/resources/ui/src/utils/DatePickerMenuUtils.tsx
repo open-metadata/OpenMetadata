@@ -12,17 +12,18 @@
  */
 import { t } from './i18next/LocalUtil';
 
+export const CUSTOM_DATE_RANGE_KEY = 'customRange';
+
 export const getTimestampLabel = (
   startDate: string,
   endDate: string,
   showSelectedCustomRange?: boolean
 ) => {
-  let label = t('label.custom-range');
   if (showSelectedCustomRange) {
-    label += `: ${startDate} -> ${endDate}`;
+    return `${startDate} -> ${endDate}`;
   }
 
-  return label;
+  return t('label.custom-range');
 };
 
 export const getDaysCount = (startDate: string, endDate: string) => {

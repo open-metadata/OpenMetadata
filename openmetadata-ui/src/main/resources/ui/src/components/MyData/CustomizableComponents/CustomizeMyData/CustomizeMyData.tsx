@@ -12,7 +12,7 @@
  */
 
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import RGL, {
   Layout,
@@ -37,19 +37,21 @@ import {
   getLayoutUpdateHandler,
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
-  getWidgetFromKey,
-} from '../../../../utils/CustomizableLandingPageUtils';
+} from '../../../../utils/CustomizableLandingPagePureUtils';
+import { getWidgetFromKey } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getMyDataWidgetBaseKey,
+  normalizeLandingPageLayout,
+} from '../../../../utils/CustomizeMyDataPageWidgetUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
 import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
-import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;
@@ -66,10 +68,24 @@ function CustomizeMyData({
 
   const defaultLayout = customizeMyDataPageClassBase.defaultLayout;
 
-  const [layout, setLayout] = useState<Array<WidgetConfig>>(
-    getLandingPageLayoutWithEmptyWidgetPlaceholder(
-      (initialPageData?.layout as WidgetConfig[]) ?? defaultLayout
-    )
+  // The editor has to read the persona's layout exactly as HomeLandingPage
+  // does, or it offers an arrangement the home page will not render: retired
+  // and excluded widgets resolve to render-nothing components and leave holes,
+  // and an `x` saved against a wider grid strands the column it vacated.
+  const normalizedLayout = useMemo(
+    () =>
+      normalizeLandingPageLayout(
+        initialPageData?.layout as WidgetConfig[] | undefined,
+        defaultLayout,
+        customizeMyDataPageClassBase.getExcludedWidgetFqns(),
+        customizeMyDataPageClassBase.landingPageMaxGridSize,
+        customizeMyDataPageClassBase.getKnownWidgetKeyPrefixes()
+      ),
+    [initialPageData?.layout, defaultLayout]
+  );
+
+  const [layout, setLayout] = useState<Array<WidgetConfig>>(() =>
+    getLandingPageLayoutWithEmptyWidgetPlaceholder(normalizedLayout)
   );
 
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
@@ -108,7 +124,9 @@ function CustomizeMyData({
           newWidgetData,
           placeholderWidgetKey,
           widgetSize,
-          customizeMyDataPageClassBase.landingPageMaxGridSize
+          customizeMyDataPageClassBase.landingPageMaxGridSize,
+          (widgetName) =>
+            customizeMyDataPageClassBase.getWidgetHeight(widgetName)
         )
       );
       setIsWidgetModalOpen(false);
@@ -153,9 +171,22 @@ function CustomizeMyData({
       widget.i.startsWith('KnowledgePanel')
     );
 
+    // Compare the two sides on geometry and identity only.
+    //
+    // react-grid-layout fires `onLayoutChange` once on mount, before the user
+    // has touched anything, and `getLayoutUpdateHandler` normalises what it
+    // reports — forcing `h: 3`, constraining `w`, and setting `static: false`.
+    // The saved document was persisted without those normalisations, so a raw
+    // `compare()` of the two reports a diff for a page nobody edited and Save
+    // renders enabled until a reload happens to seed it differently. Reducing
+    // both sides to the same shape keeps real edits (a moved, resized, added
+    // or removed widget) visible while ignoring that normalisation.
+    const normalise = (widgets: WidgetConfig[]) =>
+      widgets.map(({ i, x, y, w, h }) => ({ i, x, y, w, h }));
+
     const jsonPatch = compare(
-      cloneDeep((initialPageData?.layout || []) as WidgetConfig[]),
-      cloneDeep(filteredLayout || [])
+      normalise((initialPageData?.layout || []) as WidgetConfig[]),
+      normalise(filteredLayout || [])
     );
 
     return jsonPatch.length === 0;
@@ -179,7 +210,16 @@ function CustomizeMyData({
             widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
         )
         .map((widget) => (
-          <div data-grid={widget} id={widget.i} key={widget.i}>
+          // Same handle the live page puts on its grid cell: the widgets share
+          // one shell now, so the cell is the only per-widget node left to
+          // carry the widget key. `id` stays the layout key — it has to be
+          // unique per cell — while the test handle is the base key, which a
+          // picker-added widget's `uniqueId` suffix would otherwise hide.
+          <div
+            data-grid={widget}
+            data-testid={getMyDataWidgetBaseKey(widget.i)}
+            id={widget.i}
+            key={widget.i}>
             {getWidgetFromKey({
               currentLayout: layout,
               handleLayoutUpdate: handleLayoutUpdate,
@@ -208,8 +248,15 @@ function CustomizeMyData({
   };
 
   const handleReset = useCallback(async () => {
-    const newMainPanelLayout =
-      getLandingPageLayoutWithEmptyWidgetPlaceholder(defaultLayout);
+    const newMainPanelLayout = getLandingPageLayoutWithEmptyWidgetPlaceholder(
+      normalizeLandingPageLayout(
+        undefined,
+        defaultLayout,
+        customizeMyDataPageClassBase.getExcludedWidgetFqns(),
+        customizeMyDataPageClassBase.landingPageMaxGridSize,
+        customizeMyDataPageClassBase.getKnownWidgetKeyPrefixes()
+      )
+    );
     setLayout(newMainPanelLayout);
     await handleBackgroundColorUpdate();
     await onSaveLayout();
@@ -240,14 +287,6 @@ function CustomizeMyData({
             without affecting the overall RTL layout of the page
           */}
           <div className="grid-wrapper" dir="ltr">
-            <CustomiseLandingPageHeader
-              overlappedContainer
-              addedWidgetsList={addedWidgetsList}
-              backgroundColor={backgroundColor}
-              dataTestId="customise-landing-page-header"
-              handleAddWidget={handleMainPanelAddWidget}
-              onBackgroundColorUpdate={handleBackgroundColorUpdate}
-            />
             {/* 
             ReactGridLayout with optimized drag and drop behavior
             - verticalCompact: Packs widgets tightly without gaps

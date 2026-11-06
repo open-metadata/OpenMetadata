@@ -42,8 +42,14 @@ export interface CreateMlModelService {
     /**
      * Owners of this mlModel service.
      */
-    owners?:     EntityReference[];
-    serviceType: MlModelServiceType;
+    owners?: EntityReference[];
+    /**
+     * Deployment attributes of this service: environment, region and deployment. Set once here
+     * rather than tagged onto every asset this service ingests.
+     */
+    serviceAttributes?: ServiceAttributes;
+    serviceType:        MlModelServiceType;
+    style?:             Style;
     /**
      * Tags for this MlModel Service.
      */
@@ -76,7 +82,9 @@ export interface Connection {
     mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
-     * mysql+pymysql://mlflow:password@localhost:3307/experiments
+     * mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected
+     * as a secret, including URIs without credentials. Secret references must resolve to the
+     * entire URI.
      */
     registryUri?:                string;
     supportsMetadataExtraction?: boolean;
@@ -232,6 +240,11 @@ export interface GCPCredentialsConfiguration {
      */
     type?: string;
     /**
+     * Google Cloud service domain, used to override the default `googleapis.com` domain for
+     * sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).
+     */
+    universeDomain?: string;
+    /**
      * Path of the file containing the GCP credentials info
      */
     path?: string;
@@ -367,6 +380,79 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Deployment attributes of this service: environment, region and deployment. Set once here
+ * rather than tagged onto every asset this service ingests.
+ *
+ * Deployment attributes of a service, set once on the service rather than tagged onto each
+ * asset it ingests. Policy conditions can match on them to control who sees a service's
+ * assets.
+ */
+export interface ServiceAttributes {
+    /**
+     * Deployment or cluster identifier the source system belongs to, for example
+     * `prod-cluster-01`.
+     */
+    deployment?:  string;
+    environment?: Environment;
+    /**
+     * Geographic region the source system is hosted in, for example `us-east-1` or
+     * `europe-west2`.
+     */
+    region?: string;
+}
+
+/**
+ * Environment the source system runs in. A closed set so policies and filters can rely on
+ * it; use tags on the service for anything outside it.
+ */
+export enum Environment {
+    Development = "Development",
+    Other = "Other",
+    Production = "Production",
+    QA = "QA",
+    Sandbox = "Sandbox",
+    Staging = "Staging",
+    UAT = "UAT",
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -530,41 +616,4 @@ export enum TagSource {
 export enum State {
     Confirmed = "Confirmed",
     Suggested = "Suggested",
-}
-
-/**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * Cover image configuration for the entity.
-     */
-    coverImage?: CoverImage;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
-}
-
-/**
- * Cover image configuration for the entity.
- *
- * Cover image configuration for an entity. This is used to display a banner or header image
- * for entities like Domain, Glossary, Data Product, etc.
- */
-export interface CoverImage {
-    /**
-     * Position of the cover image in CSS background-position format. Supports keywords (top,
-     * center, bottom) or pixel values (e.g., '20px 30px').
-     */
-    position?: string;
-    /**
-     * URL of the cover image.
-     */
-    url?: string;
 }

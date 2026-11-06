@@ -126,6 +126,28 @@ export default [
         },
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
+
+      // Ban Tailwind `ring-*` for drawing edges. Rings compile to box-shadow, and WebKit
+      // does not pixel-snap box-shadows, so a ring used as a border thins out and can
+      // vanish entirely in Safari at non-100% zoom. Use `border-*`, or `outline-*` where
+      // the edge must be layout-neutral. See docs/colors.md §2.3.1.
+      //
+      // Requires start-of-string, whitespace, `:` or `!` before `ring-`, so it catches
+      // every form — `tw:ring-1`, `tw:focus-visible:ring-2`, `tw:[&_button]:ring-0`,
+      // `tw:!ring-0` — while ignoring CSS custom properties (`--tw-ring-color-*`).
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/(^|[\\s:!])ring-/]',
+          message:
+            'Do not use Tailwind `ring-*` to draw an edge — it compiles to box-shadow, which WebKit does not pixel-snap, so it thins/vanishes in Safari when zoomed. Use `border-*`, or `outline-1 -outline-offset-1 outline-<token>`. Where the outline is already the focus ring, use `borderAfter` + `after:outline-<token>`. See docs/colors.md §2.3.1.',
+        },
+        {
+          selector: 'TemplateElement[value.raw=/(^|[\\s:!])ring-/]',
+          message:
+            'Do not use Tailwind `ring-*` to draw an edge — it compiles to box-shadow, which WebKit does not pixel-snap, so it thins/vanishes in Safari when zoomed. Use `border-*`, or `outline-1 -outline-offset-1 outline-<token>`. Where the outline is already the focus ring, use `borderAfter` + `after:outline-<token>`. See docs/colors.md §2.3.1.',
+        },
+      ],
     },
   },
 

@@ -45,7 +45,6 @@ public class AppMarketPlaceMapper
             .withAllowConcurrentExecution(create.getAllowConcurrentExecution())
             .withSystem(create.getSystem())
             .withSupportsInterrupt(create.getSupportsInterrupt())
-            .withEventSubscriptions(create.getEventSubscriptions())
             .withSupportsIngestionRunner(create.getSupportsIngestionRunner())
             .withAllowBotImpersonation(create.getAllowBotImpersonation());
 
@@ -83,7 +82,7 @@ public class AppMarketPlaceMapper
           "Application Cannot be registered, because the AppMarketPlaceDefinition is not valid: "
               + e.getMessage());
     }
-    if (app.getAppType().equals(AppType.External)) {
+    if (app.getAppType().equals(AppType.External) && pipelineServiceClient != null) {
       PipelineServiceClientResponse response = pipelineServiceClient.validateAppRegistration(app);
       if (response.getCode() != 200) {
         throw new BadRequestException(

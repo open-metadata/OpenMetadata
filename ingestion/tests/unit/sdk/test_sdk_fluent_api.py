@@ -42,7 +42,7 @@ class TestSDKFluentAPI:
         self.mock_ometa = MagicMock()
 
         # Mock the client getter to return our mock
-        with patch.object(Tables, "_get_client", return_value=self.mock_ometa):
+        with patch.object(Tables, "_get_client", return_value=self.mock_ometa):  # noqa: SIM117
             with patch.object(Users, "_get_client", return_value=self.mock_ometa):
                 with patch.object(Databases, "_get_client", return_value=self.mock_ometa):
                     with patch.object(DatabaseSchemas, "_get_client", return_value=self.mock_ometa):

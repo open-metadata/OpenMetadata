@@ -25,14 +25,16 @@ import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 @Slf4j
 @WebServlet("/api/v1/push/feed/*")
 public class FeedServlet extends HttpServlet {
+  private static final String ERROR_RESPONSE_MESSAGE = "Failed to process feed request";
+
   @Override
   protected void service(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
+    // The query string is not logged: it may carry the handshake token.
     LOG.info(
-        "[FeedServlet] Received request: method={}, uri={}, queryString={}",
+        "[FeedServlet] Received request: method={}, uri={}",
         request.getMethod(),
-        request.getRequestURI(),
-        request.getQueryString());
+        request.getRequestURI());
     try {
       // EngineIO server expects javax servlet types, so we need to use wrappers
       HttpServletRequestWrapper wrappedRequest = new HttpServletRequestWrapper(request);
@@ -43,11 +45,9 @@ public class FeedServlet extends HttpServlet {
           .handleRequest(wrappedRequest, wrappedResponse);
       LOG.info(
           "[FeedServlet] Request handled successfully, response status: {}", response.getStatus());
-    } catch (Exception ex) {
-      LOG.error("[FeedServlet] Error Encountered : {}", ex.getMessage(), ex);
-      response
-          .getWriter()
-          .println(String.format("[FeedServlet] Error Encountered : %s", ex.getMessage()));
+    } catch (IOException | RuntimeException ex) {
+      LOG.error("[FeedServlet] Error encountered", ex);
+      response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, ERROR_RESPONSE_MESSAGE);
     }
   }
 }

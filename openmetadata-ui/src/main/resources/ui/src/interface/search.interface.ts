@@ -15,11 +15,17 @@ import { Bucket } from 'Models';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { AIApplication } from '../generated/entity/ai/aiApplication';
+import { LlmModel } from '../generated/entity/ai/llmModel';
+import { MCPExecution } from '../generated/entity/ai/mcpExecution';
+import { MCPServer } from '../generated/entity/ai/mcpServer';
+import { PromptTemplate } from '../generated/entity/ai/promptTemplate';
 import { Tag } from '../generated/entity/classification/tag';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
+import { ContextFile } from '../generated/entity/data/contextFile';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import {
@@ -27,6 +33,7 @@ import {
   DatabaseServiceType,
 } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { DataContract } from '../generated/entity/data/dataContract';
 import { Directory } from '../generated/entity/data/directory';
 import { File } from '../generated/entity/data/file';
 import { Glossary } from '../generated/entity/data/glossary';
@@ -48,7 +55,10 @@ import { DashboardService } from '../generated/entity/services/dashboardService'
 import { DatabaseService } from '../generated/entity/services/databaseService';
 import { DriveService } from '../generated/entity/services/driveService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { LlmService } from '../generated/entity/services/llmService';
+import { MCPService } from '../generated/entity/services/mcpService';
 import { MessagingService } from '../generated/entity/services/messagingService';
+import { MetadataService } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
@@ -60,7 +70,9 @@ import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
+import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
+import { KnowledgePage } from './knowledge-center.interface';
 
 /**
  * The `keyof` operator, when applied to a union type, expands to the keys are common for
@@ -72,7 +84,7 @@ import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.int
  *
  * KeysOfUnion<{ key1: string; key2: string; } | { key1: string }> == 'key1' | 'key2'
  */
-export type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type KeysOfUnion<T> = T extends unknown ? keyof T : never;
 
 interface SearchSourceBase {
   tier?: TagLabel;
@@ -112,6 +124,34 @@ export interface DashboardSearchSource extends SearchSourceBase, Dashboard {} //
 export interface PipelineSearchSource extends SearchSourceBase, Pipeline {} // extends EntityInterface
 
 export interface MlmodelSearchSource extends SearchSourceBase, Mlmodel {} // extends EntityInterface
+
+export interface AIApplicationSearchSource
+  extends SearchSourceBase,
+    AIApplication {
+  entityType: SearchIndex.AI_APPLICATION;
+}
+
+export interface LlmModelSearchSource extends SearchSourceBase, LlmModel {
+  entityType: SearchIndex.LLM_MODEL;
+}
+
+export interface McpServerSearchSource extends SearchSourceBase, MCPServer {
+  entityType: SearchIndex.MCP_SERVER;
+}
+
+export interface AuditReportSearchSource extends SearchSourceBase {
+  id?: string;
+  name: string;
+  fullyQualifiedName?: string;
+  displayName?: string;
+  description?: string;
+  status?: string;
+  scope?: string;
+  format?: string;
+  requestedAt?: number;
+  completedAt?: number;
+  entityType: SearchIndex.AUDIT_REPORT;
+}
 
 export interface TopicSearchSource extends SearchSourceBase, Topic {} // extends EntityInterface
 
@@ -153,6 +193,9 @@ export interface GlossaryTermSearchSource
     GlossaryTerm {} // extends EntityInterface
 
 export interface QuerySearchSource extends SearchSourceBase, Query {} // extends EntityInterface
+export interface DataContractSearchSource
+  extends SearchSourceBase,
+    DataContract {} // extends EntityInterface
 export interface TestCaseSearchSource
   extends SearchSourceBase,
     Exclude<TestCase, 'testSuite'> {
@@ -209,6 +252,10 @@ export interface StorageServiceSearchSource
 
 export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
 
+export interface MetadataServiceSearchSource
+  extends SearchSourceBase,
+    MetadataService {}
+
 export interface DriveServiceSearchSource
   extends SearchSourceBase,
     DriveService {}
@@ -232,6 +279,12 @@ export interface SpreadsheetSearchSource
     Spreadsheet {}
 
 export interface WorksheetSearchSource extends SearchSourceBase, Worksheet {}
+
+export interface KnowledgePageSearchSource
+  extends SearchSourceBase,
+    KnowledgePage {}
+
+export interface DriveFileSearchSource extends SearchSourceBase, ContextFile {}
 
 export type ExploreSearchSource =
   | TableSearchSource
@@ -264,7 +317,8 @@ export type ExploreSearchSource =
   | APICollectionSearchSource
   | APIEndpointSearchSource
   | MetricSearchSource
-  | TableColumnSearchSource;
+  | TableColumnSearchSource
+  | KnowledgePageSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ALL]: TableSearchSource;
@@ -273,6 +327,12 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TABLE]: TableSearchSource;
   [SearchIndex.CHART]: ChartSearchSource;
   [SearchIndex.MLMODEL]: MlmodelSearchSource;
+  [SearchIndex.AI_APPLICATION]: AIApplicationSearchSource;
+  [SearchIndex.LLM_MODEL]: LlmModelSearchSource;
+  [SearchIndex.MCP_SERVER]: McpServerSearchSource;
+  [SearchIndex.MCP_EXECUTION]: SearchSourceBase & MCPExecution;
+  [SearchIndex.PROMPT_TEMPLATE]: SearchSourceBase & PromptTemplate;
+  [SearchIndex.AUDIT_REPORT]: AuditReportSearchSource;
   [SearchIndex.PIPELINE]: PipelineSearchSource;
   [SearchIndex.DASHBOARD]: DashboardSearchSource;
   [SearchIndex.GLOSSARY]: GlossarySearchSource;
@@ -283,6 +343,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TAG]: TagClassSearchSource;
   [SearchIndex.CONTAINER]: ContainerSearchSource;
   [SearchIndex.QUERY]: QuerySearchSource;
+  [SearchIndex.DATA_CONTRACT]: DataContractSearchSource;
   [SearchIndex.TEST_CASE]: TestCaseSearchSource;
   [SearchIndex.DATABASE_SCHEMA]: DataBaseSchemaSearchSource;
   [SearchIndex.DATABASE]: DatabaseSearchSource;
@@ -290,6 +351,8 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DASHBOARD_SERVICE]: DashboardServiceSearchSource;
   [SearchIndex.PIPELINE_SERVICE]: PipelineServiceSearchSource;
   [SearchIndex.ML_MODEL_SERVICE]: MlModelServiceSearchSource;
+  [SearchIndex.LLM_SERVICE]: SearchSourceBase & LlmService;
+  [SearchIndex.MCP_SERVICE]: SearchSourceBase & MCPService;
   [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;
   [SearchIndex.SEARCH_SERVICE]: SearchServiceSearchSource;
   [SearchIndex.STORAGE_SERVICE]: StorageServiceSearchSource;
@@ -302,6 +365,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
   [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
   [SearchIndex.API_SERVICE]: APIServiceSearchSource;
+  [SearchIndex.METADATA_SERVICE]: MetadataServiceSearchSource;
   [SearchIndex.API_COLLECTION]: APICollectionSearchSource;
   [SearchIndex.API_ENDPOINT]: APIEndpointSearchSource;
   [SearchIndex.METRIC]: MetricSearchSource;
@@ -310,20 +374,22 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.SPREADSHEET]: SpreadsheetSearchSource;
   [SearchIndex.WORKSHEET]: WorksheetSearchSource;
   [SearchIndex.COLUMN]: TableColumnSearchSource;
+  [SearchIndex.KNOWLEDGE_PAGE_INDEX]: KnowledgePageSearchSource;
+  [SearchIndex.DRIVE_FILE]: DriveFileSearchSource;
+  [SearchIndex.MARKETPLACE]: DataProductSearchSource | DomainSearchSource;
 };
+
+export type SearchIndexValue<SI extends SearchIndex | SearchIndex[]> =
+  SI extends SearchIndex[] ? SI[number] : SI;
+
+export type SearchSourceFields<SI extends SearchIndex | SearchIndex[]> =
+  KeysOfUnion<SearchIndexSearchSourceMapping[SearchIndexValue<SI>]>;
 
 export type SearchRequest<
   SI extends SearchIndex | SearchIndex[],
-  TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  > = KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+  TIncludeFields extends SearchSourceFields<SI> = SearchSourceFields<SI>
 > = {
+  signal?: AbortSignal;
   pageNumber?: number;
   pageSize?: number;
   searchIndex?: SI;
@@ -334,8 +400,11 @@ export type SearchRequest<
   sortOrder?: string;
   includeDeleted?: boolean;
   trackTotalHits?: boolean;
+  explain?: boolean;
   filters?: string;
   excludeSourceFields?: string[];
+  /** Pickers inside a form search every domain, not just the selected navbar domain. */
+  skipDomainFilter?: boolean;
 } & (
   | {
       fetchSource: true;
@@ -348,11 +417,7 @@ export type SearchRequest<
 
 export type SuggestRequest<
   SI extends SearchIndex | SearchIndex[],
-  TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+  TIncludeFields extends SearchSourceFields<SI>
 > = {
   query?: string;
   searchIndex?: SI;
@@ -370,11 +435,19 @@ export type SuggestRequest<
 export interface SearchHitBody<SI extends SearchIndex | DataInsightIndex, T> {
   _index: SI;
   _type?: string;
-  _id?: string;
+  _id: string;
   _score?: number;
+  _explanation?: SearchExplanation;
   highlight?: Record<string, string[]>;
+  matched_queries?: string[];
   sort?: number[];
   _source: T;
+}
+
+export interface SearchExplanation {
+  value: number;
+  description: string;
+  details?: SearchExplanation[];
 }
 
 type SearchIndexSearchHitBodyMapping<
@@ -407,6 +480,7 @@ export interface SearchResponse<
     hits: SearchIndexSearchHitBodyMapping<TIncludeFields>[SI][];
   };
   aggregations: Aggregations;
+  applied_quick_filters?: QueryFilterInterface;
 }
 
 export type Aggregations = Record<string, { buckets: Bucket[] }>;

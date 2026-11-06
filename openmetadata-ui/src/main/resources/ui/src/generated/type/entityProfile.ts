@@ -108,7 +108,8 @@ export interface Profile {
     /**
      * Custom Metrics profile list bound to a column.
      */
-    customMetrics?: CustomMetricProfile[];
+    customMetrics?:   CustomMetricProfile[];
+    executionSource?: TableExecutionSource;
     /**
      * Percentage of data or no. of rows we want to execute the profiler and tests on
      */
@@ -125,10 +126,7 @@ export interface Profile {
     /**
      * Timestamp on which profile is taken.
      */
-    timestamp?: number;
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
+    timestamp?:               number;
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Number of values that contain distinct values.
@@ -284,6 +282,16 @@ export interface CustomMetricProfile {
      * Profiling results for the metric.
      */
     value?: number;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 export interface HistogramClass {

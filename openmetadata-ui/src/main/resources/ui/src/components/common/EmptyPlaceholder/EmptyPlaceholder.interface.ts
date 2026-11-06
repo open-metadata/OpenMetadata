@@ -1,0 +1,72 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  EmptyPlaceholderAction,
+  EmptyPlaceholderFeature,
+  EmptyPlaceholderProps,
+} from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
+
+export type EmptyPlaceholderVariantProps = Omit<
+  EmptyPlaceholderProps,
+  'variant'
+>;
+
+export interface FeaturesPlaceholderFeature extends EmptyPlaceholderFeature {
+  /** Renders the feature's title as a button that runs this action. */
+  action?: Omit<EmptyPlaceholderAction, 'key' | 'label'> & {
+    'data-testid'?: string;
+  };
+}
+
+export interface FeaturesPlaceholderProps
+  extends Omit<EmptyPlaceholderVariantProps, 'features'> {
+  features?: FeaturesPlaceholderFeature[];
+}
+
+export interface NoFilteredResultsPlaceholderProps
+  extends EmptyPlaceholderVariantProps {
+  onClearFilters?: () => void;
+}
+
+export interface SomethingWentWrongPlaceholderProps
+  extends EmptyPlaceholderVariantProps {
+  onReload?: () => void;
+}
+
+export interface PermissionPlaceholderProps
+  extends EmptyPlaceholderVariantProps {
+  permissionValue?: string;
+}
+
+export interface CreatePlaceholderProps extends EmptyPlaceholderVariantProps {
+  permission?: boolean;
+  heading?: string;
+  doc?: string;
+  buttonId?: string;
+  permissionValue?: string;
+  onCreate?: () => void;
+}
+
+export interface PanelEmptyPlaceholderProps {
+  /** An active search swaps the no-data message for "no matching results". */
+  searchText?: string;
+  /** Short headline ("No test cases"); long guidance goes in `description`. */
+  title?: ReactNode;
+  description?: ReactNode;
+  className?: string;
+  'data-testid'?: string;
+  /** Test id for the search state when callers address it separately. */
+  searchResultsTestId?: string;
+}

@@ -30,10 +30,20 @@ describe('ELKLayout', () => {
     expect(ELKLayout.layoutOptions).toEqual({
       'elk.algorithm': 'layered',
       'elk.direction': 'RIGHT',
-      'elk.spacing.nodeNode': '80',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '200',
-      'elk.layered.nodePlacement.strategy': 'SIMPLE',
-      'elk.partitioning.activate': 'true',
+      'elk.spacing.componentComponent': '180',
+      'elk.spacing.edgeEdge': '24',
+      'elk.spacing.edgeNode': '48',
+      'elk.spacing.nodeNode': '110',
+      'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+      'elk.layered.crossingMinimization.semiInteractive': 'true',
+      'elk.layered.mergeEdges': 'false',
+      'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
+      'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+      'elk.layered.spacing.edgeEdgeBetweenLayers': '32',
+      'elk.layered.spacing.edgeNodeBetweenLayers': '56',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '280',
+      'elk.layered.thoroughness': '8',
+      'elk.partitioning.activate': 'false',
     });
   });
 
@@ -71,6 +81,33 @@ describe('ELKLayout', () => {
     expect(mockElkLayout).toHaveBeenCalledWith({
       id: 'root',
       layoutOptions: ELKLayout.layoutOptions,
+      children: nodes,
+      edges: edges,
+    });
+  });
+
+  it('merges per-call layout options with defaults', async () => {
+    const nodes: ElkNode[] = [{ id: 'node1', width: 100, height: 50 }];
+    const edges: ElkExtendedEdge[] = [];
+
+    mockElkLayout.mockResolvedValue({
+      id: 'root',
+      children: nodes,
+      edges: edges,
+    });
+
+    await ELKLayout.layoutGraph(nodes, edges, {
+      'elk.spacing.nodeNode': '48',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '150',
+    });
+
+    expect(mockElkLayout).toHaveBeenCalledWith({
+      id: 'root',
+      layoutOptions: {
+        ...ELKLayout.layoutOptions,
+        'elk.spacing.nodeNode': '48',
+        'elk.layered.spacing.nodeNodeBetweenLayers': '150',
+      },
       children: nodes,
       edges: edges,
     });
@@ -326,6 +363,35 @@ describe('ELKLayout', () => {
     );
   });
 
+  it('passes ELK one edge per source and target pair', async () => {
+    const nodes: ElkNode[] = ['a', 'b', 'c'].map((id) => ({
+      id,
+      width: 100,
+      height: 50,
+    }));
+    const columnEdge = (id: string, source: string, target: string) => ({
+      id,
+      sources: [source],
+      targets: [target],
+    });
+
+    mockElkLayout.mockResolvedValue({ id: 'root', children: nodes });
+
+    await ELKLayout.layoutGraph(nodes, [
+      columnEdge('a.c1->b.c1', 'a', 'b'),
+      columnEdge('a.c2->b.c2', 'a', 'b'),
+      columnEdge('b.c1->c.c1', 'b', 'c'),
+      columnEdge('a.c3->b.c3', 'a', 'b'),
+      columnEdge('b.c2->a.c4', 'b', 'a'),
+    ]);
+
+    expect(mockElkLayout.mock.calls[0][0].edges).toEqual([
+      columnEdge('a.c1->b.c1', 'a', 'b'),
+      columnEdge('b.c1->c.c1', 'b', 'c'),
+      columnEdge('b.c2->a.c4', 'b', 'a'),
+    ]);
+  });
+
   it('uses layered algorithm', () => {
     expect(ELKLayout.layoutOptions['elk.algorithm']).toBe('layered');
   });
@@ -335,22 +401,28 @@ describe('ELKLayout', () => {
   });
 
   it('has correct node spacing', () => {
-    expect(ELKLayout.layoutOptions['elk.spacing.nodeNode']).toBe('80');
+    expect(ELKLayout.layoutOptions['elk.spacing.nodeNode']).toBe('110');
   });
 
   it('has correct layer spacing', () => {
     expect(
       ELKLayout.layoutOptions['elk.layered.spacing.nodeNodeBetweenLayers']
-    ).toBe('200');
+    ).toBe('280');
   });
 
-  it('uses simple node placement strategy', () => {
+  it('uses brandes-koepf node placement with balanced alignment', () => {
     expect(ELKLayout.layoutOptions['elk.layered.nodePlacement.strategy']).toBe(
-      'SIMPLE'
+      'BRANDES_KOEPF'
     );
+    expect(
+      ELKLayout.layoutOptions['elk.layered.crossingMinimization.strategy']
+    ).toBe('LAYER_SWEEP');
+    expect(
+      ELKLayout.layoutOptions['elk.layered.nodePlacement.bk.fixedAlignment']
+    ).toBe('BALANCED');
   });
 
-  it('activates partitioning', () => {
-    expect(ELKLayout.layoutOptions['elk.partitioning.activate']).toBe('true');
+  it('does not activate partitioning so ELK derives layers from edges', () => {
+    expect(ELKLayout.layoutOptions['elk.partitioning.activate']).toBe('false');
   });
 });

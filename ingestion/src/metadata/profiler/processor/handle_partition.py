@@ -14,8 +14,6 @@ Helper submodule for partitioned tables
 
 from __future__ import annotations
 
-from typing import List
-
 from sqlalchemy import Column, text
 
 from metadata.generated.schema.entity.data.table import (
@@ -38,7 +36,7 @@ logger = profiler_logger()
 
 def build_partition_predicate(
     partition_details: PartitionProfilerConfig,
-    columns: List[Column],
+    columns: list[Column],
 ):
     """_summary_
 

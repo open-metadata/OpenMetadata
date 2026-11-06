@@ -14,35 +14,40 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
-import alationSinkConnection from '../jsons/connectionSchemas/connections/metadata/alationSinkConnection.json';
-import amundsenConnection from '../jsons/connectionSchemas/connections/metadata/amundsenConnection.json';
-import atlasConnection from '../jsons/connectionSchemas/connections/metadata/atlasConnection.json';
-import openMetadataConnection from '../jsons/connectionSchemas/connections/metadata/openMetadataConnection.json';
+import { loadConnectionSchema } from './loadConnectionSchema';
 
-export const getMetadataConfig = (type: MetadataServiceType) => {
-  let schema = {};
+type SchemaModule =
+  | { default: Record<string, unknown> }
+  | Record<string, unknown>;
+type SchemaLoader = () => Promise<SchemaModule>;
+
+const metadataSchemaLoaders: Partial<
+  Record<MetadataServiceType, SchemaLoader>
+> = {
+  [MetadataServiceType.Atlas]: () =>
+    loadConnectionSchema('connections/metadata/atlasConnection.json'),
+  [MetadataServiceType.Amundsen]: () =>
+    loadConnectionSchema('connections/metadata/amundsenConnection.json'),
+  [MetadataServiceType.OpenMetadata]: () =>
+    loadConnectionSchema('connections/metadata/openMetadataConnection.json'),
+  [MetadataServiceType.AlationSink]: () =>
+    loadConnectionSchema('connections/metadata/alationSinkConnection.json'),
+};
+
+const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
+  const maybeDefault = (mod as { default?: Record<string, unknown> }).default;
+
+  return maybeDefault ?? (mod as Record<string, unknown>);
+};
+
+export const getMetadataConfig = async (type: MetadataServiceType) => {
+  const loader = metadataSchemaLoaders[type];
+  let schema: Record<string, unknown> = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  switch (type) {
-    case MetadataServiceType.Atlas: {
-      schema = atlasConnection;
 
-      break;
-    }
-    case MetadataServiceType.Amundsen: {
-      schema = amundsenConnection;
-
-      break;
-    }
-    case MetadataServiceType.OpenMetadata: {
-      schema = openMetadataConnection;
-
-      break;
-    }
-    case MetadataServiceType.AlationSink: {
-      schema = alationSinkConnection;
-
-      break;
-    }
+  if (loader) {
+    const mod = await loader();
+    schema = resolveSchemaModule(mod);
   }
 
   return cloneDeep({ schema, uiSchema });

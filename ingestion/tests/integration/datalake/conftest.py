@@ -28,8 +28,9 @@ from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 
-from ..containers import MinioContainerConfigs, get_minio_container
-from ..integration_base import generate_name
+from ..conftest import _safe_delete  # noqa: TID252
+from ..containers import S3ContainerConfigs, get_s3_container  # noqa: TID252
+from ..integration_base import generate_name  # noqa: TID252
 
 BUCKET_NAME = "my-bucket"
 
@@ -158,22 +159,22 @@ def ingestion_fqn(datalake_service_name):
 
 
 @pytest.fixture(scope="package")
-def minio_container():
-    with get_minio_container(MinioContainerConfigs()) as container:
+def s3_container():
+    with get_s3_container(S3ContainerConfigs()) as container:
         yield container
 
 
 @pytest.fixture(scope="class", autouse=True)
-def setup_s3(minio_container) -> None:
+def setup_s3(s3_container) -> None:
     # Mock our S3 bucket and ingest a file
-    client = minio_container.get_client()
+    client = s3_container.get_client()
     if client.bucket_exists(BUCKET_NAME):
         return
     client.make_bucket(BUCKET_NAME)
-    current_dir = os.path.dirname(__file__)
-    resources_dir = os.path.join(current_dir, "resources")
+    current_dir = os.path.dirname(__file__)  # noqa: PTH120
+    resources_dir = os.path.join(current_dir, "resources")  # noqa: PTH118
 
-    resources_paths = [os.path.join(path, filename) for path, _, files in os.walk(resources_dir) for filename in files]
+    resources_paths = [os.path.join(path, filename) for path, _, files in os.walk(resources_dir) for filename in files]  # noqa: PTH118
     for path in resources_paths:
         key = os.path.relpath(path, resources_dir)
         client.fput_object(BUCKET_NAME, key, path)
@@ -181,17 +182,17 @@ def setup_s3(minio_container) -> None:
 
 
 @pytest.fixture(scope="class")
-def ingestion_config(minio_container, datalake_service_name):
+def ingestion_config(s3_container, datalake_service_name):
     ingestion_config = deepcopy(INGESTION_CONFIG)
     # Use dynamic service name for test isolation in parallel execution
     ingestion_config["source"]["serviceName"] = datalake_service_name
     ingestion_config["source"]["serviceConnection"]["config"]["configSource"].update(
         {
             "securityConfig": {
-                "awsAccessKeyId": minio_container.access_key,
-                "awsSecretAccessKey": minio_container.secret_key,
+                "awsAccessKeyId": s3_container.access_key,
+                "awsSecretAccessKey": s3_container.secret_key,
                 "awsRegion": "us-west-1",
-                "endPointURL": f"http://localhost:{minio_container.get_exposed_port(minio_container.port)}",
+                "endPointURL": f"http://localhost:{s3_container.get_exposed_port(s3_container.port)}",
             }
         }
     )
@@ -207,7 +208,13 @@ def run_ingestion(metadata, ingestion_config, datalake_service_name):
     yield
     db_service = metadata.get_by_name(entity=DatabaseService, fqn=datalake_service_name)
     if db_service:
-        metadata.delete(DatabaseService, db_service.id, recursive=True, hard_delete=True)
+        _safe_delete(
+            metadata,
+            entity=DatabaseService,
+            entity_id=db_service.id,
+            recursive=True,
+            hard_delete=True,
+        )
 
 
 @pytest.fixture(scope="class")

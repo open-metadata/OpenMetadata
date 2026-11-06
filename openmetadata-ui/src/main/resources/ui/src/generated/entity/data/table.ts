@@ -14,6 +14,12 @@
  * A `Table` entity organizes data in rows and columns and is defined in a `Database Schema`.
  */
 export interface Table {
+    /**
+     * Alternate fully qualified SQL names that resolve to this table, such as SQL Server
+     * synonyms. Source-managed: the ingestion connector recomputes and overwrites this list on
+     * every run.
+     */
+    aliases?:       string[];
     certification?: AssetCertification;
     /**
      * Change that lead to this version of the entity.
@@ -37,6 +43,15 @@ export interface Table {
      * Compression strategy configuration including segment/partition/order keys
      */
     compressionStrategy?: CompressionStrategy;
+    /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
     /**
      * List of Custom Metrics registered for a table.
      */
@@ -196,6 +211,7 @@ export interface Table {
      * Table Profiler Config to include or exclude columns from profiling.
      */
     tableProfilerConfig?: TableProfilerConfig;
+    tableSharding?:       TableSharding;
     tableType?:           TableType;
     /**
      * Tags for this table.
@@ -814,9 +830,6 @@ export interface EntityReference {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
@@ -833,7 +846,8 @@ export interface ColumnProfile {
     /**
      * No.of Rows that contain duplicates in a column.
      */
-    duplicateCount?: number;
+    duplicateCount?:  number;
+    executionSource?: TableExecutionSource;
     /**
      * First quartile of a column.
      */
@@ -973,6 +987,16 @@ export interface CustomMetricProfile {
     value?: number;
 }
 
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
+}
+
 export interface HistogramClass {
     /**
      * Boundaries of Histogram.
@@ -1083,8 +1107,10 @@ export enum ModelType {
 /**
  * Status of the Table.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -1262,6 +1288,7 @@ export enum PipelineServiceType {
     CustomPipeline = "CustomPipeline",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     DatabricksPipeline = "DatabricksPipeline",
     DomoPipeline = "DomoPipeline",
@@ -1275,11 +1302,14 @@ export enum PipelineServiceType {
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    Prefect = "Prefect",
+    SapBw4HanaPipeline = "SapBw4HanaPipeline",
     Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssis = "SSIS",
     Stitch = "Stitch",
+    TableauPipeline = "TableauPipeline",
     Wherescape = "Wherescape",
 }
 
@@ -1300,7 +1330,8 @@ export interface TableProfile {
     /**
      * Custom Metrics profile list bound to a column.
      */
-    customMetrics?: CustomMetricProfile[];
+    customMetrics?:   CustomMetricProfile[];
+    executionSource?: TableExecutionSource;
     /**
      * Percentage of data or no. of rows we want to execute the profiler and tests on
      */
@@ -1337,7 +1368,8 @@ export interface TableData {
     /**
      * List of local column names (not fully qualified column names) of the table.
      */
-    columns?: string[];
+    columns?:         string[];
+    executionSource?: TableExecutionSource;
     /**
      * Data for multiple rows of the table.
      */
@@ -1357,14 +1389,16 @@ export enum DatabaseServiceType {
     BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Clickzetta = "Clickzetta",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
+    Data360 = "Data360",
+    Databend = "Databend",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",
     Dbt = "Dbt",
-    DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
     Dremio = "Dremio",
@@ -1384,15 +1418,18 @@ export enum DatabaseServiceType {
     MongoDB = "MongoDB",
     Mssql = "Mssql",
     Mysql = "Mysql",
+    Neo4J = "Neo4j",
     Oracle = "Oracle",
     PinotDB = "PinotDB",
     Postgres = "Postgres",
     Presto = "Presto",
     QueryLog = "QueryLog",
+    QuestDB = "QuestDB",
     Redshift = "Redshift",
     SAS = "SAS",
     SQLite = "SQLite",
     Salesforce = "Salesforce",
+    SapBw4Hana = "SapBw4Hana",
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapSuccessFactors = "SapSuccessFactors",
@@ -1610,6 +1647,11 @@ export interface ProfileSampleConfig {
  */
 export interface ICSamplingConfig {
     /**
+     * Set to true to dynamically determine sampling percentage based on row count thresholds.
+     * If false, the thresholds values passed will be used as the sampling configuration.
+     */
+    smartSampling?: boolean;
+    /**
      * Row count thresholds for sampling. Evaluated in order from highest to lowest threshold.
      * Tables below the lowest threshold are profiled at 100% (no sampling).
      */
@@ -1686,9 +1728,26 @@ export interface Partitioning {
 }
 
 /**
+ * Daily shard family metadata. Columns describe the representative.
+ */
+export interface TableSharding {
+    firstShardDate: Date;
+    lastShardDate:  Date;
+    prefix:         string;
+    representative: TableExecutionSource;
+    shardCount:     number;
+    suffixFormat:   SuffixFormat;
+}
+
+export enum SuffixFormat {
+    Yyyymmdd = "YYYYMMDD",
+}
+
+/**
  * This schema defines the type used for describing different types of tables.
  */
 export enum TableType {
+    DeltaLake = "DeltaLake",
     Dynamic = "Dynamic",
     External = "External",
     Foreign = "Foreign",
@@ -1698,6 +1757,8 @@ export enum TableType {
     Partitioned = "Partitioned",
     Regular = "Regular",
     SecureView = "SecureView",
+    SemanticView = "SemanticView",
+    Sharded = "Sharded",
     Stage = "Stage",
     Stream = "Stream",
     Transient = "Transient",

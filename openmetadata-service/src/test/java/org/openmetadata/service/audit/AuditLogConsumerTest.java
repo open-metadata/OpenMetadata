@@ -17,7 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -27,18 +34,21 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.util.DIContainer;
 
 /** Unit tests for AuditLogConsumer batch processing and offset management. */
 @Execution(ExecutionMode.CONCURRENT)
 class AuditLogConsumerTest {
+
+  private static final long NOW = 1_000_000_000L;
 
   private CollectionDAO mockCollectionDAO;
   private ChangeEventDAO mockChangeEventDAO;
@@ -120,6 +130,148 @@ class AuditLogConsumerTest {
     assertEquals(event.getId(), parsed.getId());
     assertEquals(event.getEventType(), parsed.getEventType());
     assertEquals(event.getEntityType(), parsed.getEntityType());
+  }
+
+  @Test
+  void countContiguousPrefix_allContiguous_returnsFullSize() {
+    List<ChangeEventRecord> records = recordsAtOffsets(11, 12, 13);
+    assertEquals(3, AuditLogConsumer.countContiguousPrefix(10, records));
+  }
+
+  @Test
+  void countContiguousPrefix_gapInMiddle_stopsAtGap() {
+    List<ChangeEventRecord> records = recordsAtOffsets(11, 12, 14, 15);
+    assertEquals(2, AuditLogConsumer.countContiguousPrefix(10, records));
+  }
+
+  @Test
+  void countContiguousPrefix_gapAtHead_returnsZero() {
+    List<ChangeEventRecord> records = recordsAtOffsets(13, 14);
+    assertEquals(0, AuditLogConsumer.countContiguousPrefix(10, records));
+  }
+
+  @Test
+  void planAdvance_fullyContiguousBatch_advancesToLastOffsetWithNoGapWait() {
+    List<ChangeEventRecord> records = recordsAtOffsets(11, 12, 13);
+    AuditLogConsumer.OffsetUpdate update =
+        AuditLogConsumer.planAdvance(offset(10, 0L), records, 3, 3, NOW);
+    assertEquals(13L, update.offset());
+    assertEquals(0L, update.pendingGapSince());
+  }
+
+  @Test
+  void planAdvance_writeErrorBeforeGap_advancesOnlyOverWrittenWithNoGapWait() {
+    List<ChangeEventRecord> records = recordsAtOffsets(11, 12, 13);
+    AuditLogConsumer.OffsetUpdate update =
+        AuditLogConsumer.planAdvance(offset(10, 0L), records, 3, 1, NOW);
+    assertEquals(11L, update.offset(), "advance only across the records actually written");
+    assertEquals(0L, update.pendingGapSince(), "a write error is retried, not treated as a gap");
+  }
+
+  @Test
+  void planAdvance_gapAfterMakingProgress_advancesPrefixAndResetsGapClock() {
+    List<ChangeEventRecord> records = recordsAtOffsets(11, 12, 14);
+    AuditLogConsumer.OffsetUpdate update =
+        AuditLogConsumer.planAdvance(offset(10, 5_000L), records, 2, 2, NOW);
+    assertEquals(12L, update.offset());
+    assertEquals(0L, update.pendingGapSince(), "forward progress resets a stale gap clock");
+  }
+
+  @Test
+  void planGapAdvance_headGapFirstSeen_startsWaitWithoutSkipping() {
+    List<ChangeEventRecord> records = recordsAtOffsets(13, 14);
+    AuditLogConsumer.OffsetUpdate update =
+        AuditLogConsumer.planGapAdvance(offset(10, 0L), records, 0, NOW);
+    assertEquals(10L, update.offset(), "do not skip the not-yet-committed offset 11/12");
+    assertEquals(NOW, update.pendingGapSince(), "start the gap-wait clock");
+  }
+
+  @Test
+  void planGapAdvance_headGapWithinTimeout_keepsWaiting() {
+    List<ChangeEventRecord> records = recordsAtOffsets(13, 14);
+    long gapSince = NOW - 5_000L;
+    AuditLogConsumer.OffsetUpdate update =
+        AuditLogConsumer.planGapAdvance(offset(10, gapSince), records, 0, NOW);
+    assertEquals(10L, update.offset(), "still waiting: a late insert may yet fill the gap");
+    assertEquals(gapSince, update.pendingGapSince(), "preserve the original wait clock");
+  }
+
+  @Test
+  void planGapAdvance_headGapPastTimeout_skipsThePermanentHole() {
+    List<ChangeEventRecord> records = recordsAtOffsets(13, 14);
+    long gapSince = NOW - 30_000L;
+    AuditLogConsumer.OffsetUpdate update =
+        AuditLogConsumer.planGapAdvance(offset(10, gapSince), records, 0, NOW);
+    assertEquals(
+        12L, update.offset(), "skip the unfilled hole [11..12] so the consumer never stalls");
+    assertEquals(0L, update.pendingGapSince(), "clear the wait clock after skipping");
+  }
+
+  @Test
+  void lateCommittedOffset_isNotDroppedAcrossPasses() {
+    // Reproduces the gap-skip flake: offset 11 (e.g. an entityRestored event) commits AFTER 12/13.
+    // Pass 1: only 12,13 are visible -> a head gap at 11 -> consumer waits, does NOT advance past
+    // 11.
+    List<ChangeEventRecord> pass1 = recordsAtOffsets(12, 13);
+    AuditLogConsumer.OffsetUpdate afterPass1 =
+        AuditLogConsumer.planAdvance(offset(10, 0L), pass1, 0, 0, NOW);
+    assertEquals(
+        10L, afterPass1.offset(), "must not skip offset 11 just because 12/13 are visible");
+
+    // Pass 2: offset 11 has now committed -> the batch is contiguous from 11 -> all are consumed.
+    List<ChangeEventRecord> pass2 = recordsAtOffsets(11, 12, 13);
+    int contiguous = AuditLogConsumer.countContiguousPrefix(afterPass1.offset(), pass2);
+    AuditLogConsumer.OffsetUpdate afterPass2 =
+        AuditLogConsumer.planAdvance(
+            offset(afterPass1.offset(), afterPass1.pendingGapSince()),
+            pass2,
+            contiguous,
+            contiguous,
+            NOW);
+    assertEquals(
+        3, contiguous, "the previously-missing offset 11 is now part of the contiguous run");
+    assertEquals(13L, afterPass2.offset(), "offset 11 is consumed, not permanently skipped");
+  }
+
+  // A read cut short by its byte budget, one event at a time, is not the end of the backlog.
+  @Test
+  void oneRunKeepsReadingWhileReadsStopAtTheirByteBudget() {
+    long latest = 5;
+    String[] storedOffset = {null};
+    when(mockChangeEventDAO.getLatestOffset()).thenReturn(latest);
+    when(mockChangeEventDAO.listWithOffset(anyLong(), anyLong()))
+        .thenAnswer(
+            read -> {
+              long after = read.getArgument(1);
+              return after < latest ? recordsAtOffsets(after + 1) : List.of();
+            });
+    when(mockEventSubscriptionDAO.getSubscriberExtension(anyString(), anyString()))
+        .thenAnswer(unused -> storedOffset[0]);
+    doAnswer(
+            save -> {
+              storedOffset[0] = save.getArgument(3);
+              return null;
+            })
+        .when(mockEventSubscriptionDAO)
+        .upsertSubscriberExtension(anyString(), anyString(), anyString(), anyString());
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(mockCollectionDAO);
+      entity.when(Entity::getAuditLogRepository).thenReturn(mockAuditLogRepository);
+
+      new AuditLogConsumer(null).execute(null);
+    }
+
+    verify(mockAuditLogRepository, times((int) latest)).write(any(ChangeEvent.class));
+  }
+
+  @Test
+  void auditLogOffset_legacyJsonWithoutGapField_deserializesWithZeroGap() {
+    String legacyJson = "{\"timestamp\":1234567890,\"currentOffset\":4242}";
+    AuditLogConsumer.AuditLogOffset offset =
+        JsonUtils.readValue(legacyJson, AuditLogConsumer.AuditLogOffset.class);
+    assertEquals(4242L, offset.currentOffset());
+    assertEquals(0L, offset.pendingGapSince(), "offsets written by an older build must still load");
   }
 
   @Test
@@ -205,6 +357,18 @@ class AuditLogConsumerTest {
     // Should continue if processed >= batchSize
     boolean shouldContinue = processedInBatch >= batchSize;
     assertTrue(shouldContinue);
+  }
+
+  private static AuditLogConsumer.AuditLogOffset offset(long currentOffset, long pendingGapSince) {
+    return new AuditLogConsumer.AuditLogOffset(0L, currentOffset, pendingGapSince);
+  }
+
+  private static List<ChangeEventRecord> recordsAtOffsets(long... offsets) {
+    List<ChangeEventRecord> records = new ArrayList<>();
+    for (long offset : offsets) {
+      records.add(new ChangeEventRecord(offset, "{\"id\":\"" + UUID.randomUUID() + "\"}"));
+    }
+    return records;
   }
 
   private ChangeEvent createChangeEvent(String userName) {

@@ -1,18 +1,36 @@
 package org.openmetadata.sdk.services;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.json.Json;
+import jakarta.json.JsonPatch;
+import java.io.StringReader;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -20,6 +38,14 @@ import org.openmetadata.sdk.network.OpenMetadataHttpClient;
 import org.openmetadata.sdk.network.RequestOptions;
 
 class EntityServiceBaseTest {
+  private static final String GLOSSARY_TERMS_PATH = "/v1/glossaryTerms";
+  private static final String RELATED_TERMS = "relatedTerms";
+  private static final String TERM_NAME = "Customer";
+  private static final UUID TERM_ID = UUID.fromString("30000000-0000-0000-0000-000000000001");
+  private static final UUID ORIGINAL_TERM_ID =
+      UUID.fromString("30000000-0000-0000-0000-000000000002");
+  private static final UUID UPDATED_TERM_ID =
+      UUID.fromString("30000000-0000-0000-0000-000000000003");
 
   @Mock private OpenMetadataHttpClient mockHttpClient;
 
@@ -146,6 +172,89 @@ class EntityServiceBaseTest {
   }
 
   @Test
+  void updateFetchesFieldsContainingNestedEntityReferences() throws JsonProcessingException {
+    GlossaryTerm original = glossaryTerm(ORIGINAL_TERM_ID);
+    GlossaryTerm withoutRelations = new GlossaryTerm().withId(TERM_ID).withName(TERM_NAME);
+    GlossaryTerm updated = glossaryTerm(UPDATED_TERM_ID);
+    EntityServiceBase<GlossaryTerm> glossaryTermService = glossaryTermService();
+    ArgumentCaptor<RequestOptions> getOptions = stubGlossaryTermFetch(original, withoutRelations);
+    ArgumentCaptor<JsonNode> patch = captureGlossaryTermPatch(updated);
+
+    glossaryTermService.update(TERM_ID, updated);
+
+    assertTrue(requestedFields(getOptions.getValue()).contains(RELATED_TERMS));
+    ObjectMapper mapper = glossaryTermService.objectMapper;
+    JsonNode patchedOriginal = applyPatch(mapper, patch.getValue(), mapper.valueToTree(original));
+    assertEquals(1, patchedOriginal.path(RELATED_TERMS).size());
+    assertEquals(
+        UPDATED_TERM_ID.toString(),
+        patchedOriginal.path(RELATED_TERMS).get(0).path("term").path("id").asText());
+  }
+
+  private static JsonNode applyPatch(ObjectMapper mapper, JsonNode patch, JsonNode document)
+      throws JsonProcessingException {
+    JsonPatch jsonPatch =
+        Json.createPatch(Json.createReader(new StringReader(patch.toString())).readArray());
+    return mapper.readTree(
+        jsonPatch
+            .apply(Json.createReader(new StringReader(document.toString())).readObject())
+            .toString());
+  }
+
+  private ArgumentCaptor<RequestOptions> stubGlossaryTermFetch(
+      GlossaryTerm original, GlossaryTerm withoutRelations) {
+    ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+    when(mockHttpClient.execute(
+            eq(HttpMethod.GET),
+            eq(GLOSSARY_TERMS_PATH + "/" + TERM_ID),
+            isNull(),
+            eq(GlossaryTerm.class),
+            options.capture()))
+        .thenAnswer(
+            invocation ->
+                requestedFields(invocation.getArgument(4)).contains(RELATED_TERMS)
+                    ? original
+                    : withoutRelations);
+    return options;
+  }
+
+  private ArgumentCaptor<JsonNode> captureGlossaryTermPatch(GlossaryTerm updated) {
+    ArgumentCaptor<JsonNode> patch = ArgumentCaptor.forClass(JsonNode.class);
+    when(mockHttpClient.execute(
+            eq(HttpMethod.PATCH),
+            eq(GLOSSARY_TERMS_PATH + "/" + TERM_ID),
+            patch.capture(),
+            eq(GlossaryTerm.class),
+            isNull()))
+        .thenReturn(updated);
+    return patch;
+  }
+
+  private EntityServiceBase<GlossaryTerm> glossaryTermService() {
+    return new EntityServiceBase<>(mockHttpClient, GLOSSARY_TERMS_PATH) {
+      @Override
+      public Class<GlossaryTerm> getEntityClass() {
+        return GlossaryTerm.class;
+      }
+    };
+  }
+
+  private static GlossaryTerm glossaryTerm(UUID relatedTermId) {
+    TermRelation relation =
+        new TermRelation()
+            .withTerm(new EntityReference().withId(relatedTermId).withType("glossaryTerm"))
+            .withRelationType("relatedTo");
+    return new GlossaryTerm()
+        .withId(TERM_ID)
+        .withName(TERM_NAME)
+        .withRelatedTerms(List.of(relation));
+  }
+
+  private static Set<String> requestedFields(RequestOptions options) {
+    return Set.of(options.getQueryParams().get("fields").split(","));
+  }
+
+  @Test
   void testPatch() {
     String tableId = "table-123";
     String jsonPatch = "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"New description\"}]";
@@ -198,40 +307,6 @@ class EntityServiceBaseTest {
   }
 
   @Test
-  void testGetEntityHistory() {
-    String jsonResponse =
-        "{\"data\":["
-            + "{\"id\":\"550e8400-e29b-41d4-a716-446655440001\",\"name\":\"table1\",\"fullyQualifiedName\":\"service.database.schema.table1\"}"
-            + "],\"paging\":{\"total\":1,\"offset\":0,\"limit\":5},\"warningsCount\":2}";
-
-    ArgumentCaptor<RequestOptions> paramsCaptor = ArgumentCaptor.forClass(RequestOptions.class);
-
-    when(mockHttpClient.executeForString(
-            eq(HttpMethod.GET), eq("/v1/tables/history"), isNull(), paramsCaptor.capture()))
-        .thenReturn(jsonResponse);
-
-    ResultList<Table> result =
-        tableService.getEntityHistory(100L, 200L, 5, "before-cursor", "after-cursor");
-
-    assertNotNull(result);
-    assertEquals(1, result.getData().size());
-    assertInstanceOf(Table.class, result.getData().get(0));
-    assertEquals("table1", result.getData().get(0).getName());
-    assertNotNull(result.getPaging());
-    assertEquals(1, result.getPaging().getTotal());
-    assertEquals(0, result.getPaging().getOffset());
-    assertEquals(5, result.getPaging().getLimit());
-    assertEquals(2, result.getWarningsCount());
-
-    RequestOptions capturedOptions = paramsCaptor.getValue();
-    assertEquals("100", capturedOptions.getQueryParams().get("startTs"));
-    assertEquals("200", capturedOptions.getQueryParams().get("endTs"));
-    assertEquals("5", capturedOptions.getQueryParams().get("limit"));
-    assertEquals("before-cursor", capturedOptions.getQueryParams().get("before"));
-    assertEquals("after-cursor", capturedOptions.getQueryParams().get("after"));
-  }
-
-  @Test
   void testDelete() {
     String tableId = "table-123";
     Map<String, String> params = Map.of("recursive", "true", "hardDelete", "true");
@@ -273,6 +348,51 @@ class EntityServiceBaseTest {
 
     verify(mockHttpClient)
         .execute(eq(HttpMethod.DELETE), eq("/v1/tables/" + tableId), isNull(), eq(Void.class));
+  }
+
+  @Test
+  void testDeleteByName() {
+    String fqn = "service.db.schema.table";
+
+    when(mockHttpClient.execute(
+            eq(HttpMethod.DELETE), eq("/v1/tables/name/" + fqn), isNull(), eq(Void.class)))
+        .thenReturn(null);
+
+    tableService.deleteByName(fqn);
+
+    // by-FQN delete must hit the /name/{fqn} endpoint, never the by-id /{id} path.
+    verify(mockHttpClient)
+        .execute(eq(HttpMethod.DELETE), eq("/v1/tables/name/" + fqn), isNull(), eq(Void.class));
+    verify(mockHttpClient, never())
+        .execute(eq(HttpMethod.DELETE), eq("/v1/tables/" + fqn), isNull(), eq(Void.class));
+  }
+
+  @Test
+  void testDeleteByNameWithParams() {
+    String fqn = "service.db.schema.table";
+    Map<String, String> params = Map.of("recursive", "true", "hardDelete", "true");
+
+    ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+    when(mockHttpClient.execute(
+            eq(HttpMethod.DELETE),
+            eq("/v1/tables/name/" + fqn),
+            isNull(),
+            eq(Void.class),
+            options.capture()))
+        .thenReturn(null);
+
+    tableService.deleteByName(fqn, params);
+
+    verify(mockHttpClient)
+        .execute(
+            eq(HttpMethod.DELETE),
+            eq("/v1/tables/name/" + fqn),
+            isNull(),
+            eq(Void.class),
+            any(RequestOptions.class));
+    RequestOptions captured = options.getValue();
+    assertEquals("true", captured.getQueryParams().get("recursive"));
+    assertEquals("true", captured.getQueryParams().get("hardDelete"));
   }
 
   // Note: restore method is not part of the base EntityServiceBase class

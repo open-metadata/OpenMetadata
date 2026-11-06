@@ -1,0 +1,43 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+.test-case-detail-tabs {
+  // Scroll behavior of the classic antd pane, reproduced for the core Tabs panel.
+  .test-case-detail-tab-panel {
+    height: @incident-manager-page-height;
+    overflow-y: auto;
+    padding-top: 20px;
+    padding-bottom: 20px;
+
+    .right-container,
+    .left-container {
+      height: 100%;
+    }
+  }
+
+  // The panel above owns the vertical inset, so the OSS tab bodies' own
+  // padding (`p-md`) is stripped here; the classic page keeps it.
+  .test-case-result-tab,
+  .sql-query-tab {
+    padding: 0;
+  }
+
+  .incident-page-issue-tab {
+    .activity-feed-tab-padding {
+      padding-left: 0;
+      padding-right: 0;
+      padding-top: 0;
+    }
+  }
+}

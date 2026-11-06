@@ -13,16 +13,18 @@ Test the connection against a source system
 """
 
 import traceback
-from typing import Callable
+from collections.abc import Callable
 
-from flask import Blueprint, Response, escape, request
-from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.utils.logger import routes_logger
+from flask import Blueprint, Response, request
+from markupsafe import escape
 from pydantic import ValidationError
 
 from metadata.automations.execute_runner import execute
 from metadata.ingestion.api.parser import parse_automation_workflow_gracefully
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
+from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.utils.logger import routes_logger
+from openmetadata_managed_apis.utils.parser import parse_validation_err
 
 logger = routes_logger()
 
@@ -37,6 +39,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
     from airflow.security import permissions
+
     from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
     from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,
@@ -81,7 +84,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             logger.error(msg)
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
-                error=msg,
+                error=parse_validation_err(err),
             )
 
         except Exception as exc:

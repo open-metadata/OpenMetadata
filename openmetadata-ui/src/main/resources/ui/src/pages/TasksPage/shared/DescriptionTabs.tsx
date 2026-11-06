@@ -11,17 +11,20 @@
  *  limitations under the License.
  */
 
-import { Tabs } from 'antd';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { Change } from 'diff';
 import { isEqual } from 'lodash';
-import { useCallback, useRef, useState } from 'react';
+import { lazy, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
-import { getDescriptionDiff } from '../../../utils/TasksUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
+import { getDescriptionDiff } from '../../../utils/TaskPayloadUtils';
 import DiffView from './DiffView/DiffView';
+const RichTextEditor = withSuspenseFallback(
+  lazy(() => import('../../../components/common/RichTextEditor/RichTextEditor'))
+);
 
 interface Props {
   value: string;
@@ -37,7 +40,6 @@ export const DescriptionTabs = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation();
-  const { TabPane } = Tabs;
   const [description] = useState(value);
   const [diffs, setDiffs] = useState<Change[]>([]);
   const [activeTab, setActiveTab] = useState<string>('3');
@@ -60,46 +62,51 @@ export const DescriptionTabs = ({
         setDiffs([]);
       }
     },
-    [markdownRef]
+    [description]
   );
 
   return (
     <Tabs
-      activeKey={activeTab}
-      className="ant-tabs-description"
       data-testid="tabs"
-      size="small"
-      type="card"
-      onChange={onTabChange}>
-      <TabPane data-testid="current-tab" key="1" tab="Current">
-        <div className="border border-main rounded-4 p-sm m-t-sm">
+      selectedKey={activeTab}
+      onSelectionChange={(key) => onTabChange(String(key))}>
+      <Tabs.List className="tw:self-start" size="sm" type="button-border">
+        <Tabs.Item data-testid="current-tab" id="1" label="Current" />
+        <Tabs.Item data-testid="diff-tab" id="2" label="Diff" />
+        <Tabs.Item data-testid="new-tab" id="3" label="New" />
+      </Tabs.List>
+      <Tabs.Panel id="1">
+        <Box
+          className="tw:mt-3 tw:rounded-md tw:border tw:border-primary tw:bg-surface tw:p-3"
+          direction="col">
           {description?.trim() ? (
             <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
               markdown={description}
             />
           ) : (
-            <span className="text-grey-muted">
+            <Typography color="secondary">
               {t('label.no-entity', { entity: t('label.description') })}
-            </span>
+            </Typography>
           )}
-        </div>
-      </TabPane>
-      <TabPane data-testid="diff-tab" key="2" tab="Diff">
+        </Box>
+      </Tabs.Panel>
+      <Tabs.Panel id="2">
         <DiffView
-          className="border border-main rounded-4 p-sm m-t-sm"
+          className="tw:mt-3 tw:rounded-md tw:border tw:border-primary tw:bg-surface tw:p-3"
           diffArr={diffs}
         />
-      </TabPane>
-      <TabPane data-testid="new-tab" key="3" tab="New">
+      </Tabs.Panel>
+      {/* Kept mounted so the editor keeps its edits and the Diff tab can read them via markdownRef. */}
+      <Tabs.Panel shouldForceMount className="tw:data-inert:hidden" id="3">
         <RichTextEditor
-          className="m-t-sm"
+          className="new-form-style tw:mt-3"
           initialValue={suggestion}
           placeHolder={placeHolder ?? t('label.update-description')}
           ref={markdownRef}
           onTextChange={onChange}
         />
-      </TabPane>
+      </Tabs.Panel>
     </Tabs>
   );
 };

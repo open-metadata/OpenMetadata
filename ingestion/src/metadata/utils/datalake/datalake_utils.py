@@ -18,7 +18,8 @@ import ast
 import json
 import random
 import traceback
-from typing import Any, Dict, List, Optional, Union, cast
+from collections import Counter
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -29,8 +30,66 @@ from metadata.readers.dataframe.models import (
 )
 from metadata.readers.dataframe.reader_factory import SupportedTypes, get_df_reader
 from metadata.utils.logger import utils_logger
+from metadata.utils.schema_inference import (
+    NO_LIMITS,
+    InferenceLimit,
+    InferenceLimits,
+    InferenceReport,
+    InferredStruct,
+)
+
+if TYPE_CHECKING:
+    from pandas import DataFrame as PandasDataFrame
 
 logger = utils_logger()
+
+# Explicit type precedence so mixed-type object columns are not mis-typed by lexicographic max().
+# dict > list > datetime > numeric > str, matching _data_formats priority.
+_TYPE_PRECEDENCE = (
+    "dict",
+    "list",
+    "datetime64[ns]",
+    "datetime",
+    "timedelta[ns]",
+    "float64",
+    "float32",
+    "float",
+    "int64",
+    "int32",
+    "int",
+    "bool",
+    "str",
+    "bytes",
+)
+
+
+def _resolve_col_type(type_list: list[str]) -> str:
+    """Pick the dominant type from type_list.
+
+    Frequency-first: the most common type in the sample wins.
+    Ties are broken by _TYPE_PRECEDENCE order.
+    This prevents a small number of date-parseable tokens (e.g. the surname "May")
+    from overriding a column that is overwhelmingly strings.
+    """
+    if not type_list:
+        return "str"
+    counts = Counter(type_list)
+    max_count = max(counts.values())
+    top_types = {t for t, c in counts.items() if c == max_count}
+    for t in _TYPE_PRECEDENCE:
+        if t in top_types:
+            return t
+    return type_list[0]
+
+
+class _ArrayOfStruct:
+    """Marker for a JSON value observed as a list of dicts. Carries the merged struct shape
+    so downstream column construction can render it as ARRAY<STRUCT<...>>."""
+
+    __slots__ = ("struct",)
+
+    def __init__(self, struct: InferredStruct):
+        self.struct = struct
 
 
 def fetch_dataframe_generator(
@@ -39,7 +98,7 @@ def fetch_dataframe_generator(
     file_fqn: DatalakeTableSchemaWrapper,
     session=None,
     **kwargs,
-) -> Optional[DatalakeColumnWrapper]:
+) -> DatalakeColumnWrapper | None:
     """Return the datafgrame generator
 
     Args:
@@ -56,7 +115,7 @@ def fetch_dataframe_generator(
     key: str = file_fqn.key
     bucket_name: str = file_fqn.bucket_name
     try:
-        file_extension: Optional[SupportedTypes] = file_fqn.file_extension or next(
+        file_extension: SupportedTypes | None = file_fqn.file_extension or next(
             supported_type or None for supported_type in SupportedTypes if key.endswith(supported_type.value)
         )
         if file_extension and not key.endswith("/"):
@@ -80,14 +139,14 @@ def fetch_dataframe_generator(
                     f"Error fetching file [{bucket_name}/{key}] using "
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
                 )
-                raise err
+                raise err  # noqa: TRY201
     except Exception as err:
         logger.debug(traceback.format_exc())
         logger.error(
             f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
         )
         # Here we need to blow things up. Without the dataframe we cannot move forward
-        raise err
+        raise err  # noqa: TRY201
 
 
 def fetch_dataframe_first_chunk(
@@ -105,7 +164,7 @@ def fetch_dataframe_first_chunk(
     key: str = file_fqn.key
     bucket_name: str = file_fqn.bucket_name
     try:
-        file_extension: Optional[SupportedTypes] = file_fqn.file_extension or next(
+        file_extension: SupportedTypes | None = file_fqn.file_extension or next(
             supported_type or None for supported_type in SupportedTypes if key.endswith(supported_type.value)
         )
         if file_extension and not key.endswith("/"):
@@ -129,7 +188,7 @@ def fetch_dataframe_first_chunk(
                     dataframes = dataframes()
                 if fetch_raw_data:
                     return dataframes, df_wrapper.raw_data
-                return dataframes
+                return dataframes  # noqa: TRY300
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(
@@ -142,7 +201,7 @@ def fetch_dataframe_first_chunk(
             f"Error fetching first chunk of file [{bucket_name}/{key}] using "
             f"[{config_source.__class__.__name__}] due to: [{err}]"
         )
-        raise err
+        raise err  # noqa: TRY201
 
     if fetch_raw_data:
         return None, None
@@ -158,6 +217,24 @@ def get_file_format_type(key_name, metadata_entry=None):
             if entry and supported_types.value == entry[0].structureFormat:
                 return supported_types
     return False
+
+
+# File types whose nested columns are inferred from sampled JSON values (JSON objects,
+# JSON Lines records, or JSON strings in delimited cells), the only ones schema
+# inference limits apply to.
+_SAMPLED_JSON_TYPES = frozenset(
+    {
+        SupportedTypes.CSV,
+        SupportedTypes.CSVGZ,
+        SupportedTypes.TSV,
+        SupportedTypes.JSON,
+        SupportedTypes.JSONGZ,
+        SupportedTypes.JSONZIP,
+        SupportedTypes.JSONL,
+        SupportedTypes.JSONLGZ,
+        SupportedTypes.JSONLZIP,
+    }
+)
 
 
 # pylint: disable=import-outside-toplevel
@@ -180,10 +257,12 @@ class DataFrameColumnParser:
     def create(
         cls,
         data_frame: "DataFrame",  # noqa: F821
-        file_type: Optional[SupportedTypes] = None,
+        file_type: SupportedTypes | None = None,
         sample: bool = True,
         shuffle: bool = False,
         raw_data: Any = None,
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
     ):
         """Instantiate a column parser object with the appropriate parser
 
@@ -194,8 +273,15 @@ class DataFrameColumnParser:
                 If sample is False, we will concatenate the dataframes, which can be cause OOM error for large dataset.
                 (default: True)
             shuffle: whether to shuffle the dataframe list or not if sample is True. (default: False)
+            limits: bounds for children inferred from sampled JSON values. Formats with a declared
+                structure (Avro, MF4, Parquet, JSON Schema documents, Iceberg/Delta metadata) are not bounded.
+            report: collects the columns whose inferred children the limits cut.
         """
         data_frame = cls._get_data_frame(data_frame, sample, shuffle)
+        # Avro and MF4 share the generic parser below, but their nested records come from the
+        # file's own schema. Documents with no file type come from NoSQL sources.
+        if file_type is not None and file_type not in _SAMPLED_JSON_TYPES:
+            limits = NO_LIMITS
         if file_type in {
             SupportedTypes.PARQUET,
             SupportedTypes.PARQUET_PQ,
@@ -209,16 +295,16 @@ class DataFrameColumnParser:
             SupportedTypes.JSONGZ,
             SupportedTypes.JSONZIP,
         }:
-            parser = JsonDataFrameColumnParser(data_frame, raw_data=raw_data)
+            parser = JsonDataFrameColumnParser(data_frame, raw_data=raw_data, limits=limits, report=report)
         else:
-            parser = GenericDataFrameColumnParser(data_frame)
+            parser = GenericDataFrameColumnParser(data_frame, limits=limits, report=report)
         return cls(parser)
 
     @staticmethod
     def _get_data_frame(
-        data_frame: Union[List["DataFrame"], "DataFrame"],  # noqa: F821
+        data_frame: Union[list["DataFrame"], "DataFrame"],  # noqa: F821
         sample: bool,
-        shuffle: bool,  # noqa: F821
+        shuffle: bool,
     ):
         """Return the dataframe to use for parsing"""
 
@@ -246,7 +332,7 @@ class GenericDataFrameColumnParser:
     # though we need to do a thorough overview of where they are used to ensure unnecessary coupling.
     """
 
-    _data_formats = {
+    _data_formats = {  # noqa: RUF012
         **dict.fromkeys(["int64", "int", "int32"], DataType.INT),
         "dict": DataType.JSON,
         "list": DataType.ARRAY,
@@ -261,18 +347,31 @@ class GenericDataFrameColumnParser:
         "bytes": DataType.BYTES,
     }
 
-    def __init__(self, data_frame: "DataFrame", raw_data: Any = None):  # noqa: F821
+    def __init__(
+        self,
+        data_frame: "PandasDataFrame",
+        raw_data: Any = None,
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
+    ):
         self.data_frame = data_frame
         self.raw_data = raw_data
+        self.limits = limits
+        self.report = report
 
     def get_columns(self):
         """
         method to process column details
         """
-        return self._get_columns(self.data_frame)
+        return self._get_columns(self.data_frame, limits=self.limits, report=self.report)
 
     @classmethod
-    def _get_columns(cls, data_frame: "DataFrame"):  # noqa: F821
+    def _get_columns(
+        cls,
+        data_frame: "PandasDataFrame",
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
+    ):
         """
         method to process column details.
 
@@ -297,9 +396,17 @@ class GenericDataFrameColumnParser:
                     }
                     if data_type == DataType.ARRAY:
                         parsed_string["arrayDataType"] = DataType.UNKNOWN
+                        struct_children = cls._get_array_struct_children(
+                            data_frame[column].dropna()[:100], limits=limits, report=report, path=column
+                        )
+                        if struct_children is not None:
+                            parsed_string["arrayDataType"] = DataType.STRUCT
+                            parsed_string["children"] = struct_children
 
                     if data_type == DataType.JSON:
-                        parsed_string["children"] = cls.get_children(data_frame[column].dropna()[:100])
+                        parsed_string["children"] = cls.get_children(
+                            data_frame[column].dropna()[:100], limits=limits, report=report, path=column
+                        )
 
                     cols.append(Column(**parsed_string))
                 except Exception as exc:
@@ -320,14 +427,20 @@ class GenericDataFrameColumnParser:
         """
         data_type = None  # default to string
         try:
-            if data_frame[column_name].dtypes.name == "object" and any(data_frame[column_name].dropna().values):
+            col_series = data_frame[column_name]
+            col_non_null = col_series.dropna()
+            if col_series.dtypes.name == "object" and len(col_non_null) > 0:
                 try:
-                    # Safely evaluate the input string
-                    df_row_val_list = data_frame[column_name].dropna().values[:1000]
+                    df_row_val_list = col_non_null.values[:1000]
                     parsed_object_datatype_list = []
                     for df_row_val in df_row_val_list:
                         try:
-                            parsed_object_datatype_list.append(type(ast.literal_eval(str(df_row_val))).__name__.lower())
+                            if isinstance(df_row_val, (dict, list)):
+                                parsed_object_datatype_list.append(type(df_row_val).__name__.lower())
+                            else:
+                                parsed_object_datatype_list.append(
+                                    type(ast.literal_eval(str(df_row_val))).__name__.lower()
+                                )
                         except (ValueError, SyntaxError):
                             # we try to parse the value as a datetime, if it fails, we fallback to string
                             # as literal_eval will fail for string
@@ -340,11 +453,11 @@ class GenericDataFrameColumnParser:
                                 if not str(df_row_val).isnumeric():
                                     # check if the row value is time
                                     try:
-                                        datetime.strptime(df_row_val, "%H:%M:%S").time()
+                                        datetime.strptime(str(df_row_val), "%H:%M:%S").time()
                                         dtype_ = "timedelta[ns]"
                                     except (ValueError, TypeError):
                                         # check if the row value is date / time / datetime
-                                        type(parse(df_row_val)).__name__.lower()
+                                        type(parse(str(df_row_val))).__name__.lower()
                                         dtype_ = "datetime64[ns]"
                                 parsed_object_datatype_list.append(dtype_)
                             except (ParserError, TypeError):
@@ -355,8 +468,7 @@ class GenericDataFrameColumnParser:
                             )
                             parsed_object_datatype_list.append("str")
 
-                    data_type = max(parsed_object_datatype_list)
-                    # Determine the data type of the parsed object
+                    data_type = _resolve_col_type(parsed_object_datatype_list)
 
                 except (ValueError, SyntaxError) as exc:
                     # Handle any exceptions that may occur
@@ -364,10 +476,10 @@ class GenericDataFrameColumnParser:
                         f"ValueError/SyntaxError while parsing column '{column_name}' datatype: {exc}. "
                         f"Falling back to string."
                     )
-                    data_type = "string"
+                    data_type = "str"
 
             data_type = cls._data_formats.get(
-                data_type or data_frame[column_name].dtypes.name,
+                data_type or col_series.dtypes.name,
             )
             if not data_type:
                 logger.debug(f"unknown data type {data_frame[column_name].dtypes.name}. resolving to string.")
@@ -380,71 +492,164 @@ class GenericDataFrameColumnParser:
         return data_type or DataType.STRING
 
     @classmethod
-    def unique_json_structure(cls, dicts: List[Dict]) -> Dict:
+    def unique_json_structure(
+        cls,
+        dicts: list[dict],
+        limits: InferenceLimits = NO_LIMITS,
+        depth: int = 0,
+    ) -> InferredStruct:
         """Given a sample of `n` json objects, return a json object that represents the unique
         structure of all `n` objects. Note that the type of the key will be that of
         the last object seen in the sample.
 
         Args:
             dicts: list of json objects
+            limits: applied while merging, so a dropped key or level is never explored
+            depth: levels between the merged object and its top-level column
         """
-        result = {}
+        result = InferredStruct()
         for dict_ in dicts:
+            result.cut_by = result.cut_by or getattr(dict_, "cut_by", None)
+            if not limits.allows_children(depth):
+                if dict_:
+                    result.cut_by = InferenceLimit.DEPTH
+                continue
             for key, value in dict_.items():
+                if not limits.admit(result, key):
+                    continue
                 if isinstance(value, dict):
                     nested_json = result.get(key, {})
                     # `isinstance(nested_json, dict)` if for a key we first see a non dict value
                     # but then see a dict value later, we will consider the key to be a dict.
                     result[key] = cls.unique_json_structure(
-                        [nested_json if isinstance(nested_json, dict) else {}, value]
+                        [nested_json if isinstance(nested_json, dict) else {}, value], limits, depth + 1
+                    )
+                elif isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+                    merged_struct = cls.unique_json_structure(value, limits, depth + 1)
+                    existing = result.get(key)
+                    existing_struct = existing.struct if isinstance(existing, _ArrayOfStruct) else {}
+                    result[key] = _ArrayOfStruct(
+                        cls.unique_json_structure([existing_struct, merged_struct], limits, depth + 1)
                     )
                 else:
                     result[key] = value
         return result
 
     @classmethod
-    def construct_json_column_children(cls, json_column: Dict) -> List[Dict]:
+    def construct_json_column_children(
+        cls,
+        json_column: dict,
+        report: InferenceReport | None = None,
+        path: str = "",
+    ) -> list[dict]:
         """Construt a dict representation of a Column object
 
         Args:
             json_column: unique json structure of a column
+            report: collects the columns whose inferred children the limits cut
+            path: dotted path of the column that holds `json_column`
         """
+        if report is not None:
+            report.record(json_column, path)
         children = []
         for key, value in json_column.items():
+            child_path = f"{path}.{key}" if path else str(key)
             column = {}
-            type_ = type(value).__name__.lower()
-            column["dataTypeDisplay"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
-            column["dataType"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
             column["name"] = truncate_column_name(key)
             column["displayName"] = key
-            if isinstance(value, dict):
-                column["children"] = cls.construct_json_column_children(value)
+            if isinstance(value, _ArrayOfStruct):
+                column["dataType"] = DataType.ARRAY.value
+                column["dataTypeDisplay"] = DataType.ARRAY.value
+                column["arrayDataType"] = DataType.STRUCT
+                column["children"] = cls.construct_json_column_children(value.struct, report, child_path)
+            else:
+                type_ = "dict" if isinstance(value, dict) else type(value).__name__.lower()
+                column["dataTypeDisplay"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
+                column["dataType"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
+                if isinstance(value, dict):
+                    column["children"] = cls.construct_json_column_children(value, report, child_path)
             children.append(column)
 
         return children
 
     @classmethod
-    def get_children(cls, json_column) -> List[Dict]:
+    def get_children(
+        cls,
+        json_column: Any,
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
+        path: str = "",
+    ) -> list[dict]:
         """Get children of json column.
 
         Args:
             json_column (pandas.Series): column with 100 sample rows.
                 Sample rows will be used to infer children.
+            limits: bounds for the inferred children
+            report: collects the columns whose inferred children the limits cut
+            path: name of the column, used to report it
         """
         from pandas import Series  # pylint: disable=import-outside-toplevel
 
-        json_column = cast(Series, json_column)
-        try:
-            json_column = json_column.apply(json.loads)
-        except TypeError as exc:
-            # if values are not strings, we will assume they are already json objects
-            # based on the read class logic
-            logger.debug(
-                f"TypeError while parsing JSON column children: {exc}. Assuming values are already JSON objects."
-            )
-        json_structure = cls.unique_json_structure(json_column.values.tolist())
+        json_column = cast(Series, json_column)  # noqa: TC006
 
-        return cls.construct_json_column_children(json_structure)
+        dict_values = []
+        for value in json_column.dropna().values:
+            if isinstance(value, dict):
+                dict_values.append(value)
+            elif isinstance(value, str):
+                try:
+                    parsed = json.loads(value)
+                    if isinstance(parsed, dict):
+                        dict_values.append(parsed)
+                    else:
+                        logger.debug(
+                            "Skipping non-object JSON value while extracting column children: "
+                            f"parsed type is {type(parsed).__name__}"
+                        )
+                except (TypeError, json.JSONDecodeError) as exc:
+                    logger.debug(f"Skipping unparseable string value while extracting column children: {exc}")
+            else:
+                logger.debug(
+                    "Skipping non-string, non-dict value while extracting column children: "
+                    f"type is {type(value).__name__}"
+                )
+
+        if not dict_values:
+            return []
+
+        json_structure = cls.unique_json_structure(dict_values, limits)
+        return cls.construct_json_column_children(json_structure, report, path)
+
+    @classmethod
+    def _get_array_struct_children(
+        cls,
+        array_column: Any,
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
+        path: str = "",
+    ) -> list[dict] | None:
+        """For an ARRAY column whose elements are dicts, infer the merged struct shape and
+        return it as children. Returns None when no element is a non-empty dict, and an
+        empty list when the limits cut every child of a struct element.
+        """
+        flattened = []
+        for value in array_column.values.tolist():
+            if isinstance(value, str):
+                try:
+                    value = json.loads(value)  # noqa: PLW2901
+                except (TypeError, ValueError):
+                    continue
+            if isinstance(value, dict):
+                flattened.append(value)
+            elif isinstance(value, list):
+                flattened.extend(item for item in value if isinstance(item, dict))
+        if not flattened:
+            return None
+        merged_struct = cls.unique_json_structure(flattened, limits)
+        if not merged_struct and merged_struct.cut_by is None:
+            return None
+        return cls.construct_json_column_children(merged_struct, report, path)
 
 
 # pylint: disable=import-outside-toplevel
@@ -491,9 +696,9 @@ class ParquetDataFrameColumnParser:
         """
         method to process column details for parquet files
         """
-        import pyarrow as pa
+        import pyarrow as pa  # noqa: TC002
 
-        schema: List[pa.Field] = self._arrow_table.schema
+        schema: list[pa.Field] = self._arrow_table.schema
         columns = []
         for column in schema:
             parsed_column = {
@@ -609,7 +814,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
             except Exception as exc:
                 logger.warning(f"Unable to parse the json schema: {exc}")
                 logger.debug(traceback.format_exc())
-        return self._get_columns(self.data_frame)
+        return self._get_columns(self.data_frame, limits=self.limits, report=self.report)
 
     def _is_iceberg_delta_metadata(self, data: dict) -> bool:
         """
@@ -624,7 +829,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
             and isinstance(data["schema"]["fields"], list)
         )
 
-    def _parse_iceberg_delta_schema(self, data: dict) -> List[Column]:
+    def _parse_iceberg_delta_schema(self, data: dict) -> list[Column]:
         """
         Parse Iceberg/Delta Lake metadata file schema to extract columns.
         """
@@ -671,7 +876,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
 
         return columns
 
-    def _parse_struct_fields(self, fields: list) -> List[dict]:
+    def _parse_struct_fields(self, fields: list) -> list[dict]:
         """
         Parse nested struct fields in Iceberg/Delta Lake metadata.
         """

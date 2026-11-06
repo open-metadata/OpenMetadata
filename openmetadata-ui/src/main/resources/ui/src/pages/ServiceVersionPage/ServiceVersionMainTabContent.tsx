@@ -11,24 +11,28 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, isNil } from 'lodash';
+import { Box, Grid } from '@openmetadata/ui-core-components';
+import { Assets } from '@openmetadata/ui-core-components/icons';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { ServiceTypes } from 'Models';
 import { useMemo } from 'react';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../components/common/Table/Table';
+import { useTranslation } from 'react-i18next';
+import Description from '../../components/common/EntityDescription/Description';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
+import Table from '../../components/common/Table/TableV2';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { PAGE_SIZE } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
-import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtils';
+import { ServicePageData } from '../../interface/platform/service.interface';
+import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtilsPure';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
+import { getCountLabel } from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage.interface';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
 
 function ServiceVersionMainTabContent({
@@ -36,12 +40,15 @@ function ServiceVersionMainTabContent({
   data,
   isServiceLoading,
   paging,
+  pageSize,
   pagingHandler,
   currentPage,
   serviceDetails,
   entityType,
   changeDescription,
 }: ServiceVersionMainTabContentProps) {
+  const { t } = useTranslation();
+
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceTypes;
   }>();
@@ -59,29 +66,46 @@ function ServiceVersionMainTabContent({
   );
 
   return (
-    <Row className="h-full" gutter={[0, 16]} wrap={false}>
-      <Col className="p-t-sm m-x-lg" flex="auto">
-        <Row gutter={[16, 16]}>
-          <Col data-testid="description-container" span={24}>
-            <DescriptionV1
+    <Box
+      className="layout-row h-full"
+      style={{ ...getLayoutGutter(0, 16) }}
+      wrap="nowrap">
+      <Box
+        className="layout-column tw:block p-t-sm m-x-lg"
+        style={{ flex: 'auto' }}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(16, 16) }}>
+          <Grid.Item
+            className="layout-column"
+            data-testid="description-container"
+            span={24}>
+            <Description
               description={description}
               entityName={serviceName}
               entityType={entityType}
               showActions={false}
             />
-          </Col>
+          </Grid.Item>
 
-          <Col data-testid="table-container" span={24}>
-            <Space className="w-full m-b-md" direction="vertical" size="middle">
+          <Grid.Item
+            className="layout-column"
+            data-testid="table-container"
+            span={24}>
+            <Box
+              inline
+              align="stretch"
+              className="layout-space w-full m-b-md"
+              direction="col"
+              gap={4}
+              itemClassName="layout-space-item">
               <Table
                 columns={tableColumn}
                 customPaginationProps={{
                   currentPage,
                   isLoading: isServiceLoading,
-                  showPagination:
-                    Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-                    !isEmpty(data),
-                  pageSize: PAGE_SIZE,
+                  showPagination: shouldShowPager(data),
+                  pageSize,
                   paging,
                   pagingHandler,
                 }}
@@ -90,22 +114,37 @@ function ServiceVersionMainTabContent({
                 entityType={entityType}
                 loading={isServiceLoading}
                 locale={{
-                  emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                  emptyText: (
+                    <div className="tw:relative tw:min-h-42">
+                      <NoDataPlaceholder
+                        icon={<Assets />}
+                        title={t('message.no-entity-data-available', {
+                          entity: getCountLabel(serviceCategory),
+                        })}
+                      />
+                    </div>
+                  ),
                 }}
                 pagination={false}
                 rowKey="name"
                 scroll={TABLE_SCROLL_VALUE}
                 size="small"
               />
-            </Space>
-          </Col>
-        </Row>
-      </Col>
-      <Col
-        className="entity-tag-right-panel-container"
+            </Box>
+          </Grid.Item>
+        </Grid>
+      </Box>
+      <Box
+        className="layout-column tw:block entity-tag-right-panel-container"
         data-testid="entity-right-panel"
-        flex="220px">
-        <Space className="w-full" direction="vertical" size="large">
+        style={{ flex: '0 0 220px' }}>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space w-full"
+          direction="col"
+          gap={6}
+          itemClassName="layout-space-item">
           {Object.keys(TagSource).map((tagType) => (
             <TagsContainerV2
               newLook
@@ -119,9 +158,9 @@ function ServiceVersionMainTabContent({
               tagType={TagSource[tagType as TagSource]}
             />
           ))}
-        </Space>
-      </Col>
-    </Row>
+        </Box>
+      </Box>
+    </Box>
   );
 }
 

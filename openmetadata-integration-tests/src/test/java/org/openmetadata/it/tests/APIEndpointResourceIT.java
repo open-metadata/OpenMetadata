@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -184,17 +185,6 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().apiEndpoints().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().apiEndpoints().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().apiEndpoints().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -834,5 +824,29 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
     CreateAPIEndpoint request = new CreateAPIEndpoint();
     request.setName(ns.prefix("invalid_api_endpoint"));
     return request;
+  }
+
+  @Test
+  void patch_rejectedRenameKeepsSchemaFieldFqns(TestNamespace ns) {
+    APISchema schema =
+        new APISchema()
+            .withSchemaFields(
+                List.of(new Field().withName("id").withDataType(FieldDataType.STRING)));
+    APIEndpoint created =
+        createEntity(createMinimalRequest(ns).withRequestSchema(schema).withResponseSchema(schema));
+    APIEndpoint patch = getEntity(created.getId().toString());
+    patch.setName(created.getName() + "_renamed");
+
+    APIEndpoint updated = patchEntity(created.getId().toString(), patch);
+
+    String fqn = created.getFullyQualifiedName();
+    List<String> fieldFqns =
+        Stream.of(updated.getRequestSchema(), updated.getResponseSchema())
+            .flatMap(s -> s.getSchemaFields().stream())
+            .map(Field::getFullyQualifiedName)
+            .toList();
+    assertEquals(fqn, updated.getFullyQualifiedName());
+    assertEquals(2, fieldFqns.size());
+    assertTrue(fieldFqns.stream().allMatch(f -> f.startsWith(fqn + ".")), fieldFqns::toString);
   }
 }

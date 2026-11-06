@@ -1,5 +1,6 @@
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx, sortCx } from '@/utils/cx';
+import { borderAfter2 } from '@/utils/tailwindClasses';
 import {
   type MouseEvent,
   type ReactNode,
@@ -281,7 +282,10 @@ export const Slider = ({
               <span
                 className={cx(
                   'tw:absolute tw:top-1/2 tw:h-2 tw:-translate-y-1/2 tw:rounded-full',
-                  isDisabled ? 'tw:bg-disabled' : 'tw:bg-brand-solid'
+                  // Dark bg-disabled equals the bg-quaternary rail, so the fill drops a step.
+                  isDisabled
+                    ? 'tw:bg-disabled tw:dark:bg-disabled_subtle'
+                    : 'tw:bg-brand-solid'
                 )}
                 style={{
                   left: `${fillStart * 100}%`,
@@ -314,7 +318,10 @@ export const Slider = ({
                       isDisabled: thumbDisabled,
                     }) =>
                       cx(
-                        'tw:top-1/2 tw:box-border tw:size-6 tw:rounded-full tw:bg-slider-handle-bg tw:shadow-md tw:ring-2 tw:ring-slider-handle-border tw:ring-inset',
+                        // Border on ::after — the thumb's own outline is reserved for the
+                        // focus ring. react-aria positions the thumb absolutely, so it
+                        // already anchors ::after; do NOT add `tw:relative` here.
+                        `tw:top-1/2 tw:box-border tw:size-6 tw:rounded-full tw:bg-slider-handle-bg tw:shadow-md ${borderAfter2} tw:after:outline-slider-handle-border`,
                         thumbDisabled
                           ? 'tw:cursor-not-allowed tw:opacity-50'
                           : 'tw:cursor-grab',
@@ -343,7 +350,7 @@ export const Slider = ({
                           trackRect &&
                           createPortal(
                             <div
-                              className="tw:pointer-events-none tw:fixed tw:z-[9999] tw:whitespace-nowrap tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2 tw:text-xs tw:font-semibold tw:text-secondary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt"
+                              className="tw:pointer-events-none tw:fixed tw:z-[9999] tw:whitespace-nowrap tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2 tw:text-xs tw:font-semibold tw:text-secondary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt"
                               style={
                                 labelPosition === 'top-floating'
                                   ? {
@@ -380,7 +387,7 @@ export const Slider = ({
                 trackRect &&
                 createPortal(
                   <div
-                    className="tw:pointer-events-none tw:fixed tw:z-[9998] tw:whitespace-nowrap tw:rounded tw:bg-primary tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:text-secondary tw:opacity-80 tw:shadow-md tw:ring-1 tw:ring-secondary_alt"
+                    className="tw:pointer-events-none tw:fixed tw:z-[9998] tw:whitespace-nowrap tw:rounded tw:bg-primary tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:text-secondary tw:opacity-80 tw:shadow-md tw:outline-1 tw:outline-secondary_alt"
                     style={{
                       left:
                         trackRect.left + hoverInfo.percent * trackRect.width,

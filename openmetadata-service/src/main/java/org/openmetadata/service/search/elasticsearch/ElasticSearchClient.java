@@ -7,12 +7,21 @@ import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipD
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
+import es.co.elastic.clients.elasticsearch._types.SortOptions;
+import es.co.elastic.clients.elasticsearch._types.SortOrder;
+import es.co.elastic.clients.elasticsearch._types.aggregations.FiltersBucket;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.cluster.ClusterStatsResponse;
 import es.co.elastic.clients.elasticsearch.cluster.GetClusterSettingsResponse;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
+import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.elasticsearch.nodes.NodesStatsResponse;
+import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
@@ -21,12 +30,16 @@ import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.security.KeyStoreException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.net.ssl.SSLContext;
 import lombok.Getter;
@@ -38,6 +51,7 @@ import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.message.BasicHeader;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
@@ -50,6 +64,8 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.data.PageHierarchy;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
@@ -58,7 +74,12 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
+import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.search.EntityManagementClient.ChildUpdateStatus;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -70,6 +91,8 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.SearchUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
@@ -79,11 +102,15 @@ public class ElasticSearchClient implements SearchClient {
   @Getter protected final ElasticsearchClient newClient;
   private final Rest5Client lowLevelClient;
 
+  /** Caps bulk requests in flight on this client's connection pool, across all bulk sinks. */
+  @Getter private final BulkConnectionBudget bulkConnectionBudget;
+
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
 
   private volatile boolean isClientAvailable;
   private static final long HEALTH_CHECK_CACHE_MS = 5000;
+  private static final String SORT_ORDER_DESC = "desc";
   private final AtomicLong lastHealthCheckAt = new AtomicLong();
 
   private volatile boolean isNewClientAvailable;
@@ -136,6 +163,7 @@ public class ElasticSearchClient implements SearchClient {
   public ElasticSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
     this.lowLevelClient = getLowLevelRestClient(config);
     this.newClient = createElasticSearchNewClient(lowLevelClient);
+    this.bulkConnectionBudget = BulkConnectionBudget.forHttpClientPool(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = newClient != null;
     isNewClientAvailable = newClient != null;
@@ -148,7 +176,8 @@ public class ElasticSearchClient implements SearchClient {
     entityManager = new ElasticSearchEntityManager(newClient);
     genericManager = new ElasticSearchGenericManager(newClient);
     aggregationManager = new ElasticSearchAggregationManager(newClient, rbacConditionEvaluator);
-    dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
+    dataInsightAggregatorManager =
+        new ElasticSearchDataInsightAggregatorManager(newClient, rbacConditionEvaluator);
     searchManager =
         new ElasticSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
   }
@@ -162,7 +191,8 @@ public class ElasticSearchClient implements SearchClient {
       // Create transport - the Rest5ClientTransport handles content-type headers automatically
       Rest5ClientTransport transport =
           new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
-      ElasticsearchClient newClient = new ElasticsearchClient(transport);
+      ElasticsearchClient newClient =
+          new ShardFailureAwareElasticsearchClient(new MeteredElasticsearchTransport(transport));
 
       LOG.info("Successfully initialized new Elasticsearch Java API client");
       return newClient;
@@ -210,6 +240,42 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public Object getLowLevelClient() {
     return lowLevelClient;
+  }
+
+  @Override
+  public RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
+      throws IOException {
+    int queryStart = endpoint.indexOf('?');
+    String path = queryStart >= 0 ? endpoint.substring(0, queryStart) : endpoint;
+    es.co.elastic.clients.transport.rest5_client.low_level.Request request =
+        new es.co.elastic.clients.transport.rest5_client.low_level.Request(method, path);
+    if (queryStart >= 0) {
+      for (String pair : endpoint.substring(queryStart + 1).split("&")) {
+        int eq = pair.indexOf('=');
+        String name = eq < 0 ? pair : pair.substring(0, eq);
+        String value = eq < 0 ? "" : pair.substring(eq + 1);
+        if (!name.isEmpty()) {
+          request.addParameter(name, value);
+        }
+      }
+    }
+    if (jsonBody != null && !jsonBody.isBlank()) {
+      request.setJsonEntity(jsonBody);
+    }
+    es.co.elastic.clients.transport.rest5_client.low_level.Response response;
+    try {
+      response = lowLevelClient.performRequest(request);
+    } catch (es.co.elastic.clients.transport.rest5_client.low_level.ResponseException e) {
+      response = e.getResponse();
+    }
+    String body = "";
+    var entity = response.getEntity();
+    if (entity != null) {
+      try (var is = entity.getContent()) {
+        body = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+      }
+    }
+    return new RawSearchResponse(response.getStatusCode(), body);
   }
 
   @Override
@@ -263,8 +329,19 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
-    return indexManager.swapAliases(oldIndices, newIndex, aliases);
+  public boolean swapAliases(
+      Set<String> oldIndices, String newIndex, Set<String> aliases, Set<String> indicesToRemove) {
+    return indexManager.swapAliases(oldIndices, newIndex, aliases, indicesToRemove);
+  }
+
+  @Override
+  public void updateIndexSettings(String indexName, String settingsJson) {
+    indexManager.updateIndexSettings(indexName, settingsJson);
+  }
+
+  @Override
+  public void forceMerge(String indexName, int maxNumSegments) {
+    indexManager.forceMerge(indexName, maxNumSegments);
   }
 
   @Override
@@ -338,10 +415,19 @@ public class ElasticSearchClient implements SearchClient {
       SearchSortFilter searchSortFilter,
       String q,
       String queryString,
-      SubjectContext subjectContext)
+      SubjectContext subjectContext,
+      List<ContextMemoryStatus> memoryStatuses)
       throws IOException {
     return searchManager.listWithOffset(
-        filter, limit, offset, index, searchSortFilter, q, queryString, subjectContext);
+        filter,
+        limit,
+        offset,
+        index,
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext,
+        memoryStatuses);
   }
 
   @Override
@@ -360,11 +446,7 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.searchLineage(lineageRequest);
+    return ensureLineageBuilder().searchLineage(lineageRequest);
   }
 
   @Override
@@ -381,11 +463,12 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
+    return ensureLineageBuilder().searchLineageWithDirection(lineageRequest);
+  }
+
+  @Override
+  public Optional<EntityReference> getLineageRoot(String fqn) throws IOException {
+    return ensureLineageBuilder().getLineageRoot(fqn);
   }
 
   @Override
@@ -395,34 +478,52 @@ public class ElasticSearchClient implements SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean includeDeleted,
-      String entityType)
+      String entityType,
+      Long startTime,
+      Long endTime)
       throws IOException {
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.getLineagePaginationInfo(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+    return ensureLineageBuilder()
+        .getLineagePaginationInfo(
+            fqn,
+            upstreamDepth,
+            downstreamDepth,
+            queryFilter,
+            includeDeleted,
+            entityType,
+            startTime,
+            endTime);
   }
 
   @Override
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.searchLineageByEntityCount(request);
+    return ensureLineageBuilder().searchLineageByEntityCount(request);
   }
 
   @Override
   public SearchLineageResult searchPlatformLineage(
       String index, String queryFilter, boolean deleted) throws IOException {
-    if (lineageGraphBuilder == null) {
+    return ensureLineageBuilder().getPlatformLineage(index, queryFilter, deleted);
+  }
+
+  private ESLineageGraphBuilder ensureLineageBuilder() {
+    ESLineageGraphBuilder builder = lineageGraphBuilder;
+    if (builder == null && newClient != null) {
+      synchronized (this) {
+        builder = lineageGraphBuilder;
+        if (builder == null) {
+          LOG.info("Initializing ESLineageGraphBuilder with settings now available");
+          builder = new ESLineageGraphBuilder(newClient);
+          lineageGraphBuilder = builder;
+          LOG.info("ESLineageGraphBuilder initialization completed");
+        }
+      }
+    }
+    if (builder == null) {
       throw new UnsupportedOperationException(
           "Lineage features are not available in this deployment");
     }
-    return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
+    return builder;
   }
 
   @Override
@@ -443,8 +544,14 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
-    return searchManager.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
   }
 
   @Override
@@ -456,24 +563,89 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    return searchManager.searchBySourceUrl(sourceUrl);
+  public Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.searchBySourceUrl(sourceUrl, subjectContext);
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException {
-    return searchManager.searchByField(fieldName, fieldValue, index, deleted);
+    return searchManager.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, subjectContext);
+  }
+
+  @Override
+  public Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchManager.searchByFieldWithOptions(
+        fieldName,
+        fieldValue,
+        index,
+        deleted,
+        from,
+        size,
+        sourceIncludes,
+        requiredExistsField,
+        trackTotalHits);
+  }
+
+  @Override
+  public Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchManager.searchByTerms(
+        fieldName, fieldValues, index, deleted, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  @Override
+  public boolean isFieldMappedInIndex(String index, String fieldPath) throws IOException {
+    return searchManager.isFieldMappedInIndex(index, fieldPath);
   }
 
   @Override
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
-    return aggregationManager.getEntityTypeCounts(request, index);
+    return searchManager.getEntityTypeCounts(request, index, null);
+  }
+
+  @Override
+  public Response getEntityTypeCounts(
+      SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
+    return searchManager.getEntityTypeCounts(request, index, subjectContext);
   }
 
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
     return aggregationManager.aggregate(request);
+  }
+
+  @Override
+  public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.aggregate(request, subjectContext);
   }
 
   @Override
@@ -497,6 +669,17 @@ public class ElasticSearchClient implements SearchClient {
       String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
     return aggregationManager.aggregate(query, index, searchAggregation, filter);
+  }
+
+  @Override
+  public JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.aggregate(query, index, searchAggregation, filter, subjectContext);
   }
 
   @Override
@@ -623,6 +806,56 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public String updateChildrenInBackground(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    return entityManager.updateChildrenInBackground(indexNames, fieldAndValue, updates);
+  }
+
+  @Override
+  public ChildUpdateStatus childUpdateStatus(String taskId) throws IOException {
+    return entityManager.childUpdateStatus(taskId);
+  }
+
+  @Override
+  public void updateChildren(
+      List<String> indexNames,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildren(indexNames, field, values, updates);
+  }
+
+  @Override
+  public void updateChildrenByNestedField(
+      List<String> indexNames,
+      List<String> docIds,
+      List<String> nestedPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildrenByNestedField(
+        indexNames, docIds, nestedPaths, field, values, updates);
+  }
+
+  @Override
+  public void updateReferenceCopies(
+      List<String> indexNames,
+      List<String> nestedPaths,
+      List<String> objectPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateReferenceCopies(
+        indexNames, nestedPaths, objectPaths, field, values, updates);
+  }
+
+  @Override
   public void updateEntityRelationship(
       String indexName,
       Pair<String, String> fieldAndValue,
@@ -708,6 +941,17 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      boolean live,
+      SubjectContext caller)
+      throws IOException {
+    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live, caller);
+  }
+
+  @Override
   public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
     return dataInsightAggregatorManager.getQueryCostRecords(serviceName);
   }
@@ -765,6 +1009,14 @@ public class ElasticSearchClient implements SearchClient {
                   org.apache.hc.core5.util.TimeValue.ofSeconds(30));
 
               httpAsyncClientBuilder.useSystemProperties();
+
+              // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
+              // pipeline by default. Rest5Client / elasticsearch-java's transport also
+              // decompresses the response body itself when request compression is enabled,
+              // so leaving both enabled makes the second pass run on already-inflated bytes
+              // and throws "java.util.zip.ZipException: Not in GZIP format". Disable at the
+              // transport layer and let the ES client own decompression.
+              httpAsyncClientBuilder.disableContentCompression();
             });
 
         restClientBuilder.setRequestConfigCallback(
@@ -773,11 +1025,14 @@ public class ElasticSearchClient implements SearchClient {
                     .setConnectTimeout(
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getConnectionTimeoutSecs()))
+                    .setConnectionRequestTimeout(
+                        org.apache.hc.core5.util.Timeout.ofSeconds(
+                            esConfig.getConnectionRequestTimeoutSecs()))
                     .setResponseTimeout(
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getSocketTimeoutSecs())));
 
-        restClientBuilder.setCompressionEnabled(true);
+        restClientBuilder.setCompressionEnabled(esConfig.getRequestCompressionEnabled());
 
         Rest5Client tempClient = restClientBuilder.build();
         boolean isElasticsearch7 = isElasticsearch7Version(tempClient);
@@ -823,6 +1078,12 @@ public class ElasticSearchClient implements SearchClient {
   public void createOrUpdateIndexTemplate(
       String templateName, String indexPattern, String mappingContent) throws IOException {
     genericManager.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
+  }
+
+  @Override
+  public Map<String, String> getIndexTemplateFingerprints(String templateNamePattern)
+      throws IOException {
+    return genericManager.getIndexTemplateFingerprints(templateNamePattern);
   }
 
   @Override
@@ -919,6 +1180,12 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
     entityManager.deleteColumnsInUpstreamLineage(indexName, deletedColumns);
+  }
+
+  @Override
+  public void reconcileColumnsInUpstreamLineage(
+      String indexName, Map<String, String> renamedColumns, List<String> deletedColumns) {
+    entityManager.reconcileColumnsInUpstreamLineage(indexName, renamedColumns, deletedColumns);
   }
 
   @Override
@@ -1048,16 +1315,307 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public void initializeLineageBuilders() {
-    if (lineageGraphBuilder == null && newClient != null) {
-      synchronized (this) {
-        if (lineageGraphBuilder == null) {
-          LOG.info("Initializing ESLineageGraphBuilder with settings now available");
-          lineageGraphBuilder = new ESLineageGraphBuilder(newClient);
-          LOG.info("ESLineageGraphBuilder initialization completed");
+    if (newClient != null) {
+      ensureLineageBuilder();
+    } else {
+      LOG.debug("ESLineageGraphBuilder cannot be initialized because newClient is null");
+    }
+  }
+
+  // ===================== Knowledge Center page hierarchy =====================
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchy(
+      String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
+    return listPageHierarchy(parentFqn, pageType, sortFilter, offset, limit, null);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchy(
+      String parentFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    Query pages =
+        ElasticRbacQueries.withAccessPolicies(
+            buildPageHierarchyBoolQuery(parentFqn, pageType), caller, rbacConditionEvaluator);
+    return getPageHierarchyFromSearch(pages, sortFilter, offset, limit);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchyForActivePage(
+      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
+    return listPageHierarchyForActivePage(activeFqn, pageType, sortFilter, offset, limit, null);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchyForActivePage(
+      String activeFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    Query pages =
+        ElasticRbacQueries.withAccessPolicies(
+            buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType),
+            caller,
+            rbacConditionEvaluator);
+    return getPageHierarchyFromSearchForActivePage(pages, sortFilter, offset, limit);
+  }
+
+  private List<SortOptions> buildPageHierarchySortOptions(SearchSortFilter sortFilter) {
+    List<SortOptions> sortOptions = new ArrayList<>();
+    if (sortFilter != null
+        && sortFilter.getSortField() != null
+        && !Entity.FIELD_FULLY_QUALIFIED_NAME.equals(sortFilter.getSortField())) {
+      String field = sortFilter.getSortField();
+      SortOrder order =
+          SORT_ORDER_DESC.equalsIgnoreCase(sortFilter.getSortType())
+              ? SortOrder.Desc
+              : SortOrder.Asc;
+      sortOptions.add(SortOptions.of(so -> so.field(f -> f.field(field).order(order))));
+    }
+    // Always append a stable tiebreaker on fullyQualifiedName (keyword, unique per page) so
+    // from/size pagination cannot miss/duplicate hits when the primary sort field is not unique.
+    // _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x without setting
+    // indices.id_field_data.enabled=true at the cluster level.
+    sortOptions.add(
+        SortOptions.of(
+            so -> so.field(f -> f.field(Entity.FIELD_FULLY_QUALIFIED_NAME).order(SortOrder.Asc))));
+    return sortOptions;
+  }
+
+  private ResultList<PageHierarchy> getPageHierarchyFromSearch(
+      Query boolQuery, SearchSortFilter sortFilter, int offset, int limit) throws IOException {
+    List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
+
+    es.co.elastic.clients.elasticsearch.core.SearchRequest searchRequest =
+        es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                KnowledgePageRepository.KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(boolQuery)
+                    .sort(sortOptions)
+                    .from(offset)
+                    .size(limit));
+
+    SearchResponse<JsonData> searchResponse = newClient.search(searchRequest, JsonData.class);
+    List<PageHierarchy> pageHierarchies = processPageHierarchyHits(searchResponse);
+    int total = 0;
+    if (searchResponse != null
+        && searchResponse.hits() != null
+        && searchResponse.hits().total() != null) {
+      total = (int) searchResponse.hits().total().value();
+    }
+    return new ResultList<>(pageHierarchies, offset, pageHierarchies.size(), total);
+  }
+
+  private ResultList<PageHierarchy> getPageHierarchyFromSearchForActivePage(
+      Query boolQuery, SearchSortFilter sortFilter, int offset, int limit) throws IOException {
+    List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
+
+    es.co.elastic.clients.elasticsearch.core.SearchRequest searchRequest =
+        es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                KnowledgePageRepository.KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(boolQuery)
+                    .sort(sortOptions)
+                    .from(offset)
+                    .size(limit));
+
+    SearchResponse<JsonData> searchResponse = newClient.search(searchRequest, JsonData.class);
+    List<PageHierarchy> pageHierarchies = processPageHierarchyHits(searchResponse);
+    pageHierarchies = buildPageNestedSearchHierarchy(pageHierarchies);
+    int total = 0;
+    if (searchResponse != null
+        && searchResponse.hits() != null
+        && searchResponse.hits().total() != null) {
+      total = (int) searchResponse.hits().total().value();
+    }
+    return new ResultList<>(pageHierarchies, offset, pageHierarchies.size(), total);
+  }
+
+  private Query buildPageHierarchyBoolQuery(String parentFqn, String pageType) {
+    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+
+    if (CommonUtil.nullOrEmpty(parentFqn)) {
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field("fqnDepth").value(FieldValue.of(1)))));
+    } else {
+      int parentDepth = FullyQualifiedName.split(parentFqn).length;
+      boolQueryBuilder.must(
+          Query.of(q -> q.prefix(p -> p.field("fullyQualifiedName").value(parentFqn + "."))));
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field("fqnDepth").value(FieldValue.of(parentDepth + 1)))));
+    }
+
+    if (!CommonUtil.nullOrEmpty(pageType)) {
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field("pageType").value(FieldValue.of(pageType)))));
+    }
+
+    return Query.of(q -> q.bool(boolQueryBuilder.build()));
+  }
+
+  private Query buildPageHierarchyBoolQueryForActivePage(String activeFqn, String pageType) {
+    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+
+    String rootParentFqn = FullyQualifiedName.split(activeFqn)[0];
+    boolQueryBuilder.should(
+        Query.of(q -> q.term(t -> t.field("fqnDepth").value(FieldValue.of(1)))));
+    boolQueryBuilder.should(
+        Query.of(q -> q.prefix(p -> p.field("fullyQualifiedName").value(rootParentFqn + "."))));
+    boolQueryBuilder.minimumShouldMatch("1");
+
+    if (!CommonUtil.nullOrEmpty(pageType)) {
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field("pageType").value(FieldValue.of(pageType)))));
+    }
+
+    return Query.of(q -> q.bool(boolQueryBuilder.build()));
+  }
+
+  private List<PageHierarchy> processPageHierarchyHits(SearchResponse<JsonData> searchResponse)
+      throws IOException {
+    List<PageHierarchy> pageHierarchies = new ArrayList<>();
+
+    if (searchResponse != null && searchResponse.hits() != null) {
+      for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+        if (hit.source() != null) {
+          Map<String, Object> sourceMap = EsUtils.jsonDataToMap(hit.source());
+          PageHierarchy page = SearchUtils.getPageHierarchy(sourceMap);
+          pageHierarchies.add(page);
         }
       }
-    } else {
-      LOG.debug("ESLineageGraphBuilder already initialized or newClient is null");
     }
+
+    populateChildrenCounts(pageHierarchies);
+    return pageHierarchies;
+  }
+
+  /**
+   * Populate {@code childrenCount} on each page using a single aggregation round-trip
+   * instead of one search per page (N+1). Uses a filters aggregation keyed by page id,
+   * where each bucket matches descendants via the page's fullyQualifiedName prefix.
+   */
+  private void populateChildrenCounts(List<PageHierarchy> pageHierarchies) throws IOException {
+    if (pageHierarchies.isEmpty()) {
+      return;
+    }
+
+    Map<String, Query> filters = new HashMap<>();
+    for (PageHierarchy page : pageHierarchies) {
+      if (page.getId() == null
+          || page.getFullyQualifiedName() == null
+          || page.getFullyQualifiedName().isEmpty()) {
+        continue;
+      }
+      String fqnPrefix = page.getFullyQualifiedName() + ".";
+      int childDepth = FullyQualifiedName.split(page.getFullyQualifiedName()).length + 1;
+      // Match only direct children: FQN starts with "<parentFqn>." AND fqnDepth is
+      // exactly one deeper than the parent. Descendants deeper than that are excluded.
+      filters.put(
+          page.getId().toString(),
+          Query.of(
+              q ->
+                  q.bool(
+                      b ->
+                          b.must(
+                                  Query.of(
+                                      m ->
+                                          m.prefix(
+                                              p -> p.field("fullyQualifiedName").value(fqnPrefix))))
+                              .must(
+                                  Query.of(
+                                      m ->
+                                          m.term(
+                                              t ->
+                                                  t.field("fqnDepth")
+                                                      .value(FieldValue.of(childDepth))))))));
+      page.setChildrenCount(0);
+    }
+
+    if (filters.isEmpty()) {
+      return;
+    }
+
+    es.co.elastic.clients.elasticsearch.core.SearchRequest aggregationRequest =
+        es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                KnowledgePageRepository.KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .size(0)
+                    .aggregations(
+                        "children_by_parent",
+                        a -> a.filters(f -> f.filters(fs -> fs.keyed(filters)))));
+
+    SearchResponse<JsonData> aggregationResponse =
+        newClient.search(aggregationRequest, JsonData.class);
+
+    if (aggregationResponse == null
+        || aggregationResponse.aggregations() == null
+        || aggregationResponse.aggregations().get("children_by_parent") == null) {
+      return;
+    }
+
+    Map<String, FiltersBucket> buckets =
+        aggregationResponse.aggregations().get("children_by_parent").filters().buckets().keyed();
+
+    for (PageHierarchy page : pageHierarchies) {
+      if (page.getId() == null) {
+        continue;
+      }
+      FiltersBucket bucket = buckets.get(page.getId().toString());
+      if (bucket != null) {
+        page.setChildrenCount((int) bucket.docCount());
+      }
+    }
+  }
+
+  private List<PageHierarchy> buildPageNestedSearchHierarchy(
+      List<PageHierarchy> pageHierarchyList) {
+    Map<UUID, PageHierarchy> pageHierarchyMap =
+        pageHierarchyList.stream()
+            // Skip hits that lost their id during parsing (SearchUtils returns a
+            // null id for malformed/missing UUID strings) so Collectors.toMap
+            // does not throw on the null key.
+            .filter(p -> p.getId() != null)
+            .collect(
+                Collectors.toMap(
+                    PageHierarchy::getId,
+                    page -> {
+                      page.setChildren(new ArrayList<>());
+                      return page;
+                    },
+                    (existing, replacement) -> existing,
+                    LinkedHashMap::new));
+
+    List<PageHierarchy> rootPages = new ArrayList<>();
+
+    for (PageHierarchy page : pageHierarchyMap.values()) {
+      UUID parentId = page.getParent() != null ? page.getParent().getId() : null;
+      PageHierarchy parentPage = parentId != null ? pageHierarchyMap.get(parentId) : null;
+      if (parentPage != null) {
+        parentPage.getChildren().add(page);
+      } else {
+        rootPages.add(page);
+      }
+    }
+
+    return rootPages;
   }
 }

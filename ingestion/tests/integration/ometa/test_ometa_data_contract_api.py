@@ -193,7 +193,7 @@ class TestOMetaDataContractAPI:
 
         # Retry logic for eventual consistency - backend may take time to index results
         all_results = None
-        for attempt in range(5):
+        for attempt in range(5):  # noqa: B007
             all_results = metadata.get_data_contract_results(created_contract.id)
             if all_results and len(all_results) >= 1:
                 break

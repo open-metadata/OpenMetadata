@@ -10,13 +10,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.classification-details-card {
-  > .ant-card-body {
-    padding: 16px;
+// Full-height flex layout so the content fills the panel and only the card body
+// scrolls internally when needed — no page-level vertical scrollbar.
+.classification-details-container {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-    .table-container {
-      position: relative;
-      z-index: 0;
+.classification-details-card {
+  // Only the table body scrolls; the card itself does not, so there is no double
+  // scrollbar and the pagination row stays visible below the scrolling rows.
+  overflow: hidden;
+
+  // Dark: no wrapper surface — the description and table cards sit directly on
+  // the canvas; the description lifts to bg-surface to match the table.
+  .dark-mode & {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+
+    [data-testid='asset-description-container'] {
+      background: var(--om-color-bg-surface);
     }
+  }
+
+  > [data-testid='description-container'] {
+    flex: 0 0 auto;
+  }
+
+  .table-container {
+    position: relative;
+    z-index: var(--om-z-0);
+    flex: 1 1 auto;
+    min-height: 0;
   }
 }

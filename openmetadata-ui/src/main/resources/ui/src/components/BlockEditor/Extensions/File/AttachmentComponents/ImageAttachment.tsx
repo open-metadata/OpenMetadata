@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Image01 } from '@openmetadata/ui-core-components/icons';
 import { NodeViewProps } from '@tiptap/react';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
-import { ReactComponent as IconFormatImage } from '../../../../../assets/svg/ic-format-image.svg';
 import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 
 const ImageAttachment = ({
@@ -58,6 +58,7 @@ const ImageAttachment = ({
         })}
         data-testid="image-container">
         {displaySrc ? (
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- lifecycle, not interaction
           <img
             alt={alt ?? ''}
             data-testid="uploaded-image-node"
@@ -67,7 +68,7 @@ const ImageAttachment = ({
           />
         ) : (
           <div className="loading-overlay">
-            <IconFormatImage width={40} />
+            <Image01 className="tw:text-utility-gray-500" size={40} />
           </div>
         )}
       </div>

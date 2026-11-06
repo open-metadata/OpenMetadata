@@ -13,8 +13,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { EntityType } from '../enums/entity.enum';
-import { getFieldsForEntity } from '../rest/metadataTypeAPI';
-import { filterExcludeFields } from '../utils/WorkflowConfigUtils';
+import {
+  getAllCustomProperties,
+  getFieldsForEntity,
+} from '../rest/metadataTypeAPI';
+import { CustomPropertiesForAssets } from '../rest/metadataTypeAPI.interface';
+import { buildFieldOptions } from '../utils/WorkflowConfigUtils';
 
 export const useEntityFields = (entityTypes?: EntityType[]) => {
   const [fieldOptions, setFieldOptions] = useState<string[]>([]);
@@ -32,22 +36,28 @@ export const useEntityFields = (entityTypes?: EntityType[]) => {
     setError(null);
 
     try {
-      const allFieldsPromises = entityTypesArray.map((entityType) =>
-        getFieldsForEntity(entityType)
+      const [allFieldsResults, customPropertiesByType] = await Promise.all([
+        Promise.all(
+          entityTypesArray.map((entityType) => getFieldsForEntity(entityType))
+        ),
+        // One bulk call returns custom properties for every entity type; index it
+        // by type below. Best-effort: on failure fall back to bare names rather
+        // than breaking the whole field picker.
+        getAllCustomProperties().catch(() => ({} as CustomPropertiesForAssets)),
+      ]);
+
+      // Build options per entity type so a custom-property name on one type does not
+      // prefix (and hide) a standard field of the same name on another type.
+      const perTypeOptions = entityTypesArray.map((entityType, index) =>
+        buildFieldOptions(
+          (allFieldsResults[index] ?? []).filter(Boolean),
+          new Set(
+            (customPropertiesByType[entityType] ?? []).map(({ name }) => name)
+          )
+        )
       );
-      const allFieldsResults = await Promise.all(allFieldsPromises);
 
-      const allFields = allFieldsResults.flat().filter(Boolean);
-      const filteredFields = filterExcludeFields(allFields);
-
-      const fieldOptionsMap = new Map();
-      filteredFields.forEach(({ name }) => {
-        if (name && !fieldOptionsMap.has(name)) {
-          fieldOptionsMap.set(name, name);
-        }
-      });
-
-      setFieldOptions(Array.from(fieldOptionsMap.values()));
+      setFieldOptions(Array.from(new Set(perTypeOptions.flat())));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load fields');
       setFieldOptions([]);

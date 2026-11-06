@@ -31,4 +31,11 @@ export interface ExploreQuickFiltersProps {
   showSelectedCounts?: boolean; // flag to show counts instead of labels for selected filters
   optionPageSize?: number;
   additionalActions?: ReactNode;
+  // Apply each selection to the query immediately (no Update button). Opt-in for the Explore page.
+  immediateApply?: boolean;
+  // Helper text shown at the bottom of each filter dropdown when immediateApply is enabled.
+  helperText?: string;
+  untitledDropdown?: boolean;
+  // Draw a visible border around each filter trigger instead of the borderless look.
+  bordered?: boolean;
 }

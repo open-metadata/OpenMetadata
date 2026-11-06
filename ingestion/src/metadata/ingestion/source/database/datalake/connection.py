@@ -13,8 +13,6 @@
 Source connection handler
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -53,34 +51,31 @@ class DatalakeConnection(BaseConnection[DatalakeConnectionConfig, DatalakeBaseCl
                 DatalakeS3Client,
             )
 
-            return DatalakeS3Client.from_config(connection.configSource)
+            client: DatalakeBaseClient = DatalakeS3Client.from_config(connection.configSource)
         elif isinstance(connection.configSource, GCSConfig):
             from metadata.ingestion.source.database.datalake.clients.gcs import (
                 DatalakeGcsClient,
             )
 
-            return DatalakeGcsClient.from_config(connection.configSource)
+            client = DatalakeGcsClient.from_config(connection.configSource)
         elif isinstance(connection.configSource, AzureConfig):
             from metadata.ingestion.source.database.datalake.clients.azure_blob import (
                 DatalakeAzureBlobClient,
             )
 
-            return DatalakeAzureBlobClient.from_config(connection.configSource)
+            client = DatalakeAzureBlobClient.from_config(connection.configSource)
         else:
             msg = f"Config not implemented for type {type(connection.configSource)}: {connection.configSource}"
             raise NotImplementedError(msg)
 
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """
-        raise NotImplementedError("get_connection_dict is not implemented for Datalake")
+        self._on_close(lambda: client.close(self.service_connection))
+        return client
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

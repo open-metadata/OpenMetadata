@@ -1,7 +1,5 @@
 """Lightdash models"""
 
-from typing import List, Optional
-
 from pydantic import BaseModel
 
 
@@ -11,47 +9,47 @@ class LightdashChart(BaseModel):
     """
 
     name: str
-    organizationUuid: str
+    organizationUuid: str  # noqa: N815
     uuid: str
-    description: Optional[str] = None
-    projectUuid: str
-    spaceUuid: str
-    pinnedListUuid: Optional[str] = None
-    spaceName: str
-    chartType: Optional[str] = None
-    chartKind: Optional[str] = None
-    dashboardUuid: Optional[str] = None
-    dashboardName: Optional[str] = None
+    description: str | None = None
+    projectUuid: str  # noqa: N815
+    spaceUuid: str  # noqa: N815
+    pinnedListUuid: str | None = None  # noqa: N815
+    spaceName: str  # noqa: N815
+    chartType: str | None = None  # noqa: N815
+    chartKind: str | None = None  # noqa: N815
+    dashboardUuid: str | None = None  # noqa: N815
+    dashboardName: str | None = None  # noqa: N815
 
 
 class LightdashDashboard(BaseModel):
-    organizationUuid: str
+    organizationUuid: str  # noqa: N815
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     uuid: str
-    projectUuid: str
-    updatedAt: str
-    spaceUuid: str
-    spaceName: Optional[str] = None
+    projectUuid: str  # noqa: N815
+    updatedAt: str  # noqa: N815
+    spaceUuid: str  # noqa: N815
+    spaceName: str | None = None  # noqa: N815
     views: float
-    firstViewedAt: str
-    pinnedListUuid: Optional[str] = None
-    pinnedListOrder: Optional[float] = None
-    charts: Optional[List[LightdashChart]] = None
+    firstViewedAt: str  # noqa: N815
+    pinnedListUuid: str | None = None  # noqa: N815
+    pinnedListOrder: float | None = None  # noqa: N815
+    charts: list[LightdashChart] | None = None
 
 
 class LightdashSpace(BaseModel):
-    organizationUuid: str
-    projectUuid: str
+    organizationUuid: str  # noqa: N815
+    projectUuid: str  # noqa: N815
     uuid: str
     name: str
-    isPrivate: bool
-    parentSpaceUuid: Optional[str] = None
+    isPrivate: bool  # noqa: N815
+    parentSpaceUuid: str | None = None  # noqa: N815
 
 
 class LightdashChartList(BaseModel):
-    charts: Optional[List[LightdashChart]] = None
+    charts: list[LightdashChart] | None = None
 
 
 class LightdashDashboardList(BaseModel):
-    dashboards: Optional[List[LightdashDashboard]] = None
+    dashboards: list[LightdashDashboard] | None = None

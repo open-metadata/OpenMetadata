@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edge, Node, Position } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
+import { Position } from 'reactflow';
 import { getEdgeCoordinates } from './CanvasUtils';
-import { getEdgePathData } from './EntityLineageUtils';
-import { getEntityName } from './EntityUtils';
+import { computeEdgeVisualState, EdgeVisualState } from './EdgeStyleUtils';
+import { getEdgePathData } from './EntityLineageEdgeUtils';
+import { getEntityName } from './EntityNameUtils';
 
 export interface EdgeMidpoint {
   id: string;
@@ -21,71 +23,96 @@ export interface EdgeMidpoint {
   canvasX: number;
   canvasY: number;
   edge: Edge;
+  visualState: EdgeVisualState;
 }
+
+const computeEdgeCenter = (
+  edge: Edge,
+  getNode: (id: string) => Node | undefined,
+  columnsInCurrentPages?: Map<string, string[]>
+): { centerX: number; centerY: number } | null => {
+  const computedPath = edge.data?.computedPath;
+
+  if (computedPath) {
+    return {
+      centerX: computedPath.edgeCenterX,
+      centerY: computedPath.edgeCenterY,
+    };
+  }
+
+  const coords = getEdgeCoordinates(
+    edge,
+    getNode(edge.source),
+    getNode(edge.target),
+    columnsInCurrentPages
+  );
+
+  if (!coords) {
+    return null;
+  }
+
+  const pathData = getEdgePathData(edge.source, edge.target, {
+    sourceX: coords.sourceX,
+    sourceY: coords.sourceY,
+    targetX: coords.targetX,
+    targetY: coords.targetY,
+    sourcePosition: Position.Right,
+    targetPosition: Position.Left,
+  });
+
+  return { centerX: pathData.edgeCenterX, centerY: pathData.edgeCenterY };
+};
+
+const computeEdgeDataTestId = (edge: Edge): string | undefined => {
+  const {
+    isColumnLineage,
+    edge: edgeDetails,
+    columnFunctionValue,
+    isExpanded,
+  } = edge.data || {};
+
+  const hasPipeline =
+    !isColumnLineage &&
+    edgeDetails?.pipeline &&
+    getEntityName(edgeDetails.pipeline);
+  const hasFunction = !isColumnLineage && columnFunctionValue && isExpanded;
+
+  if ((hasPipeline || hasFunction) && edgeDetails) {
+    return `pipeline-label-${edgeDetails.fromEntity.fullyQualifiedName}-${edgeDetails.toEntity.fullyQualifiedName}`;
+  }
+
+  return edge.data?.dataTestId;
+};
+
+// React Flow flags a node `dragging` for the length of a drag; its edges are
+// hidden until the drop rather than redrawn every frame.
+export const isEdgeOnDraggedNode = (
+  edge: Edge,
+  getNode: (id: string) => Node | undefined
+) => Boolean(getNode(edge.source)?.dragging || getNode(edge.target)?.dragging);
 
 export const calculateEdgeMidpoints = (
   edges: Edge[],
   getNode: (id: string) => Node | undefined,
-  columnsInCurrentPages?: Map<string, string[]>
+  columnsInCurrentPages?: Map<string, string[]>,
+  tracedNodes: Set<string> = new Set(),
+  tracedColumns: Set<string> = new Set()
 ): EdgeMidpoint[] => {
   return edges
     .map((edge) => {
-      const computedPath = edge.data?.computedPath;
-      let centerX: number, centerY: number;
+      const center = computeEdgeCenter(edge, getNode, columnsInCurrentPages);
 
-      if (computedPath) {
-        centerX = computedPath.edgeCenterX;
-        centerY = computedPath.edgeCenterY;
-      } else {
-        const coords = getEdgeCoordinates(
-          edge,
-          getNode(edge.source),
-          getNode(edge.target),
-          columnsInCurrentPages
-        );
-
-        if (!coords) {
-          return null;
-        }
-
-        const pathData = getEdgePathData(edge.source, edge.target, {
-          sourceX: coords.sourceX,
-          sourceY: coords.sourceY,
-          targetX: coords.targetX,
-          targetY: coords.targetY,
-          sourcePosition: Position.Right,
-          targetPosition: Position.Left,
-        });
-
-        centerX = pathData.edgeCenterX;
-        centerY = pathData.edgeCenterY;
-      }
-
-      const {
-        isColumnLineage,
-        edge: edgeDetails,
-        columnFunctionValue,
-        isExpanded,
-      } = edge.data || {};
-
-      const hasPipeline =
-        !isColumnLineage &&
-        edgeDetails?.pipeline &&
-        getEntityName(edgeDetails.pipeline);
-      const hasFunction = !isColumnLineage && columnFunctionValue && isExpanded;
-
-      let dataTestId = edge.data?.dataTestId;
-
-      if ((hasPipeline || hasFunction) && edgeDetails) {
-        dataTestId = `pipeline-label-${edgeDetails.fromEntity.fullyQualifiedName}-${edgeDetails.toEntity.fullyQualifiedName}`;
+      if (!center || isEdgeOnDraggedNode(edge, getNode)) {
+        return null;
       }
 
       return {
         id: edge.id,
-        dataTestId,
-        canvasX: centerX,
-        canvasY: centerY,
+        dataTestId: computeEdgeDataTestId(edge),
+        canvasX: center.centerX,
+        canvasY: center.centerY,
         edge,
+        visualState: computeEdgeVisualState(edge, tracedNodes, tracedColumns),
       };
     })
     .filter(Boolean) as EdgeMidpoint[];

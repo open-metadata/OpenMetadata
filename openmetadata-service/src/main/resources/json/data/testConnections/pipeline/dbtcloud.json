@@ -4,6 +4,14 @@
     "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
     "steps": [
         {
+            "name": "CheckAccess",
+            "description": "Validate that the token can reach the dbt Cloud API and read the configured account.",
+            "errorMessage": "Failed to reach the dbt Cloud account, please validate the Host, Account Id and Token",
+            "shortCircuit": true,
+            "mandatory": true,
+            "category": "ConnectionGate"
+        },
+        {
             "name": "GetJobs",
             "description":  "Validate that the API can properly reach the server.",
             "errorMessage": "Failed to fetch Jobs info please validate the credentials or validate if user has access to fetch Jobs",

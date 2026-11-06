@@ -48,11 +48,9 @@ And is defined as:
 ```
 
 
-{% note %}
-
+$$note
 If you have external services other than glue and facing permission issues, add the permissions to the list above.
-
-{% /note %}
+$$
 
 
 You can find further information on the Athena connector in the <a href="https://docs.open-metadata.org/connectors/database/athena" target="_blank">docs</a>.
@@ -168,7 +166,9 @@ $$section
 
 Workgroups are used to separate users, teams, applications or workloads.
 
-Select here the workgroup that the ingestion workflow should use.
+Select here the workgroup that the ingestion workflow should use. Usage and lineage workflows only read the query history of this workgroup.
+
+Leave it empty to run the ingestion queries in the default workgroup (`primary`) and to read the query history of every enabled workgroup. Reading every workgroup requires the `athena:ListWorkGroups` permission; without it, only the default workgroup's history is read.
 
 You can find more information about <a href="https://docs.aws.amazon.com/athena/latest/ug/user-created-workgroups.html" target="_blank">How workgroups work</a>.
 $$

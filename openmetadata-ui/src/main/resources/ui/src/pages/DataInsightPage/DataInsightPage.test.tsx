@@ -46,7 +46,7 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
   ))
 );
 
-jest.mock('../../utils/DataInsightUtils', () => ({
+jest.mock('../../utils/DataInsightPureUtils', () => ({
   getDataInsightPathWithFqn: jest.fn().mockReturnValue('/'),
 }));
 
@@ -54,24 +54,23 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('./DataInsightProvider', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-  useDataInsightProvider: jest.fn().mockReturnValue({
-    teamFilter: {},
-    tierFilter: {},
-    chartFilter: { startTs: Date.now(), endTs: Date.now() },
-    onChartFilterChange: jest.fn(),
-    kpi: { isLoading: false, data: [] },
-    entitiesSummary: {},
-    updateEntitySummary: jest.fn(),
-  }),
-}));
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
+jest.mock(
+  '../../components/DataInsight/DataInsightProvider/DataInsightProvider',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    useDataInsightProvider: jest.fn().mockReturnValue({
+      teamFilter: {},
+      tierFilter: {},
+      chartFilter: { startTs: Date.now(), endTs: Date.now() },
+      onChartFilterChange: jest.fn(),
+      kpi: { isLoading: false, data: [] },
+      entitiesSummary: {},
+      updateEntitySummary: jest.fn(),
+    }),
+  })
 );
 
 jest.mock('./DataInsightHeader/DataInsightHeader.component', () =>

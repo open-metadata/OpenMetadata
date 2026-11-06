@@ -13,8 +13,6 @@
 Validator for table custom SQL Query test case
 """
 
-from typing import Optional
-
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -22,6 +20,7 @@ from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     BaseTableCustomSQLQueryValidator,
     Strategy,
 )
+from metadata.utils.helpers import is_safe_pandas_query
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -32,11 +31,13 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
 
     def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
         """compute result of the test case"""
+        if not is_safe_pandas_query(sql_expression):
+            raise RuntimeError(f"Unsafe pandas query expression\n\n{sql_expression}")
         return sum(  # pylint: disable=consider-using-generator
             [len(runner.query(sql_expression)) for runner in self.runner if len(runner.query(sql_expression))]
         )
 
-    def compute_row_count(self) -> Optional[int]:
+    def compute_row_count(self) -> int | None:
         """Compute row count for the given column
 
         Returns:
@@ -50,6 +51,9 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
             (param.value for param in self.test_case.parameterValues if param.name == "partitionExpression"),
             None,
         )
+        # An empty partition expression means "no filter", as before the gate
+        if partition_expression and not is_safe_pandas_query(partition_expression):
+            raise RuntimeError(f"Unsafe pandas query expression\n\n{partition_expression}")
         for dataframe in self.runner:
             if dataframe is not None:
                 if partition_expression:

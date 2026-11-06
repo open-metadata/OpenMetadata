@@ -28,7 +28,7 @@ MOCK_DATABASE_NAME = "MyDatabase"
 class TopologyContextManagerTest(TestCase):
     """Validate context manager ops"""
 
-    def __init__(self, methodName) -> None:
+    def __init__(self, methodName) -> None:  # noqa: N803
         super().__init__(methodName)
 
         # Randomly picked up to test

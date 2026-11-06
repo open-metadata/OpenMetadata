@@ -1,9 +1,10 @@
 export type IconComponentType = React.FunctionComponent<{
   className?: string;
+  size?: number;
   strokeWidth?: string | number;
 }>;
 
-export type Sizes = 'sm' | 'md' | 'lg';
+export type Sizes = 'xs' | 'sm' | 'md' | 'lg';
 
 export type BadgeColors =
   | 'gray'

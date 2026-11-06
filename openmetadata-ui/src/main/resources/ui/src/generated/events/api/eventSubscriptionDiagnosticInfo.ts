@@ -37,6 +37,11 @@ export interface EventSubscriptionDiagnosticInfo {
      */
     relevantUnprocessedEventsCount?: any;
     /**
+     * True when more events are unread than one request evaluates, so
+     * relevantUnprocessedEventsCount counts only the first unread events.
+     */
+    relevantUnprocessedEventsCountIsLowerBound?: boolean;
+    /**
      * A list of relevant unprocessed events based on the alert's filtering criteria.
      */
     relevantUnprocessedEventsList?: ChangeEvent[];
@@ -119,6 +124,12 @@ export interface ChangeEvent {
      * `currentVersion`.
      */
     previousVersion?: number;
+    /**
+     * True when this change event represents a recursive (cascade) delete of the entity
+     * together with its children. A single event is recorded for the deleted root entity;
+     * cascaded descendants do not produce individual change events.
+     */
+    recursive?: boolean;
     /**
      * Timestamp when the change was made in Unix epoch time milliseconds.
      */
@@ -205,22 +216,19 @@ export enum EventType {
     EntityCreated = "entityCreated",
     EntityDeleted = "entityDeleted",
     EntityFieldsChanged = "entityFieldsChanged",
+    EntityLineageAdded = "entityLineageAdded",
+    EntityLineageDeleted = "entityLineageDeleted",
+    EntityLineageUpdated = "entityLineageUpdated",
     EntityNoChange = "entityNoChange",
     EntityRestored = "entityRestored",
     EntitySoftDeleted = "entitySoftDeleted",
     EntityUpdated = "entityUpdated",
     LogicalTestCaseAdded = "logicalTestCaseAdded",
+    OntologyChangeSetApplied = "ontologyChangeSetApplied",
+    OntologyImported = "ontologyImported",
+    OntologyRelationshipTypeUpdated = "ontologyRelationshipTypeUpdated",
     PostCreated = "postCreated",
     PostUpdated = "postUpdated",
-    SuggestionAccepted = "suggestionAccepted",
-    SuggestionCreated = "suggestionCreated",
-    SuggestionDeleted = "suggestionDeleted",
-    SuggestionRejected = "suggestionRejected",
-    SuggestionUpdated = "suggestionUpdated",
-    TaskClosed = "taskClosed",
-    TaskCreated = "taskCreated",
-    TaskResolved = "taskResolved",
-    TaskUpdated = "taskUpdated",
     ThreadCreated = "threadCreated",
     ThreadUpdated = "threadUpdated",
     UserLogin = "userLogin",

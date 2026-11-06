@@ -38,7 +38,7 @@ For each item in the implementation plan:
 2. **Implement** the change — keep it minimal and focused
 3. **Separate concerns**: Bug fixes and refactors go in separate commits, even if they touch the same file
 4. **Test**: Write **complete, runnable test code** for any behavioral change — no placeholder comments or pseudocode. Use pytest style (plain `assert`, no TestCase). Include imports, fixtures, and assertions.
-5. **Lint**: Run `make py_format` and `make lint` in the ingestion directory after changes
+5. **Lint**: Run `make py_format && make py_format_check` in the ingestion directory after changes
 
 ### Commit Strategy
 
@@ -59,7 +59,7 @@ If a fix applies to multiple connectors (e.g., a pattern found in the shared bas
 1. **Run full test suite** for this connector:
    `cd ingestion && python -m pytest tests/unit/[relevant_test_files] -v`
 2. **Run linter and formatter**:
-   `cd ingestion && make py_format && make lint`
+   `cd ingestion && make py_format && make py_format_check`
 3. **Verify no regressions**: Compare test results with the baseline from before your changes
 4. **Propose rating updates**: List which standard ratings would change based on post-fix state (e.g., which standards move from ⚠️ to ✅), with justification for each change.
 

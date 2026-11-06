@@ -1,6 +1,6 @@
 {
     "$id": "https://open-metadata.org/schema/dataInsight/custom/lineChart.json",
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "LineChart",
     "description": "Line Chart",
     "type": "object",
@@ -16,7 +16,7 @@
                     "type": "string"
                 },
                 "function": {
-                    "$ref": "dataInsightCustomChart.json#/definitions/function"
+                    "$ref": "chartFunctions.json#/definitions/function"
                 },
                 "field": {
                     "description": "Filter field for the data insight chart.",
@@ -80,7 +80,7 @@
             "type": "string"
         },
         "kpiDetails": {
-            "$ref": "dataInsightCustomChart.json#/definitions/kpiDetails"
+            "$ref": "chartFunctions.json#/definitions/kpiDetails"
         },
         "xAxisField": {
             "description": "X-axis field for the data insight chart.",

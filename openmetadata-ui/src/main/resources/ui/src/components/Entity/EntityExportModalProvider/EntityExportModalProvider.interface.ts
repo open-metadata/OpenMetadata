@@ -12,15 +12,13 @@ import { ExportTypes } from '../../../constants/Export.constants';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export type CSVExportResponse = {
-  jobId: string;
-  message: string;
-};
+
+import { CSVExportResponse } from '../../../interface/entity/csv.interface';
 
 export type CSVExportWebsocketResponse = {
   jobId: string;
-  status: 'COMPLETED' | 'FAILED' | 'IN_PROGRESS';
-  data: string;
+  status: 'CANCELLED' | 'COMPLETED' | 'FAILED' | 'IN_PROGRESS';
+  data: string | null;
   error: string | null;
   progress?: number;
   total?: number;
@@ -29,6 +27,7 @@ export type CSVExportWebsocketResponse = {
 
 export type CSVExportJob = {
   fileName: string;
+  statusUnavailable?: boolean;
 } & Partial<CSVExportWebsocketResponse> &
   CSVExportResponse;
 
@@ -55,18 +54,41 @@ export type ExportData = {
   title?: string;
   documentSelector?: string;
   exportTypes: ExportTypes[];
+  /** Frames the content of a PNG capture. `getViewport` takes precedence. */
   viewport?: ExportViewport;
+  /**
+   * Frames the content of a PNG capture. Called after `beforeCapture` with the
+   * size the capture renders at, so the frame covers what `beforeCapture`
+   * mounted; a frame fitted before that would shrink the content to a corner.
+   */
+  getViewport?: (imageWidth: number, imageHeight: number) => ExportViewport;
   exportConfig?: Partial<PDFLayoutConfig>;
   hideExportModal?: boolean;
+  renderEdgesOverlay?: (
+    imageWidth: number,
+    imageHeight: number,
+    padding: number,
+    pixelRatio: number,
+    viewport?: ExportViewport
+  ) => HTMLCanvasElement | null;
+  /**
+   * Awaited before a PNG capture clones `documentSelector`, so the page can
+   * mount content it normally leaves out of the DOM, such as off-screen nodes
+   * of a virtualized canvas. `afterCapture` runs once the capture ends.
+   */
+  beforeCapture?: () => Promise<void>;
+  afterCapture?: () => void;
   onExport: (
     name: string,
     params?: {
       recursive?: boolean;
     }
   ) => Promise<CSVExportResponse | string>;
+  onError?: () => void;
 };
 export interface EntityExportModalContextProps {
   csvExportData?: string;
+  csvExportError?: string;
   clearCSVExportData: () => void;
   showModal: (data: ExportData) => void;
   triggerExportForBulkEdit: (data: ExportData) => void;

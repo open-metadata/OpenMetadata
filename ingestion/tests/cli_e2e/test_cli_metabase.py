@@ -14,10 +14,9 @@ Test Metabase connector with CLI
 """
 
 from pathlib import Path
-from typing import List
 
-from .base.test_cli import PATH_TO_RESOURCES
-from .common.test_cli_dashboard import CliCommonDashboard
+from .base.test_cli import PATH_TO_RESOURCES  # noqa: TID252
+from .common.test_cli_dashboard import CliCommonDashboard  # noqa: TID252
 
 
 class MetabaseCliTest(CliCommonDashboard.TestSuite):
@@ -30,24 +29,24 @@ class MetabaseCliTest(CliCommonDashboard.TestSuite):
     def get_connector_name() -> str:
         return "metabase"
 
-    def get_includes_dashboards(self) -> List[str]:
+    def get_includes_dashboards(self) -> list[str]:
         return [".*jaffle_shop.*"]
 
-    def get_excludes_dashboards(self) -> List[str]:
+    def get_excludes_dashboards(self) -> list[str]:
         return [".*Delete.*"]
 
-    def get_includes_charts(self) -> List[str]:
+    def get_includes_charts(self) -> list[str]:
         return [".*Query.*"]
 
-    def get_excludes_charts(self) -> List[str]:
+    def get_excludes_charts(self) -> list[str]:
         return [".*Question.*"]
 
     # Metabase do not ingest datamodels
-    def get_includes_datamodels(self) -> List[str]:
+    def get_includes_datamodels(self) -> list[str]:
         return []
 
     # Metabase do not ingest datamodels
-    def get_excludes_datamodels(self) -> List[str]:
+    def get_excludes_datamodels(self) -> list[str]:
         return []
 
     def expected_datamodels(self) -> int:

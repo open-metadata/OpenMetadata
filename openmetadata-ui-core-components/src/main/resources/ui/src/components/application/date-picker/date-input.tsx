@@ -12,7 +12,9 @@ export const DateInput = (props: DateInputProps) => {
     <AriaDateInput
       {...props}
       className={cx(
-        'tw:flex tw:rounded-lg tw:bg-primary tw:px-2.5 tw:py-2 tw:text-md tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset tw:focus-within:ring-2 tw:focus-within:ring-brand',
+        // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
+        // so rings thin/vanish in Safari when zoomed out.
+        'tw:flex tw:rounded-lg tw:bg-primary tw:px-2.5 tw:py-2 tw:text-md tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:focus-within:outline-2 tw:focus-within:-outline-offset-2 tw:focus-within:outline-brand',
         typeof props.className === 'string' && props.className
       )}>
       {(segment) => (

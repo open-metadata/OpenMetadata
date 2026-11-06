@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
@@ -29,7 +30,7 @@ let dpAnnouncementId: string;
 
 test.describe(
   'Data Marketplace - Announcements',
-  { tag: ['@Pages', '@Discovery'] },
+  { tag: ['@Pages', '@Discovery', PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag] },
   () => {
     test.beforeAll('Setup entities and announcements', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -80,42 +81,24 @@ test.describe(
         await expect(page.getByTestId('announcements-widget-v2')).toBeVisible();
       });
 
-      await test.step('Verify announcement items are displayed', async () => {
-        await expect(
-          page.getByTestId(`announcement-item-${domainAnnouncementId}`)
-        ).toBeVisible();
-        await expect(
-          page.getByTestId(`announcement-item-${dpAnnouncementId}`)
-        ).toBeVisible();
-      });
-    });
+      await test.step('Verify both announcements are reachable in the carousel', async () => {
+        const widget = page.getByTestId('announcements-widget-v2');
+        const banner = widget.getByTestId('announcement-banner');
+        const nextBtn = widget.getByTestId('announcement-next-btn');
+        const seenTitles: string[] = [];
 
-    test.skip('Clicking announcement navigates to entity page', async ({
-      page,
-    }) => {
-      test.slow();
+        await expect(banner).toBeVisible();
+        seenTitles.push((await banner.getAttribute('aria-label')) ?? '');
 
-      await test.step('Navigate to marketplace', async () => {
-        await navigateToMarketplace(page);
-      });
+        while ((await nextBtn.isVisible()) && (await nextBtn.isEnabled())) {
+          const previous = seenTitles[seenTitles.length - 1];
+          await nextBtn.click();
+          await expect(banner).not.toHaveAttribute('aria-label', previous);
+          seenTitles.push((await banner.getAttribute('aria-label')) ?? '');
+        }
 
-      await test.step('Click domain announcement and verify navigation', async () => {
-        const announcementItem = page.getByTestId(
-          `announcement-item-${domainAnnouncementId}`
-        );
-        await expect(announcementItem).toBeVisible();
-        await announcementItem.click();
-        await page.waitForURL('**/data-marketplace/domains/**');
-      });
-
-      await test.step('Navigate back and click data product announcement', async () => {
-        await navigateToMarketplace(page);
-        const announcementItem = page.getByTestId(
-          `announcement-item-${dpAnnouncementId}`
-        );
-        await expect(announcementItem).toBeVisible();
-        await announcementItem.click();
-        await page.waitForURL('**/data-marketplace/data-products/**');
+        expect(seenTitles.join('|')).toContain('Domain Announcement');
+        expect(seenTitles.join('|')).toContain('Data Product Announcement');
       });
     });
   }

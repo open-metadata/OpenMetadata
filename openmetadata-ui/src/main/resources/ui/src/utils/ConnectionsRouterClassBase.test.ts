@@ -26,16 +26,19 @@ jest.mock('./RouterUtils', () => ({
     `/${serviceCategory}/add-service`,
   getPathByServiceFQN: (serviceCategory: string, fqn: string) =>
     `/service/${serviceCategory}/${fqn}/connection`,
-  getLogsViewerPath: (
-    logEntityType: string,
-    logEntityName: string,
-    ingestionName: string
-  ) => `/logs/${logEntityType}/${logEntityName}/${ingestionName}`,
   getSettingPath: (category: string, option: string) =>
     `/settings/${category}/${option}`,
 }));
 
-jest.mock('./ServiceUtils', () => ({
+let mockIsAiShell = false;
+
+jest.mock('./SettingsModalLinkUtils', () => ({
+  isAiShell: () => mockIsAiShell,
+}));
+
+jest.mock('./ServicePureUtils', () => ({
+  getCountLabel: (type: string) =>
+    type === 'databaseServices' ? 'Databases' : 'Assets',
   getServiceRouteFromServiceType: (type: string) => `${type}Route`,
 }));
 
@@ -69,6 +72,15 @@ describe('ConnectionsRouterClassBase', () => {
     it('isEmbeddedMode should always return false', () => {
       expect(router.isEmbeddedMode()).toBe(false);
     });
+
+    // The settings services route exists by default. Only a mode that replaces the listing
+    // outright overrides this — and deliberately not isEmbeddedMode(), which is also true while
+    // Classic is merely displaying an embedded experience.
+    it('isServicesSettingsRouteDisabled should always return false', () => {
+      router.setEmbeddedMode(true);
+
+      expect(router.isServicesSettingsRouteDisabled()).toBe(false);
+    });
   });
 
   describe('getSettingsServicesPath', () => {
@@ -80,6 +92,26 @@ describe('ConnectionsRouterClassBase', () => {
       expect(router.getSettingsServicesPath('databaseServices')).toBe(
         '/settings/services/databaseServicesRoute'
       );
+    });
+
+    describe('in the AI shell, which serves no settings pages', () => {
+      beforeEach(() => {
+        mockIsAiShell = true;
+      });
+
+      afterEach(() => {
+        mockIsAiShell = false;
+      });
+
+      it('should return the connections listing', () => {
+        expect(router.getSettingsServicesPath()).toBe('/connections');
+      });
+
+      it('should open the listing on the service category', () => {
+        expect(router.getSettingsServicesPath('databaseServices')).toBe(
+          '/connections?category=databaseServices'
+        );
+      });
     });
   });
 
@@ -95,6 +127,24 @@ describe('ConnectionsRouterClassBase', () => {
         router.getServiceDetailsPath('databaseServices', 'my-db', 'connection')
       ).toBe('/service/databaseServices/my-db/connection');
     });
+  });
+
+  describe('getServiceDataAssetsTabPath', () => {
+    it('should return the service asset-listing tab path', () => {
+      expect(
+        router.getServiceDataAssetsTabPath('databaseServices', 'my-db')
+      ).toBe('/service/databaseServices/my-db/databases');
+    });
+
+    // Metadata and security services have no asset-listing tab.
+    it.each(['metadataServices', 'securityServices'])(
+      'should fall back to the default tab for %s',
+      (serviceCategory) => {
+        expect(
+          router.getServiceDataAssetsTabPath(serviceCategory, 'my-service')
+        ).toBe(`/service/${serviceCategory}/my-service`);
+      }
+    );
   });
 
   describe('getEditConnectionPath', () => {
@@ -118,14 +168,6 @@ describe('ConnectionsRouterClassBase', () => {
       expect(router.getPathByServiceFQN('databaseServices', 'my-db')).toBe(
         '/service/databaseServices/my-db/connection'
       );
-    });
-  });
-
-  describe('getLogsViewerPath', () => {
-    it('should return the logs viewer path', () => {
-      expect(
-        router.getLogsViewerPath('databaseServices', 'my-db', 'pipeline-1')
-      ).toBe('/logs/databaseServices/my-db/pipeline-1');
     });
   });
 

@@ -12,74 +12,61 @@
  */
 import {
   ButtonUtility,
+  Card,
+  FeaturedIcon,
   Grid,
-  Tooltip,
-  TooltipTrigger,
+  PageLayout,
 } from '@openmetadata/ui-core-components';
-import { Expand05, Home02, Minimize02 } from '@untitledui/icons';
-import { Card, Select } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import {
+  PlatformLineage as PlatformLineageIcon,
+  Settings01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { debounce, startCase } from 'lodash';
-import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
-import { ReactComponent as SettingsOutlined } from '../../assets/svg/ic-settings-gear.svg';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../components/common/Loader/Loader';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
-import EntitySuggestionOption from '../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component';
+import DataAssetAsyncSelectList from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
+import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import LineageConfigModal from '../../components/Entity/EntityLineage/LineageConfigModal';
-import Lineage from '../../components/Lineage/Lineage.component';
+import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
+import LineageComponent from '../../components/Lineage/Lineage.component';
+import { Lineage } from '../../components/Lineage/Lineage/Lineage';
+import LineageExportButton from '../../components/Lineage/LineageExportButton/LineageExportButton';
+import {
+  getLensLabelKey,
+  getSceneRequestFromSearch,
+} from '../../components/Lineage/LineageMap/LineageMap.utils';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import {
-  FULLSCREEN_QUERY_PARAM_KEY,
-  PAGE_SIZE_BASE,
-} from '../../constants/constants';
-import {
-  ExportTypes,
-  LINEAGE_EXPORT_SELECTOR,
-} from '../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import LineageProvider from '../../context/LineageProvider/LineageProvider';
-import { LineagePlatformView } from '../../context/LineageProvider/LineageProvider.interface';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import {
-  LineageSettings,
-  PipelineViewMode,
-} from '../../generated/configuration/lineageSettings';
 import { EntityReference } from '../../generated/entity/type';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
-import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
-import { searchQuery } from '../../rest/searchAPI';
+import { useLineageStore } from '../../hooks/useLineageStore';
+import { LineageConfig } from '../../interface/lineage.interface';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
-import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
-import {
-  getLineageEntityExclusionFilter,
-  getViewportForLineageExport,
-} from '../../utils/EntityLineageUtils';
-import { getOperationPermissions } from '../../utils/PermissionsUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../utils/StringsUtils';
+import { getLineageEntityExclusionFilter } from '../../utils/EntityLineagePureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import { getEncodedFqn } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
+
+const LINEAGE_SEARCH_INDEXES = [
+  SearchIndex.DATA_ASSET,
+  SearchIndex.DOMAIN,
+  SearchIndex.SERVICE,
+];
 
 const PlatformLineage = () => {
   const { t } = useTranslation();
@@ -89,44 +76,49 @@ const PlatformLineage = () => {
 
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
-  const [loading, setLoading] = useState(false);
-  const [options, setOptions] = useState<DefaultOptionType[]>([]);
-  const [isSearchLoading, setIsSearchLoading] = useState(false);
-  const [defaultValue, setDefaultValue] = useState<string | undefined>(
-    decodedFqn || undefined
-  );
-  const { appPreferences } = useApplicationStore();
-  const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
-
-  const [lineageConfig, setLineageConfig] = useState<LineageConfig>({
-    downstreamDepth: defaultLineageConfig?.downstreamDepth ?? 1,
-    upstreamDepth: defaultLineageConfig?.upstreamDepth ?? 1,
-    nodesPerLayer: 50,
-    pipelineViewMode:
-      defaultLineageConfig?.pipelineViewMode ?? PipelineViewMode.Node,
-  });
-  const [permissions, setPermissions] = useState<OperationPermission>();
+  const [isEntityLoading, setIsEntityLoading] = useState(false);
+  // Config lives in the Zustand store — Lineage's fetch effect depends on
+  // it, so writing here triggers a refetch. Local useState here would leave
+  // the store untouched and the depth change would never reach the network.
+  const lineageConfig = useLineageStore((state) => state.lineageConfig);
+  const setLineageConfig = useLineageStore((state) => state.setLineageConfig);
   const [dialogVisible, setDialogVisible] = useState(false);
-  const { showModal } = useEntityExportModalProvider();
 
-  const queryParams = useMemo(() => {
-    return QueryString.parse(location.search, {
-      ignoreQueryPrefix: true,
-    });
-  }, [location.search]);
+  // Fetch-owner, by fqn — `entityType` doubles as the resource here (cast, matching the old
+  // code's own `entityType as unknown as ResourceEntity`). Ungated: the old raw
+  // `permissions?.EditAll || permissions?.EditLineage` read never referenced `deleted`.
+  const {
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canEditLineage,
+  } = useEntityPermissions(
+    entityType as unknown as ResourceEntity,
+    decodedFqn,
+    { enabled: Boolean(decodedFqn && entityType) }
+  );
 
-  const { platformView, isFullScreen } = useMemo(() => {
-    return {
-      isFullScreen: queryParams[FULLSCREEN_QUERY_PARAM_KEY] === 'true',
-      platformView:
-        (queryParams['platformView'] as LineagePlatformView) ??
-        LineagePlatformView.Service,
-    };
-  }, [queryParams]);
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  // Combined loading flag: the old `loading` state covered both the entity fetch AND the
+  // permission fetch together (a single `Promise.allSettled` awaited by one try/finally).
+  // Both fetches now run independently (permission via the hook, entity via `init` below) but
+  // neither is gated on the other's result, so a plain OR reproduces the old "loading until
+  // both settle" behavior without the denied-case stuck-loading risk that gated fetches have
+  // (ServiceVersionPage.tsx precedent — not applicable here since entity fetch isn't
+  // permission-gated).
+  const loading = isEntityLoading || isPermissionsLoading;
+
+  // The header names the lens the map is drawn through, read the same way
+  // the map reads it.
+  const { lens } = getSceneRequestFromSearch(location.search, {}, true);
 
   const handleEntitySelect = useCallback(
     (value: EntityReference) => {
-      navigate(
+      void navigate(
         `/lineage/${(value as SourceType).entityType}/${getEncodedFqn(
           value.fullyQualifiedName ?? ''
         )}`
@@ -134,89 +126,42 @@ const PlatformLineage = () => {
     },
     [navigate]
   );
-  const debouncedSearch = useCallback(
-    debounce(async (value: string) => {
-      try {
-        setIsSearchLoading(true);
-        const searchIndices = [
-          SearchIndex.DATA_ASSET,
-          SearchIndex.DOMAIN,
-          SearchIndex.SERVICE,
-        ];
-
-        const response = await searchQuery({
-          query: escapeESReservedCharacters(value),
-          searchIndex: searchIndices,
-          pageSize: PAGE_SIZE_BASE,
-          queryFilter: getLineageEntityExclusionFilter(),
-          includeDeleted: false,
-        });
-
-        setOptions(
-          response.hits.hits.map((hit) => ({
-            value: hit._source.fullyQualifiedName ?? '',
-            label: (
-              <EntitySuggestionOption
-                showEntityTypeBadge
-                entity={hit._source as EntityReference}
-                onSelectHandler={handleEntitySelect}
-              />
-            ),
-            data: hit,
-          }))
-        );
-      } finally {
-        setIsSearchLoading(false);
+  const handleSearchSelect = useCallback(
+    (option?: DataAssetOption | DataAssetOption[]) => {
+      // Clearing the chip leaves the current lineage on screen.
+      if (option && !Array.isArray(option)) {
+        handleEntitySelect({
+          ...option.reference,
+          entityType: option.reference.type,
+        } as EntityReference);
       }
-    }, 300),
-    []
+    },
+    [handleEntitySelect]
   );
 
   const init = useCallback(async () => {
     if (!decodedFqn || !entityType) {
-      setDefaultValue(undefined);
+      setSelectedEntity(undefined);
 
       return;
     }
 
     try {
-      setLoading(true);
-      const [entityResponse, permissionResponse] = await Promise.allSettled([
-        getEntityAPIfromSource(entityType as AssetsUnion)(decodedFqn),
-        getEntityPermissionByFqn(
-          entityType as unknown as ResourceEntity,
-          decodedFqn
-        ),
-      ]);
-
-      if (entityResponse.status === 'fulfilled') {
-        setSelectedEntity(entityResponse.value);
-        setDefaultValue(decodedFqn || undefined);
-      }
-
-      if (permissionResponse.status === 'fulfilled') {
-        const operationPermission = getOperationPermissions(
-          permissionResponse.value
-        );
-        setPermissions(operationPermission);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+      setIsEntityLoading(true);
+      const entityResponse = await getEntityAPIfromSource(
+        entityType as AssetsUnion
+      )(decodedFqn);
+      setSelectedEntity(entityResponse);
+    } catch {
+      // Old code awaited this via Promise.allSettled alongside the permission fetch, so a
+      // rejection (or a synchronous throw from an unsupported entityType) never reached a
+      // showErrorToast call — a settled 'rejected' result just left selectedEntity
+      // unset. Preserve that silently; permission-fetch errors now surface
+      // separately via the hook's own effect above.
     } finally {
-      setLoading(false);
+      setIsEntityLoading(false);
     }
   }, [decodedFqn, entityType]);
-
-  const handleExport = useCallback(() => {
-    showModal({
-      name: `${t('label.lineage')}_${getCurrentISODate()}`,
-      exportTypes: [ExportTypes.PNG],
-      title: t('label.lineage'),
-      documentSelector: LINEAGE_EXPORT_SELECTOR,
-      viewport: getViewportForLineageExport([], LINEAGE_EXPORT_SELECTOR),
-      onExport: async () => '',
-    });
-  }, []);
 
   useEffect(() => {
     init();
@@ -226,83 +171,99 @@ const PlatformLineage = () => {
     setDialogVisible(true);
   };
 
-  const handleDialogSave = (config: LineageConfig) => {
-    setLineageConfig(config);
-    setDialogVisible(false);
-  };
+  const handleDialogSave = useCallback(
+    (config: LineageConfig) => {
+      setLineageConfig(config);
+      setDialogVisible(false);
+    },
+    [setLineageConfig]
+  );
 
-  const header = useMemo(() => {
-    return (
-      <div className="d-flex justify-between items-center">
-        <Select
-          showSearch
-          className="w-max-500"
-          data-testid="search-entity-select"
-          filterOption={false}
-          loading={isSearchLoading}
-          optionLabelProp="value"
-          options={options}
-          placeholder={t('label.search-entity-for-lineage', {
-            entity: 'entity',
-          })}
-          style={{ width: '50%' }}
-          value={defaultValue}
-          onFocus={() => !defaultValue && debouncedSearch('')}
-          onSearch={debouncedSearch}
+  const isAiMode = useIsAiMode();
+
+  const searchSelect = useMemo(
+    () => (
+      <div
+        className={isAiMode ? 'tw:w-90' : 'tw:w-1/2 tw:max-w-[500px]'}
+        data-testid="search-entity-select">
+        <DataAssetAsyncSelectList
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- disables the list's default autofocus
+          autoFocus={false}
+          // The current entity is the placeholder, not a chip: a single-select
+          // chip hides the input, so the list could not open on first click.
+          placeholder={
+            selectedEntity
+              ? getEntityName(selectedEntity)
+              : t('label.search-entity-for-lineage', { entity: 'entity' })
+          }
+          queryFilter={getLineageEntityExclusionFilter()}
+          searchIndex={LINEAGE_SEARCH_INDEXES}
+          onChange={handleSearchSelect}
         />
-        <div className="d-flex gap-2">
-          <Tooltip
-            placement="top"
-            title={t('label.export-as-type', {
-              type: t('label.png-uppercase'),
-            })}>
-            <TooltipTrigger>
-              <ButtonUtility
-                data-testid="export-button"
-                icon={DownloadIcon}
-                onClick={handleExport}
-              />
-            </TooltipTrigger>
-          </Tooltip>
-          <ButtonUtility
-            data-testid="lineage-config"
-            icon={SettingsOutlined}
-            onClick={handleSettingsClick}
-          />
-          <Tooltip
-            placement="top"
-            title={
-              isFullScreen
-                ? t('label.exit-full-screen')
-                : t('label.full-screen-view')
-            }>
-            <TooltipTrigger>
-              <ButtonUtility
-                icon={isFullScreen ? Minimize02 : Expand05}
-                onClick={() =>
-                  navigate({
-                    search: QueryString.stringify({
-                      ...queryParams,
-                      [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
-                    }),
-                  })
-                }
-              />
-            </TooltipTrigger>
-          </Tooltip>
-        </div>
       </div>
-    );
-  }, [
-    isFullScreen,
-    options,
-    defaultValue,
-    debouncedSearch,
-    isSearchLoading,
-    handleExport,
-    navigate,
-    queryParams,
-  ]);
+    ),
+    [isAiMode, selectedEntity, handleSearchSelect, t]
+  );
+
+  // Matches the height of the search box beside them in the AI header.
+  const buttonSize = isAiMode ? 'xl' : 'lg';
+
+  const actionButtons = useMemo(
+    () => (
+      <div className="d-flex gap-2">
+        <LineageExportButton size={buttonSize} />
+
+        <ButtonUtility
+          data-testid="lineage-config"
+          icon={Settings01}
+          size={buttonSize}
+          tooltip={t('label.lineage-config')}
+          onClick={handleSettingsClick}
+        />
+      </div>
+    ),
+    [t, buttonSize]
+  );
+
+  const title = t('label.platform-type-lineage', {
+    platformType: t(getLensLabelKey(lens)),
+  });
+
+  // AI mode moves the search and actions into the shared gradient header;
+  // classic keeps them as the toolbar above the canvas.
+  const header = useMemo(
+    () =>
+      isAiMode ? (
+        <PageLayout.PageHeader
+          actions={
+            <>
+              {searchSelect}
+              {actionButtons}
+            </>
+          }
+          badge={<LearningIcon pageId={LEARNING_PAGE_IDS.LINEAGE} />}
+          data-testid="page-header-container"
+          icon={
+            <FeaturedIcon
+              color="brand"
+              icon={PlatformLineageIcon}
+              shape="square"
+              size="md"
+              theme="dark"
+            />
+          }
+          subtitle={t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader)}
+          title={title}
+          variant="gradient"
+        />
+      ) : (
+        <div className="d-flex justify-between items-center">
+          {searchSelect}
+          {actionButtons}
+        </div>
+      ),
+    [isAiMode, searchSelect, actionButtons, title, t]
+  );
 
   const lineageElement = useMemo(() => {
     if (loading) {
@@ -310,70 +271,87 @@ const PlatformLineage = () => {
     }
 
     return (
-      <LineageProvider>
-        <Lineage
+      <Lineage
+        isPlatformLineage
+        entity={selectedEntity}
+        entityFqn={decodedFqn}
+        entityType={entityType}>
+        <LineageComponent
           isPlatformLineage
           entity={selectedEntity}
           entityType={entityType}
-          hasEditAccess={
-            permissions?.EditAll || permissions?.EditLineage || false
-          }
-          platformHeader={header}
+          hasEditAccess={canEditLineage}
+          // AI mode carries search and actions in the page header instead.
+          platformHeader={isAiMode ? undefined : header}
         />
-      </LineageProvider>
+      </Lineage>
     );
-  }, [selectedEntity, loading, permissions, entityType, header]);
+  }, [
+    selectedEntity,
+    loading,
+    canEditLineage,
+    entityType,
+    header,
+    decodedFqn,
+    isAiMode,
+  ]);
+
+  // `/lineage` with no entity is the platform-wide view; the focused variant
+  // names the entity it is centred on.
+  const pageTitle = decodedFqn
+    ? t('label.platform-type-lineage', {
+        platformType: getEntityName(selectedEntity) || decodedFqn,
+      })
+    : t('label.lineage');
+
+  const configModal = (
+    <LineageConfigModal
+      config={lineageConfig}
+      visible={dialogVisible}
+      onCancel={() => setDialogVisible(false)}
+      onSave={handleDialogSave}
+    />
+  );
+
+  if (isAiMode) {
+    return (
+      <PageLayout data-testid="platform-lineage-page">
+        <DocumentTitle title={pageTitle} />
+        {header}
+        <PageLayout.Content className="tw:pt-4">
+          <div className="platform-lineage-container platform-lineage-container-fill">
+            {lineageElement}
+          </div>
+        </PageLayout.Content>
+        {configModal}
+      </PageLayout>
+    );
+  }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.lineage')}>
+    <PageLayoutV1 pageTitle={pageTitle}>
       <Grid rowGap="2">
-        {isFullScreen ? null : (
-          <>
-            <Grid.Item span={24}>
-              <TitleBreadcrumb
-                useCustomArrow
-                titleLinks={[
-                  {
-                    name: '',
-                    icon: <Home02 size={12} />,
-                    url: '/',
-                    activeTitle: true,
-                  },
-                  {
-                    name: t('label.lineage'),
-                    url: '',
-                  },
-                ]}
+        <Grid.Item span={24}>
+          <Card size="sm">
+            <Card.Content>
+              <PageHeader
+                data={{
+                  header: title,
+                  subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
+                }}
+                learningPageId={LEARNING_PAGE_IDS.LINEAGE}
+                title={t('label.lineage')}
               />
-            </Grid.Item>
+            </Card.Content>
+          </Card>
+        </Grid.Item>
 
-            <Grid.Item span={24}>
-              <Card>
-                <PageHeader
-                  data={{
-                    header: t('label.platform-type-lineage', {
-                      platformType: startCase(platformView),
-                    }),
-                    subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
-                  }}
-                  learningPageId={LEARNING_PAGE_IDS.LINEAGE}
-                  title={t('label.lineage')}
-                />
-              </Card>
-            </Grid.Item>
-          </>
-        )}
         <Grid.Item span={24}>
           <div className="platform-lineage-container">{lineageElement}</div>
         </Grid.Item>
       </Grid>
 
-      <LineageConfigModal
-        config={lineageConfig}
-        visible={dialogVisible}
-        onCancel={() => setDialogVisible(false)}
-        onSave={handleDialogSave}
-      />
+      {configModal}
     </PageLayoutV1>
   );
 };

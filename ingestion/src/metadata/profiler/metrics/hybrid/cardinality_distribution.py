@@ -13,7 +13,7 @@
 Cardinality Distribution Metric definition
 """
 
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import case, column, desc, func, or_
 from sqlalchemy.orm import Session
@@ -37,14 +37,16 @@ class CardinalityDistribution(HybridMetric):
     """
     CARDINALITY_DISTRIBUTION Metric
 
-    Given a column, return the cardinality distribution showing top categories
-    with an "Others" bucket. Only works for concatenable types (strings, enums).
+    Given a column, return every category for a bounded low-cardinality domain.
+    Larger domains show top categories with an "Others" bucket. Only works for
+    concatenable types (strings, enums).
     """
 
     schema_metric_type = MetricType.cardinalityDistribution
 
     threshold_percentage: float = 0.02  # 2% threshold for "Others" bucket
     min_buckets: int = 5  # Minimum number of top categories to show
+    max_exact_categories: int = 20  # Keep complete domains bounded in stored profiles
 
     @classmethod
     def name(cls):
@@ -56,10 +58,10 @@ class CardinalityDistribution(HybridMetric):
 
     def fn(
         self,
-        sample: Optional[type],
-        res: Dict[str, Any],
-        session: Optional[Session] = None,
-    ) -> Optional[Dict[str, Any]]:
+        sample: type | None,
+        res: dict[str, Any],
+        session: Session | None = None,
+    ) -> dict[str, Any] | None:
         """
         Build the Cardinality Distribution metric query
         """
@@ -86,7 +88,7 @@ class CardinalityDistribution(HybridMetric):
             return {"allValuesUnique": True}
 
         col = column(self.col.name, self.col.type)
-        threshold = self.threshold_percentage * total_count
+        threshold = self._category_threshold(total_count, distinct_count)
 
         # Build a cross-database compatible query using CTEs
         # Step 1: Get value counts and ranks
@@ -97,7 +99,7 @@ class CardinalityDistribution(HybridMetric):
                 ValueRank(col).fn(),
             )
             .select_from(sample)
-            .where(col != None)
+            .where(col != None)  # noqa: E711
             .group_by(col)
             .cte("value_counts")
         )
@@ -136,7 +138,7 @@ class CardinalityDistribution(HybridMetric):
             }
         return None
 
-    def df_fn(self, res: Dict[str, Any], dfs: Optional["PandasRunner"] = None):
+    def df_fn(self, res: dict[str, Any], dfs: Optional["PandasRunner"] = None):
         """
         Pandas implementation for dataframes
         """
@@ -167,7 +169,7 @@ class CardinalityDistribution(HybridMetric):
             if dfs is None:
                 return None
 
-            threshold = self.threshold_percentage * total_count
+            threshold = self._category_threshold(total_count, distinct_count)
 
             combined_value_counts = pd.Series(dtype="object")
 
@@ -200,7 +202,7 @@ class CardinalityDistribution(HybridMetric):
                 counts.append(int(others_count))
                 percentages.append(round((others_count / total_count) * 100, 2))
 
-            return {
+            return {  # noqa: TRY300
                 "categories": categories,
                 "counts": counts,
                 "percentages": percentages,
@@ -209,3 +211,8 @@ class CardinalityDistribution(HybridMetric):
         except Exception as err:
             logger.debug(f"Error computing CardinalityDistribution for {self.col.name}: {err}")
             return None
+
+    def _category_threshold(self, total_count: int, distinct_count: int | None) -> float:
+        if distinct_count is not None and distinct_count <= self.max_exact_categories:
+            return 0
+        return self.threshold_percentage * total_count

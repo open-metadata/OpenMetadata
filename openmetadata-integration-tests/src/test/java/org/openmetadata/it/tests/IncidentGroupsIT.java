@@ -1,0 +1,2188 @@
+package org.openmetadata.it.tests;
+
+import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import io.dropwizard.db.DataSourceFactory;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
+import org.openmetadata.schema.api.tests.CreateTestDefinition;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.tests.TestPlatform;
+import org.openmetadata.schema.tests.type.Assigned;
+import org.openmetadata.schema.tests.type.IncidentGroupBy;
+import org.openmetadata.schema.tests.type.IncidentStatusCount;
+import org.openmetadata.schema.tests.type.IncidentTrendDirection;
+import org.openmetadata.schema.tests.type.Resolved;
+import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
+import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.util.FullyQualifiedName;
+
+/**
+ * Integration tests for GET /v1/dataQuality/testCases/testCaseIncidentStatus/incidentGroups.
+ *
+ * <p>Fixture layout (all names are timestamp-unique so concurrent suites cannot interfere):
+ *
+ * <ul>
+ *   <li>testCase1 — tableA, tableDefinition, owner userA, in domain; open incident (New)
+ *   <li>testCase2 — tableA (column-level), columnDefinition, owners userA + userB; open incident
+ *       with a New → Assigned(userA) chain
+ *   <li>testCase3 — tableB, tableDefinition, owner userB; open incident (New)
+ *   <li>testCase4 — tableB, tableDefinition, no owner; resolved incident (New → Resolved)
+ *   <li>5 pager tables — each with one unowned test case (pagerDefinition) whose incident is New →
+ *       Assigned(pagerUser); {@code assignee=pagerUser} scopes the groups listing to exactly these
+ *       5 single-incident groups, giving the pagination tests a deterministic population
+ * </ul>
+ */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class IncidentGroupsIT {
+
+  private static final String GROUP_BY_TABLE = "table";
+  private static final String GROUP_BY_TEST_DEFINITION = "testDefinition";
+  private static final String GROUP_BY_OWNER = "owner";
+  private static final String MAX_LIMIT = "1000";
+  private static final String INCIDENT_BACKFILL_SQL = "INSERT INTO test_case_incident";
+
+  private OpenMetadataClient client;
+  private Table tableA;
+  private Table tableB;
+  private User userA;
+  private User userB;
+  private TestDefinition tableDefinition;
+  private TestDefinition columnDefinition;
+  private Domain domain;
+  private TestCase testCase1;
+  private TestCase testCase2;
+  private TestCase testCase3;
+  private TestCase testCase4;
+  private User pagerUser;
+  private List<String> pagerTableFqns;
+  private List<TestCase> pagerCases;
+  private String schemaFqn;
+
+  @BeforeAll
+  void setup() throws Exception {
+    client = SdkClients.adminClient();
+    long ts = System.currentTimeMillis();
+    schemaFqn = createSchema(ts);
+    tableA = createTable(schemaFqn, "incident_groups_table_a_" + ts);
+    tableB = createTable(schemaFqn, "incident_groups_table_b_" + ts);
+    userA = createUser("incident_groups_user_a_" + ts);
+    userB = createUser("incident_groups_user_b_" + ts);
+    tableDefinition =
+        createTestDefinition("incident_groups_table_def_" + ts, TestDefinitionEntityType.TABLE);
+    columnDefinition =
+        createTestDefinition("incident_groups_column_def_" + ts, TestDefinitionEntityType.COLUMN);
+    domain = createDomain("incident_groups_domain_" + ts);
+
+    testCase1 =
+        createTestCase(
+            "incident_groups_case_1",
+            tableLink(tableA),
+            tableDefinition,
+            List.of(userA.getEntityReference()));
+    testCase2 =
+        createTestCase(
+            "incident_groups_case_2",
+            columnLink(tableA),
+            columnDefinition,
+            List.of(userA.getEntityReference(), userB.getEntityReference()));
+    testCase3 =
+        createTestCase(
+            "incident_groups_case_3",
+            tableLink(tableB),
+            tableDefinition,
+            List.of(userB.getEntityReference()));
+    testCase4 =
+        createTestCase("incident_groups_case_4", tableLink(tableB), tableDefinition, List.of());
+    assignDomain(testCase1, domain);
+
+    createStatus(testCase1, TestCaseResolutionStatusTypes.New, null);
+    createStatus(testCase2, TestCaseResolutionStatusTypes.New, null);
+    createStatus(
+        testCase2,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned().withAssignee(userA.getEntityReference()));
+    createStatus(testCase3, TestCaseResolutionStatusTypes.New, null, Severity.Severity2);
+    createStatus(testCase4, TestCaseResolutionStatusTypes.New, null);
+    createStatus(
+        testCase4,
+        TestCaseResolutionStatusTypes.Resolved,
+        new Resolved()
+            .withTestCaseFailureReason(TestCaseFailureReasonType.FalsePositive)
+            .withTestCaseFailureComment("resolved by incident groups IT"));
+
+    createPagerFixture(ts, schemaFqn);
+  }
+
+  private void createPagerFixture(long ts, String schemaFqn) throws Exception {
+    pagerUser = createUser("incident_groups_pager_" + ts);
+    TestDefinition pagerDefinition =
+        createTestDefinition("incident_groups_pager_def_" + ts, TestDefinitionEntityType.TABLE);
+    pagerTableFqns = new ArrayList<>();
+    pagerCases = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      Table pagerTable = createTable(schemaFqn, "incident_groups_page_" + i + "_" + ts);
+      TestCase pagerCase =
+          createTestCase(
+              "incident_groups_page_case_" + i, tableLink(pagerTable), pagerDefinition, List.of());
+      createStatus(pagerCase, TestCaseResolutionStatusTypes.New, null);
+      createStatus(
+          pagerCase,
+          TestCaseResolutionStatusTypes.Assigned,
+          new Assigned().withAssignee(pagerUser.getEntityReference()));
+      pagerTableFqns.add(pagerTable.getFullyQualifiedName());
+      pagerCases.add(pagerCase);
+    }
+    pagerTableFqns = pagerTableFqns.stream().sorted().toList();
+  }
+
+  @Test
+  void testPageNumberJumpsToThatPage() throws Exception {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("groupBy", GROUP_BY_TABLE);
+    params.put("assignee", pagerUser.getName());
+    params.put("limit", "2");
+    params.put("page", "3");
+    ListResponse<TestCaseIncidentGroup> last =
+        client.testCaseResolutionStatuses().listIncidentGroups(params);
+    assertEquals(
+        List.of(pagerTableFqns.get(4)),
+        convertGroups(last).stream().map(TestCaseIncidentGroup::getFullyQualifiedName).toList(),
+        "page 3 of 2 is the fifth group, reached without walking the cursors");
+    assertEquals(5, last.getPaging().getTotal());
+    assertNull(last.getPaging().getAfter());
+
+    params.put("page", "2");
+    ListResponse<TestCaseIncidentGroup> middle =
+        client.testCaseResolutionStatuses().listIncidentGroups(params);
+    assertEquals(
+        pagerTableFqns.subList(2, 4),
+        convertGroups(middle).stream().map(TestCaseIncidentGroup::getFullyQualifiedName).toList());
+
+    params.put("page", "9");
+    assertTrue(
+        convertGroups(client.testCaseResolutionStatuses().listIncidentGroups(params)).isEmpty(),
+        "a page past the last is empty");
+
+    ListResponse<TestCaseResolutionStatus> incidents =
+        client
+            .testCaseResolutionStatuses()
+            .list(
+                latestOpenParams()
+                    .withLimit(2)
+                    .addFilter("assignee", pagerUser.getName())
+                    .addFilter("page", "3"));
+    assertEquals(1, incidents.getData().size(), "the incident list jumps the same way");
+    assertEquals(5, incidents.getPaging().getTotal());
+  }
+
+  @Test
+  void testGroupAssigneesCarryTheirReferences() throws Exception {
+    long ts = System.currentTimeMillis();
+    Team team =
+        client
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName("incident_groups_team_" + ts)
+                    .withDisplayName("Incident Groups Team")
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    Table table = createTable(schemaFqn, "incident_groups_assignee_refs_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_assignee_refs_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase toTeam =
+        createTestCase("incident_groups_team_case", tableLink(table), definition, List.of());
+    TestCase toUser =
+        createTestCase("incident_groups_user_case", tableLink(table), definition, List.of());
+    for (TestCase testCase : List.of(toTeam, toUser)) {
+      createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    }
+    createStatus(
+        toTeam,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned().withAssignee(team.getEntityReference()));
+    createStatus(
+        toUser,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned().withAssignee(userA.getEntityReference()));
+
+    TestCaseIncidentGroup group =
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), table.getFullyQualifiedName());
+
+    Map<String, String> typesByName =
+        group.getAssigneeReferences().stream()
+            .collect(Collectors.toMap(EntityReference::getName, EntityReference::getType));
+    assertEquals(
+        Map.of(team.getName(), Entity.TEAM, userA.getName(), Entity.USER),
+        typesByName,
+        "each assignee name resolves to its user or team");
+    assertTrue(
+        group.getAssigneeReferences().stream()
+            .anyMatch(reference -> "Incident Groups Team".equals(reference.getDisplayName())));
+  }
+
+  @Test
+  void testGroupByTableCountsAndResolvedExclusion() throws Exception {
+    List<TestCaseIncidentGroup> groups = fetchGroups(groupParams(GROUP_BY_TABLE));
+
+    TestCaseIncidentGroup groupA = findGroup(groups, tableA.getFullyQualifiedName());
+    assertEquals(2, groupA.getIncidentCount(), "table and column level incidents on table A");
+    assertEquals(IncidentGroupBy.Table, groupA.getGroupBy());
+    assertEquals(tableA.getId(), groupA.getId());
+    assertEquals(tableA.getName(), groupA.getName());
+
+    TestCaseIncidentGroup groupB = findGroup(groups, tableB.getFullyQualifiedName());
+    assertEquals(1, groupB.getIncidentCount(), "resolved incident on table B must be excluded");
+  }
+
+  @Test
+  void testGroupByTestDefinitionCounts() throws Exception {
+    List<TestCaseIncidentGroup> groups = fetchGroups(groupParams(GROUP_BY_TEST_DEFINITION));
+
+    TestCaseIncidentGroup tableDefGroup =
+        findGroup(groups, tableDefinition.getFullyQualifiedName());
+    assertEquals(
+        2,
+        tableDefGroup.getIncidentCount(),
+        "open incidents on case 1 and 3; resolved case 4 excluded");
+    assertEquals(IncidentGroupBy.TestDefinition, tableDefGroup.getGroupBy());
+    assertEquals(tableDefinition.getId(), tableDefGroup.getId());
+
+    TestCaseIncidentGroup columnDefGroup =
+        findGroup(groups, columnDefinition.getFullyQualifiedName());
+    assertEquals(1, columnDefGroup.getIncidentCount());
+  }
+
+  @Test
+  void testGroupByOwnerDoesNotDoubleCount() throws Exception {
+    List<TestCaseIncidentGroup> groups = fetchGroups(groupParams(GROUP_BY_OWNER));
+
+    TestCaseIncidentGroup groupUserA = findGroup(groups, userA.getFullyQualifiedName());
+    assertEquals(
+        2,
+        groupUserA.getIncidentCount(),
+        "case 2's two status records and two owners must count as a single incident");
+    assertEquals(IncidentGroupBy.Owner, groupUserA.getGroupBy());
+    assertEquals(userA.getId(), groupUserA.getId());
+
+    TestCaseIncidentGroup groupUserB = findGroup(groups, userB.getFullyQualifiedName());
+    assertEquals(2, groupUserB.getIncidentCount(), "case 2 (co-owned) and case 3 incidents");
+  }
+
+  // The pager population is 5 open incidents on test cases nobody owns. The owner dimension must
+  // still account for them — under its catch-all bucket, which stands for no entity and so comes
+  // back with neither an id nor a fully qualified name.
+  @Test
+  void testGroupByOwnerBucketsUnownedTestCases() throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_OWNER);
+    params.put("assignee", pagerUser.getName());
+    List<TestCaseIncidentGroup> groups = fetchGroups(params);
+
+    assertEquals(1, groups.size(), "every pager test case is unowned, so they share one group");
+    TestCaseIncidentGroup unowned = groups.getFirst();
+    assertEquals(pagerTableFqns.size(), unowned.getIncidentCount());
+    assertEquals(IncidentGroupBy.Owner, unowned.getGroupBy());
+    assertEquals(
+        TestCaseResolutionStatusRepository.NO_OWNER_GROUP_NAME,
+        unowned.getName(),
+        "the dimension names the bucket itself, having no entity to name it after");
+    assertNull(unowned.getId(), "the bucket stands for no entity");
+    assertNull(unowned.getFullyQualifiedName());
+  }
+
+  // A link to a drill-down names its group by key alone. Narrowed to that key, the listing must
+  // return just that group, counted as the full listing counts it — in every dimension, and for
+  // the unowned bucket, whose key is empty.
+  @Test
+  void testGroupKeyReturnsThatGroupAlone() throws Exception {
+    Map<String, String> table = groupParams(GROUP_BY_TABLE);
+    table.put("group", tableA.getFullyQualifiedName());
+    List<TestCaseIncidentGroup> tableGroups = fetchGroups(table);
+    assertEquals(1, tableGroups.size());
+    assertEquals(tableA.getId(), tableGroups.getFirst().getId());
+    assertEquals(2, tableGroups.getFirst().getIncidentCount());
+
+    Map<String, String> definition = groupParams(GROUP_BY_TEST_DEFINITION);
+    definition.put("group", tableDefinition.getId().toString());
+    List<TestCaseIncidentGroup> definitionGroups = fetchGroups(definition);
+    assertEquals(1, definitionGroups.size());
+    assertEquals(tableDefinition.getId(), definitionGroups.getFirst().getId());
+    assertEquals(2, definitionGroups.getFirst().getIncidentCount());
+
+    Map<String, String> owner = groupParams(GROUP_BY_OWNER);
+    owner.put("group", userB.getId().toString());
+    List<TestCaseIncidentGroup> ownerGroups = fetchGroups(owner);
+    assertEquals(1, ownerGroups.size());
+    assertEquals(userB.getId(), ownerGroups.getFirst().getId());
+    assertEquals(2, ownerGroups.getFirst().getIncidentCount());
+
+    Map<String, String> unowned = groupParams(GROUP_BY_OWNER);
+    unowned.put("group", "");
+    unowned.put("assignee", pagerUser.getName());
+    List<TestCaseIncidentGroup> unownedGroups = fetchGroups(unowned);
+    assertEquals(1, unownedGroups.size());
+    assertNull(unownedGroups.getFirst().getId());
+    assertEquals(pagerTableFqns.size(), unownedGroups.getFirst().getIncidentCount());
+  }
+
+  @Test
+  void testStatusFilterNarrows() throws Exception {
+    Map<String, String> assignedParams = groupParams(GROUP_BY_TABLE);
+    assignedParams.put("status", TestCaseResolutionStatusTypes.Assigned.value());
+    List<TestCaseIncidentGroup> assignedGroups = fetchGroups(assignedParams);
+    assertEquals(1, findGroup(assignedGroups, tableA.getFullyQualifiedName()).getIncidentCount());
+    assertGroupAbsent(assignedGroups, tableB.getFullyQualifiedName());
+
+    Map<String, String> newParams = groupParams(GROUP_BY_TABLE);
+    newParams.put(
+        "status",
+        TestCaseResolutionStatusTypes.New.value()
+            + ","
+            + TestCaseResolutionStatusTypes.Ack.value());
+    List<TestCaseIncidentGroup> newGroups = fetchGroups(newParams);
+    assertEquals(1, findGroup(newGroups, tableA.getFullyQualifiedName()).getIncidentCount());
+    assertEquals(1, findGroup(newGroups, tableB.getFullyQualifiedName()).getIncidentCount());
+  }
+
+  @Test
+  void testAssigneeFilterMatchesCurrentAssignee() throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("assignee", userA.getName());
+    List<TestCaseIncidentGroup> groups = fetchGroups(params);
+
+    assertEquals(1, findGroup(groups, tableA.getFullyQualifiedName()).getIncidentCount());
+    assertGroupAbsent(groups, tableB.getFullyQualifiedName());
+  }
+
+  @Test
+  void testTestCaseFqnFilterScopesToOneTestCase() throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("testCaseFQN", testCase3.getFullyQualifiedName());
+    ListResponse<TestCaseIncidentGroup> response =
+        client.testCaseResolutionStatuses().listIncidentGroups(params);
+
+    assertEquals(1, response.getData().size());
+    assertEquals(1, response.getPaging().getTotal());
+    List<TestCaseIncidentGroup> groups = convertGroups(response);
+    assertEquals(1, findGroup(groups, tableB.getFullyQualifiedName()).getIncidentCount());
+  }
+
+  @Test
+  void testDateFieldRangeFiltersDistinctIncidents() throws Exception {
+    List<TestCaseResolutionStatus> records = fetchStatuses(testCase2);
+    long createdAt =
+        records.stream().mapToLong(TestCaseResolutionStatus::getTimestamp).min().orElseThrow();
+    long updatedAt =
+        records.stream().mapToLong(TestCaseResolutionStatus::getTimestamp).max().orElseThrow();
+    assertTrue(updatedAt > createdAt, "the Assigned record must be later than the New record");
+
+    assertEquals(
+        1,
+        fetchGroups(dateRangeParams("createdAt", createdAt, createdAt)).size(),
+        "incident opened exactly at createdAt must match a createdAt range");
+    assertTrue(
+        fetchGroups(dateRangeParams("createdAt", updatedAt, null)).isEmpty(),
+        "a createdAt range starting after the incident opened must exclude it");
+    assertEquals(
+        1,
+        fetchGroups(dateRangeParams("updatedAt", updatedAt, updatedAt)).size(),
+        "the same range must match when applied to updatedAt");
+    assertTrue(
+        fetchGroups(dateRangeParams("updatedAt", null, createdAt)).isEmpty(),
+        "an updatedAt range ending before the last status change must exclude it");
+  }
+
+  @Test
+  void testDomainFilter() throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("domain", domain.getFullyQualifiedName());
+    List<TestCaseIncidentGroup> groups = fetchGroups(params);
+
+    assertEquals(
+        1,
+        findGroup(groups, tableA.getFullyQualifiedName()).getIncidentCount(),
+        "only case 1 is in the domain; case 2's incident must not count");
+    assertGroupAbsent(groups, tableB.getFullyQualifiedName());
+  }
+
+  @Test
+  void testDomainInheritedFromTheTable() throws Exception {
+    long ts = System.currentTimeMillis();
+    Domain tableDomain = createDomain("incident_groups_table_domain_" + ts);
+    Table table = createTableInDomain("incident_groups_domain_table_" + ts, tableDomain);
+    TestDefinition definition =
+        createTestDefinition("incident_groups_domain_def_" + ts, TestDefinitionEntityType.TABLE);
+    // No domain of its own: the test case is in its table's domain, as test cases usually are.
+    TestCase testCase =
+        createTestCase("incident_groups_domain_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("domain", tableDomain.getFullyQualifiedName());
+    List<TestCaseIncidentGroup> groups = fetchGroups(params);
+    assertEquals(1, groups.size(), "only the domain's table holds incidents in that domain");
+    assertEquals(1, findGroup(groups, table.getFullyQualifiedName()).getIncidentCount());
+
+    assertEquals(
+        Set.of(testCase.getFullyQualifiedName()),
+        statusTestCaseFqns(
+            listStatuses(
+                latestOpenParams().addFilter("domain", tableDomain.getFullyQualifiedName()))),
+        "the drill-down lists the incidents its domain-scoped group counts");
+  }
+
+  // Tables inherit their domain from the schema, database or service; the test case then inherits
+  // it from the table, and neither keeps a relationship to it.
+  @Test
+  void testDomainInheritedFromTheSchema() throws Exception {
+    long ts = System.currentTimeMillis();
+    Domain schemaDomain = createDomain("incident_groups_schema_domain_" + ts);
+    String domainSchemaFqn = createSchemaInDomain("incident_groups_domain_" + ts, schemaDomain);
+    Table table = createTable(domainSchemaFqn, "incident_groups_schema_domain_table_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_schema_domain_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_schema_domain_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("domain", schemaDomain.getFullyQualifiedName());
+    List<TestCaseIncidentGroup> groups = fetchGroups(params);
+    assertEquals(1, groups.size(), "the schema's table is the only one in its domain");
+    assertEquals(1, findGroup(groups, table.getFullyQualifiedName()).getIncidentCount());
+
+    assertEquals(
+        Set.of(testCase.getFullyQualifiedName()),
+        statusTestCaseFqns(
+            listStatuses(
+                latestOpenParams().addFilter("domain", schemaDomain.getFullyQualifiedName()))),
+        "the drill-down lists the incidents its domain-scoped group counts");
+  }
+
+  // A level inherits its parent's domain only when it has none of its own, so a table with its own
+  // domain is out of its schema's.
+  @Test
+  void testTableDomainOverridesItsSchemaDomain() throws Exception {
+    long ts = System.currentTimeMillis();
+    Domain schemaDomain = createDomain("incident_groups_overridden_domain_" + ts);
+    Domain tableDomain = createDomain("incident_groups_overriding_domain_" + ts);
+    String schemaInDomainFqn = createSchemaInDomain("incident_groups_override_" + ts, schemaDomain);
+    Table table =
+        createTableInDomain(schemaInDomainFqn, "incident_groups_override_table_" + ts, tableDomain);
+    TestDefinition definition =
+        createTestDefinition("incident_groups_override_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase("incident_groups_override_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+
+    Map<String, String> schemaParams = groupParams(GROUP_BY_TABLE);
+    schemaParams.put("domain", schemaDomain.getFullyQualifiedName());
+    assertTrue(
+        fetchGroups(schemaParams).isEmpty(), "the table's own domain overrides the schema's");
+    assertTrue(
+        statusTestCaseFqns(
+                listStatuses(
+                    latestOpenParams().addFilter("domain", schemaDomain.getFullyQualifiedName())))
+            .isEmpty(),
+        "the drill-down leaves the table out of its schema's domain too");
+
+    Map<String, String> tableParams = groupParams(GROUP_BY_TABLE);
+    tableParams.put("domain", tableDomain.getFullyQualifiedName());
+    assertEquals(
+        1, findGroup(fetchGroups(tableParams), table.getFullyQualifiedName()).getIncidentCount());
+  }
+
+  @Test
+  void testLatestOpenTotalLeavesResolvedIncidentsOut() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_latest_total_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_latest_total_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase open =
+        createTestCase("incident_groups_open_case", tableLink(table), definition, List.of());
+    TestCase resolved =
+        createTestCase("incident_groups_resolved_case", tableLink(table), definition, List.of());
+    createStatus(open, TestCaseResolutionStatusTypes.New, null);
+    createStatus(resolved, TestCaseResolutionStatusTypes.New, null);
+    createStatus(
+        resolved,
+        TestCaseResolutionStatusTypes.Resolved,
+        new Resolved()
+            .withTestCaseFailureReason(TestCaseFailureReasonType.FalsePositive)
+            .withTestCaseFailureComment("Resolved in the latest-total IT")
+            .withResolvedBy(userA.getEntityReference()));
+
+    ListResponse<TestCaseResolutionStatus> response =
+        client
+            .testCaseResolutionStatuses()
+            .list(
+                latestOpenParams().addFilter("testDefinition", definition.getFullyQualifiedName()));
+
+    assertEquals(1, response.getData().size());
+    assertEquals(
+        1,
+        response.getPaging().getTotal(),
+        "the pager counts the open incidents the page lists, not the resolved one's New record");
+  }
+
+  @Test
+  void testSortTypeOrdersByIncidentCount() throws Exception {
+    Map<String, String> ascParams = groupParams(GROUP_BY_TABLE);
+    ascParams.put("sortType", "asc");
+    assertSorted(fetchGroups(ascParams), true);
+
+    Map<String, String> descParams = groupParams(GROUP_BY_TABLE);
+    descParams.put("sortType", "desc");
+    assertSorted(fetchGroups(descParams), false);
+  }
+
+  // A domain of its own scopes the listing to two groups whatever other suites add: one with a
+  // Severity2 incident and one with none, as an untiered table gets no inferred severity. The
+  // severe table's name also sorts first, so the reverse ordering cannot pass on the tie-break.
+  @Test
+  void testSortBySeverityPutsTheMostSevereFirst() throws Exception {
+    long ts = System.currentTimeMillis();
+    Domain sortDomain = createDomain("incident_groups_sort_domain_" + ts);
+    TestDefinition definition =
+        createTestDefinition("incident_groups_sort_def_" + ts, TestDefinitionEntityType.TABLE);
+    Table severe = createTableInDomain("incident_groups_sort_severe_" + ts, sortDomain);
+    Table ungraded = createTableInDomain("incident_groups_sort_ungraded_" + ts, sortDomain);
+    createStatus(
+        createTestCase(
+            "incident_groups_sort_severe_case", tableLink(severe), definition, List.of()),
+        TestCaseResolutionStatusTypes.New,
+        null,
+        Severity.Severity2);
+    createStatus(
+        createTestCase(
+            "incident_groups_sort_ungraded_case", tableLink(ungraded), definition, List.of()),
+        TestCaseResolutionStatusTypes.New,
+        null);
+
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("domain", sortDomain.getFullyQualifiedName());
+    params.put("sortField", "severity");
+    assertEquals(
+        List.of(severe.getFullyQualifiedName(), ungraded.getFullyQualifiedName()),
+        groupFqns(fetchGroups(params)),
+        "the Severity2 group comes before the group with no severity");
+
+    params.put("sortType", "asc");
+    assertEquals(
+        List.of(ungraded.getFullyQualifiedName(), severe.getFullyQualifiedName()),
+        groupFqns(fetchGroups(params)),
+        "the group with no severity comes first in the reverse ordering");
+  }
+
+  // The pager tables each open one incident, one after the other, so their last-seen times follow
+  // the order they were created in — the order of their sorted names.
+  @Test
+  void testSortByLastSeenPutsTheLatestFirst() throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("assignee", pagerUser.getName());
+    params.put("sortField", "lastSeen");
+
+    List<String> latestFirst = groupFqns(fetchGroups(params));
+    assertEquals(pagerTableFqns.reversed(), latestFirst);
+
+    params.put("sortType", "asc");
+    assertEquals(pagerTableFqns, groupFqns(fetchGroups(params)));
+  }
+
+  @Test
+  void testUnknownSortFieldRejected() {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("sortField", "name");
+
+    OpenMetadataException error =
+        assertThrows(OpenMetadataException.class, () -> fetchGroups(params));
+    assertEquals(400, error.getStatusCode());
+  }
+
+  // Table B's only open incident is Severity2; table A's two carry no severity. Each severity, and
+  // `none`, keeps exactly the groups whose incidents carry it.
+  @Test
+  void testSeverityFilterNarrowsGroups() throws Exception {
+    Map<String, String> graded = groupParams(GROUP_BY_TABLE);
+    graded.put("severity", "Severity2");
+    List<TestCaseIncidentGroup> gradedGroups = fetchGroups(graded);
+    assertEquals(1, findGroup(gradedGroups, tableB.getFullyQualifiedName()).getIncidentCount());
+    assertGroupAbsent(gradedGroups, tableA.getFullyQualifiedName());
+
+    Map<String, String> ungraded = groupParams(GROUP_BY_TABLE);
+    ungraded.put("severity", "none");
+    List<TestCaseIncidentGroup> ungradedGroups = fetchGroups(ungraded);
+    assertEquals(2, findGroup(ungradedGroups, tableA.getFullyQualifiedName()).getIncidentCount());
+    assertGroupAbsent(ungradedGroups, tableB.getFullyQualifiedName());
+
+    Map<String, String> both = groupParams(GROUP_BY_TABLE);
+    both.put("severity", "Severity2,none");
+    List<TestCaseIncidentGroup> bothGroups = fetchGroups(both);
+    findGroup(bothGroups, tableA.getFullyQualifiedName());
+    findGroup(bothGroups, tableB.getFullyQualifiedName());
+  }
+
+  // The drill-down lists a group's incidents on the flat endpoint, so the same severity filter
+  // there must keep exactly the incidents the group counts.
+  @Test
+  void testSeverityFilterListMatchesGroupCount() throws Exception {
+    List<TestCaseResolutionStatus> graded =
+        listStatuses(
+            latestOpenParams()
+                .addFilter("originEntityFQN", tableB.getFullyQualifiedName())
+                .addFilter("severity", "Severity2"));
+    assertEquals(Set.of(testCase3.getFullyQualifiedName()), statusTestCaseFqns(graded));
+
+    List<TestCaseResolutionStatus> ungraded =
+        listStatuses(
+            latestOpenParams()
+                .addFilter("originEntityFQN", tableA.getFullyQualifiedName())
+                .addFilter("severity", "none"));
+    assertEquals(
+        Set.of(testCase1.getFullyQualifiedName(), testCase2.getFullyQualifiedName()),
+        statusTestCaseFqns(ungraded));
+
+    List<TestCaseResolutionStatus> mismatched =
+        listStatuses(
+            latestOpenParams()
+                .addFilter("originEntityFQN", tableA.getFullyQualifiedName())
+                .addFilter("severity", "Severity2"));
+    assertTrue(mismatched.isEmpty(), "table A has no Severity2 incident");
+  }
+
+  @Test
+  void testUnknownSeverityRejected() {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("severity", "Severity9");
+    OpenMetadataException groupsError =
+        assertThrows(OpenMetadataException.class, () -> fetchGroups(params));
+    assertEquals(400, groupsError.getStatusCode());
+
+    OpenMetadataException listError =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> listStatuses(latestOpenParams().addFilter("severity", "Critical")));
+    assertEquals(400, listError.getStatusCode());
+  }
+
+  @Test
+  void testPagination() throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("limit", "1");
+    ListResponse<TestCaseIncidentGroup> response =
+        client.testCaseResolutionStatuses().listIncidentGroups(params);
+
+    assertEquals(1, response.getData().size());
+    assertTrue(response.getPaging().getTotal() >= 2, "at least our two table groups exist");
+  }
+
+  // Walks the assignee-scoped pager population (5 single-incident groups, tied counts, so the
+  // ordering falls to the groupKey tiebreak) with limits that split it into uneven pages.
+  @Test
+  void testPaginationWalkVisitsEveryGroupOnce() throws Exception {
+    assertPaginationWalk(2);
+    assertPaginationWalk(3);
+  }
+
+  @Test
+  void testPaginationOffsetBeyondTotalReturnsEmptyPage() throws Exception {
+    ListResponse<TestCaseIncidentGroup> response = fetchPagerPage(2, encodeOffset(100));
+
+    assertTrue(convertGroups(response).isEmpty());
+    assertNull(response.getPaging().getAfter(), "no next page past the end of the list");
+    assertEquals(pagerTableFqns.size(), response.getPaging().getTotal());
+  }
+
+  // The `before`/`after` cursors are opaque Base64-encoded offsets; the walk passes them back
+  // verbatim as `offset` (the real client contract) and only decodes them to check arithmetic.
+  private void assertPaginationWalk(int limit) throws Exception {
+    int total = pagerTableFqns.size();
+    List<String> visited = new ArrayList<>();
+    Set<String> seen = new HashSet<>();
+    String offsetCursor = null;
+    String lastPageCursor = null;
+    int expectedOffset = 0;
+    boolean morePages = true;
+
+    while (morePages) {
+      ListResponse<TestCaseIncidentGroup> response = fetchPagerPage(limit, offsetCursor);
+      List<TestCaseIncidentGroup> groups = convertGroups(response);
+      boolean lastPage = expectedOffset + limit >= total;
+
+      assertEquals(total, response.getPaging().getTotal(), "total must be stable on every page");
+      assertEquals(
+          lastPage ? total - expectedOffset : limit,
+          groups.size(),
+          "every page but the last must hold exactly 'limit' groups (limit=" + limit + ")");
+      if (expectedOffset == 0) {
+        assertNull(response.getPaging().getBefore(), "first page has no previous cursor");
+      } else {
+        assertEquals(
+            Math.max(0, expectedOffset - limit), decodeOffset(response.getPaging().getBefore()));
+      }
+      if (lastPage) {
+        assertNull(response.getPaging().getAfter(), "last page has no next cursor");
+      } else {
+        assertEquals(expectedOffset + limit, decodeOffset(response.getPaging().getAfter()));
+      }
+      for (TestCaseIncidentGroup group : groups) {
+        assertTrue(
+            seen.add(group.getFullyQualifiedName()),
+            "group repeated across pages: " + group.getFullyQualifiedName());
+        visited.add(group.getFullyQualifiedName());
+      }
+
+      lastPageCursor = offsetCursor;
+      morePages = response.getPaging().getAfter() != null;
+      if (morePages) {
+        offsetCursor = response.getPaging().getAfter();
+        expectedOffset += limit;
+      }
+    }
+
+    assertEquals(
+        pagerTableFqns,
+        visited,
+        "forward walk must visit every group exactly once, ordered by groupKey (limit="
+            + limit
+            + ")");
+    assertBackwardWalk(limit, lastPageCursor);
+  }
+
+  private void assertBackwardWalk(int limit, String lastPageCursor) throws Exception {
+    Set<String> seen = new HashSet<>();
+    String cursor = lastPageCursor;
+    boolean morePages = true;
+
+    while (morePages) {
+      ListResponse<TestCaseIncidentGroup> response = fetchPagerPage(limit, cursor);
+      for (TestCaseIncidentGroup group : convertGroups(response)) {
+        assertTrue(
+            seen.add(group.getFullyQualifiedName()),
+            "group repeated across backward pages: " + group.getFullyQualifiedName());
+      }
+      cursor = response.getPaging().getBefore();
+      morePages = cursor != null;
+    }
+
+    assertEquals(
+        new HashSet<>(pagerTableFqns),
+        seen,
+        "backward walk must visit the same groups as the forward walk (limit=" + limit + ")");
+  }
+
+  private ListResponse<TestCaseIncidentGroup> fetchPagerPage(int limit, String offsetCursor)
+      throws Exception {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("groupBy", GROUP_BY_TABLE);
+    params.put("assignee", pagerUser.getName());
+    params.put("limit", String.valueOf(limit));
+    if (offsetCursor != null) {
+      params.put("offset", offsetCursor);
+    }
+    return client.testCaseResolutionStatuses().listIncidentGroups(params);
+  }
+
+  private static String encodeOffset(int offset) {
+    return Base64.getEncoder()
+        .encodeToString(String.valueOf(offset).getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static int decodeOffset(String cursor) {
+    return Integer.parseInt(new String(Base64.getDecoder().decode(cursor), StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void testDbListStatusInFilter() throws Exception {
+    ListParams params =
+        new ListParams()
+            .withLimit(10)
+            .addFilter("testCaseFQN", testCase2.getFullyQualifiedName())
+            .addFilter(
+                "testCaseResolutionStatusType",
+                TestCaseResolutionStatusTypes.New.value()
+                    + ","
+                    + TestCaseResolutionStatusTypes.Assigned.value());
+    ListResponse<TestCaseResolutionStatus> response =
+        client.testCaseResolutionStatuses().list(params);
+    assertEquals(
+        2, response.getData().size(), "both records of the incident chain match the IN filter");
+  }
+
+  // The repository only takes the latest-per-test-case branch when a time range is given.
+  @Test
+  void testDbListLatestWithStatusFilter() throws Exception {
+    String endTs = String.valueOf(System.currentTimeMillis() + 60_000);
+    ListParams matching =
+        new ListParams()
+            .withLimit(10)
+            .withLatest(true)
+            .addFilter("startTs", "0")
+            .addFilter("endTs", endTs)
+            .addFilter("testCaseFQN", testCase2.getFullyQualifiedName())
+            .addFilter(
+                "testCaseResolutionStatusType",
+                TestCaseResolutionStatusTypes.New.value()
+                    + ","
+                    + TestCaseResolutionStatusTypes.Assigned.value());
+    ListResponse<TestCaseResolutionStatus> response =
+        client.testCaseResolutionStatuses().list(matching);
+    assertEquals(
+        1,
+        response.getData().size(),
+        "only the latest record of the test case matches the status IN filter");
+
+    ListParams nonMatching =
+        new ListParams()
+            .withLimit(10)
+            .withLatest(true)
+            .addFilter("startTs", "0")
+            .addFilter("endTs", endTs)
+            .addFilter("testCaseFQN", testCase2.getFullyQualifiedName())
+            .addFilter("testCaseResolutionStatusType", TestCaseResolutionStatusTypes.New.value());
+    assertTrue(
+        client.testCaseResolutionStatuses().list(nonMatching).getData().isEmpty(),
+        "the latest record is Assigned, so a New filter must exclude the test case");
+  }
+
+  @Test
+  void testDbListTestDefinitionFilterScopesToDefinition() throws Exception {
+    List<TestCaseResolutionStatus> tableDefStatuses =
+        listStatuses(
+            new ListParams()
+                .withLimit(100)
+                .addFilter("testDefinition", tableDefinition.getFullyQualifiedName()));
+    assertEquals(
+        Set.of(
+            testCase1.getFullyQualifiedName(),
+            testCase3.getFullyQualifiedName(),
+            testCase4.getFullyQualifiedName()),
+        statusTestCaseFqns(tableDefStatuses),
+        "all records of the table definition's test cases and nothing else");
+
+    List<TestCaseResolutionStatus> columnDefStatuses =
+        listStatuses(
+            new ListParams()
+                .withLimit(100)
+                .addFilter("testDefinition", columnDefinition.getFullyQualifiedName()));
+    assertEquals(
+        Set.of(testCase2.getFullyQualifiedName()),
+        statusTestCaseFqns(columnDefStatuses),
+        "only case 2 uses the column definition");
+  }
+
+  // latest=true + open statuses must return exactly the incident population the
+  // groupBy=testDefinition endpoint counts for that definition (case 4's latest is Resolved).
+  @Test
+  void testDbListLatestWithTestDefinitionFilterMatchesGroupCount() throws Exception {
+    String endTs = String.valueOf(System.currentTimeMillis() + 60_000);
+    ListParams params =
+        new ListParams()
+            .withLimit(100)
+            .withLatest(true)
+            .addFilter("startTs", "0")
+            .addFilter("endTs", endTs)
+            .addFilter("testDefinition", tableDefinition.getFullyQualifiedName())
+            .addFilter(
+                "testCaseResolutionStatusType",
+                TestCaseResolutionStatusTypes.New.value()
+                    + ","
+                    + TestCaseResolutionStatusTypes.Ack.value()
+                    + ","
+                    + TestCaseResolutionStatusTypes.Assigned.value());
+    List<TestCaseResolutionStatus> statuses = listStatuses(params);
+
+    Set<String> openIncidentCases = statusTestCaseFqns(statuses);
+    assertEquals(
+        Set.of(testCase1.getFullyQualifiedName(), testCase3.getFullyQualifiedName()),
+        openIncidentCases);
+
+    TestCaseIncidentGroup tableDefGroup =
+        findGroup(
+            fetchGroups(groupParams(GROUP_BY_TEST_DEFINITION)),
+            tableDefinition.getFullyQualifiedName());
+    assertEquals(tableDefGroup.getIncidentCount(), openIncidentCases.size());
+  }
+
+  @Test
+  void testDbListUnknownTestDefinitionRejected() {
+    ListParams params =
+        new ListParams()
+            .withLimit(10)
+            .addFilter("testDefinition", "incident_groups_unknown_def_" + System.nanoTime());
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class, () -> client.testCaseResolutionStatuses().list(params));
+    assertEquals(404, error.getStatusCode());
+  }
+
+  @Test
+  void testGroupAggregates() throws Exception {
+    List<TestCaseIncidentGroup> groups = fetchGroups(groupParams(GROUP_BY_TABLE));
+
+    TestCaseIncidentGroup groupA = findGroup(groups, tableA.getFullyQualifiedName());
+    assertEquals(
+        TestCaseResolutionStatusTypes.Assigned,
+        groupA.getStatus(),
+        "case 2's Assigned outranks case 1's status in the triage order");
+    assertEquals(
+        List.of(TestCaseResolutionStatusTypes.Assigned, TestCaseResolutionStatusTypes.New),
+        statuses(groupA),
+        "case 2 is Assigned and case 1 is New, most actionable first");
+    assertEquals(List.of(1, 1), statusCounts(groupA));
+    assertEquals(List.of(userA.getName()), groupA.getAssignees());
+    assertEquals(1, groupA.getAssigneeCount());
+    assertTrue(groupA.getFirstSeen() <= groupA.getLastSeen());
+    assertEquals(
+        2,
+        groupA.getTrend().stream().mapToInt(Integer::intValue).sum(),
+        "trend buckets must add up to the incident count");
+    assertNotNull(groupA.getTrendDirection());
+
+    TestCaseIncidentGroup groupB = findGroup(groups, tableB.getFullyQualifiedName());
+    assertEquals(TestCaseResolutionStatusTypes.New, groupB.getStatus());
+    assertEquals(
+        List.of(TestCaseResolutionStatusTypes.New),
+        statuses(groupB),
+        "case 4 is resolved, so it is absent from the breakdown as well as from the count");
+    assertEquals(List.of(1), statusCounts(groupB));
+    assertEquals(Severity.Severity2, groupB.getSeverity(), "case 3's explicit severity");
+    assertEquals(0, groupB.getAssigneeCount());
+    assertEquals(
+        List.of(1, 0, 0, 0, 0, 0, 0, 0),
+        groupB.getTrend(),
+        "a single open incident lands in the first bucket");
+    assertEquals(IncidentTrendDirection.Steady, groupB.getTrendDirection());
+  }
+
+  @Test
+  void testDbListOwnerFilterScopesToOwner() throws Exception {
+    assertEquals(
+        Set.of(testCase1.getFullyQualifiedName(), testCase2.getFullyQualifiedName()),
+        statusTestCaseFqns(
+            listStatuses(new ListParams().withLimit(100).addFilter("owner", userA.getName()))),
+        "user A directly owns cases 1 and 2");
+    assertEquals(
+        Set.of(testCase2.getFullyQualifiedName(), testCase3.getFullyQualifiedName()),
+        statusTestCaseFqns(
+            listStatuses(new ListParams().withLimit(100).addFilter("owner", userB.getName()))),
+        "user B directly owns cases 2 and 3");
+  }
+
+  @Test
+  void testDbListUnknownOwnerRejected() {
+    ListParams params =
+        new ListParams()
+            .withLimit(10)
+            .addFilter("owner", "incident_groups_unknown_owner_" + System.nanoTime());
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class, () -> client.testCaseResolutionStatuses().list(params));
+    assertEquals(404, error.getStatusCode());
+  }
+
+  // Appends to an incident of its own rather than to a shared fixture case: the IT module runs
+  // methods concurrently, so mutating a @BeforeAll case would make every assertion about that
+  // case's status depend on scheduling.
+  @Test
+  void testBulkCreateStatuses() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table bulkTable = createTable(schemaFqn, "incident_groups_bulk_" + ts);
+    TestDefinition bulkDefinition =
+        createTestDefinition("incident_groups_bulk_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase bulkCase =
+        createTestCase(
+            "incident_groups_bulk_case_" + ts, tableLink(bulkTable), bulkDefinition, List.of());
+    createStatus(bulkCase, TestCaseResolutionStatusTypes.New, null);
+
+    CreateTestCaseResolutionStatus ackBulkCase =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(bulkCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack);
+    CreateTestCaseResolutionStatus unknownCase =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference("incident_groups_missing_case_" + System.nanoTime())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack);
+
+    BulkOperationResult result =
+        client.testCaseResolutionStatuses().bulkCreate(List.of(ackBulkCase, unknownCase));
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(1, result.getNumberOfRowsFailed());
+    assertEquals(
+        TestCaseResolutionStatusTypes.Ack,
+        fetchStatuses(bulkCase).getFirst().getTestCaseResolutionStatusType(),
+        "the bulk entry must append an Ack record to the case's incident chain");
+  }
+
+  // A group names the tables and test definitions its open incidents span, whatever it is grouped
+  // by: a definition group lists the tables it fired on, a table group the definitions on it.
+  @Test
+  void testGroupsNameTheirRelatedTablesAndDefinitions() throws Exception {
+    TestCaseIncidentGroup tableDefGroup =
+        findGroup(
+            fetchGroups(groupParams(GROUP_BY_TEST_DEFINITION)),
+            tableDefinition.getFullyQualifiedName());
+    assertEquals(2, tableDefGroup.getTableCount(), "cases 1 and 3 are open on tables A and B");
+    assertEquals(
+        Set.of(tableA.getFullyQualifiedName(), tableB.getFullyQualifiedName()),
+        referenceFqns(tableDefGroup.getTables()));
+    assertEquals(1, tableDefGroup.getTestDefinitionCount());
+    assertEquals(
+        Set.of(tableDefinition.getFullyQualifiedName()),
+        referenceFqns(tableDefGroup.getTestDefinitions()));
+
+    TestCaseIncidentGroup tableAGroup =
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), tableA.getFullyQualifiedName());
+    assertEquals(1, tableAGroup.getTableCount());
+    assertEquals(
+        2, tableAGroup.getTestDefinitionCount(), "a table-level and a column-level definition");
+    assertEquals(
+        Set.of(tableDefinition.getFullyQualifiedName(), columnDefinition.getFullyQualifiedName()),
+        referenceFqns(tableAGroup.getTestDefinitions()));
+  }
+
+  @Test
+  void testRelatedTablesRankByIncidentsAndAreCapped() throws Exception {
+    long ts = System.currentTimeMillis();
+    TestDefinition definition =
+        createTestDefinition("incident_groups_related_def_" + ts, TestDefinitionEntityType.TABLE);
+    Table busiest = null;
+    for (int i = 0; i < 6; i++) {
+      Table table = createTable(schemaFqn, "incident_groups_related_" + i + "_" + ts);
+      TestCase testCase =
+          createTestCase("incident_groups_related_case", tableLink(table), definition, List.of());
+      createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+      busiest = table;
+    }
+    TestCase second =
+        createTestCase("incident_groups_related_extra", tableLink(busiest), definition, List.of());
+    createStatus(second, TestCaseResolutionStatusTypes.New, null);
+
+    TestCaseIncidentGroup group =
+        findGroup(
+            fetchGroups(groupParams(GROUP_BY_TEST_DEFINITION)), definition.getFullyQualifiedName());
+
+    assertEquals(6, group.getTableCount(), "the count is exact whatever the list holds");
+    assertEquals(5, group.getTables().size(), "the group names only a handful of its tables");
+    assertEquals(
+        busiest.getFullyQualifiedName(),
+        group.getTables().getFirst().getFullyQualifiedName(),
+        "the table with the most open incidents comes first");
+    assertEquals(busiest.getId(), group.getTables().getFirst().getId());
+  }
+
+  // The "No Owner" group stands for no entity, so it cannot be drilled into by owner; `unowned`
+  // lists exactly the incidents that group counts.
+  @Test
+  void testDbListUnownedMatchesNoOwnerGroup() throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_OWNER);
+    params.put("assignee", pagerUser.getName());
+    TestCaseIncidentGroup unownedGroup = fetchGroups(params).getFirst();
+
+    List<TestCaseResolutionStatus> statuses =
+        listStatuses(
+            latestOpenParams()
+                .addFilter("unowned", "true")
+                .addFilter("assignee", pagerUser.getName()));
+
+    assertEquals(unownedGroup.getIncidentCount(), statusTestCaseFqns(statuses).size());
+    assertEquals(pagerTableFqns.size(), statuses.size());
+  }
+
+  @Test
+  void testDbListOwnerAndUnownedRejected() {
+    ListParams params =
+        new ListParams()
+            .withLimit(10)
+            .addFilter("owner", userA.getName())
+            .addFilter("unowned", "true");
+    assertThrows(OpenMetadataException.class, () -> listStatuses(params));
+  }
+
+  // With a date field the flat list applies the range to the incidents, as the groups do, so a
+  // drill-down under an active range lists what the group counted.
+  @Test
+  void testDbListDateFieldMatchesGroupCounts() throws Exception {
+    String endTs = String.valueOf(System.currentTimeMillis() + 60_000);
+    for (String dateField :
+        List.of(
+            TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT,
+            TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT)) {
+      assertEquals(
+          pagerIncidentCount(dateField, "0", endTs),
+          pagerIncidents(dateField, "0", endTs).size(),
+          "a range covering every incident (" + dateField + ")");
+      assertEquals(
+          pagerIncidentCount(dateField, "0", "1"),
+          pagerIncidents(dateField, "0", "1").size(),
+          "a range ending before any incident (" + dateField + ")");
+    }
+    assertEquals(0, pagerIncidents("createdAt", "0", "1").size());
+
+    // The first pager incident was opened at this instant and every pager incident was assigned
+    // after it, so only a range on the right column holds exactly that one incident.
+    String openedAt =
+        String.valueOf(
+            fetchStatuses(pagerCases.getFirst()).stream()
+                .mapToLong(TestCaseResolutionStatus::getTimestamp)
+                .min()
+                .orElseThrow());
+    String createdAt = TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT;
+    String updatedAt = TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT;
+    assertEquals(1, pagerIncidentCount(createdAt, openedAt, openedAt));
+    assertEquals(1, pagerIncidents(createdAt, openedAt, openedAt).size());
+    assertEquals(0, pagerIncidentCount(updatedAt, openedAt, openedAt));
+    assertEquals(0, pagerIncidents(updatedAt, openedAt, openedAt).size());
+  }
+
+  @Test
+  void testUnknownDateFieldRejected() {
+    OpenMetadataException groupsError =
+        assertThrows(OpenMetadataException.class, () -> pagerIncidentCount("timestamp", "0", "1"));
+    assertEquals(400, groupsError.getStatusCode());
+    OpenMetadataException listError =
+        assertThrows(OpenMetadataException.class, () -> pagerIncidents("timestamp", "0", "1"));
+    assertEquals(400, listError.getStatusCode());
+  }
+
+  @Test
+  void testBulkSeverityChangeKeepsTheStatus() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_bulk_severity_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_bulk_severity_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_bulk_severity_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    Severity current = fetchStatuses(testCase).getFirst().getSeverity();
+    Severity target = current == Severity.Severity5 ? Severity.Severity4 : Severity.Severity5;
+    CreateTestCaseResolutionStatus severityOnly =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+            .withSeverity(target);
+
+    BulkOperationResult result =
+        client.testCaseResolutionStatuses().bulkCreate(List.of(severityOnly));
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    List<TestCaseResolutionStatus> chain = fetchStatuses(testCase);
+    assertEquals(1, chain.size(), "a severity change adds no record to the incident chain");
+    assertEquals(target, chain.getFirst().getSeverity());
+    assertEquals(
+        target,
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), table.getFullyQualifiedName())
+            .getSeverity(),
+        "the group reads the new severity");
+
+    BulkOperationResult repeat =
+        client.testCaseResolutionStatuses().bulkCreate(List.of(severityOnly));
+    assertEquals(
+        ApiStatus.FAILURE,
+        repeat.getStatus(),
+        "an entry that changes nothing is reported, not counted as applied");
+  }
+
+  @Test
+  void testBulkSeverityChangeOnAssignedIncidentNamedById() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_bulk_severity_by_id_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_bulk_severity_by_id_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_bulk_severity_by_id_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    createStatus(
+        testCase,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned().withAssignee(userA.getEntityReference()));
+    Severity current = fetchStatuses(testCase).getFirst().getSeverity();
+    Severity target = current == Severity.Severity5 ? Severity.Severity4 : Severity.Severity5;
+    int chainSize = fetchStatuses(testCase).size();
+
+    // Only the id: an API caller has no reason to send the assignee's name.
+    BulkOperationResult result =
+        client
+            .testCaseResolutionStatuses()
+            .bulkCreate(
+                List.of(
+                    new CreateTestCaseResolutionStatus()
+                        .withTestCaseReference(testCase.getFullyQualifiedName())
+                        .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+                        .withTestCaseResolutionStatusDetails(
+                            new Assigned()
+                                .withAssignee(
+                                    new EntityReference()
+                                        .withId(userA.getId())
+                                        .withType(Entity.USER)))
+                        .withSeverity(target)));
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    List<TestCaseResolutionStatus> chain = fetchStatuses(testCase);
+    assertEquals(chainSize, chain.size(), "the same assignee by id is a severity change only");
+    assertEquals(target, chain.getFirst().getSeverity());
+    assertEquals(
+        TestCaseResolutionStatusTypes.Assigned, chain.getFirst().getTestCaseResolutionStatusType());
+  }
+
+  @Test
+  void testBulkAssignByIdStoresTheFullAssignee() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_bulk_assign_by_id_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_bulk_assign_by_id_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_bulk_assign_by_id_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+
+    BulkOperationResult result =
+        client
+            .testCaseResolutionStatuses()
+            .bulkCreate(
+                List.of(
+                    new CreateTestCaseResolutionStatus()
+                        .withTestCaseReference(testCase.getFullyQualifiedName())
+                        .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+                        .withTestCaseResolutionStatusDetails(
+                            new Assigned()
+                                .withAssignee(
+                                    new EntityReference()
+                                        .withId(userB.getId())
+                                        .withType(Entity.USER)))));
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    TestCaseResolutionStatus latest = fetchStatuses(testCase).getFirst();
+    Assigned assigned =
+        JsonUtils.convertValue(latest.getTestCaseResolutionStatusDetails(), Assigned.class);
+    assertEquals(userB.getName(), assigned.getAssignee().getName());
+    assertEquals(
+        List.of(userB.getName()),
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), table.getFullyQualifiedName())
+            .getAssignees(),
+        "the group counts the assignee a request named by id");
+  }
+
+  @Test
+  void testAssignByDottedNameStoresTheFullAssignee() throws Exception {
+    long ts = System.currentTimeMillis();
+    User dotted = createUser("incident.groups.dotted." + ts);
+    Table table = createTable(schemaFqn, "incident_groups_assign_by_name_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_assign_by_name_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_assign_by_name_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+
+    createStatus(
+        testCase,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned()
+            .withAssignee(
+                new EntityReference()
+                    .withName(dotted.getName().toUpperCase())
+                    .withType(Entity.USER)));
+
+    Assigned assigned =
+        JsonUtils.convertValue(
+            fetchStatuses(testCase).getFirst().getTestCaseResolutionStatusDetails(),
+            Assigned.class);
+    assertEquals(dotted.getId(), assigned.getAssignee().getId());
+    assertEquals(dotted.getName(), assigned.getAssignee().getName());
+  }
+
+  @Test
+  void testAssigneeOtherThanUserOrTeamRejected() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_table_assignee_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_table_assignee_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_table_assignee_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                createStatus(
+                    testCase,
+                    TestCaseResolutionStatusTypes.Assigned,
+                    new Assigned().withAssignee(table.getEntityReference())));
+    assertEquals(400, error.getStatusCode());
+    assertEquals(
+        TestCaseResolutionStatusTypes.New,
+        fetchStatuses(testCase).getFirst().getTestCaseResolutionStatusType());
+  }
+
+  @Test
+  void testAssigneeNamedByAnUnknownNameNotFound() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_unknown_assignee_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_unknown_assignee_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_unknown_assignee_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    String unknownName = "incident_groups_nobody_" + ts;
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                createStatus(
+                    testCase,
+                    TestCaseResolutionStatusTypes.Assigned,
+                    new Assigned()
+                        .withAssignee(
+                            new EntityReference().withName(unknownName).withType(Entity.USER))));
+    assertEquals(404, error.getStatusCode());
+    assertTrue(
+        error.getMessage().contains("user instance for " + unknownName + " not found"),
+        error.getMessage());
+  }
+
+  // Records written before assignees were resolved keep the name the client sent, in whatever case
+  // it was typed, while a user is looked up by its lowercased FQN.
+  @Test
+  void testMixedCaseAssigneeNameResolvesToItsUser() throws Exception {
+    long ts = System.currentTimeMillis();
+    User user = createUser("incident_groups_mixed_case_" + ts);
+    Table table = createTable(schemaFqn, "incident_groups_mixed_case_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_mixed_case_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase("incident_groups_mixed_case_case", tableLink(table), definition, List.of());
+    String typedName = user.getName().toUpperCase(Locale.ROOT);
+    String stateId = UUID.randomUUID().toString();
+    insertStatusRecords(
+        testCase,
+        List.of(
+            seededRecord(stateId, ts - 120_000, TestCaseResolutionStatusTypes.New, null),
+            seededRecord(stateId, ts - 60_000, TestCaseResolutionStatusTypes.Assigned, typedName)));
+
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("testCaseFQN", testCase.getFullyQualifiedName());
+    TestCaseIncidentGroup group = findGroup(fetchGroups(params), table.getFullyQualifiedName());
+
+    assertEquals(List.of(typedName), group.getAssignees());
+    assertEquals(
+        List.of(user.getId()),
+        group.getAssigneeReferences().stream().map(EntityReference::getId).toList());
+  }
+
+  // The flat list never joins a test case to its definition, so it still lists an incident whose
+  // test case lost that relationship; the groups must count it as well.
+  @Test
+  void testIncidentWithoutTestDefinitionRelationStillCounts() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_no_definition_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_no_definition_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_no_definition_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle.execute(
+                    "DELETE FROM entity_relationship WHERE toId = ? AND fromEntity = ? "
+                        + "AND relation = ?",
+                    testCase.getId().toString(),
+                    Entity.TEST_DEFINITION,
+                    Relationship.CONTAINS.ordinal()));
+
+    TestCaseIncidentGroup group =
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), table.getFullyQualifiedName());
+
+    assertEquals(1, group.getIncidentCount());
+    assertEquals(0, group.getTestDefinitionCount());
+    assertTrue(group.getTestDefinitions().isEmpty());
+  }
+
+  @Test
+  void testBulkNewOnOpenIncidentRejected() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_bulk_new_" + ts);
+    TestDefinition definition =
+        createTestDefinition("incident_groups_bulk_new_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase("incident_groups_bulk_new_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    createStatus(testCase, TestCaseResolutionStatusTypes.Ack, null);
+
+    BulkOperationResult result =
+        client
+            .testCaseResolutionStatuses()
+            .bulkCreate(
+                List.of(
+                    new CreateTestCaseResolutionStatus()
+                        .withTestCaseReference(testCase.getFullyQualifiedName())
+                        .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)));
+
+    assertEquals(ApiStatus.FAILURE, result.getStatus());
+    assertEquals(
+        TestCaseResolutionStatusTypes.Ack,
+        fetchStatuses(testCase).getFirst().getTestCaseResolutionStatusType());
+  }
+
+  @Test
+  void testPatchedSeverityReachesTheGroup() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_patch_severity_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_patch_severity_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_patch_severity_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    TestCaseResolutionStatus latest = fetchStatuses(testCase).getFirst();
+    Severity target =
+        latest.getSeverity() == Severity.Severity1 ? Severity.Severity2 : Severity.Severity1;
+
+    client
+        .testCaseResolutionStatuses()
+        .patch(
+            latest.getId(),
+            JsonUtils.readTree(
+                "[{\"op\":\"add\",\"path\":\"/severity\",\"value\":\"" + target.value() + "\"}]"));
+
+    assertEquals(
+        target,
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), table.getFullyQualifiedName())
+            .getSeverity());
+  }
+
+  @Test
+  void testFailedResultDenormalizesFailureSummary() throws Exception {
+    long ts = System.currentTimeMillis();
+    String failureText = "Expected 48210 rows, found 47006";
+    Table summaryTable = createTable(schemaFqn, "incident_groups_summary_" + ts);
+    TestDefinition summaryDefinition =
+        createTestDefinition("incident_groups_summary_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase summaryCase =
+        createTestCase(
+            "incident_groups_summary_case_" + ts,
+            tableLink(summaryTable),
+            summaryDefinition,
+            List.of());
+
+    CreateTestCaseResult failedResult =
+        new CreateTestCaseResult()
+            .withTimestamp(System.currentTimeMillis())
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withResult(failureText);
+    client.testCaseResults().create(summaryCase.getFullyQualifiedName(), failedResult);
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              List<TestCaseResolutionStatus> statuses = fetchStatuses(summaryCase);
+              assertFalse(statuses.isEmpty(), "the failed result must open an incident");
+              assertEquals(
+                  failureText,
+                  statuses.getFirst().getFailureSummary(),
+                  "the incident record must carry the denormalized failure text");
+            });
+  }
+
+  // Without a startTs/endTs range the data query skips the timestamp clause but the count query
+  // used to keep it, evaluating BETWEEN NULL AND NULL — total came back 0 and no after-cursor was
+  // ever emitted, so unranged listings could not paginate.
+  @Test
+  void testDbListPagingWithoutTimeRange() throws Exception {
+    ListParams firstPage =
+        new ListParams().withLimit(1).addFilter("testCaseFQN", testCase2.getFullyQualifiedName());
+    ListResponse<TestCaseResolutionStatus> first =
+        client.testCaseResolutionStatuses().list(firstPage);
+
+    assertEquals(2, first.getPaging().getTotal(), "case 2 has a two-record chain");
+    assertEquals(1, first.getData().size());
+    assertNotNull(first.getPaging().getAfter(), "a second page must be reachable");
+
+    ListParams secondPage =
+        new ListParams()
+            .withLimit(1)
+            .addFilter("testCaseFQN", testCase2.getFullyQualifiedName())
+            .addFilter("offset", first.getPaging().getAfter());
+    ListResponse<TestCaseResolutionStatus> second =
+        client.testCaseResolutionStatuses().list(secondPage);
+
+    assertEquals(2, second.getPaging().getTotal());
+    assertEquals(1, second.getData().size());
+    assertNull(second.getPaging().getAfter(), "two records, so page two is the last page");
+    Set<String> ids = new HashSet<>();
+    ids.add(
+        JsonUtils.convertValue(first.getData().getFirst(), TestCaseResolutionStatus.class)
+            .getId()
+            .toString());
+    ids.add(
+        JsonUtils.convertValue(second.getData().getFirst(), TestCaseResolutionStatus.class)
+            .getId()
+            .toString());
+    assertEquals(2, ids.size(), "the two pages must return distinct records");
+  }
+
+  // The `assignee` param used to fall through to ListFilter's task-oriented condition, which
+  // hashes the name and matches ASSIGNED_TO relationship targets — never a time-series record
+  // id — so the DB list silently returned nothing for any assignee.
+  @Test
+  void testDbListAssigneeFilter() throws Exception {
+    List<TestCaseResolutionStatus> records =
+        listStatuses(new ListParams().withLimit(100).addFilter("assignee", userA.getName()));
+    assertEquals(
+        Set.of(testCase2.getFullyQualifiedName()),
+        statusTestCaseFqns(records),
+        "only case 2 has a record assigned to user A");
+    assertEquals(
+        TestCaseResolutionStatusTypes.Assigned,
+        records.getFirst().getTestCaseResolutionStatusType());
+
+    String endTs = String.valueOf(System.currentTimeMillis() + 60_000);
+    List<TestCaseResolutionStatus> latest =
+        listStatuses(
+            new ListParams()
+                .withLimit(100)
+                .withLatest(true)
+                .addFilter("startTs", "0")
+                .addFilter("endTs", endTs)
+                .addFilter("assignee", userA.getName()));
+    assertEquals(
+        Set.of(testCase2.getFullyQualifiedName()),
+        statusTestCaseFqns(latest),
+        "latest-per-test-case filtering must also honor the assignee");
+  }
+
+  // Pins the invariant that a status transition never loses the denormalized failure reason:
+  // the latest record after a bulk Ack must still carry the summary captured when the failed
+  // result opened the incident (whether stamped from the task payload or inherited from the
+  // chain's prior record in storeInternal/syncFromTask).
+  @Test
+  void testBulkTransitionPreservesFailureSummary() throws Exception {
+    long ts = System.currentTimeMillis();
+    String failureText = "Bulk chain summary " + ts;
+    Table summaryTable = createTable(schemaFqn, "incident_groups_bulk_summary_" + ts);
+    TestDefinition summaryDefinition =
+        createTestDefinition(
+            "incident_groups_bulk_summary_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase summaryCase =
+        createTestCase(
+            "incident_groups_bulk_summary_case_" + ts,
+            tableLink(summaryTable),
+            summaryDefinition,
+            List.of());
+    client
+        .testCaseResults()
+        .create(
+            summaryCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(TestCaseStatus.Failed)
+                .withResult(failureText));
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () ->
+                assertFalse(
+                    fetchStatuses(summaryCase).isEmpty(),
+                    "the failed result must open an incident"));
+
+    BulkOperationResult result =
+        client
+            .testCaseResolutionStatuses()
+            .bulkCreate(
+                List.of(
+                    new CreateTestCaseResolutionStatus()
+                        .withTestCaseReference(summaryCase.getFullyQualifiedName())
+                        .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack)));
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              TestCaseResolutionStatus latest = fetchStatuses(summaryCase).getFirst();
+              assertEquals(
+                  TestCaseResolutionStatusTypes.Ack, latest.getTestCaseResolutionStatusType());
+              assertEquals(
+                  failureText,
+                  latest.getFailureSummary(),
+                  "the status transition must not lose the denormalized failure reason");
+            });
+  }
+
+  // The public API cannot produce two records with an identical timestamp (storeInternal forces
+  // per-FQN monotonicity), so the tie shape is seeded straight into the suite's database and
+  // asserted through the API — pinning the MAX(id) tie-breaker in the incident CTE. Without it,
+  // both tied records enter the aggregates: two assignees and a double-counted trend point for a
+  // single incident.
+  @Test
+  void testDuplicateMaxTimestampTieBreak() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table tieTable = createTable(schemaFqn, "incident_groups_tie_" + ts);
+    TestDefinition tieDefinition =
+        createTestDefinition("incident_groups_tie_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase tieCase =
+        createTestCase(
+            "incident_groups_tie_case_" + ts, tableLink(tieTable), tieDefinition, List.of());
+
+    String stateId = UUID.randomUUID().toString();
+    long tieTimestamp = ts - 3_600_000;
+    insertStatusRecords(
+        tieCase,
+        List.of(
+            seededRecord(stateId, tieTimestamp - 60_000, TestCaseResolutionStatusTypes.New, null),
+            seededRecord(
+                stateId,
+                tieTimestamp,
+                TestCaseResolutionStatusTypes.Assigned,
+                "incident_groups_tie_assignee_a_" + ts),
+            seededRecord(
+                stateId,
+                tieTimestamp,
+                TestCaseResolutionStatusTypes.Assigned,
+                "incident_groups_tie_assignee_b_" + ts)));
+
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("testCaseFQN", tieCase.getFullyQualifiedName());
+    TestCaseIncidentGroup group = findGroup(fetchGroups(params), tieTable.getFullyQualifiedName());
+
+    assertEquals(1, group.getIncidentCount());
+    assertEquals(
+        1, group.getAssigneeCount(), "only the tie-broken latest record's assignee may count");
+    assertEquals(1, group.getAssignees().size());
+    assertEquals(
+        1,
+        group.getTrend().stream().mapToInt(Integer::intValue).sum(),
+        "the tied incident must enter the trend exactly once");
+  }
+
+  @Test
+  void testLatestRecordBatchBreaksTimestampTiesByRecordId() throws Exception {
+    long timestamp = System.currentTimeMillis();
+    Table tieTable = createTable(schemaFqn, "latest_record_batch_tie_" + timestamp);
+    TestDefinition tieDefinition =
+        createTestDefinition(
+            "latest_record_batch_tie_def_" + timestamp, TestDefinitionEntityType.TABLE);
+    TestCase tieCase =
+        createTestCase(
+            "latest_record_batch_tie_case_" + timestamp,
+            tableLink(tieTable),
+            tieDefinition,
+            List.of());
+
+    String stateId = UUID.randomUUID().toString();
+    UUID lowerId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID higherId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    insertStatusRecords(
+        tieCase,
+        List.of(
+            seededRecord(stateId, timestamp, TestCaseResolutionStatusTypes.New, null)
+                .withId(lowerId),
+            seededRecord(stateId, timestamp, TestCaseResolutionStatusTypes.Ack, null)
+                .withId(higherId)));
+
+    List<CollectionDAO.LatestRecordWithFQNHash> latestRecords =
+        Entity.getCollectionDAO()
+            .testCaseResolutionStatusTimeSeriesDao()
+            .getLatestRecordBatch(List.of(tieCase.getFullyQualifiedName()));
+
+    assertEquals(1, latestRecords.size());
+    TestCaseResolutionStatus selected =
+        JsonUtils.readValue(latestRecords.getFirst().getJson(), TestCaseResolutionStatus.class);
+    assertEquals(higherId, selected.getId());
+  }
+
+  // 60 distinct assignee names exceed GROUP_CONCAT's default 1024-char cap; the JSON aggregate
+  // must deliver every name complete. Seeded via the database for speed and determinism.
+  @Test
+  void testAssigneeDenseGroupIsNotTruncated() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table denseTable = createTable(schemaFqn, "incident_groups_dense_" + ts);
+    TestDefinition denseDefinition =
+        createTestDefinition("incident_groups_dense_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase denseCase =
+        createTestCase(
+            "incident_groups_dense_case_" + ts, tableLink(denseTable), denseDefinition, List.of());
+
+    List<TestCaseResolutionStatus> records = new ArrayList<>();
+    for (int i = 0; i < 60; i++) {
+      String stateId = UUID.randomUUID().toString();
+      long chainStart = ts - (i + 2) * 3_600_000L;
+      records.add(seededRecord(stateId, chainStart, TestCaseResolutionStatusTypes.New, null));
+      records.add(
+          seededRecord(
+              stateId,
+              chainStart + 60_000,
+              TestCaseResolutionStatusTypes.Assigned,
+              String.format("incident_groups_dense_assignee_number_%02d_%d", i, ts)));
+    }
+    insertStatusRecords(denseCase, records);
+
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("testCaseFQN", denseCase.getFullyQualifiedName());
+    TestCaseIncidentGroup group =
+        findGroup(fetchGroups(params), denseTable.getFullyQualifiedName());
+
+    assertEquals(60, group.getIncidentCount());
+    assertEquals(60, group.getAssigneeCount());
+    assertEquals(60, group.getAssignees().size(), "no aggregation cap may drop assignees");
+    assertTrue(
+        group.getAssignees().stream()
+            .allMatch(name -> name.matches("incident_groups_dense_assignee_number_\\d{2}_\\d+")),
+        "every assignee name must arrive complete, never truncated mid-name");
+  }
+
+  private TestCaseResolutionStatus seededRecord(
+      String stateId, long timestamp, TestCaseResolutionStatusTypes type, String assigneeName) {
+    TestCaseResolutionStatus record =
+        new TestCaseResolutionStatus()
+            .withId(UUID.randomUUID())
+            .withStateId(UUID.fromString(stateId))
+            .withTimestamp(timestamp)
+            .withUpdatedAt(timestamp)
+            .withTestCaseResolutionStatusType(type);
+    if (assigneeName != null) {
+      record.withTestCaseResolutionStatusDetails(
+          new Assigned()
+              .withAssignee(
+                  new EntityReference()
+                      .withId(UUID.randomUUID())
+                      .withType("user")
+                      .withName(assigneeName)));
+    }
+    return record;
+  }
+
+  private void insertStatusRecords(TestCase testCase, List<TestCaseResolutionStatus> records)
+      throws Exception {
+    DataSourceFactory dataSource =
+        TestSuiteBootstrap.createApplicationConfigCopy().getDataSourceFactory();
+    boolean postgres = dataSource.getUrl().contains("postgresql");
+    String insert =
+        "INSERT INTO test_case_resolution_status_time_series (entityFQNHash, jsonSchema, json) "
+            + (postgres ? "VALUES (?, ?, ?::jsonb)" : "VALUES (?, ?, ?)");
+    String fqnHash = FullyQualifiedName.buildHash(testCase.getFullyQualifiedName());
+    try (Connection connection =
+            DriverManager.getConnection(
+                dataSource.getUrl(), dataSource.getUser(), dataSource.getPassword());
+        PreparedStatement statement = connection.prepareStatement(insert)) {
+      for (TestCaseResolutionStatus record : records) {
+        statement.setString(1, fqnHash);
+        statement.setString(2, "testCaseResolutionStatus");
+        statement.setString(3, JsonUtils.pojoToJson(record));
+        statement.addBatch();
+      }
+      statement.executeBatch();
+      syncIncidentSummary(connection, postgres);
+    }
+  }
+
+  // Direct SQL seeding bypasses the repository's write path, so the summary projection the
+  // groups endpoint reads must be synced the way pre-existing history is at upgrade time: by
+  // the 2.1.0 backfill. Use the same dialect parser as the migration integration tests because
+  // MySQL JDBC deliberately rejects executing multiple migration statements in one call. Select
+  // only the incident statement so unrelated backfills cannot mutate concurrently running tests.
+  private void syncIncidentSummary(Connection connection, boolean postgres) throws Exception {
+    ConnectionType connectionType = postgres ? ConnectionType.POSTGRES : ConnectionType.MYSQL;
+    String migrationStatement =
+        MetricMigrationSqlFixture.readMigrationScripts(connectionType).postStatements().stream()
+            .filter(statement -> statement.contains(INCIDENT_BACKFILL_SQL))
+            .findFirst()
+            .orElseThrow(
+                () -> new IllegalStateException("2.1.0 incident backfill statement not found"));
+    try (Statement statement = connection.createStatement()) {
+      statement.executeUpdate(migrationStatement);
+    }
+  }
+
+  @Test
+  void testResolvedStatusRejected() {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("status", TestCaseResolutionStatusTypes.Resolved.value());
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.testCaseResolutionStatuses().listIncidentGroups(params));
+    assertEquals(400, error.getStatusCode());
+  }
+
+  @Test
+  void testInvalidGroupByRejected() {
+    Map<String, String> params = groupParams("invalidDimension");
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.testCaseResolutionStatuses().listIncidentGroups(params));
+    assertEquals(400, error.getStatusCode());
+  }
+
+  @Test
+  void testMissingGroupByRejected() {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("limit", MAX_LIMIT);
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.testCaseResolutionStatuses().listIncidentGroups(params));
+    assertEquals(400, error.getStatusCode());
+  }
+
+  private String createSchema(long ts) throws Exception {
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName("incident_groups_db_" + ts)
+                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    return client
+        .databaseSchemas()
+        .create(
+            new CreateDatabaseSchema()
+                .withName("incident_groups_schema_" + ts)
+                .withDatabase(database.getFullyQualifiedName()))
+        .getFullyQualifiedName();
+  }
+
+  private Table createTable(String schemaFqn, String name) throws Exception {
+    return client
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(name)
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
+  }
+
+  private Table createTableInDomain(String name, Domain tableDomain) throws Exception {
+    return createTableInDomain(schemaFqn, name, tableDomain);
+  }
+
+  private Table createTableInDomain(String tableSchemaFqn, String name, Domain tableDomain)
+      throws Exception {
+    return client
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(name)
+                .withDatabaseSchema(tableSchemaFqn)
+                .withDomains(List.of(tableDomain.getFullyQualifiedName()))
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
+  }
+
+  // A schema of its own database, so the domain it carries reaches no other test's tables.
+  private String createSchemaInDomain(String name, Domain schemaDomain) throws Exception {
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(name + "_db")
+                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    return client
+        .databaseSchemas()
+        .create(
+            new CreateDatabaseSchema()
+                .withName(name + "_schema")
+                .withDatabase(database.getFullyQualifiedName())
+                .withDomains(List.of(schemaDomain.getFullyQualifiedName())))
+        .getFullyQualifiedName();
+  }
+
+  private User createUser(String name) throws Exception {
+    return client.users().create(new CreateUser().withName(name).withEmail(name + "@example.com"));
+  }
+
+  private TestDefinition createTestDefinition(String name, TestDefinitionEntityType entityType)
+      throws Exception {
+    return client
+        .testDefinitions()
+        .create(
+            new CreateTestDefinition()
+                .withName(name)
+                .withDescription("Incident groups IT definition")
+                .withEntityType(entityType)
+                .withTestPlatforms(List.of(TestPlatform.OPEN_METADATA)));
+  }
+
+  private Domain createDomain(String name) throws Exception {
+    return client
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(name)
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("Incident groups IT domain"));
+  }
+
+  private TestCase createTestCase(
+      String name, String entityLink, TestDefinition definition, List<EntityReference> owners)
+      throws Exception {
+    CreateTestCase request =
+        new CreateTestCase()
+            .withName(name)
+            .withEntityLink(entityLink)
+            .withTestDefinition(definition.getFullyQualifiedName());
+    if (!owners.isEmpty()) {
+      request.withOwners(owners);
+    }
+    return client.testCases().create(request);
+  }
+
+  private void assignDomain(TestCase testCase, Domain assignedDomain) throws Exception {
+    TestCase fetched = client.testCases().get(testCase.getId().toString(), "owners,domains");
+    fetched.setDomains(List.of(assignedDomain.getEntityReference()));
+    client.testCases().update(fetched.getId().toString(), fetched);
+  }
+
+  private void createStatus(TestCase testCase, TestCaseResolutionStatusTypes type, Object details)
+      throws Exception {
+    createStatus(testCase, type, details, null);
+  }
+
+  private void createStatus(
+      TestCase testCase, TestCaseResolutionStatusTypes type, Object details, Severity severity)
+      throws Exception {
+    CreateTestCaseResolutionStatus request =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseResolutionStatusType(type)
+            .withTestCaseReference(testCase.getFullyQualifiedName());
+    if (details != null) {
+      request.withTestCaseResolutionStatusDetails(details);
+    }
+    if (severity != null) {
+      request.withSeverity(severity);
+    }
+    client.testCaseResolutionStatuses().create(request);
+  }
+
+  private String tableLink(Table table) {
+    return "<#E::table::" + table.getFullyQualifiedName() + ">";
+  }
+
+  private String columnLink(Table table) {
+    return "<#E::table::" + table.getFullyQualifiedName() + "::columns::id>";
+  }
+
+  private Map<String, String> groupParams(String groupBy) {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("groupBy", groupBy);
+    params.put("limit", MAX_LIMIT);
+    return params;
+  }
+
+  private Map<String, String> dateRangeParams(String dateField, Long startTs, Long endTs) {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("testCaseFQN", testCase2.getFullyQualifiedName());
+    params.put("dateField", dateField);
+    if (startTs != null) {
+      params.put("startTs", String.valueOf(startTs));
+    }
+    if (endTs != null) {
+      params.put("endTs", String.valueOf(endTs));
+    }
+    return params;
+  }
+
+  private List<TestCaseIncidentGroup> fetchGroups(Map<String, String> params) throws Exception {
+    return convertGroups(client.testCaseResolutionStatuses().listIncidentGroups(params));
+  }
+
+  private List<TestCaseIncidentGroup> convertGroups(ListResponse<TestCaseIncidentGroup> response) {
+    List<TestCaseIncidentGroup> groups = new ArrayList<>();
+    for (Object item : response.getData()) {
+      groups.add(JsonUtils.convertValue(item, TestCaseIncidentGroup.class));
+    }
+    return groups;
+  }
+
+  private List<TestCaseResolutionStatus> fetchStatuses(TestCase testCase) throws Exception {
+    return listStatuses(
+        new ListParams().withLimit(100).addFilter("testCaseFQN", testCase.getFullyQualifiedName()));
+  }
+
+  private List<TestCaseResolutionStatus> listStatuses(ListParams params) throws Exception {
+    ListResponse<TestCaseResolutionStatus> response =
+        client.testCaseResolutionStatuses().list(params);
+    List<TestCaseResolutionStatus> statuses = new ArrayList<>();
+    for (Object item : response.getData()) {
+      statuses.add(JsonUtils.convertValue(item, TestCaseResolutionStatus.class));
+    }
+    return statuses;
+  }
+
+  // The flat list the way a drill-down asks it: the latest record of each open incident.
+  private ListParams latestOpenParams() {
+    return new ListParams()
+        .withLimit(100)
+        .withLatest(true)
+        .addFilter("startTs", "0")
+        .addFilter("endTs", String.valueOf(System.currentTimeMillis() + 60_000))
+        .addFilter(
+            "testCaseResolutionStatusType",
+            TestCaseResolutionStatusTypes.New.value()
+                + ","
+                + TestCaseResolutionStatusTypes.Ack.value()
+                + ","
+                + TestCaseResolutionStatusTypes.Assigned.value());
+  }
+
+  private int pagerIncidentCount(String dateField, String startTs, String endTs) throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_OWNER);
+    params.put("assignee", pagerUser.getName());
+    params.put("dateField", dateField);
+    params.put("startTs", startTs);
+    params.put("endTs", endTs);
+    return fetchGroups(params).stream().mapToInt(TestCaseIncidentGroup::getIncidentCount).sum();
+  }
+
+  private List<TestCaseResolutionStatus> pagerIncidents(
+      String dateField, String startTs, String endTs) throws Exception {
+    return listStatuses(
+        latestOpenParams()
+            .addFilter("unowned", "true")
+            .addFilter("assignee", pagerUser.getName())
+            .addFilter("dateField", dateField)
+            .addFilter("startTs", startTs)
+            .addFilter("endTs", endTs));
+  }
+
+  private static Set<String> referenceFqns(List<EntityReference> references) {
+    return references.stream()
+        .map(EntityReference::getFullyQualifiedName)
+        .collect(Collectors.toSet());
+  }
+
+  private Set<String> statusTestCaseFqns(List<TestCaseResolutionStatus> statuses) {
+    return statuses.stream()
+        .map(status -> status.getTestCaseReference().getFullyQualifiedName())
+        .collect(Collectors.toSet());
+  }
+
+  private static List<TestCaseResolutionStatusTypes> statuses(TestCaseIncidentGroup group) {
+    return group.getStatusCounts().stream().map(IncidentStatusCount::getStatus).toList();
+  }
+
+  private static List<Integer> statusCounts(TestCaseIncidentGroup group) {
+    return group.getStatusCounts().stream().map(IncidentStatusCount::getCount).toList();
+  }
+
+  private static List<String> groupFqns(List<TestCaseIncidentGroup> groups) {
+    return groups.stream().map(TestCaseIncidentGroup::getFullyQualifiedName).toList();
+  }
+
+  private TestCaseIncidentGroup findGroup(
+      List<TestCaseIncidentGroup> groups, String fullyQualifiedName) {
+    Optional<TestCaseIncidentGroup> group =
+        groups.stream()
+            .filter(candidate -> fullyQualifiedName.equals(candidate.getFullyQualifiedName()))
+            .findFirst();
+    assertTrue(group.isPresent(), "expected a group for " + fullyQualifiedName);
+    return group.orElseThrow();
+  }
+
+  private void assertGroupAbsent(List<TestCaseIncidentGroup> groups, String fullyQualifiedName) {
+    assertTrue(
+        groups.stream()
+            .noneMatch(candidate -> fullyQualifiedName.equals(candidate.getFullyQualifiedName())),
+        "expected no group for " + fullyQualifiedName);
+  }
+
+  private void assertSorted(List<TestCaseIncidentGroup> groups, boolean ascending) {
+    for (int i = 1; i < groups.size(); i++) {
+      int previous = groups.get(i - 1).getIncidentCount();
+      int current = groups.get(i).getIncidentCount();
+      assertTrue(
+          ascending ? previous <= current : previous >= current,
+          "groups must be sorted by incidentCount " + (ascending ? "ascending" : "descending"));
+    }
+  }
+}

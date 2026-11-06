@@ -22,7 +22,11 @@ import {
   TEXT_TYPES,
 } from '../../constants/BlockEditor.constants';
 import blockEditorExtensionsClassBase from '../../utils/BlockEditorExtensionsClassBase';
-import { formatContent, setEditorContent } from '../../utils/BlockEditorUtils';
+import { formatClientContent } from '../../utils/BlockEditorPureUtils';
+import {
+  formatServerContent,
+  setEditorContent,
+} from '../../utils/BlockEditorUtils';
 import Banner from '../common/Banner/Banner';
 import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import BarMenu from './BarMenu/BarMenu';
@@ -35,7 +39,10 @@ import {
 } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
 import './Extensions/File/file-node.less';
+import { slashMenuPluginKey } from './Extensions/slash-command/slashCommand';
 import { useCustomEditor } from './hooks/useCustomEditor';
+
+const PROSEMIRROR_EDITABLE_SELECTOR = '.ProseMirror[contenteditable="true"]';
 
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   (
@@ -61,30 +68,42 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       handleFileUpload,
       errorMessage,
       handleErrorMessage,
+      isPopoverOpenRef,
     } = useEntityAttachment();
 
     const editorWrapperRef = useRef<HTMLDivElement>(null);
+    // Read by editorProps.attributes, which ProseMirror recomputes on every
+    // view update, so the role follows setEditable below.
+    const editableRef = useRef(editable);
+    editableRef.current = editable;
 
     const extensions =
       blockEditorExtensionsClassBase.getExtensions(extensionOptions);
 
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
+      // Born read-only when it is a viewer: an editable editor whose content
+      // lands with the cursor after "@name" opens the mention popup, and the
+      // later setEditable(false) never closes it, leaving it pinned top-left.
+      editable,
       extensions,
       onUpdate({ editor }) {
         handleErrorMessage?.(undefined);
         const htmlContent = editor.getHTML();
-        const backendFormat = formatContent(htmlContent, 'server');
+        const backendFormat = formatServerContent(htmlContent);
         onChange?.(backendFormat);
       },
       onFocus() {
         onFocus?.();
       },
       editorProps: {
-        attributes: {
+        // tiptap v3 gives every editor role="textbox". A read-only viewer is
+        // not a text field, so it keeps the generic semantics it had on v2.
+        attributes: () => ({
           class: 'om-block-editor',
           ...(autoFocus ? { autofocus: 'true' } : {}),
-        },
+          ...(editableRef.current ? {} : { role: 'presentation' }),
+        }),
         handleDOMEvents: {
           paste: (view, event) => {
             const items = Array.from(event.clipboardData?.items || []);
@@ -136,7 +155,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
       if (hasFiles) {
         const editorElement = document.querySelector(
-          '.ProseMirror[contenteditable="true"]'
+          PROSEMIRROR_EDITABLE_SELECTOR
         );
         if (editorElement) {
           (editorElement as HTMLElement).classList.add('drag-over');
@@ -146,7 +165,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     const handleDragLeave = (e: React.DragEvent) => {
       const editorElement = document.querySelector(
-        '.ProseMirror[contenteditable="true"]'
+        PROSEMIRROR_EDITABLE_SELECTOR
       );
       // Only remove class if we're leaving the editor area
       if (editorElement && !editorElement.contains(e.relatedTarget as Node)) {
@@ -162,7 +181,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       e.preventDefault();
 
       const editorElement = document.querySelector(
-        '.ProseMirror[contenteditable="true"]'
+        PROSEMIRROR_EDITABLE_SELECTOR
       );
       if (editorElement) {
         (editorElement as HTMLElement).classList.remove('drag-over');
@@ -196,14 +215,44 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         return;
       }
 
+      const htmlContent = formatClientContent(content);
+
+      // Skip re-applying content that is already in the editor (e.g. the
+      // autosave round-trip echoing back the same description). Calling
+      // setContent unconditionally forces a full document replace, which
+      // tears down NodeViews and resets Suggestion-plugin state, closing
+      // any open popover or the slash-command menu with no user action.
+      if (
+        formatServerContent(editor?.getHTML()) ===
+        formatServerContent(htmlContent)
+      ) {
+        return;
+      }
+
+      // Never replace editor content while the slash-command popup or a
+      // NodeView-hosted popover (e.g. the image/file Link-Upload popover) is
+      // open. An external content update (e.g. an autosave round-trip) would
+      // otherwise tear down the Suggestion plugin state or remount the
+      // NodeView, closing the popup with no user action, regardless of
+      // whether the HTML strings above happen to differ.
+      if (
+        slashMenuPluginKey?.getState(editor?.state)?.active ||
+        isPopoverOpenRef?.current
+      ) {
+        return;
+      }
+
       // We use setTimeout to avoid any flushSync console errors as
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
-      setTimeout(() => {
-        if (content !== undefined) {
-          const htmlContent = formatContent(content, 'client');
+      // The editor is destroyed on unmount, so a timer left pending past this
+      // effect would call updateState on a torn-down ProseMirror view.
+      const timer = setTimeout(() => {
+        if (!editor.isDestroyed) {
           setEditorContent(editor, htmlContent);
         }
       });
+
+      return () => clearTimeout(timer);
     }, [content, editor]);
 
     // this effect to handle the editable state
@@ -218,7 +267,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
       // We use setTimeout to avoid any flushSync console errors as
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
-      setTimeout(() => editor.setEditable(editable));
+      const timer = setTimeout(() => {
+        if (!editor.isDestroyed) {
+          editor.setEditable(editable);
+        }
+      });
+
+      return () => clearTimeout(timer);
     }, [editable, editor]);
 
     // this effect to handle the RTL and LTR direction
@@ -239,6 +294,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         })}
         id="block-editor-wrapper"
         ref={editorWrapperRef}
+        role="presentation"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={(e) => e.preventDefault()}
@@ -262,7 +318,12 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           placeholder={placeholder}
           onMouseDown={editorSlots.current?.onMouseDown}
         />
-        <EditorSlots editor={editor} menuType={menuType} ref={editorSlots} />
+        <EditorSlots
+          editable={editable}
+          editor={editor}
+          menuType={menuType}
+          ref={editorSlots}
+        />
       </div>
     );
   }

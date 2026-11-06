@@ -24,8 +24,12 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 @Slf4j
 @Repository
 public class AIApplicationRepository extends EntityRepository<AIApplication> {
-  private static final String APPLICATION_UPDATE_FIELDS = "modelConfigurations,tools,dataSources";
-  private static final String APPLICATION_PATCH_FIELDS = "modelConfigurations,tools,dataSources";
+  private static final String FIELD_MCP_SERVERS = "mcpServers";
+  private static final String FIELD_PRIMARY_MODEL = "primaryModel";
+  private static final String APPLICATION_UPDATE_FIELDS =
+      "modelConfigurations,tools,dataSources,reviewers";
+  private static final String APPLICATION_PATCH_FIELDS =
+      "modelConfigurations,tools,dataSources,reviewers";
 
   public AIApplicationRepository() {
     super(
@@ -36,6 +40,11 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
         APPLICATION_PATCH_FIELDS,
         APPLICATION_UPDATE_FIELDS);
     supportsSearch = true;
+    // Registration drives an AI asset's stage: AIAssetStatusSync derives it from the registration
+    // status when there is one, and the AI governance endpoints move it. Without one the asset
+    // starts in Draft, which sits outside the registration approval flow, so saving it records no
+    // approval.
+    workflowsOwnEntityStatus = false;
   }
 
   @Override
@@ -53,6 +62,7 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
   public void prepare(AIApplication aiApplication, boolean update) {
     // Entity references in modelConfigurations are stored as-is without validation
     // as they may reference external LLM models
+    AIAssetStatusSync.sync(aiApplication);
   }
 
   @Override
@@ -103,11 +113,7 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
                   original.getModelConfigurations(),
                   updated.getModelConfigurations(),
                   true));
-      compareAndUpdate(
-          "primaryModel",
-          () ->
-              recordChange(
-                  "primaryModel", original.getPrimaryModel(), updated.getPrimaryModel(), true));
+      updateModelReferences();
       compareAndUpdate(
           "promptTemplates",
           () ->
@@ -201,6 +207,22 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
           () ->
               recordChange(
                   "documentation", original.getDocumentation(), updated.getDocumentation()));
+    }
+
+    private void updateModelReferences() {
+      compareAndUpdate(
+          FIELD_PRIMARY_MODEL,
+          () ->
+              recordChange(
+                  FIELD_PRIMARY_MODEL,
+                  original.getPrimaryModel(),
+                  updated.getPrimaryModel(),
+                  true));
+      compareAndUpdate(
+          FIELD_MCP_SERVERS,
+          () ->
+              recordChange(
+                  FIELD_MCP_SERVERS, original.getMcpServers(), updated.getMcpServers(), true));
     }
   }
 }

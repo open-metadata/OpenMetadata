@@ -170,9 +170,13 @@ export enum TaskStatus {
     Approved = "Approved",
     Cancelled = "Cancelled",
     Completed = "Completed",
+    Expired = "Expired",
     Failed = "Failed",
+    Granted = "Granted",
     InProgress = "InProgress",
+    ManualRevoke = "ManualRevoke",
     Open = "Open",
     Pending = "Pending",
     Rejected = "Rejected",
+    Revoked = "Revoked",
 }

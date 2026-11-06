@@ -11,23 +11,34 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
+import { getNLPEnabledStatus } from '../rest/searchAPI';
 
 interface SearchState {
   // NLP flags
   isNLPActive: boolean;
   isNLPEnabled: boolean;
+  isNLPInitialized: boolean;
 
   // Actions
   setNLPActive: (active: boolean) => void;
-  setNLPEnabled: (enabled: boolean) => void;
+  initNLP: () => Promise<void>;
 }
 
-export const useSearchStore = create<SearchState>((set) => ({
+export const useSearchStore = create<SearchState>((set, get) => ({
   // NLP flags
   isNLPActive: false,
   isNLPEnabled: false,
+  isNLPInitialized: false,
 
-  // Actions to update the state
   setNLPActive: (active) => set({ isNLPActive: active }),
-  setNLPEnabled: (enabled) => set({ isNLPEnabled: enabled }),
+
+  initNLP: async () => {
+    // Guard on isNLPInitialized (not isNLPEnabled) so a false response from
+    // the API also prevents a redundant second fetch.
+    if (get().isNLPInitialized) {
+      return;
+    }
+    const enabled = await getNLPEnabledStatus().catch(() => false);
+    set({ isNLPEnabled: enabled, isNLPInitialized: true });
+  },
 }));

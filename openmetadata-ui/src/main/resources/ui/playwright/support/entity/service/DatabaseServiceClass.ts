@@ -13,6 +13,12 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
@@ -21,8 +27,9 @@ import {
   ServiceEntity,
 } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
+import type { ParentNode, ParentSnapshot } from '../ParentChain';
 
-export class DatabaseServiceClass extends EntityClass {
+export class DatabaseServiceClass extends EntityClass implements ParentNode {
   entity: ServiceEntity = {
     name: `pw-database-service-${uuid()}`,
     serviceType: 'Mysql',
@@ -44,23 +51,29 @@ export class DatabaseServiceClass extends EntityClass {
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
+  readonly parentLevel = 'service' as const;
 
-  constructor(name?: string, entity?: ServiceEntity) {
+  /** `entity` overrides the connector config (e.g. BigQuery); its name is optional. */
+  constructor(
+    name?: string,
+    entity?: Omit<ServiceEntity, 'name'> & { name?: string }
+  ) {
     super(EntityTypeEndpoint.DatabaseService);
-    this.entity = entity ?? this.entity;
-    this.entity.name = name ?? this.entity.name;
+    this.entity = {
+      ...this.entity,
+      ...entity,
+      name: name ?? entity?.name ?? this.entity.name,
+    };
     this.type = 'Database Service';
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/databaseServices',
-      {
-        data: this.entity,
-      }
-    );
-
-    const service = await serviceResponse.json();
+    const service = await createOrFetch(apiContext, {
+      label: 'DatabaseServiceClass.create',
+      createPath: '/api/v1/services/databaseServices',
+      fqnSegments: [this.entity.name],
+      data: this.entity,
+    });
 
     this.entityResponseData = service;
 
@@ -68,17 +81,19 @@ export class DatabaseServiceClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/services/databaseServices/${this.entityResponseData?.['id']}`,
-      {
-        data: payload,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/services/databaseServices/${this.entityResponseData?.['id']}`,
+        {
+          data: payload,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    const service = await serviceResponse.json();
+    const service = await okJson(serviceResponse, 'DatabaseServiceClass.patch');
 
     this.entityResponseData = service;
 
@@ -104,8 +119,27 @@ export class DatabaseServiceClass extends EntityClass {
     );
   }
 
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
+
+  forget() {
+    this.entityResponseData = {} as ResponseDataType;
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return { service: this.entityResponseData };
+  }
+
+  rootDeletePath() {
+    return `/api/v1/services/databaseServices/name/${encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    )}`;
+  }
+
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
         this.entityResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { TopicClass } from '../../../support/entity/TopicClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 
@@ -22,7 +22,7 @@ import { performAdminLogin } from '../../../utils/admin';
  *
  * Tests task workflows for Topic entities including:
  * - Entity-level description tasks
- * - Schema field description tasks (messageSchema::fieldName::description)
+ * - Schema field description tasks (messageSchema.schemaFields.fieldName.description)
  * - Nested schema field tasks (parent.child pattern)
  * - Tag update tasks for topics
  * - Domain update tasks for topics
@@ -85,8 +85,7 @@ test.describe('Task Creation and Resolution - Topic Entity', () => {
       // Create DescriptionUpdate task for entity level
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: topic.entityResponseData?.fullyQualifiedName,
-          aboutType: 'topic',
+          about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -171,16 +170,15 @@ test.describe('Task Creation and Resolution - Topic Entity', () => {
       const newFieldDescription = 'Updated schema field description from task';
 
       // Create DescriptionUpdate task for schema field
-      // Format: messageSchema::fieldName::description
+      // Format: messageSchema.schemaFields.fieldName.description
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: topic.entityResponseData?.fullyQualifiedName,
-          aboutType: 'topic',
+          about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `messageSchema::${fieldPath}::description`,
+            fieldPath: `messageSchema.schemaFields.${fieldPath}.description`,
             newDescription: newFieldDescription,
           },
         },
@@ -257,8 +255,7 @@ test.describe('Task Creation and Resolution - Topic Entity', () => {
       // Create OwnershipUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: topic.entityResponseData?.fullyQualifiedName,
-          aboutType: 'topic',
+          about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
           type: 'OwnershipUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -306,8 +303,7 @@ test.describe('Task Creation and Resolution - Topic Entity', () => {
       // Create TierUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: topic.entityResponseData?.fullyQualifiedName,
-          aboutType: 'topic',
+          about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
           type: 'TierUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -358,8 +354,7 @@ test.describe('Task Creation and Resolution - Topic Entity', () => {
       // Create DomainUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: topic.entityResponseData?.fullyQualifiedName,
-          aboutType: 'topic',
+          about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
           type: 'DomainUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],

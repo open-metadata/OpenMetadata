@@ -13,7 +13,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { EntityType } from '../enums/entity.enum';
 import { Directory } from '../generated/entity/data/directory';
 import { File } from '../generated/entity/data/file';
@@ -22,6 +21,8 @@ import { Worksheet } from '../generated/entity/data/worksheet';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
+import { QueryVote } from '../interface/entity/vote.interface';
+import APIClient from './axiosClient';
 import {
   DriveAssetEntityTypes,
   GetDirectoriesParams,
@@ -29,7 +30,6 @@ import {
   GetSpreadsheetParams,
   GetWorksheetsParams,
 } from './driveAPI.interface';
-import APIClient from './index';
 
 const BASE_URL = '/drives';
 
@@ -175,13 +175,12 @@ export const updateDriveAssetVotes = async <
 
 export const getDriveAssetsVersions = async (
   id: string,
-  entityType: DriveAssetEntityTypes,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
+  entityType: DriveAssetEntityTypes
 ) => {
   const API = APIByEntityType[entityType];
   const url = `${BASE_URL}${API}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

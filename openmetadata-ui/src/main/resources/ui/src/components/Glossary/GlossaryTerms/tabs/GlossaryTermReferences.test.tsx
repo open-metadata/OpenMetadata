@@ -26,7 +26,10 @@ const mockContext = {
   permissions: MOCK_PERMISSIONS,
 };
 
-jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual(
+    '../../../Customization/GenericProvider/GenericContext'
+  ),
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
 }));
 
@@ -35,11 +38,9 @@ describe('GlossaryTermReferences', () => {
     mockContext.data = mockGlossaryTerm2;
     const { getByText, getByTestId } = render(<GlossaryTermReferences />);
 
-    const sectionTitle = getByTestId('section-label.reference-plural');
     const editBtn = getByTestId('edit-button');
 
-    expect(sectionTitle).toBeInTheDocument();
-    expect(sectionTitle).toHaveTextContent('label.reference-plural');
+    expect(getByText('label.reference-plural')).toBeInTheDocument();
 
     const reference = getByText('google');
 

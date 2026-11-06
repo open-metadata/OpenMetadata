@@ -13,8 +13,9 @@ Validation logic for Custom Pydantic BaseModel
 """
 
 import logging
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger("metadata")
 
@@ -22,6 +23,9 @@ RESTRICTED_KEYWORDS = ["::", ">"]
 RESERVED_COLON_KEYWORD = "__reserved__colon__"
 RESERVED_ARROW_KEYWORD = "__reserved__arrow__"
 RESERVED_QUOTE_KEYWORD = "__reserved__quote__"
+RESERVED_NEWLINE_KEYWORD = "__reserved__newline__"
+RESERVED_CARRIAGE_RETURN_KEYWORD = "__reserved__carriage_return__"
+RESERVED_TAB_KEYWORD = "__reserved__tab__"
 
 
 class TransformDirection(Enum):
@@ -49,7 +53,7 @@ def is_service_level_create_model(model_name: str) -> bool:
 
 # Explicit configuration for entity name transformations
 # This dictionary will be populated lazily to avoid circular imports
-TRANSFORMABLE_ENTITIES: Dict[Any, Dict[str, Any]] = {}
+TRANSFORMABLE_ENTITIES: dict[Any, dict[str, Any]] = {}
 
 
 def _initialize_transformable_entities():
@@ -115,6 +119,9 @@ def revert_separators(value):
         value.replace(RESERVED_COLON_KEYWORD, "::")
         .replace(RESERVED_ARROW_KEYWORD, ">")
         .replace(RESERVED_QUOTE_KEYWORD, '"')
+        .replace(RESERVED_NEWLINE_KEYWORD, "\n")
+        .replace(RESERVED_CARRIAGE_RETURN_KEYWORD, "\r")
+        .replace(RESERVED_TAB_KEYWORD, "\t")
     )
 
 
@@ -123,16 +130,19 @@ def replace_separators(value):
         value.replace("::", RESERVED_COLON_KEYWORD)
         .replace(">", RESERVED_ARROW_KEYWORD)
         .replace('"', RESERVED_QUOTE_KEYWORD)
+        .replace("\n", RESERVED_NEWLINE_KEYWORD)
+        .replace("\r", RESERVED_CARRIAGE_RETURN_KEYWORD)
+        .replace("\t", RESERVED_TAB_KEYWORD)
     )
 
 
-def get_entity_config(model: Optional[Any]) -> Optional[Dict[str, Any]]:
+def get_entity_config(model: Any | None) -> dict[str, Any] | None:
     """Get transformation configuration for entity"""
     _initialize_transformable_entities()  # Ensure entities are loaded
     return TRANSFORMABLE_ENTITIES.get(model)
 
 
-def get_transformer(model: Optional[Any]) -> Optional[Callable]:
+def get_transformer(model: Any | None) -> Callable | None:
     """Get the appropriate transformer function for model"""
     config = get_entity_config(model)
     if not config:
@@ -141,7 +151,7 @@ def get_transformer(model: Optional[Any]) -> Optional[Callable]:
     direction = config.get("direction")
     if direction == TransformDirection.ENCODE:
         return replace_separators
-    elif direction == TransformDirection.DECODE:
+    elif direction == TransformDirection.DECODE:  # noqa: RET505
         return revert_separators
     return None
 
@@ -168,17 +178,17 @@ def transform_all_names(obj, transformer):
 
     # Transform table constraints
     if hasattr(obj, "tableConstraints"):
-        table_constraints = getattr(obj, "tableConstraints")
+        table_constraints = getattr(obj, "tableConstraints")  # noqa: B009
         if table_constraints is not None:
             for constraint in table_constraints:
                 if hasattr(constraint, "columns"):
                     constraint.columns = [transformer(col) for col in constraint.columns]
 
-    if transformer == replace_separators and type(name) == str:
+    if transformer == replace_separators and type(name) == str:  # noqa: E721
         obj.name = transformer(name)
 
 
-def transform_entity_names(entity: Any, model: Optional[Any]) -> Any:
+def transform_entity_names(entity: Any, model: Any | None) -> Any:
     """Transform entity names"""
     model_name = model.__name__
     if not entity or (model_name.startswith("Create") and is_service_level_create_model(model_name)):

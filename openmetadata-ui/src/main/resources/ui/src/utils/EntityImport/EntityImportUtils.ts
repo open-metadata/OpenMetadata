@@ -21,7 +21,8 @@ import {
   importServiceInCSVFormat,
   importTestCaseInCSVFormat,
 } from '../../rest/importExportAPI';
-import { getEntityBreadcrumbs, getEntityName } from '../EntityUtils';
+import { getEntityBreadcrumbs } from '../EntityBreadcrumbPureUtils';
+import { getEntityName } from '../EntityNameUtils';
 import i18n from '../i18next/LocalUtil';
 import { getGlossaryPath } from '../RouterUtils';
 

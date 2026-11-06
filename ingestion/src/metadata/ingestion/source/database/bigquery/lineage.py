@@ -41,7 +41,7 @@ class BigqueryLineageSource(BigqueryQueryParserSource, StoredProcedureLineageMix
             OR (statement_type = "CREATE_TABLE" and UPPER(query) like '%%CLONE%%')
             OR (statement_type = "CREATE_TABLE" and UPPER(query) like '%%LIKE%%')
         )
-    """
+    """  # noqa: W291
 
     def get_stored_procedure_sql_statement(self) -> str:
         """
@@ -53,4 +53,4 @@ class BigqueryLineageSource(BigqueryQueryParserSource, StoredProcedureLineageMix
             region=self.service_connection.usageLocation,
         )
 
-        return query
+        return query  # noqa: RET504

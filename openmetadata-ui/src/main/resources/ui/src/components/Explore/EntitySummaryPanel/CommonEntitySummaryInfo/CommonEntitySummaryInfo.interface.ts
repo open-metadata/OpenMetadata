@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityPureUtils';
 import { BasicEntityOverviewInfo } from '../../../../utils/EntityUtils.interface';
 
 export interface CommonEntitySummaryInfoProps {

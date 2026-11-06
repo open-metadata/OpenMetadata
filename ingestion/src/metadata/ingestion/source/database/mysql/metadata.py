@@ -11,16 +11,18 @@
 """Mysql source module"""
 
 import traceback
-from typing import Iterable, Optional, cast
+from collections.abc import Iterable
+from typing import cast
 
 from sqlalchemy import text
-from sqlalchemy.dialects.mysql.base import ischema_names
+from sqlalchemy.dialects.mysql.base import MySQLDialect, ischema_names
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
@@ -36,14 +38,16 @@ from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.mysql.models import (
+    DEFAULT_STORED_PROC_LANGUAGE,
     STORED_PROC_LANGUAGE_MAP,
     STORED_PROC_TYPE_MAP,
     MysqlRoutine,
 )
 from metadata.ingestion.source.database.mysql.queries import MYSQL_GET_ROUTINES
-from metadata.ingestion.source.database.mysql.utils import col_type_map, parse_column
+from metadata.ingestion.source.database.mysql.utils import col_type_map, describe_or_read_view_columns, parse_column
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_ddls, get_table_ddl
@@ -55,6 +59,9 @@ ischema_names.update(col_type_map)
 
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
     parse_column
+)
+MySQLDialect._describe_table = (  # pylint: disable=protected-access
+    describe_or_read_view_columns
 )
 
 Inspector.get_all_table_ddls = get_all_table_ddls
@@ -68,19 +75,28 @@ class MysqlSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection = cast(MysqlConnection, config.serviceConnection.root.config)
+        connection = cast(MysqlConnection, config.serviceConnection.root.config)  # noqa: TC006
         if not isinstance(connection, MysqlConnection):
             raise InvalidSourceException(f"Expected MysqlConnection, but got {connection}")
         return cls(config, metadata)
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the run-level ``Database`` counter with MySQL's single database and
+        let the runner reconcile the ``DatabaseSchema`` total from the schemas it
+        observes. MySQL exposes schemas only through the live inspector, which the
+        walk queries anyway, so pre-counting them here would just duplicate that
+        query for no gain."""
+        totals.set_total(Database.__name__, len(list(self.get_database_names())))
+        totals.mark_reconcilable(DatabaseSchema.__name__)
 
     def get_stored_procedures(self) -> Iterable[MysqlRoutine]:
         """List stored procedures and functions"""
         if self.source_config.includeStoredProcedures:
             with self.engine.connect() as conn:
                 results = conn.execute(
-                    text(MYSQL_GET_ROUTINES.format(schema_name=self.context.get().database_schema))
+                    text(MYSQL_GET_ROUTINES).bindparams(schema_name=self.context.get().database_schema)  # pyright: ignore[reportAttributeAccessIssue]
                 ).all()
             for row in results:
                 try:
@@ -110,7 +126,7 @@ class MysqlSource(CommonDbSourceService):
                 name=EntityName(stored_procedure.name),
                 description=(Markdown(stored_procedure.description) if stored_procedure.description else None),
                 storedProcedureCode=StoredProcedureCode(
-                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
+                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language, DEFAULT_STORED_PROC_LANGUAGE),
                     code=stored_procedure.definition,
                 ),
                 databaseSchema=fqn.build(

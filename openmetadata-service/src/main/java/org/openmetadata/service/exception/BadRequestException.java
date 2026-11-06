@@ -28,6 +28,10 @@ public final class BadRequestException extends WebServiceException {
     super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
   }
 
+  public BadRequestException(String message, Throwable cause) {
+    super(Response.Status.BAD_REQUEST, ERROR_TYPE, message, cause);
+  }
+
   public static BadRequestException of() {
     return new BadRequestException();
   }

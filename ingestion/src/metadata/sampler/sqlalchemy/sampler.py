@@ -14,32 +14,47 @@ for the profiler
 """
 
 import hashlib
-from typing import List, Optional, Union, cast
+from collections.abc import Callable
+from typing import Any, cast
 
-from sqlalchemy import Column, inspect, select, text
+from sqlalchemy import Column, false, inspect, select, text
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
+from sqlalchemy.sql.selectable import CTE, TableSample
 from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
+    ColumnProfilerConfig,
+    PartitionIntervalTypes,
     PartitionProfilerConfig,
     TableData,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
+from metadata.profiler.constants import ROW_COUNT
+from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import Metrics
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
+from metadata.profiler.orm.functions.table_metric_computer import (
+    table_metric_computer_factory,
+)
 from metadata.profiler.processor.handle_partition import build_partition_predicate
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_interface_registry_logger()
 
 RANDOM_LABEL = "random"
+ORIGINAL_COLUMN_NAME = "openmetadata_original_column_name"
 
 # Default maximum number of elements to extract from array columns to prevent OOM
 DEFAULT_MAX_ARRAY_ELEMENTS = 10
@@ -72,8 +87,41 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        db_config = kwargs.get("config") or DatabaseSamplerConfig()
+        self.connection = get_ssl_connection(self.service_connection_config)
+        self.include_columns: list[ColumnProfilerConfig] = db_config.include_columns or []
+        self.exclude_columns: list[str] = db_config.exclude_columns or []
+        self.partition_details: PartitionProfilerConfig | None = db_config.partition_details
+        self.sample_query: str | None = db_config.sample_query
+        self.processing_engine = db_config.processing_engine
         self._table = self.build_table_orm(self.entity, self.service_connection_config, self.ometa_client)
         self.session_factory = create_and_bind_thread_safe_session(self.connection)
+
+    def _get_excluded_columns(self) -> set[str]:
+        if self.exclude_columns:
+            return set(self.exclude_columns)
+        return set()
+
+    def _get_included_columns(self) -> set[str]:
+        if self.include_columns:
+            return {col.columnName for col in self.include_columns if col.columnName}
+        return set()
+
+    @property
+    def columns(self):
+        """Return columns filtered by include/exclude lists."""
+        if self._columns:
+            return self._columns
+
+        if self._get_included_columns():
+            self._columns = [col for col in self.get_columns() if col.name in self._get_included_columns()]
+
+        if not self._get_included_columns():
+            self._columns = [
+                col for col in self._columns or self.get_columns() if col.name not in self._get_excluded_columns()
+            ]
+
+        return self._columns
 
     @property
     def raw_dataset(self):
@@ -83,7 +131,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """Build the SQA Client"""
         return self.session_factory()
 
-    def set_tablesample(self, selectable: Table):
+    def set_tablesample(self, static: StaticSamplingConfig | None, selectable: Table):
         """Set the tablesample for the table. To be implemented by the child SQA sampler class
         Args:
             selectable (Table): a selectable table
@@ -120,7 +168,18 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """
         return column
 
-    def _base_sample_query(self, column: Optional[Column], label=None):
+    def _process_sample_value(self, column: Column, value: Any) -> Any:
+        """Convert one fetched sample cell, before truncation, for drivers that return encoded values.
+        Child classes override this method.
+        """
+        return value
+
+    def _base_sample_query(
+        self,
+        selectable: Table | TableSample,
+        column: Column | None,
+        label=None,
+    ):
         """Base query for sampling
 
         Args:
@@ -129,9 +188,6 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         Returns:
         """
-        # only sample the column if we are computing a column metric to limit the amount of data scaned
-        selectable = self.set_tablesample(self.raw_dataset.__table__)
-
         with self.session_factory() as client:
             entity = selectable if column is None else selectable.c.get(column.key)
             if label is not None:
@@ -143,6 +199,44 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 query = self.get_partitioned_query(query)
             return query
 
+    def _get_asset_row_count(self) -> int:
+        """Get the row count for the table.
+        Uses the table_metric_computer_factory which dispatches to database-specific
+        system tables (pg_class, information_schema, sys.partitions, etc.) when a
+        dialect-specific computer is registered, otherwise falls back to naive COUNT(*).
+        When partition details are set, always uses COUNT(*) to respect the filter.
+        """
+        if self._row_count is not None:
+            return self._row_count
+
+        if self.partition_details:
+            with self.session_factory() as client:
+                query = client.query(self.raw_dataset)
+                query = self.get_partitioned_query(query)
+                return query.count()
+
+        with self.session_factory() as session:
+            runner = QueryRunner(
+                session=session,
+                dataset=self.raw_dataset,  # type: ignore
+                raw_dataset=self.raw_dataset,  # type: ignore
+            )
+            computer = table_metric_computer_factory.construct(
+                session.get_bind().dialect.name,
+                runner=runner,
+                metrics=[Metrics.rowCount],
+                conn_config=self.service_connection_config,
+                entity=self.entity,
+            )
+            result = computer.compute()
+            if result and hasattr(result, ROW_COUNT):
+                row_count = getattr(result, ROW_COUNT)
+                if row_count is not None:
+                    self._row_count = int(row_count)
+                    return self._row_count
+            # this will cause the sampler to fallback to 100% sampling
+            return 0
+
     def get_sampler_table_name(self) -> str:
         """Get the base name of the SQA table for sampling.
         We use MD5 as a hashing algorithm to generate a unique name for the table
@@ -151,15 +245,16 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         such as _sample, or _rnd.
         """
         encoded_name = self.raw_dataset.__tablename__.encode(UTF_8)
-        hash_object = hashlib.md5(encoded_name)
+        hash_object = hashlib.md5(encoded_name, usedforsecurity=False)
         return hash_object.hexdigest()
 
-    def get_sample_query(self, *, column=None) -> Query:
+    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
         """get query for sample data"""
-        static = self.sample_config.get_static_config()
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
         with self.session_factory() as client:
             if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
                 rnd = self._base_sample_query(
+                    selectable,
                     column,
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 ).cte(f"{self.get_sampler_table_name()}_rnd")
@@ -173,6 +268,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             if self.partition_details:
                 table_query = self.get_partitioned_query(table_query)
             session_query = self._base_sample_query(
+                selectable,
                 column,
                 (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
                 if self.sample_config.randomizedSample is True
@@ -183,7 +279,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             )
             return query.limit(static.profileSample if static else None).cte(f"{self.get_sampler_table_name()}_rnd")
 
-    def get_dataset(self, column=None, **__) -> Union[type, AliasedClass]:
+    def get_dataset(self, column=None, **__) -> type | AliasedClass | CTE:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -191,24 +287,15 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        static = self.sample_config.get_static_config()
-        if (
-            not static
-            or not static.profileSample
-            or (
-                static.profileSampleType == ProfileSampleType.PERCENTAGE
-                and static.profileSample == 100
-                and self.sample_config.randomizedSample is not True
-            )
-        ):
+        if not self.applies_sampling:
             if self.partition_details:
                 return self._partitioned_table()
 
             return self.raw_dataset
 
-        return self.get_sample_query(column=column)
+        return self.get_sample_query(self._resolve_sample_config, column=column)  # type: ignore
 
-    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
+    def fetch_sample_data(self, columns: list[Column] | None = None) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
 
@@ -226,8 +313,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
-            names = [col.name for col in columns]
-            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL and col.name in names]
+            requested_names = {col.name for col in columns}
+            sqa_columns = [
+                col
+                for col in inspect(ds, raiseerr=True).c
+                if col.name != RANDOM_LABEL and col.info.get(ORIGINAL_COLUMN_NAME, col.name) in requested_names
+            ]
 
         with self.session_factory() as client:
             # Handle array columns with special query modification
@@ -256,12 +347,50 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 value = row[i]
                 if has_array_columns and self._handle_array_column(col):
                     value = self._process_array_value(value)
-                processed_row.append(self._truncate_cell(value))
+                processed_row.append(self._truncate_cell(self._process_sample_value(col, value)))
             processed_rows.append(processed_row)
+        if self.partition_details and not sqa_sample:
+            self._warn_empty_partition()
         return TableData(
-            columns=[column.name for column in sqa_columns],
+            columns=[column.info.get(ORIGINAL_COLUMN_NAME, column.name) for column in sqa_columns],
             rows=processed_rows,
         )
+
+    def _warn_empty_partition(self) -> None:
+        """Warn when a partition filter yields an empty sample, so a silently
+        unexamined table is not reported the same as one examined and found clean
+        (issue #33084). Wording is tailored to the partition type."""
+        partition_details = self.partition_details
+        if partition_details is None:
+            return
+        table_name = getattr(self.raw_dataset, "__tablename__", "unknown")
+        interval_type = partition_details.partitionIntervalType
+        if interval_type in (
+            PartitionIntervalTypes.TIME_UNIT,
+            PartitionIntervalTypes.INGESTION_TIME,
+        ):
+            interval_unit = getattr(
+                partition_details.partitionIntervalUnit,
+                "value",
+                partition_details.partitionIntervalUnit,
+            )
+            logger.warning(
+                "Partition filter on table '%s' returned 0 rows. "
+                "The partition window (interval=%s %s) may not cover the table's most-recent data. "
+                "Override the profiler partition config for this table to widen the window. "
+                "See https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/"
+                "profiler/workflow#4.-updating-profiler-setting-at-the-table-level",
+                table_name,
+                partition_details.partitionInterval,
+                interval_unit,
+            )
+        else:
+            logger.warning(
+                "Partition filter on table '%s' returned 0 rows. "
+                "Verify the partition config (type=%s) matches the table's data.",
+                table_name,
+                interval_type,
+            )
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""
@@ -270,14 +399,65 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         with self.session_factory() as client:
             rnd = client.execute(text(f"{self.sample_query}"))
+            dialect = client.get_bind().dialect
         try:
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
             columns = list(rnd.keys())
+        try:
+            type_codes = [entry[1] for entry in rnd.cursor.description]
+        except (AttributeError, IndexError, TypeError):
+            type_codes = [None] * len(columns)
+        # The query returns raw driver values. A result named like a table column converts through that
+        # column's dialect type, as a regular sample does, and a computed column stays as returned.
+        table_columns = {column.name: column for column in self.get_columns()}
+        row_columns = [self._matching_column(str(name), table_columns) for name in columns]
+        processors = [
+            None if column is None else self._result_processor(column, dialect, type_code)
+            for column, type_code in zip(row_columns, type_codes, strict=True)
+        ]
         return TableData(
             columns=columns,
-            rows=[[self._truncate_cell(cell) for cell in row] for row in rnd.fetchmany(100)],
+            rows=[
+                [
+                    self._user_query_cell(column, processor, cell)
+                    for column, processor, cell in zip(row_columns, processors, row, strict=True)
+                ]
+                for row in rnd.fetchmany(self.sample_limit)
+            ],
         )
+
+    @staticmethod
+    def _matching_column(name: str, table_columns: dict[str, Column]) -> Column | None:
+        """An exact name match wins, since a table can hold columns whose names differ only in case."""
+        if name in table_columns:
+            return table_columns[name]
+        folded = name.lower()
+        return next((column for column in table_columns.values() if column.name.lower() == folded), None)
+
+    @staticmethod
+    def _result_processor(column: Column, dialect: Dialect, type_code: Any) -> Callable[[Any], Any] | None:
+        """The dialect's own processor, which a regular sample also uses, or None when it cannot be built.
+
+        A generic type can fail to build one for a dialect, as JSON does without a JSON deserializer.
+        """
+        try:
+            return column.type.dialect_impl(dialect).result_processor(dialect, type_code)
+        except Exception as exc:
+            logger.debug("Keeping raw %s values, its type has no processor for this dialect: %r", column.name, exc)
+            return None
+
+    def _user_query_cell(self, column: Column | None, processor: Callable[[Any], Any] | None, cell: Any) -> Any:
+        if column is None:
+            return self._truncate_cell(cell)
+        if processor is not None:
+            # Processors include custom types that fail with their own errors (rowversion unpacking raises
+            # struct.error), and a cell the column type cannot convert is still a valid sample.
+            try:
+                cell = processor(cell)
+            except Exception as exc:
+                logger.debug("Keeping the raw %s value the column type cannot convert: %r", column.name, exc)
+        return self._truncate_cell(self._process_sample_value(column, cell))
 
     def _rdn_sample_from_user_query(self) -> Query:
         """Returns sql alchemy object to use when running profiling"""
@@ -295,17 +475,68 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         Build the CTE using Core select() so it does not require an active Session.
         """
-        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
+        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # noqa: TC006
+        raw_dataset = self.raw_dataset
+        assert raw_dataset is not None
+        raw_table = raw_dataset.__table__
         partition_filter = build_partition_predicate(
             self.partition_details,
-            self.raw_dataset.__table__.c,
+            raw_table.c,
         )
-        stmt = select(self.raw_dataset).where(partition_filter)
-        return stmt.cte(f"{self.get_sampler_table_name()}_partitioned")
+        if partition_filter is None:
+            partition_filter = false()
+        cte_name = f"{self.get_sampler_table_name()}_partitioned"
+
+        column_names = [column.name for column in raw_table.c]
+        safe_names = []
+        used_names = {
+            column.name for column in raw_table.c if self._partition_cte_column_name(column.name) == column.name
+        }
+        for column in raw_table.c:
+            safe_name = self._partition_cte_column_name(column.name)
+            if safe_name != column.name:
+                base_name = safe_name
+                suffix = 1
+                while safe_name in used_names:
+                    safe_name = f"{base_name}_{suffix}"
+                    suffix += 1
+            used_names.add(safe_name)
+            safe_names.append(safe_name)
+
+        if column_names == safe_names:
+            stmt = select(raw_dataset).where(partition_filter)
+            return stmt.cte(cte_name)
+
+        inner_columns = []
+        for column, safe_name in zip(raw_table.c, safe_names, strict=True):
+            if column.name == safe_name:
+                inner_columns.append(column)
+                continue
+
+            safe_column = column.label(safe_name)
+            # Keep the profiler's logical key while giving the CTE the
+            # connector-specific alias it needs.
+            safe_column.key = column.key
+            inner_columns.append(safe_column)
+
+        cte = select(*inner_columns).where(partition_filter).cte(cte_name)
+        for column, logical_name in zip(cte.c, column_names, strict=True):
+            column.key = logical_name
+            if column.name != logical_name:
+                column.info[ORIGINAL_COLUMN_NAME] = logical_name
+        return cte
+
+    def _partition_cte_column_name(self, column_name: str) -> str:
+        """Return the CTE label for a physical column name.
+
+        Connectors can override this hook when their SQL dialect requires a
+        transformed identifier. The shared sampler preserves physical names.
+        """
+        return column_name
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""
-        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # satisfying type checker
+        self.partition_details = cast("PartitionProfilerConfig", self.partition_details)  # satisfying type checker
         partition_filter = build_partition_predicate(
             self.partition_details,
             self.raw_dataset.__table__.c,
@@ -329,7 +560,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def __del__(self):
         """Destructor to ensure cleanup when object is garbage collected"""
-        try:
+        try:  # noqa: SIM105
             self.close()
         except Exception:
             # Ignore errors during cleanup in destructor

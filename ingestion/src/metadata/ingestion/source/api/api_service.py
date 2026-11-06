@@ -13,10 +13,10 @@ Base class for ingesting api services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Set
+from collections.abc import Iterable
+from typing import Annotated, Any
 
 from pydantic import Field
-from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
@@ -39,16 +39,22 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import PerSourceState, TopologyRunnerMixin
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -62,6 +68,15 @@ class ApiServiceTopology(ServiceTopology):
 
     We could have a topology validator. We can only consume
     data that has been produced by any parent node.
+
+    Collections and endpoints are two sibling nodes rather than two stages of one
+    node so that *every* collection is sunk and flushed before the first endpoint
+    is produced. Endpoints carry an ``apiCollection`` FQN the server resolves at
+    write time, so an endpoint that reaches the API before its collection is
+    rejected with ``apiCollection instance for <fqn> not found``. Interleaving the
+    two entity types in one node leaves that ordering up to how the sink's bulk
+    buffer happens to be chunked, which breaks once a document is large enough to
+    flush mid-collection.
     """
 
     root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
@@ -73,10 +88,9 @@ class ApiServiceTopology(ServiceTopology):
                 processor="yield_create_request_api_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
-        children=["api_collection"],
+        children=["api_collection", "api_endpoint"],
         post_process=["mark_api_collections_as_deleted"],
     )
     api_collection: Annotated[TopologyNode, Field(description="API Collection Processing Node")] = TopologyNode(
@@ -87,14 +101,18 @@ class ApiServiceTopology(ServiceTopology):
                 context="api_collections",
                 processor="yield_api_collection",
                 consumer=["api_service"],
-                use_cache=True,
             ),
+        ],
+        post_process=["flush_api_collections"],
+    )
+    api_endpoint: Annotated[TopologyNode, Field(description="API Endpoint Processing Node")] = TopologyNode(
+        producer="get_api_collections",
+        stages=[
             NodeStage(
                 type_=APIEndpoint,
                 context="api_endpoints",
                 processor="yield_api_endpoint",
                 consumer=["api_service"],
-                use_cache=True,
             ),
         ],
     )
@@ -112,9 +130,8 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: ApiConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = ApiServiceTopology()
-    context = TopologyContextManager(topology)
-    api_collection_source_state: Set = set()
-    api_endpoint_source_state: Set = set()
+    api_collection_source_state = PerSourceState(set)
+    api_endpoint_source_state = PerSourceState(set)
 
     def __init__(
         self,
@@ -126,11 +143,13 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: ApiServiceMetadataPipeline = self.config.sourceConfig.config
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
         self.client = self.connection
 
@@ -148,7 +167,12 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
     def get_api_collections(self, *args, **kwargs) -> Iterable[Any]:
         """
         Method to list all collections to process.
-        Here is where filtering happens
+        Here is where filtering happens.
+
+        Both the collection and the endpoint node produce from this method, so an
+        implementation must be idempotent and must replay the same collection
+        objects on the second call - ``yield_api_collection`` enriches them in
+        place (``collection.url``) and ``yield_api_endpoint`` reads that back.
         """
 
     @abstractmethod
@@ -160,10 +184,14 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
         """Method to return api endpoint Entities"""
 
     def close(self):
-        """By default, nothing to close"""
+        if self._connection is not None:
+            self._connection.close()
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_api_collections_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the api collection as deleted"""
@@ -172,9 +200,14 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=APICollection,
                 entity_source_state=self.api_collection_source_state,
-                mark_deleted_entity=self.source_config.markDeletedApiCollections,
+                recursive=self.source_config.markDeletedApiCollections,
                 params={"service": self.context.get().api_service},
             )
+
+    def flush_api_collections(self) -> Iterable[Either[Barrier]]:
+        """Drain the sink's bulk buffer so every collection is committed before the
+        endpoint node starts producing endpoints that reference them."""
+        yield Either(right=Barrier(reason="api_collections_flush"))  # pyright: ignore[reportCallIssue]
 
     def register_record(self, collection_request: CreateAPICollectionRequest) -> None:
         """

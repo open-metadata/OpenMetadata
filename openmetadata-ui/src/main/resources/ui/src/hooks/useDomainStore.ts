@@ -16,8 +16,8 @@ import {
   DEFAULT_DOMAIN_VALUE,
   DOMAIN_STORAGE_KEY,
 } from '../constants/constants';
-import { EntityReference } from '../generated/entity/type';
-import { DomainStore } from '../interface/store.interface';
+import type { EntityReference } from '../generated/entity/type';
+import type { DomainStore } from '../interface/store.interface';
 
 export const useDomainStore = create<DomainStore>()(
   persist(
@@ -25,6 +25,7 @@ export const useDomainStore = create<DomainStore>()(
       userDomains: [],
       activeDomain: DEFAULT_DOMAIN_VALUE, // Set default value here
       activeDomainEntityRef: undefined,
+      isDomainRestricted: false,
       updateActiveDomain: (domain?: EntityReference) => {
         set({
           activeDomain: domain?.fullyQualifiedName ?? DEFAULT_DOMAIN_VALUE,
@@ -34,6 +35,11 @@ export const useDomainStore = create<DomainStore>()(
       setUserDomains: (userDomainsArr: EntityReference[]) => {
         set({
           userDomains: userDomainsArr,
+        });
+      },
+      setDomainRestriction: (restricted: boolean) => {
+        set({
+          isDomainRestricted: restricted,
         });
       },
     }),
@@ -48,3 +54,24 @@ export const useDomainStore = create<DomainStore>()(
     }
   )
 );
+
+// Another tab's pick is persisted here and changes what the server lists for every tab, so a tab
+// reloads to match it, as the tab that picked does (else it shows its old label over new lists).
+const storedPick = (raw: string | null) => {
+  try {
+    return raw ? JSON.parse(raw)?.state?.activeDomain : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+export const reloadOnPickFromOtherTab = (event: StorageEvent) => {
+  if (
+    event.key === DOMAIN_STORAGE_KEY &&
+    storedPick(event.newValue) !== storedPick(event.oldValue)
+  ) {
+    window.location.reload();
+  }
+};
+
+window.addEventListener('storage', reloadOnPickFromOtherTab);

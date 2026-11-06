@@ -38,16 +38,47 @@ describe('ImportStatus component', () => {
     expect(
       await screen.findByText('label.number-of-rows:')
     ).toBeInTheDocument();
+
+    // The row testids wrap only the count so Playwright's validateImportStatus
+    // can assert the exact number; the label renders alongside in the badge.
     expect(processed.textContent).toStrictEqual(
       `${mockCsvImportResult.numberOfRowsProcessed}`
     );
-    expect(await screen.findByText('label.passed:')).toBeInTheDocument();
     expect(pass.textContent).toStrictEqual(
       `${mockCsvImportResult.numberOfRowsPassed}`
     );
-    expect(await screen.findByText('label.failed:')).toBeInTheDocument();
     expect(failed.textContent).toStrictEqual(
       `${mockCsvImportResult.numberOfRowsFailed}`
     );
+    expect(screen.getByText('label.passed')).toBeInTheDocument();
+    expect(screen.getByText('label.failed')).toBeInTheDocument();
+  });
+
+  it('shows held rows as pending approval', async () => {
+    render(
+      <ImportStatus
+        csvImportResult={
+          {
+            ...mockCsvImportResult,
+            numberOfRowsPendingApproval: 2,
+          } as CSVImportResult
+        }
+      />
+    );
+
+    expect(
+      (await screen.findByTestId('pending-approval-row')).textContent
+    ).toStrictEqual('2');
+    expect(screen.getByText('label.pending-approval')).toBeInTheDocument();
+  });
+
+  it('hides the pending approval chip when nothing was held', () => {
+    render(
+      <ImportStatus csvImportResult={mockCsvImportResult as CSVImportResult} />
+    );
+
+    expect(
+      screen.queryByTestId('pending-approval-row')
+    ).not.toBeInTheDocument();
   });
 });

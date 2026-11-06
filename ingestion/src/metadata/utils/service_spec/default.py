@@ -2,8 +2,6 @@
 Default service specs for services.
 """
 
-from typing import Optional
-
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
@@ -19,7 +17,7 @@ from metadata.utils.service_spec.service_spec import BaseSpec
 
 
 class DefaultDatabaseSpec(BaseSpec):
-    profiler_class: Optional[str] = get_class_path(SQAProfilerInterface)
-    sampler_class: Optional[str] = get_class_path(SQASampler)
-    test_suite_class: Optional[str] = get_class_path(SQATestSuiteInterface)
-    data_diff: Optional[str] = get_class_path(BaseTableParameter)
+    profiler_class: str | None = get_class_path(SQAProfilerInterface)
+    sampler_class: str | None = get_class_path(SQASampler)
+    test_suite_class: str | None = get_class_path(SQATestSuiteInterface)
+    data_diff: str | None = get_class_path(BaseTableParameter)

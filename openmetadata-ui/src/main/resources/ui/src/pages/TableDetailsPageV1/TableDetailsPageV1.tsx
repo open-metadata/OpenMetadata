@@ -11,121 +11,161 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, Tooltip } from 'antd';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { withSuggestions } from '../../components/AppRouter/withSuggestions';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import Loader from '../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import {
+  DataAssetsHeaderProps,
+  DataAssetWithDomains,
+} from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { DataQualityIndicator } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator';
+import { DataQualityIndicatorCounts } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.types';
+import {
+  countUnresolvedIncidents,
+  DQ_INDICATOR_FETCH_LIMIT,
+  EMPTY_DQ_INDICATOR_COUNTS,
+  OPEN_INCIDENT_STATUSES,
+} from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.utils';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { mockDatasetData } from '../../constants/mockTourData.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
+  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { Column, Table, TableType } from '../../generated/entity/data/table';
-import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
+import { Table, TableType } from '../../generated/entity/data/table';
 import { PageType } from '../../generated/system/ui/page';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
-import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
+import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
-import { getQueriesList } from '../../rest/queryAPI';
+import {
+  tableQueryCountFn,
+  tableQueryCountKey,
+  tableQueryFn,
+  tableQueryKey,
+} from '../../rest/queries/tableQuery';
 import {
   addFollower,
-  getTableColumnsByFQN,
-  getTableDetailsByFQN,
   patchTableDetails,
   removeFollower,
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
+import { getListTestCaseBySearch } from '../../rest/testAPI';
 import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
-import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
-} from '../../utils/CustomizePage/CustomizePageUtils';
-import {
-  defaultFields,
-  defaultFieldsWithColumns,
-} from '../../utils/DatasetDetailsUtils';
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { defaultFieldsWithColumns } from '../../utils/DatasetDetailsUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { mergeEntityStateUpdate } from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
   findColumnByEntityLink,
+  generateEntityLink,
   getJoinsFromTableJoins,
   getTagsWithoutTier,
   getTierTags,
   updateColumnInNestedStructure,
-} from '../../utils/TableUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+} from '../../utils/TablePureUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
+import TableLinkedConcepts from './TableLinkedConcepts';
+// The incidents API 403s without ViewTests/ViewAll, so skip it and report no incidents.
+const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
+  canViewTests
+    ? getListTestCaseIncidentStatus({
+        originEntityFQN: tableFqn,
+        latest: true,
+        // The server picks each test case's latest status before applying this filter, so
+        // Resolved history can't fill the page. Count on `data`: `paging.total` is computed
+        // before that and still includes resolved test cases.
+        testCaseResolutionStatusType: OPEN_INCIDENT_STATUSES,
+        // `latest` is only honoured together with a time range.
+        startTs: 0,
+        endTs: Date.now(),
+        limit: DQ_INDICATOR_FETCH_LIMIT,
+      })
+    : Promise.resolve({ data: [], paging: { total: 0 } });
+
+// useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
+// the render that starts the request, so the badge never flashes a placeholder 0.
+const useTableQueryCount = (tableId: string) =>
+  useQuery({
+    queryKey: tableQueryCountKey(tableId),
+    queryFn: tableQueryCountFn(tableId),
+    enabled: Boolean(tableId),
+  });
 
 const TableDetailsPageV1: React.FC = () => {
-  const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
-    useTourProvider();
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
-  const [tableDetails, setTableDetails] = useState<Table>();
+  const queryClient = useQueryClient();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
+  const location = useLocation();
+  const breadcrumbData = (
+    location.state as {
+      breadcrumbData?: DataAssetsHeaderProps['breadcrumbData'];
+    } | null
+  )?.breadcrumbData;
   const USERId = currentUser?.id ?? '';
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
 
-  const [queryCount, setQueryCount] = useState(0);
-
-  const [loading, setLoading] = useState(!isTourOpen);
-  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
-  const [dqFailureCount, setDqFailureCount] = useState(0);
+  const [dqIndicatorCounts, setDqIndicatorCounts] =
+    useState<DataQualityIndicatorCounts>(EMPTY_DQ_INDICATOR_COUNTS);
   const { customizedPage } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
@@ -140,23 +180,149 @@ const TableDetailsPageV1: React.FC = () => {
     [columnPart, datasetFQN]
   );
 
-  const alertBadge = useMemo(() => {
-    return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (
-      <Tooltip
-        placement="right"
-        title={t('label.check-active-data-quality-incident-plural')}>
-        <Link
-          to={getEntityDetailsPath(
-            EntityType.TABLE,
-            tableFqn,
-            EntityTabs.PROFILER
-          )}>
-          <RedAlertIcon className="text-red-3" height={24} width={24} />
-        </Link>
-      </Tooltip>
-    ) : undefined;
-  }, [dqFailureCount, tableFqn]);
+  const {
+    permissions: tablePermissions,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn);
+  const {
+    canViewBasic: viewBasicPermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+    canViewSampleData: viewSampleDataPermission,
+    canViewQueries: viewQueriesPermission,
+    canViewDataProfile: viewProfilerPermission,
+    canViewUsage: viewUsagePermission,
+    canViewTests: viewTestCasePermission,
+  } = getDerivedPermissionFlags(tablePermissions);
+  // Same value as viewBasicPermission above, named for what it means at its one call site
+  // (the entity useQuery's `enabled` a few lines down) rather than re-destructured.
+  const canViewTableInQuery = viewBasicPermission;
 
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.resource-permission-lowercase'),
+        })
+      );
+    }
+  }, [permissionsError]);
+
+  // Field set the page reads from the server. The permission-gated extras (USAGE_SUMMARY,
+  // TESTSUITE) become part of the React Query cache key so a permission flip doesn't serve
+  // a "lite" cached body to a "heavy" caller. {@link tableQueryKey} also covers the
+  // fqn axis so navigating between tables hits a fresh slot.
+  const tableFields = useMemo(() => {
+    let fields = defaultFieldsWithColumns;
+    if (viewUsagePermission) {
+      fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+    }
+    if (viewTestCasePermission) {
+      fields += `,${TabSpecificField.TESTSUITE}`;
+    }
+
+    return fields;
+  }, [viewUsagePermission, viewTestCasePermission]);
+
+  const tableCacheKey = useMemo(
+    () => tableQueryKey(tableFqn, tableFields),
+    [tableFqn, tableFields]
+  );
+
+  // P2: replace the manual useState + fetchTableDetails + useEffect pattern with
+  // {@link useQuery}. Wins:
+  //   - Background revalidation: a stale entry serves immediately, then refetches; the page
+  //     is interactive on first paint when the entry is fresh.
+  //   - Single source of truth: hover-prefetch from search/recently-viewed (P3) populates the
+  //     same cache slot, so the page mount is free in that case.
+  //   - Mutations apply optimistic updates via {@code queryClient.setQueryData}; every
+  //     consumer reading the same key sees the change instantly (no prop drilling).
+  //
+  // {@code enabled} gates the fire so we don't fetch before view permissions have resolved.
+  const isTableQueryEnabled = useMemo(
+    () => Boolean(tableFqn && canViewTableInQuery),
+    [tableFqn, canViewTableInQuery]
+  );
+
+  const {
+    data: tableDetails,
+    isLoading: tableLoading,
+    error: tableError,
+  } = useQuery({
+    queryKey: tableCacheKey,
+    queryFn: tableQueryFn(tableFqn, tableFields),
+    enabled: isTableQueryEnabled,
+  });
+
+  const tableDetailsId = tableDetails?.id ?? '';
+
+  const { data: queryCount = 0, isFetching: isQueryCountLoading } =
+    useTableQueryCount(tableDetailsId);
+
+  // Forbidden → redirect, preserving the prior behavior. Run as an effect rather than during
+  // render so the navigate call doesn't fire during the same commit that returns the query
+  // result. Only redirects on a fresh 403; if the user has stale cached data and the server
+  // later 403s on background refetch, we don't yank them off the page.
+  useEffect(() => {
+    const status = (tableError as AxiosError | undefined)?.response?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    }
+  }, [tableError, navigate]);
+
+  // Side effect that used to live in the fetch callback — populate "recently viewed" on a
+  // successful fetch. Decoupled from the fetch so it fires when the cache resolves the data,
+  // whether that's via a network fetch or a hover-prefetch hit.
+  useEffect(() => {
+    if (!tableDetails) {
+      return;
+    }
+    addToRecentViewed({
+      displayName: getEntityName(tableDetails),
+      entityType: EntityType.TABLE,
+      fqn: tableDetails.fullyQualifiedName ?? '',
+      serviceType: tableDetails.serviceType,
+      timestamp: 0,
+      id: tableDetails.id,
+    });
+  }, [tableDetails]);
+
+  // Imperative cache writer for mutation handlers. Functionally identical to the old
+  // {@code setTableDetails(updater)} — accepts a (Table | undefined) → (Table | undefined)
+  // and writes the result into the cache so every reader (this page, hover-prefetched
+  // siblings, future widgets that consume the key) sees the update.
+  const setTableDetails = useCallback(
+    (
+      updater:
+        | Table
+        | undefined
+        | ((prev: Table | undefined) => Table | undefined)
+    ) => {
+      if (typeof updater === 'function') {
+        queryClient.setQueryData<Table | undefined>(tableCacheKey, updater);
+      } else {
+        queryClient.setQueryData<Table | undefined>(tableCacheKey, updater);
+      }
+    },
+    [queryClient, tableCacheKey]
+  );
+
+  // Replacement for the old {@code fetchTableDetails()} call sites that want a fresh body
+  // (e.g. after a server-side mutation we can't represent purely on the client). Triggers a
+  // background refetch — stale data continues to render until the new body arrives.
+  const refetchTableDetails = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: tableCacheKey }),
+    [queryClient, tableCacheKey]
+  );
+
+  const isViewTableType = useMemo(
+    () => tableDetails?.tableType === TableType.View,
+    [tableDetails?.tableType]
+  );
+
+  // Lifted from above the useQuery block: depends on {@code tableDetails} so must come
+  // after the query is declared. Same shape as before.
   const extraDropdownContent = useMemo(
     () =>
       tableDetails
@@ -165,178 +331,73 @@ const TableDetailsPageV1: React.FC = () => {
             tableFqn,
             tablePermissions,
             tableDetails,
-            navigate
+            navigate,
+            showModal
           )
         : [],
-    [tablePermissions, tableFqn, tableDetails]
+    [tablePermissions, tableFqn, tableDetails, navigate, showModal]
   );
 
-  const { viewUsagePermission, viewTestCasePermission } = useMemo(
-    () => ({
-      viewUsagePermission: getPrioritizedViewPermission(
-        tablePermissions,
-        Operation.ViewUsage
-      ),
-      viewTestCasePermission: getPrioritizedViewPermission(
-        tablePermissions,
-        Operation.ViewTests
-      ),
-    }),
-    [
-      tablePermissions,
-      getPrioritizedViewPermission,
-      getPrioritizedEditPermission,
-    ]
-  );
+  const fetchDqIndicatorCounts = useCallback(
+    async (isCurrent: () => boolean) => {
+      if (!tableClassBase.getAlertEnableStatus()) {
+        setDqIndicatorCounts(EMPTY_DQ_INDICATOR_COUNTS);
 
-  const isViewTableType = useMemo(
-    () => tableDetails?.tableType === TableType.View,
-    [tableDetails?.tableType]
-  );
-
-  const fetchTableDetails = useCallback(
-    async (showLoading = true) => {
-      if (showLoading) {
-        setLoading(true);
+        return;
       }
-      try {
-        let fields = defaultFieldsWithColumns;
-        if (viewUsagePermission) {
-          fields += `,${TabSpecificField.USAGE_SUMMARY}`;
-        }
-        if (viewTestCasePermission) {
-          fields += `,${TabSpecificField.TESTSUITE}`;
-        }
 
-        const [details, columnsResponse] = await Promise.all([
-          getTableDetailsByFQN(tableFqn, { fields }),
-          getTableColumnsByFQN(tableFqn, {
-            fields: 'tags,customMetrics,extension',
-          }).catch(() => null),
+      // ponytail: incidents are classified from the first DQ_INDICATOR_FETCH_LIMIT failing tests and
+      // open incidents only. Past that the level is still right, only the tooltip counts drift;
+      // a server-side "open incidents on passing tests" count is the upgrade path.
+      const [failingResult, incidentResult, lineageResult] =
+        await Promise.allSettled([
+          getListTestCaseBySearch({
+            entityLink: generateEntityLink(tableFqn),
+            includeAllTests: true,
+            testCaseStatus: TestCaseStatus.Failed,
+            limit: DQ_INDICATOR_FETCH_LIMIT,
+          }),
+          fetchOpenIncidents(tableFqn, viewTestCasePermission),
+          getDataQualityLineage(tableFqn, { upstreamDepth: 1 }),
         ]);
 
-        let finalColumns = details.columns || [];
-        if (columnsResponse?.data && columnsResponse.data.length > 0) {
-          // Merge fresh columns from /columns API into the full list from /tables API
-          // This ensures we keep the correct total count while having fresh data for visible columns
-          columnsResponse.data.forEach((freshCol) => {
-            finalColumns = updateColumnInNestedStructure(
-              finalColumns,
-              freshCol.fullyQualifiedName ?? '',
-              freshCol
-            );
-          });
-        }
-
-        const mergedDetails = {
-          ...details,
-          columns: finalColumns,
-        };
-
-        setTableDetails((current) => {
-          // Prevent stale server data from overwriting newer local state (optimistic updates)
-          if (
-            current?.updatedAt &&
-            mergedDetails.updatedAt &&
-            mergedDetails.updatedAt < current.updatedAt
-          ) {
-            return current;
-          }
-
-          return mergedDetails;
-        });
-        addToRecentViewed({
-          displayName: getEntityName(details),
-          entityType: EntityType.TABLE,
-          fqn: details.fullyQualifiedName ?? '',
-          serviceType: details.serviceType,
-          timestamp: 0,
-          id: details.id,
-        });
-      } catch (error) {
-        if (
-          (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
-        ) {
-          navigate(ROUTES.FORBIDDEN, { replace: true });
-        }
-      } finally {
-        if (showLoading) {
-          setLoading(false);
-        }
+      // A slower response for the table the user just left must not overwrite this one.
+      if (!isCurrent()) {
+        return;
       }
+
+      const failingTests =
+        failingResult.status === 'fulfilled' ? failingResult.value.data : [];
+      const failingTestCaseIds = new Set(
+        failingTests.map((testCase) => testCase.id ?? '')
+      );
+
+      if (lineageResult.status === 'fulfilled') {
+        setDqLineageData(lineageResult.value);
+      }
+
+      setDqIndicatorCounts({
+        failingTests:
+          failingResult.status === 'fulfilled'
+            ? failingResult.value.paging?.total ?? failingTests.length
+            : 0,
+        unresolvedIncidents:
+          incidentResult.status === 'fulfilled'
+            ? countUnresolvedIncidents(
+                incidentResult.value.data,
+                failingTestCaseIds
+              )
+            : 0,
+        upstreamIssues:
+          lineageResult.status === 'fulfilled'
+            ? lineageResult.value.nodes?.filter(
+                (node) => node?.fullyQualifiedName !== tableFqn
+              ).length ?? 0
+            : 0,
+      });
     },
-    [tableFqn, viewUsagePermission]
+    [tableFqn, setDqLineageData, viewTestCasePermission]
   );
-
-  const fetchDQUpstreamFailureCount = async () => {
-    if (!tableClassBase.getAlertEnableStatus()) {
-      setDqFailureCount(0);
-    }
-
-    // Todo: Remove this once we have support for count in API
-    try {
-      const data = await getDataQualityLineage(tableFqn, {
-        upstreamDepth: 1,
-      });
-      setDqLineageData(data);
-      const updatedNodes =
-        data.nodes?.filter((node) => node?.fullyQualifiedName !== tableFqn) ??
-        [];
-      setDqFailureCount(updatedNodes.length);
-    } catch {
-      setDqFailureCount(0);
-    }
-  };
-
-  const getTestCaseFailureCount = async () => {
-    try {
-      if (!tableClassBase.getAlertEnableStatus()) {
-        setDqFailureCount(0);
-
-        return;
-      }
-
-      const testSuiteId = tableDetails?.testSuite?.id;
-
-      if (!testSuiteId) {
-        await fetchDQUpstreamFailureCount();
-
-        return;
-      }
-
-      const { data } = await fetchTestCaseResultByTestSuiteId(
-        testSuiteId,
-        TestCaseStatus.Failed
-      );
-      const failureCount = data.reduce(
-        (acc, curr) => acc + Number.parseInt(curr.document_count ?? '0'),
-        0
-      );
-
-      if (failureCount === 0) {
-        await fetchDQUpstreamFailureCount();
-      } else {
-        setDqFailureCount(failureCount);
-      }
-    } catch {
-      setDqFailureCount(0);
-    }
-  };
-
-  const fetchQueryCount = async () => {
-    if (!tableDetails?.id) {
-      return;
-    }
-    try {
-      const response = await getQueriesList({
-        limit: 0,
-        entityId: tableDetails.id,
-      });
-      setQueryCount(response.paging.total);
-    } catch {
-      setQueryCount(0);
-    }
-  };
 
   const {
     tableTags,
@@ -372,33 +433,15 @@ const TableDetailsPageV1: React.FC = () => {
     };
   }, [tableDetails, tableDetails?.tags]);
 
-  const fetchResourcePermission = useCallback(
-    async (tableFqn: string) => {
-      try {
-        const tablePermission = await getEntityPermissionByFqn(
-          ResourceEntity.TABLE,
-          tableFqn
-        );
+  const {
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+  } = getDerivedPermissionFlags(tablePermissions, Boolean(deleted));
 
-        setTablePermissions(tablePermission);
-      } catch {
-        showErrorToast(
-          t('server.fetch-entity-permissions-error', {
-            entity: t('label.resource-permission-lowercase'),
-          })
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [getEntityPermissionByFqn, setTablePermissions]
-  );
-
+  // Permission fetching itself now lives in useEntityPermissions. This effect keeps the one
+  // unrelated side effect the old fetch effect's cleanup carried —
+  // resetting the DQ lineage store when the table FQN changes — decoupled from permissions.
   useEffect(() => {
-    if (tableFqn) {
-      fetchResourcePermission(tableFqn);
-    }
-
     return () => {
       setDqLineageData(undefined);
     };
@@ -412,13 +455,27 @@ const TableDetailsPageV1: React.FC = () => {
     getFeedCounts(EntityType.TABLE, tableFqn, handleFeedCount);
   };
 
+  // P2-A: task counts drive the always-visible "Open Tasks" button in the page header chrome,
+  // so they must stay eager on mount. The heavier activity-events fetch (up to 100 events just
+  // to compute a count) only feeds the Activity Feed tab badge and is deferred below.
+  const fetchTaskCounts = useCallback(() => {
+    if (tableFqn) {
+      fetchEntityTaskCountsInto(tableFqn, setFeedCount);
+    }
+  }, [tableFqn]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (tableFqn) {
+      fetchEntityActivityCountInto(EntityType.TABLE, tableFqn, setFeedCount);
+    }
+  }, [tableFqn]);
+
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      if (!isTourOpen) {
-        navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
-          replace: true,
-        });
-      }
+      navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
+        replace: true,
+        state: location.state,
+      });
     }
   };
 
@@ -434,21 +491,29 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, tableId]
   );
 
-  const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
-    try {
-      const res = await saveUpdatedTableData(updatedTable);
+  const onTableUpdate = useCallback(
+    async (updatedTable: Table, key?: keyof Table) => {
+      try {
+        const res = await saveUpdatedTableData(updatedTable);
 
-      setTableDetails((previous) => {
-        if (!previous) {
-          return;
-        }
+        setTableDetails((previous) => {
+          if (!previous) {
+            return;
+          }
 
-        return mergeEntityStateUpdate<Table>(previous, res, updatedTable, key);
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+          return mergeEntityStateUpdate<Table>(
+            previous,
+            res,
+            updatedTable,
+            key
+          );
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [saveUpdatedTableData, setTableDetails]
+  );
 
   const handleUpdateOwner = useCallback(
     async (newOwners?: Table['owners']) => {
@@ -461,7 +526,7 @@ const TableDetailsPageV1: React.FC = () => {
       };
       await onTableUpdate(updatedTableDetails, 'owners');
     },
-    [tableDetails]
+    [tableDetails, onTableUpdate]
   );
 
   const handleUpdateRetentionPeriod = useCallback(
@@ -475,7 +540,7 @@ const TableDetailsPageV1: React.FC = () => {
       };
       await onTableUpdate(updatedTableDetails, 'retentionPeriod');
     },
-    [tableDetails]
+    [tableDetails, onTableUpdate]
   );
 
   const handleDisplayNameUpdate = async (data: EntityName) => {
@@ -500,70 +565,12 @@ const TableDetailsPageV1: React.FC = () => {
       ));
   };
 
-  const {
-    editCustomAttributePermission,
-    editLineagePermission,
-    viewSampleDataPermission,
-    viewQueriesPermission,
-    viewProfilerPermission,
-    viewAllPermission,
-    viewBasicPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(tablePermissions, Operation.EditTags) &&
-        !deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          tablePermissions,
-          Operation.EditGlossaryTerms
-        ) && !deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          tablePermissions,
-          Operation.EditDescription
-        ) && !deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          tablePermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editAllPermission: tablePermissions.EditAll && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(tablePermissions, Operation.EditLineage) &&
-        !deleted,
-      viewSampleDataPermission: getPrioritizedViewPermission(
-        tablePermissions,
-        Operation.ViewSampleData
-      ),
-      viewQueriesPermission: getPrioritizedViewPermission(
-        tablePermissions,
-        Operation.ViewQueries
-      ),
-      viewProfilerPermission: getPrioritizedViewPermission(
-        tablePermissions,
-        Operation.ViewDataProfile
-      ),
-      viewAllPermission: tablePermissions.ViewAll,
-      viewBasicPermission: getPrioritizedViewPermission(
-        tablePermissions,
-        Operation.ViewBasic
-      ),
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        tablePermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
-    [tablePermissions, deleted]
-  );
-
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = tableClassBase.getTableDetailPageTabs({
       queryCount,
-      isTourOpen,
+      isQueryCountLoading,
       tablePermissions,
       activeTab,
       deleted,
@@ -578,7 +585,7 @@ const TableDetailsPageV1: React.FC = () => {
       viewQueriesPermission,
       viewProfilerPermission,
       editLineagePermission,
-      fetchTableDetails,
+      fetchTableDetails: refetchTableDetails,
       isViewTableType,
       labelMap: tabLabelMap,
       columnFqn,
@@ -594,7 +601,7 @@ const TableDetailsPageV1: React.FC = () => {
     return updatedTabs;
   }, [
     queryCount,
-    isTourOpen,
+    isQueryCountLoading,
     tablePermissions,
     activeTab,
     deleted,
@@ -610,52 +617,39 @@ const TableDetailsPageV1: React.FC = () => {
     viewQueriesPermission,
     viewProfilerPermission,
     editLineagePermission,
-    fetchTableDetails,
+    refetchTableDetails,
     isViewTableType,
     columnFqn,
     columnPart,
   ]);
 
-  const isExpandViewSupported = useMemo(
-    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Table),
-    [tabs[0], activeTab]
+  // The tab actually shown. A hidden or unknown tab in the URL (for example
+  // knowledge_graph while RDF is off) falls back to the first tab, and the
+  // widget layout must follow that fallback rather than the raw route param.
+  const renderedActiveTab = useMemo(
+    () => getRenderedActiveTab(tabs, activeTab),
+    [tabs, activeTab]
   );
 
-  const handleTableSync = useCallback((updatedTable: Table) => {
-    setTableDetails(updatedTable);
-  }, []);
+  const firstTab = tabs[0];
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(firstTab, renderedActiveTab, PageType.Table),
+    [firstTab, renderedActiveTab]
+  );
 
-  const handleColumnsUpdate = useCallback((newColumns: Column[]) => {
-    if (isEmpty(newColumns)) {
-      return;
-    }
-
-    setTableDetails((current) => {
-      if (!current) {
-        return current;
-      }
-
-      const newColumnsMap = new Map(
-        newColumns.map((c) => [c.fullyQualifiedName, c])
-      );
-      const updatedColumns = (current.columns || []).map((col) => {
-        if (
-          col.fullyQualifiedName &&
-          newColumnsMap.has(col.fullyQualifiedName)
-        ) {
-          return newColumnsMap.get(col.fullyQualifiedName) as Column;
-        }
-
-        return col;
-      });
-
-      return {
-        ...current,
-        columns: updatedColumns,
-        updatedAt: Date.now(), // Update timestamp to prevent stale overrides
-      };
-    });
-  }, []);
+  // {@code setTableDetails} is a closure over {@code tableCacheKey}, which itself depends on
+  // {@code tableFields} (and therefore on the permission-derived USAGE_SUMMARY/TESTSUITE
+  // extras). If permissions resolve after first render the cache key shifts; a stale closure
+  // here would keep writing to the OLD slot while {@code useQuery} reads the NEW slot, so
+  // entity-sync updates would silently no-op on screen. Including {@code setTableDetails} in
+  // the deps re-binds the handler to the current slot.
+  const handleTableSync = useCallback(
+    (updatedTable: Table) => {
+      setTableDetails(updatedTable);
+    },
+    [setTableDetails]
+  );
 
   const onTierUpdate = useCallback(
     async (newTier?: Tag) => {
@@ -712,6 +706,8 @@ const TableDetailsPageV1: React.FC = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -719,56 +715,10 @@ const TableDetailsPageV1: React.FC = () => {
           entity: t('label.table'),
         })
       );
+
+      return false;
     }
   };
-
-  const followTable = useCallback(async () => {
-    try {
-      const res = await addFollower(tableId, USERId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      const newFollowers = [...(followers ?? []), ...newValue];
-      setTableDetails((prev) => {
-        if (!prev) {
-          return prev;
-        }
-
-        return { ...prev, followers: newFollowers };
-      });
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: entityName,
-        })
-      );
-    }
-  }, [USERId, tableId, entityName, setTableDetails]);
-
-  const unFollowTable = useCallback(async () => {
-    try {
-      const res = await removeFollower(tableId, USERId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setTableDetails((pre) => {
-        if (!pre) {
-          return pre;
-        }
-
-        return {
-          ...pre,
-          followers: pre.followers?.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        };
-      });
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: entityName,
-        })
-      );
-    }
-  }, [USERId, tableId, entityName, setTableDetails]);
 
   const { isFollowing } = useMemo(() => {
     return {
@@ -776,9 +726,86 @@ const TableDetailsPageV1: React.FC = () => {
     };
   }, [followers, USERId]);
 
+  // Optimistic follow/unfollow. Why this matters: the prior code awaited the PUT round-trip
+  // before flipping the button text, so users saw 200–800 ms of "did my click register?"
+  // every time. {@code onMutate} patches the cache synchronously so the button updates on
+  // the SAME render that fires the network call; {@code onError} rolls back if the request
+  // fails; {@code onSettled} invalidates the key so a background refetch picks up any
+  // additional server-side state (e.g. timestamps).
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: Table | undefined }
+  >({
+    mutationFn: async () => {
+      if (isFollowing) {
+        await removeFollower(tableId, USERId);
+      } else {
+        await addFollower(tableId, USERId);
+      }
+    },
+    onMutate: async () => {
+      // Cancel any in-flight refetch so it doesn't overwrite our optimistic patch.
+      await queryClient.cancelQueries({ queryKey: tableCacheKey });
+      const previous = queryClient.getQueryData<Table | undefined>(
+        tableCacheKey
+      );
+      queryClient.setQueryData<Table | undefined>(tableCacheKey, (prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const currentFollowers = prev.followers ?? [];
+        if (isFollowing) {
+          return {
+            ...prev,
+            followers: currentFollowers.filter(({ id }) => id !== USERId),
+          };
+        }
+
+        return {
+          ...prev,
+          followers: [
+            ...currentFollowers,
+            // Minimal EntityReference patch; the real shape arrives on settle. The header
+            // only reads {@code .id} to decide isFollowing, so the partial is sufficient.
+            { id: USERId, type: 'user' },
+          ] as Table['followers'],
+        };
+      });
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      // Roll back to the pre-mutation snapshot and surface the right error message.
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<Table | undefined>(
+          tableCacheKey,
+          context.previous
+        );
+      }
+      showErrorToast(
+        error as AxiosError,
+        isFollowing
+          ? t('server.entity-unfollow-error', { entity: entityName })
+          : t('server.entity-follow-error', { entity: entityName })
+      );
+    },
+    onSettled: () => {
+      // Background refetch picks up server-side changes we didn't represent (e.g. the new
+      // entry's authoritative type/displayName). Stale data continues to render during the
+      // refetch, so this is invisible to the user.
+      queryClient.invalidateQueries({ queryKey: tableCacheKey });
+    },
+  });
+
+  // {@code onFollowClick} on {@code DataAssetsHeader} is typed as a {@code () => Promise<void>}
+  // so we wrap {@code mutate} in {@code mutateAsync} (which returns the promise) to satisfy
+  // the type. The optimistic cache patch in {@code onMutate} fires synchronously regardless;
+  // awaiting just keeps the prop contract intact for callers that chain off the click.
   const handleFollowTable = useCallback(async () => {
-    isFollowing ? await unFollowTable() : await followTable();
-  }, [isFollowing, unFollowTable, followTable]);
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
   const versionHandler = useCallback(() => {
     version &&
@@ -786,18 +813,32 @@ const TableDetailsPageV1: React.FC = () => {
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(
+          EntityType.DATABASE_SCHEMA,
+          getPartialNameFromTableFQN(
+            tableFqn,
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
+            FQN_SEPARATOR_CHAR
+          )
+        )
+      ),
+    [tableFqn]
   );
 
-  const updateTableDetailsState = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as Table;
+  const updateTableDetailsState = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as Table;
 
-    setTableDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setTableDetails((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+    },
+    [setTableDetails]
+  );
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -809,7 +850,7 @@ const TableDetailsPageV1: React.FC = () => {
         const activeCol = findColumnByEntityLink(
           prev.fullyQualifiedName ?? '',
           prev.columns,
-          suggestion.entityLink
+          suggestion.entityLink ?? ''
         );
 
         if (!activeCol) {
@@ -839,25 +880,36 @@ const TableDetailsPageV1: React.FC = () => {
         }
       });
     },
-    []
+    [setTableDetails]
   );
 
   useEffect(() => {
-    if (isTourOpen || isTourPage) {
-      setTableDetails(mockDatasetData.tableDetails as unknown as Table);
-    } else if (viewBasicPermission) {
-      setTableDetails(undefined);
-      fetchTableDetails();
-      getEntityFeedCount();
+    if (viewBasicPermission) {
+      // Don't manually clear the cache to {@code undefined} here — that would flash a Loader
+      // on every navigation between tables even when the destination is already cached.
+      // {@link useQuery}'s own refetch-on-key-change handles this: a stale entry serves
+      // immediately while a background refresh runs.
+      fetchTaskCounts();
+      fetchActivityCount();
     }
-  }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
+  }, [tableFqn, viewBasicPermission]);
 
+  const loadedTableFqn = tableDetails?.fullyQualifiedName;
+
+  // P1.2: fetchDqIndicatorCounts drives the global DQ indicator in the page chrome,
+  // so it must run as soon as tableDetails resolves — deferring would mean the user could
+  // miss a critical "this dataset has failing tests" indicator on first paint.
   useEffect(() => {
-    if (tableDetails) {
-      fetchQueryCount();
-      getTestCaseFailureCount();
+    if (!loadedTableFqn) {
+      return;
     }
-  }, [tableDetails?.fullyQualifiedName]);
+    let isCurrent = true;
+    void fetchDqIndicatorCounts(() => isCurrent);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [loadedTableFqn, fetchDqIndicatorCounts]);
 
   useSub(
     'updateDetails',
@@ -870,12 +922,12 @@ const TableDetailsPageV1: React.FC = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateTablesVotes(id, data);
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
-      }
-      const details = await getTableDetailsByFQN(tableFqn, { fields });
-      setTableDetails(details);
+      // Server-side {@code updateVote} mutates a relationship only — the rest of the entity
+      // is unchanged. Invalidate the cache slot so the next read picks up the new vote totals
+      // (a focused refetch instead of the prior full-defaultFields refetch that overwrote
+      // every other field too). Background revalidation keeps current data on screen until
+      // the new body arrives.
+      await queryClient.invalidateQueries({ queryKey: tableCacheKey });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -885,29 +937,84 @@ const TableDetailsPageV1: React.FC = () => {
     setIsTabExpanded((prev) => !prev);
   };
 
-  if (loading) {
-    return <Loader />;
+  // Wait for permissions to resolve before deciding what to render — without this we'd flash
+  // a "no permission" placeholder during the brief window before the permissions endpoint
+  // returns. Once permissions are in, this gate falls through naturally.
+  if (isPermissionsLoading) {
+    return <EntityDetailsPageSkeleton />;
   }
 
-  if (!(isTourOpen || isTourPage) && !viewBasicPermission) {
+  if (!viewBasicPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.table-details'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.table-details'),
+          })}
+        />
+      </div>
     );
   }
 
-  if (!tableDetails) {
-    return <ErrorPlaceHolder className="m-0" />;
+  // Still loading the entity itself — useQuery is mid-flight or hasn't started (e.g. the
+  // FQN just changed and the new cache slot is empty). Keeps the permission-gate skeleton on
+  // screen instead of swapping to a spinner between skeleton and header, or flashing the
+  // missing-entity placeholder.
+  if (tableLoading) {
+    return <EntityDetailsPageSkeleton />;
   }
 
+  // Fetch completed but no entity body — typically a 404 (invalid FQN) or a network error
+  // that {@code tableError} surfaced. Show the missing-entity placeholder instead of
+  // looping on the loader (the original page used a separate gate for this).
+  if (!tableDetails) {
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
+  }
+
+  const renderTabs = () => (
+    <Tabs
+      className="tw:gap-3"
+      data-testid="tabs"
+      selectedKey={renderedActiveTab}
+      onSelectionChange={(key) => handleTabChange(String(key))}>
+      <Tabs.List
+        actions={
+          isExpandViewSupported && (
+            <ButtonUtility
+              data-testid="tab-expand-button"
+              icon={isTabExpanded ? Collapse : Expand}
+              size="lg"
+              tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
+              onClick={toggleTabExpanded}
+            />
+          )
+        }
+        size="sm"
+        type="underline"
+        variant="card">
+        {tabs.map(({ key, label }) => (
+          <Tabs.Item id={key} key={key}>
+            {label}
+          </Tabs.Item>
+        ))}
+      </Tabs.List>
+      {tabs.map(({ key, children }) => (
+        <Tabs.Panel id={key} key={key}>
+          {children}
+        </Tabs.Panel>
+      ))}
+    </Tabs>
+  );
+
   return (
-    <PageLayoutV1 pageTitle={entityName} title="Table details">
+    <PageLayoutV1 fillEntityTabs pageTitle={entityName}>
       <GenericProvider<Table>
+        activeTab={renderedActiveTab}
         columnFqn={columnFqn}
         customizedPage={customizedPage}
         data={tableDetails}
@@ -916,17 +1023,22 @@ const TableDetailsPageV1: React.FC = () => {
         key={tableFqn}
         permissions={tablePermissions}
         type={EntityType.TABLE}
-        onColumnsUpdate={handleColumnsUpdate}
         onEntitySync={handleTableSync}
         onUpdate={onTableUpdate}>
-        <Row gutter={[0, 12]}>
+        <Box direction="col" gap={3}>
           {/* Entity Heading */}
-          <Col data-testid="entity-page-header" span={24}>
+          <div data-testid="entity-page-header">
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={updateTableDetailsState}
-              badge={alertBadge}
+              badge={
+                <DataQualityIndicator
+                  counts={dqIndicatorCounts}
+                  tableFqn={tableFqn}
+                />
+              }
+              breadcrumbData={breadcrumbData}
               dataAsset={tableDetails}
               entityType={EntityType.TABLE}
               extraDropdownContent={extraDropdownContent}
@@ -942,35 +1054,20 @@ const TableDetailsPageV1: React.FC = () => {
               onUpdateVote={updateVote}
               onVersionClick={versionHandler}
             />
-          </Col>
+          </div>
+          <TableLinkedConcepts
+            columnFqn={columnFqn}
+            tableId={tableDetails.id}
+          />
           {/* Entity Tabs */}
-          <Col className="entity-details-page-tabs" span={24}>
-            <Tabs
-              activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+          <div className="entity-details-page-tabs">{renderTabs()}</div>
           <LimitWrapper resource="table">
             <></>
           </LimitWrapper>
-        </Row>
+        </Box>
       </GenericProvider>
     </PageLayoutV1>
   );
 };
 
-export default withSuggestions(withActivityFeed(TableDetailsPageV1));
+export default withActivityFeed(TableDetailsPageV1);

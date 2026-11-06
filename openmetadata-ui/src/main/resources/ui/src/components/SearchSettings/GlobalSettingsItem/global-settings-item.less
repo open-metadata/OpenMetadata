@@ -13,41 +13,19 @@
 @import '../../../styles/variables.less';
 
 .global-settings-item {
-  border: 1px solid @grey-100;
-  border-radius: 12px;
-  background-color: @grey-50;
-  font-size: 14px;
-  font-weight: 500;
-
-  .ant-input[type='number'] {
-    padding: 2px 4px;
-    width: 65px;
-    font-size: 14px;
-
-    &::-webkit-outer-spin-button,
-    &::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-
-    &[type='number'] {
-      -moz-appearance: textfield;
-      appearance: textfield;
-    }
-  }
+  flex: 1;
+  min-width: 0;
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-medium);
 
   .inline-edit-container {
     min-width: 145px;
     width: 50px;
   }
-
-  .value-container {
-    min-width: 150px;
-  }
 }
 
 .global-settings-item-value {
-  background-color: @team-avatar-bg;
-  color: @blue-3;
-  border-radius: 4px;
+  background-color: var(--tw-color-utility-brand-50);
+  color: var(--tw-color-utility-brand-700);
+  border-radius: var(--om-radius-sm);
 }

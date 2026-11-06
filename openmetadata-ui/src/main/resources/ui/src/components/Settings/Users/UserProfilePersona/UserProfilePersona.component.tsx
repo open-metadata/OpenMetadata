@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Divider, Tooltip, Typography } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Role as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as InheritIcon } from '../../../../assets/svg/ic-inherit.svg';
-import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference, User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
@@ -54,15 +53,7 @@ const UserProfilePersonas = ({
     [isAdminUser, isLoggedInUser, userData.deleted]
   );
 
-  const activeDefaultPersona = useMemo(
-    () => userData.defaultPersona ?? userData.inheritedPersonas?.[0],
-    [userData]
-  );
-
-  const isInherited = useMemo(
-    () => !userData.defaultPersona && !!userData.inheritedPersonas?.length,
-    [userData]
-  );
+  const activeDefaultPersona = userData.defaultPersona;
 
   const handleDefaultPersonaUpdate = useCallback(
     async (defaultPersona?: EntityReference) => {
@@ -90,18 +81,16 @@ const UserProfilePersonas = ({
   const defaultPersonaRender = useMemo(
     () => (
       <>
-        <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-          <div
-            className="d-flex flex-center"
-            style={{ width: '16px', margin: '2px', cursor: 'pointer' }}>
-            <PersonaIcon height={16} />
+        <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
+          <div className="tw:m-0.5 tw:flex tw:size-4 tw:items-center tw:justify-center">
+            <PersonaIcon aria-hidden size={14} />
           </div>
           <div className="d-flex justify-between w-full">
-            <Typography.Text
+            <Typography
               className="text-sm font-medium"
               data-testid="persona-list">
               {t('label.default-persona')}
-            </Typography.Text>
+            </Typography>
             <PersonaSelectableList
               isDefaultPersona
               hasPermission={hasEditPermission}
@@ -115,31 +104,22 @@ const UserProfilePersonas = ({
           </div>
         </div>
         <div
-          className="user-profile-card-body default-persona-text ml-8 d-flex items-center gap-2"
+          className="tw:mb-2.5 tw:flex tw:justify-start tw:gap-2"
           data-testid="default-persona-chip">
+          <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
+            <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
+          </div>
           <Chip
             showNoDataPlaceholder
             data={activeDefaultPersona ? [activeDefaultPersona] : []}
             entityType={EntityType.PERSONA}
             noDataPlaceholder={t('message.no-default-persona')}
           />
-          {isInherited && activeDefaultPersona && (
-            <Tooltip
-              title={t('label.inherited-entity', {
-                entity: t('label.persona'),
-              })}>
-              <InheritIcon
-                className="inherit-icon cursor-pointer color-grey-muted"
-                width={14}
-              />
-            </Tooltip>
-          )}
         </div>
       </>
     ),
     [
       activeDefaultPersona,
-      isInherited,
       userData,
       hasEditPermission,
       combinedPersonas,
@@ -150,18 +130,18 @@ const UserProfilePersonas = ({
 
   return (
     <div
-      className="d-flex flex-col mb-4 w-full  p-[20px] user-profile-card"
+      className="tw:flex tw:w-full tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:pt-5 tw:pb-2.5 tw:mb-5"
       data-testid="persona-details-card">
-      <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <div className="d-flex flex-center user-page-icon cursor-pointer">
-          <PersonaIcon height={16} style={{ paddingLeft: '2px' }} />
+      <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
+        <div className="tw:m-0.5 tw:flex tw:size-4 tw:items-center tw:justify-center">
+          <PersonaIcon aria-hidden size={14} />
         </div>
         <div className="d-flex justify-between w-full">
-          <Typography.Text
+          <Typography
             className="text-sm font-medium"
             data-testid="persona-list">
             {t('label.persona')}
-          </Typography.Text>
+          </Typography>
           <PersonaSelectableList
             multiSelect
             hasPermission={Boolean(isAdminUser) && !userData.deleted}
@@ -171,16 +151,9 @@ const UserProfilePersonas = ({
           />
         </div>
       </div>
-      <div className="user-profile-card-body d-flex justify-start gap-2">
-        <div className="d-flex flex-center user-page-icon">
-          <Divider
-            style={{
-              height: '100%',
-              width: '1px',
-              background: '#D9D9D9',
-            }}
-            type="vertical"
-          />
+      <div className="tw:mb-2.5 tw:flex tw:justify-start tw:gap-2">
+        <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
+          <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
 
         <Chip

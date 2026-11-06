@@ -484,9 +484,10 @@ public class MigrationUtil {
     serviceTypes.remove(ServiceType.DRIVE); // Exclude DRIVE as it doesn't exist in v1.7.0
     serviceTypes.remove(ServiceType.SECURITY); // Exclude SECURITY as it doesn't exist in v1.7.0
     serviceTypes.remove(ServiceType.LLM); // Exclude LLM as it doesn't exist until v1.12.0
+    serviceTypes.remove(ServiceType.MCP); // Exclude MCP as it doesn't exist until v1.13.0
 
     for (ServiceType serviceType : serviceTypes) {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getServiceEntityRepository(serviceType);
       ListFilter filter = new ListFilter(Include.ALL);
       List<ServiceEntityInterface> services =

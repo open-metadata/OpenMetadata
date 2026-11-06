@@ -10,19 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
 import { searchQuery } from '../../rest/searchAPI';
 import Suggestions from './Suggestions';
 
 // Mock dependencies
 jest.mock('../../rest/searchAPI');
-jest.mock('../../context/TourProvider/TourProvider');
 jest.mock('../../utils/SearchUtils', () => ({
   filterOptionsByIndex: jest.fn((options, index) => {
     return options.filter(
-      (option: any) => option._source?.entityType === index
+      (option: { _source?: { entityType?: string } }) =>
+        option._source?.entityType === index
     );
   }),
   getGroupLabel: jest.fn((index) => `Group ${index}`),
@@ -55,7 +54,6 @@ Object.defineProperty(window, 'location', {
 });
 
 const mockSearchQuery = searchQuery as jest.Mock;
-const mockUseTourProvider = useTourProvider as jest.Mock;
 
 const defaultProps = {
   searchText: 'test',
@@ -69,11 +67,7 @@ const defaultProps = {
 describe('Suggestions Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseTourProvider.mockReturnValue({
-      isTourOpen: false,
-      updateTourPage: jest.fn(),
-      updateTourSearch: jest.fn(),
-    });
+    mockSearchQuery.mockResolvedValue({ hits: { hits: [] } });
   });
 
   describe('AI Query Suggestions', () => {
@@ -129,25 +123,26 @@ describe('Suggestions Component', () => {
   });
 
   describe('Component Behavior', () => {
-    it('should show no results message when searchText is provided but no results', () => {
+    it('should fetch suggestions on mount when searchText is provided', async () => {
+      render(<Suggestions {...defaultProps} searchText="test" />);
+
+      await waitFor(() =>
+        expect(mockSearchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            query: 'test',
+            searchIndex: SearchIndex.TABLE,
+          })
+        )
+      );
+    });
+
+    it('should show no results message when searchText is provided but no results', async () => {
       render(<Suggestions {...defaultProps} />);
 
       // The component should show the no results message
       expect(
-        screen.getByText('message.please-enter-to-find-data-assets')
+        await screen.findByText('message.please-enter-to-find-data-assets')
       ).toBeInTheDocument();
-    });
-
-    it('should not call searchQuery when tour is open', () => {
-      mockUseTourProvider.mockReturnValue({
-        isTourOpen: true,
-        updateTourPage: jest.fn(),
-        updateTourSearch: jest.fn(),
-      } as any);
-
-      render(<Suggestions {...defaultProps} />);
-
-      expect(mockSearchQuery).not.toHaveBeenCalled();
     });
   });
 });

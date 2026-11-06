@@ -14,12 +14,28 @@ Read files as string from S3
 """
 
 import traceback
-from typing import List
+from typing import Any
+
+from google.auth import impersonated_credentials
 
 from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+def get_gcsfs_auth_options(client: Any) -> dict[str, Any]:
+    """gcsfs kwargs (also valid as pandas `storage_options`) to read as the client's identity.
+
+    gcsfs resolves its own identity from ADC, i.e. the base service account, so hand it the
+    impersonated credentials the client was built with. fsspec caches filesystems per process
+    keyed on these kwargs, and the profiler/samplers rebuild the connection (and so a new
+    credentials object) per entity, so a cached instance would leak one filesystem per entity:
+    skip the cache. Empty keeps gcsfs' default auth and caching untouched."""
+    credentials = getattr(client, "_credentials", None)
+    if not isinstance(credentials, impersonated_credentials.Credentials):
+        return {}
+    return {"token": credentials, "skip_instance_cache": True}
 
 
 class GCSReader(Reader):
@@ -30,15 +46,15 @@ class GCSReader(Reader):
     def __init__(self, client):
         self.client = client
 
-    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True, **__) -> bytes:
+    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True, **__) -> bytes:  # noqa: RUF013
         try:
             return self.client.get_bucket(bucket_name).get_blob(path).download_as_string()
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())
-            raise ReadException(f"Error fetching file [{path}] from GCS: {err}")
+            raise ReadException(f"Error fetching file [{path}] from GCS: {err}")  # noqa: B904
 
-    def _get_tree(self) -> List[str]:
+    def _get_tree(self) -> list[str]:
         """
         We are not implementing this yet. This should
         only be needed for now for the Datalake where we don't need
@@ -51,7 +67,7 @@ class GCSReader(Reader):
         path: str,
         local_file_path: str,
         *,
-        bucket_name: str = None,
+        bucket_name: str = None,  # noqa: RUF013
         verbose: bool = True,
         **__,
     ) -> bytes:
@@ -60,4 +76,4 @@ class GCSReader(Reader):
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())
-            raise ReadException(f"Error downloading file [{path}] from GCS: {err}")
+            raise ReadException(f"Error downloading file [{path}] from GCS: {err}")  # noqa: B904

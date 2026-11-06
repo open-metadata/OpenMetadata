@@ -15,6 +15,7 @@ import { OperationPermission } from '../context/PermissionProvider/PermissionPro
 export const ENTITY_PERMISSIONS = {
   Create: true,
   Delete: true,
+  Deploy: true,
   EditAll: true,
   EditCustomFields: true,
   EditDataProfile: true,
@@ -27,6 +28,7 @@ export const ENTITY_PERMISSIONS = {
   EditTags: true,
   EditTests: true,
   EditTier: true,
+  Trigger: true,
   ViewAll: true,
   ViewBasic: true,
   ViewDataProfile: true,

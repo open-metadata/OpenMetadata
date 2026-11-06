@@ -15,7 +15,7 @@ its interface
 """
 
 from copy import deepcopy
-from typing import Optional, Type, cast
+from typing import cast
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
@@ -31,8 +31,13 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
+from metadata.profiler.api.models import (
+    ProfilerProcessorConfig,
+    TableConfig,
+    processor_config_payload,
+)
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.processor.core import Profiler
@@ -44,9 +49,15 @@ from metadata.sampler.config import (
     get_config_for_table,
     get_exclude_columns,
     get_include_columns,
+    get_profile_sample_config,
+    get_sample_data_count_config,
+    get_sample_query,
 )
-from metadata.sampler.models import ProfileSampleConfig, SampleConfig
-from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.partition import get_partition_details
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
+from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
     Inject,
@@ -83,7 +94,7 @@ class ProfilerSource(ProfilerSourceInterface):
         database: Database,
         ometa_client: OpenMetadata,
         global_profiler_configuration: ProfilerConfiguration,
-        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,
+        profiler_config_class: Inject[type[ProfilerProcessorConfig]] = None,
     ):
         if profiler_config_class is None:
             raise DependencyNotFoundError(
@@ -92,7 +103,7 @@ class ProfilerSource(ProfilerSourceInterface):
 
         self.config = config
         self.service_conn_config = self._copy_service_config(config, database)
-        self.profiler_config = profiler_config_class.model_validate(config.processor.model_dump().get("config"))
+        self.profiler_config = profiler_config_class.model_validate(processor_config_payload(config.processor))
         self.ometa_client = ometa_client
         self._interface_type: str = config.source.type.lower()
         self._interface = None
@@ -103,7 +114,7 @@ class ProfilerSource(ProfilerSourceInterface):
     @property
     def interface(
         self,
-    ) -> Optional[ProfilerInterface]:
+    ) -> ProfilerInterface | None:
         """Get the interface"""
         return self._interface
 
@@ -134,9 +145,9 @@ class ProfilerSource(ProfilerSourceInterface):
                 config_copy.catalog = database.name.root  # type: ignore
 
         # we know we'll only be working with DatabaseConnection, we cast the type to satisfy type checker
-        config_copy = cast(DatabaseConnection, config_copy)
+        config_copy = cast(DatabaseConnection, config_copy)  # noqa: TC006
 
-        return config_copy
+        return config_copy  # noqa: RET504
 
     def _build_default_sample_config(self) -> SampleConfig:
         """Build a SampleConfig from the pipeline's profileSampleConfig."""
@@ -149,14 +160,20 @@ class ProfilerSource(ProfilerSourceInterface):
             randomizedSample=self.source_config.randomizedSample if self.source_config else False,
         )
 
+    def _auto_detect_partition(self) -> bool:
+        supported = getattr(self.service_conn_config, "supportsAutoPartitionDetection", None)
+        return bool(
+            self.source_config and self.source_config.enableAutoPartitionDetection and supported and supported.root
+        )
+
     @inject
     def create_profiler_interface(
         self,
         entity: Table,
-        config: Optional[TableConfig],
+        config: TableConfig | None,
         schema_entity: DatabaseSchema,
         database_entity: Database,
-        profiler_resolver: Inject[Type[ProfilerResolver]] = None,
+        profiler_resolver: Inject[type[ProfilerResolver]] = None,
     ) -> ProfilerInterface:
         """Create the appropriate profiler interface based on processing engine."""
         if profiler_resolver is None:
@@ -175,17 +192,37 @@ class ProfilerSource(ProfilerSourceInterface):
             source_type=self._interface_type,
         )
 
-        # This is shared between the sampler and profiler interfaces
+        default_sample_config = self._build_default_sample_config()
         sampler_interface: SamplerInterface = sampler_class.create(
             service_connection_config=self.service_conn_config,
             ometa_client=self.ometa_client,
             entity=entity,
-            schema_entity=schema_entity,
-            database_entity=database_entity,
-            table_config=config,
-            default_sample_config=self._build_default_sample_config(),
-            # TODO: Change this when we have the processing engine configuration implemented. Right now it does nothing.
-            processing_engine=self.get_processing_engine(self.source_config),
+            config=DatabaseSamplerConfig(
+                sample_config=get_profile_sample_config(
+                    entity=entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=config,
+                    default_sample_config=default_sample_config,
+                ),
+                sample_data_count=get_sample_data_count_config(
+                    entity=entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=config,
+                    default_sample_data_count=SAMPLE_DATA_DEFAULT_COUNT,
+                ),
+                include_columns=get_include_columns(entity, entity_config=config) or [],
+                exclude_columns=get_exclude_columns(entity, entity_config=config) or [],
+                partition_details=get_partition_details(
+                    entity=entity,
+                    entity_config=config,
+                    auto_detect_partition=self._auto_detect_partition(),
+                ),
+                sample_query=get_sample_query(entity=entity, entity_config=config),
+                # TODO: Change this when we have the processing engine configuration implemented.
+                processing_engine=self.get_processing_engine(self.source_config),
+            ),
         )
 
         profiler_interface: ProfilerInterface = profiler_class.create(
@@ -204,7 +241,7 @@ class ProfilerSource(ProfilerSourceInterface):
         self,
         entity: Table,
         profiler_config: ProfilerProcessorConfig,
-        metrics_registry: Inject[Type[MetricRegistry]] = None,
+        metrics_registry: Inject[type[MetricRegistry]] = None,
     ) -> Profiler:
         """
         Returns the runner for the profiler

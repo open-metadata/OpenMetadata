@@ -16,12 +16,15 @@ export const GLOSSARY_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.REVIEWERS,
   EntityReferenceFields.SYNONYMS,
   EntityReferenceFields.RELATED_TERMS,
+  EntityReferenceFields.PROVIDER,
 ];
 
 export const TABLE_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.DATABASE,
   EntityReferenceFields.DATABASE_SCHEMA,
   EntityReferenceFields.TABLE_TYPE,
+  EntityReferenceFields.TEST_SUITE,
+  EntityReferenceFields.COLUMN_TAG,
 ];
 
 export const COMMON_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
@@ -39,4 +42,14 @@ export const COMMON_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.UPDATED_BY,
   EntityReferenceFields.VERSION,
   EntityReferenceFields.ENTITY_STATUS,
+];
+
+export const DATA_PRODUCT_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
+  EntityReferenceFields.ASSETS_COUNT,
+  EntityReferenceFields.OUTPUT_PORTS_COUNT,
+];
+
+export const KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
+  EntityReferenceFields.REVIEWERS,
+  EntityReferenceFields.UPDATED_BY,
 ];

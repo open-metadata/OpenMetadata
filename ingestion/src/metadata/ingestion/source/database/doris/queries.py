@@ -16,7 +16,7 @@ AND TABLE_NAME = :table_name
 
 DORIS_SHOW_FULL_COLUMNS = textwrap.dedent(
     """
-SHOW FULL COLUMNS FROM {}.{}
+SHOW FULL COLUMNS FROM {table_name}
     """
 )
 
@@ -25,7 +25,7 @@ DORIS_GET_TABLE_NAMES = textwrap.dedent(
     select TABLE_NAME as name, `ENGINE` as engine
     from INFORMATION_SCHEMA.tables 
     where TABLE_SCHEMA = :schema
-    """
+    """  # noqa: W291
 )
 
 DORIS_TABLE_COMMENTS = textwrap.dedent(
@@ -49,6 +49,6 @@ from information_schema.tables where engine in ['MaterializedView', 'View']
 
 DORIS_PARTITION_DETAILS = textwrap.dedent(
     """
-SHOW PARTITIONS FROM {}.{}
+SHOW PARTITIONS FROM {table_name}
     """
 )

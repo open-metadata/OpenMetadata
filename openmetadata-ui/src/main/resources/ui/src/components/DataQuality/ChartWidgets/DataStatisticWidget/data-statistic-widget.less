@@ -12,24 +12,18 @@
  */
 @import (reference) '../../../../styles/variables.less';
 
-.data-statistic-widget-title {
-  div&.ant-typography {
-    margin-bottom: @margin-lg;
-  }
-}
-
 // Default styles for title
 .data-statistic-title-default {
   color: @grey-600;
-  font-weight: 500;
+  font-weight: var(--om-font-weight-medium);
   margin-bottom: @size-xxs;
 }
 
 // Default styles for count value
 .data-statistic-count-default {
   color: @text-color;
-  font-weight: 600;
-  font-size: @size-lg;
+  font-weight: var(--om-font-weight-semibold);
+  font-size: var(--om-font-size-xl);
 }
 
 .data-statistic-widget-icon {
@@ -53,7 +47,7 @@
   &.aborted {
     border-radius: 50%;
     border: 6px solid;
-    padding: 6px;
+    padding: var(--om-space-6);
     background-color: @grey-100;
     border-color: @grey-50;
 
@@ -101,7 +95,7 @@
 .data-statistic-widget-box .data-statistic-widget-default-button {
   padding: 0;
   color: @primary-7;
-  font-weight: 500;
+  font-weight: var(--om-font-weight-medium);
   font-size: @size-sm;
 
   &:hover,
@@ -124,34 +118,5 @@
 
   a:hover {
     text-decoration: none;
-  }
-
-  .ant-btn {
-    display: flex;
-    align-items: center;
-    gap: @size-xs;
-    border: none;
-
-    &.failed {
-      color: @red-10;
-      background-color: @red-9;
-      &:hover {
-        background-color: @alert-error-icon-bg-1;
-      }
-    }
-    &.success {
-      color: @green-10;
-      background-color: @green-9;
-      &:hover {
-        background-color: @green-100;
-      }
-    }
-    &.aborted {
-      color: @alert-warning-icon;
-      background-color: @yellow-10;
-      &:hover {
-        background-color: @alert-warning-icon-bg-1;
-      }
-    }
   }
 }

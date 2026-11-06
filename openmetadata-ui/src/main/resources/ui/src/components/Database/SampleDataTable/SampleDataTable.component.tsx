@@ -11,23 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Select, Space, Tooltip, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Box, Select, Typography } from '@openmetadata/ui-core-components';
+import { Download01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
+import { ExecutionSource } from '../../observability/profiler/ExecutionSource/ExecutionSource';
 
 import { isEmpty, lowerCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconDownload } from '../../../assets/svg/ic-download.svg';
-import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
-import { mockDatasetData } from '../../../constants/mockTourData.constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
-import { Table } from '../../../generated/entity/data/table';
+import { Table, TableType } from '../../../generated/entity/data/table';
 import { withLoader } from '../../../hoc/withLoader';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -38,15 +33,20 @@ import {
   deleteSampleDataByTableId,
   getSampleDataByTableId,
 } from '../../../rest/tableAPI';
-import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
-import TableComponent from '../../common/Table/Table';
-import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
+import TableComponent from '../../common/Table/TableV2';
 import { RowData } from './RowData';
 import './sample-data-table.less';
 import {
@@ -59,6 +59,18 @@ import {
   ROW_LIMIT_OPTIONS,
 } from './SampleDataTable.utils';
 
+/**
+ * Ant Design treats `children` on a row record as nested rows and reads the row
+ * key off a record field, so raw column names cannot be used as record keys: a
+ * column named `children` crashes the table, and a repeated cell value collides
+ * as a row key. Addressing every cell by column index keeps record keys unique
+ * and clear of both reserved names.
+ */
+const ROW_KEY = '__rowKey';
+
+const getSampleDataColumnKey = (index: number, column: string) =>
+  `${index}-${column}`;
+
 const SampleDataTable: FC<SampleDataProps> = ({
   isTableDeleted,
   tableId,
@@ -66,12 +78,13 @@ const SampleDataTable: FC<SampleDataProps> = ({
   permissions,
   entityType = EntityType.TABLE,
 }) => {
-  const { isTourPage } = useTourProvider();
   const { currentUser, theme } = useApplicationStore();
   const { t } = useTranslation();
+  const [isSharded, setIsSharded] = useState(false);
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
   const [rowLimit, setRowLimit] = useState<number>(100);
 
@@ -79,12 +92,21 @@ const SampleDataTable: FC<SampleDataProps> = ({
     return owners?.some((owner) => owner.id === currentUser?.id);
   }, [owners, currentUser]);
 
+  // Consumer via the `permissions: OperationPermission` prop (raw contract kept per Task 8
+  // rule 2). No `deleted` argument: isTableDeleted is a separate prop gating a different
+  // concern (the fetch effect below) — the old `hasPermission` expression never referenced
+  // it. N-term raw OR containing a bare `EditAll` term (Task 8 Batch 2 KnowledgeCard
+  // precedent): naively dropping the EditAll term in favor of just canEditSampleData would
+  // regress the case where EditAll=true but EditSampleData is explicitly false (old code's
+  // bare `EditAll ||` wins unconditionally) — so canEditAll is kept as its own explicit
+  // OR-term alongside the prioritized canEditSampleData, restoring byte-for-byte equivalence.
+  const { canEditAll, canEditSampleData } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
   const hasPermission = useMemo(
-    () =>
-      permissions.EditAll ||
-      permissions.EditSampleData ||
-      isCurrentUserTableOwner,
-    [isCurrentUserTableOwner, permissions]
+    () => canEditAll || canEditSampleData || isCurrentUserTableOwner,
+    [canEditAll, canEditSampleData, isCurrentUserTableOwner]
   );
 
   const handleDeleteModal = useCallback(
@@ -101,18 +123,13 @@ const SampleDataTable: FC<SampleDataProps> = ({
     if (!sampleData?.rows || !sampleData?.columns) {
       return;
     }
-    const columnNames = sampleData.columns.map((col) => String(col.key ?? ''));
     const csvContent = buildSampleDataCSVContent(
-      columnNames,
+      sampleData.columns,
       sampleData.rows,
       rowLimit
     );
 
-    downloadFile(
-      csvContent,
-      `sample_data_${rowLimit}_rows.csv`,
-      'text/csv;charset=utf-8;'
-    );
+    downloadCsv(csvContent, `sample_data_${rowLimit}_rows.csv`);
   }, [sampleData, rowLimit]);
 
   const getSampleDataWithType = (entity: Table | Container) => {
@@ -120,39 +137,47 @@ const SampleDataTable: FC<SampleDataProps> = ({
     const columns =
       'columns' in entity ? entity.columns : entity.dataModel?.columns ?? [];
 
-    const updatedColumns = sampleData?.columns?.map((column) => {
+    const updatedColumns = sampleData?.columns?.map((column, index) => {
       const matchedColumn = columns.find((col) => col.name === column);
+      const columnKey = getSampleDataColumnKey(index, column);
 
       return {
         name: column,
-        dataType: matchedColumn?.dataType ?? '',
         title: (
-          <div className="d-flex flex-column">
-            <Typography.Text> {column}</Typography.Text>
+          <Box className="tw:text-start tw:wrap-anywhere" direction="col">
+            <Typography> {column}</Typography>
             {matchedColumn?.dataType && (
-              <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
+              <Typography
+                className="text-xs font-normal"
+                color="secondary">{`(${lowerCase(
                 matchedColumn?.dataType ?? ''
-              )})`}</Typography.Text>
+              )})`}</Typography>
             )}
-          </div>
+          </Box>
         ),
-        dataIndex: column,
-        key: column,
+        dataIndex: columnKey,
+        key: columnKey,
         width: 250,
         render: (data: SampleDataType) => <RowData data={data} />,
       };
     });
 
-    const data = (sampleData?.rows ?? []).map((item) => {
-      const dataObject: Record<string, SampleDataType> = {};
+    const data = (sampleData?.rows ?? []).map((item, rowIndex) => {
+      const dataObject: Record<string, SampleDataType> = {
+        [ROW_KEY]: rowIndex,
+      };
       (sampleData?.columns ?? []).forEach((col, index) => {
-        dataObject[col] = item[index];
+        dataObject[getSampleDataColumnKey(index, col)] = item[index];
       });
 
       return dataObject;
     });
 
     return {
+      executionSource:
+        sampleData && 'executionSource' in sampleData
+          ? sampleData.executionSource
+          : undefined,
       columns: updatedColumns,
       rows: data,
     };
@@ -165,6 +190,9 @@ const SampleDataTable: FC<SampleDataProps> = ({
           ? await getSampleDataByContainerId(tableId)
           : await getSampleDataByTableId(tableId);
       setSampleData(getSampleDataWithType(entityData));
+      setIsSharded(
+        'tableType' in entityData && entityData.tableType === TableType.Sharded
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -174,6 +202,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   const handleDeleteSampleData = async () => {
     try {
+      setIsDeleting(true);
       if (entityType === EntityType.CONTAINER) {
         await deleteSampleDataByContainerId(tableId);
       } else {
@@ -188,24 +217,25 @@ const SampleDataTable: FC<SampleDataProps> = ({
           entity: t('label.sample-data'),
         })
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const manageButtonContent: ItemType[] = [
+  const manageButtonContent: ManageMenuItem[] = [
     {
       label: (
         <ManageButtonItemLabel
           description={t('message.download-entity-data', {
             entity: t('label.sample-data'),
           })}
-          icon={IconDownload}
+          icon={Download01}
           id="export-button"
           name={t('label.export')}
         />
       ),
       key: 'export-button',
-      onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
-        e.domEvent.stopPropagation();
+      onClick: () => {
         setShowActions(false);
         exportToCSV();
       },
@@ -221,14 +251,13 @@ const SampleDataTable: FC<SampleDataProps> = ({
                     entityType: t('label.sample-data'),
                   }
                 )}
-                icon={IconDelete}
+                icon={Trash01}
                 id="delete-button"
                 name={t('label.delete')}
               />
             ),
             key: 'delete-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               setShowActions(false);
               handleDeleteModal();
             },
@@ -239,18 +268,10 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   useEffect(() => {
     setIsLoading(true);
-    if (!isTableDeleted && tableId && !isTourPage) {
+    if (!isTableDeleted && tableId) {
       fetchSampleData();
     } else {
       setIsLoading(false);
-    }
-    if (isTourPage) {
-      setSampleData(
-        getSampleDataWithType({
-          columns: mockDatasetData.tableDetails.columns,
-          sampleData: mockDatasetData.sampleData,
-        } as unknown as Table)
-      );
     }
   }, [tableId]);
 
@@ -260,97 +281,106 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
-      <ErrorPlaceHolder className="error-placeholder">
-        <Typography.Paragraph>
-          <Transi18next
-            i18nKey="message.view-sample-data-entity"
-            renderElement={
-              <a
-                aria-label={t('label.auto-classification')}
-                href={AUTO_CLASSIFICATION_DOCS}
-                rel="noreferrer"
-                style={{ color: theme.primaryColor }}
-                target="_blank"
-              />
-            }
-            values={{
-              entity: t('label.auto-classification'),
-            }}
-          />
-        </Typography.Paragraph>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-[calc(100vh-255px)] tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:in-[.assistant-content]:min-h-60">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={
+            <Transi18next
+              i18nKey="message.view-sample-data-entity"
+              renderElement={
+                <a
+                  aria-label={t('label.auto-classification')}
+                  href={AUTO_CLASSIFICATION_DOCS}
+                  rel="noreferrer"
+                  style={{ color: theme.primaryColor }}
+                  target="_blank"
+                />
+              }
+              values={{
+                entity: t('label.auto-classification'),
+              }}
+            />
+          }
+        />
+      </div>
     );
   }
 
   return (
     <div
-      className={classNames('p-md border-default border-radius-sm bg-white', {
-        'h-70vh overflow-hidden': isTourPage,
-      })}
+      className="p-md border-default border-radius-sm bg-white"
       data-testid="sample-data"
       id="sampleDataDetails">
-      <Space className="m-y-xss justify-between w-full">
-        <Space>
-          <Typography.Text className="text-grey-muted">
-            {t('label.row-limit')}:
-          </Typography.Text>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal m-y-xss justify-between w-full"
+        gap={2}
+        itemClassName="layout-space-item">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Typography color="secondary">{t('label.row-limit')}:</Typography>
           <Select
-            className="w-28"
+            aria-label={t('label.row-limit')}
+            className="tw:w-28"
             data-testid="row-limit-select"
-            value={rowLimit}
-            onChange={setRowLimit}>
+            selectedKey={String(rowLimit)}
+            onSelectionChange={(key) =>
+              key !== null && setRowLimit(Number(key))
+            }>
             {ROW_LIMIT_OPTIONS.map((limit) => (
-              <Select.Option
+              <Select.Item
                 data-testid={`row-limit-option-${limit}`}
+                id={String(limit)}
                 key={limit}
-                value={limit}>
-                {limit}
-              </Select.Option>
+                label={String(limit)}
+              />
             ))}
           </Select>
-        </Space>
-        <Dropdown
-          menu={{
-            items: manageButtonContent,
-          }}
-          open={showActions}
-          overlayClassName="manage-dropdown-list-container"
-          overlayStyle={{ width: '350px' }}
-          placement="bottomRight"
-          onOpenChange={setShowActions}>
-          <Tooltip
-            placement="topLeft"
-            title={t('label.manage-entity', {
-              entity: t('label.sample-data'),
-            })}>
-            <Button
-              className="flex-center px-1.5"
-              data-testid="sample-data-manage-button"
-              onClick={() => setShowActions(true)}>
-              <IconDropdown className="anticon self-center " />
-            </Button>
-          </Tooltip>
-        </Dropdown>
-      </Space>
+        </Box>
+        <ExecutionSource
+          isSharded={isSharded}
+          source={sampleData?.executionSource}
+        />
+        <ManageMenu
+          data-testid="sample-data-manage-button"
+          isOpen={showActions}
+          items={manageButtonContent}
+          label={t('label.manage-entity', {
+            entity: t('label.sample-data'),
+          })}
+          onOpenChange={setShowActions}
+        />
+      </Box>
 
       <TableComponent
         columns={sampleData?.columns}
         data-testid="sample-data-table"
         dataSource={slicedRows}
         pagination={false}
-        rowKey="name"
-        scroll={{ y: 'calc(100vh - 160px)' }}
+        rowKey={ROW_KEY}
+        // Each column is a fixed 250px; give the table an explicit horizontal
+        // extent so TableV2 keeps those widths and lets the wrapper scroll,
+        // instead of collapsing every column into a share of the viewport.
+        scroll={{
+          x: (sampleData?.columns?.length ?? 0) * 250,
+          y: 'calc(100vh - 160px)',
+        }}
         size="small"
       />
 
       {isDeleteModalOpen && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(t('label.sample-data'), '')}
-          entityName={t('label.sample-data')}
-          entityType={EntityType.SAMPLE_DATA}
-          visible={isDeleteModalOpen}
+        <DeleteModal
+          entityTitle={t('label.sample-data')}
+          isDeleting={isDeleting}
+          message={getEntityDeleteMessage(t('label.sample-data'), '')}
+          open={isDeleteModalOpen}
           onCancel={handleDeleteModal}
-          onConfirm={handleDeleteSampleData}
+          onDelete={handleDeleteSampleData}
         />
       )}
     </div>

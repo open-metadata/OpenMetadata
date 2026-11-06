@@ -15,40 +15,127 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addEntityReferences;
+import static org.openmetadata.csv.CsvUtil.addExtension;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
+import static org.openmetadata.csv.CsvUtil.addOwners;
+import static org.openmetadata.csv.CsvUtil.addReviewers;
+import static org.openmetadata.csv.CsvUtil.addTagLabels;
+import static org.openmetadata.csv.CsvUtil.addTagTiers;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.METRIC;
-import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.Entity.USER;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
+import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
+import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.api.data.MetricAssetDirection;
+import org.openmetadata.schema.api.data.MetricDimension;
+import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.data.MetricHierarchyContext;
+import org.openmetadata.schema.api.data.MetricHierarchyItem;
+import org.openmetadata.schema.api.data.MetricMeasure;
+import org.openmetadata.schema.api.data.MetricObservability;
 import org.openmetadata.schema.entity.data.Metric;
-import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.MetricExpressionLanguage;
+import org.openmetadata.schema.type.MetricGranularity;
+import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
-  private static final String UPDATE_FIELDS = "relatedMetrics";
-  private static final String PATCH_FIELDS = "relatedMetrics";
+  private static final String UPDATE_FIELDS =
+      "relatedMetrics,dimensions,measures,filters,parent,metricGroup";
+  private static final String PATCH_FIELDS =
+      "relatedMetrics,dimensions,measures,filters,parent,metricGroup";
+  static final String FIELD_ASSETS = "assets";
+  static final String FIELD_PARENT = "parent";
+  static final String FIELD_CHILDREN = "children";
+  static final String FIELD_CHILDREN_COUNT = "childrenCount";
+  static final String FIELD_METRIC_GROUP = "metricGroup";
+  private static final Set<String> HIERARCHY_PATCH_FIELDS =
+      Set.of(FIELD_PARENT, FIELD_METRIC_GROUP);
+  private static final Set<String> READ_ONLY_PATCH_FIELDS =
+      Set.of(FIELD_ASSETS, FIELD_CHILDREN, FIELD_CHILDREN_COUNT);
+  private static final List<String> RELATION_FIELDS =
+      List.of(FIELD_PARENT, FIELD_METRIC_GROUP, FIELD_CHILDREN, "relatedMetrics");
+  private static final int ASSET_SCAN_BATCH_SIZE = 200;
+  private static final int HIERARCHY_SCAN_BATCH_SIZE = 200;
+  static final int MAX_OBSERVABILITY_ASSET_DETAILS = 1_000;
+  // Fields every hierarchy row carries (tree roots, group members, detail context), so the list
+  // renders the same columns whichever endpoint a row came from.
+  static final String HIERARCHY_FIELDS =
+      "owners,experts,reviewers,parent,childrenCount,metricGroup,domains,tags";
+
+  private final MetricObservabilityBuilder observabilityBuilder =
+      new MetricObservabilityBuilder(this);
 
   public MetricRepository() {
     super(
@@ -60,20 +147,206 @@ public class MetricRepository extends EntityRepository<Metric> {
         UPDATE_FIELDS);
     supportsSearch = true;
     renameAllowed = true;
+    onlyReviewersDeleteInReview = true;
+    approvalTaskReviewsEntityStatus = true;
 
-    // Register bulk field fetchers for efficient database operations
+    // Asset relationships are served and mutated only through the bounded /assets APIs. Keeping
+    // this relationship-derived model property out of generic fields also prevents fields=assets
+    // from rebuilding an unbounded list on Metric GET/list requests.
+    allowedFields.remove(FIELD_ASSETS);
+
     fieldFetchers.put("relatedMetrics", this::fetchAndSetRelatedMetrics);
+    fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
+    fieldFetchers.put(FIELD_CHILDREN, this::fetchAndSetChildren);
+    fieldFetchers.put(FIELD_CHILDREN_COUNT, this::fetchAndSetChildrenCount);
+    fieldFetchers.put(FIELD_METRIC_GROUP, this::fetchAndSetMetricGroups);
   }
 
   @Override
   public void setFullyQualifiedName(Metric metric) {
     metric.setFullyQualifiedName(metric.getName());
+    setDimensionFQNs(metric.getFullyQualifiedName(), metric.getDimensions());
+    setMeasureFQNs(metric.getFullyQualifiedName(), metric.getMeasures());
+  }
+
+  private void setDimensionFQNs(String metricFqn, List<MetricDimension> dimensions) {
+    if (nullOrEmpty(dimensions)) {
+      return;
+    }
+    final String prefix = FullyQualifiedName.add(metricFqn, "dimension");
+    for (final MetricDimension dimension : dimensions) {
+      dimension.setFullyQualifiedName(FullyQualifiedName.add(prefix, dimension.getName()));
+    }
+  }
+
+  private void setMeasureFQNs(String metricFqn, List<MetricMeasure> measures) {
+    if (nullOrEmpty(measures)) {
+      return;
+    }
+    final String prefix = FullyQualifiedName.add(metricFqn, "measure");
+    for (final MetricMeasure measure : measures) {
+      measure.setFullyQualifiedName(FullyQualifiedName.add(prefix, measure.getName()));
+    }
+  }
+
+  // Before the patch is applied: a test of a read-only field or a relation would otherwise fail or
+  // pass on what the stored metric holds, and answer a guess about what the caller may not view.
+  @Override
+  protected void authorizePatch(
+      final Metric original, final JsonPatch patch, final ChangeActor actor) {
+    if (readsRelationElsewhere(patch)) {
+      throw new IllegalArgumentException(
+          "A metric patch can't test the document root or "
+              + String.join(", ", RELATION_FIELDS)
+              + ", or copy or move a value out of them into another field");
+    }
+    for (final String field : JsonUtils.extractPatchedFields(patch)) {
+      if (READ_ONLY_PATCH_FIELDS.contains(field)) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.readOnlyAttribute(METRIC, field));
+      }
+    }
+  }
+
+  // Responses drop the relation references the caller may not view, but an operation is authorized
+  // by its path only (e.g. copy /parent/description into /description needs EditDescription, and a
+  // test of /parent/name answers whether a guess is right).
+  private static boolean readsRelationElsewhere(final JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .map(JsonValue::asJsonObject)
+        .anyMatch(MetricRepository::readsRelationElsewhere);
+  }
+
+  private static boolean readsRelationElsewhere(final JsonObject operation) {
+    final String path = operation.getString("path", "");
+    boolean readsRelation;
+    // JSON-P matches op names ignoring case, so this must too, or "TEST" would get past it.
+    if (JsonPatch.Operation.TEST.operationName().equalsIgnoreCase(operation.getString("op", ""))) {
+      readsRelation = path.isEmpty() || RELATION_FIELDS.contains(topLevelField(path));
+    } else if (operation.containsKey("from")) {
+      final String from = operation.getString("from", "");
+      final String fromField = topLevelField(from);
+      readsRelation =
+          from.isEmpty()
+              || (RELATION_FIELDS.contains(fromField) && !fromField.equals(topLevelField(path)));
+    } else {
+      readsRelation = false;
+    }
+    return readsRelation;
+  }
+
+  private static String topLevelField(final String pointer) {
+    final String stripped = pointer.startsWith("/") ? pointer.substring(1) : pointer;
+    final int slash = stripped.indexOf('/');
+    return slash < 0 ? stripped : stripped.substring(0, slash);
   }
 
   @Override
   public void prepare(Metric metric, boolean update) {
     validateRelatedTerms(metric, metric.getRelatedMetrics());
     validateCustomUnitOfMeasurement(metric);
+    metric.setAssets(EntityUtil.populateEntityReferences(metric.getAssets()));
+    validateSelfParentReference(metric);
+    if (metric.getParent() != null) {
+      metric.setParent(Entity.getEntityReference(metric.getParent().withType(METRIC), NON_DELETED));
+    }
+    resolveHierarchyGroup(metric);
+    validateHierarchy(metric);
+  }
+
+  private void resolveHierarchyGroup(Metric metric) {
+    EntityReference requestedGroup = resolveGroup(metric.getMetricGroup());
+    EntityReference inheritedGroup = groupForParent(metric.getParent());
+    metric.setMetricGroup(
+        effectiveHierarchyGroup(metric.getParent(), requestedGroup, inheritedGroup));
+  }
+
+  static EntityReference effectiveHierarchyGroup(
+      EntityReference parent, EntityReference requestedGroup, EntityReference inheritedGroup) {
+    return parent == null ? requestedGroup : inheritedGroup;
+  }
+
+  static void validateSelfParentReference(Metric metric) {
+    EntityReference parent = metric.getParent();
+    if (parent == null) {
+      return;
+    }
+    String metricFqn =
+        metric.getFullyQualifiedName() == null ? metric.getName() : metric.getFullyQualifiedName();
+    String parentFqn =
+        parent.getFullyQualifiedName() == null ? parent.getName() : parent.getFullyQualifiedName();
+    if (metricFqn != null && metricFqn.equals(parentFqn)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid hierarchy: Metric '%s' cannot be its own parent", metric.getName()));
+    }
+  }
+
+  private EntityReference resolveGroup(EntityReference group) {
+    return group == null
+        ? null
+        : Entity.getEntityReference(group.withType(Entity.METRIC_GROUP), NON_DELETED);
+  }
+
+  private EntityReference groupForParent(EntityReference parent) {
+    EntityReference result = null;
+    if (parent != null) {
+      List<EntityReference> groups =
+          findFrom(parent.getId(), METRIC, Relationship.HAS, Entity.METRIC_GROUP);
+      result = groups.isEmpty() ? null : groups.getFirst();
+    }
+    return result;
+  }
+
+  /**
+   * Rejects a parent assignment that would make the metric its own ancestor. Metric fully qualified
+   * names are flat, so unlike glossary terms there is no FQN prefix to compare — the ancestor chain
+   * has to be walked one CONTAINS edge at a time. The visited set both terminates the walk and
+   * catches pre-existing cycles in the stored data.
+   */
+  private void validateHierarchy(Metric metric) {
+    EntityReference parent = metric.getParent();
+    if (parent == null) {
+      return;
+    }
+    if (metric.getId() != null && metric.getId().equals(parent.getId())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid hierarchy: Metric '%s' cannot be its own parent", metric.getName()));
+    }
+    if (metric.getId() == null || parent.getId() == null) {
+      return;
+    }
+    Set<UUID> visited = new HashSet<>();
+    visited.add(metric.getId());
+    UUID ancestorId = parent.getId();
+    while (ancestorId != null) {
+      if (visited.contains(ancestorId)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Circular reference detected: Cannot set parent relationship as it would create a cycle. "
+                    + "Metric '%s' (or one of its descendants) already exists in the parent chain.",
+                metric.getName()));
+      }
+      visited.add(ancestorId);
+      List<CollectionDAO.EntityRelationshipRecord> ancestors =
+          daoCollection
+              .relationshipDAO()
+              .findFrom(ancestorId, METRIC, Relationship.CONTAINS.ordinal(), METRIC);
+      ancestorId = ancestors.isEmpty() ? null : ancestors.getFirst().getId();
+    }
+  }
+
+  /**
+   * A metric with no reviewers has nothing to approve, so it starts life Approved, unless a lifecycle
+   * playbook owns its stage and onboards it from Draft. With reviewers
+   * it starts as Draft and MetricApprovalWorkflow drives it through review. Unlike glossary terms
+   * there is no reviewer inheritance — a metric's parent does not lend it reviewers.
+   */
+  @Override
+  protected EntityStatus initialEntityStatus(Metric entity) {
+    final boolean awaitsReview = !nullOrEmpty(entity.getReviewers()) || playbookOwnsStage(entity);
+    return awaitsReview ? EntityStatus.DRAFT : EntityStatus.APPROVED;
   }
 
   private void validateCustomUnitOfMeasurement(Metric metric) {
@@ -85,10 +358,8 @@ public class MetricRepository extends EntityRepository<Metric> {
         throw new IllegalArgumentException(
             "customUnitOfMeasurement is required when unitOfMeasurement is OTHER");
       }
-      // Trim and normalize
       metric.setCustomUnitOfMeasurement(customUnit.trim());
     } else {
-      // Clear custom unit if not OTHER to maintain consistency
       metric.setCustomUnitOfMeasurement(null);
     }
   }
@@ -98,56 +369,374 @@ public class MetricRepository extends EntityRepository<Metric> {
       Metric metric, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     metric.setRelatedMetrics(
         fields.contains("relatedMetrics") ? getRelatedMetrics(metric) : metric.getRelatedMetrics());
+    metric.setAssets(fields.contains(FIELD_ASSETS) ? getAssets(metric) : metric.getAssets());
+    metric.setParent(fields.contains(FIELD_PARENT) ? getParent(metric) : metric.getParent());
+    metric.setChildren(
+        fields.contains(FIELD_CHILDREN) ? getChildren(metric) : metric.getChildren());
+    metric.setChildrenCount(
+        fields.contains(FIELD_CHILDREN_COUNT)
+            ? getChildrenCount(metric)
+            : metric.getChildrenCount());
+    metric.setMetricGroup(
+        fields.contains(FIELD_METRIC_GROUP) ? getMetricGroup(metric) : metric.getMetricGroup());
+  }
+
+  /**
+   * The group a metric belongs to, derived from the group's HAS edge. Groups own the membership
+   * list, so this is read-only on the metric — adding a metric to a group is done through the
+   * group's own endpoints.
+   */
+  private EntityReference getMetricGroup(Metric metric) {
+    String groupId =
+        daoCollection.metricDAO().findActiveGroupId(metric.getId(), Relationship.HAS.ordinal());
+    return groupId == null ? null : resolveMetricGroupReference(UUID.fromString(groupId));
+  }
+
+  private EntityReference resolveMetricGroupReference(UUID groupId) {
+    try {
+      return Entity.getEntityReferenceById(Entity.METRIC_GROUP, groupId, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Skipping missing metric group {} while resolving membership", groupId);
+      return null;
+    }
   }
 
   @Override
   protected void clearFields(Metric entity, EntityUtil.Fields fields) {
     entity.setRelatedMetrics(fields.contains("relatedMetrics") ? entity.getRelatedMetrics() : null);
+    entity.setAssets(fields.contains(FIELD_ASSETS) ? entity.getAssets() : null);
+    entity.setParent(fields.contains(FIELD_PARENT) ? entity.getParent() : null);
+    entity.setChildren(fields.contains(FIELD_CHILDREN) ? entity.getChildren() : null);
+    entity.setChildrenCount(
+        fields.contains(FIELD_CHILDREN_COUNT) ? entity.getChildrenCount() : null);
+    entity.setMetricGroup(fields.contains(FIELD_METRIC_GROUP) ? entity.getMetricGroup() : null);
   }
 
-  // Individual field fetchers registered in constructor
+  private Integer getChildrenCount(Metric metric) {
+    return daoCollection
+        .relationshipDAO()
+        .countNonDeletedChildMetrics(metric.getId(), Relationship.CONTAINS.ordinal());
+  }
+
+  @Override
+  protected List<EntityReference> getChildren(Metric metric) {
+    return findTo(metric.getId(), METRIC, Relationship.CONTAINS, METRIC);
+  }
+
+  /**
+   * Data assets this metric applies to. Edge direction: from=metric to=asset via APPLIED_TO;
+   * findTo resolves the to-side (the assets).
+   */
+  private List<EntityReference> getAssets(Metric metric) {
+    return findTo(metric.getId(), METRIC, Relationship.APPLIED_TO, null);
+  }
+
   private void fetchAndSetRelatedMetrics(List<Metric> metrics, EntityUtil.Fields fields) {
     if (!fields.contains("relatedMetrics") || metrics == null || metrics.isEmpty()) {
       return;
     }
-    // Use bulk relationship fetching for related metrics
     setFieldFromMap(true, metrics, batchFetchRelatedMetrics(metrics), Metric::setRelatedMetrics);
+  }
+
+  private void fetchAndSetParents(List<Metric> metrics, EntityUtil.Fields fields) {
+    if (!fields.contains(FIELD_PARENT) || nullOrEmpty(metrics)) {
+      return;
+    }
+    Map<UUID, UUID> parentIdByChildId = new HashMap<>();
+    daoCollection
+        .relationshipDAO()
+        .findFromBatch(
+            entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, NON_DELETED)
+        .forEach(
+            record ->
+                parentIdByChildId.put(
+                    UUID.fromString(record.getToId()), UUID.fromString(record.getFromId())));
+    Map<UUID, EntityReference> parentsById = loadParentReferences(parentIdByChildId.values());
+    for (Metric metric : metrics) {
+      UUID parentId = parentIdByChildId.get(metric.getId());
+      metric.setParent(parentId == null ? null : parentsById.get(parentId));
+    }
+  }
+
+  /**
+   * Resolved with ALL: a soft-deleted parent keeps its relationship rows, so a NON_DELETED lookup
+   * threw "not found" and failed the whole page (e.g. listing with include=all after a recursive
+   * soft delete). The reference carries deleted=true instead.
+   */
+  private static Map<UUID, EntityReference> loadParentReferences(Collection<UUID> parentIds) {
+    if (parentIds.isEmpty()) {
+      return Map.of();
+    }
+    return Entity.getEntityReferencesByIds(METRIC, List.copyOf(new HashSet<>(parentIds)), ALL)
+        .stream()
+        .collect(
+            Collectors.toMap(EntityReference::getId, Function.identity(), (left, right) -> left));
+  }
+
+  @Override
+  protected void fetchAndSetChildren(List<Metric> metrics, EntityUtil.Fields fields) {
+    if (!fields.contains(FIELD_CHILDREN) || nullOrEmpty(metrics)) {
+      return;
+    }
+    Map<UUID, List<UUID>> childIdsByParentId = new HashMap<>();
+    daoCollection
+        .relationshipDAO()
+        .findToBatch(entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, METRIC)
+        .forEach(
+            record ->
+                childIdsByParentId
+                    .computeIfAbsent(UUID.fromString(record.getFromId()), id -> new ArrayList<>())
+                    .add(UUID.fromString(record.getToId())));
+    Map<UUID, EntityReference> liveChildrenById =
+        loadLiveChildReferences(childIdsByParentId.values());
+    for (Metric metric : metrics) {
+      metric.setChildren(
+          childIdsByParentId.getOrDefault(metric.getId(), List.of()).stream()
+              .map(liveChildrenById::get)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toCollection(ArrayList::new)));
+    }
+  }
+
+  /**
+   * Soft delete keeps a child's CONTAINS row live, so a per-child NON_DELETED lookup threw "not
+   * found" and failed the whole page. A batch NON_DELETED lookup just omits deleted children,
+   * matching the single-entity {@link #getChildren}.
+   */
+  private static Map<UUID, EntityReference> loadLiveChildReferences(
+      Collection<List<UUID>> childIdLists) {
+    List<UUID> childIds = childIdLists.stream().flatMap(List::stream).distinct().toList();
+    if (childIds.isEmpty()) {
+      return Map.of();
+    }
+    return Entity.getEntityReferencesByIds(METRIC, childIds, NON_DELETED).stream()
+        .collect(
+            Collectors.toMap(EntityReference::getId, Function.identity(), (left, right) -> left));
+  }
+
+  private void fetchAndSetMetricGroups(List<Metric> metrics, EntityUtil.Fields fields) {
+    if (!fields.contains(FIELD_METRIC_GROUP) || nullOrEmpty(metrics)) {
+      return;
+    }
+    Map<UUID, EntityReference> groups = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record :
+        daoCollection
+            .metricDAO()
+            .findActiveGroups(entityListToStrings(metrics), Relationship.HAS.ordinal())) {
+      groups.put(
+          UUID.fromString(record.getToId()),
+          resolveMetricGroupReference(UUID.fromString(record.getFromId())));
+    }
+    for (Metric metric : metrics) {
+      metric.setMetricGroup(groups.get(metric.getId()));
+    }
+  }
+
+  private void fetchAndSetChildrenCount(List<Metric> metrics, EntityUtil.Fields fields) {
+    if (!fields.contains(FIELD_CHILDREN_COUNT) || nullOrEmpty(metrics)) {
+      return;
+    }
+    Map<UUID, Integer> counts = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipCount record :
+        daoCollection
+            .relationshipDAO()
+            .countNonDeletedChildMetricsBatch(
+                entityListToStrings(metrics), Relationship.CONTAINS.ordinal())) {
+      counts.put(record.getId(), record.getCount());
+    }
+    for (Metric metric : metrics) {
+      metric.setChildrenCount(counts.getOrDefault(metric.getId(), 0));
+    }
   }
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("relatedMetrics");
+    return List.of(
+        "relatedMetrics",
+        "assets",
+        FIELD_PARENT,
+        "children",
+        FIELD_CHILDREN_COUNT,
+        FIELD_METRIC_GROUP);
   }
 
   @Override
   public void storeEntity(Metric metric, boolean update) {
+    // Intake governs human creation, including PUT upserts; ingestion and later metadata edits
+    // must not be blocked by requirements intended for the creation form.
+    if (!update) {
+      validateIntakeForCreation(metric);
+    }
     store(metric, update);
   }
 
   @Override
+  protected EntityDAO<Metric> entityDAOForWrite() {
+    CollectionDAO transactionDAO = RepositoryTransactionContext.currentDAO();
+    return transactionDAO == null ? dao : transactionDAO.metricDAO();
+  }
+
+  @Override
   public void storeEntities(List<Metric> entities) {
+    entities.forEach(this::validateIntakeForCreation);
     storeMany(entities);
+  }
+
+  private void validateIntakeForCreation(final Metric metric) {
+    if (nullOrEmpty(metric.getUpdatedBy())
+        || !SubjectContext.getSubjectContext(metric.getUpdatedBy()).isBot()) {
+      IntakeFormValidator.validate(metric, METRIC);
+    }
+  }
+
+  @Override
+  public List<Metric> createManyEntitiesForImport(List<Metric> entities, String impersonatedBy) {
+    List<Metric> created = super.createManyEntitiesForImport(entities, impersonatedBy);
+    reconcileImportedHierarchyGroups(created);
+    return created;
+  }
+
+  @Override
+  public List<Metric> updateManyEntitiesForImport(
+      List<Metric> originals, List<Metric> updates, String updatedBy, String impersonatedBy) {
+    // The parent lives only in the CONTAINS edge, which the originals are read without. Load it so
+    // the base batch path can tell which parents a CSV moved metrics away from.
+    fetchAndSetParents(originals, getFields(FIELD_PARENT));
+    List<Metric> updated =
+        super.updateManyEntitiesForImport(originals, updates, updatedBy, impersonatedBy);
+    reconcileImportedHierarchyGroups(updated);
+    return updated;
+  }
+
+  private void reconcileImportedHierarchyGroups(List<Metric> metrics) {
+    if (nullOrEmpty(metrics)) {
+      return;
+    }
+    MetricGroupRepository groupRepository =
+        (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
+    for (Metric metric : metrics) {
+      if (metric.getParent() == null) {
+        MetricGroupRepository.MembershipChange change =
+            groupRepository.assignHierarchyGroup(metric.getId(), metric.getMetricGroup());
+        groupRepository.publishMembershipChange(change);
+      }
+    }
   }
 
   @Override
   protected void clearEntitySpecificRelationshipsForMany(List<Metric> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Metric::getId).toList();
+    deleteFromMany(ids, METRIC, Relationship.EXPERT, USER);
     deleteFromMany(ids, Entity.METRIC, Relationship.RELATED_TO, Entity.METRIC);
     deleteToMany(ids, Entity.METRIC, Relationship.RELATED_TO, Entity.METRIC);
+    // Mirror storeRelationships' re-add of the APPLIED_TO edges so the batch import/update path
+    // replaces the asset list instead of unioning with stale edges (which AIContextBuilder would
+    // keep routing). Assets are heterogeneous, so pass a null toEntity to clear every type from the
+    // metric (the FROM side). Only clear for metrics that actually carry an asset list: assets is
+    // not a CSV column, so a CSV import leaves it null to mean "unchanged" — clearing those would
+    // wipe the existing edges. A null list preserves; an empty list explicitly clears.
+    List<UUID> assetCarryingIds =
+        entities.stream().filter(metric -> metric.getAssets() != null).map(Metric::getId).toList();
+    deleteFromMany(assetCarryingIds, Entity.METRIC, Relationship.APPLIED_TO, null);
+    // Only the to-side (metric-as-child) CONTAINS edge is cleared, so storeRelationships can
+    // re-add the parent link. Clearing the from-side would orphan the metric's own children and
+    // also drop the metric -> dataContract CONTAINS edges, which are not re-added here.
+    deleteToMany(ids, Entity.METRIC, Relationship.CONTAINS, Entity.METRIC);
+    deleteToMany(ids, Entity.METRIC, Relationship.HAS, Entity.METRIC_GROUP);
   }
 
   @Override
   public void storeRelationships(Metric metric) {
-    // Nothing to do
+    for (EntityReference expert : listOrEmpty(metric.getExperts())) {
+      addRelationship(metric.getId(), expert.getId(), METRIC, USER, Relationship.EXPERT);
+    }
     for (EntityReference relatedMetric : listOrEmpty(metric.getRelatedMetrics())) {
       addRelationship(
           metric.getId(), relatedMetric.getId(), METRIC, METRIC, Relationship.RELATED_TO, true);
     }
+    for (EntityReference asset : listOrEmpty(metric.getAssets())) {
+      addRelationship(
+          metric.getId(), asset.getId(), METRIC, asset.getType(), Relationship.APPLIED_TO);
+    }
+    if (metric.getParent() != null) {
+      addRelationship(
+          metric.getParent().getId(), metric.getId(), METRIC, METRIC, Relationship.CONTAINS);
+    }
+    replaceGroupMembership(metric);
+  }
+
+  private void replaceGroupMembership(Metric metric) {
+    for (EntityReference group :
+        findFrom(metric.getId(), METRIC, Relationship.HAS, Entity.METRIC_GROUP)) {
+      if (!sameReferenceById(group, metric.getMetricGroup())) {
+        deleteRelationship(
+            group.getId(), Entity.METRIC_GROUP, metric.getId(), METRIC, Relationship.HAS);
+      }
+    }
+    if (metric.getMetricGroup() != null) {
+      addRelationship(
+          metric.getMetricGroup().getId(),
+          metric.getId(),
+          Entity.METRIC_GROUP,
+          METRIC,
+          Relationship.HAS);
+    }
+  }
+
+  @Override
+  public void restorePatchAttributes(Metric original, Metric updated) {
+    super.restorePatchAttributes(original, updated);
+    // children/childrenCount are derived from CONTAINS edges and cannot be patched directly
+    updated.withChildren(original.getChildren()).withChildrenCount(original.getChildrenCount());
   }
 
   private List<EntityReference> getRelatedMetrics(Metric metric) {
     return findBoth(metric.getId(), METRIC, Relationship.RELATED_TO, METRIC);
+  }
+
+  @Override
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
+    List<Metric> metrics =
+        "*".equals(name)
+            ? retainViewableForExport(listAll(getFields("*"), new ListFilter(NON_DELETED)), user)
+            : List.of(getByName(null, name, getFields("*")));
+    // The resource layer authorizes ViewAll on the path name only; for "*" that resolves no
+    // entity and the domain policy allows the request on the promise of this post-filter, the
+    // same narrowing GET /metrics applies through the domain query parameter.
+    List<Metric> visibleMetrics =
+        DomainAccessFilter.retainAccessible(metrics, SubjectContext.getSubjectContext(user));
+    return new MetricCsv(user).exportCsv(visibleMetrics, callback);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, (CsvImportProgressCallback) null);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
+    return new MetricCsv(user).importCsv(csv, dryRun, callback);
+  }
+
+  @Override
+  public boolean supportsBulkImportVersioning() {
+    return false;
   }
 
   @Override
@@ -169,20 +758,317 @@ public class MetricRepository extends EntityRepository<Metric> {
     }
   }
 
+  public static class MetricCsv extends EntityCsv<Metric> {
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(METRIC, false);
+    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+
+    MetricCsv(String user) {
+      super(METRIC, HEADERS, user);
+    }
+
+    @Override
+    protected void authorizeRow(Metric original, Metric entity) {
+      if (!checksRowWrites()) {
+        return;
+      }
+      authorizeHierarchyChange(
+          (MetricRepository) Entity.getEntityRepository(METRIC), original, entity);
+    }
+
+    private void authorizeHierarchyChange(
+        MetricRepository repository, Metric original, Metric entity) {
+      resolveImportHierarchy(entity);
+      // The stored match carries no relationship fields (findMatchForImport returns the storage
+      // JSON without parent/metricGroup), so comparing against it would treat every membership as
+      // changed: a row clearing an existing parent would skip the subtree checks a PATCH move
+      // faces, and re-importing an unchanged export of a parented metric would demand EditAll on
+      // its whole subtree. Load the real membership first.
+      Metric stored =
+          original == null
+              ? null
+              : repository.get(
+                  null, original.getId(), repository.getFields("parent,metricGroup"), ALL, false);
+      boolean changed = stored == null || hierarchyMembershipChanged(stored, entity);
+      if (!changed) {
+        return;
+      }
+      if (stored != null) {
+        Set<UUID> subtree = new HashSet<>();
+        for (EntityReference metric : repository.hierarchySubtree(stored.getId())) {
+          subtree.add(metric.getId());
+          authorize(
+              new OperationContext(METRIC, MetadataOperation.EDIT_ALL),
+              new ResourceContext<>(METRIC, metric.getId(), metric.getFullyQualifiedName()));
+        }
+        authorizeQueuedDescendants(repository, subtree);
+      }
+      for (EntityReference destination : hierarchyDestinations(stored, entity)) {
+        authorize(
+            new OperationContext(destination.getType(), MetadataOperation.EDIT_ALL),
+            destinationContext(repository, destination));
+      }
+    }
+
+    private void resolveImportHierarchy(Metric entity) {
+      if (entity.getParent() != null) {
+        Metric parent = importParent(entity.getParent().getFullyQualifiedName());
+        entity.setParent(parent.getEntityReference());
+        entity.setMetricGroup(
+            effectiveHierarchyGroup(
+                entity.getParent(), entity.getMetricGroup(), parent.getMetricGroup()));
+      }
+    }
+
+    private Metric importParent(String fqn) {
+      if (Boolean.TRUE.equals(importResult.getDryRun())
+          && getCreatedEntity(fqn) instanceof Metric pending) {
+        return pending;
+      }
+      return getEntityWithDependencyResolution(METRIC, fqn, FIELD_METRIC_GROUP, NON_DELETED);
+    }
+
+    // A group change moves the subtree as it stands when written, which includes metrics earlier
+    // rows of this import put under it (e.g. a child created a few rows up).
+    // Stored members are checked again in their queued state, since an earlier row may have
+    // changed what the policy sees (e.g. added a denied tag to an existing child).
+    private void authorizeQueuedDescendants(MetricRepository repository, Set<UUID> subtree) {
+      List<Metric> queued = unwrittenMetrics();
+      Set<UUID> checked = new HashSet<>();
+      boolean grew = true;
+      while (grew) {
+        grew = false;
+        for (Metric metric : queued) {
+          boolean inSubtree =
+              subtree.contains(metric.getId())
+                  || (metric.getParent() != null && subtree.contains(metric.getParent().getId()));
+          if (inSubtree && checked.add(metric.getId())) {
+            authorize(
+                new OperationContext(METRIC, MetadataOperation.EDIT_ALL),
+                unsavedContext(repository, metric));
+            grew = subtree.add(metric.getId()) || grew;
+          }
+        }
+      }
+    }
+
+    // A dry run queues nothing, so its earlier rows are only in the dry-run cache.
+    private List<Metric> unwrittenMetrics() {
+      return Boolean.TRUE.equals(importResult.getDryRun())
+          ? List.copyOf(dryRunCreatedEntities.values())
+          : queuedEntities(METRIC).stream().map(Metric.class::cast).toList();
+    }
+
+    private ResourceContextInterface destinationContext(
+        MetricRepository repository, EntityReference destination) {
+      if (Boolean.TRUE.equals(importResult.getDryRun())
+          && METRIC.equals(destination.getType())
+          && getCreatedEntity(destination.getFullyQualifiedName()) instanceof Metric pending) {
+        return unsavedContext(repository, pending);
+      }
+      return new ResourceContext<>(
+          destination.getType(), destination.getId(), destination.getFullyQualifiedName());
+    }
+
+    private static ResourceContextInterface unsavedContext(
+        MetricRepository repository, Metric metric) {
+      return new ResourceContext<>(METRIC, metric, repository) {
+        @Override
+        public List<TagLabel> getTags() {
+          // Reloading tags would erase the policy attributes of a metric that is not stored yet.
+          return Entity.getEntityTags(METRIC, metric);
+        }
+      };
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) {
+        return;
+      }
+
+      Metric metric =
+          new Metric()
+              .withName(csvRecord.get(0))
+              .withDisplayName(csvRecord.get(1))
+              .withDescription(csvRecord.get(2))
+              .withMetricType(getMetricType(printer, csvRecord, 3))
+              .withUnitOfMeasurement(getUnitOfMeasurement(printer, csvRecord, 4))
+              .withCustomUnitOfMeasurement(csvRecord.get(5))
+              .withGranularity(getGranularity(printer, csvRecord, 6))
+              .withMetricExpression(getMetricExpression(printer, csvRecord))
+              .withRelatedMetrics(getEntityReferences(printer, csvRecord, 9, METRIC))
+              .withTags(
+                  getTagLabels(
+                      printer,
+                      csvRecord,
+                      List.of(
+                          Pair.of(10, TagLabel.TagSource.CLASSIFICATION),
+                          Pair.of(11, TagLabel.TagSource.GLOSSARY),
+                          Pair.of(12, TagLabel.TagSource.CLASSIFICATION))))
+              .withOwners(getOwners(printer, csvRecord, 13))
+              .withReviewers(getReviewers(printer, csvRecord, 14))
+              .withDomains(getDomains(printer, csvRecord, 15))
+              .withDataProducts(getEntityReferences(printer, csvRecord, 16, Entity.DATA_PRODUCT))
+              .withEntityStatus(getEntityStatus(printer, csvRecord, 17))
+              .withExtension(getExtension(printer, csvRecord, 18))
+              .withParent(getEntityReference(printer, csvRecord, 19, METRIC))
+              .withExperts(getEntityReferences(printer, csvRecord, 20, USER))
+              .withMetricGroup(getEntityReference(printer, csvRecord, 21, Entity.METRIC_GROUP));
+
+      if (processRecord) {
+        createEntity(printer, csvRecord, metric);
+      }
+    }
+
+    @Override
+    protected void addRecord(CsvFile csvFile, Metric entity) {
+      List<String> recordList = new ArrayList<>();
+      MetricExpression expression = entity.getMetricExpression();
+
+      addField(recordList, entity.getName());
+      addField(recordList, entity.getDisplayName());
+      addField(recordList, entity.getDescription());
+      addField(recordList, entity.getMetricType() == null ? null : entity.getMetricType().value());
+      addField(
+          recordList,
+          entity.getUnitOfMeasurement() == null ? null : entity.getUnitOfMeasurement().value());
+      addField(recordList, entity.getCustomUnitOfMeasurement());
+      addField(
+          recordList, entity.getGranularity() == null ? null : entity.getGranularity().value());
+      addField(
+          recordList,
+          expression == null || expression.getLanguage() == null
+              ? null
+              : expression.getLanguage().value());
+      addField(recordList, expression == null ? null : expression.getCode());
+      addEntityReferences(recordList, entity.getRelatedMetrics());
+      addTagLabels(recordList, entity.getTags());
+      addGlossaryTerms(recordList, entity.getTags());
+      addTagTiers(recordList, entity.getTags());
+      addOwners(recordList, entity.getOwners());
+      addReviewers(recordList, entity.getReviewers());
+      addEntityReferences(recordList, entity.getDomains());
+      addEntityReferences(recordList, entity.getDataProducts());
+      addField(
+          recordList, entity.getEntityStatus() == null ? null : entity.getEntityStatus().value());
+      addExtension(recordList, entity.getExtension());
+      addField(
+          recordList,
+          entity.getParent() == null ? null : entity.getParent().getFullyQualifiedName());
+      addEntityReferences(recordList, entity.getExperts());
+      addField(
+          recordList,
+          entity.getMetricGroup() == null ? null : entity.getMetricGroup().getFullyQualifiedName());
+      addRecord(csvFile, recordList);
+    }
+
+    private MetricExpression getMetricExpression(CSVPrinter printer, CSVRecord csvRecord)
+        throws IOException {
+      MetricExpressionLanguage language = getExpressionLanguage(printer, csvRecord, 7);
+      String code = csvRecord.get(8);
+      if (language == null && nullOrEmpty(code)) {
+        return null;
+      }
+      return new MetricExpression().withLanguage(language).withCode(code);
+    }
+
+    private MetricType getMetricType(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+        throws IOException {
+      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
+        return null;
+      }
+      try {
+        return MetricType.fromValue(csvRecord.get(fieldNumber));
+      } catch (Exception ex) {
+        importFailure(
+            printer,
+            invalidField(fieldNumber, "Metric type " + csvRecord.get(fieldNumber) + " is invalid"),
+            csvRecord);
+        processRecord = false;
+        return null;
+      }
+    }
+
+    private MetricUnitOfMeasurement getUnitOfMeasurement(
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
+        return null;
+      }
+      try {
+        return MetricUnitOfMeasurement.fromValue(csvRecord.get(fieldNumber));
+      } catch (Exception ex) {
+        importFailure(
+            printer,
+            invalidField(
+                fieldNumber,
+                "Metric unit of measurement " + csvRecord.get(fieldNumber) + " is invalid"),
+            csvRecord);
+        processRecord = false;
+        return null;
+      }
+    }
+
+    private MetricGranularity getGranularity(
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
+        return null;
+      }
+      try {
+        return MetricGranularity.fromValue(csvRecord.get(fieldNumber));
+      } catch (Exception ex) {
+        importFailure(
+            printer,
+            invalidField(
+                fieldNumber, "Metric granularity " + csvRecord.get(fieldNumber) + " is invalid"),
+            csvRecord);
+        processRecord = false;
+        return null;
+      }
+    }
+
+    private MetricExpressionLanguage getExpressionLanguage(
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
+        return null;
+      }
+      try {
+        return MetricExpressionLanguage.fromValue(csvRecord.get(fieldNumber));
+      } catch (Exception ex) {
+        importFailure(
+            printer,
+            invalidField(
+                fieldNumber,
+                "Metric expression language " + csvRecord.get(fieldNumber) + " is invalid"),
+            csvRecord);
+        processRecord = false;
+        return null;
+      }
+    }
+
+    private EntityStatus getEntityStatus(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+        throws IOException {
+      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
+        return null;
+      }
+      try {
+        return EntityFieldUtils.parseEntityStatus(csvRecord.get(fieldNumber));
+      } catch (Exception ex) {
+        importFailure(
+            printer,
+            invalidField(
+                fieldNumber, "Entity status " + csvRecord.get(fieldNumber) + " is invalid"),
+            csvRecord);
+        processRecord = false;
+        return null;
+      }
+    }
+  }
+
   public class MetricUpdater extends EntityUpdater {
 
     public MetricUpdater(Metric original, Metric updated, Operation operation) {
       super(original, updated, operation);
-    }
-
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
     }
 
     @Transaction
@@ -218,12 +1104,105 @@ public class MetricRepository extends EntityRepository<Metric> {
                   updated.getMetricExpression());
             }
           });
+      compareAndUpdate(
+          "dimensions",
+          () -> recordChange("dimensions", original.getDimensions(), updated.getDimensions()));
+      compareAndUpdate(
+          "measures",
+          () -> recordChange("measures", original.getMeasures(), updated.getMeasures()));
+      compareAndUpdate(
+          "filters", () -> recordChange("filters", original.getFilters(), updated.getFilters()));
       compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
+      compareAndUpdate(FIELD_PARENT, () -> updateParent(original, updated));
+      compareAndUpdateAny(
+          () -> updateMetricGroup(original, updated), FIELD_PARENT, FIELD_METRIC_GROUP);
+      if (operation.isPut()) {
+        linkRequestedAssets(updated);
+      }
+    }
+
+    /**
+     * PUT links requested assets that are not linked yet and never unlinks any. Assets are otherwise
+     * managed through the bounded /assets APIs, but ingestion creates and re-ingests metrics through
+     * PUT, and a re-run must still link a metric whose source was not linked the first time.
+     */
+    private void linkRequestedAssets(Metric updated) {
+      List<EntityReference> requested = new ArrayList<>(listOrEmpty(updated.getAssets()));
+      List<EntityReference> alreadyLinked =
+          new ArrayList<>(requested.stream().filter(asset -> isLinked(updated, asset)).toList());
+      List<EntityReference> newlyLinked = new ArrayList<>();
+      recordListChange(
+          FIELD_ASSETS,
+          alreadyLinked,
+          requested,
+          newlyLinked,
+          new ArrayList<>(),
+          MetricRepository::sameReferenceById);
+      for (EntityReference asset : newlyLinked) {
+        addRelationship(
+            updated.getId(), asset.getId(), METRIC, asset.getType(), Relationship.APPLIED_TO);
+      }
+    }
+
+    private boolean isLinked(Metric metric, EntityReference asset) {
+      return daoCollection
+              .relationshipDAO()
+              .existsRelationship(
+                  metric.getId(),
+                  asset.getId(),
+                  METRIC,
+                  asset.getType(),
+                  Relationship.APPLIED_TO.ordinal())
+          > 0;
+    }
+
+    private void updateMetricGroup(Metric original, Metric updated) {
+      if (!sameReferenceById(original.getMetricGroup(), updated.getMetricGroup())) {
+        MetricGroupRepository groupRepository =
+            (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
+        MetricGroupRepository.MembershipChange change =
+            groupRepository.assignHierarchyGroupInCurrentTransaction(
+                updated.getId(), updated.getMetricGroup());
+        deferReactOperation(() -> groupRepository.publishMembershipChange(change));
+        recordChange(
+            FIELD_METRIC_GROUP,
+            original.getMetricGroup(),
+            updated.getMetricGroup(),
+            true,
+            MetricRepository::sameReferenceById);
+      }
+    }
+
+    /**
+     * Swaps the CONTAINS edge to the new parent. Metric fully qualified names are flat, so — unlike
+     * glossary terms — reparenting rewrites no FQNs and cascades to no descendants.
+     */
+    private void updateParent(Metric original, Metric updated) {
+      EntityReference originalParent = original.getParent();
+      EntityReference updatedParent = updated.getParent();
+      if (sameReferenceById(originalParent, updatedParent)) {
+        return;
+      }
+      validateHierarchy(updated);
+      if (originalParent != null) {
+        deleteRelationship(
+            originalParent.getId(), METRIC, original.getId(), METRIC, Relationship.CONTAINS);
+      }
+      if (updatedParent != null) {
+        addRelationship(
+            updatedParent.getId(), updated.getId(), METRIC, METRIC, Relationship.CONTAINS);
+      }
+      recordChange(
+          FIELD_PARENT, originalParent, updatedParent, true, MetricRepository::sameReferenceById);
     }
 
     private void updateRelatedMetrics(Metric original, Metric updated) {
       List<EntityReference> originalRelatedMetrics = listOrEmpty(original.getRelatedMetrics());
-      List<EntityReference> updatedRelatedMetrics = listOrEmpty(updated.getRelatedMetrics());
+      List<EntityReference> updatedRelatedMetrics =
+          operation.isPut() && updatedByBot()
+              ? withUnrequestedRelatedMetrics(originalRelatedMetrics, updated.getRelatedMetrics())
+              : listOrEmpty(updated.getRelatedMetrics());
+      updated.setRelatedMetrics(updatedRelatedMetrics);
       validateRelatedTerms(updated, updatedRelatedMetrics);
       updateToRelationships(
           "relatedMetrics",
@@ -235,10 +1214,964 @@ public class MetricRepository extends EntityRepository<Metric> {
           updatedRelatedMetrics,
           true);
     }
+
+    /**
+     * A bot PUT adds related metrics and never removes one. See
+     * ADR:2026-10-27-a-bot-put-never-removes-a-related-metric-edge.
+     */
+    private List<EntityReference> withUnrequestedRelatedMetrics(
+        List<EntityReference> original, List<EntityReference> requested) {
+      List<EntityReference> merged = new ArrayList<>(listOrEmpty(requested));
+      Set<UUID> requestedIds =
+          merged.stream().map(EntityReference::getId).collect(Collectors.toSet());
+      original.stream().filter(ref -> !requestedIds.contains(ref.getId())).forEach(merged::add);
+      return merged;
+    }
   }
 
+  public MetricObservability getObservability(UUID metricId) {
+    return observabilityBuilder.build(metricId);
+  }
+
+  public MetricObservability getObservability(UUID metricId, Set<UUID> visibleAssetIds) {
+    return observabilityBuilder.build(metricId, visibleAssetIds);
+  }
+
+  public MetricObservability getObservability(
+      UUID metricId,
+      List<MetricAssetDirection> linkedAssets,
+      Set<UUID> visibleAssetIds,
+      Set<UUID> testVisibleAssetIds) {
+    return observabilityBuilder.build(metricId, linkedAssets, visibleAssetIds, testVisibleAssetIds);
+  }
+
+  public ResultList<MetricHierarchyItem> listHierarchy(int limit, int offset, String query) {
+    String nameLike = MetricGroupRepository.buildNameLike(query);
+    HierarchyScan scan = scanUnrestrictedHierarchyRows(limit, offset, nameLike);
+    List<CollectionDAO.MetricDAO.HierarchyRow> rows = scan.rows();
+    Map<UUID, Metric> metrics = loadMetricsById(hierarchyIds(rows, METRIC));
+    metrics.replaceAll(
+        (id, metric) -> sanitizeHierarchyMetric(metric, ignored -> true, ignored -> true));
+    Map<UUID, MetricGroup> groups = loadGroupsById(hierarchyIds(rows, Entity.METRIC_GROUP));
+    return buildHierarchyResult(scan, limit, offset, metrics, groups);
+  }
+
+  public ResultList<MetricHierarchyItem> listHierarchy(
+      int limit,
+      int offset,
+      String query,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    CollectionDAO.MetricDAO metricDAO = daoCollection.metricDAO();
+    String nameLike = MetricGroupRepository.buildNameLike(query);
+    HierarchyScan scan =
+        scanHierarchyRows(metricDAO, limit, offset, query, nameLike, canViewMetric, canViewGroup);
+    List<CollectionDAO.MetricDAO.HierarchyRow> rows = scan.rows();
+    Map<UUID, Metric> metrics = loadMetricsById(hierarchyIds(rows, METRIC));
+    metrics.replaceAll(
+        (id, metric) -> sanitizeMetricRelations(metric, canViewMetric, canViewGroup));
+    Map<UUID, MetricGroup> groups =
+        loadGroupsById(hierarchyIds(rows, Entity.METRIC_GROUP), canViewMetric);
+    return buildHierarchyResult(scan, limit, offset, metrics, groups);
+  }
+
+  /**
+   * Under a navbar domain pick, a group stays in the hierarchy when it is in the picked domain or
+   * holds a metric that is (e.g. a group with no domain whose metrics are all in the pick).
+   */
+  public Predicate<EntityReference> groupInDomainPick(
+      Optional<Set<UUID>> pickedGroups, Predicate<EntityReference> canViewMetric) {
+    MetricGroupRepository groups =
+        (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
+    // The hierarchy tests a group once per row and again per metric in it, so each group's member
+    // scan is kept for the request.
+    Map<UUID, Boolean> holdsVisibleMetric = new java.util.concurrent.ConcurrentHashMap<>();
+    return group ->
+        pickedGroups.map(ids -> ids.contains(group.getId())).orElse(false)
+            || holdsVisibleMetric.computeIfAbsent(
+                group.getId(), id -> groups.hasVisibleMemberMatching(id, null, canViewMetric));
+  }
+
+  /**
+   * As above, for a caller who can view every metric: the groups holding a picked metric are read
+   * in one batch, rather than scanning each group's members (which is capped in size).
+   */
+  public Predicate<EntityReference> groupInDomainPick(
+      Optional<Set<UUID>> pickedGroups, Set<UUID> pickedMetrics) {
+    Set<UUID> holdingPickedMetric =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                pickedMetrics.stream().map(UUID::toString).toList(),
+                Relationship.HAS.ordinal(),
+                Entity.METRIC_GROUP,
+                NON_DELETED)
+            .stream()
+            .map(relationship -> UUID.fromString(relationship.getFromId()))
+            .collect(java.util.stream.Collectors.toSet());
+    return group ->
+        pickedGroups.map(ids -> ids.contains(group.getId())).orElse(false)
+            || holdingPickedMetric.contains(group.getId());
+  }
+
+  HierarchyScan scanUnrestrictedHierarchyRows(int limit, int offset, String nameLike) {
+    CollectionDAO.MetricDAO metricDAO = daoCollection.metricDAO();
+    List<CollectionDAO.MetricDAO.HierarchyRow> rows =
+        metricDAO.listHierarchy(
+            Relationship.CONTAINS.ordinal(), Relationship.HAS.ordinal(), nameLike, limit, offset);
+    int total =
+        metricDAO.countHierarchy(
+            Relationship.CONTAINS.ordinal(), Relationship.HAS.ordinal(), nameLike);
+    return new HierarchyScan(rows, total);
+  }
+
+  private ResultList<MetricHierarchyItem> buildHierarchyResult(
+      HierarchyScan scan,
+      int limit,
+      int offset,
+      Map<UUID, Metric> metrics,
+      Map<UUID, MetricGroup> groups) {
+    List<MetricHierarchyItem> data = new ArrayList<>();
+    for (CollectionDAO.MetricDAO.HierarchyRow row : scan.rows()) {
+      data.add(toHierarchyItem(row, metrics, groups));
+    }
+    Paging paging = new Paging().withOffset(offset).withLimit(limit).withTotal(scan.total());
+    return new ResultList<>(data, paging);
+  }
+
+  private HierarchyScan scanHierarchyRows(
+      CollectionDAO.MetricDAO metricDAO,
+      int limit,
+      int offset,
+      String query,
+      String nameLike,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    List<CollectionDAO.MetricDAO.HierarchyRow> page = new ArrayList<>();
+    int databaseOffset = 0;
+    int visible = 0;
+    List<CollectionDAO.MetricDAO.HierarchyRow> batch;
+    do {
+      batch =
+          metricDAO.listHierarchy(
+              Relationship.CONTAINS.ordinal(),
+              Relationship.HAS.ordinal(),
+              nameLike,
+              HIERARCHY_SCAN_BATCH_SIZE,
+              databaseOffset);
+      Map<UUID, EntityReference> metricReferences =
+          loadReferences(hierarchyIds(batch, METRIC), METRIC);
+      Map<UUID, EntityReference> groupReferences =
+          loadReferences(hierarchyIds(batch, Entity.METRIC_GROUP), Entity.METRIC_GROUP);
+      for (CollectionDAO.MetricDAO.HierarchyRow row : batch) {
+        EntityReference reference =
+            METRIC.equals(row.entityType())
+                ? metricReferences.get(row.id())
+                : groupReferences.get(row.id());
+        if (reference != null
+            && hierarchyRowVisible(row, reference, query, canViewMetric, canViewGroup)) {
+          if (visible >= offset && page.size() < limit) {
+            page.add(row);
+          }
+          visible++;
+        }
+      }
+      databaseOffset += batch.size();
+    } while (batch.size() == HIERARCHY_SCAN_BATCH_SIZE);
+    return new HierarchyScan(page, visible);
+  }
+
+  private boolean hierarchyRowVisible(
+      CollectionDAO.MetricDAO.HierarchyRow row,
+      EntityReference reference,
+      String query,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    if (METRIC.equals(row.entityType())) {
+      return canViewMetric.test(reference)
+          && subtreeMatchesQuery(reference.getId(), query, canViewMetric);
+    }
+    if (!canViewGroup.test(reference)) {
+      return false;
+    }
+    if (MetricGroupRepository.referenceMatchesQuery(reference, query)) {
+      return true;
+    }
+    MetricGroupRepository groupRepository =
+        (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
+    return groupRepository.hasVisibleMemberMatching(reference.getId(), query, canViewMetric);
+  }
+
+  private boolean subtreeMatchesQuery(
+      UUID rootId, String query, Predicate<EntityReference> canViewMetric) {
+    if (nullOrEmpty(query) || query.trim().isEmpty()) {
+      return true;
+    }
+    Set<UUID> ids = new LinkedHashSet<>();
+    ArrayDeque<UUID> pending = new ArrayDeque<>(List.of(rootId));
+    while (!pending.isEmpty()) {
+      UUID current = pending.removeFirst();
+      if (ids.add(current)) {
+        daoCollection
+            .metricDAO()
+            .listDescendantSeedIds(current, Relationship.CONTAINS.ordinal())
+            .stream()
+            .map(UUID::fromString)
+            .forEach(pending::addLast);
+      }
+    }
+    return loadReferences(new ArrayList<>(ids), METRIC).values().stream()
+        .anyMatch(
+            metric ->
+                canViewMetric.test(metric)
+                    && MetricGroupRepository.referenceMatchesQuery(metric, query));
+  }
+
+  private List<UUID> hierarchyIds(
+      List<CollectionDAO.MetricDAO.HierarchyRow> rows, String entityType) {
+    return rows.stream()
+        .filter(row -> entityType.equals(row.entityType()))
+        .map(CollectionDAO.MetricDAO.HierarchyRow::id)
+        .toList();
+  }
+
+  static MetricHierarchyItem toHierarchyItem(
+      CollectionDAO.MetricDAO.HierarchyRow row,
+      Map<UUID, Metric> metrics,
+      Map<UUID, MetricGroup> groups) {
+    MetricHierarchyItem item =
+        new MetricHierarchyItem().withKind(MetricHierarchyItem.Kind.fromValue(row.entityType()));
+    if (METRIC.equals(row.entityType())) {
+      item.setMetric(metrics.get(row.id()));
+    } else {
+      item.setGroup(groups.get(row.id()));
+    }
+    return item;
+  }
+
+  private Map<UUID, Metric> loadMetricsById(List<UUID> ids) {
+    List<Metric> metrics = daoCollection.metricDAO().findEntitiesByIds(ids, NON_DELETED);
+    setFieldsInBulk(getFields(HIERARCHY_FIELDS), metrics);
+    return metrics.stream().collect(Collectors.toMap(Metric::getId, metric -> metric));
+  }
+
+  private Map<UUID, MetricGroup> loadGroupsById(
+      List<UUID> ids, Predicate<EntityReference> canViewMetric) {
+    Map<UUID, MetricGroup> groups = loadGroupsById(ids);
+    MetricGroupRepository repository = metricGroupRepository();
+    groups.replaceAll((id, group) -> repository.sanitizeMembership(group, canViewMetric));
+    return groups;
+  }
+
+  private Map<UUID, MetricGroup> loadGroupsById(List<UUID> ids) {
+    List<MetricGroup> groups = daoCollection.metricGroupDAO().findEntitiesByIds(ids, NON_DELETED);
+    MetricGroupRepository repository = metricGroupRepository();
+    repository.setFieldsInBulk(repository.getFields("owners,domains,tags,metricCount"), groups);
+    return groups.stream()
+        .map(
+            group -> {
+              MetricGroup sanitized = JsonUtils.deepCopy(group, MetricGroup.class);
+              sanitized.setMetrics(null);
+              return sanitized;
+            })
+        .collect(Collectors.toMap(MetricGroup::getId, group -> group));
+  }
+
+  private MetricGroupRepository metricGroupRepository() {
+    return (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
+  }
+
+  public MetricHierarchyContext getHierarchyContext(
+      UUID metricId, int childLimit, int childOffset, int siblingLimit, int siblingOffset) {
+    return getHierarchyContext(
+        metricId,
+        childLimit,
+        childOffset,
+        siblingLimit,
+        siblingOffset,
+        ignored -> true,
+        ignored -> true);
+  }
+
+  public MetricHierarchyContext getHierarchyContext(
+      UUID metricId,
+      int childLimit,
+      int childOffset,
+      int siblingLimit,
+      int siblingOffset,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    Metric current = get(null, metricId, getFields(HIERARCHY_FIELDS));
+    List<Metric> ancestors = getAncestors(current, canViewMetric, canViewGroup);
+    MetricPage children = childPage(current, childLimit, childOffset, canViewMetric, canViewGroup);
+    MetricPage siblings =
+        siblingPage(current, siblingLimit, siblingOffset, canViewMetric, canViewGroup);
+    Metric sanitizedCurrent = sanitizeHierarchyMetric(current, canViewMetric, canViewGroup);
+    sanitizedCurrent.setChildrenCount(children.paging().getTotal());
+    return new MetricHierarchyContext()
+        .withGroup(loadGroup(current.getMetricGroup(), canViewGroup, canViewMetric))
+        .withCurrent(sanitizedCurrent)
+        .withAncestors(ancestors)
+        .withChildren(children.data())
+        .withChildrenPaging(children.paging())
+        .withSiblings(siblings.data())
+        .withSiblingPaging(siblings.paging());
+  }
+
+  private List<Metric> getAncestors(
+      Metric metric,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    List<Metric> ancestors = new ArrayList<>();
+    EntityReference parent = metric.getParent();
+    Set<UUID> visited = new HashSet<>();
+    while (parent != null && visited.add(parent.getId())) {
+      Metric ancestor = get(null, parent.getId(), getFields(HIERARCHY_FIELDS));
+      if (canViewMetric.test(ancestor.getEntityReference())) {
+        ancestors.add(sanitizeMetricRelations(ancestor, canViewMetric, canViewGroup));
+      }
+      parent = ancestor.getParent();
+    }
+    Collections.reverse(ancestors);
+    return ancestors;
+  }
+
+  private MetricGroup loadGroup(
+      EntityReference reference,
+      Predicate<EntityReference> canViewGroup,
+      Predicate<EntityReference> canViewMetric) {
+    MetricGroup result = null;
+    if (reference != null && canViewGroup.test(reference)) {
+      MetricGroupRepository repository =
+          (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
+      result =
+          repository.get(
+              null, reference.getId(), repository.getFields("owners,domains,tags,metricCount"));
+      result = repository.sanitizeMembership(result, canViewMetric);
+      result.setMetrics(null);
+    }
+    return result;
+  }
+
+  private MetricPage childPage(
+      Metric current,
+      int limit,
+      int offset,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    return scanMetricPage(
+        (batchLimit, batchOffset) ->
+            daoCollection
+                .metricDAO()
+                .listChildIds(
+                    current.getId(), Relationship.CONTAINS.ordinal(), batchLimit, batchOffset),
+        limit,
+        offset,
+        canViewMetric,
+        canViewGroup);
+  }
+
+  private MetricPage siblingPage(
+      Metric current,
+      int limit,
+      int offset,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    MetricIdPageLoader loader = (batchLimit, batchOffset) -> List.of();
+    if (current.getParent() != null) {
+      loader =
+          (batchLimit, batchOffset) ->
+              daoCollection
+                  .metricDAO()
+                  .listSiblingIds(
+                      current.getParent().getId(),
+                      current.getId(),
+                      Relationship.CONTAINS.ordinal(),
+                      batchLimit,
+                      batchOffset);
+    } else if (current.getMetricGroup() != null) {
+      loader = (batchLimit, batchOffset) -> groupRootSiblingIds(current, batchLimit, batchOffset);
+    }
+    return scanMetricPage(loader, limit, offset, canViewMetric, canViewGroup);
+  }
+
+  private List<String> groupRootSiblingIds(Metric current, int limit, int offset) {
+    return daoCollection
+        .metricGroupDAO()
+        .listRootMemberIds(
+            current.getMetricGroup().getId(),
+            current.getId(),
+            Relationship.HAS.ordinal(),
+            Relationship.CONTAINS.ordinal(),
+            limit,
+            offset);
+  }
+
+  private MetricPage scanMetricPage(
+      MetricIdPageLoader loader,
+      int limit,
+      int offset,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    List<UUID> page = new ArrayList<>();
+    int databaseOffset = 0;
+    int visible = 0;
+    List<String> batch;
+    do {
+      batch = loader.load(HIERARCHY_SCAN_BATCH_SIZE, databaseOffset);
+      List<UUID> ids = batch.stream().map(UUID::fromString).toList();
+      Map<UUID, EntityReference> references = loadReferences(ids, METRIC);
+      for (UUID id : ids) {
+        EntityReference reference = references.get(id);
+        if (reference != null && canViewMetric.test(reference)) {
+          if (visible >= offset && page.size() < limit) {
+            page.add(id);
+          }
+          visible++;
+        }
+      }
+      databaseOffset += batch.size();
+    } while (batch.size() == HIERARCHY_SCAN_BATCH_SIZE);
+    return metricPage(page, limit, offset, visible, canViewMetric, canViewGroup);
+  }
+
+  private Map<UUID, EntityReference> loadReferences(List<UUID> ids, String entityType) {
+    if (ids.isEmpty()) {
+      return Map.of();
+    }
+    return Entity.getEntityReferencesByIds(entityType, ids, NON_DELETED).stream()
+        .collect(Collectors.toMap(EntityReference::getId, reference -> reference));
+  }
+
+  private MetricPage metricPage(
+      List<UUID> ids,
+      int limit,
+      int offset,
+      int total,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    Map<UUID, Metric> metrics = loadMetricsById(ids);
+    List<Metric> ordered =
+        ids.stream()
+            .map(metrics::get)
+            .filter(Objects::nonNull)
+            .map(metric -> sanitizeMetricRelations(metric, canViewMetric, canViewGroup))
+            .toList();
+    Paging paging = new Paging().withOffset(offset).withLimit(limit).withTotal(total);
+    return new MetricPage(ordered, paging);
+  }
+
+  private record MetricPage(List<Metric> data, Paging paging) {}
+
+  record HierarchyScan(List<CollectionDAO.MetricDAO.HierarchyRow> rows, int total) {}
+
+  @FunctionalInterface
+  private interface MetricIdPageLoader {
+    List<String> load(int limit, int offset);
+  }
+
+  static Metric sanitizeHierarchyMetric(
+      Metric metric,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    Metric sanitized = JsonUtils.deepCopy(metric, Metric.class);
+    if (sanitized.getParent() != null && !canViewMetric.test(sanitized.getParent())) {
+      sanitized.setParent(null);
+    }
+    if (sanitized.getMetricGroup() != null && !canViewGroup.test(sanitized.getMetricGroup())) {
+      sanitized.setMetricGroup(null);
+    }
+    if (sanitized.getChildren() != null) {
+      sanitized.setChildren(
+          sanitized.getChildren().stream()
+              .filter(canViewMetric)
+              .collect(Collectors.toCollection(ArrayList::new)));
+    }
+    if (sanitized.getRelatedMetrics() != null) {
+      sanitized.setRelatedMetrics(
+          sanitized.getRelatedMetrics().stream()
+              .filter(canViewMetric)
+              .collect(Collectors.toCollection(ArrayList::new)));
+    }
+    sanitizeRelationChanges(sanitized.getChangeDescription(), canViewMetric, canViewGroup);
+    sanitizeRelationChanges(
+        sanitized.getIncrementalChangeDescription(), canViewMetric, canViewGroup);
+    return sanitized;
+  }
+
+  /**
+   * Every relation a metric response carries answers the caller's view permission: the reference
+   * fields, the derived children count, and the relation entries of the stored change
+   * descriptions. The hierarchy endpoints have always applied this; the generic reads and stored
+   * snapshots apply it here.
+   */
+  public Metric sanitizeMetricRelations(
+      Metric metric,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    Metric sanitized = sanitizeHierarchyMetric(metric, canViewMetric, canViewGroup);
+    if (metric.getChildrenCount() != null) {
+      sanitized.setChildrenCount(visibleChildCount(metric.getId(), canViewMetric));
+    }
+    return sanitized;
+  }
+
+  /**
+   * Page-sized variant of {@link #sanitizeMetricRelations} for list responses: relation filtering
+   * is per row, and the visible children counts are computed with one relationship query and one
+   * reference load for the whole page instead of the per-metric scan {@link #visibleChildCount}
+   * runs.
+   */
+  public List<Metric> sanitizeMetricRelations(
+      List<Metric> metrics,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    List<Metric> sanitized =
+        metrics.stream()
+            .map(metric -> sanitizeHierarchyMetric(metric, canViewMetric, canViewGroup))
+            .collect(Collectors.toCollection(ArrayList::new));
+    Map<UUID, Integer> visibleCounts =
+        visibleChildrenCounts(
+            metrics.stream()
+                .filter(metric -> metric.getChildrenCount() != null)
+                .map(Metric::getId)
+                .toList(),
+            canViewMetric);
+    for (Metric metric : sanitized) {
+      if (metric.getChildrenCount() != null) {
+        metric.setChildrenCount(visibleCounts.getOrDefault(metric.getId(), 0));
+      }
+    }
+    return sanitized;
+  }
+
+  /**
+   * Visible children counts for a page of metrics: one chunked relationship query and one
+   * reference load for all parents, then one cached visibility test per child.
+   */
+  private Map<UUID, Integer> visibleChildrenCounts(
+      Collection<UUID> parentIds, Predicate<EntityReference> canViewMetric) {
+    Map<UUID, Integer> counts = new HashMap<>();
+    if (nullOrEmpty(parentIds)) {
+      return counts;
+    }
+    Map<UUID, List<UUID>> childIdsByParent = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record :
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                parentIds.stream().map(UUID::toString).toList(),
+                Relationship.CONTAINS.ordinal(),
+                METRIC,
+                METRIC)) {
+      childIdsByParent
+          .computeIfAbsent(UUID.fromString(record.getFromId()), id -> new ArrayList<>())
+          .add(UUID.fromString(record.getToId()));
+    }
+    Set<UUID> childIds =
+        childIdsByParent.values().stream().flatMap(List::stream).collect(Collectors.toSet());
+    Map<UUID, EntityReference> referencesById = loadReferences(new ArrayList<>(childIds), METRIC);
+    for (UUID parentId : parentIds) {
+      int visible =
+          countVisibleReferences(
+              childIdsByParent.getOrDefault(parentId, List.of()).stream()
+                  .map(referencesById::get)
+                  .filter(Objects::nonNull)
+                  .toList(),
+              canViewMetric);
+      counts.put(parentId, visible);
+    }
+    return counts;
+  }
+
+  private static void sanitizeRelationChanges(
+      ChangeDescription changeDescription,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    if (changeDescription == null) {
+      return;
+    }
+    changeDescription.setFieldsAdded(
+        visibleRelationChanges(changeDescription.getFieldsAdded(), canViewMetric, canViewGroup));
+    changeDescription.setFieldsUpdated(
+        visibleRelationChanges(changeDescription.getFieldsUpdated(), canViewMetric, canViewGroup));
+    changeDescription.setFieldsDeleted(
+        visibleRelationChanges(changeDescription.getFieldsDeleted(), canViewMetric, canViewGroup));
+  }
+
+  private static List<FieldChange> visibleRelationChanges(
+      List<FieldChange> changes,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    List<FieldChange> visible = new ArrayList<>();
+    for (FieldChange change : listOrEmpty(changes)) {
+      Predicate<EntityReference> visibility =
+          relationVisibility(change.getName(), canViewMetric, canViewGroup);
+      if (visibility == null
+          || (referencesOnlyVisibleEntities(change.getOldValue(), visibility)
+              && referencesOnlyVisibleEntities(change.getNewValue(), visibility))) {
+        visible.add(change);
+      }
+    }
+    return visible;
+  }
+
+  private static Predicate<EntityReference> relationVisibility(
+      String fieldName,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    return switch (fieldName) {
+      case FIELD_PARENT, "relatedMetrics" -> canViewMetric;
+      case FIELD_METRIC_GROUP -> canViewGroup;
+      default -> null;
+    };
+  }
+
+  /**
+   * Whether a stored change value names only entities the caller may view. Relation field values
+   * are JSON-encoded references — one object for a single-valued field, an array for a list. A
+   * change entry naming an entity the caller may not view is dropped whole, so no part of the
+   * reference (id, name, description) leaves. Anything else — nulls, plain strings, payloads that
+   * are not references — names no entity and passes. Only the parsing tolerates failure: the
+   * visibility test runs outside it, so a failed authorization propagates rather than passing.
+   */
+  static boolean referencesOnlyVisibleEntities(
+      Object value, Predicate<EntityReference> visibility) {
+    return referencesIn(value).stream().allMatch(visibility);
+  }
+
+  private static List<EntityReference> referencesIn(Object value) {
+    List<EntityReference> references = List.of();
+    // FieldChange values are untyped: the updater records relation fields as JSON-encoded
+    // references and other fields as plain values, so only a JSON string can name an entity.
+    if (value instanceof String json && !json.isBlank()) {
+      try {
+        references = parseReferences(json.stripLeading());
+      } catch (RuntimeException notReferences) {
+        LOG.debug("Change value is not a reference payload: {}", notReferences.getMessage());
+      }
+    }
+    return references;
+  }
+
+  private static List<EntityReference> parseReferences(String json) {
+    List<EntityReference> references = List.of();
+    if (json.startsWith("[")) {
+      references =
+          listOrEmpty(JsonUtils.readValue(json, new TypeReference<List<EntityReference>>() {}));
+    } else if (json.startsWith("{")) {
+      references = List.of(JsonUtils.readValue(json, EntityReference.class));
+    }
+    return references;
+  }
+
+  int visibleChildCount(UUID metricId, Predicate<EntityReference> canViewMetric) {
+    int databaseOffset = 0;
+    int visible = 0;
+    List<String> batch;
+    do {
+      batch =
+          daoCollection
+              .metricDAO()
+              .listChildIds(
+                  metricId,
+                  Relationship.CONTAINS.ordinal(),
+                  HIERARCHY_SCAN_BATCH_SIZE,
+                  databaseOffset);
+      List<UUID> ids = batch.stream().map(UUID::fromString).toList();
+      visible += countVisibleReferences(loadReferences(ids, METRIC).values(), canViewMetric);
+      databaseOffset += batch.size();
+    } while (batch.size() == HIERARCHY_SCAN_BATCH_SIZE);
+    return visible;
+  }
+
+  public List<EntityReference> hierarchySubtree(UUID rootMetricId) {
+    Set<UUID> metricIds = new LinkedHashSet<>();
+    ArrayDeque<UUID> pending = new ArrayDeque<>(List.of(rootMetricId));
+    while (!pending.isEmpty()) {
+      UUID current = pending.removeFirst();
+      if (metricIds.add(current)) {
+        daoCollection
+            .metricDAO()
+            .listDescendantSeedIds(current, Relationship.CONTAINS.ordinal())
+            .stream()
+            .map(UUID::fromString)
+            .forEach(pending::addLast);
+      }
+    }
+    return Entity.getEntityReferencesByIds(METRIC, new ArrayList<>(metricIds), NON_DELETED);
+  }
+
+  /**
+   * The parent and metric group a write lands in — the destinations {@code MetricResource}
+   * authorizes EditAll on for direct creates, updates and moves. Static and repository-side so
+   * {@code MetricCsv} can apply the same check to import rows.
+   */
+  public static List<EntityReference> hierarchyDestinations(Metric original, Metric updated) {
+    List<EntityReference> destinations = new ArrayList<>();
+    if (original == null || hierarchyMembershipChanged(original, updated)) {
+      if (updated.getParent() != null) {
+        destinations.add(updated.getParent());
+      }
+      if (updated.getMetricGroup() != null) {
+        destinations.add(updated.getMetricGroup());
+      }
+    }
+    return destinations;
+  }
+
+  public static boolean hierarchyMembershipChanged(Metric original, Metric updated) {
+    return !sameReference(original.getParent(), updated.getParent())
+        || !sameReference(original.getMetricGroup(), updated.getMetricGroup());
+  }
+
+  private static boolean sameReference(EntityReference left, EntityReference right) {
+    return left == right
+        || (left != null && right != null && Objects.equals(left.getId(), right.getId()));
+  }
+
+  @Override
+  protected void authorizeWrite(
+      final Metric original, final Metric updated, final ChangeActor actor, final Edit edit) {
+    final BiConsumer<OperationContext, ResourceContextInterface> authorize =
+        (operation, resource) -> authorizeAuthor(actor, operation, resource);
+    if (writesHierarchy(edit)) {
+      authorizeHierarchyChange(original, updated, authorize);
+    }
+    authorizeRequestedAssets(updated, authorize);
+  }
+
+  // A PATCH stores only the fields it names, so one naming neither parent nor group moves nothing.
+  private static boolean writesHierarchy(final Edit edit) {
+    return edit == null
+        || edit.kind() != Edit.Kind.PATCH
+        || !Collections.disjoint(edit.patchedFields(), HIERARCHY_PATCH_FIELDS);
+  }
+
+  /**
+   * EditAll on what a write changes in the hierarchy: the stored subtree of a metric that moves,
+   * and the parent and group a new or moved metric lands in. {@code original} is null for a create.
+   */
+  private void authorizeHierarchyChange(
+      final Metric original,
+      final Metric updated,
+      final BiConsumer<OperationContext, ResourceContextInterface> authorize) {
+    if (original != null && hierarchyMembershipChanged(original, updated)) {
+      hierarchySubtree(original.getId()).forEach(metric -> authorizeEditAll(metric, authorize));
+    }
+    hierarchyDestinations(original, updated)
+        .forEach(destination -> authorizeEditAll(destination, authorize));
+  }
+
+  /** Linking an asset exposes it on the metric, so require the VIEW access /assets/add requires. */
+  private static void authorizeRequestedAssets(
+      final Metric metric, final BiConsumer<OperationContext, ResourceContextInterface> authorize) {
+    for (final EntityReference asset : listOrEmpty(metric.getAssets())) {
+      try {
+        authorize.accept(
+            new OperationContext(asset.getType(), MetadataOperation.VIEW_BASIC),
+            new ResourceContext<>(asset.getType(), asset.getId(), asset.getFullyQualifiedName()));
+      } catch (AuthorizationException | EntityNotFoundException | IllegalArgumentException e) {
+        throw new AuthorizationException(
+            String.format("Not authorized to view the requested asset %s", asset.getId()), e);
+      }
+    }
+  }
+
+  public static void authorizeEditAll(
+      final EntityReference entity,
+      final BiConsumer<OperationContext, ResourceContextInterface> authorize) {
+    authorize.accept(
+        new OperationContext(entity.getType(), MetadataOperation.EDIT_ALL),
+        new ResourceContext<>(entity.getType(), entity.getId(), entity.getFullyQualifiedName()));
+  }
+
+  static int countVisibleReferences(
+      Collection<EntityReference> references, Predicate<EntityReference> canViewEntity) {
+    return (int) references.stream().filter(canViewEntity).count();
+  }
+
+  public BulkOperationResult bulkAddAssets(String metricName, BulkAssets request, String userName) {
+    Metric metric = getByName(null, metricName, getFields("id"));
+    return bulkAssetsOperation(
+        metric.getId(), METRIC, Relationship.APPLIED_TO, request, true, userName);
+  }
+
+  public BulkOperationResult bulkRemoveAssets(
+      String metricName, BulkAssets request, String userName) {
+    Metric metric = getByName(null, metricName, getFields("id"));
+    return bulkAssetsOperation(
+        metric.getId(), METRIC, Relationship.APPLIED_TO, request, false, userName);
+  }
+
+  /**
+   * Classifies each linked asset by where it sits relative to the metric in the lineage graph.
+   * Direction is derived from lineage rather than stored, so linking an asset never has to say
+   * which way the data flows — an asset the metric reads from is upstream, one that reads the
+   * metric is downstream, and one with no lineage edge either way is unrelated.
+   *
+   * <p>Observability is deliberately capped before relationship hydration. Callers must use the
+   * paginated assets endpoint when a metric exceeds this detail limit instead of creating an
+   * unbounded request and response.
+   */
+  public List<MetricAssetDirection> getAssetsWithDirection(UUID metricId) {
+    int linkedAssetCount =
+        daoCollection
+            .relationshipDAO()
+            .countFindTo(metricId, METRIC, List.of(Relationship.APPLIED_TO.ordinal()));
+    if (linkedAssetCount > MAX_OBSERVABILITY_ASSET_DETAILS) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Metric observability supports at most %,d linked assets. Use the paginated "
+                  + "/assets endpoint to inspect larger asset sets.",
+              MAX_OBSERVABILITY_ASSET_DETAILS));
+    }
+    return scanAssets(
+            metricId, null, null, null, ignored -> true, 0, MAX_OBSERVABILITY_ASSET_DETAILS)
+        .data();
+  }
+
+  public ResultList<MetricAssetDirection> listAssets(
+      UUID metricId,
+      int limit,
+      int offset,
+      String query,
+      String entityType,
+      MetricAssetDirection.Direction direction) {
+    return listAssets(metricId, limit, offset, query, entityType, direction, ignored -> true);
+  }
+
+  public ResultList<MetricAssetDirection> listAssets(
+      UUID metricId,
+      int limit,
+      int offset,
+      String query,
+      String entityType,
+      MetricAssetDirection.Direction direction,
+      Predicate<EntityReference> isVisible) {
+    AssetScan scan = scanAssets(metricId, query, entityType, direction, isVisible, offset, limit);
+    Paging paging = new Paging().withOffset(offset).withLimit(limit).withTotal(scan.total());
+    return new ResultList<>(scan.data(), paging);
+  }
+
+  private AssetScan scanAssets(
+      UUID metricId,
+      String query,
+      String entityType,
+      MetricAssetDirection.Direction direction,
+      Predicate<EntityReference> isVisible,
+      int requestedOffset,
+      int requestedLimit) {
+    List<MetricAssetDirection> page = new ArrayList<>();
+    int relationshipOffset = 0;
+    int matched = 0;
+    List<CollectionDAO.EntityRelationshipRecord> records;
+    do {
+      records = linkedAssetRecords(metricId, relationshipOffset);
+      for (MetricAssetDirection asset : directionsFor(metricId, records)) {
+        if (isVisible.test(asset.getAsset()) && matchesAsset(asset, query, entityType, direction)) {
+          if (matched >= requestedOffset && page.size() < requestedLimit) {
+            page.add(asset);
+          }
+          matched++;
+        }
+      }
+      relationshipOffset += records.size();
+    } while (records.size() == ASSET_SCAN_BATCH_SIZE);
+    return new AssetScan(page, matched);
+  }
+
+  private List<CollectionDAO.EntityRelationshipRecord> linkedAssetRecords(
+      UUID metricId, int offset) {
+    return daoCollection
+        .relationshipDAO()
+        .findToWithOffset(
+            metricId,
+            METRIC,
+            List.of(Relationship.APPLIED_TO.ordinal()),
+            offset,
+            ASSET_SCAN_BATCH_SIZE);
+  }
+
+  private List<MetricAssetDirection> directionsFor(
+      UUID metricId, List<CollectionDAO.EntityRelationshipRecord> records) {
+    List<EntityReference> assets =
+        Entity.getEntityRelationshipRepository().getEntityReferences(records, NON_DELETED);
+    if (assets.isEmpty()) {
+      return List.of();
+    }
+    List<String> ids = assets.stream().map(asset -> asset.getId().toString()).toList();
+    Set<UUID> upstreamIds =
+        toIds(
+            daoCollection
+                .metricDAO()
+                .findUpstreamAssetIds(metricId, ids, Relationship.UPSTREAM.ordinal()));
+    Set<UUID> downstreamIds =
+        toIds(
+            daoCollection
+                .metricDAO()
+                .findDownstreamAssetIds(metricId, ids, Relationship.UPSTREAM.ordinal()));
+    return assets.stream().map(asset -> withDirection(asset, upstreamIds, downstreamIds)).toList();
+  }
+
+  private MetricAssetDirection withDirection(
+      EntityReference asset, Set<UUID> upstreamIds, Set<UUID> downstreamIds) {
+    MetricAssetDirection.Direction direction =
+        assetDirection(asset.getId(), upstreamIds, downstreamIds);
+    return new MetricAssetDirection()
+        .withAsset(asset)
+        .withDirection(direction)
+        .withAffectsHealth(
+            Entity.TABLE.equals(asset.getType())
+                && MetricAssetDirection.Direction.UPSTREAM.equals(direction));
+  }
+
+  private boolean matchesAsset(
+      MetricAssetDirection asset,
+      String query,
+      String entityType,
+      MetricAssetDirection.Direction direction) {
+    boolean matchesType = nullOrEmpty(entityType) || entityType.equals(asset.getAsset().getType());
+    boolean matchesDirection = direction == null || direction.equals(asset.getDirection());
+    return matchesType && matchesDirection && matchesQuery(asset.getAsset(), query);
+  }
+
+  private boolean matchesQuery(EntityReference asset, String query) {
+    boolean matches = true;
+    if (!nullOrEmpty(query)) {
+      String needle = query.trim().toLowerCase(Locale.ROOT);
+      matches =
+          containsIgnoreCase(asset.getName(), needle)
+              || containsIgnoreCase(asset.getDisplayName(), needle)
+              || containsIgnoreCase(asset.getFullyQualifiedName(), needle);
+    }
+    return matches;
+  }
+
+  private boolean containsIgnoreCase(String value, String lowerCaseNeedle) {
+    return value != null && value.toLowerCase(Locale.ROOT).contains(lowerCaseNeedle);
+  }
+
+  static MetricAssetDirection.Direction assetDirection(
+      UUID assetId, Set<UUID> upstreamIds, Set<UUID> downstreamIds) {
+    MetricAssetDirection.Direction direction = MetricAssetDirection.Direction.UNRELATED;
+    if (upstreamIds.contains(assetId)) {
+      direction = MetricAssetDirection.Direction.UPSTREAM;
+    } else if (downstreamIds.contains(assetId)) {
+      direction = MetricAssetDirection.Direction.DOWNSTREAM;
+    }
+    return direction;
+  }
+
+  private Set<UUID> toIds(List<String> ids) {
+    Set<UUID> result = new HashSet<>();
+    ids.stream().map(UUID::fromString).forEach(result::add);
+    return result;
+  }
+
+  private record AssetScan(List<MetricAssetDirection> data, int total) {}
+
   public List<String> getDistinctCustomUnitsOfMeasurement() {
-    // Execute efficient database query to get distinct custom units
     return daoCollection.metricDAO().getDistinctCustomUnitsOfMeasurement();
   }
 
@@ -286,87 +2219,75 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
+  protected void postCreate(Metric metric) {
+    super.postCreate(metric);
+    refreshSearchDocument(metric.getMetricGroup());
+  }
+
+  // The batch path (bulk API, CSV import) never calls postCreate(Metric), so refresh each group
+  // the new metrics landed in, once each. Their parents are refreshed by the base batch hook.
+  @Override
+  protected void postCreate(List<Metric> metrics) {
+    super.postCreate(metrics);
+    Set<UUID> refreshed = new HashSet<>();
+    listOrEmpty(metrics).stream()
+        .map(Metric::getMetricGroup)
+        .filter(group -> group != null && refreshed.add(group.getId()))
+        .forEach(this::refreshSearchDocument);
+  }
+
+  @Override
+  protected void postDelete(Metric metric, boolean hardDelete) {
+    super.postDelete(metric, hardDelete);
+    refreshSearchDocument(metric.getMetricGroup());
+  }
+
+  @Override
+  protected void postRestore(Metric metric) {
+    super.postRestore(metric);
+    refreshSearchDocument(metric.getMetricGroup());
+  }
+
+  // ADR:2026-11-03-a-metric-is-restored-with-its-parent-never-under-a-deleted-one
+  @Override
+  public void validateRestore(UUID id) {
+    Metric metric = find(id, ALL);
+    EntityReference parent = Boolean.TRUE.equals(metric.getDeleted()) ? getParent(metric) : null;
+    if (parent != null && Boolean.TRUE.equals(parent.getDeleted())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Metric '%s' cannot be restored while its parent '%s' is deleted. Restore '%s' to"
+                  + " bring back the whole hierarchy.",
+              metric.getName(), parent.getName(), parent.getName()));
+    }
+  }
+
+  @Override
+  protected List<EntityReference> getCountingParents(Metric metric) {
+    return metric.getParent() == null ? List.of() : List.of(metric.getParent());
+  }
+
+  // A group's search document carries metricCount, so it is refreshed whenever a metric joins,
+  // moves or leaves it, or the count drifts until the next full reindex. A cascade restore brings
+  // children back before their parent, so a group that is still deleted is skipped: the refresh
+  // could not load it and would only log an error.
+  private void refreshSearchDocument(EntityReference container) {
+    if (container != null && !Boolean.TRUE.equals(container.getDeleted())) {
+      EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(container, null);
+    }
+  }
+
+  static boolean sameReferenceById(EntityReference left, EntityReference right) {
+    return left == right
+        || (left != null && right != null && Objects.equals(left.getId(), right.getId()));
+  }
+
+  @Override
   public void postUpdate(Metric original, Metric updated) {
     super.postUpdate(original, updated);
-    if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
-      if (updated.getEntityStatus() == EntityStatus.APPROVED) {
-        closeApprovalTask(updated, "Approved the metric");
-      } else if (updated.getEntityStatus() == EntityStatus.REJECTED) {
-        closeApprovalTask(updated, "Rejected the metric");
-      }
+    refreshSearchDocument(original.getMetricGroup());
+    if (!sameReferenceById(original.getMetricGroup(), updated.getMetricGroup())) {
+      refreshSearchDocument(updated.getMetricGroup());
     }
-
-    // Handle case where task goes from DRAFT to IN_REVIEW to DRAFT quickly
-    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT,
-    // but there will be a task created. This handles that case scenario.
-    if (original.getEntityStatus() != EntityStatus.DRAFT
-        && updated.getEntityStatus() == EntityStatus.DRAFT) {
-      try {
-        closeApprovalTask(updated, "Closed due to metric going back to DRAFT.");
-      } catch (EntityNotFoundException ignored) {
-        // No ApprovalTask is present, so we don't need to worry about this.
-      }
-    }
-  }
-
-  @Override
-  protected void preDelete(Metric entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkUpdatedByReviewer(entity, deletedBy);
-    }
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  public static void checkUpdatedByReviewer(Metric metric, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-    List<EntityReference> reviewers = metric.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
-      boolean isReviewer =
-          reviewers.stream()
-              .anyMatch(
-                  e -> {
-                    if (e.getType().equals(TEAM)) {
-                      Team team =
-                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                      return team.getUsers().stream()
-                          .anyMatch(
-                              u ->
-                                  u.getName().equals(updatedBy)
-                                      || u.getFullyQualifiedName().equals(updatedBy));
-                    } else {
-                      return e.getName().equals(updatedBy)
-                          || e.getFullyQualifiedName().equals(updatedBy);
-                    }
-                  });
-      if (!isReviewer) {
-        throw new AuthorizationException(notReviewer(updatedBy));
-      }
-    }
-  }
-
-  private void closeApprovalTask(Metric entity, String comment) {
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.closeApprovalTaskForEntity(
-        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(Metric metric) {
-    metric =
-        Entity.getEntityByName(
-            Entity.METRIC,
-            metric.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        metric.getFullyQualifiedName(),
-        new ArrayList<>(metric.getReviewers()),
-        metric.getUpdatedBy());
   }
 }

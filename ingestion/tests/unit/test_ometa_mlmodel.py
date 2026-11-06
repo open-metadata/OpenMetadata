@@ -16,7 +16,7 @@ OpenMetadata MlModel mixin unit test — validates sklearn model → CreateMlMod
 from unittest.mock import patch
 
 import pandas as pd
-import sklearn.datasets as datasets
+import sklearn.datasets as datasets  # noqa: PLR0402
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 

@@ -12,8 +12,12 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
-import { VFC } from 'react';
+import { useEffect, VFC } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  getAuthErrorCode,
+  isInteractionRequiredCode,
+} from '../../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
 import { setOidcToken } from '../../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../../AuthProviders/AuthProvider';
 import { OidcUser } from '../../AuthProviders/AuthProvider.interface';
@@ -21,7 +25,21 @@ import { OidcUser } from '../../AuthProviders/AuthProvider.interface';
 const Auth0Callback: VFC = () => {
   const { t } = useTranslation();
   const { isAuthenticated, user, getIdTokenClaims, error } = useAuth0();
-  const { handleSuccessfulLogin } = useAuthProvider();
+  const { handleSuccessfulLogin, handleFailedLogin } = useAuthProvider();
+  // A silent re-authentication (prompt=none) comes back with login_required
+  // once the Auth0 session itself has ended; that is a sign-in, not an error.
+  const isSessionEnded = isInteractionRequiredCode(getAuthErrorCode(error));
+
+  useEffect(() => {
+    if (isSessionEnded) {
+      handleFailedLogin();
+    }
+  }, [isSessionEnded]);
+
+  if (isSessionEnded) {
+    return null;
+  }
+
   if (isAuthenticated) {
     getIdTokenClaims()
       .then((token) => {

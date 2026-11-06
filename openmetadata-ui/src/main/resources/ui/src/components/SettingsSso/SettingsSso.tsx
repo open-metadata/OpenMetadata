@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch, Tabs, Typography } from 'antd';
+import { Tabs, Toggle, Typography } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -22,16 +23,24 @@ import {
   SecurityConfiguration,
 } from '../../rest/securityConfigAPI';
 import '../../styles/variables.less';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import ssoUtilClassBase from '../../utils/SSOUtilClassBase';
-import { getProviderDisplayName, getProviderIcon } from '../../utils/SSOUtils';
+import {
+  getProviderDisplayName,
+  getProviderIcon,
+  ProviderIcon,
+} from '../../utils/SSOUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
+import SettingsSourceBanner from '../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import ProviderSelector from './ProviderSelector/ProviderSelector';
 import './settings-sso.less';
 import SSOConfigurationForm from './SSOConfigurationForm/SSOConfigurationForm';
+import SsoProviderIcon from './SsoProviderIcon/SsoProviderIcon';
+import { useSecuritySettingsSource } from './useSecuritySettingsSource';
 
 const SettingsSso = () => {
   const { t } = useTranslation();
@@ -45,7 +54,16 @@ const SettingsSso = () => {
   const [ssoEnabled, setSsoEnabled] = useState<boolean>(true);
   const [securityConfig, setSecurityConfig] =
     useState<SecurityConfiguration | null>(null);
+  const [configReloadKey, setConfigReloadKey] = useState<number>(0);
   const configFetched = useRef<boolean>(false);
+  const {
+    sources,
+    refetch: refetchSources,
+    managedPaths,
+    isReadOnly,
+    isProviderManaged,
+    isSelfSignupManaged,
+  } = useSecuritySettingsSource();
 
   const handleSSOToggle = useCallback(async (checked: boolean) => {
     setSsoEnabled(checked);
@@ -62,12 +80,31 @@ const SettingsSso = () => {
       await patchSecurityConfiguration(patches);
     } catch (error) {
       setSsoEnabled(!checked);
+      showErrorToast(error as AxiosError);
     }
   }, []);
 
   const handleChangeProvider = useCallback(() => {
     setSearchParams({ provider: AuthProvider.Basic });
   }, [setSearchParams]);
+
+  // The deployment values may name a different identity provider, so the page reloads the
+  // configuration without the provider the URL pinned.
+  const handleSettingsAdopted = useCallback(() => {
+    configFetched.current = false;
+    setIsLoading(true);
+    setSearchParams({}, { replace: true });
+    setConfigReloadKey((key) => key + 1);
+  }, [setSearchParams]);
+
+  const sourceBanner = (
+    <SettingsSourceBanner
+      className="tw:my-4"
+      sources={sources}
+      onAdopted={handleSettingsAdopted}
+      onRefetch={refetchSources}
+    />
+  );
 
   const breadcrumb = useMemo(() => {
     const baseBreadcrumb = getSettingPageEntityBreadCrumb(
@@ -134,41 +171,29 @@ const SettingsSso = () => {
 
     // Overview tab for all SSO providers
     if (currentProvider && currentProvider !== AuthProvider.Basic) {
-      const renderOverviewContent = () => {
-        // Get the SCIM access token card component - only for Azure and Okta
-        const SCIMAccessTokenCard =
-          (currentProvider === AuthProvider.Azure ||
-            currentProvider === AuthProvider.Okta) &&
-          ssoUtilClassBase.getSCIMAccessTokenCardComponent?.();
-
-        return (
-          <div>
-            {/* Enable SSO section */}
-            <div className="enable-sso-card-container">
-              <div className="flex justify-between items-start">
-                <div className="flex flex-col">
-                  <Typography.Title className="enable-self-signup-header m-b-xs">
-                    {t('label.enable-sso')}
-                  </Typography.Title>
-                  <Typography.Text className="enable-self-signup-desc">
-                    {t('message.allow-user-to-login-via-sso')}
-                  </Typography.Text>
-                </div>
-                <Switch
-                  checked={ssoEnabled}
-                  size="default"
-                  onChange={handleSSOToggle}
-                />
+      const renderOverviewContent = () => (
+        <div>
+          <div className="enable-sso-card-container">
+            <div className="flex justify-between items-start">
+              <div className="flex flex-col">
+                <Typography
+                  as="h1"
+                  className="enable-self-signup-header m-b-xs">
+                  {t('label.enable-sso')}
+                </Typography>
+                <Typography className="enable-self-signup-desc">
+                  {t('message.allow-user-to-login-via-sso')}
+                </Typography>
               </div>
+              <Toggle
+                isDisabled={isSelfSignupManaged}
+                isSelected={ssoEnabled}
+                onChange={handleSSOToggle}
+              />
             </div>
-
-            {/* SCIM Provisioning section - only for Azure and Okta */}
-
-            {/* SCIM Access Token Card - only show if available and for Azure/Okta */}
-            {SCIMAccessTokenCard && <SCIMAccessTokenCard />}
           </div>
-        );
-      };
+        </div>
+      );
 
       items.push({
         key: 'overview',
@@ -186,27 +211,14 @@ const SettingsSso = () => {
           <SSOConfigurationForm
             hideBorder
             forceEditMode={activeTab === 'configure'}
+            isReadOnly={isReadOnly}
+            managedPaths={managedPaths}
             securityConfig={securityConfig}
             onChangeProvider={handleChangeProvider}
           />
         </div>
       ),
     });
-
-    // Group Mapping tab - only for Azure and Okta with SCIM (Collate-specific feature)
-    const ScimGroupMappingComponent =
-      ssoUtilClassBase.getScimGroupMappingComponent?.();
-    if (
-      ScimGroupMappingComponent &&
-      (currentProvider === AuthProvider.Azure ||
-        currentProvider === AuthProvider.Okta)
-    ) {
-      items.push({
-        key: 'group-mapping',
-        label: 'Group Mapping',
-        children: <ScimGroupMappingComponent />,
-      });
-    }
 
     return items;
   }, [
@@ -217,6 +229,9 @@ const SettingsSso = () => {
     activeTab,
     securityConfig,
     handleChangeProvider,
+    isReadOnly,
+    isSelfSignupManaged,
+    managedPaths,
   ]);
 
   // Combined effect to handle URL parameters and existing configuration
@@ -245,6 +260,16 @@ const SettingsSso = () => {
       setShowProviderSelector(true);
       setCurrentProvider('');
     }
+
+    const applyNoConfigState = () => {
+      setHasExistingConfig(false);
+      setActiveTab('configure');
+      // Only show provider selector if no specific provider in URL
+      if (!providerParam) {
+        setShowProviderSelector(true);
+        setCurrentProvider('');
+      }
+    };
 
     // Check for existing SSO configuration
     const checkExistingConfig = async () => {
@@ -290,39 +315,22 @@ const SettingsSso = () => {
             }
             setShowProviderSelector(false);
           } else {
-            setHasExistingConfig(false);
-            setActiveTab('configure');
-            // Only show provider selector if no specific provider in URL
-            if (!providerParam) {
-              setShowProviderSelector(true);
-              setCurrentProvider('');
-            }
+            applyNoConfigState();
           }
         } else {
-          setHasExistingConfig(false);
-          setActiveTab('configure');
-          // Only show provider selector if no specific provider in URL
-          if (!providerParam) {
-            setShowProviderSelector(true);
-            setCurrentProvider('');
-          }
+          applyNoConfigState();
         }
       } catch (error) {
         configFetched.current = false; // Reset on error to allow retry
-        setHasExistingConfig(false);
-        setActiveTab('configure');
-        // Only show provider selector if no specific provider in URL
-        if (!providerParam) {
-          setShowProviderSelector(true);
-          setCurrentProvider('');
-        }
+        showErrorToast(error as AxiosError);
+        applyNoConfigState();
       } finally {
         setIsLoading(false);
       }
     };
 
     checkExistingConfig();
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, configReloadKey]);
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
@@ -354,8 +362,9 @@ const SettingsSso = () => {
     );
   }
 
-  // If showing provider selector
-  if (showProviderSelector) {
+  // A provider the deployment configuration sets cannot be replaced from here, so there is
+  // nothing to choose and no new configuration to start.
+  if (showProviderSelector || (!hasExistingConfig && isProviderManaged)) {
     return (
       <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
         <TitleBreadcrumb
@@ -363,13 +372,23 @@ const SettingsSso = () => {
           className="m-b-xs"
           titleLinks={breadcrumb}
         />
+        {sourceBanner}
 
-        <div className="m-t-lg sso-provider-selection">
-          <ProviderSelector
-            selectedProvider={currentProvider as AuthProvider | undefined}
-            onProviderSelect={handleProviderSelect}
-          />
-        </div>
+        {isProviderManaged ? (
+          <Typography
+            as="p"
+            className="m-t-md"
+            data-testid="sso-provider-set-by-deployment">
+            {t('message.sso-provider-set-by-deployment')}
+          </Typography>
+        ) : (
+          <div className="m-t-lg sso-provider-selection">
+            <ProviderSelector
+              selectedProvider={currentProvider as AuthProvider | undefined}
+              onProviderSelect={handleProviderSelect}
+            />
+          </div>
+        )}
       </PageLayoutV1>
     );
   }
@@ -383,8 +402,11 @@ const SettingsSso = () => {
           className="m-b-xs"
           titleLinks={breadcrumb}
         />
+        {sourceBanner}
 
         <SSOConfigurationForm
+          isReadOnly={isReadOnly}
+          managedPaths={managedPaths}
           securityConfig={securityConfig}
           selectedProvider={currentProvider}
           onChangeProvider={handleChangeProvider}
@@ -401,6 +423,7 @@ const SettingsSso = () => {
         className="m-b-xs"
         titleLinks={breadcrumb}
       />
+      {sourceBanner}
 
       <div className="settings-sso" style={{ background: 'white' }}>
         {currentProvider && currentProvider !== AuthProvider.Basic && (
@@ -409,27 +432,38 @@ const SettingsSso = () => {
               <div className="flex items-center gap-2">
                 <div className="provider-icon-container">
                   {getProviderIcon(currentProvider) && (
-                    <img
+                    <SsoProviderIcon
                       alt={getProviderDisplayName(currentProvider)}
-                      height="22"
-                      src={getProviderIcon(currentProvider) as string}
-                      width="22"
+                      icon={getProviderIcon(currentProvider) as ProviderIcon}
+                      size={22}
                     />
                   )}
                 </div>
-                <Typography.Title className="m-0 sso-form-header text-md">
+                <Typography as="h1" className="m-0 sso-form-header text-md">
                   {getProviderDisplayName(currentProvider)}
-                </Typography.Title>
+                </Typography>
               </div>
             </div>
           </div>
         )}
 
         <Tabs
-          activeKey={activeTab}
-          items={tabItems}
-          onChange={handleTabChange}
-        />
+          className="tw:gap-4"
+          selectedKey={getRenderedActiveTab(tabItems, activeTab)}
+          onSelectionChange={(key) => handleTabChange(String(key))}>
+          <Tabs.List size="sm" type="underline">
+            {tabItems.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {tabItems.map(({ key, children }) => (
+            <Tabs.Panel id={key} key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
       </div>
     </PageLayoutV1>
   );

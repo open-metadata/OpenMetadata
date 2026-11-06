@@ -182,6 +182,10 @@ public final class Metrics {
     public MetricDeleter delete() {
       return new MetricDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Metric> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.metrics(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -380,5 +384,15 @@ public final class Metrics {
     public String apply() {
       return execute();
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().metrics().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().metrics().getContextByName(fqn);
   }
 }

@@ -2,8 +2,6 @@
 DashboardDataModels entity SDK with fluent API
 """
 
-from typing import Type
-
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
@@ -15,6 +13,6 @@ class DashboardDataModels(BaseEntity[DashboardDataModel, CreateDashboardDataMode
     """DashboardDataModels SDK class - plural to avoid conflict with generated DashboardDataModel entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[DashboardDataModel]:
+    def entity_type(cls) -> type[DashboardDataModel]:
         """Return the DashboardDataModel entity type"""
         return DashboardDataModel

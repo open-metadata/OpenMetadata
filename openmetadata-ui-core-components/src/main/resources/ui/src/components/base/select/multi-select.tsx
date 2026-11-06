@@ -3,16 +3,18 @@ import type { IconComponentType } from '@/components/base/badges/badge-types';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
 import { Popover } from '@/components/base/select/popover';
+import { forgetFocusedOptionOnTab } from '@/components/base/select/forget-focused-option';
 import { type SelectItemType, sizes } from '@/components/base/select/select';
 import { TagCloseX } from '@/components/base/tags/base-components/tag-close-x';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '../../../icons';
 import type {
   FocusEventHandler,
   KeyboardEvent,
   PointerEventHandler,
   RefAttributes,
+  RefObject,
 } from 'react';
 import {
   createContext,
@@ -37,30 +39,32 @@ import {
   ComboBoxStateContext,
 } from 'react-aria-components';
 import type { ListData } from 'react-stately';
-import { useListData } from 'react-stately';
 import { SelectItem } from './select-item';
 
-interface ComboBoxValueProps
-  extends AriaGroupProps,
-    RefAttributes<HTMLDivElement> {
+// The trigger ref is a named prop, not `ref`: React 18 does not pass `ref` to a
+// function component, so the popover would have no trigger to anchor to.
+interface ComboBoxValueProps extends AriaGroupProps {
   size: 'sm' | 'md';
+  triggerRef: RefObject<HTMLDivElement>;
   shortcut?: boolean;
   isDisabled?: boolean;
   placeholder?: string;
   shortcutClassName?: string;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
   onFocus?: FocusEventHandler;
   onPointerEnter?: PointerEventHandler;
 }
 
 const ComboboxContext = createContext<{
   size: 'sm' | 'md';
+  showTagAvatars: boolean;
   selectedKeys: Key[];
   selectedItems: ListData<SelectItemType>;
   onRemove: (keys: Set<Key>) => void;
   onInputChange: (value: string) => void;
 }>({
   size: 'sm',
+  showTagAvatars: true,
   selectedKeys: [],
   selectedItems: {} as ListData<SelectItemType>,
   onRemove: () => {},
@@ -80,7 +84,9 @@ interface MultiSelectProps
   popoverClassName?: string;
   shortcutClassName?: string;
   selectedItems: ListData<SelectItemType>;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
+  /** Chips show each item's avatar; off for items that are not people or teams. */
+  showTagAvatars?: boolean;
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemCleared?: (key: Key) => void;
   onItemInserted?: (key: Key) => void;
@@ -170,13 +176,15 @@ const InnerMultiSelect = ({
   const isSelectionEmpty = comboBoxContext?.selectedItems?.items?.length === 0;
 
   return (
-    <div className="tw:relative tw:flex tw:w-full tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
+    <div className="tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
       {!isSelectionEmpty &&
         comboBoxContext?.selectedItems?.items?.map((value) => (
           <span
-            className="tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:ring-1 tw:ring-primary tw:ring-inset"
+            className="tw:flex tw:max-w-full tw:min-w-0 tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
             key={value.id}>
-            <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
+            {comboBoxContext.showTagAvatars && (
+              <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
+            )}
 
             <p className="tw:ml-1.25 tw:truncate tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-secondary tw:select-none">
               {value?.label}
@@ -198,9 +206,12 @@ const InnerMultiSelect = ({
           'tw:relative tw:flex tw:min-w-[20%] tw:flex-1 tw:flex-row tw:items-center',
           !isSelectionEmpty && 'tw:ml-0.5',
           shortcut && 'tw:min-w-[30%]'
-        )}>
+        )}
+        onKeyDownCapture={(event) =>
+          forgetFocusedOptionOnTab(comboBoxStateContext, event)
+        }>
         <AriaInput
-          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-md tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-none tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
+          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-md tw:text-ellipsis tw:text-primary tw:caret-text-primary tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
           onKeyDown={handleInputKeyDown}
           onMouseDown={handleInputMouseDown}
@@ -215,7 +226,7 @@ const InnerMultiSelect = ({
             )}>
             <span
               className={cx(
-                'tw:pointer-events-none tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:text-quaternary tw:ring-1 tw:ring-secondary tw:select-none tw:ring-inset',
+                'tw:pointer-events-none tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:text-quaternary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary tw:select-none',
                 isDisabled && 'tw:bg-transparent tw:text-disabled'
               )}>
               ⌘K
@@ -232,9 +243,10 @@ export const MultiSelectTagsValue = ({
   shortcut,
   placeholder,
   shortcutClassName,
-  placeholderIcon: Icon = SearchLg,
+  icon: Icon = Search,
   // Omit this prop to avoid invalid HTML attribute warning
   isDisabled: _isDisabled,
+  triggerRef,
   ...otherProps
 }: ComboBoxValueProps) => {
   return (
@@ -242,12 +254,16 @@ export const MultiSelectTagsValue = ({
       {...otherProps}
       className={({ isFocusWithin, isDisabled }) =>
         cx(
-          'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
+          // Border drawn with outline, not a ring (WebKit does not pixel-snap box-shadow,
+          // so rings thin/vanish in Safari when zoomed out). `outline-hidden` is gone — the
+          // outline IS the border and focus indicator, as in input.tsx.
+          'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
           isDisabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle',
-          isFocusWithin && 'tw:ring-2 tw:ring-brand',
+          isFocusWithin && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           sizes[size].root
         )
-      }>
+      }
+      ref={triggerRef}>
       {({ isDisabled }) => (
         <>
           {Icon && (
@@ -277,6 +293,8 @@ export const MultiSelectBase = ({
   onItemInserted,
   shortcut,
   placeholder = 'Search',
+  showTagAvatars = true,
+  onInputChange: onInputChangeProp,
   // Omit these props to avoid conflicts with the `Select` component
   name: _name,
   className: _className,
@@ -295,10 +313,15 @@ export const MultiSelectBase = ({
     [contains, selectedKeys]
   );
 
-  const accessibleList = useListData({
-    initialItems: items,
-    filter,
-  });
+  // Derive the visible options from the live `items` prop instead of
+  // useListData({ initialItems }) — that hook snapshots the items on mount,
+  // so async consumers that fetch options on input change never see their
+  // results reflected in the popup.
+  const [filterText, setFilterText] = useState('');
+  const filteredItems = useMemo(
+    () => (items ?? []).filter((item) => filter(item, filterText)),
+    [items, filter, filterText]
+  );
 
   const onRemove = useCallback(
     (keys: Set<Key>) => {
@@ -319,7 +342,7 @@ export const MultiSelectBase = ({
       return;
     }
 
-    const item = accessibleList.getItem(id);
+    const item = (items ?? []).find((currentItem) => currentItem.id === id);
 
     if (!item) {
       return;
@@ -330,14 +353,18 @@ export const MultiSelectBase = ({
       onItemInserted?.(id);
     }
 
-    accessibleList.setFilterText('');
+    setFilterText('');
   };
 
   const onInputChange = useCallback(
     (value: string) => {
-      accessibleList.setFilterText(value);
+      setFilterText(value);
+      // Chain the consumer's handler — the internal one is applied after
+      // {...props} on AriaComboBox and would otherwise silently drop it
+      // (async search widgets rely on it to fetch matching options).
+      onInputChangeProp?.(value);
     },
-    [accessibleList]
+    [onInputChangeProp]
   );
 
   const placeholderRef = useRef<HTMLDivElement>(null);
@@ -359,16 +386,23 @@ export const MultiSelectBase = ({
   });
 
   const contextValues = useMemo(
-    () => ({ size, selectedKeys, selectedItems, onInputChange, onRemove }),
-    [size, selectedKeys, selectedItems, onInputChange, onRemove]
+    () => ({
+      size,
+      showTagAvatars,
+      selectedKeys,
+      selectedItems,
+      onInputChange,
+      onRemove,
+    }),
+    [size, showTagAvatars, selectedKeys, selectedItems, onInputChange, onRemove]
   );
 
   return (
     <ComboboxContext.Provider value={contextValues}>
       <AriaComboBox
         allowsEmptyCollection
-        inputValue={accessibleList.filterText}
-        items={accessibleList.items}
+        inputValue={filterText}
+        items={filteredItems}
         menuTrigger="focus"
         // This keeps the combobox popover open and the input value unchanged when an item is selected.
         selectedKey={null}
@@ -385,9 +419,9 @@ export const MultiSelectBase = ({
 
             <MultiSelectTagsValue
               placeholder={placeholder}
-              ref={placeholderRef}
               shortcut={shortcut}
               size={size}
+              triggerRef={placeholderRef}
               // This is a workaround to correctly calculating the trigger width
               // while using ResizeObserver wasn't 100% reliable.
               onFocus={onResize}

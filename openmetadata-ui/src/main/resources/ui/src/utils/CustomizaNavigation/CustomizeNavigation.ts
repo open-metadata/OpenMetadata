@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TreeDataNode } from 'antd/lib';
 import { isEmpty, isNumber } from 'lodash';
 import { LeftSidebarItem } from '../../components/MyData/LeftSidebar/LeftSidebar.interface';
 import {
@@ -18,6 +17,7 @@ import {
   LeftSidebarItemExample,
 } from '../../components/Settings/Applications/plugins/AppPlugin';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
+import { NavigationTreeNode } from '../../interface/sidebar.interface';
 import leftSidebarClassBase from '../LeftSidebarClassBase';
 
 const getBaseSidebarItems = (): LeftSidebarItem[] =>
@@ -119,84 +119,158 @@ const createNavigationMap = (
   return map;
 };
 
-const convertSidebarItemToTreeNode = (
-  sidebarItem: LeftSidebarItem
-): TreeDataNode => ({
-  title: sidebarItem.title,
-  key: sidebarItem.key,
-  icon: sidebarItem.icon as TreeDataNode['icon'],
-  children: sidebarItem.children?.map((child) => ({
-    title: child.title,
-    key: child.key,
-    icon: child.icon as TreeDataNode['icon'],
-  })),
+const convertSidebarChildToTreeNode = (
+  child: LeftSidebarItem
+): NavigationTreeNode => ({
+  title: child.title,
+  key: child.key,
+  icon: child.icon as NavigationTreeNode['icon'],
 });
 
-const mapSidebarItemWithNavigation = (
-  sidebarItem: LeftSidebarItem,
-  navigationMap: Map<string, NavigationItem>
-): TreeDataNode & { isHidden?: boolean } => {
-  const navItem = navigationMap.get(sidebarItem.key);
+const collectNewDefaultChildNodes = (
+  defaultChildren: LeftSidebarItem[],
+  savedKeys: Set<string>
+): NavigationTreeNode[] =>
+  defaultChildren
+    .filter((child) => !savedKeys.has(child.key))
+    .map(convertSidebarChildToTreeNode);
 
-  if (!navItem) {
-    return {
-      title: sidebarItem.title,
-      key: sidebarItem.key,
-      icon: sidebarItem.icon as TreeDataNode['icon'],
-      isHidden: true,
-    };
+const convertSidebarItemToTreeNode = (
+  sidebarItem: LeftSidebarItem
+): NavigationTreeNode => ({
+  title: sidebarItem.title,
+  key: sidebarItem.key,
+  icon: sidebarItem.icon as NavigationTreeNode['icon'],
+  children: sidebarItem.children?.map(convertSidebarChildToTreeNode),
+});
+
+const collectNavigationKeys = (
+  navigationItems: NavigationItem[]
+): Set<string> => {
+  const keys = new Set<string>();
+
+  navigationItems.forEach((item) => {
+    keys.add(item.id);
+    item.children?.forEach((child) => keys.add(child.id));
+  });
+
+  return keys;
+};
+
+const convertNavigationChildToTreeNode = (
+  navChild: NavigationItem,
+  sidebarMap: Map<string, LeftSidebarItem>
+): NavigationTreeNode | null => {
+  const sidebarChild = sidebarMap.get(navChild.id);
+
+  return sidebarChild
+    ? {
+        title: navChild.title,
+        key: navChild.id,
+        icon: sidebarChild.icon as NavigationTreeNode['icon'],
+      }
+    : null;
+};
+
+const buildChildrenForSavedItem = (
+  navItem: NavigationItem,
+  sidebarItem: LeftSidebarItem | undefined,
+  sidebarMap: Map<string, LeftSidebarItem>,
+  savedKeys: Set<string>
+): NavigationTreeNode[] | undefined => {
+  const defaultChildren = sidebarItem?.children ?? [];
+
+  if (isEmpty(navItem.children) && isEmpty(defaultChildren)) {
+    return undefined;
   }
+
+  const savedChildNodes = (navItem.children ?? [])
+    .map((child) => convertNavigationChildToTreeNode(child, sidebarMap))
+    .filter((node): node is NavigationTreeNode => node !== null);
+
+  const newDefaultChildNodes = collectNewDefaultChildNodes(
+    defaultChildren,
+    savedKeys
+  );
+
+  return [...savedChildNodes, ...newDefaultChildNodes];
+};
+
+const buildTreeNodeFromSavedItem = (
+  navItem: NavigationItem,
+  sidebarMap: Map<string, LeftSidebarItem>,
+  savedKeys: Set<string>
+): NavigationTreeNode => {
+  const sidebarItem = sidebarMap.get(navItem.id);
 
   return {
     title: navItem.title,
     key: navItem.id,
-    icon: sidebarItem.icon as TreeDataNode['icon'],
-    children: sidebarItem.children?.map((child) => {
-      const navChild = navigationMap.get(child.key);
-
-      return {
-        title: navChild?.title ?? child.title,
-        key: navChild?.id ?? child.key,
-        icon: child.icon as TreeDataNode['icon'],
-      };
-    }),
+    icon: sidebarItem?.icon as NavigationTreeNode['icon'],
+    children: buildChildrenForSavedItem(
+      navItem,
+      sidebarItem,
+      sidebarMap,
+      savedKeys
+    ),
   };
 };
+
+const convertNewDefaultItemToTreeNode = (
+  sidebarItem: LeftSidebarItem,
+  savedKeys: Set<string>
+): NavigationTreeNode & { isHidden?: boolean } => ({
+  title: sidebarItem.title,
+  key: sidebarItem.key,
+  icon: sidebarItem.icon as NavigationTreeNode['icon'],
+  children: sidebarItem.children
+    ? collectNewDefaultChildNodes(sidebarItem.children, savedKeys)
+    : undefined,
+  isHidden: true,
+});
 
 export const getTreeDataForNavigationItems = (
   navigationItems: NavigationItem[] | null,
   plugins?: AppPlugin[]
-): TreeDataNode[] => {
+): NavigationTreeNode[] => {
   const sidebarItemsWithPlugins = getSidebarItemsWithPlugins(plugins);
 
   if (navigationItems === null || isEmpty(navigationItems)) {
     return sidebarItemsWithPlugins.map(convertSidebarItemToTreeNode);
   }
 
-  const navigationMap = createNavigationMap(navigationItems);
+  const sidebarMap = createSidebarMap(sidebarItemsWithPlugins);
+  const savedKeys = collectNavigationKeys(navigationItems);
 
-  return sidebarItemsWithPlugins.map((sidebarItem) =>
-    mapSidebarItemWithNavigation(sidebarItem, navigationMap)
-  );
+  const savedNodes = navigationItems
+    .filter((navItem) => sidebarMap.has(navItem.id))
+    .map((navItem) =>
+      buildTreeNodeFromSavedItem(navItem, sidebarMap, savedKeys)
+    );
+
+  const newDefaultNodes = sidebarItemsWithPlugins
+    .filter((sidebarItem) => !savedKeys.has(sidebarItem.key))
+    .map((sidebarItem) =>
+      convertNewDefaultItemToTreeNode(sidebarItem, savedKeys)
+    );
+
+  return [...savedNodes, ...newDefaultNodes];
 };
 
-const collectHiddenKeys = (
-  item: LeftSidebarItem,
-  navigationMap: Map<string, NavigationItem> | null
-): string[] => {
-  const keys: string[] = [];
-  const navItem = navigationMap?.get(item.key);
+const collectSidebarKeys = (sidebarItem: LeftSidebarItem): string[] => {
+  const keys = [sidebarItem.key];
+  sidebarItem.children?.forEach((child) => keys.push(child.key));
 
-  if (navigationMap && (!navItem || navItem.isHidden)) {
-    keys.push(item.key);
-  }
+  return keys;
+};
 
-  const hiddenChildKeys =
-    navItem?.children
-      ?.filter((child) => child.isHidden)
-      .map((child) => child.id) ?? [];
+const isNavigationItemHidden = (
+  key: string,
+  navigationMap: Map<string, NavigationItem>
+): boolean => {
+  const navItem = navigationMap.get(key);
 
-  return [...keys, ...hiddenChildKeys];
+  return !navItem || Boolean(navItem.isHidden);
 };
 
 export const getHiddenKeysFromNavigationItems = (
@@ -204,14 +278,16 @@ export const getHiddenKeysFromNavigationItems = (
   plugins?: AppPlugin[]
 ): string[] => {
   const sidebarItemsWithPlugins = getSidebarItemsWithPlugins(plugins);
-  const navigationMap =
-    navigationItems && !isEmpty(navigationItems)
-      ? createNavigationMap(navigationItems)
-      : null;
 
-  return sidebarItemsWithPlugins.flatMap((item) =>
-    collectHiddenKeys(item, navigationMap)
-  );
+  if (!navigationItems || isEmpty(navigationItems)) {
+    return [];
+  }
+
+  const navigationMap = createNavigationMap(navigationItems);
+
+  return sidebarItemsWithPlugins
+    .flatMap(collectSidebarKeys)
+    .filter((key) => isNavigationItemHidden(key, navigationMap));
 };
 
 const enhanceNavigationItem = (

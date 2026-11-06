@@ -20,6 +20,15 @@ export interface SelectionOption {
   isBeta?: boolean;
 }
 
+/**
+ * How each card arranges its icon against its text.
+ * - 'horizontal' (default): icon beside the text. Needs a wide card — the text
+ *   only gets what is left over.
+ * - 'vertical': icon above the text, so the label gets the card's full width.
+ *   Use in narrow columns where the horizontal layout wraps the label.
+ */
+export type SelectionCardLayout = 'horizontal' | 'vertical';
+
 export interface SelectionCardGroupProps {
   options: SelectionOption[];
   value?: string;
@@ -27,6 +36,7 @@ export interface SelectionCardGroupProps {
   onClick?: () => void;
   className?: string;
   disabled?: boolean;
+  layout?: SelectionCardLayout;
 }
 
 export interface SelectionCardProps {
@@ -34,4 +44,5 @@ export interface SelectionCardProps {
   isSelected: boolean;
   onClick: () => void;
   disabled?: boolean;
+  layout?: SelectionCardLayout;
 }

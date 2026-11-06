@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/pinotDBConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PinotDBConnection",
   "description": "PinotDB Database Connection Config",
   "type": "object",
@@ -95,10 +95,6 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
-    },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     },
     "supportsViewLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"

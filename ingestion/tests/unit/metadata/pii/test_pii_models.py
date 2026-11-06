@@ -31,7 +31,7 @@ class TestScoredTag:
     def test_scored_tag_is_frozen(self, scored_email_tag: ScoredTag):
         """Test that ScoredTag is immutable."""
         with pytest.raises(AttributeError):
-            scored_email_tag.score = 0.9  # noqa
+            scored_email_tag.score = 0.9
 
     def test_scored_tag_is_hashable(self, scored_email_tag: ScoredTag, scored_phone_tag: ScoredTag):
         """Test that ScoredTag can be used in sets and as dict keys."""

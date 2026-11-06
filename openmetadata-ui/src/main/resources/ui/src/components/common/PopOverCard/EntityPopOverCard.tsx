@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { Popover, Typography } from 'antd';
+import { HoverCard, Typography } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import {
   FC,
   HTMLAttributes,
+  lazy,
   ReactNode,
   useCallback,
   useEffect,
@@ -23,21 +25,25 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
-import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
 import './popover-card.less';
+
+const ExploreSearchCard = withSuspenseFallback(
+  lazy(() => import('../../ExploreV1/ExploreSearchCard/ExploreSearchCard'))
+);
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;
   entityFQN: string;
   extraInfo?: React.ReactNode;
-  defaultOpen?: boolean;
 }
 
 export const PopoverContent: React.FC<{
@@ -47,6 +53,7 @@ export const PopoverContent: React.FC<{
 }> = ({ entityFQN, entityType, extraInfo }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
+  const [isForbidden, setIsForbidden] = useState(false);
   const { cachedEntityData, updateCachedEntityData } = useApplicationStore();
 
   const entityData: SearchedDataProps['data'][number]['_source'] | undefined =
@@ -71,6 +78,7 @@ export const PopoverContent: React.FC<{
   const getData = useCallback(async () => {
     const fields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS}`;
     setLoading(true);
+    setIsForbidden(false);
 
     const promise = entityUtilClassBase.getEntityByFqn(
       entityType,
@@ -83,7 +91,12 @@ export const PopoverContent: React.FC<{
         const res = await promise;
         updateCachedEntityData({ id: entityFQN, entityDetails: res });
       } catch (error) {
-        // Error
+        // A 403 means the entity exists but is not readable by this user. Saying
+        // "no data found" for that case reports a permission problem as missing
+        // data, so the two are kept apart.
+        setIsForbidden(
+          (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+        );
       } finally {
         setLoading(false);
       }
@@ -106,8 +119,12 @@ export const PopoverContent: React.FC<{
     return <Loader size="small" />;
   }
 
+  if (isForbidden) {
+    return <Typography>{t('message.no-permission-to-view')}</Typography>;
+  }
+
   if (isUndefined(entityData)) {
-    return <Typography.Text>{t('label.no-data-found')}</Typography.Text>;
+    return <Typography>{t('label.no-data-found')}</Typography>;
   }
 
   return (
@@ -126,25 +143,18 @@ const EntityPopOverCard: FC<Props> = ({
   entityType,
   entityFQN,
   extraInfo,
-  defaultOpen = false,
-}) => {
-  return (
-    <Popover
-      align={{ targetOffset: [0, 10] }}
-      content={
-        <PopoverContent
-          entityFQN={entityFQN}
-          entityType={entityType}
-          extraInfo={extraInfo}
-        />
-      }
-      defaultOpen={defaultOpen}
-      overlayClassName="entity-popover-card"
-      trigger="hover"
-      zIndex={9999}>
-      {children as ReactNode}
-    </Popover>
-  );
-};
+}) => (
+  <HoverCard
+    className="entity-popover-card"
+    content={
+      <PopoverContent
+        entityFQN={entityFQN}
+        entityType={entityType}
+        extraInfo={extraInfo}
+      />
+    }>
+    {children as ReactNode}
+  </HoverCard>
+);
 
 export default EntityPopOverCard;

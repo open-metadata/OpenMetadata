@@ -12,16 +12,9 @@
  */
 
 import { AxiosError } from 'axios';
-import { useCallback, useEffect } from 'react';
-import {
-  Edge,
-  Node,
-  OnConnect,
-  useEdgesState,
-  useNodesState,
-  useReactFlow,
-} from 'reactflow';
-import { useWorkflowStore } from '../components/WorkflowDefinitions/Workflows/useWorkflowStore';
+import { useCallback, useEffect, useState } from 'react';
+import type { Edge, Node, OnConnect } from 'reactflow';
+import { useEdgesState, useNodesState, useReactFlow } from 'reactflow';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
 import { getWorkflowDefinitionByFQN } from '../rest/workflowDefinitionsAPI';
 import {
@@ -31,16 +24,33 @@ import {
   shouldShowForm,
   shouldUseConfigSidebar,
 } from '../utils/NodeUtils';
-import { showErrorToast } from '../utils/ToastUtils';
 import workflowClassBase from '../utils/WorkflowClassBase';
 import { applyFlowchartLayout } from '../utils/WorkflowLayout';
 import { deserializeWorkflow } from '../utils/WorkflowSerializer';
 import { useWorkflowState } from './useWorkflowState';
+import { useWorkflowStore } from './useWorkflowStore';
 
 interface UseWorkflowLogicProps {
   fqn?: string;
   initialConfig?: Record<string, unknown>;
 }
+
+// A freshly-dropped start node is only draggable once it has meaningful
+// content (saved/user-modified data, a name with data assets, or a
+// trigger/event/schedule configuration).
+const isStartNodeConfigured = (startNode: Node) => {
+  const hasNodeContent =
+    startNode.data?.lastSaved ||
+    startNode.data?.userModified ||
+    (startNode.data?.name && startNode.data?.dataAssets?.length > 0);
+
+  return Boolean(
+    hasNodeContent ||
+      startNode.data?.triggerType ||
+      startNode.data?.eventType ||
+      startNode.data?.scheduleType
+  );
+};
 
 export const useWorkflowLogic = ({
   fqn,
@@ -63,6 +73,8 @@ export const useWorkflowLogic = ({
     setEdges: setUnifiedEdges,
   } = workflowState;
 
+  const [loadError, setLoadError] = useState<AxiosError>();
+  const [reloadCount, setReloadCount] = useState(0);
   const [reactFlowNodes, setReactFlowNodes, onNodesChange] = useNodesState([]);
   const [reactFlowEdges, setReactFlowEdges, onEdgesChange] = useEdgesState([]);
 
@@ -136,6 +148,7 @@ export const useWorkflowLogic = ({
 
       try {
         setLoading(true);
+        setLoadError(undefined);
 
         const workflowData = await getWorkflowDefinitionByFQN(
           decodeURIComponent(fqn)
@@ -167,14 +180,16 @@ export const useWorkflowLogic = ({
           setUnifiedEdges(layoutedEdges);
         }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        setLoadError(error as AxiosError);
       } finally {
         setLoading(false);
       }
     };
 
     fetchWorkflowDefinition();
-  }, [fqn]);
+  }, [fqn, reloadCount]);
+
+  const reloadWorkflow = useCallback(() => setReloadCount((n) => n + 1), []);
 
   const isNodeDragEnabled = useCallback(
     (nodeType: NodeType) => {
@@ -195,16 +210,7 @@ export const useWorkflowLogic = ({
       }
 
       if (reactFlowNodes.length <= 1) {
-        const isConfigured = Boolean(
-          startNode.data?.lastSaved ||
-            startNode.data?.userModified ||
-            (startNode.data?.name && startNode.data?.dataAssets?.length > 0) ||
-            startNode.data?.triggerType ||
-            startNode.data?.eventType ||
-            startNode.data?.scheduleType
-        );
-
-        return isConfigured;
+        return isStartNodeConfigured(startNode);
       }
 
       return true;
@@ -382,6 +388,8 @@ export const useWorkflowLogic = ({
     syncWithStore,
     setWorkflowMetadata,
     setWorkflowDefinition,
+    loadError,
+    reloadWorkflow,
   };
 };
 

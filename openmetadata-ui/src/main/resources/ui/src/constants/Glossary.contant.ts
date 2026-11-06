@@ -35,6 +35,8 @@ export const STATIC_VISIBLE_COLUMNS = [
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
 ];
 
+export const MAX_VISIBLE_SYNONYMS = 6;
+
 export const GLOSSARY_TERM_STATUS_OPTIONS = [
   {
     value: 'all',
@@ -45,6 +47,3 @@ export const GLOSSARY_TERM_STATUS_OPTIONS = [
     text: status,
   })),
 ];
-
-export const GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME =
-  'GlossaryTermApprovalWorkflow';

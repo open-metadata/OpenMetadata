@@ -13,33 +13,30 @@
 import '@testing-library/jest-dom/extend-expect';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
 import StatusDataWidget from './StatusCardWidget.component';
 import { StatusCardWidgetProps } from './StatusCardWidget.interface';
 
 const mockStatusData = {
   title: 'Test Title',
-  total: 100,
-  success: 80,
-  aborted: 10,
-  failed: 10,
+  total: 10_000,
+  success: 3_333,
+  aborted: 3_334,
+  failed: 3_333,
 };
 
 const MockIcon = ({
-  color,
-  height,
-  width,
+  className,
+  size,
 }: {
-  color: string;
-  height: number;
-  width: number;
+  className?: string;
+  size?: number;
 }) => (
   <svg
+    className={className}
     data-testid="mock-icon"
-    fill={color}
-    height={height}
+    height={size}
     viewBox="0 0 14 12"
-    width={width}
+    width={size}
   />
 );
 const defaultProps: StatusCardWidgetProps = {
@@ -75,7 +72,7 @@ describe('StatusDataWidget', () => {
     const icon = screen.getByTestId('mock-icon');
 
     expect(icon).toBeInTheDocument();
-    expect(icon).toHaveAttribute('fill', PRIMARY_COLOR);
+    expect(icon).toHaveClass('tw:text-utility-blue-700');
     expect(icon).toHaveAttribute('height', '20');
     expect(icon).toHaveAttribute('width', '20');
   });

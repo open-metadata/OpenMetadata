@@ -1,26 +1,53 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mockito;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
+import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
+import org.openmetadata.sdk.exception.PipelineServiceClientException;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 class IngestionPipelineRepositoryTest {
@@ -42,6 +69,417 @@ class IngestionPipelineRepositoryTest {
     SecretsManagerConfiguration smConfig = new SecretsManagerConfiguration();
     smConfig.setSecretsManager(SecretsManagerProvider.DB);
     SecretsManagerFactory.createSecretsManager(smConfig, "test");
+  }
+
+  @Test
+  void deleteUndeployedPipelineDoesNotRequireRunner() {
+    // Direct hard delete of an undeployed pipeline: the runner call is
+    // ATTEMPTED (a failed first-deploy can still have left files on the
+    // runner) but a resulting IngestionRunnerUnavailableException is
+    // swallowed rather than thrown — the pipeline may be metadata-only and
+    // never have touched Airflow, so requiring a live runner just to
+    // hard-delete it would leave it stuck. Returns false because no cleanup
+    // was actually "skipped" from a completed deploy — the caller's intent
+    // was metadata-only.
+    IngestionPipeline pipeline = createBasicPipeline().withDeployed(false);
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(unavailableRunnerClient(pipeline));
+
+    assertFalse(cleanupRepository.deleteDeployedPipeline(pipeline, false));
+  }
+
+  @Test
+  void deleteDeployedPipelineReportsSkippedCleanupForUnavailableRunner() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(unavailableRunnerClient(pipeline));
+
+    boolean wasRunnerCleanupSkipped = cleanupRepository.deleteDeployedPipeline(pipeline, true);
+
+    assertTrue(wasRunnerCleanupSkipped);
+  }
+
+  @Test
+  void deleteDeployedPipelinePreservesUnavailableRunnerFailureByDefault() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    IngestionRunnerUnavailableException unavailable =
+        new IngestionRunnerUnavailableException("runner unavailable");
+    doThrow(unavailable).when(pipelineServiceClient).deletePipeline(pipeline);
+    IngestionPipelineRepository cleanupRepository = repositoryWithClient(pipelineServiceClient);
+
+    IngestionRunnerUnavailableException actual =
+        assertThrows(
+            IngestionRunnerUnavailableException.class,
+            () -> cleanupRepository.deleteDeployedPipeline(pipeline, false));
+
+    assertEquals(unavailable, actual);
+  }
+
+  @Test
+  void deleteDeployedPipelineDoesNotSuppressOtherPipelineFailures() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    PipelineServiceClientException deploymentFailure =
+        new PipelineServiceClientException("runner rejected deletion");
+    doThrow(deploymentFailure).when(pipelineServiceClient).deletePipeline(pipeline);
+    IngestionPipelineRepository cleanupRepository = repositoryWithClient(pipelineServiceClient);
+
+    PipelineServiceClientException actual =
+        assertThrows(
+            PipelineServiceClientException.class,
+            () -> cleanupRepository.deleteDeployedPipeline(pipeline, true));
+
+    assertEquals(deploymentFailure, actual);
+  }
+
+  @Test
+  void deleteDeployedPipelineReportsCompletedCleanup() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+
+    boolean wasRunnerCleanupSkipped = cleanupRepository.deleteDeployedPipeline(pipeline, true);
+
+    assertFalse(wasRunnerCleanupSkipped);
+  }
+
+  /**
+   * A runner that is down is the observable channel for whether the teardown was attempted at all:
+   * with {@code allowUnavailableRunner=false} — the mode every delete but {@code forceDelete} uses
+   * — {@code deleteDeployedPipeline} propagates {@link IngestionRunnerUnavailableException}, so the
+   * exception surfaces exactly when {@code postDelete} reaches the orchestrator and stays silent
+   * when it does not. The two tests below therefore pin both halves of the {@code hardDelete} guard
+   * through {@code postDelete} itself rather than through {@code deleteDeployedPipeline}, which the
+   * other tests in this class call directly and which would keep passing if the guard were dropped.
+   */
+  @Test
+  void postDeleteLeavesTheDeployedPipelineAloneOnSoftDelete() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(unavailableRunnerClient(pipeline));
+
+    assertDoesNotThrow(
+        () -> cleanupRepository.postDelete(pipeline, false),
+        "A soft delete is reversible and restore cannot redeploy, so it must not touch the "
+            + "orchestrator — nor fail when the orchestrator is unreachable");
+  }
+
+  @Test
+  void postDeleteTearsDownTheDeployedPipelineOnHardDelete() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(unavailableRunnerClient(pipeline));
+
+    assertThrows(
+        IngestionRunnerUnavailableException.class,
+        () -> cleanupRepository.postDelete(pipeline, true),
+        "A hard delete must still remove the DAG from the orchestrator");
+  }
+
+  private PipelineServiceClientInterface unavailableRunnerClient(IngestionPipeline pipeline) {
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    doThrow(new IngestionRunnerUnavailableException("runner unavailable"))
+        .when(pipelineServiceClient)
+        .deletePipeline(pipeline);
+    return pipelineServiceClient;
+  }
+
+  private IngestionPipelineRepository repositoryWithClient(
+      PipelineServiceClientInterface pipelineServiceClient) {
+    IngestionPipelineRepository cleanupRepository =
+        mock(IngestionPipelineRepository.class, Mockito.CALLS_REAL_METHODS);
+    cleanupRepository.setPipelineServiceClient(pipelineServiceClient);
+    return cleanupRepository;
+  }
+
+  private static final String DEPLOYED_PIPELINE_FQN = "warehouse.Warehouse Metadata";
+
+  /** A pipeline of another service, named so Airflow would send it to the deployed one's DAG. */
+  private static IngestionPipeline namesakeOfTheDeployedPipeline() {
+    return pipelineWithConfig(new HashMap<>(Map.of("type", "TestSuite")))
+        .withId(UUID.randomUUID())
+        .withName("warehouse_metadata")
+        .withFullyQualifiedName("shop.public.scratch.testSuite.warehouse_metadata");
+  }
+
+  private static PipelineServiceClientInterface runnerAddressingPipelinesByName(boolean byName) {
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    when(pipelineServiceClient.addressesPipelinesByName()).thenReturn(byName);
+    return pipelineServiceClient;
+  }
+
+  private IngestionPipelineRepository repositoryWithDeployedPipeline(
+      PipelineServiceClientInterface pipelineServiceClient) {
+    IngestionPipelineRepository namesakeRepository = repositoryWithClient(pipelineServiceClient);
+    EntityReference deployed =
+        new EntityReference()
+            .withName("Warehouse Metadata")
+            .withFullyQualifiedName(DEPLOYED_PIPELINE_FQN);
+    doReturn(List.of(deployed))
+        .when(namesakeRepository)
+        .listOtherDeployedPipelines(any(IngestionPipeline.class));
+    return namesakeRepository;
+  }
+
+  @Test
+  void deployOfANamesakeOfADeployedPipelineNeverReachesTheRunner() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                namesakeRepository.deployIngestionPipeline(
+                    namesakeOfTheDeployedPipeline(), mock(ServiceEntityInterface.class)));
+
+    assertTrue(exception.getMessage().contains("'" + DEPLOYED_PIPELINE_FQN + "'"));
+    verify(airflow, never()).deployPipeline(any(), any());
+  }
+
+  @Test
+  void runOfANamesakeOfADeployedPipelineNeverReachesTheRunner() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            namesakeRepository.runIngestionPipeline(
+                null,
+                namesakeOfTheDeployedPipeline(),
+                mock(ServiceEntityInterface.class),
+                RunOptions.NONE));
+
+    verify(airflow, never()).runPipelineWithOptions(any(), any(), any());
+  }
+
+  @Test
+  void hardDeleteOfANamesakeLeavesTheDeployedPipelineOnTheRunner() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+
+    boolean wasRunnerCleanupSkipped =
+        namesakeRepository.deleteDeployedPipeline(namesakeOfTheDeployedPipeline(), false);
+
+    assertFalse(wasRunnerCleanupSkipped);
+    verify(airflow, never()).deletePipeline(any());
+  }
+
+  @Test
+  void hardDeleteOfADeployedNamesakeRedeploysTheSurvivorOverTheSharedDag() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+    IngestionPipeline survivor =
+        namesakeOfTheDeployedPipeline().withFullyQualifiedName(DEPLOYED_PIPELINE_FQN);
+    doReturn(survivor)
+        .when(namesakeRepository)
+        .findByNameOrNull(DEPLOYED_PIPELINE_FQN, Include.NON_DELETED);
+    doNothing().when(namesakeRepository).deployPipelineBeforeUpdate(survivor);
+
+    namesakeRepository.deleteDeployedPipeline(
+        namesakeOfTheDeployedPipeline().withDeployed(true), false);
+
+    verify(namesakeRepository).deployPipelineBeforeUpdate(survivor);
+    verify(airflow, never()).deletePipeline(any());
+  }
+
+  @Test
+  void hardDeleteOfADeployedNamesakeSurvivesAFailedRedeploy() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+    IngestionPipeline survivor =
+        namesakeOfTheDeployedPipeline().withFullyQualifiedName(DEPLOYED_PIPELINE_FQN);
+    doReturn(survivor)
+        .when(namesakeRepository)
+        .findByNameOrNull(DEPLOYED_PIPELINE_FQN, Include.NON_DELETED);
+    doThrow(new IngestionRunnerUnavailableException("runner unavailable"))
+        .when(namesakeRepository)
+        .deployPipelineBeforeUpdate(survivor);
+
+    assertDoesNotThrow(
+        () ->
+            namesakeRepository.deleteDeployedPipeline(
+                namesakeOfTheDeployedPipeline().withDeployed(true), false));
+  }
+
+  @Test
+  void deployOfANamesakeReachesARunnerThatTellsPipelinesApart() {
+    PipelineServiceClientInterface argo = runnerAddressingPipelinesByName(false);
+    when(argo.deployPipeline(any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(new PipelineServiceClientResponse().withCode(200));
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(argo);
+
+    PipelineServiceClientResponse response =
+        namesakeRepository.deployIngestionPipeline(
+            namesakeOfTheDeployedPipeline(), mock(ServiceEntityInterface.class));
+
+    assertEquals(200, response.getCode());
+  }
+
+  @Test
+  void deployOfAnotherNameReachesARunnerThatAddressesPipelinesByName() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    when(airflow.deployPipeline(any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(new PipelineServiceClientResponse().withCode(200));
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+    IngestionPipeline otherName = namesakeOfTheDeployedPipeline().withName("warehouse_metadata2");
+
+    PipelineServiceClientResponse response =
+        namesakeRepository.deployIngestionPipeline(otherName, mock(ServiceEntityInterface.class));
+
+    assertEquals(200, response.getCode());
+  }
+
+  @ParameterizedTest(name = "{0} / {1}")
+  @MethodSource("namesARunnerCouldConfuse")
+  void runnerNamesMatchWhenARunnerCouldConfuseTheNames(String name, String namesake) {
+    assertFalse(
+        Collections.disjoint(
+            IngestionPipelineRepository.runnerNames(name),
+            IngestionPipelineRepository.runnerNames(namesake)));
+  }
+
+  private static Stream<Arguments> namesARunnerCouldConfuse() {
+    return Stream.of(
+        Arguments.of("warehouse_metadata", "Warehouse Metadata"),
+        Arguments.of("metadata-ingestion", "metadata_ingestion"),
+        Arguments.of("Metadata.Ingestion", "metadata ingestion"),
+        Arguments.of("_metadata_", "metadata"),
+        Arguments.of("\u0130x", "i-x"),
+        Arguments.of("\u212Aafka", "kafka"));
+  }
+
+  @ParameterizedTest(name = "{0} / {1}")
+  @MethodSource("namesNoRunnerConfuses")
+  void runnerNamesDifferWhenNoRunnerCouldConfuseTheNames(String name, String other) {
+    assertTrue(
+        Collections.disjoint(
+            IngestionPipelineRepository.runnerNames(name),
+            IngestionPipelineRepository.runnerNames(other)));
+  }
+
+  private static Stream<Arguments> namesNoRunnerConfuses() {
+    return Stream.of(
+        Arguments.of("metadata", "metadata2"),
+        Arguments.of("ab", "a_b"),
+        Arguments.of("snowflake_metadata_Ab12", "snowflake_metadata_Cd34"));
+  }
+
+  @Test
+  void deployPipelineWithoutSourceConfigTypeRejectsBeforeCallingRunner() {
+    IngestionPipeline pipeline = pipelineWithConfig(Map.of());
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                deploymentRepository.deployIngestionPipeline(
+                    pipeline, mock(ServiceEntityInterface.class)));
+
+    assertEquals("sourceConfig.config.type is required", exception.getMessage());
+    verifyNoInteractions(pipelineServiceClient);
+  }
+
+  @Test
+  void deployPipelineRejectsMalformedSourceConfigBeforeCallingRunner() {
+    IngestionPipeline pipeline = pipelineWithConfig("not-an-object");
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                deploymentRepository.deployIngestionPipeline(
+                    pipeline, mock(ServiceEntityInterface.class)));
+
+    assertEquals("sourceConfig.config must be an object with type", exception.getMessage());
+    verifyNoInteractions(pipelineServiceClient);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidExplicitSourceConfigs")
+  void deployPipelineRejectsInvalidExplicitSourceConfigTypeBeforeCallingRunner(
+      String testCase, Object config) {
+    IngestionPipeline pipeline = pipelineWithConfig(config);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                deploymentRepository.deployIngestionPipeline(
+                    pipeline, mock(ServiceEntityInterface.class)));
+
+    assertEquals("sourceConfig.config.type is required", exception.getMessage());
+    verifyNoInteractions(pipelineServiceClient);
+  }
+
+  @Test
+  void deployPipelinePreservesExplicitSourceConfigType() {
+    IngestionPipeline pipeline =
+        pipelineWithConfig(new HashMap<>(Map.of("type", "DatabaseMetadata")));
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    PipelineServiceClientResponse response = new PipelineServiceClientResponse().withCode(200);
+    when(pipelineServiceClient.deployPipeline(
+            any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(response);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    ServiceEntityInterface service = mock(ServiceEntityInterface.class);
+
+    PipelineServiceClientResponse actual =
+        deploymentRepository.deployIngestionPipeline(pipeline, service);
+
+    assertEquals(response, actual);
+    assertEquals(
+        "DatabaseMetadata", ((Map<?, ?>) pipeline.getSourceConfig().getConfig()).get("type"));
+    verify(pipelineServiceClient).deployPipeline(pipeline, service);
+  }
+
+  @Test
+  void deployPipelineAcceptsTypedConfigWithDefaultEnumType() {
+    DatabaseServiceMetadataPipeline sourceConfig = new DatabaseServiceMetadataPipeline();
+    IngestionPipeline pipeline = pipelineWithConfig(sourceConfig);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    PipelineServiceClientResponse response = new PipelineServiceClientResponse().withCode(200);
+    when(pipelineServiceClient.deployPipeline(
+            any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(response);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    ServiceEntityInterface service = mock(ServiceEntityInterface.class);
+
+    PipelineServiceClientResponse actual =
+        deploymentRepository.deployIngestionPipeline(pipeline, service);
+
+    assertEquals(response, actual);
+    assertEquals(
+        DatabaseServiceMetadataPipeline.DatabaseMetadataConfigType.DATABASE_METADATA,
+        sourceConfig.getType());
+    verify(pipelineServiceClient).deployPipeline(pipeline, service);
+  }
+
+  private static Stream<Arguments> invalidExplicitSourceConfigs() {
+    return Stream.of(
+        Arguments.of("non-string type", Map.of("type", 42)),
+        Arguments.of(
+            "raw-map enum type",
+            Map.of(
+                "type",
+                DatabaseServiceMetadataPipeline.DatabaseMetadataConfigType.DATABASE_METADATA)));
   }
 
   @Test
@@ -266,6 +704,78 @@ class IngestionPipelineRepositoryTest {
     assertEquals("OpenMetadata", decrypted.getService().getName());
   }
 
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidSourceConfigs")
+  void validateSourceConfigHasTypeRejectsInvalidConfig(
+      String testCase, IngestionPipeline pipeline, String expectedMessage) {
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () -> IngestionPipelineRepository.validateSourceConfigHasType(pipeline));
+
+    assertEquals(expectedMessage, exception.getMessage());
+  }
+
+  @Test
+  void validateSourceConfigHasTypeAcceptsRawConfigWithType() {
+    IngestionPipeline pipeline = pipelineWithConfig(Map.of("type", "DatabaseMetadata"));
+
+    assertDoesNotThrow(() -> IngestionPipelineRepository.validateSourceConfigHasType(pipeline));
+  }
+
+  @Test
+  void validateSourceConfigHasTypeAcceptsTypedConfigWithDefaultType() {
+    IngestionPipeline pipeline = pipelineWithConfig(new DatabaseServiceMetadataPipeline());
+
+    assertDoesNotThrow(() -> IngestionPipelineRepository.validateSourceConfigHasType(pipeline));
+  }
+
+  private static Stream<Arguments> invalidSourceConfigs() {
+    Map<String, Object> nullType = new HashMap<>();
+    nullType.put("type", null);
+
+    return Stream.of(
+        Arguments.of(
+            "missing sourceConfig",
+            new IngestionPipeline(),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "missing config",
+            new IngestionPipeline().withSourceConfig(new SourceConfig()),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "empty config", pipelineWithConfig(Map.of()), "sourceConfig.config.type is required"),
+        Arguments.of(
+            "null type", pipelineWithConfig(nullType), "sourceConfig.config.type is required"),
+        Arguments.of(
+            "empty type",
+            pipelineWithConfig(Map.of("type", "")),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "blank type",
+            pipelineWithConfig(Map.of("type", "   ")),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "non-string type",
+            pipelineWithConfig(Map.of("type", 42)),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "raw-map enum type",
+            pipelineWithConfig(
+                Map.of(
+                    "type",
+                    DatabaseServiceMetadataPipeline.DatabaseMetadataConfigType.DATABASE_METADATA)),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "scalar config",
+            pipelineWithConfig("DatabaseMetadata"),
+            "sourceConfig.config must be an object with type"),
+        Arguments.of(
+            "list config",
+            pipelineWithConfig(List.of()),
+            "sourceConfig.config must be an object with type"));
+  }
+
   private static IngestionPipeline createPipelineWithSchedule(String schedule) {
     IngestionPipeline pipeline = createBasicPipeline();
     AirflowConfig airflowConfig = new AirflowConfig();
@@ -286,9 +796,23 @@ class IngestionPipelineRepositoryTest {
     return pipeline;
   }
 
+  @Test
+  @DisplayName("closeStream is a no-op when log storage is not configured")
+  void testCloseStream_LogStorageNotConfigured_NoOp() {
+    IngestionPipelineRepository repo = mock(IngestionPipelineRepository.class);
+    when(repo.isLogStorageEnabled()).thenReturn(false);
+    doCallRealMethod()
+        .when(repo)
+        .closeStream(
+            org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(UUID.class));
+
+    assertDoesNotThrow(() -> repo.closeStream("test-service.test-pipeline", UUID.randomUUID()));
+  }
+
   private static IngestionPipeline createBasicPipeline() {
     IngestionPipeline pipeline = new IngestionPipeline();
     pipeline.setName("test-pipeline");
+    pipeline.setDeployed(true);
     pipeline.setFullyQualifiedName("test-service.test-pipeline");
 
     EntityReference serviceRef = new EntityReference();
@@ -296,5 +820,9 @@ class IngestionPipelineRepositoryTest {
     pipeline.setService(serviceRef);
 
     return pipeline;
+  }
+
+  private static IngestionPipeline pipelineWithConfig(Object config) {
+    return new IngestionPipeline().withSourceConfig(new SourceConfig().withConfig(config));
   }
 }

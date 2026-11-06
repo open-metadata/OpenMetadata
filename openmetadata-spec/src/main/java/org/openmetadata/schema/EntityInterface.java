@@ -22,15 +22,22 @@ import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.type.Style;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.LifeCycle;
+import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.UsageDetails;
+import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 
 /** Interface to be implemented by all entities to provide a way to access all the common fields. */
 @SuppressWarnings("unused")
-public interface EntityInterface {
+public interface EntityInterface<S extends Enum<S>> {
   // Lower case entity name to canonical entity name map
   Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
-  Map<String, Class<? extends EntityInterface>> ENTITY_TYPE_TO_CLASS_MAP = new HashMap<>();
+  Map<String, Class<? extends EntityInterface<?>>> ENTITY_TYPE_TO_CLASS_MAP = new HashMap<>();
 
   UUID getId();
 
@@ -72,7 +79,7 @@ public interface EntityInterface {
     return null;
   }
 
-  default EntityStatus getEntityStatus() {
+  default S getEntityStatus() {
     return null;
   }
 
@@ -134,6 +141,15 @@ public interface EntityInterface {
     return null;
   }
 
+  /**
+   * Source hash (fingerprint) of the entity as computed by the ingestion connector. Only entities
+   * whose JSON schema declares {@code sourceHash} override this; all others inherit {@code null}.
+   * Used by the bulk update path to skip entities whose source content is unchanged.
+   */
+  default String getSourceHash() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);
@@ -168,7 +184,7 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
-  default void setEntityStatus(EntityStatus approvalStatus) {
+  default void setEntityStatus(S status) {
     /* no-op implementation to be overridden */
   }
 
@@ -224,7 +240,7 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
-  <T extends EntityInterface> T withHref(URI href);
+  <T extends EntityInterface<?>> T withHref(URI href);
 
   @JsonIgnore
   default EntityReference getEntityReference() {

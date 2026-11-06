@@ -25,6 +25,15 @@ export interface DashboardDataModel {
      */
     columns: Column[];
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * Reference to the data contract for this entity.
      */
     dataContract?: EntityReference;
@@ -718,9 +727,6 @@ export interface EntityReference {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
@@ -737,7 +743,8 @@ export interface ColumnProfile {
     /**
      * No.of Rows that contain duplicates in a column.
      */
-    duplicateCount?: number;
+    duplicateCount?:  number;
+    executionSource?: TableExecutionSource;
     /**
      * First quartile of a column.
      */
@@ -877,6 +884,16 @@ export interface CustomMetricProfile {
     value?: number;
 }
 
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
+}
+
 export interface HistogramClass {
     /**
      * Boundaries of Histogram.
@@ -892,14 +909,20 @@ export interface HistogramClass {
  * This schema defines the type used for describing different types of data models.
  */
 export enum DataModelType {
+    HexDataModel = "HexDataModel",
     LookMlExplore = "LookMlExplore",
     LookMlView = "LookMlView",
     MetabaseDataModel = "MetabaseDataModel",
     MicroStrategyDataset = "MicroStrategyDataset",
+    ModeDataModel = "ModeDataModel",
+    OmniDataModel = "OmniDataModel",
     PowerBIDataFlow = "PowerBIDataFlow",
     PowerBIDataModel = "PowerBIDataModel",
+    PowerBIDatamart = "PowerBIDatamart",
     QlikDataModel = "QlikDataModel",
     QuickSightDataModel = "QuickSightDataModel",
+    RillMetricsView = "RillMetricsView",
+    RillModel = "RillModel",
     SapS4HanaCdsView = "SapS4HanaCdsView",
     SigmaDataModel = "SigmaDataModel",
     SsrsDataModel = "SsrsDataModel",
@@ -913,8 +936,10 @@ export enum DataModelType {
 /**
  * Status of the DashboardDataModel.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -986,12 +1011,14 @@ export enum DashboardServiceType {
     Metabase = "Metabase",
     MicroStrategy = "MicroStrategy",
     Mode = "Mode",
+    Omni = "Omni",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     Redash = "Redash",
+    Rill = "Rill",
     SapS4Hana = "SapS4Hana",
     Sigma = "Sigma",
     Ssrs = "Ssrs",

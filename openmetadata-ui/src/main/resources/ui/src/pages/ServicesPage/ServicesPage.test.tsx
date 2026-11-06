@@ -33,13 +33,6 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 });
 
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<>mockErrorPlaceHolder</>);
-  }
-);
-
-jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
     return jest.fn().mockReturnValue(<>mockTitleBreadcrumb</>);
@@ -113,6 +106,22 @@ describe('ServicesPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('should redirect to 404 when tab is an unknown service category', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/services/mcp']}>
+          <Routes>
+            <Route element={<ServicesPage />} path="/services/:tab" />
+            <Route element={<>mockNotFound</>} path="/404" />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    expect(await screen.findByText('mockNotFound')).toBeInTheDocument();
+    expect(screen.queryByText('mockServices')).not.toBeInTheDocument();
+  });
+
   it('should render ErrorPlaceholder when user does not have permission', async () => {
     (userPermissions.hasViewPermissions as jest.Mock).mockImplementationOnce(
       jest.fn().mockReturnValue(false)
@@ -120,7 +129,7 @@ describe('ServicesPage', () => {
 
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={['/services/services']}>
+        <MemoryRouter initialEntries={['/services/databases']}>
           <Routes>
             <Route element={<ServicesPage />} path="/services/:tab" />
           </Routes>
@@ -128,6 +137,8 @@ describe('ServicesPage', () => {
       );
     });
 
-    expect(await screen.findByText('mockErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
   });
 });

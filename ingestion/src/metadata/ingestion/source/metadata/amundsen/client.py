@@ -14,7 +14,8 @@ Neo4J helper
 
 import importlib
 import traceback
-from typing import Any, Iterable, Iterator, Optional, Union
+from collections.abc import Iterable, Iterator
+from typing import Any
 
 import neo4j
 from neo4j import GraphDatabase
@@ -26,13 +27,13 @@ logger = ingestion_logger()
 
 
 class Neo4JConfig(ConfigModel):
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
     neo4j_url: str
     max_connection_life_time: int = 50
     neo4j_encrypted: bool = True
     neo4j_validate_ssl: bool = False
-    model_class: Optional[str] = None
+    model_class: str | None = None
 
 
 class Neo4jHelper:
@@ -48,7 +49,7 @@ class Neo4jHelper:
         self.conf = conf
         self.graph_url = self.conf.neo4j_url
         self.driver = self._get_driver()
-        self._extract_iter: Union[None, Iterator] = None
+        self._extract_iter: None | Iterator = None
 
         model_class = self.conf.model_class
         if model_class is not None:
@@ -80,7 +81,7 @@ class Neo4jHelper:
         result = transaction.run(query)
         entities = []
         for record in result:
-            entities.append(record.data())
+            entities.append(record.data())  # noqa: PERF401
         return entities
 
     def execute_query(self, query: str) -> Iterable[Any]:

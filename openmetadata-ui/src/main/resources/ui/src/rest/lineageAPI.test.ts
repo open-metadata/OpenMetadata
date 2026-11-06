@@ -12,16 +12,23 @@
  */
 
 import { EntityType } from '../enums/entity.enum';
+import {
+  LineageBand,
+  LineageLens,
+} from '../generated/api/lineage/lineageScene';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
-import APIClient from './index';
+import { PipelineViewMode } from '../generated/configuration/lineageSettings';
+import APIClient from './axiosClient';
 import {
   exportLineageByEntityCountAsync,
   getLineageByEntityCount,
   getLineageDataByFQN,
+  getLineageEdgeDetails,
   getLineagePagingData,
+  getLineageScene,
 } from './lineageAPI';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   get: jest.fn().mockResolvedValue({ data: {} }),
 }));
 
@@ -113,8 +120,10 @@ describe('lineageAPI', () => {
       entityType: EntityType.TABLE,
       direction: LineageDirection.Downstream,
       config: {
-        upstreamDepth: 0,
         downstreamDepth: 3,
+        nodesPerLayer: 50,
+        pipelineViewMode: PipelineViewMode.Node,
+        upstreamDepth: 0,
       },
       queryFilter: 'name:orders',
       columnFilter: 'columnName:customer_id',
@@ -129,9 +138,49 @@ describe('lineageAPI', () => {
         query_filter: 'name:orders',
         column_filter: 'columnName:customer_id',
         includeDeleted: false,
-        size: undefined,
+        size: 50,
         from: undefined,
+        startTime: undefined,
+        endTime: undefined,
       },
     });
+  });
+
+  it('getLineageScene sends semantic scene params', async () => {
+    await getLineageScene({
+      focusFqn: 'sample_data',
+      entityType: EntityType.DATABASE_SERVICE,
+      lens: LineageLens.Service,
+      band: LineageBand.Asset,
+      config: {
+        downstreamDepth: 2,
+        nodesPerLayer: 50,
+        pipelineViewMode: PipelineViewMode.Node,
+        upstreamDepth: 1,
+      },
+      queryFilter: 'name:orders',
+    });
+
+    expect(mockGet).toHaveBeenCalledWith('lineage/scene', {
+      params: {
+        focusFqn: 'sample_data',
+        entityType: EntityType.DATABASE_SERVICE,
+        lens: LineageLens.Service,
+        band: LineageBand.Asset,
+        upstreamDepth: 1,
+        downstreamDepth: 2,
+        query_filter: 'name:orders',
+        includeDeleted: false,
+        size: 50,
+      },
+    });
+  });
+
+  it('getLineageEdgeDetails encodes entity IDs as URL path segments', async () => {
+    await getLineageEdgeDetails('source/id?version=1', 'target#id');
+
+    expect(mockGet).toHaveBeenCalledWith(
+      'lineage/getLineageEdge/source%2Fid%3Fversion%3D1/target%23id'
+    );
   });
 });

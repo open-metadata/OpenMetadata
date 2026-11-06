@@ -35,6 +35,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Directory;
@@ -81,9 +82,10 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
     List<Directory> directories =
         repository.listAllForCSV(
             repository.getFields("name,owners,tags,domains,extension"),
-            driveService.getFullyQualifiedName());
+            driveService.getFullyQualifiedName(),
+            user);
 
-    directories.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    directories.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new DriveServiceCsv(driveService, user, recursive)
         .exportAllCsv(directories, recursive, callback);
   }
@@ -159,7 +161,8 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
               // Convert the CSV record to a List<String>
               List<String> recordList = new ArrayList<>();
               for (int i = 0; i < record.size(); i++) {
-                recordList.add(record.get(i));
+                // Child export cells are already escaped; restore so formatCsv escapes once.
+                recordList.add(CsvUtil.restoreFormula(record.get(i)));
               }
               // Add the record to the CSV file using the overridden addRecord method
               this.addRecord(csvFile, recordList);
@@ -205,10 +208,10 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
                 .withFullyQualifiedName(directoryFqn);
       }
 
-      // Update directory fields from CSV
+      // Update directory fields from CSV (header order: name, displayName, description, ...)
       directory
-          .withDescription(csvRecord.get(1))
-          .withDisplayName(csvRecord.get(2))
+          .withDisplayName(csvRecord.get(1))
+          .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(
               getTagLabels(
@@ -217,7 +220,7 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
                   List.of(
                       Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(5, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 6))
+          .withDomains(getDomains(printer, csvRecord, 6, directory.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 7));
 
       if (processRecord) {
@@ -225,7 +228,7 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
       }
     }
 
-    protected void addEntityToCSV(CsvFile csvFile, EntityInterface entity, String entityType) {
+    protected void addEntityToCSV(CsvFile csvFile, EntityInterface<?> entity, String entityType) {
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());

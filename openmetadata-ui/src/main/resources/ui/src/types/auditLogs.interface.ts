@@ -97,3 +97,13 @@ export interface AuditLogExportResponse {
   jobId: string;
   message: string;
 }
+
+/** Status of an export job, as returned by `GET /audit/logs/export/{jobId}`. */
+export interface AuditLogExportJob {
+  jobId: string;
+  status: string;
+  message?: string;
+  error?: string;
+  progress?: number;
+  total?: number;
+}

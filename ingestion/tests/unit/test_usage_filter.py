@@ -14,7 +14,7 @@
 Usage query database and schema filter tests
 """
 
-from typing import Dict, List, Optional, Type, TypeVar
+from typing import TypeVar
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -62,10 +62,10 @@ mock_clickhouse_config = {
 
 def mock_list_entities(
     self,
-    entity: Type[T],
-    fields: Optional[List[str]] = None,
+    entity: type[T],
+    fields: list[str] | None = None,
     limit: int = 1000,
-    params: Optional[Dict[str, str]] = None,
+    params: dict[str, str] | None = None,
 ):
     """
     mock list entities for databases

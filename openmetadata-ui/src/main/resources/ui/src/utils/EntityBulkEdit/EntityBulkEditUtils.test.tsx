@@ -15,6 +15,8 @@ import { render, screen } from '@testing-library/react';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { TestCaseStatus } from '../../generated/tests/testCase';
+import { exportTestCasesInCSV } from '../../rest/testAPI';
 import {
   getBulkEditButton,
   getBulkEditCSVExportEntityApi,
@@ -144,6 +146,35 @@ describe('EntityBulkEditUtils', () => {
       expect(result).toBeDefined();
     });
 
+    it('should send the test case list filters with the export', async () => {
+      const exportApi = getBulkEditCSVExportEntityApi(EntityType.TEST_CASE, {
+        testCaseStatus: TestCaseStatus.Failed,
+        q: 'nulls',
+      });
+
+      await exportApi('sample_data.ecommerce_db.shopify.fact_sale', {
+        recursive: false,
+      });
+
+      expect(exportTestCasesInCSV).toHaveBeenCalledWith(
+        'sample_data.ecommerce_db.shopify.fact_sale',
+        { recursive: false, testCaseStatus: TestCaseStatus.Failed, q: 'nulls' }
+      );
+    });
+
+    it('should export every test case when the list had no filters', async () => {
+      await getBulkEditCSVExportEntityApi(EntityType.TEST_CASE)(
+        WILD_CARD_CHAR,
+        {
+          recursive: false,
+        }
+      );
+
+      expect(exportTestCasesInCSV).toHaveBeenCalledWith(WILD_CARD_CHAR, {
+        recursive: false,
+      });
+    });
+
     it('should return exportTableDetailsInCSV for unknown entity type', () => {
       const result = getBulkEditCSVExportEntityApi(
         'UNKNOWN_TYPE' as EntityType
@@ -180,9 +211,7 @@ describe('EntityBulkEditUtils', () => {
       const button = screen.getByTestId('bulk-edit-table');
 
       expect(button).toBeInTheDocument();
-      expect(button).toHaveClass('text-primary');
-      expect(button).toHaveClass('p-0');
-      expect(button).toHaveClass('remove-button-background-hover');
+      expect(button.tagName).toBe('BUTTON');
     });
 
     it('should return null when hasPermission is false', () => {
@@ -226,6 +255,15 @@ describe('EntityBulkEditUtils', () => {
       const result = getBulkEntityNavigationPath(EntityType.TEST_CASE, '*');
 
       expect(result).toBe('/data-quality/test-cases');
+    });
+
+    it('should return metrics listing path for METRIC with wildcard fqn', () => {
+      const result = getBulkEntityNavigationPath(
+        EntityType.METRIC,
+        WILD_CARD_CHAR
+      );
+
+      expect(result).toBe('/metrics');
     });
 
     it('should return TABLE profiler path for TEST_CASE with TABLE source entity type', () => {

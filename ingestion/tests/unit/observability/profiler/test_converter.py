@@ -16,13 +16,22 @@ Test ometa to orm converter
 from unittest.mock import patch
 from uuid import UUID
 
+import sqlalchemy
 from pytest import mark
+from snowflake.sqlalchemy import dialect as snowflake_dialect
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
+from metadata.ingestion.source import sqa_types
+from metadata.profiler.orm.converter.azuresql.converter import AzureSqlMapTypes
+from metadata.profiler.orm.converter.base import _safe_orm_attr, ometa_to_sqa_orm
+from metadata.profiler.orm.converter.common import CommonMapTypes
+from metadata.profiler.orm.converter.converter_registry import converter_registry
+from metadata.profiler.orm.converter.mssql.converter import MssqlMapTypes
+from metadata.profiler.orm.registry import NOT_COMPUTE, CustomTypes
+from metadata.profiler.orm.types import custom_xml
 
 
 @patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
@@ -83,6 +92,55 @@ def test_snowflake_case_sensitive_orm(mock_schema, mock_database, column_definit
 
 @patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
 @patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+def test_columns_differing_only_in_case(mock_schema, mock_database):
+    """Snowflake allows columns that only differ in their casing. We lowercase the
+    SQA column key, so such columns used to collide and get dropped from the ORM
+    table, making the mapper fail with `column ... is not represented in the
+    mapper's table`.
+    """
+    column_definition = [
+        ("id_hotel", DataType.STRING),
+        ("Hotel_region", DataType.STRING),
+        ("HOTEL_REGION", DataType.STRING),
+    ]
+
+    columns = [Column(name=name, dataType=data_type) for name, data_type in column_definition]
+
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="duplicate_case_table",
+        columns=columns,
+        serviceType=DatabaseServiceType.Snowflake,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    # Both case variants are mapped, and the original names are kept
+    assert [name for name, _ in column_definition] == [col.name for col in orm_table.__table__.columns]
+    # Only the non-ambiguous column can be safely keyed by its lowercase name
+    assert orm_table.__table__.columns.keys() == ["id_hotel", "Hotel_region", "HOTEL_REGION"]
+    for name, _ in column_definition:
+        assert hasattr(orm_table, name)
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="lowercase_schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="DATABASE")
+def test_snowflake_lowercase_schema_is_quoted(mock_schema, mock_database):
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="ALBUM",
+        columns=[Column(name="ID", dataType=DataType.INT)],
+        serviceType=DatabaseServiceType.Snowflake,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    compiled_query = str(sqlalchemy.select(orm_table).compile(dialect=snowflake_dialect()))
+    assert 'FROM "lowercase_schema"."ALBUM"' in compiled_query
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
 def test_metadata_column(mock_schema, mock_database):
     """Test that snowflake case sensitive orm table
     are enforced correctly
@@ -119,3 +177,358 @@ def test_metadata_column(mock_schema, mock_database):
     assert orm_table.__table_args__["schema"] == "schema"
     for name, _ in column_definition:
         assert hasattr(orm_table, name)
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+@mark.parametrize(
+    "service_type, table_name",
+    [
+        (DatabaseServiceType.Mssql, "mssql_money_and_bit_table"),
+        (DatabaseServiceType.AzureSQL, "azuresql_money_and_bit_table"),
+    ],
+)
+def test_money_and_bit_types_are_mapped(mock_schema, mock_database, service_type, table_name):
+    """MONEY and BIT columns (e.g. from MSSQL) must resolve to a concrete SQLAlchemy
+    type instead of falling back to CustomTypes.UNDETERMINED, which skips profiling
+    and renders sample data as the literal string "OPENMETADATA_UNDETERMIND[value]".
+
+    Each case needs its own table name: ometa_to_sqa_orm keys the generated declarative
+    class on it, so reusing one collides in the shared registry.
+    """
+    column_definition = [
+        ("amount", DataType.MONEY),
+        ("flag", DataType.BIT),
+    ]
+
+    columns = [Column(name=name, dataType=data_type) for name, data_type in column_definition]
+
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name=table_name,
+        columns=columns,
+        serviceType=service_type,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    undetermined_type = CustomTypes.UNDETERMINED.value
+    amount_type = orm_table.__table__.columns["amount"].type
+    flag_type = orm_table.__table__.columns["flag"].type
+
+    assert not isinstance(amount_type, undetermined_type)
+    assert isinstance(amount_type, sqlalchemy.NUMERIC)
+    assert not isinstance(flag_type, undetermined_type)
+    assert isinstance(flag_type, sqlalchemy.BOOLEAN)
+
+
+@mark.parametrize("mapper", [MssqlMapTypes, AzureSqlMapTypes])
+def test_money_and_bit_reverse_map(mapper):
+    """The reverse map drives metric_filter's decision on which metrics to run, so
+    MONEY and BIT must be added to the existing entries rather than replacing them.
+    """
+    reverse_map = mapper.map_sqa_to_om_types()
+
+    assert reverse_map[sqlalchemy.NUMERIC] == {DataType.NUMBER, DataType.NUMERIC, DataType.MONEY}
+    assert reverse_map[sqlalchemy.BOOLEAN] == {DataType.BOOLEAN, DataType.BIT}
+
+
+def test_money_and_bit_stay_out_of_the_common_mapper():
+    """These are T-SQL types: mapping them on CommonMapTypes would apply them to every
+    connector, including ones where BIT is a bit-string rather than a boolean.
+    """
+    assert DataType.MONEY not in CommonMapTypes._TYPE_MAP
+    assert DataType.BIT not in CommonMapTypes._TYPE_MAP
+
+    common_reverse_map = CommonMapTypes.map_sqa_to_om_types()
+    assert DataType.MONEY not in common_reverse_map[sqlalchemy.NUMERIC]
+    assert DataType.BIT not in common_reverse_map[sqlalchemy.BOOLEAN]
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+def test_dunder_prefixed_columns_are_mapped(mock_schema, mock_database):
+    """Columns whose names begin with __ or _sa_ are filtered by SQLAlchemy 2.x's
+    declarative scan and silently dropped from the mapped Table.  When the dropped
+    column is the first one it also carries the synthetic primary key, causing a hard
+    mapper error (see #32508).  ometa_to_sqa_orm must remap such names to a safe
+    class-attribute key so every column reaches the ORM table.
+    """
+    column_definition = [
+        ("__hevo_id", DataType.STRING),  # dunder prefix — is the PK, must not be dropped
+        ("normal_col", DataType.INT),
+        ("_sa_special", DataType.STRING),  # _sa_ prefix — also filtered by SQLAlchemy
+    ]
+
+    columns = [Column(name=name, dataType=data_type) for name, data_type in column_definition]
+
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="dunder_test_table",
+        columns=columns,
+        serviceType=DatabaseServiceType.BigQuery,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    # Every column must appear in the underlying Table under its original name
+    assert [col.name for col in orm_table.__table__.columns] == [name for name, _ in column_definition]
+    # The first column (dunder-prefixed) must be the primary key
+    pk_cols = list(orm_table.__table__.primary_key)
+    assert len(pk_cols) == 1
+    assert pk_cols[0].name == "__hevo_id"
+
+
+def test_safe_orm_attr_collision_between_normal_and_remapped_dunder():
+    """A normal column named exactly like a remapped dunder key must not collide.
+
+    If a table has both ``__hevo_id`` (remapped to ``om_col___hevo_id``) and a
+    real column literally named ``om_col___hevo_id``, _safe_orm_attr must yield
+    distinct keys for both so neither column is silently overwritten.
+    """
+    existing: set = set()
+
+    # The real column arrives first and claims "om_col___hevo_id".
+    real_key = _safe_orm_attr("om_col___hevo_id", existing)
+    existing.add(real_key)
+    assert real_key == "om_col___hevo_id"
+
+    # The dunder column is remapped — its initial candidate collides, so it
+    # must get an extra underscore suffix.
+    dunder_key = _safe_orm_attr("__hevo_id", existing)
+    existing.add(dunder_key)
+    assert dunder_key == "om_col___hevo_id_"
+
+    # Both keys are distinct — no column was silently overwritten.
+    assert real_key != dunder_key
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+@mark.parametrize(
+    "service_type, table_name",
+    [
+        (DatabaseServiceType.Mssql, "mssql_xml_table"),
+        (DatabaseServiceType.Postgres, "postgres_xml_table"),
+    ],
+)
+def test_xml_columns_are_mapped(mock_schema, mock_database, service_type, table_name):
+    """An XML column holds a text document every driver returns as a string, but it had
+    no entry in the type map, so it fell back to CustomTypes.UNDETERMINED and its sample
+    data persisted as the literal "OPENMETADATA_UNDETERMIND[<root/>]" instead of the
+    document (found by the MSSQL CLI E2E v2 suite).
+
+    It maps to a TEXT subclass rather than TEXT itself: `NOT_COMPUTE` matches on the ORM
+    type's class name, so plain TEXT would have started running distinct/unique/histogram
+    metrics on a type most dialects cannot group or compare.
+    """
+    columns = [Column(name="payload", dataType=DataType.XML)]
+
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name=table_name,
+        columns=columns,
+        serviceType=service_type,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    payload_type = orm_table.__table__.columns["payload"].type
+    assert not isinstance(payload_type, CustomTypes.UNDETERMINED.value)
+    assert isinstance(payload_type, sqlalchemy.TEXT)
+    # core._prepare_column_metrics and UniqueCount both gate on this name.
+    assert type(payload_type).__name__ in NOT_COMPUTE
+
+
+def test_xml_reverse_map_stays_separate_from_text():
+    """metric_filter picks a column's metrics off the reverse map, so XML needs its own
+    entry: sharing TEXT's would apply an XML metric configuration to every TEXT column.
+    """
+    reverse_map = CommonMapTypes.map_sqa_to_om_types()
+
+    assert reverse_map[custom_xml.XML] == {DataType.XML}
+    assert reverse_map[sqlalchemy.TEXT] == {DataType.TEXT, DataType.MEDIUMTEXT}
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+@mark.parametrize(
+    "service_type, table_name",
+    [
+        (DatabaseServiceType.Postgres, "postgres_geometry_table"),
+        (DatabaseServiceType.Mysql, "mysql_geometry_table"),
+        (DatabaseServiceType.Mssql, "mssql_geometry_table"),
+        (DatabaseServiceType.AzureSQL, "azuresql_geometry_table"),
+    ],
+)
+def test_geometry_columns_are_mapped(mock_schema, mock_database, service_type, table_name):
+    """A geometry column had no entry in the type map, so its sample data persisted as
+    "OPENMETADATA_UNDETERMIND[<wkb hex>]" (#33157). It must map to a type that decodes
+    WKB while `NOT_COMPUTE` still skips its metrics by class name.
+    """
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name=table_name,
+        columns=[Column(name="shape", dataType=DataType.GEOMETRY)],
+        serviceType=service_type,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    shape_type = orm_table.__table__.columns["shape"].type
+    assert isinstance(shape_type, CustomTypes.GEOMETRY.value)
+    assert not isinstance(shape_type, CustomTypes.UNDETERMINED.value)
+    assert type(shape_type).__name__ in NOT_COMPUTE
+
+
+def test_redshift_mapper_does_not_leak_geometry_into_other_dialects():
+    """The Redshift mapper used to update the shared CommonMapTypes._TYPE_MAP on init,
+    remapping geometry to a bare string for every dialect built afterwards."""
+    from sqlalchemy_redshift.dialect import GEOMETRY
+
+    from metadata.profiler.orm.converter.redshift.converter import RedshiftMapTypes
+
+    redshift_mapper = RedshiftMapTypes()
+    geometry_col = Column(name="shape", dataType=DataType.GEOMETRY)
+
+    assert CommonMapTypes().return_custom_type(geometry_col, DatabaseServiceType.Postgres) is CustomTypes.GEOMETRY.value
+    assert redshift_mapper.return_custom_type(geometry_col, DatabaseServiceType.Redshift) is GEOMETRY
+
+
+def test_geometry_reverse_map_stays_separate_from_geography():
+    reverse_map = CommonMapTypes.map_sqa_to_om_types()
+
+    assert reverse_map[CustomTypes.GEOMETRY.value] == {DataType.GEOMETRY}
+    assert reverse_map[sqa_types.SQASGeography] == {DataType.GEOGRAPHY}
+
+
+@mark.parametrize(
+    "array_data_type, expected_item_type",
+    [
+        (DataType.STRING, sqlalchemy.String),
+        (DataType.UNKNOWN, sqlalchemy.types.NullType),
+    ],
+)
+def test_map_array_types(array_data_type, expected_item_type):
+    """Array columns map to a one-dimensional array of their element type; an
+    unmapped element type is left untyped, since SQLAlchemy needs one to build an ARRAY.
+    """
+    col = Column(name="tags", dataType=DataType.ARRAY, arrayDataType=array_data_type)
+
+    sqa_type = CommonMapTypes().map_types(col, DatabaseServiceType.Clickhouse)
+
+    assert isinstance(sqa_type.impl.item_type, expected_item_type)
+    assert sqa_type.impl.dimensions is None
+
+
+@mark.parametrize(
+    "data_type_display, expected_item_type, expected_dimensions",
+    [
+        ("array<array<string>>", sqlalchemy.String, 2),
+        ("Array(Array(String))", sqlalchemy.String, 2),
+        ("array<array<array<int>>>", sqlalchemy.INT, 3),
+        ("array<array<nullable<string>>>", sqlalchemy.String, 2),
+        ("array<array<lowcardinality<string>>>", sqlalchemy.String, 2),
+        ("Nullable(Array(Array(String)))", sqlalchemy.String, 2),
+        (" Array ( Array ( String ) ) ", sqlalchemy.String, 2),
+        ("array<\narray<array<int>>>\n", sqlalchemy.INT, 3),
+        ("Array(Array(Decimal(18, 2)))", sqlalchemy.DECIMAL, 2),
+        ("Array(Array(Enum8(')' = 1, '<' = 2)))", sqlalchemy.types.NullType, 2),
+        ("Array(Array(Enum8('it''s >' = 1)))", sqlalchemy.types.NullType, 2),
+        (r"Array(Array(Enum8('it\'s >' = 1)))", sqlalchemy.types.NullType, 2),
+        ("array<array<not_a_type>>", sqlalchemy.types.NullType, 2),
+        (None, sqlalchemy.types.NullType, None),
+        ("", sqlalchemy.types.NullType, None),
+        ("array", sqlalchemy.types.NullType, None),
+        ("array<string>", sqlalchemy.types.NullType, None),
+    ],
+)
+@mark.parametrize(
+    "service_type",
+    [
+        DatabaseServiceType.Clickhouse,
+        DatabaseServiceType.Trino,
+        DatabaseServiceType.Databricks,
+        DatabaseServiceType.Athena,
+    ],
+)
+def test_map_nested_array_types(data_type_display, expected_item_type, expected_dimensions, service_type):
+    """SQLAlchemy does not nest ARRAY types (e.g. ClickHouse `Array(Array(String))`), so
+    a nested array maps to ARRAY(base_type, dimensions=N), with the depth and base type
+    read from `dataTypeDisplay`. A base type that cannot be resolved is left untyped.
+    """
+    col = Column(
+        name="tags",
+        dataType=DataType.ARRAY,
+        arrayDataType=DataType.ARRAY,
+        dataTypeDisplay=data_type_display,
+    )
+
+    sqa_type = converter_registry[service_type]().map_types(col, service_type)
+
+    assert isinstance(sqa_type.impl.item_type, expected_item_type)
+    assert sqa_type.impl.dimensions == expected_dimensions
+
+
+@mark.parametrize(
+    "data_type_display",
+    [
+        "array<array<string)>",
+        "array(array(string>>",
+        "array<array<string>",
+        "array<array<string>>>",
+        "array<array<string>>,array<int>",
+        "array<array<string>,array<int>>",
+        "array<array<string,int>>",
+        "array<array<nullable<string,int>>>",
+        "array<array<>>",
+        "array<array<   >>",
+        "array<array<string>> trailing",
+        "Array(Array(Enum8('unterminated = 1)))",
+    ],
+)
+def test_map_malformed_nested_array_types_remains_untyped(data_type_display):
+    col = Column(
+        name="tags",
+        dataType=DataType.ARRAY,
+        arrayDataType=DataType.ARRAY,
+        dataTypeDisplay=data_type_display,
+    )
+
+    sqa_type = CommonMapTypes().map_types(col, DatabaseServiceType.Clickhouse)
+
+    assert isinstance(sqa_type.impl.item_type, sqlalchemy.types.NullType)
+    assert sqa_type.impl.dimensions is None
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+@mark.parametrize(
+    "data_type_display, table_name",
+    [
+        ("array<array<string>>", "nested_array_repro"),
+        (None, "nested_array_missing_display"),
+        ("array<array<string)>", "nested_array_malformed_display"),
+    ],
+)
+def test_table_with_nested_array_column_builds_orm(mock_schema, mock_database, data_type_display, table_name):
+    """A table with a nested array column must still build an ORM, so tests and
+    the profiler can run on its other columns."""
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name=table_name,
+        columns=[
+            Column(name="id", dataType=DataType.BIGINT),
+            Column(
+                name="tags",
+                dataType=DataType.ARRAY,
+                arrayDataType=DataType.ARRAY,
+                dataTypeDisplay=data_type_display,
+            ),
+        ],
+        serviceType=DatabaseServiceType.Clickhouse,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    assert orm_table.__table__.columns.keys() == ["id", "tags"]

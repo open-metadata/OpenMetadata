@@ -14,13 +14,15 @@
 import {
   Autocomplete,
   Button,
+  ButtonUtility,
   Card,
   Input,
   Select,
   SelectItemType,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { debounce } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -30,7 +32,13 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useListData } from 'react-stately';
+import { FQN_SEPARATOR_CHAR } from '../../../../../constants/char.constants';
 import { useWorkflowModeContext } from '../../../../../contexts/WorkflowModeContext';
+import {
+  fqnsToGlossaryTags,
+  glossaryTagsToFqns,
+} from '../../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../../../common/GlossaryTermPicker/GlossaryTermPicker';
 import { CONDITION_BUILDER_WORKFLOW_TRIGGER_FIELDS } from './ConditionBuilder.constants';
 import type {
   ConditionBuilderOption,
@@ -54,6 +62,38 @@ interface ConditionBuilderValueControlProps {
   readonly values: string[];
   onChange: (values: string[]) => void;
 }
+
+// These fields hold glossary-term FQNs, so they get the tree picker.
+const GLOSSARY_TERM_CONDITION_FIELDS: string[] = ['glossary', 'relatedTerms'];
+
+const isGlossaryTermConditionField = (
+  fieldDef: ConditionFieldDefinition | undefined
+): boolean =>
+  Boolean(fieldDef && GLOSSARY_TERM_CONDITION_FIELDS.includes(fieldDef.value));
+
+// A chip has no room for supporting text, so the parent goes into its label.
+const getChipLabel = (option: ConditionBuilderOption | undefined) =>
+  option?.supportingText
+    ? `${option.supportingText}${FQN_SEPARATOR_CHAR}${option.label}`
+    : option?.label;
+
+const resolveMultiSelectItems = (
+  hasFetchOptions: boolean,
+  loading: boolean,
+  asyncOptions: ConditionBuilderOption[],
+  staticOptions: ConditionBuilderOption[]
+): SelectItemType[] => {
+  let sourceOptions = staticOptions;
+  if (hasFetchOptions) {
+    sourceOptions = loading ? [] : asyncOptions;
+  }
+
+  return sourceOptions.map((o) => ({
+    id: o.value,
+    label: o.label,
+    supportingText: o.supportingText,
+  }));
+};
 
 function ConditionBuilderValueControl(
   props: Readonly<ConditionBuilderValueControlProps>
@@ -80,6 +120,8 @@ function ConditionBuilderValueControl(
     }));
   }, [fieldDef, t]);
 
+  const supportsSearch = hasFetchOptions && fieldDef?.supportsSearch !== false;
+
   const loadAsyncOptions = useCallback(
     async (search: string) => {
       if (!fieldDef?.fetchOptions) {
@@ -102,11 +144,24 @@ function ConditionBuilderValueControl(
     [fieldDef]
   );
 
+  const debouncedLoadAsyncOptions = useMemo(
+    () => debounce((search: string) => loadAsyncOptions(search), 300),
+    [loadAsyncOptions]
+  );
+
+  useEffect(
+    () => () => {
+      debouncedLoadAsyncOptions.cancel();
+    },
+    [debouncedLoadAsyncOptions]
+  );
+
   useEffect(() => {
-    if (hasFetchOptions && asyncOptions.length === 0) {
+    if (hasFetchOptions) {
+      setAsyncOptions([]);
       loadAsyncOptions('');
     }
-  }, [hasFetchOptions, asyncOptions.length, loadAsyncOptions]);
+  }, [hasFetchOptions, loadAsyncOptions]);
 
   // useListData for the multi-select controls
   const selectedItems = useListData<SelectItemType>({ initialItems: [] });
@@ -120,9 +175,12 @@ function ConditionBuilderValueControl(
       const currentIds = selectedItems.items.map((item) => item.id);
       currentIds.forEach((id) => selectedItems.remove(id));
       values.forEach((v) => {
-        const label = hasFetchOptions
-          ? asyncOptions.find((o) => o.value === v)?.label ?? v
-          : staticOptions.find((o) => o.value === v)?.label ?? v;
+        const label =
+          getChipLabel(
+            (hasFetchOptions ? asyncOptions : staticOptions).find(
+              (o) => o.value === v
+            )
+          ) ?? v;
         selectedItems.append({ id: v, label });
       });
       prevValuesRef.current = values;
@@ -143,6 +201,18 @@ function ConditionBuilderValueControl(
           onChange={(checked) => onChange([checked ? 'true' : 'false'])}
         />
       </div>
+    );
+  }
+
+  if (isGlossaryTermConditionField(fieldDef)) {
+    return (
+      <GlossaryTermPicker
+        data-testid={dataTestId}
+        disabled={disabled}
+        placeholder={placeholder}
+        value={fqnsToGlossaryTags(values)}
+        onChange={(terms) => onChange(glossaryTagsToFqns(terms))}
+      />
     );
   }
 
@@ -167,14 +237,18 @@ function ConditionBuilderValueControl(
   }
 
   const options = hasFetchOptions ? asyncOptions : staticOptions;
-  const items: SelectItemType[] = (
-    hasFetchOptions ? (loading ? [] : asyncOptions) : staticOptions
-  ).map((o) => ({ id: o.value, label: o.label }));
+  const items: SelectItemType[] = resolveMultiSelectItems(
+    hasFetchOptions,
+    loading,
+    asyncOptions,
+    staticOptions
+  );
 
   return (
     <Autocomplete
       className="tw:w-full"
       data-testid={dataTestId}
+      filterOption={supportsSearch ? () => true : undefined}
       isDisabled={disabled ?? false}
       items={items}
       maxVisibleItems={1}
@@ -190,16 +264,18 @@ function ConditionBuilderValueControl(
         const opt = options.find((o) => o.value === String(key));
         selectedItems.append({
           id: String(key),
-          label: opt?.label ?? String(key),
+          label: getChipLabel(opt) ?? String(key),
         });
         onChange([...selectedItems.items.map((i) => i.id), String(key)]);
-      }}>
+      }}
+      onSearchChange={supportsSearch ? debouncedLoadAsyncOptions : undefined}>
       {(item) => (
         <Autocomplete.Item
           id={item.id}
           isDisabled={item.isDisabled}
           key={item.id}
           label={item.label}
+          supportingText={item.supportingText}
         />
       )}
     </Autocomplete>
@@ -342,7 +418,7 @@ export const ConditionBuilder: React.FC<ConditionBuilderProps> = ({
       data-testid={dataTestId}>
       {showCondition && (
         <div
-          className="tw:flex tw:justify-center tw:mb-1"
+          className="tw:flex tw:justify-start tw:mb-1"
           data-testid={`${dataTestId}-condition-radio`}>
           <div className="tw:flex tw:border tw:border-border-secondary tw:rounded-lg tw:overflow-hidden">
             <Button
@@ -381,7 +457,8 @@ export const ConditionBuilder: React.FC<ConditionBuilderProps> = ({
             className="tw:flex tw:items-center tw:gap-4 tw:flex-nowrap"
             data-testid="advanced-search-field-select"
             key={row.id}>
-            <div className="tw:flex-1 tw:min-w-0">
+            {/* Fits the longest field label; the value control takes the rest. */}
+            <div className="tw:w-44 tw:shrink-0">
               <Select
                 data-testid={`${dataTestId}-row-${index}-field`}
                 isDisabled={isDisabled}
@@ -414,22 +491,23 @@ export const ConditionBuilder: React.FC<ConditionBuilderProps> = ({
             </div>
 
             <div className="tw:flex tw:items-center tw:shrink-0 tw:gap-1">
-              <Button
-                color="tertiary"
+              <ButtonUtility
                 data-testid={`${dataTestId}-add-row`}
-                iconLeading={Plus}
+                icon={Plus}
                 isDisabled={isDisabled}
-                size="sm"
-                onPress={handleAddRow}
+                size="lg"
+                tooltip={t('label.add')}
+                onClick={handleAddRow}
               />
               {rows.length > 1 && (
-                <Button
+                <ButtonUtility
                   color="tertiary-destructive"
                   data-testid={`${dataTestId}-remove-row-${index}`}
-                  iconLeading={Trash01}
+                  icon={Trash01}
                   isDisabled={isDisabled}
-                  size="sm"
-                  onPress={() => handleRemoveRow(row.id)}
+                  size="lg"
+                  tooltip={t('label.remove')}
+                  onClick={() => handleRemoveRow(row.id)}
                 />
               )}
             </div>

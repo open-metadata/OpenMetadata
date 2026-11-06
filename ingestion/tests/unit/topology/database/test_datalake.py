@@ -17,10 +17,13 @@ Unit tests for datalake source
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pandas as pd
+import pytest
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.table import Column, DataType, TableType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -33,6 +36,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.json import JSONDataFrameReader
+from metadata.readers.dataframe.reader_factory import SupportedTypes
+from metadata.readers.file.base import ReadException
 from metadata.utils.datalake.datalake_utils import (
     GenericDataFrameColumnParser,
     JsonDataFrameColumnParser,
@@ -464,7 +469,7 @@ class DatalakeUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
@@ -478,6 +483,19 @@ class DatalakeUnitTest(TestCase):
     def test_s3_schema_filer(self):
         self.datalake_source.client._client.list_buckets = lambda: MOCK_S3_SCHEMA
         assert list(self.datalake_source.get_database_schema_names()) == EXPECTED_SCHEMA
+
+    def test_get_database_schema_names_propagates_discovery_error(self):
+        """A permission/discovery error must raise (so the topology producer
+        wrapper records a clean StackTraceError) instead of yielding an
+        Either(left=...) that downstream code mis-reads as a schema name and
+        turns into a masked TypeError."""
+        self.datalake_source.client = MagicMock()
+        self.datalake_source.client.get_database_schema_names.side_effect = PermissionError(
+            "This request is not authorized to perform this operation."
+        )
+
+        with pytest.raises(PermissionError):
+            list(self.datalake_source.get_database_schema_names())
 
     def test_json_file_parse(self):
         import tempfile
@@ -511,17 +529,17 @@ class DatalakeUnitTest(TestCase):
             reader = JSONDataFrameReader(config, None)
 
             result1 = reader._read(key=tmp1_path, bucket_name="")
-            actual_df_1 = list(result1.dataframes())[0]
+            actual_df_1 = list(result1.dataframes())[0]  # noqa: RUF015
             assert actual_df_1.compare(exp_df_list).empty
 
             result2 = reader._read(key=tmp2_path, bucket_name="")
-            actual_df_2 = list(result2.dataframes())[0]
+            actual_df_2 = list(result2.dataframes())[0]  # noqa: RUF015
             assert actual_df_2.compare(exp_df_obj).empty
         finally:
             import os
 
-            os.unlink(tmp1_path)
-            os.unlink(tmp2_path)
+            os.unlink(tmp1_path)  # noqa: PTH108
+            os.unlink(tmp2_path)  # noqa: PTH108
 
         Column.__eq__ = custom_column_compare
 
@@ -539,7 +557,7 @@ class DatalakeUnitTest(TestCase):
         finally:
             import os
 
-            os.unlink(tmp3_path)
+            os.unlink(tmp3_path)  # noqa: PTH108
 
         with tempfile.NamedTemporaryFile(mode="wb", suffix=".json", delete=False) as tmp4:
             tmp4.write(EXAMPLE_JSON_TEST_4)
@@ -555,7 +573,7 @@ class DatalakeUnitTest(TestCase):
         finally:
             import os
 
-            os.unlink(tmp4_path)
+            os.unlink(tmp4_path)  # noqa: PTH108
 
         json_parser = JsonDataFrameColumnParser(pd.DataFrame(), raw_data=EXAMPLE_JSON_TEST_5)
         actual_cols_5 = json_parser.get_columns()
@@ -580,11 +598,11 @@ class DatalakeUnitTest(TestCase):
 
             result1 = reader._read(key=tmp1_path, bucket_name="")
             if result1.columns:
-                assert EXPECTED_AVRO_COL_1 == result1.columns
+                assert EXPECTED_AVRO_COL_1 == result1.columns  # noqa: SIM300
         finally:
             import os
 
-            os.unlink(tmp1_path)
+            os.unlink(tmp1_path)  # noqa: PTH108
 
         with tempfile.NamedTemporaryFile(mode="wb", suffix=".avro", delete=False) as tmp2:
             tmp2.write(AVRO_DATA_FILE)
@@ -593,11 +611,11 @@ class DatalakeUnitTest(TestCase):
         try:
             result2 = reader._read(key=tmp2_path, bucket_name="")
             if result2.columns:
-                assert EXPECTED_AVRO_COL_2 == result2.columns
+                assert EXPECTED_AVRO_COL_2 == result2.columns  # noqa: SIM300
         finally:
             import os
 
-            os.unlink(tmp2_path)
+            os.unlink(tmp2_path)  # noqa: PTH108
 
 
 mock_datalake_gcs_config = {
@@ -655,7 +673,7 @@ class DatalakeGCSUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
     @patch("metadata.utils.credentials.validate_private_key")
     @patch("google.cloud.storage.Client")
-    def __init__(self, methodName, _, __, test_connection) -> None:
+    def __init__(self, methodName, _, __, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_gcs_config)
@@ -670,7 +688,7 @@ class DatalakeGCSUnitTest(TestCase):
     @patch("google.cloud.storage.Client")
     @patch("metadata.utils.credentials.validate_private_key")
     def test_multiple_project_id_implementation(self, validate_private_key, storage_client, test_connection):
-        print(mock_multiple_project_id)
+        print(mock_multiple_project_id)  # noqa: T201
         self.datalake_source_multiple_project_id = DatalakeSource.create(
             mock_multiple_project_id["source"],
             OpenMetadataWorkflowConfig.model_validate(mock_multiple_project_id).workflowConfig.openMetadataServerConfig,
@@ -726,7 +744,7 @@ class DatalakeYieldTableNameTest(TestCase):
                 return_value="local_datalake.default.my_bucket",
             ),
         ):
-            results = list(self.source.yield_table((table_name, TableType.Regular, None, None)))
+            results = list(self.source.yield_table((table_name, TableType.Regular, None, None, None)))
 
         rights = [r.right for r in results if r.right is not None]
         return rights[0] if rights else None
@@ -755,3 +773,149 @@ class DatalakeYieldTableNameTest(TestCase):
         self.assertEqual(request.name.root, expected_hash)
         self.assertEqual(len(request.name.root), 32)
         self.assertEqual(request.displayName, table_name)
+
+
+@pytest.fixture
+def datalake_manifest_source():
+    with patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
+        source = DatalakeSource.create(
+            mock_datalake_config["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+
+    source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+    source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+    source.context.get().__dict__["database_schema"] = "my_bucket"
+    source.client = MagicMock()
+    source.client.get_table_names.return_value = [("semicolon.csv", 32)]
+    source.reader = MagicMock()
+    return source
+
+
+def discover_table_and_schema_wrapper(source):
+    discovered_table = next(source.get_tables_name_and_type())
+
+    with patch(
+        "metadata.ingestion.source.database.datalake.metadata.fetch_dataframe_first_chunk",
+        return_value=(None, None),
+    ) as fetch_dataframe:
+        assert list(source.yield_table(discovered_table)) == []
+
+    return discovered_table, fetch_dataframe.call_args.kwargs["file_fqn"]
+
+
+def test_manifest_separator_reaches_schema_inference(datalake_manifest_source):
+    datalake_manifest_source.reader.read.return_value = """
+    {
+      "entries": [
+        {
+          "dataPath": "semicolon.csv",
+          "structureFormat": "csv",
+          "separator": ";"
+        }
+      ]
+    }
+    """
+
+    discovered_table, schema_wrapper = discover_table_and_schema_wrapper(datalake_manifest_source)
+
+    assert discovered_table[-1] == ";"
+    assert schema_wrapper.separator == ";"
+
+
+@pytest.mark.parametrize(
+    "manifest_response",
+    [
+        """
+        {
+          "entries": [
+            {
+              "dataPath": "another.csv",
+              "structureFormat": "csv",
+              "separator": ";"
+            }
+          ]
+        }
+        """,
+        ReadException("openmetadata.json not found"),
+    ],
+)
+def test_missing_manifest_separator_uses_default(datalake_manifest_source, manifest_response):
+    if isinstance(manifest_response, ReadException):
+        datalake_manifest_source.reader.read.side_effect = manifest_response
+    else:
+        datalake_manifest_source.reader.read.return_value = manifest_response
+
+    discovered_table, schema_wrapper = discover_table_and_schema_wrapper(datalake_manifest_source)
+
+    assert discovered_table[-1] is None
+    assert schema_wrapper.separator is None
+
+
+class TestYieldTableSchemaInferenceLimits:
+    """Issue #29832: the Datalake pipeline bounds the children inferred for a JSON file before
+    the CreateTableRequest is built, and adds one status warning for the file.
+    """
+
+    RECORDS = (
+        {"id": 1, "payload": {"c": {"x": 1}, "a": {"x": 1}, "d": {"x": 1}, "b": {"x": 1}}},
+        {"id": 2, "payload": {"e": {"x": 2}}},
+    )
+
+    @staticmethod
+    def _source(**limits) -> DatalakeSource:
+        config = deepcopy(mock_datalake_config)
+        config["source"]["sourceConfig"]["config"].update(limits)
+        with patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"):
+            source = DatalakeSource.create(
+                config["source"],
+                OpenMetadataWorkflowConfig.model_validate(config).workflowConfig.openMetadataServerConfig,
+            )
+        source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        source.context.get().__dict__["database_schema"] = "my_bucket"
+        return source
+
+    def _payload(self, source: DatalakeSource) -> Column:
+        with (
+            patch(
+                "metadata.ingestion.source.database.datalake.metadata.fetch_dataframe_first_chunk",
+                return_value=(iter([pd.DataFrame.from_records(self.RECORDS)]), None),
+            ),
+            patch(
+                "metadata.ingestion.source.database.datalake.metadata.fqn.build",
+                return_value="local_datalake.default.my_bucket",
+            ),
+        ):
+            results = list(
+                source.yield_table(("events/part-0.jsonl", TableType.Regular, SupportedTypes.JSONL, None, None))
+            )
+        request = results[0].right
+        return {col.name.root: col for col in request.columns}["payload"]
+
+    def test_configured_limits_bound_the_create_request(self):
+        source = self._source(maxSchemaInferenceDepth=1, maxChildrenPerColumn=2)
+
+        payload = self._payload(source)
+
+        assert [(child.name.root, child.dataType, child.children) for child in payload.children] == [
+            ("a", DataType.JSON, []),
+            ("b", DataType.JSON, []),
+        ]
+        assert source.status.warnings == [
+            {
+                "my_bucket/events/part-0.jsonl": "Schema inference limits dropped nested columns. "
+                "maxSchemaInferenceDepth=1 cut the children of 2 column(s): payload.a, payload.b. "
+                "maxChildrenPerColumn=2 cut the children of 1 column(s): payload."
+            }
+        ]
+
+    def test_unset_limits_keep_every_inferred_child(self):
+        source = self._source()
+
+        payload = self._payload(source)
+
+        assert [child.name.root for child in payload.children] == ["c", "a", "d", "b", "e"]
+        assert all(child.children[0].name.root == "x" for child in payload.children)
+        assert source.status.warnings == []

@@ -12,14 +12,9 @@
   "scheduleType": "NoSchedule",
   "permission": "All",
   "className": "org.openmetadata.service.apps.bundles.mcp.McpApplication",
+  "allowConfiguration": false,
   "runtime": {
     "enabled": true
   },
-  "supportsInterrupt": true,
-  "appConfiguration": {
-    "originValidationEnabled": false,
-    "originHeaderUri": "http://localhost"
-  }
+  "supportsInterrupt": true
 }
-
-

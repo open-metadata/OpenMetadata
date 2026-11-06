@@ -41,14 +41,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ entityType: 'table' }),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
-jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
-  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
-    <>
-      <div>{firstPanel.children}</div>
-      <div>{secondPanel.children}</div>
-    </>
-  ))
-);
 const mockTableData = {
   id: 'id1',
   name: 'dim_location',
@@ -87,15 +79,20 @@ const mockTableData = {
     },
   ],
 };
-jest.mock('../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../utils/TasksUtils'),
+jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskEntityFetchUtils'),
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
       setEntityData(mockTableData);
     }),
-  fetchOptions: jest.fn(),
   getBreadCrumbList: jest.fn().mockReturnValue([]),
+}));
+jest.mock('../../../utils/TaskAssigneeUtils', () => ({
+  fetchOptions: jest.fn(),
+}));
+jest.mock('../../../utils/TaskFieldUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskFieldUtils'),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
   getTaskFieldColumns: jest
     .fn()
@@ -133,10 +130,8 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb.component</div>)
 );
 jest.mock('../../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../../rest/tasksAPI'),
   createTask: jest.fn().mockResolvedValue({}),
-  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
-  TaskEntityType: { TagUpdate: 'TagUpdate' },
-  TaskPriority: { Medium: 'Medium' },
 }));
 jest.mock('../../../rest/taskFormSchemasAPI', () => ({
   resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),
@@ -163,7 +158,7 @@ describe('UpdateTagPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     const { getColumnObjectByPath } = jest.requireMock(
-      '../../../utils/TasksUtils'
+      '../../../utils/TaskFieldUtils'
     );
     getColumnObjectByPath.mockImplementation(() => ({
       tags: mockTableData.columns[0].tags,
@@ -245,11 +240,10 @@ describe('UpdateTagPage', () => {
       category: 'MetadataUpdate',
       type: 'TagUpdate',
       priority: 'Medium',
-      about: 'sample_data.ecommerce_db.shopify.dim_location',
-      aboutType: 'table',
+      about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
       assignees: ['sample_data'],
       payload: {
-        fieldPath: 'columns."address.street_name"',
+        fieldPath: 'columns.address.street_name.tags',
         currentTags: expectedTags,
         tagsToAdd: [],
         tagsToRemove: [],
@@ -261,7 +255,7 @@ describe('UpdateTagPage', () => {
   it('should allow adding suggested tags when the current field has no tags', async () => {
     const mockCreateTask = createTask as jest.Mock;
     const { getColumnObjectByPath } = jest.requireMock(
-      '../../../utils/TasksUtils'
+      '../../../utils/TaskFieldUtils'
     );
     getColumnObjectByPath.mockImplementation(() => ({ tags: [] }));
 
@@ -285,11 +279,10 @@ describe('UpdateTagPage', () => {
       category: 'MetadataUpdate',
       type: 'TagUpdate',
       priority: 'Medium',
-      about: 'sample_data.ecommerce_db.shopify.dim_location',
-      aboutType: 'table',
+      about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
       assignees: ['sample_data'],
       payload: {
-        fieldPath: 'columns."address.street_name"',
+        fieldPath: 'columns.address.street_name.tags',
         currentTags: [],
         tagsToAdd: [mockSuggestedTag],
         tagsToRemove: [],

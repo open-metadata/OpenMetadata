@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.datainsight.system;
 
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
+
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -35,6 +37,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +61,9 @@ public class DataInsightSystemChartResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     List<DataInsightCustomChart> diCharts =
         repository.getEntitiesFromSeedData(".*json/data/dataInsight/custom/.*\\.json$");
     for (DataInsightCustomChart diChart : diCharts) {
@@ -110,7 +116,13 @@ public class DataInsightSystemChartResource
       throws IOException {
     DataInsightCustomChart diChart = getByNameInternal(uriInfo, securityContext, fqn, null, null);
     DataInsightCustomChartResultList resultList =
-        repository.getPreviewData(diChart, start, end, filter);
+        repository.getPreviewData(
+            diChart,
+            start,
+            end,
+            filter,
+            EntityUtil.navbarDomainSearchFilter(securityContext),
+            getSubjectContext(securityContext));
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
@@ -168,7 +180,15 @@ public class DataInsightSystemChartResource
           String serviceName)
       throws IOException {
     Map<String, DataInsightCustomChartResultList> resultList =
-        repository.listChartData(chartNames, start, end, filter, live, serviceName);
+        repository.listChartData(
+            chartNames,
+            start,
+            end,
+            filter,
+            EntityUtil.navbarDomainSearchFilter(securityContext),
+            live,
+            serviceName,
+            getSubjectContext(securityContext));
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
@@ -205,6 +225,11 @@ public class DataInsightSystemChartResource
           @QueryParam("serviceName")
           String serviceName,
       @Parameter(
+              description = "Service entity type, pins the automation lookup to one service",
+              schema = @Schema(type = "String", example = "databaseService"))
+          @QueryParam("serviceType")
+          String serviceType,
+      @Parameter(
               description = "Any additional filter to fetch the data",
               schema = @Schema(type = "string", example = "{\"query\":{...}}"))
           @QueryParam("filter")
@@ -234,7 +259,14 @@ public class DataInsightSystemChartResource
       // Call repository method to handle streaming
       Map<String, Object> response =
           repository.startChartDataStreaming(
-              chartNames, serviceName, filter, entityLink, user.getId(), startTime, endTime);
+              chartNames,
+              serviceName,
+              serviceType,
+              scopedToPick(securityContext, filter),
+              entityLink,
+              user.getId(),
+              startTime,
+              endTime);
 
       // Check if there's an error in the response
       if (response.containsKey("error")) {
@@ -304,5 +336,11 @@ public class DataInsightSystemChartResource
       errorResponse.put("error", "Failed to stop streaming: " + e.getMessage());
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(errorResponse).build();
     }
+  }
+
+  // A streamed chart is live, so the navbar domain pick is added to the filter it keeps.
+  private static String scopedToPick(SecurityContext securityContext, String filter) {
+    return DataInsightSystemChartRepository.combineFilters(
+        filter, EntityUtil.navbarDomainSearchFilter(securityContext));
   }
 }

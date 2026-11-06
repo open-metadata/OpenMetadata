@@ -19,4 +19,5 @@ export interface EntityCardViewProps<T extends { id: string }> {
   renderCard: (entity: T) => ReactNode;
   onEntityClick?: (entity: T) => void;
   emptyMessage?: string;
+  className?: string;
 }

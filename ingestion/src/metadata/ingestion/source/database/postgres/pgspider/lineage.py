@@ -13,10 +13,11 @@
 PGSpider lineage module
 """
 
-from typing import Iterable, Iterator
+from collections.abc import Iterable, Iterator
 
 from sqlalchemy.sql import text
 
+from metadata.entity_resolution.table_search import search_table_entities
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
@@ -25,7 +26,6 @@ from metadata.generated.schema.type.entityLineage import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.postgres.pgspider.queries import (
@@ -42,18 +42,19 @@ def _get_multi_tenant_tables(connection) -> Iterable[any]:
 
     with get_connection(connection).connect() as conn:
         rows = conn.execute(text(sql))
-        return rows
+        return rows  # noqa: RET504
 
 
 def _get_child_tables(connection, multi_tenant_table: str) -> Iterable[any]:
     """
     Get list of child foreign tables of a multi-tenant table
     """
-    sql = PGSPIDER_GET_CHILD_TABLES.format(multi_tenant_table=multi_tenant_table)
-
     with get_connection(connection).connect() as conn:
-        rows = conn.execute(text(sql))
-        return rows
+        rows = conn.execute(
+            text(PGSPIDER_GET_CHILD_TABLES),
+            {"multi_tenant_table": multi_tenant_table},
+        )
+        return rows  # noqa: RET504
 
 
 # For column level lineage, find all pairs of columns which have

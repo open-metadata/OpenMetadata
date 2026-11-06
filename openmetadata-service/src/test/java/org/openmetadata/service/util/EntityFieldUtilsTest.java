@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -17,6 +18,7 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +37,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -42,6 +45,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 class EntityFieldUtilsTest {
 
@@ -53,6 +57,17 @@ class EntityFieldUtilsTest {
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
 
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    ChangeDescription patchedChange =
+        new ChangeDescription()
+            .withPreviousVersion(1.0)
+            .withFieldsUpdated(
+                List.of(new FieldChange().withName("description").withNewValue("fresh")));
+    TestEntity patched = entity();
+    patched.setId(entity.getId());
+    patched.setChangeDescription(patchedChange);
+    Mockito.doReturn(new PatchResponse<>(Response.Status.OK, patched, EventType.ENTITY_UPDATED))
+        .when(repository)
+        .patch(any(), any(UUID.class), any(), any(JsonPatch.class), any(), any(), any());
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
@@ -68,6 +83,7 @@ class EntityFieldUtilsTest {
               eq("alice"),
               any(JsonPatch.class),
               isNull(),
+              eq("*"),
               eq("workflow-bot"));
 
       ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
@@ -79,6 +95,8 @@ class EntityFieldUtilsTest {
       assertEquals("service.db.orders", changeEvent.getEntityFullyQualifiedName());
       assertEquals("alice", changeEvent.getUserName());
       assertEquals("workflow-bot", changeEvent.getImpersonatedBy());
+      // Alert and activity-feed filters match on changed fields; an event without them is dropped.
+      assertEquals(patchedChange, changeEvent.getChangeDescription());
       assertEquals("fresh description", entity.getDescription());
     }
   }
@@ -274,6 +292,35 @@ class EntityFieldUtilsTest {
   }
 
   @Test
+  void appendGlossaryTermsKeepsCommasInsideJsonArrayFqns() {
+    TestEntity entity = entity();
+
+    try (MockedStatic<TagLabelUtil> mockedTagLabelUtil = mockStatic(TagLabelUtil.class)) {
+      stubTagLabelUtilities(mockedTagLabelUtil);
+      mockedTagLabelUtil
+          .when(() -> TagLabelUtil.getGlossaryTerm("Data Procedures.GDPR, Personal"))
+          .thenReturn(glossaryTerm("Data Procedures.GDPR, Personal"));
+      mockedTagLabelUtil
+          .when(() -> TagLabelUtil.getGlossaryTerm("Business.Critical"))
+          .thenReturn(glossaryTerm("Business.Critical"));
+
+      EntityFieldUtils.appendGlossaryTerms(
+          entity, "[\"Data Procedures.GDPR, Personal\",\"Business.Critical\"]");
+
+      assertEquals(
+          List.of("Data Procedures.GDPR, Personal", "Business.Critical"),
+          entity.getTags().stream().map(TagLabel::getTagFQN).toList());
+    }
+  }
+
+  @Test
+  void parseFqnListReadsJsonArraysAndLegacyCommaLists() {
+    assertEquals(List.of("A.b, c", "D.e"), EntityFieldUtils.parseFqnList("[\"A.b, c\",\"D.e\"]"));
+    assertEquals(List.of("A.b", " D.e"), EntityFieldUtils.parseFqnList("A.b, D.e"));
+    assertEquals(List.of("[PII].x"), EntityFieldUtils.parseFqnList("[PII].x"));
+  }
+
+  @Test
   void appendGlossaryTermsReplacesConflictingTerms() {
     TestEntity entity = entity();
     entity.setTags(
@@ -414,17 +461,53 @@ class EntityFieldUtilsTest {
   }
 
   @Test
+  void parseEntityStatusAcceptsCanonicalAndMixedCaseValues() {
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("Draft"));
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("draft"));
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("DRAFT"));
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("drAFT"));
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("DrAfT"));
+    assertEquals(EntityStatus.APPROVED, EntityFieldUtils.parseEntityStatus("approved"));
+    assertEquals(EntityStatus.APPROVED, EntityFieldUtils.parseEntityStatus("APPROVED"));
+    assertEquals(EntityStatus.APPROVED, EntityFieldUtils.parseEntityStatus("ApPrOvEd"));
+    assertEquals(EntityStatus.DEPRECATED, EntityFieldUtils.parseEntityStatus("Deprecated"));
+    assertEquals(EntityStatus.DEPRECATED, EntityFieldUtils.parseEntityStatus("deprecated"));
+    assertEquals(EntityStatus.DEPRECATED, EntityFieldUtils.parseEntityStatus("DEPRECATED"));
+    assertEquals(EntityStatus.IN_REVIEW, EntityFieldUtils.parseEntityStatus("in review"));
+    assertEquals(EntityStatus.IN_REVIEW, EntityFieldUtils.parseEntityStatus("IN REVIEW"));
+    assertEquals(EntityStatus.IN_REVIEW, EntityFieldUtils.parseEntityStatus("In Review"));
+    assertEquals(EntityStatus.REJECTED, EntityFieldUtils.parseEntityStatus("rejected"));
+    assertEquals(EntityStatus.ARCHIVED, EntityFieldUtils.parseEntityStatus("ARCHIVED"));
+  }
+
+  @Test
+  void parseEntityStatusTrimsSurroundingWhitespace() {
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("  draft  "));
+    assertEquals(EntityStatus.APPROVED, EntityFieldUtils.parseEntityStatus("Approved\t"));
+    assertEquals(EntityStatus.IN_REVIEW, EntityFieldUtils.parseEntityStatus("\n In Review \n"));
+  }
+
+  @Test
+  void parseEntityStatusThrowsForUnknownValues() {
+    assertThrows(
+        IllegalArgumentException.class, () -> EntityFieldUtils.parseEntityStatus("not-a-status"));
+    assertThrows(IllegalArgumentException.class, () -> EntityFieldUtils.parseEntityStatus("   "));
+  }
+
+  @Test
   void setEntityStatusSupportsEnumAndLegacyFallbacks() {
     TestEntity entity = entity();
     LegacyStatusEntity legacyEntity = new LegacyStatusEntity();
     String approvedValue = EntityStatus.APPROVED.value();
 
     EntityFieldUtils.setEntityStatus(entity, approvedValue);
-    EntityFieldUtils.setEntityStatus(entity, "legacy-state");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> EntityFieldUtils.setEntityStatus(entity, "Superseded"));
     EntityFieldUtils.setEntityStatus(legacyEntity, approvedValue);
 
     assertEquals(EntityStatus.APPROVED, entity.getEntityStatus());
-    assertEquals("legacy-state", entity.getStatus());
+    assertNull(entity.getStatus());
     assertEquals(approvedValue, legacyEntity.getStatus());
   }
 
@@ -477,7 +560,7 @@ class EntityFieldUtilsTest {
     }
   }
 
-  private static class TestEntity implements EntityInterface {
+  private static class TestEntity implements EntityInterface<EntityStatus> {
     private UUID id;
     private String description;
     private String displayName;

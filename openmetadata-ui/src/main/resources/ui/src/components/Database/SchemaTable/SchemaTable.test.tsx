@@ -13,11 +13,22 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { DefaultColumnOrder } from '../../../generated/api/configuration/appConfiguration';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
+import { usePersistentStorage } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
-import { getTableColumnsByFQN } from '../../../rest/tableAPI';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import {
+  getTableColumnsByFQN,
+  searchTableColumnsByFQN,
+  updateTableColumn,
+} from '../../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import SchemaTable from './SchemaTable.component';
 
 const mockTableConstraints = [
@@ -133,7 +144,7 @@ const mockGenericContextProps = {
   setDisplayedColumns: jest.fn(),
 };
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest
     .fn()
     .mockImplementation(() => mockGenericContextProps),
@@ -155,7 +166,78 @@ jest.mock('../../../rest/tableAPI', () => ({
   updateTableColumn: jest.fn(),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+const mockColumnCustomProperties = [
+  {
+    name: 'businessOwner',
+    displayName: 'Business Owner',
+    description: 'Who owns this column from a business perspective.',
+    propertyType: {
+      id: 'string-type-id',
+      type: 'type',
+      name: 'string',
+      fullyQualifiedName: 'string',
+    },
+  },
+  {
+    name: 'piiCategory',
+    description: 'PII classification.',
+    propertyType: {
+      id: 'string-type-id',
+      type: 'type',
+      name: 'string',
+      fullyQualifiedName: 'string',
+    },
+  },
+];
+
+jest.mock('../../../rest/metadataTypeAPI', () => ({
+  getTypeByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      name: 'tableColumn',
+      customProperties: mockColumnCustomProperties,
+    })
+  ),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  ...jest.requireActual('../../../utils/ToastUtils'),
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('./ColumnCustomPropertyCell', () => ({
+  ColumnCustomPropertyCell: jest
+    .fn()
+    .mockImplementation(
+      ({ property, record, hasEditPermissions, onExtensionUpdate }) => (
+        <div data-testid={`property-value-${property.name}`}>
+          <span data-testid="property-cell-value">
+            {String(record.extension?.[property.name] ?? '')}
+          </span>
+          {hasEditPermissions && (
+            <>
+              <button
+                data-testid={`property-cell-save-${property.name}`}
+                onClick={() =>
+                  onExtensionUpdate(record, {
+                    ...record.extension,
+                    [property.name]: 'updated',
+                  })
+                }>
+                save
+              </button>
+              <button
+                data-testid={`property-cell-clear-${property.name}`}
+                onClick={() => onExtensionUpdate(record, undefined)}>
+                clear
+              </button>
+            </>
+          )}
+        </div>
+      )
+    ),
+}));
+
+jest.mock('../../../utils/FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
 }));
 
@@ -288,10 +370,6 @@ jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => {
   return jest.fn().mockReturnValue(<p>EntityNameModal</p>);
 });
 
-jest.mock('../../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () => {
-  return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
-});
-
 jest.mock('../../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
@@ -308,7 +386,7 @@ jest.mock('../TableTags/TableTags.component', () => {
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn(),
-  searchTagInData: jest.fn(),
+  getFilteredTagsData: jest.fn((data) => data),
 }));
 
 jest.mock('../TableDescription/TableDescription.component', () => {
@@ -327,11 +405,11 @@ jest.mock('../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn().mockResolvedValue({}),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getEntityColumnFQN: jest.fn(),
 }));
 
@@ -356,15 +434,24 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
     .mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntitySortUtils', () => ({
   getColumnSorter: jest.fn(),
+}));
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityBulkEditPath: jest.fn(),
+}));
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(({ displayName, name }) => displayName || name || ''),
+}));
+jest.mock('../../../utils/EntityColumnUtils', () => ({
   getFrequentlyJoinedColumns: jest.fn(),
+}));
+jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchArrayElement: jest.fn(),
   highlightSearchText: jest.fn().mockImplementation((value) => value),
+  renderHighlightedText: jest.fn().mockImplementation((value) => value ?? ''),
 }));
 
 jest.mock('../../../constants/Table.constants', () => ({
@@ -376,6 +463,32 @@ jest.mock('../../../constants/Table.constants', () => ({
 }));
 
 describe('Test EntityTable Component', () => {
+  it('starts in source order when that is the tenant default', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockClear();
+    useApplicationStore.getState().setAppPreferences({
+      defaultColumnOrder: DefaultColumnOrder.SourceOrder,
+    });
+
+    try {
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+        MOCK_TABLE.fullyQualifiedName,
+        expect.objectContaining({ sortBy: 'ordinalPosition', sortOrder: 'asc' })
+      );
+      expect(getTableColumnsByFQN).not.toHaveBeenCalledWith(
+        MOCK_TABLE.fullyQualifiedName,
+        expect.objectContaining({ sortBy: 'name' })
+      );
+    } finally {
+      useApplicationStore
+        .getState()
+        .setAppPreferences({ defaultColumnOrder: undefined });
+    }
+  });
+
   it('Initially, Table should load', async () => {
     await act(async () => {
       render(<SchemaTable />, {
@@ -387,7 +500,7 @@ describe('Test EntityTable Component', () => {
       MOCK_TABLE.fullyQualifiedName,
       {
         fields: 'tags,customMetrics,extension',
-        limit: 50,
+        limit: 15,
         offset: 0,
         sortBy: 'name',
         sortOrder: 'asc',
@@ -412,7 +525,7 @@ describe('Test EntityTable Component', () => {
       MOCK_TABLE.fullyQualifiedName,
       {
         fields: 'tags,customMetrics,extension',
-        limit: 50,
+        limit: 15,
         offset: 0,
         sortBy: 'name',
         sortOrder: 'asc',
@@ -426,6 +539,22 @@ describe('Test EntityTable Component', () => {
     const tableDescription = screen.getAllByText('TableDescription');
 
     expect(tableDescription).toHaveLength(3);
+  });
+
+  it('should source column tag filter options from the full table columns, not the loaded page', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValueOnce({
+      data: [mockColumns[0]],
+      paging: { total: mockColumns.length },
+    });
+
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(getAllTags).toHaveBeenCalledWith(mockColumns);
+    expect(searchTableColumnsByFQN).not.toHaveBeenCalled();
   });
 
   it('Table should load empty when no data present', async () => {
@@ -444,7 +573,9 @@ describe('Test EntityTable Component', () => {
 
     expect(entityTable).toBeInTheDocument();
 
-    const emptyPlaceholder = screen.getByText('FilterTablePlaceHolder');
+    const emptyPlaceholder = screen.getByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(emptyPlaceholder).toBeInTheDocument();
   });
@@ -585,7 +716,7 @@ describe('Test EntityTable Component', () => {
     it('should have updateColumnInNestedStructure available in TableUtils', () => {
       const {
         updateColumnInNestedStructure,
-      } = require('../../../utils/TableUtils');
+      } = require('../../../utils/TablePureUtils');
 
       expect(updateColumnInNestedStructure).toBeDefined();
       expect(typeof updateColumnInNestedStructure).toBe('function');
@@ -611,6 +742,264 @@ describe('Test EntityTable Component', () => {
       expect(mockColumnsWithNested[1].children).toBeDefined();
       expect(mockColumnsWithNested[1].children).toHaveLength(3);
       expect(mockColumnsWithNested[1].children?.[0].name).toBe('product_id');
+    });
+  });
+
+  // Task 8 Batch 3: editDisplayNamePermission's raw
+  // `(tablePermissions.EditDisplayName || tablePermissions.EditAll) && !deleted` ->
+  // canEditDisplayName (getDerivedPermissionFlags). Documented explicit-deny-wins behavior
+  // change (Task 6 Finding 1 / Task 8 Batch 2 precedent): an explicit
+  // `EditDisplayName: false` now wins over a bare `EditAll: true` grant, where the old raw OR
+  // granted regardless.
+  describe('editDisplayNamePermission (explicit-deny-wins)', () => {
+    afterEach(() => {
+      mockGenericContextProps.permissions = DEFAULT_ENTITY_PERMISSION;
+    });
+
+    it('grants the edit displayName button via EditAll when EditDisplayName is not present', async () => {
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValueOnce({
+        data: columnsWithDisplayName,
+        paging: { total: columnsWithDisplayName.length },
+      });
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: columnsWithDisplayName,
+      } as Table;
+      // Deliberately NOT spreading DEFAULT_ENTITY_PERMISSION here: it defines every
+      // Operation key (including EditDisplayName) as an explicit `false`, which would make
+      // getPrioritizedEditPermission's "key present" check see EditDisplayName as an explicit
+      // deny rather than absent, masking the EditAll fallback this test exists to cover.
+      mockGenericContextProps.permissions = {
+        EditAll: true,
+      } as OperationPermission;
+
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+
+      expect(
+        await screen.findAllByTestId('edit-displayName-button')
+      ).not.toHaveLength(0);
+    });
+
+    it('denies the edit displayName button when EditDisplayName is explicitly false, even with EditAll true', async () => {
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValueOnce({
+        data: columnsWithDisplayName,
+        paging: { total: columnsWithDisplayName.length },
+      });
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: columnsWithDisplayName,
+      } as Table;
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        EditAll: true,
+        EditDisplayName: false,
+      };
+
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+
+      await screen.findAllByTestId('column-name');
+
+      expect(
+        screen.queryByTestId('edit-displayName-button')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('column-level custom property columns', () => {
+    const columnsWithExtension = mockColumns.map((column, index) => ({
+      ...column,
+      extension: { businessOwner: `owner-${index}` },
+    }));
+
+    const setSelectedTableColumns = (selected: string[]) => {
+      useApplicationStore.setState({
+        currentUser: { id: 'test-user-id', name: 'test-user' },
+      } as never);
+      usePersistentStorage.setState({
+        preferences: {
+          'test-user': {
+            selectedEntityTableColumns: { table: selected },
+          },
+        },
+      } as never);
+    };
+
+    beforeEach(() => {
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+        data: columnsWithExtension,
+        paging: { total: columnsWithExtension.length },
+      });
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: columnsWithExtension,
+      } as Table;
+    });
+
+    afterEach(() => {
+      mockGenericContextProps.permissions = DEFAULT_ENTITY_PERMISSION;
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: mockColumns,
+        tableConstraints: mockTableConstraints,
+      } as Table;
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+        data: mockColumns,
+        paging: { total: mockColumns.length },
+      });
+      useApplicationStore.setState({ currentUser: undefined } as never);
+      usePersistentStorage.setState({ preferences: {} } as never);
+    });
+
+    it('does not fetch the column type when the user cannot view custom fields', async () => {
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      await screen.findAllByTestId('column-name');
+
+      expect(getTypeByFQN).not.toHaveBeenCalled();
+      expect(screen.queryByText('Business Owner')).not.toBeInTheDocument();
+    });
+
+    it('shows an error toast when the column type cannot be fetched', async () => {
+      const error = new Error('type fetch failed');
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewCustomFields: true,
+      };
+      (getTypeByFQN as jest.Mock).mockRejectedValueOnce(error);
+
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      await screen.findAllByTestId('column-name');
+
+      expect(showErrorToast).toHaveBeenCalledWith(error);
+      expect(screen.queryByText('Business Owner')).not.toBeInTheDocument();
+    });
+
+    it('fetches the column type but keeps property columns hidden by default', async () => {
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewCustomFields: true,
+      };
+
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      await screen.findAllByTestId('column-name');
+
+      expect(getTypeByFQN).toHaveBeenCalledWith('tableColumn');
+      expect(screen.queryByText('Business Owner')).not.toBeInTheDocument();
+      expect(screen.queryByText('piiCategory')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('property-value-businessOwner')
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders one toggleable column per property and shows only the selected ones', async () => {
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewCustomFields: true,
+      };
+      setSelectedTableColumns([
+        'description',
+        'dataTypeDisplay',
+        'columnCustomProperty.businessOwner',
+      ]);
+
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      expect(await screen.findByText('Business Owner')).toBeInTheDocument();
+      expect(screen.queryByText('piiCategory')).not.toBeInTheDocument();
+
+      const cells = await screen.findAllByTestId(
+        'property-value-businessOwner'
+      );
+
+      expect(cells).toHaveLength(columnsWithExtension.length);
+      expect(screen.getByText('owner-0')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('property-value-piiCategory')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('property-cell-save-businessOwner')
+      ).not.toBeInTheDocument();
+    });
+
+    it('updates the column extension inline when the user can edit custom fields', async () => {
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewCustomFields: true,
+        EditCustomFields: true,
+      };
+      setSelectedTableColumns([
+        'description',
+        'columnCustomProperty.businessOwner',
+      ]);
+      (updateTableColumn as jest.Mock).mockResolvedValue({
+        ...columnsWithExtension[0],
+        extension: { businessOwner: 'updated' },
+      });
+
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      const saveButtons = await screen.findAllByTestId(
+        'property-cell-save-businessOwner'
+      );
+
+      await act(async () => {
+        fireEvent.click(saveButtons[0]);
+      });
+
+      expect(updateTableColumn).toHaveBeenCalledWith(
+        columnsWithExtension[0].fullyQualifiedName,
+        { extension: { businessOwner: 'updated' } }
+      );
+      expect(await screen.findByText('updated')).toBeInTheDocument();
+    });
+
+    it('sends an empty extension when the last property value is cleared', async () => {
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewCustomFields: true,
+        EditCustomFields: true,
+      };
+      setSelectedTableColumns([
+        'description',
+        'columnCustomProperty.businessOwner',
+      ]);
+      (updateTableColumn as jest.Mock).mockResolvedValue({
+        ...columnsWithExtension[0],
+        extension: {},
+      });
+
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      const clearButtons = await screen.findAllByTestId(
+        'property-cell-clear-businessOwner'
+      );
+
+      await act(async () => {
+        fireEvent.click(clearButtons[0]);
+      });
+
+      expect(updateTableColumn).toHaveBeenCalledWith(
+        columnsWithExtension[0].fullyQualifiedName,
+        { extension: {} }
+      );
     });
   });
 });

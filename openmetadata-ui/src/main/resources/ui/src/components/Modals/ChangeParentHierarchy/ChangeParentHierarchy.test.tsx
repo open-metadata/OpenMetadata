@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { findByRole, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { PageType } from '../../../generated/system/ui/page';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
+import { moveGlossaryTerm } from '../../../rest/glossaryAPI';
 import ChangeParent from './ChangeParentHierarchy.component';
 
 const mockOnCancel = jest.fn();
@@ -23,14 +23,14 @@ const mockOnCancel = jest.fn();
 const mockProps = {
   selectedData: {
     ...mockedGlossaryTerms[0],
-    children: mockedGlossaryTerms[0].children?.map((child: any) => ({
+    children: mockedGlossaryTerms[0].children?.map((child) => ({
       id: child.id,
       name: child.name,
       displayName: child.displayName,
       description: child.description,
       fullyQualifiedName: child.fullyQualifiedName,
       type: PageType.GlossaryTerm, // Required field for EntityReference
-      deleted: child.deleted || false,
+      deleted: (child as { deleted?: boolean }).deleted || false,
     })),
   },
   onCancel: mockOnCancel,
@@ -60,7 +60,32 @@ jest.mock('../../../rest/glossaryAPI', () => ({
   ),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+// Picking a parent hands the modal a term of the same glossary.
+jest.mock('../../common/GlossaryTermPicker/GlossaryTermPicker', () =>
+  jest.fn().mockImplementation(({ onChange, ...props }) => (
+    <button
+      data-testid={props['data-testid']}
+      onClick={() =>
+        onChange(
+          [],
+          [
+            {
+              tagFQN: 'Glossary.Parent',
+              entity: {
+                id: 'parent-id',
+                fullyQualifiedName: 'Glossary.Parent',
+                glossary: { id: 'glossary-id', type: 'glossary' },
+              },
+            },
+          ]
+        )
+      }>
+      pick-parent
+    </button>
+  ))
+);
+
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
@@ -74,24 +99,13 @@ describe('Test ChangeParentHierarchy modal component', () => {
     jest.clearAllMocks();
   });
 
-  it('should render glossary selection dropdown', async () => {
+  it('should render the parent picker', async () => {
     await act(async () => {
       render(<ChangeParent {...mockProps} />);
     });
 
-    const selectInput = await findByRole(
-      screen.getByTestId('change-parent-select'),
-      'combobox'
-    );
-
-    expect(selectInput).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(selectInput);
-    });
-
-    // TreeAsyncSelectList will load glossaries and handle term filtering internally
-    expect(selectInput).toBeInTheDocument();
+    // The picker loads glossaries and their terms itself.
+    expect(screen.getByTestId('change-parent-select')).toBeInTheDocument();
   });
 
   it('should trigger onCancel button', async () => {
@@ -108,17 +122,16 @@ describe('Test ChangeParentHierarchy modal component', () => {
     expect(mockOnCancel).toHaveBeenCalled();
   });
 
-  it('should render submit button and handle form submission', async () => {
+  it('should keep save disabled until a parent is selected', async () => {
     await act(async () => {
       render(<ChangeParent {...mockProps} />);
     });
 
-    const submitButton = await screen.findByText('label.save');
+    const submitButton = await screen.findByTestId('save-button');
 
-    expect(submitButton).toBeInTheDocument();
-
-    // The component now handles API calls internally
-    expect(submitButton).toBeInTheDocument();
+    expect(submitButton).toHaveTextContent('label.save');
+    // No parent picked yet, so there is nothing to move.
+    expect(submitButton).toBeDisabled();
   });
 
   it('should set up websocket listener when move job is created', async () => {
@@ -131,5 +144,71 @@ describe('Test ChangeParentHierarchy modal component', () => {
       'moveGlossaryTermChannel',
       expect.any(Function)
     );
+  });
+
+  it('should ignore a move completion for a job it did not start', async () => {
+    await act(async () => {
+      render(<ChangeParent {...mockProps} />);
+    });
+
+    const [, onMoveUpdate] = mockSocket.on.mock.calls.find(
+      ([channel]) => channel === 'moveGlossaryTermChannel'
+    ) as [string, (message: string) => void];
+
+    // The server addresses this channel to the user, so a move finished in any
+    // other session of theirs lands here too. Honouring it would navigate this
+    // dialog away to a term the user never asked for.
+    await act(async () => {
+      onMoveUpdate(
+        JSON.stringify({
+          jobId: 'a-job-this-modal-never-started',
+          status: 'COMPLETED',
+          message: 'Move completed',
+          fullyQualifiedName: 'someone.elses.term',
+        })
+      );
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockOnCancel).not.toHaveBeenCalled();
+  });
+
+  it('should close without waiting for a job when the move is held for approval', async () => {
+    // An approval workflow holds the move: the server opens a change request and starts no job.
+    (moveGlossaryTerm as jest.Mock).mockResolvedValueOnce({
+      message: 'Pending approval: change request cr-id',
+      entityName: 'term',
+    });
+    await act(async () => {
+      render(<ChangeParent {...mockProps} />);
+    });
+
+    fireEvent.click(screen.getByTestId('change-parent-select'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(moveGlossaryTerm).toHaveBeenCalledWith(
+      mockProps.selectedData.id,
+      expect.objectContaining({ id: 'parent-id', type: 'glossaryTerm' })
+    );
+    expect(mockOnCancel).toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should wait for the move job when the move is not held', async () => {
+    await act(async () => {
+      render(<ChangeParent {...mockProps} />);
+    });
+
+    fireEvent.click(screen.getByTestId('change-parent-select'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(moveGlossaryTerm).toHaveBeenCalled();
+    // The job runs on the server; the modal stays until its websocket update arrives.
+    expect(mockOnCancel).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

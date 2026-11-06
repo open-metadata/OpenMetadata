@@ -1,0 +1,195 @@
+package org.openmetadata.service.security.auth;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import jakarta.servlet.ReadListener;
+import jakarta.servlet.ServletInputStream;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TokenRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.UserSession;
+import org.openmetadata.service.util.EntityUtil.Fields;
+
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class BasicAuthServletHandlerTest {
+
+  @Mock private AuthenticationConfiguration authConfig;
+  @Mock private AuthorizerConfiguration authorizerConfig;
+  @Mock private SessionService sessionService;
+  @Mock private HttpServletRequest request;
+  @Mock private HttpServletResponse response;
+  @Mock private ServletOutputStream servletOutputStream;
+  @Mock private UserRepository userRepository;
+  @Mock private TokenRepository tokenRepository;
+
+  private BasicAuthServletHandler handler;
+  private MockedConstruction<BasicAuthenticator> authenticatorConstruction;
+  private BasicAuthenticator authenticator;
+
+  @BeforeEach
+  void setUp() throws Exception {
+    when(authConfig.getProvider()).thenReturn(AuthProvider.BASIC);
+    when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+    when(response.getOutputStream()).thenReturn(servletOutputStream);
+    authenticatorConstruction = mockConstruction(BasicAuthenticator.class);
+    handler = new BasicAuthServletHandler(authConfig, authorizerConfig, sessionService);
+    authenticator = authenticatorConstruction.constructed().get(0);
+  }
+
+  @AfterEach
+  void tearDown() {
+    authenticatorConstruction.close();
+  }
+
+  @Test
+  void handleLogin_missingProvisionedUser_returnsUnauthorizedAndDeletesRefreshToken()
+      throws Exception {
+    when(request.getMethod()).thenReturn("POST");
+    when(request.getInputStream())
+        .thenReturn(bodyOf("{\"email\":\"basic-user@example.com\",\"password\":\"cGFzc3dvcmQ=\"}"));
+    JwtResponse jwtResponse = new JwtResponse();
+    jwtResponse.setAccessToken("access-token");
+    jwtResponse.setRefreshToken("basic-refresh-token");
+    jwtResponse.setTokenType("Bearer");
+    jwtResponse.setExpiryDuration(100L);
+    when(authenticator.loginUser(any())).thenReturn(jwtResponse);
+    when(userRepository.getByEmail(isNull(), eq("basic-user@example.com"), any(Fields.class)))
+        .thenThrow(EntityNotFoundException.byMessage("missing"));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+      entityMock.when(Entity::getTokenRepository).thenReturn(tokenRepository);
+
+      handler.handleLogin(request, response);
+    }
+
+    verify(tokenRepository).deleteToken("basic-refresh-token");
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    verify(sessionService, never()).createActiveSession(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void handleLogin_oversizedBody_returnsBadRequestWithoutAuthenticating() throws Exception {
+    // A valid login padded past the limit: read whole, it would reach the authenticator.
+    when(request.getMethod()).thenReturn("POST");
+    when(request.getInputStream())
+        .thenReturn(
+            bodyOf(
+                "{\"email\":\"basic-user@example.com\",\"password\":\"cGFzc3dvcmQ=\"}"
+                    + " ".repeat(SecurityUtil.MAX_LOGIN_BODY_BYTES)));
+
+    handler.handleLogin(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    verify(authenticator, never()).loginUser(any());
+  }
+
+  @Test
+  void handleRefresh_revokedSessionDeletesRotatedRefreshToken() {
+    UserSession leasedSession =
+        UserSession.builder().id("session-id").status(SessionStatus.REFRESHING).build();
+    UserSession revokedSession =
+        leasedSession.toBuilder().status(SessionStatus.REVOKED).version(2L).build();
+    JwtResponse jwtResponse = new JwtResponse();
+    jwtResponse.setAccessToken("access-token");
+    jwtResponse.setRefreshToken("rotated-refresh-token");
+    jwtResponse.setTokenType("Bearer");
+    jwtResponse.setExpiryDuration(100L);
+
+    when(sessionService.acquireRefreshLease(request, response))
+        .thenReturn(Optional.of(leasedSession));
+    when(sessionService.decryptOmRefreshToken(leasedSession)).thenReturn("current-refresh-token");
+    when(authenticator.getNewAccessToken(any())).thenReturn(jwtResponse);
+    when(sessionService.completeRefresh(
+            leasedSession, "rotated-refresh-token", SessionService.ProviderTokenUpdate.NONE))
+        .thenReturn(Optional.of(revokedSession));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getTokenRepository).thenReturn(tokenRepository);
+
+      handler.handleRefresh(request, response);
+    }
+
+    verify(tokenRepository).deleteToken("rotated-refresh-token");
+    verify(sessionService).revokeSession(request, response);
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+  }
+
+  @Test
+  void handleRefresh_revokedSession_answersSessionRevoked() throws Exception {
+    // A tab that signed in through SSO before the provider switched signs out on this answer. Any
+    // other 401 sends it to re-authenticate at a login page this provider does not serve.
+    when(sessionService.acquireRefreshLease(request, response)).thenReturn(Optional.empty());
+    when(sessionService.describeMissingSession(request)).thenReturn(SessionService.SESSION_REVOKED);
+
+    handler.handleRefresh(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    verify(servletOutputStream).print(contains(SessionService.SESSION_REVOKED));
+  }
+
+  static ServletInputStream bodyOf(String content) {
+    ByteArrayInputStream bytes = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
+    return new ServletInputStream() {
+      @Override
+      public int read() {
+        return bytes.read();
+      }
+
+      @Override
+      public int read(byte[] buffer, int offset, int length) {
+        return bytes.read(buffer, offset, length);
+      }
+
+      @Override
+      public boolean isFinished() {
+        return bytes.available() == 0;
+      }
+
+      @Override
+      public boolean isReady() {
+        return true;
+      }
+
+      @Override
+      public void setReadListener(ReadListener readListener) {
+        throw new UnsupportedOperationException();
+      }
+    };
+  }
+}

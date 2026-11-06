@@ -1,3 +1,4 @@
+from metadata.ingestion.source.database.redshift.connection import RedshiftConnection
 from metadata.ingestion.source.database.redshift.lineage import RedshiftLineageSource
 from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
 from metadata.ingestion.source.database.redshift.usage import RedshiftUsageSource
@@ -11,4 +12,5 @@ ServiceSpec = DefaultDatabaseSpec(
     lineage_source_class=RedshiftLineageSource,
     usage_source_class=RedshiftUsageSource,
     profiler_class=RedshiftProfilerInterface,
+    connection_class=RedshiftConnection,  # pyright: ignore[reportArgumentType]
 )

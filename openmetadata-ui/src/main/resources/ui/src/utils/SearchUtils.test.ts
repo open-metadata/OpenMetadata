@@ -14,11 +14,10 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   getEntityTypeFromSearchIndex,
-  getGroupLabel,
   getTermQuery,
   parseBucketsData,
-} from './SearchUtils';
-
+} from './SearchPureUtils';
+import { getGroupLabel } from './SearchUtils';
 // Add type definition for ESQueryClause to fix type errors
 type ESQueryClause = {
   term?: Record<string, string | number | boolean>;
@@ -137,6 +136,63 @@ describe('getGroupLabel', () => {
 });
 
 describe('parseBucketsData', () => {
+  it('resolves a source path that crosses an array of objects', () => {
+    const buckets = [
+      {
+        key: 'pii.sensitive',
+        doc_count: 3,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  tags: [{ tagFQN: 'Tier.Tier1' }, { tagFQN: 'PII.Sensitive' }],
+                },
+              },
+            ],
+          },
+        },
+      },
+    ];
+
+    const result = parseBucketsData(buckets, 'tags.tagFQN');
+
+    expect(result).toEqual([
+      { value: 'PII.Sensitive', title: 'PII.Sensitive' },
+    ]);
+  });
+
+  it('resolves a source path that ends on a string array', () => {
+    const buckets = [
+      {
+        key: 'enterprise business glossary.advanced shipment notification',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  glossaryTags: [
+                    'Enterprise Business Glossary.Advanced Shipment Notification',
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    ];
+
+    const result = parseBucketsData(buckets, 'glossaryTags');
+
+    expect(result).toEqual([
+      {
+        value: 'Enterprise Business Glossary.Advanced Shipment Notification',
+        title: 'Enterprise Business Glossary.Advanced Shipment Notification',
+      },
+    ]);
+  });
+
   it('should parse buckets with only key property', () => {
     const buckets = [
       { key: 'value1', doc_count: 1 },
@@ -321,7 +377,9 @@ describe('parseBucketsData', () => {
       ]);
     });
 
-    it('should handle missing label field in sourceFieldOptionType', () => {
+    // Falling through to name, then to the value, is deliberate: an option with
+    // no displayName previously rendered blank.
+    it('should fall back to the value when the label field is missing', () => {
       const buckets = [
         {
           key: 'bucket1',
@@ -345,10 +403,12 @@ describe('parseBucketsData', () => {
         value: 'fullyQualifiedName',
       });
 
-      expect(result).toEqual([{ title: undefined, value: 'user1@domain.com' }]);
+      expect(result).toEqual([
+        { title: 'user1@domain.com', value: 'user1@domain.com' },
+      ]);
     });
 
-    it('should handle missing value field in sourceFieldOptionType', () => {
+    it('should fall back to the bucket key when the value field is missing', () => {
       const buckets = [
         {
           key: 'bucket1',
@@ -372,7 +432,7 @@ describe('parseBucketsData', () => {
         value: 'fullyQualifiedName',
       });
 
-      expect(result).toEqual([{ title: 'User 1', value: undefined }]);
+      expect(result).toEqual([{ title: 'User 1', value: 'bucket1' }]);
     });
 
     it('should handle empty _source in sourceFieldOptionType', () => {
@@ -397,7 +457,9 @@ describe('parseBucketsData', () => {
         value: 'fullyQualifiedName',
       });
 
-      expect(result).toEqual([{ title: undefined, value: undefined }]);
+      // An empty _source falls all the way back to the bucket key rather than
+      // producing a blank, unselectable option.
+      expect(result).toEqual([{ title: 'bucket1', value: 'bucket1' }]);
     });
 
     it('should prioritize sourceFieldOptionType over sourceFields', () => {
@@ -540,7 +602,8 @@ describe('parseBucketsData', () => {
       });
 
       expect(resultWithOptionType).toEqual([
-        { title: 'Test Display', value: undefined }, // nested.field should be undefined as it's not at root level
+        // nested.field is not at root level, so the value falls back to the key
+        { title: 'Test Display', value: 'value1' },
       ]);
 
       // Test basic usage
@@ -590,8 +653,8 @@ describe('parseBucketsData', () => {
       });
 
       expect(result).toEqual([
-        { title: null, value: undefined },
-        { title: undefined, value: undefined },
+        { title: 'test1', value: 'test1' },
+        { title: 'test2', value: 'test2' },
       ]);
 
       // Test sourceFields with valid path

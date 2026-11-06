@@ -2,8 +2,8 @@
 Unit tests for DQ as Code TestRunner
 """
 
+from collections.abc import Generator
 from tempfile import NamedTemporaryFile
-from typing import Generator
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 from uuid import uuid4
 
@@ -371,7 +371,7 @@ def test_from_yaml_must_receive_either_file_path_or_string_value() -> None:
     """Test creating TestRunner from YAML file"""
     with pytest.raises(
         AssertionError,
-        match="`TestRunner.from_yaml` expects either `yaml_string` or `file_path` to be provided.",
+        match="`TestRunner.from_yaml` expects either `yaml_string` or `file_path` to be provided.",  # noqa: RUF043
     ):
         TestRunner.from_yaml()
 

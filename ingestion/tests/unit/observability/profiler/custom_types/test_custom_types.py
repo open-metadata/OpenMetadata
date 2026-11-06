@@ -47,7 +47,7 @@ class TestCustomTypes(TestCase):
     def setUpClass(cls) -> None:
         User.__table__.create(bind=cls.engine)
 
-        for i in range(10):
+        for i in range(10):  # noqa: B007
             data = [
                 User(
                     name="John",

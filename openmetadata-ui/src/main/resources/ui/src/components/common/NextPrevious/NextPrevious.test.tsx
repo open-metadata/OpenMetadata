@@ -186,6 +186,23 @@ describe('Test Pagination Component', () => {
     expect(previous).not.toBeDisabled();
   });
 
+  it('Next should be disabled when there are no results with isNumberBased as true', () => {
+    const { getByTestId } = render(
+      <NextPrevious
+        isNumberBased
+        currentPage={1}
+        pageSize={PAGE_SIZE}
+        paging={{ total: 0 }}
+        pagingHandler={mockCallback}
+      />
+    );
+
+    fireEvent.click(getByTestId('next'));
+
+    expect(getByTestId('next')).toBeDisabled();
+    expect(mockCallback).not.toHaveBeenCalled();
+  });
+
   it('should render proper page indicator', () => {
     const paging = {
       before: 'test',
@@ -216,6 +233,26 @@ describe('Test Pagination Component', () => {
     expect(pageIndicator).toHaveTextContent(
       `label.page ${totalPage} label.of ${totalPage}`
     );
+  });
+
+  it('should render cursor page indicator when total is unavailable', () => {
+    const paging = {
+      before: '',
+      after: 'testString',
+      total: 0,
+    };
+
+    const { getByTestId } = render(
+      <NextPrevious
+        currentPage={1}
+        pageSize={PAGE_SIZE}
+        paging={paging}
+        pagingHandler={mockCallback}
+      />
+    );
+    const pageIndicator = getByTestId('page-indicator');
+
+    expect(pageIndicator).toHaveTextContent('label.page 1 label.of 2');
   });
 
   it('On clicking Previous and Next button respective pages should be rendered', async () => {

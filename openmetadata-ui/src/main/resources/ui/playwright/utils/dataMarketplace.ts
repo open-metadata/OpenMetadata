@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { startCase } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const navigateToMarketplace = async (page: Page) => {
   await redirectToHomePage(page);
@@ -29,10 +31,12 @@ export const searchMarketplace = async (page: Page, term: string) => {
   await searchInput.clear();
   await searchInput.fill(term);
 
-  const searchResponse = page.waitForResponse(
+  const searchResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.status() === 200
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/search/query'),
+    200
   );
   await searchInput.press('Enter');
   await searchResponse;
@@ -47,19 +51,29 @@ export const closeSearchPopover = async (page: Page) => {
 
 export const verifyGreetingBanner = async (page: Page, displayName: string) => {
   await expect(page.getByTestId('marketplace-greeting')).toBeVisible();
-  await expect(page.getByTestId('greeting-text')).toContainText(displayName);
+  await expect(page.getByTestId('greeting-text')).toContainText(
+    startCase(displayName)
+  );
 };
 
+/**
+ * `name` is worth setting whenever a test asserts the order announcements come
+ * back in: the list endpoint sorts by `name`, and when the caller omits one the
+ * server generates `announcement-<uuid>` — so the order is a random UUID sort,
+ * not creation order.
+ */
 export const createAnnouncementViaApi = async (
   apiContext: APIRequestContext,
   entityLink: string,
   message: string,
-  description: string
+  description: string,
+  name?: string
 ) => {
   const startTime = Date.now();
   const endTime = startTime + 86400 * 1000;
   const response = await apiContext.post('/api/v1/announcements', {
     data: {
+      ...(name ? { name } : {}),
       displayName: message,
       description,
       entityLink,

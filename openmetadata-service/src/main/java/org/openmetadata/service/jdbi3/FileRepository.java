@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -81,6 +82,11 @@ public class FileRepository extends EntityRepository<File> {
         UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix (FQNs are service-nested). See
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -96,6 +102,10 @@ public class FileRepository extends EntityRepository<File> {
       file.setFullyQualifiedName(
           FullyQualifiedName.add(service.getFullyQualifiedName(), file.getName()));
     }
+    // Columns need their FQN set on the write path too, not only when read back in setFields:
+    // the update path compares columns by FQN, and a null one NPEs on every re-ingestion.
+    // listOrEmpty because non-tabular files (images, PDFs, ...) carry no columns.
+    ColumnUtil.setColumnFQN(file.getFullyQualifiedName(), listOrEmpty(file.getColumns()));
   }
 
   @Override
@@ -412,7 +422,7 @@ public class FileRepository extends EntityRepository<File> {
                   List.of(
                       Pair.of(12, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(13, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 14))
+          .withDomains(getDomains(printer, csvRecord, 14, newFile.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 15));
       if (processRecord) {
         createEntity(printer, csvRecord, newFile, FILE);

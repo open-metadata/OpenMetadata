@@ -7,33 +7,56 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.CsvJobClient;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
+import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnConstraint;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.StaticSamplingConfig;
+import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for DatabaseSchema entity operations.
@@ -49,6 +72,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
 
   {
     supportsImportExport = true;
+    supportsCreationAudit = true;
     supportsBatchImport = true;
     supportsRecursiveImport = true; // DatabaseSchema supports recursive import with nested entities
     supportsLifeCycle = true;
@@ -175,19 +199,6 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().databaseSchemas().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().databaseSchemas().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient()
-        .databaseSchemas()
-        .getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -873,6 +884,71 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
         "Sum of downstream edges across pages should match total downstream edges");
   }
 
+  @Test
+  void test_schemaEntityRelationshipCardinalityIsReadFromReferencedSide(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = createDatabase(ns, service);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("er_cardinality_schema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    String schemaFqn = createEntity(createSchema).getFullyQualifiedName();
+
+    CreateTable parentRequest = new CreateTable();
+    parentRequest.setName(ns.prefix("organization"));
+    parentRequest.setDatabaseSchema(schemaFqn);
+    parentRequest.setColumns(
+        List.of(
+            new Column()
+                .withName("party_guid")
+                .withDataType(ColumnDataType.UUID)
+                .withConstraint(ColumnConstraint.PRIMARY_KEY)));
+    Table parent =
+        client.tables().getByName(client.tables().create(parentRequest).getFullyQualifiedName());
+    String parentKeyFqn = parent.getColumns().getFirst().getFullyQualifiedName();
+
+    CreateTable childRequest = new CreateTable();
+    childRequest.setName(ns.prefix("organization_duns"));
+    childRequest.setDatabaseSchema(schemaFqn);
+    childRequest.setColumns(
+        List.of(
+            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+            new Column().withName("party_guid").withDataType(ColumnDataType.UUID)));
+    childRequest.setTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("party_guid"))
+                .withReferredColumns(List.of(parentKeyFqn))
+                .withRelationshipType(TableConstraint.RelationshipType.MANY_TO_ONE)));
+    Table child = client.tables().create(childRequest);
+
+    String edgeDocId = parent.getId() + "-" + child.getId();
+    Awaitility.await("Wait for the foreign key edge to be indexed")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(2, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchSchemaEntityRelationship(client, schemaFqn, null, false)
+                        .getData()
+                        .getUpstreamEdges()
+                        .containsKey(edgeDocId)));
+
+    EsEntityRelationshipData edge =
+        searchSchemaEntityRelationship(client, schemaFqn, null, false)
+            .getData()
+            .getUpstreamEdges()
+            .get(edgeDocId);
+    var edgeColumn = edge.getColumns().getFirst();
+
+    assertEquals(parent.getId(), edge.getEntity().getId());
+    assertEquals(parentKeyFqn, edgeColumn.getColumnFQN());
+    assertEquals(child.getFullyQualifiedName() + ".party_guid", edgeColumn.getRelatedColumnFQN());
+    assertEquals("ONE_TO_MANY", edgeColumn.getRelationshipType());
+  }
+
   private org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult
       searchSchemaEntityRelationship(
           OpenMetadataClient client, String fqn, String queryFilter, boolean includeDeleted) {
@@ -1007,6 +1083,145 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     } catch (Exception e) {
       fail("Creating non-existing table via CSV should succeed: " + e.getMessage());
     }
+  }
+
+  @Test
+  void test_importCsv_updateKeepsVersionHistory(TestNamespace ns) {
+    DatabaseSchema schema = createImportSchema(ns);
+    Table table = createOwnedTaggedTable(schema, ns.prefix("carrier_invoices"));
+    editDescription(SdkClients.user1Client(), table.getId(), "Reviewed by the table owner.");
+    Table beforeImport =
+        editDescription(SdkClients.ingestionBotClient(), table.getId(), "Refreshed by ingestion.");
+
+    importReplacingText(schema, "Refreshed by ingestion.", "Imported from the catalog sheet.");
+
+    assertEquals(List.of(0.4, 0.3, 0.2, 0.1), versionsInHistory(table.getId()));
+    assertVersionKept(table.getId(), beforeImport);
+
+    editDescription(SdkClients.adminClient(), table.getId(), "Corrected after the import.");
+    assertEquals(
+        List.of(0.4, 0.3, 0.2, 0.1),
+        versionsInHistory(table.getId()),
+        "the importer's edit within the session merges into the import's version");
+    assertVersionKept(table.getId(), beforeImport);
+
+    Table ownerEdit =
+        editDescription(SdkClients.user1Client(), table.getId(), "Approved by the table owner.");
+    assertEquals(List.of(0.5, 0.4, 0.3, 0.2, 0.1), versionsInHistory(table.getId()));
+    assertEquals(1, ownerEdit.getOwners().size());
+    assertEquals(1, ownerEdit.getTags().size());
+  }
+
+  @Test
+  void test_exportLeavesOutTablesTheExporterMayNotView(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = createImportSchema(ns);
+    Table open = createExportTable(schema, ns.prefix("open_table"), List.of());
+    Table restricted =
+        createExportTable(schema, ns.prefix("restricted_table"), List.of(personalDataTagLabel()));
+    String principal = ns.shortPrefix("schema_export");
+    OpenMetadataClient exporter =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            principal,
+            Entity.TABLE,
+            MetadataOperation.VIEW_ALL,
+            "matchAnyTag('" + personalDataTagLabel().getTagFQN() + "')");
+
+    assertThrows(
+        ForbiddenException.class, () -> exporter.tables().get(restricted.getId().toString()));
+    String exported = exporter.databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+    String adminExported =
+        SdkClients.adminClient().databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+
+    String asyncExported = exportAsync(principal + "_user", schema.getFullyQualifiedName());
+
+    assertTrue(exported.contains(open.getName()), exported);
+    assertFalse(exported.contains(restricted.getName()), exported);
+    assertTrue(asyncExported.contains(open.getName()), asyncExported);
+    assertFalse(asyncExported.contains(restricted.getName()), asyncExported);
+    assertTrue(adminExported.contains(restricted.getName()), adminExported);
+  }
+
+  /** Runs the schema's background export as {@code userName} and returns the CSV it produced. */
+  private static String exportAsync(String userName, String schemaFqn) throws Exception {
+    String token =
+        JwtAuthProvider.tokenFor(
+            userName, userName + "@test.openmetadata.org", new String[] {}, 3600);
+    CsvJobClient jobs = CsvJobClient.onDefaultServer();
+    String jobId =
+        jobs.startJob("GET", "/v1/databaseSchemas/name/" + schemaFqn + "/exportAsync", null, token);
+    Awaitility.await()
+        .atMost(2, TimeUnit.MINUTES)
+        .until(
+            () ->
+                jobs.request("GET", "/v1/csvAsyncJobs/" + jobId, null, token)
+                    .body()
+                    .contains("\"COMPLETED\""));
+    return jobs.request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, token).body();
+  }
+
+  private Table createExportTable(DatabaseSchema schema, String name, List<TagLabel> tags) {
+    CreateTable createTable = new CreateTable();
+    createTable.setName(name);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setTags(tags);
+    createTable.setColumns(
+        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+    return SdkClients.adminClient().tables().create(createTable);
+  }
+
+  private DatabaseSchema createImportSchema(TestNamespace ns) {
+    Database database = createDatabase(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("import_history_schema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    return createEntity(createSchema);
+  }
+
+  private Table createOwnedTaggedTable(DatabaseSchema schema, String name) {
+    CreateTable createTable = new CreateTable();
+    createTable.setName(name);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setDescription("Freight invoices from carriers.");
+    createTable.setOwners(List.of(testUser1Ref()));
+    createTable.setTags(List.of(personalDataTagLabel()));
+    createTable.setColumns(
+        List.of(new Column().withName("invoice_id").withDataType(ColumnDataType.BIGINT)));
+    return SdkClients.adminClient().tables().create(createTable);
+  }
+
+  private void importReplacingText(DatabaseSchema schema, String text, String replacement) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String exported = admin.databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+    String csv = exported.replace(text, replacement);
+    admin.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, false, false);
+  }
+
+  private Table editDescription(OpenMetadataClient client, UUID tableId, String description) {
+    Table table = client.tables().get(tableId.toString(), "owners,tags");
+    table.setDescription(description);
+    client.tables().update(tableId, table);
+    return client.tables().get(tableId.toString(), "owners,tags");
+  }
+
+  private List<Double> versionsInHistory(UUID tableId) {
+    // EntityHistory.versions is an untyped list: the SDK hands back each version as its JSON text,
+    // or as an already-parsed object depending on the deserializer, so both shapes are read here.
+    return SdkClients.adminClient().tables().getVersionList(tableId).getVersions().stream()
+        .map(
+            version ->
+                version instanceof String json
+                    ? JsonUtils.readValue(json, Table.class)
+                    : JsonUtils.convertValue(version, Table.class))
+        .map(Table::getVersion)
+        .toList();
+  }
+
+  private void assertVersionKept(UUID tableId, Table expected) {
+    Table stored = SdkClients.adminClient().tables().getVersion(tableId, expected.getVersion());
+    assertEquals(expected.getDescription(), stored.getDescription());
+    assertEquals(expected.getUpdatedBy(), stored.getUpdatedBy());
+    assertEquals(testUser1Ref().getId(), stored.getOwners().getFirst().getId());
+    assertEquals(personalDataTagLabel().getTagFQN(), stored.getTags().getFirst().getTagFQN());
   }
 
   @Test
@@ -1380,8 +1595,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     org.openmetadata.schema.entity.data.Glossary glossary =
         client.glossaries().create(createGlossary);
 
-    // Create an IN_REVIEW glossary term by creating it first, then patching the status
-    // (You cannot create a term with IN_REVIEW status directly)
+    // Create a glossary term with a reviewer
     org.openmetadata.schema.type.EntityReference reviewerRef =
         org.openmetadata.it.factories.UserTestFactory.createUser(ns, "reviewer1")
             .getEntityReference();
@@ -1394,21 +1608,12 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     org.openmetadata.schema.entity.data.GlossaryTerm inReviewTerm =
         client.glossaryTerms().create(createInReviewTerm);
 
-    // Now update the term to set it to IN_REVIEW status
-    inReviewTerm.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
-    inReviewTerm = client.glossaryTerms().update(inReviewTerm.getId(), inReviewTerm);
-
-    // Wait for the term to be updated to IN_REVIEW status
-    final UUID termId = inReviewTerm.getId();
-    org.awaitility.Awaitility.await()
-        .atMost(10, java.util.concurrent.TimeUnit.SECONDS)
-        .pollInterval(500, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .until(
-            () -> {
-              org.openmetadata.schema.entity.data.GlossaryTerm term =
-                  client.glossaryTerms().get(termId.toString());
-              return term.getEntityStatus() == org.openmetadata.schema.type.EntityStatus.IN_REVIEW;
-            });
+    // The approval workflow puts a new term with reviewers in review and owns its stage, so move
+    // the term there the way the workflow does
+    GovernanceWorkflowActions.moveToStage(
+        Entity.GLOSSARY_TERM,
+        inReviewTerm.getId(),
+        org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
 
     log.info("TEST: Creating CSV for unapproved glossary term import");
     log.info("TEST: IN_REVIEW term FQN: {}", inReviewTerm.getFullyQualifiedName());
@@ -1547,6 +1752,321 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     assertTrue(
         unchangedSchema.getTags() == null || unchangedSchema.getTags().isEmpty(),
         "Schema should not have tags applied in dry run mode");
+  }
+
+  /**
+   * Reproduces #28523: bulk-editing a table that inherits its domain and has a data product in that
+   * same domain must not fail "Data Product Domain Validation". The exported CSV carries no explicit
+   * domain (inherited domains are not exported), so an empty domain column must preserve the
+   * inherited domain for rule evaluation instead of wiping it.
+   */
+  @Test
+  void test_importCsv_tableWithInheritedDomainAndDataProduct_succeeds(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    org.openmetadata.schema.entity.domains.Domain domain =
+        client
+            .domains()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDomain()
+                    .withName(ns.prefix("inherited_dp_domain"))
+                    .withDomainType(
+                        org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain inherited by the table under test"));
+
+    CreateDatabase createDb = new CreateDatabase();
+    createDb.setName(ns.prefix("inherited_dp_db"));
+    createDb.setService(service.getFullyQualifiedName());
+    createDb.setDomains(List.of(domain.getFullyQualifiedName()));
+    Database database = client.databases().create(createDb);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("inherited_dp_schema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("inherited_dp_product"))
+                    .withDescription("Data product sharing the table's inherited domain")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    String tableName = ns.prefix("inherited_dp_table");
+    CreateTable createTable = new CreateTable();
+    createTable.setName(tableName);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    org.openmetadata.schema.entity.data.Table table = client.tables().create(createTable);
+
+    org.openmetadata.schema.type.api.BulkAssets addAsset =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    client
+        .getHttpClient()
+        .execute(
+            org.openmetadata.sdk.network.HttpMethod.PUT,
+            "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add",
+            addAsset,
+            Void.class);
+
+    org.openmetadata.schema.entity.data.Table withDp =
+        client.tables().get(table.getId().toString(), "domains,dataProducts");
+    assertEquals(1, withDp.getDataProducts().size(), "Table should have the data product assigned");
+    assertNotNull(withDp.getDomains());
+    assertTrue(
+        withDp.getDomains().stream().anyMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "Table should inherit its domain from the database");
+
+    String csv =
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n"
+            + tableName
+            + ",Bulk Edited Table,Edited via bulk edit,,,,,,,,,";
+
+    String dryRunRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, true, false);
+    CsvImportResult dryRun = JsonUtils.readValue(dryRunRaw, CsvImportResult.class);
+    assertEquals(
+        0,
+        dryRun.getNumberOfRowsFailed(),
+        "Bulk-edit dry run must not fail with an inherited domain: " + dryRunRaw);
+    assertFalse(
+        dryRunRaw.contains("Data Product Domain Validation"),
+        "Inherited domain must satisfy Data Product Domain Validation: " + dryRunRaw);
+
+    String importRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, false, false);
+    CsvImportResult importResult = JsonUtils.readValue(importRaw, CsvImportResult.class);
+    assertEquals(0, importResult.getNumberOfRowsFailed(), "Bulk edit should pass: " + importRaw);
+
+    org.openmetadata.schema.entity.data.Table afterImport =
+        client.tables().get(table.getId().toString(), "domains");
+    assertTrue(
+        afterImport.getDomains() == null
+            || afterImport.getDomains().stream()
+                .allMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "Inherited domain must not be materialized as a direct domain after import");
+    assertEquals("Edited via bulk edit", afterImport.getDescription());
+  }
+
+  /**
+   * Recursive variant of #28523: the recursive dry-run load excludes domains, so an empty domain
+   * column must still preserve the table's inherited domain for "Data Product Domain Validation".
+   * Exports the schema recursively, then forces the table row's domain column empty before re-import.
+   */
+  @Test
+  void test_importCsvRecursive_tableWithInheritedDomainAndDataProduct_succeeds(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    org.openmetadata.schema.entity.domains.Domain domain =
+        client
+            .domains()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDomain()
+                    .withName(ns.prefix("rec_inherited_domain"))
+                    .withDomainType(
+                        org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain inherited by the recursive table under test"));
+
+    CreateDatabase createDb = new CreateDatabase();
+    createDb.setName(ns.prefix("rec_inherited_db"));
+    createDb.setService(service.getFullyQualifiedName());
+    createDb.setDomains(List.of(domain.getFullyQualifiedName()));
+    Database database = client.databases().create(createDb);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("rec_inherited_schema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("rec_inherited_product"))
+                    .withDescription("Data product sharing the table's inherited domain")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    String tableName = ns.prefix("rec_inherited_table");
+    CreateTable createTable = new CreateTable();
+    createTable.setName(tableName);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setDescription("Initial Table Description");
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    org.openmetadata.schema.entity.data.Table table = client.tables().create(createTable);
+
+    org.openmetadata.schema.type.api.BulkAssets addAsset =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    client
+        .getHttpClient()
+        .execute(
+            org.openmetadata.sdk.network.HttpMethod.PUT,
+            "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add",
+            addAsset,
+            Void.class);
+
+    String exportedCsv = client.databaseSchemas().exportCsv(schema.getFullyQualifiedName(), true);
+    String newCsv =
+        rewriteCsvRows(
+            exportedCsv,
+            cols -> {
+              if (cols.size() > 12 && "table".equals(cols.get(12).trim())) {
+                cols.set(2, "Recursive Bulk Edited");
+                cols.set(10, "");
+              }
+            });
+
+    String dryRunRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), newCsv, true, true);
+    CsvImportResult dryRun = JsonUtils.readValue(dryRunRaw, CsvImportResult.class);
+    assertEquals(
+        0,
+        dryRun.getNumberOfRowsFailed(),
+        "Recursive bulk-edit dry run must not fail with an inherited domain: " + dryRunRaw);
+    assertFalse(
+        dryRunRaw.contains("Data Product Domain Validation"),
+        "Inherited domain must satisfy Data Product Domain Validation: " + dryRunRaw);
+
+    String importRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), newCsv, false, true);
+    CsvImportResult importResult = JsonUtils.readValue(importRaw, CsvImportResult.class);
+    assertEquals(
+        0, importResult.getNumberOfRowsFailed(), "Recursive bulk edit should pass: " + importRaw);
+
+    org.openmetadata.schema.entity.data.Table afterImport =
+        client.tables().get(table.getId().toString(), "domains");
+    assertTrue(
+        afterImport.getDomains() == null
+            || afterImport.getDomains().stream()
+                .allMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "Inherited domain must not be materialized as a direct domain after recursive import");
+    assertEquals("Recursive Bulk Edited", afterImport.getDescription());
+  }
+
+  /**
+   * Export→import round-trip for #28523: an inherited domain must not be written to the CSV domains
+   * column on export. Otherwise re-import reads it back as a plain FQN (the inherited flag is lost in
+   * serialization), {@code dropInheritedDomains} cannot recognize it, and it gets materialized as a
+   * direct domain. Asserts the exported table row has an empty domain column, then re-imports the
+   * export verbatim (only the description edited) and confirms the domain stays inherited.
+   */
+  @Test
+  void test_exportCsv_inheritedDomainNotExported_roundTripDoesNotMaterialize(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    org.openmetadata.schema.entity.domains.Domain domain =
+        client
+            .domains()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDomain()
+                    .withName(ns.prefix("roundtrip_domain"))
+                    .withDomainType(
+                        org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain inherited by the round-trip table under test"));
+
+    CreateDatabase createDb = new CreateDatabase();
+    createDb.setName(ns.prefix("roundtrip_db"));
+    createDb.setService(service.getFullyQualifiedName());
+    createDb.setDomains(List.of(domain.getFullyQualifiedName()));
+    Database database = client.databases().create(createDb);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("roundtrip_schema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("roundtrip_product"))
+                    .withDescription("Data product sharing the table's inherited domain")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    String tableName = ns.prefix("roundtrip_table");
+    CreateTable createTable = new CreateTable();
+    createTable.setName(tableName);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setDescription("Initial Table Description");
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    org.openmetadata.schema.entity.data.Table table = client.tables().create(createTable);
+
+    org.openmetadata.schema.type.api.BulkAssets addAsset =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    client
+        .getHttpClient()
+        .execute(
+            org.openmetadata.sdk.network.HttpMethod.PUT,
+            "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add",
+            addAsset,
+            Void.class);
+
+    String exportedCsv = client.databaseSchemas().exportCsv(schema.getFullyQualifiedName(), true);
+    boolean[] tableRowFound = {false};
+    String newCsv =
+        rewriteCsvRows(
+            exportedCsv,
+            cols -> {
+              if (cols.size() > 12 && "table".equals(cols.get(12).trim())) {
+                assertTrue(
+                    cols.get(10).trim().isEmpty(),
+                    "Export must not write the inherited domain to the CSV domains column: "
+                        + cols);
+                cols.set(2, "Round Trip Edited");
+                tableRowFound[0] = true;
+              }
+            });
+    assertTrue(tableRowFound[0], "Exported CSV should contain the table row");
+
+    String dryRunRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), newCsv, true, true);
+    CsvImportResult dryRun = JsonUtils.readValue(dryRunRaw, CsvImportResult.class);
+    assertEquals(
+        0,
+        dryRun.getNumberOfRowsFailed(),
+        "Round-trip dry run must not fail with an inherited domain: " + dryRunRaw);
+    assertFalse(
+        dryRunRaw.contains("Data Product Domain Validation"),
+        "Inherited domain must satisfy Data Product Domain Validation: " + dryRunRaw);
+
+    String importRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), newCsv, false, true);
+    CsvImportResult importResult = JsonUtils.readValue(importRaw, CsvImportResult.class);
+    assertEquals(
+        0, importResult.getNumberOfRowsFailed(), "Round-trip import should pass: " + importRaw);
+
+    org.openmetadata.schema.entity.data.Table afterImport =
+        client.tables().get(table.getId().toString(), "domains");
+    assertTrue(
+        afterImport.getDomains() == null
+            || afterImport.getDomains().stream()
+                .allMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "Inherited domain must not be materialized as a direct domain after round-trip import");
+    assertEquals("Round Trip Edited", afterImport.getDescription());
   }
 
   /**
@@ -1785,6 +2305,29 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
         .orElse("");
   }
 
+  /**
+   * Rewrites an exported CSV by applying {@code rowEditor} to every data row (header untouched),
+   * using Commons CSV so quoted fields containing commas or newlines survive the round trip.
+   */
+  private static String rewriteCsvRows(String csv, Consumer<List<String>> rowEditor)
+      throws IOException {
+    CSVFormat format = CSVFormat.DEFAULT.builder().setRecordSeparator('\n').build();
+    StringBuilder rewritten = new StringBuilder();
+    try (CSVParser parser = CSVParser.parse(csv, format);
+        CSVPrinter printer = new CSVPrinter(rewritten, format)) {
+      boolean isHeader = true;
+      for (CSVRecord csvRecord : parser) {
+        List<String> cols = new ArrayList<>(csvRecord.toList());
+        if (!isHeader) {
+          rowEditor.accept(cols);
+        }
+        isHeader = false;
+        printer.printRecord(cols);
+      }
+    }
+    return rewritten.toString();
+  }
+
   private String formatExtensionForCsv(Object extension) {
     if (extension == null) {
       return "";
@@ -2006,5 +2549,28 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     assertTrue(
         schemas.stream().noneMatch(s -> s.getName().startsWith("temp")),
         "Excluded schemas should not appear in results");
+  }
+
+  @Test
+  void test_listDatabaseSchemasFilteredByService(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name(ns.prefix("db")).in(service.getFullyQualifiedName()).execute();
+    for (int i = 0; i < 2; i++) {
+      DatabaseSchemas.create()
+          .name(ns.prefix("service_filter_schema_" + i))
+          .in(database.getFullyQualifiedName())
+          .execute();
+    }
+
+    ListResponse<DatabaseSchema> response =
+        client.databaseSchemas().list(new ListParams().setService(service.getName()).setLimit(50));
+
+    assertEquals(2, response.getData().size());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(
+                schema -> schema.getFullyQualifiedName().startsWith(service.getName() + ".")));
   }
 }

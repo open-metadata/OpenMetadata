@@ -14,28 +14,46 @@ Utils module to define overrided sqlalchamy methods
 
 # pylint: disable=protected-access,unused-argument
 import re
+import traceback
 
 from sqlalchemy import sql, text, util
 from sqlalchemy.dialects.oracle.base import FLOAT, INTEGER, INTERVAL, NUMBER, TIMESTAMP
-from sqlalchemy.engine import reflection
+from sqlalchemy.engine import Connection, Row, reflection
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.oracle.queries import (
     GET_MATERIALIZED_VIEW_NAMES,
     GET_VIEW_NAMES,
     ORACLE_CONSTRAINTS,
+    ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES,
     ORACLE_GET_COLUMNS,
+    ORACLE_GET_MVIEW_QUERY_BY_NAME,
     ORACLE_GET_TABLE_NAMES,
+    ORACLE_GET_TEMPORARY_TABLE_NAMES,
+    ORACLE_GET_VIEW_DEFINITION_BY_NAME,
+    ORACLE_GET_VIEW_TEXT_BY_NAME,
     ORACLE_IDENTITY_TYPE,
     ORACLE_TABLE_COMMENTS,
     ORACLE_TABLE_COMMENTS_PRESERVE_CASE,
     ORACLE_VIEW_DEFINITIONS,
     ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE,
 )
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
-    get_view_definition_wrapper,
 )
+
+logger = ingestion_logger()
+
+VIEW_DEFINITION_CACHE_KEY = "oracle_schema_view_definitions"
+
+# ALL_TAB_COLS.CHAR_USED is 'C' when a column was declared with character length
+# semantics (VARCHAR2(10 CHAR)) and 'B' for byte semantics (VARCHAR2(10 BYTE), the
+# default). Oracle only renders the qualifier for VARCHAR2 and CHAR: NVARCHAR2 and
+# NCHAR are always character based and are never displayed with it.
+CHAR_SEMANTICS_FLAG = "C"
+CHAR_SEMANTICS_TYPES = ("VARCHAR2", "CHAR")
 
 
 def get_table_prefix_from_connection(service_connection) -> str:
@@ -51,7 +69,7 @@ def get_table_comment(
     self,
     connection,
     table_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -65,52 +83,136 @@ def get_table_comment(
     )
 
 
-@reflection.cache
 def get_view_definition(
     self,
     connection,
     view_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
 ):
-    return get_view_definition_wrapper(
-        self,
-        connection,
-        table_name=view_name.lower(),
-        schema=schema.lower() if schema else None,
-        query=ORACLE_VIEW_DEFINITIONS.format(prefix=_get_table_prefix(self)),
+    owner = self.denormalize_name(schema or self.default_schema_name)
+    preserve_case = getattr(self, "preserve_identifier_case", False)
+    normalize = (lambda value: value) if preserve_case else str.lower
+    prefix = _get_table_prefix(self)
+    scope = (connection.engine, owner, prefix, preserve_case)
+    info_cache = kw.get("info_cache")
+    cached = info_cache.get(VIEW_DEFINITION_CACHE_KEY) if info_cache is not None else None
+    key = (normalize(view_name), normalize(owner))
+    if cached is not None and cached[0] == scope:
+        return cached[1].get(key, "")
+
+    # Release the previous schema before loading its replacement.
+    if info_cache is not None:
+        info_cache.pop(VIEW_DEFINITION_CACHE_KEY, None)
+    cached = None
+    query = ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE if preserve_case else ORACLE_VIEW_DEFINITIONS
+    definitions = dict(get_all_view_definitions(self, connection, query.format(prefix=prefix), owner))
+    if info_cache is not None:
+        info_cache[VIEW_DEFINITION_CACHE_KEY] = (scope, definitions)
+    return definitions.get(key, "")
+
+
+def get_all_view_definitions(self, connection: Connection, query: str, owner: str):
+    """Stream definitions for one schema, isolating failed view reads."""
+    try:
+        result = connection.execute(text(query), {"owner": owner})
+        try:
+            for view in result:
+                yield _read_bulk_view_definition(view)
+        finally:
+            result.close()
+    except DatabaseError as exc:
+        logger.warning("Bulk Oracle view-definition fetch failed (%s). Falling back to per-view retrieval.", exc)
+        logger.debug(traceback.format_exc())
+        yield from _get_view_definitions_individually(self, connection, owner)
+
+
+def _read_bulk_view_definition(view: Row) -> tuple[tuple[str, str], str | None]:
+    """Read a bulk row with either lowercase or uppercase result labels."""
+    if hasattr(view, "view_def") and hasattr(view, "schema"):
+        view_definition = view.view_def
+        if not view_definition and hasattr(view, "view_ddl"):
+            view_definition = view.view_ddl
+            if view_definition is not None and hasattr(view_definition, "read"):
+                view_definition = view_definition.read()
+        else:
+            view_definition = f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
+        return (view.view_name, view.schema), view_definition
+
+    if hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
+        view_definition = view.VIEW_DEF
+        if not view_definition and hasattr(view, "VIEW_DDL"):
+            view_definition = view.VIEW_DDL
+            if view_definition is not None and hasattr(view_definition, "read"):
+                view_definition = view_definition.read()
+        else:
+            view_definition = f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view_definition}"
+        return (view.VIEW_NAME, view.SCHEMA), view_definition
+    raise ValueError("Oracle view-definition row has no definition labels")
+
+
+def _get_view_definitions_individually(self, connection: Connection, owner: str):
+    """Read each definition in the requested schema independently."""
+    # Match the cache-key casing that get_view_definition uses for lookups:
+    # lowercased by default, kept verbatim when preserveIdentifierCase is set.
+    normalize = (lambda value: value) if getattr(self, "preserve_identifier_case", False) else str.lower
+    prefix = _get_table_prefix(self)
+    view_names = connection.execute(text(ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES.format(prefix=prefix)), {"owner": owner})
+    try:
+        for view_owner, name, object_type in view_names:
+            try:
+                definition = _fetch_view_definition_by_name(connection, prefix, view_owner, name, object_type)
+            except DatabaseError as exc:
+                logger.warning("Could not fetch view definition for %s.%s: %s", view_owner, name, exc)
+                logger.debug(traceback.format_exc())
+                continue
+            if definition:
+                yield (normalize(name), normalize(view_owner)), definition
+    finally:
+        view_names.close()
+
+
+def _read_scalar(result):
+    """Return a scalar result, materializing a LOB locator to str if needed."""
+    try:
+        value = result.scalar()
+        return value.read() if value is not None and hasattr(value, "read") else value
+    finally:
+        result.close()
+
+
+def _fetch_view_definition_by_name(connection, prefix, owner, name, object_type):
+    """Fetch one view's definition without the bulk LONG array truncation.
+
+    Reads the raw text/query with a single-row query first. A single-row fetch is
+    not an array fetch, so it does not hit ORA-01406, and it needs no privileges
+    beyond the bulk read (this is the same column SQLAlchemy's Oracle dialect
+    reads). Only when the text is NULL or still cannot be read does it fall back
+    to DBMS_METADATA.GET_DDL, mirroring the bulk query's text-else-GET_DDL logic.
+    """
+    is_mview = object_type == "MATERIALIZED_VIEW"
+    text_query = ORACLE_GET_MVIEW_QUERY_BY_NAME if is_mview else ORACLE_GET_VIEW_TEXT_BY_NAME
+    try:
+        raw_text = _read_scalar(
+            connection.execute(text(text_query.format(prefix=prefix)), {"owner": owner, "name": name})
+        )
+        if raw_text:
+            return f"CREATE OR REPLACE VIEW {name} AS {raw_text}"
+    except DatabaseError:
+        logger.debug("Single-row text read failed for %s.%s, using GET_DDL", owner, name)
+    return _read_scalar(
+        connection.execute(
+            text(ORACLE_GET_VIEW_DEFINITION_BY_NAME),
+            {"object_type": object_type, "name": name, "owner": owner},
+        )
     )
 
 
-@reflection.cache
-def get_all_view_definitions(self, connection, query):
-    """
-    Method to fetch view definition of all available views
-    """
-    self.all_view_definitions = {}
-    self.current_db: str = connection.engine.url.database  # type: ignore
-    result = connection.execute(text(query))
-    for view in result:
-        if hasattr(view, "view_def") and hasattr(view, "schema"):
-            view_definition = view.view_def
-            if not view_definition and hasattr(view, "view_ddl"):
-                view_definition = view.view_ddl
-            else:
-                view_definition = f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
-            self.all_view_definitions[(view.view_name, view.schema)] = view_definition
-
-        elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
-            view_definition = view.VIEW_DEF
-            if not view_definition and hasattr(view, "VIEW_DDL"):
-                view_definition = view.VIEW_DDL
-            else:
-                view_definition = f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view_definition}"
-            self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = view_definition
-
-
-def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: disable=too-many-branches
+def _get_col_type(  # pylint: disable=too-many-branches
+    self, coltype, precision, scale, length, colname, char_used=None
+):
     raw_type = coltype
     if coltype == "NUMBER":
         if precision is None and scale == 0:
@@ -127,9 +229,10 @@ def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: 
         # TODO: support "precision" here as "binary_precision"
         coltype = FLOAT()
     elif coltype in ("VARCHAR2", "NVARCHAR2", "CHAR", "NCHAR"):
+        char_semantics = char_used == CHAR_SEMANTICS_FLAG and coltype in CHAR_SEMANTICS_TYPES
         coltype = self.ischema_names.get(coltype)(length)
         if length:
-            raw_type += f"({length})"
+            raw_type += f"({length} CHAR)" if char_semantics else f"({length})"
     elif "WITH TIME ZONE" in coltype or "TIMESTAMP" in coltype:
         coltype = TIMESTAMP(timezone=True)
     elif "INTERVAL" in coltype:
@@ -146,7 +249,7 @@ def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: 
 
 # pylint: disable=too-many-locals
 @reflection.cache
-def get_columns(self, connection, table_name, schema=None, **kw):
+def get_columns(self, connection, table_name, schema=None, **kw):  # noqa: C901
     """
 
     Dialect method overridden to add raw data type
@@ -224,10 +327,11 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         default = row[6]
         comment = row[7]
         generated = row[8]
-        default_on_nul = row[9]
-        identity_options = row[10]
+        char_used = row[9]
+        default_on_nul = row[10]
+        identity_options = row[11]
 
-        coltype, raw_coltype = self._get_col_type(coltype, precision, scale, length, colname)
+        coltype, raw_coltype = self._get_col_type(coltype, precision, scale, length, colname, char_used)
 
         computed = None
         if generated == "YES":
@@ -280,6 +384,28 @@ def get_table_names(self, connection, schema=None, **kw):
     return [row[0] for row in cursor]
 
 
+def get_temporary_table_names(dialect, connection, schema=None):
+    """Return Global Temporary Table names in `schema`.
+
+    Oracle GTTs have permanent definitions in the data dictionary
+    (DURATION = 'SYS$SESSION' or 'SYS$TRANSACTION'); only their data is
+    session-scoped. They are excluded from get_table_names() to preserve
+    the historical default and are surfaced separately so callers can tag
+    them (e.g., as TableType.Local).
+    """
+    schema = dialect.denormalize_name(schema or dialect.default_schema_name)
+    if schema is None:
+        schema = dialect.default_schema_name
+
+    tablespace = ""
+    if dialect.exclude_tablespaces:
+        exclude_tablespace = ", ".join([f"'{ts}'" for ts in dialect.exclude_tablespaces])
+        tablespace = f"nvl(tablespace_name, 'no tablespace') NOT IN ({exclude_tablespace}) AND "
+    sql_str = ORACLE_GET_TEMPORARY_TABLE_NAMES.format(tablespace=tablespace, prefix=_get_table_prefix(dialect))
+    cursor = connection.execute(sql.text(sql_str), {"owner": schema})
+    return [row[0] for row in cursor]
+
+
 def get_view_names(self, schema=None):
     """Return all materialized view names in `schema`.
 
@@ -328,7 +454,147 @@ def _get_constraint_data(self, connection, table_name, schema=None, dblink="", *
 
     rp = connection.execute(sql.text(text), params)
     constraint_data = rp.fetchall()
-    return constraint_data
+    return constraint_data  # noqa: RET504
+
+
+def _prepare_constraint_args(self, connection, table_name, schema, **kw):
+    dblink = kw.get("dblink", "")
+    if dblink and not dblink.startswith("@"):
+        dblink = f"@{dblink}"
+
+    if kw.get("oracle_resolve_synonyms", False):
+        rows = list(
+            self._get_synonyms(
+                connection,
+                schema,
+                [table_name],
+                dblink,
+                info_cache=kw.get("info_cache"),
+            )
+        )
+        if rows:
+            row = rows[0]
+            table_name = self.denormalize_name(row.table_name)
+            schema = self.denormalize_name(row.table_owner)
+            if row.db_link:
+                dblink = row.db_link if row.db_link.startswith("@") else f"@{row.db_link}"
+    else:
+        table_name = self.denormalize_name(table_name)
+        schema = self.denormalize_name(schema or self.default_schema_name)
+
+    return table_name, schema, dblink
+
+
+@reflection.cache
+def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+    """Reflect a primary key from the selected Oracle catalog."""
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    constrained_columns = []
+    constraint_name = None
+    for row in constraint_data:
+        if row[1] == "P":
+            constraint_name = constraint_name or self.normalize_name(row[0])
+            constrained_columns.append(self.normalize_name(row[2]))
+
+    return {"constrained_columns": constrained_columns, "name": constraint_name}
+
+
+@reflection.cache
+def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+    """Reflect unique constraints from the selected Oracle catalog."""
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    unique_constraints = {}
+    for row in constraint_data:
+        if row[1] != "U":
+            continue
+        constraint_name = self.normalize_name(row[0])
+        index_name = self.normalize_name(row[10])
+        constraint = unique_constraints.setdefault(
+            constraint_name,
+            {
+                "name": constraint_name,
+                "column_names": [],
+                "duplicates_index": constraint_name if index_name == constraint_name else None,
+            },
+        )
+        constraint["column_names"].append(self.normalize_name(row[2]))
+
+    return list(unique_constraints.values())
+
+
+@reflection.cache
+def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+    """Reflect foreign keys from the selected Oracle catalog."""
+    requested_schema = schema
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    foreign_keys = {}
+    for row in constraint_data:
+        if row[1] != "R":
+            continue
+
+        constraint_name = self.normalize_name(row[0])
+        local_column = self.normalize_name(row[2])
+        # Report the dictionary name verbatim, exactly as get_table_names does, so
+        # referred_table always matches the Table entity's FQN. Normalising here produced
+        # a name that never matched, so common_db_source's exact get_by_name lookup
+        # missed and every Oracle foreign key was silently discarded.
+        remote_table = row[3]
+        remote_column = self.normalize_name(row[4])
+        remote_owner = self.normalize_name(row[5])
+
+        if remote_table is None:
+            util.warn(
+                f"Got 'None' querying 'table_name' from {_get_table_prefix(self)}_CONS_COLUMNS{dblink}; "
+                "does the user have proper rights to the table?"
+            )
+            continue
+
+        foreign_key = foreign_keys.setdefault(
+            constraint_name,
+            {
+                "name": constraint_name,
+                "constrained_columns": [],
+                "referred_schema": None,
+                "referred_table": remote_table,
+                "referred_columns": [],
+                "options": {},
+            },
+        )
+        if requested_schema is not None or self.denormalize_name(remote_owner) != schema:
+            foreign_key["referred_schema"] = remote_owner
+        if row[9] != "NO ACTION":
+            foreign_key["options"]["ondelete"] = row[9]
+        foreign_key["constrained_columns"].append(local_column)
+        foreign_key["referred_columns"].append(remote_column)
+
+    return list(foreign_keys.values())
 
 
 # ---------------------------------------------------------------------------
@@ -362,7 +628,7 @@ def get_table_comment_preserve_case(
     self,
     connection,
     table_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -381,30 +647,7 @@ def get_table_comment_preserve_case(
 
 
 @reflection.cache
-def get_view_definition_preserve_case(
-    self,
-    connection,
-    view_name: str,
-    schema: str = None,
-    resolve_synonyms=False,
-    dblink="",
-    **kw,
-):
-    """Like get_view_definition but passes names as-is and uses a SQL query
-    without LOWER(), so the dict key built by get_all_view_definitions matches
-    Oracle's native case stored in DBA_VIEWS / DBA_MVIEWS.
-    """
-    return get_view_definition_wrapper(
-        self,
-        connection,
-        table_name=view_name,
-        schema=schema,
-        query=ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE.format(prefix=_get_table_prefix(self)),
-    )
-
-
-@reflection.cache
-def get_indexes_preserve_case(
+def get_indexes_preserve_case(  # noqa: C901
     self,
     connection,
     table_name,
@@ -493,8 +736,8 @@ def get_indexes_preserve_case(
         info_cache=kw.get("info_cache"),
     )
 
-    uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
-    enabled = dict(DISABLED=False, ENABLED=True)
+    uniqueness = dict(NONUNIQUE=False, UNIQUE=True)  # noqa: C408
+    enabled = dict(DISABLED=False, ENABLED=True)  # noqa: C408
     oracle_sys_col = re.compile(r"SYS_NC\d+\$", re.IGNORECASE)
 
     index = None
@@ -507,7 +750,7 @@ def get_indexes_preserve_case(
             continue
 
         if raw_index_name != last_index_name:
-            index = dict(
+            index = dict(  # noqa: C408
                 name=index_name_normalized,
                 column_names=[],
                 dialect_options={},

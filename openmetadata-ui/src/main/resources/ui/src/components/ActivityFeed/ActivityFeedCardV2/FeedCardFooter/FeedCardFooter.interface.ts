@@ -11,15 +11,22 @@
  *  limitations under the License.
  */
 
-import { Post, Thread } from '../../../../generated/entity/feed/thread';
+import {
+  Conversation,
+  ConversationReply,
+} from '../../../../generated/entity/feed/conversation';
 
 export interface FeedCardFooterProps {
-  feed: Thread;
-  post?: Post;
-  isPost?: boolean;
-  isForFeedTab?: boolean;
+  conversation?: Conversation;
+  conversationId: string;
+  reply?: ConversationReply;
+  isReply?: boolean;
   componentsVisibility?: {
     showThreadIcon?: boolean;
     showRepliesContainer?: boolean;
   };
+  /** Replaces opening the conversation in the thread drawer. */
+  onReplyPress?: () => void;
+  /** Names the reply count on the reply button in place of the repliers' avatars. */
+  showReplyCount?: boolean;
 }

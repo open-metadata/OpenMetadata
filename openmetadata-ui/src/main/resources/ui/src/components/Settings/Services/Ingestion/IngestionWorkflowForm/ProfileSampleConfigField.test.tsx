@@ -21,7 +21,7 @@ import {
 } from '../../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import ProfileSampleConfigField from './ProfileSampleConfigField';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Plus: () => null,
   Trash01: () => null,
 }));
@@ -94,28 +94,44 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+    ButtonUtility: ({
+      onClick,
+      tooltip,
+      'data-testid': testId,
+    }: {
+      onClick?: () => void;
+      tooltip?: string;
+      'data-testid'?: string;
+    }) => (
+      <button aria-label={tooltip} data-testid={testId} onClick={onClick} />
+    ),
     Card: CardMock,
     Grid: GridMock,
     Input: ({
       'data-testid': testId,
       value,
+      onBlur,
       onChange,
       type,
     }: {
       'data-testid'?: string;
       value?: string;
+      onBlur?: () => void;
       onChange?: (value: string) => void;
       type?: string;
       className?: string;
     }) => (
       <input
+        aria-label={testId}
         data-testid={testId}
         type={type}
         value={value}
+        onBlur={onBlur}
         onChange={(e) => onChange?.(e.target.value)}
       />
     ),
     Select: SelectMock,
+    Toggle: jest.requireActual('@openmetadata/ui-core-components').Toggle,
     Typography: ({
       children,
       className,
@@ -164,6 +180,7 @@ const staticFormData: ProfileSampleConfig = {
 const dynamicFormData: ProfileSampleConfig = {
   sampleConfigType: SampleConfigType.Dynamic,
   config: {
+    smartSampling: false,
     thresholds: [
       {
         rowCountThreshold: 1000000,
@@ -207,16 +224,13 @@ describe('ProfileSampleConfigField', () => {
       ).toBeInTheDocument();
     });
 
-    it('shows static config fields by default when no formData is provided', () => {
+    it('shows dynamic smart sampling by default when no formData is provided', () => {
       render(<ProfileSampleConfigField {...baseFieldProps} />);
 
-      expect(screen.getByTestId('profile-sample-input')).toBeInTheDocument();
+      expect(screen.getByTestId('smart-sampling-toggle')).toBeInTheDocument();
       expect(
-        screen.getByTestId('profile-sample-type-select')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('sampling-method-type-select')
-      ).toBeInTheDocument();
+        screen.queryByTestId('profile-sample-input')
+      ).not.toBeInTheDocument();
     });
 
     it('does not show dynamic threshold section in STATIC mode', () => {
@@ -296,6 +310,7 @@ describe('ProfileSampleConfigField', () => {
       const multiThresholdData: ProfileSampleConfig = {
         sampleConfigType: SampleConfigType.Dynamic,
         config: {
+          smartSampling: false,
           thresholds: [
             { rowCountThreshold: 1000000, profileSample: 10 },
             { rowCountThreshold: 500000, profileSample: 20 },
@@ -330,7 +345,7 @@ describe('ProfileSampleConfigField', () => {
     it('shows empty threshold list with only the add button when thresholds array is empty', () => {
       const emptyDynamic: ProfileSampleConfig = {
         sampleConfigType: SampleConfigType.Dynamic,
-        config: { thresholds: [] },
+        config: { smartSampling: false, thresholds: [] },
       };
 
       render(
@@ -348,7 +363,7 @@ describe('ProfileSampleConfigField', () => {
     it('calls onChange with a new default threshold when add button is clicked', () => {
       const emptyDynamic: ProfileSampleConfig = {
         sampleConfigType: SampleConfigType.Dynamic,
-        config: { thresholds: [] },
+        config: { smartSampling: false, thresholds: [] },
       };
 
       render(
@@ -360,6 +375,7 @@ describe('ProfileSampleConfigField', () => {
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
         config: {
+          smartSampling: false,
           thresholds: [{ rowCountThreshold: 1, profileSample: 100 }],
         },
       });
@@ -378,6 +394,7 @@ describe('ProfileSampleConfigField', () => {
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
         config: {
+          smartSampling: false,
           thresholds: [
             {
               rowCountThreshold: 1000000,
@@ -405,7 +422,7 @@ describe('ProfileSampleConfigField', () => {
 
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
-        config: { thresholds: [] },
+        config: { smartSampling: false, thresholds: [] },
       });
     });
 
@@ -413,6 +430,7 @@ describe('ProfileSampleConfigField', () => {
       const multiThresholdData: ProfileSampleConfig = {
         sampleConfigType: SampleConfigType.Dynamic,
         config: {
+          smartSampling: false,
           thresholds: [
             { rowCountThreshold: 1000000, profileSample: 10 },
             { rowCountThreshold: 500000, profileSample: 20 },
@@ -432,6 +450,7 @@ describe('ProfileSampleConfigField', () => {
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
         config: {
+          smartSampling: false,
           thresholds: [{ rowCountThreshold: 500000, profileSample: 20 }],
         },
       });
@@ -463,6 +482,160 @@ describe('ProfileSampleConfigField', () => {
       expect(
         screen.queryByTestId('profile-sample-input')
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Cross-discriminator field leakage', () => {
+    it('drops Dynamic-only keys when sampleConfigType is STATIC', () => {
+      const polluted: ProfileSampleConfig = {
+        sampleConfigType: SampleConfigType.Static,
+        config: {
+          smartSampling: true,
+          thresholds: [],
+          profileSample: 10,
+        },
+      };
+
+      render(
+        <ProfileSampleConfigField {...baseFieldProps} formData={polluted} />
+      );
+
+      fireEvent.change(screen.getByTestId('profile-sample-input'), {
+        target: { value: '25' },
+      });
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Static,
+        config: { profileSample: 25 },
+      });
+    });
+
+    it('drops Static-only keys when sampleConfigType is DYNAMIC', () => {
+      const polluted: ProfileSampleConfig = {
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [],
+          profileSample: 10,
+          profileSampleType: ProfileSampleType.Percentage,
+        } as ProfileSampleConfig['config'],
+      };
+
+      render(
+        <ProfileSampleConfigField {...baseFieldProps} formData={polluted} />
+      );
+
+      fireEvent.click(screen.getByTestId('add-threshold-btn'));
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [{ rowCountThreshold: 1, profileSample: 100 }],
+        },
+      });
+    });
+  });
+
+  // Ingestion treats a 0 sample as "no sampling" and scans the full table.
+  describe('Minimum profile sample', () => {
+    it('raises a static profile sample below 1 to 1 on blur', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={{
+            sampleConfigType: SampleConfigType.Static,
+            config: { ...staticFormData.config, profileSample: 0 },
+          }}
+        />
+      );
+
+      fireEvent.blur(screen.getByTestId('profile-sample-input'));
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Static,
+        config: { ...staticFormData.config, profileSample: 1 },
+      });
+    });
+
+    it('raises a threshold profile sample below 1 to 1 on blur', () => {
+      const threshold = dynamicFormData.config?.thresholds?.[0];
+      if (!threshold) {
+        throw new Error('Missing dynamic sampling threshold fixture');
+      }
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={{
+            sampleConfigType: SampleConfigType.Dynamic,
+            config: {
+              smartSampling: false,
+              thresholds: [{ ...threshold, profileSample: 0 }],
+            },
+          }}
+        />
+      );
+
+      fireEvent.blur(screen.getByTestId('profile-sample-0'));
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [{ ...threshold, profileSample: 1 }],
+        },
+      });
+    });
+
+    it('does not clamp while typing so a cleared threshold can be retyped', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={dynamicFormData}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('profile-sample-0'), {
+        target: { value: '' },
+      });
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [
+            { ...dynamicFormData.config?.thresholds?.[0], profileSample: 0 },
+          ],
+        },
+      });
+    });
+
+    it('does not rewrite a valid sample on blur', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={staticFormData}
+        />
+      );
+
+      fireEvent.blur(screen.getByTestId('profile-sample-input'));
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
+
+    it('renders a stored 0 sample as-is without rewriting it', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={{
+            sampleConfigType: SampleConfigType.Static,
+            config: { profileSample: 0 },
+          }}
+        />
+      );
+
+      expect(screen.getByTestId('profile-sample-input')).toHaveValue(0);
+      expect(mockOnChange).not.toHaveBeenCalled();
     });
   });
 

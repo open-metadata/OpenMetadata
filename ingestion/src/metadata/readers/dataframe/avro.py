@@ -14,8 +14,8 @@ Avro DataFrame reader - streams records in batches to avoid OOM
 """
 
 import traceback
+from collections.abc import Iterator
 from functools import singledispatchmethod
-from typing import Iterator, List, Optional
 
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
@@ -34,6 +34,7 @@ from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import return_azure_storage_options
+from metadata.readers.file.gcs import get_gcsfs_auth_options
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import ingestion_logger
@@ -77,7 +78,7 @@ class AvroDataFrameReader(DataFrameReader):
             yield DataFrame.from_records(batch)
 
     @staticmethod
-    def _get_avro_columns(file_obj) -> Optional[List[Column]]:
+    def _get_avro_columns(file_obj) -> list[Column] | None:
         """Extract columns from Avro schema without reading all records."""
         import json
 
@@ -93,8 +94,10 @@ class AvroDataFrameReader(DataFrameReader):
                     writer_schema = json.dumps(reader.writer_schema)
 
                 return parse_avro_schema(schema=writer_schema, cls=Column)  # pyright: ignore[reportArgumentType]
-        except Exception as warn:
-            logger.warning(f"Error reading Avro schema: {warn}")
+        except Exception as exc:  # pylint: disable=broad-except
+            # Only the exception type is safe at WARNING: decoder errors can quote the file
+            # payload. See issue #24798.
+            logger.warning("Error reading Avro schema: %s", type(exc).__name__)
             logger.debug(traceback.format_exc())
         return None
 
@@ -128,7 +131,7 @@ class AvroDataFrameReader(DataFrameReader):
         """Stream Avro from GCS without loading entire file into memory."""
         from gcsfs import GCSFileSystem
 
-        gcs = GCSFileSystem()
+        gcs = GCSFileSystem(**get_gcsfs_auth_options(self.client))
         file_path = f"gs://{bucket_name}/{key}"
 
         with gcs.open(file_path, "rb") as f:
@@ -169,11 +172,11 @@ class AvroDataFrameReader(DataFrameReader):
         bucket_name: str,  # pylint: disable=unused-argument
     ) -> DatalakeColumnWrapper:
         """Stream Avro from local filesystem without loading entire file into memory."""
-        with open(key, "rb") as f:
+        with open(key, "rb") as f:  # noqa: PTH123
             columns = self._get_avro_columns(f)
 
         def chunk_generator():
-            with open(key, "rb") as f:
+            with open(key, "rb") as f:  # noqa: PTH123
                 yield from self._stream_avro_records(f)
 
         return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator)

@@ -300,6 +300,22 @@ export interface Tab {
  */
 export interface PersonaPreferences {
     /**
+     * App experience this persona forces on login. Classic keeps the standard OpenMetadata UI;
+     * AI enables the assistant-driven experience and requires the AI plugin (e.g. Collate) to
+     * be installed.
+     */
+    appMode?: AppMode;
+    /**
+     * Route path users of this persona land on when they open the app (e.g. `/explore`). Unset
+     * means Home (My Data).
+     */
+    defaultLandingPage?: string;
+    /**
+     * Layout each page with a view toggle opens in for users of this persona. A page without an
+     * entry opens in Table view. Only Domains offers Tree.
+     */
+    defaultViewModes?: DefaultViewModes;
+    /**
      * User's personal customizations for the landing page.
      */
     landingPageSettings?: LandingPageSettings;
@@ -311,6 +327,36 @@ export interface PersonaPreferences {
      * Name of the persona for quick reference and linking.
      */
     personaName: string;
+}
+
+/**
+ * App experience this persona forces on login. Classic keeps the standard OpenMetadata UI;
+ * AI enables the assistant-driven experience and requires the AI plugin (e.g. Collate) to
+ * be installed.
+ */
+export enum AppMode {
+    AI = "AI",
+    Classic = "classic",
+}
+
+/**
+ * Layout each page with a view toggle opens in for users of this persona. A page without an
+ * entry opens in Table view. Only Domains offers Tree.
+ */
+export interface DefaultViewModes {
+    dataProducts?:      PageViewMode;
+    domains?:           PageViewMode;
+    learningResources?: PageViewMode;
+    subDomains?:        PageViewMode;
+}
+
+/**
+ * Layout a page with a view toggle opens in.
+ */
+export enum PageViewMode {
+    Card = "card",
+    Table = "table",
+    Tree = "tree",
 }
 
 /**

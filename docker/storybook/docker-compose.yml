@@ -1,0 +1,12 @@
+# Local smoke-test compose.  Run from the repo root:
+#   docker compose -f docker/storybook/docker-compose.yml up --build
+#
+# Then open http://localhost:6006
+services:
+  storybook:
+    build:
+      context: ../..
+      dockerfile: docker/storybook/Dockerfile
+    ports:
+      - "6006:6006"
+    restart: unless-stopped

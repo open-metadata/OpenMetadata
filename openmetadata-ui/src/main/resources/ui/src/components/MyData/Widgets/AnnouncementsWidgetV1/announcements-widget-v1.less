@@ -22,10 +22,6 @@
     box-shadow: none !important;
   }
 
-  .ant-card-body {
-    background: transparent !important;
-  }
-
   .widget-wrapper-content {
     background: transparent !important;
   }
@@ -40,15 +36,6 @@
   overflow-y: auto;
   width: 100%;
   max-height: 298px;
-
-  .ant-card-body {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    padding: 0;
-    overflow: hidden;
-    background: transparent !important;
-  }
 
   .widget-content {
     flex: 1;
@@ -80,7 +67,7 @@
       justify-content: center;
       width: @size-lg;
       height: @size-lg;
-      color: @white;
+      color: var(--tw-color-text-white);
       background: transparent !important;
 
       svg {
@@ -90,7 +77,7 @@
     }
 
     .header-title {
-      color: @white;
+      color: var(--tw-color-text-white);
       font-weight: @font-semibold;
       font-size: @font-size-base;
       margin: 0;
@@ -99,22 +86,17 @@
     }
 
     .announcement-count-badge {
-      .ant-badge-count {
-        background: @white;
-        color: @primary-color;
-        font-weight: @font-semibold;
-        border: 1px solid @white;
-        min-width: @size-lg;
-        height: @size-lg;
-        line-height: 22px;
-        border-radius: @border-rad-lg;
-        font-size: @size-sm;
-      }
+      color: @primary-color;
+      font-weight: @font-semibold;
+      min-width: @size-lg;
+      height: @size-lg;
+      border-radius: @border-rad-lg;
+      font-size: @size-sm;
     }
   }
 
   .close-button {
-    color: @white;
+    color: var(--tw-color-text-white);
     border: none;
     background: transparent !important;
     width: @size-lg;
@@ -123,15 +105,16 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    transition: all 0.3s ease;
+    transition: all var(--om-duration-300) ease;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.1) !important;
-      color: @white;
+      background: var(--om-legacy-color-255-255-255-0-1) !important;
+      color: var(--tw-color-text-white);
     }
 
-    .anticon {
-      font-size: @font-size-base;
+    svg {
+      width: @font-size-base;
+      height: @font-size-base;
     }
   }
 }

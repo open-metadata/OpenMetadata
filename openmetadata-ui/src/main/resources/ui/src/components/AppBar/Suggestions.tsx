@@ -11,21 +11,44 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
+  APICollectionSource,
+  APIEndpointSource,
+  ChartSource,
+  ColumnSource,
+  DashboardDataModelSource,
+  DashboardSource,
+  DatabaseSchemaSource,
+  DatabaseSource,
+  DataProductSource,
+  DirectorySource,
+  FileSource,
+  GlossarySource,
+  KnowledgePageSource,
+  MetricSource,
+  MlModelSource,
   Option,
+  PipelineSource,
+  SearchIndexSource,
   SearchSuggestions,
+  SpreadsheetSource,
+  StoredProcedureSource,
   SuggestionsObject,
+  TableSource,
+  TagSource,
+  TopicSource,
+  WorksheetSource,
 } from '../../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
+import { ContainerSearchSource } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
@@ -34,7 +57,7 @@ import {
   getGroupLabel,
   getSuggestionElement,
 } from '../../utils/SearchUtils';
-import { escapeESReservedCharacters } from '../../utils/StringsUtils';
+import { escapeESReservedCharacters } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import './suggestions.less';
@@ -56,7 +79,6 @@ const Suggestions = ({
   onSearchTextUpdate,
 }: SuggestionProp) => {
   const { t } = useTranslation();
-  const { isTourOpen } = useTourProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [options, setOptions] = useState<Array<Option>>([]);
   const [suggestions, setSuggestions] = useState<SuggestionsObject>({
@@ -83,6 +105,7 @@ const Suggestions = ({
     fileSuggestions: [],
     spreadsheetSuggestions: [],
     worksheetSuggestions: [],
+    knowledgeArticleSuggestions: [],
   });
 
   const {
@@ -107,72 +130,104 @@ const Suggestions = ({
     columnSuggestions,
   } = suggestions;
 
-  const isMounting = useRef(true);
-
   const updateSuggestions = (options: Array<Option>) => {
     setSuggestions(() => ({
-      tableSuggestions: filterOptionsByIndex(options, SearchIndex.TABLE),
-      columnSuggestions: filterOptionsByIndex(options, SearchIndex.COLUMN),
-      topicSuggestions: filterOptionsByIndex(options, SearchIndex.TOPIC),
+      tableSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.TABLE
+      ) as TableSource[],
+      columnSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.COLUMN
+      ) as ColumnSource[],
+      topicSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.TOPIC
+      ) as TopicSource[],
       dashboardSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.DASHBOARD
-      ),
-      pipelineSuggestions: filterOptionsByIndex(options, SearchIndex.PIPELINE),
-      mlModelSuggestions: filterOptionsByIndex(options, SearchIndex.MLMODEL),
+      ) as DashboardSource[],
+      pipelineSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.PIPELINE
+      ) as PipelineSource[],
+      mlModelSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.MLMODEL
+      ) as MlModelSource[],
       containerSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.CONTAINER
-      ),
+      ) as ContainerSearchSource[],
       glossaryTermSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.GLOSSARY_TERM
-      ),
-      databaseSuggestions: filterOptionsByIndex(options, SearchIndex.DATABASE),
+      ) as GlossarySource[],
+      databaseSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DATABASE
+      ) as DatabaseSource[],
       databaseSchemaSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.DATABASE_SCHEMA
-      ),
+      ) as DatabaseSchemaSource[],
       searchIndexSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.SEARCH_INDEX
-      ),
-      tagSuggestions: filterOptionsByIndex(options, SearchIndex.TAG),
+      ) as SearchIndexSource[],
+      tagSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.TAG
+      ) as TagSource[],
       storedProcedureSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.STORED_PROCEDURE
-      ),
+      ) as StoredProcedureSource[],
       dataModelSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.DASHBOARD_DATA_MODEL
-      ),
+      ) as DashboardDataModelSource[],
       dataProductSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.DATA_PRODUCT
-      ),
-      chartSuggestions: filterOptionsByIndex(options, SearchIndex.CHART),
+      ) as DataProductSource[],
+      chartSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.CHART
+      ) as ChartSource[],
       apiEndpointSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.API_ENDPOINT
-      ),
+      ) as APIEndpointSource[],
       apiCollectionSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.API_COLLECTION
-      ),
-      metricSuggestions: filterOptionsByIndex(options, SearchIndex.METRIC),
+      ) as APICollectionSource[],
+      metricSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.METRIC
+      ) as MetricSource[],
       directorySuggestions: filterOptionsByIndex(
         options,
         SearchIndex.DIRECTORY
-      ),
-      fileSuggestions: filterOptionsByIndex(options, SearchIndex.FILE),
+      ) as DirectorySource[],
+      fileSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.FILE
+      ) as FileSource[],
       spreadsheetSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.SPREADSHEET
-      ),
+      ) as SpreadsheetSource[],
       worksheetSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.WORKSHEET
-      ),
+      ) as WorksheetSource[],
+      knowledgeArticleSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.KNOWLEDGE_PAGE_INDEX
+      ) as KnowledgePageSource[],
     }));
   };
 
@@ -290,6 +345,10 @@ const Suggestions = ({
             suggestions: suggestions.worksheetSuggestions,
             searchIndex: SearchIndex.WORKSHEET,
           },
+          {
+            suggestions: suggestions.knowledgeArticleSuggestions,
+            searchIndex: SearchIndex.KNOWLEDGE_PAGE_INDEX,
+          },
           ...searchClassBase.getEntitiesSuggestions(options ?? []),
         ].map(({ suggestions, searchIndex }) =>
           getSuggestionsForIndex(suggestions, searchIndex)
@@ -300,6 +359,8 @@ const Suggestions = ({
 
   const fetchSearchData = useCallback(async () => {
     if (isNLPActive) {
+      setIsLoading(false);
+
       return;
     }
 
@@ -312,7 +373,7 @@ const Suggestions = ({
         queryFilter: quickFilter,
         pageSize: PAGE_SIZE_BASE,
         includeDeleted: false,
-        excludeSourceFields: ['columns', 'queries', 'columnNames'],
+        excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
       });
 
       setOptions(res.hits.hits as unknown as Option[]);
@@ -327,20 +388,15 @@ const Suggestions = ({
     } finally {
       setIsLoading(false);
     }
-  }, [searchText, searchCriteria]);
+  }, [isNLPActive, quickFilter, searchText, searchCriteria]);
 
   useEffect(() => {
-    if (!isMounting.current && searchText && !isTourOpen) {
+    if (searchText) {
       fetchSearchData();
     } else {
       setIsLoading(false);
     }
-  }, [searchText, searchCriteria]);
-
-  // always Keep this useEffect at the end...
-  useEffect(() => {
-    isMounting.current = false;
-  }, []);
+  }, [fetchSearchData, searchText]);
 
   // Add a function to render AI query suggestions
   const renderAIQuerySuggestions = () => {
@@ -354,22 +410,22 @@ const Suggestions = ({
 
     return (
       <div data-testid="ai-query-suggestions">
-        <Typography.Text strong className="m-b-sm d-block">
+        <Typography className="m-b-sm d-block" weight="semibold">
           {t('label.ai-queries')}
-        </Typography.Text>
+        </Typography>
         {aiQueries.map((query) => (
           <Button
-            block
-            className="m-b-md w-100 text-left d-flex items-center p-0"
+            className="tw:mb-2 tw:w-full tw:justify-start"
+            color="tertiary"
             data-testid="nlp-suggestions-button"
-            icon={
-              <div className="nlp-button w-6 h-6 flex-center m-r-md">
+            iconLeading={
+              <div className="nlp-button w-6 h-6 flex-center">
                 <IconSuggestionsBlue />
               </div>
             }
             key={query}
-            type="text"
-            onClick={() => onSearchTextUpdate?.(query)}>
+            size="sm"
+            onPress={() => onSearchTextUpdate?.(query)}>
             {query}
           </Button>
         ))}
@@ -386,9 +442,9 @@ const Suggestions = ({
     return renderAIQuerySuggestions();
   }
 
-  if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {
+  if (options.length === 0 && !isEmpty(searchText)) {
     return (
-      <Typography.Text>
+      <Typography>
         <Transi18next
           i18nKey="message.please-enter-to-find-data-assets"
           renderElement={<strong />}
@@ -396,7 +452,7 @@ const Suggestions = ({
             keyword: `"${searchText}"`,
           }}
         />
-      </Typography.Text>
+      </Typography>
     );
   }
 

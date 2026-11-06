@@ -11,385 +11,235 @@
  *  limitations under the License.
  */
 
-import { Box, Link, Popover, Typography, useTheme } from '@mui/material';
+import {
+  Badge,
+  BadgeColors,
+  Box,
+  Button,
+  Popover,
+  PopoverTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { DateTime } from 'luxon';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as StoryLaneIcon } from '../../../assets/svg/ic_storylane.svg';
-import { ReactComponent as VideoIcon } from '../../../assets/svg/ic_video.svg';
-import { ResourceType } from '../../../constants/Learning.constants';
-import { LEARNING_CATEGORIES } from '../Learning.interface';
+import {
+  CATEGORY_BADGE_COLORS,
+  DESCRIPTION_VIEW_MORE_THRESHOLD,
+  MAX_VISIBLE_CATEGORIES_IN_CARD,
+} from '../../../constants/Learning.constants';
+import { getDurationUnitLabelKey } from '../../../utils/platform/learning.utils';
+import { LEARNING_CATEGORIES, ResourceCategory } from '../Learning.interface';
+import { ResourceTypeIcon } from '../ResourceTypeIcon/ResourceTypeIcon';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
 
-const MAX_VISIBLE_CATEGORIES_IN_CARD = 2;
-const DESCRIPTION_VIEW_MORE_THRESHOLD = 100;
+const getCategoryTags = (
+  categories: string[] | undefined
+): { visible: string[]; hidden: string[]; remaining: number } => {
+  if (!categories || categories.length === 0) {
+    return { visible: [], hidden: [], remaining: 0 };
+  }
+
+  return {
+    visible: categories.slice(0, MAX_VISIBLE_CATEGORIES_IN_CARD),
+    hidden: categories.slice(MAX_VISIBLE_CATEGORIES_IN_CARD),
+    remaining: categories.length - MAX_VISIBLE_CATEGORIES_IN_CARD,
+  };
+};
 
 export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
   resource,
   onClick,
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
-
-  const iconColors = {
-    video: theme.palette.allShades?.blue?.[600],
-    storylane: theme.palette.allShades?.purple?.[600],
-  };
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const showViewMore =
     resource.description &&
     resource.description.length > DESCRIPTION_VIEW_MORE_THRESHOLD;
 
-  const type = resource.resourceType.toLowerCase();
-  const iconColor =
-    iconColors[type as keyof typeof iconColors] ?? iconColors.video;
-  const iconProps = { height: 24, width: 24, style: { color: iconColor } };
-  const resourceTypeIcon =
-    resource.resourceType === ResourceType.Storylane ? (
-      <StoryLaneIcon {...iconProps} />
-    ) : (
-      <VideoIcon {...iconProps} />
-    );
-
   const formattedDuration = resource.estimatedDuration
-    ? `${Math.floor(resource.estimatedDuration / 60)} ${t('label.min-watch')}`
+    ? `${Math.floor(resource.estimatedDuration / 60)} ${t(
+        getDurationUnitLabelKey(resource.resourceType)
+      )}`
     : null;
 
   const formattedDate = resource.updatedAt
     ? DateTime.fromMillis(resource.updatedAt).toFormat('LLL dd, yyyy')
     : null;
 
-  const categoryTags =
-    !resource.categories || resource.categories.length === 0
-      ? { visible: [] as string[], hidden: [] as string[], remaining: 0 }
-      : {
-          visible: resource.categories.slice(0, MAX_VISIBLE_CATEGORIES_IN_CARD),
-          hidden: resource.categories.slice(MAX_VISIBLE_CATEGORIES_IN_CARD),
-          remaining:
-            resource.categories.length - MAX_VISIBLE_CATEGORIES_IN_CARD,
-        };
+  const categoryTags = getCategoryTags(resource.categories);
 
-  const getCategoryColors = (category: string) => {
-    const info =
-      LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
+  const getCategoryLabel = (category: string) =>
+    LEARNING_CATEGORIES[category as ResourceCategory]?.label ?? category;
 
-    return {
-      bgColor: info?.bgColor ?? '#f8f9fc',
-      borderColor: info?.borderColor ?? '#d5d9eb',
-      color: info?.color ?? '#363f72',
-    };
-  };
+  const getCategoryColor = (category: string): BadgeColors =>
+    CATEGORY_BADGE_COLORS[category as ResourceCategory] ?? 'gray';
 
-  const handleViewMoreClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleViewMoreClick = () => {
     onClick?.(resource);
   };
 
-  const handleMoreTagClick = (e: React.MouseEvent) => {
+  const stopPropagation = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setAnchorEl(e.currentTarget as HTMLElement);
   };
 
-  const handlePopoverClose = () => {
-    setAnchorEl(null);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick?.(resource);
+    }
   };
+
+  const interactiveProps = onClick
+    ? {
+        'aria-label': resource.displayName || resource.name,
+        role: 'button',
+        tabIndex: 0,
+        onKeyDown: handleKeyDown,
+      }
+    : undefined;
+
+  const renderDescription = () =>
+    resource.description ? (
+      <>
+        <Typography
+          aria-label={resource.description}
+          as="span"
+          className="tw:text-tertiary"
+          data-testid="learning-resource-description"
+          ellipsis={{ rows: showViewMore ? 2 : 3 }}
+          size="text-xs">
+          {resource.description}
+        </Typography>
+        {showViewMore && (
+          <Box inline className="tw:shrink-0" onClick={stopPropagation}>
+            <Button color="link-color" size="sm" onPress={handleViewMoreClick}>
+              {t('label.view-more')}
+            </Button>
+          </Box>
+        )}
+      </>
+    ) : (
+      <Typography
+        as="span"
+        className="tw:italic tw:text-quaternary"
+        data-testid="learning-resource-description"
+        size="text-sm">
+        {t('label.no-entity-added', {
+          entity: t('label.description-lowercase'),
+        })}
+      </Typography>
+    );
+
+  const renderCategories = () =>
+    categoryTags.visible.length > 0 ? (
+      <>
+        <Box className="tw:min-w-0 tw:flex-nowrap tw:gap-1.5 tw:overflow-hidden">
+          {categoryTags.visible.map((category) => (
+            <Badge
+              color={getCategoryColor(category)}
+              key={category}
+              size="sm"
+              type="color">
+              {getCategoryLabel(category)}
+            </Badge>
+          ))}
+        </Box>
+        {categoryTags.remaining > 0 && (
+          <Box inline className="tw:shrink-0" onClick={stopPropagation}>
+            <PopoverTrigger isOpen={popoverOpen} onOpenChange={setPopoverOpen}>
+              <Button color="secondary" data-testid="more-categories" size="sm">
+                +{categoryTags.remaining}
+              </Button>
+              <Popover containerClassName="tw:p-3" placement="bottom left">
+                <Box className="tw:max-w-[250px] tw:flex-wrap tw:gap-1.5">
+                  {categoryTags.hidden.map((category) => (
+                    <Badge
+                      color={getCategoryColor(category)}
+                      key={category}
+                      size="sm"
+                      type="color">
+                      {getCategoryLabel(category)}
+                    </Badge>
+                  ))}
+                </Box>
+              </Popover>
+            </PopoverTrigger>
+          </Box>
+        )}
+      </>
+    ) : (
+      <Typography
+        as="span"
+        className="tw:italic tw:text-quaternary"
+        size="text-sm">
+        {t('label.no-entity-added', {
+          entity: t('label.category-lowercase'),
+        })}
+      </Typography>
+    );
+
+  const renderMetadata = () => (
+    <>
+      {formattedDate && (
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
+          {formattedDate}
+        </Typography>
+      )}
+      {formattedDate && formattedDuration && (
+        <Typography as="span" className="tw:text-quaternary" size="text-xs">
+          |
+        </Typography>
+      )}
+      {formattedDuration && (
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
+          {formattedDuration}
+        </Typography>
+      )}
+    </>
+  );
 
   return (
     <Box
-      bgcolor={theme.palette.allShades?.white}
-      border="1px solid"
-      borderColor={theme.palette.allShades?.blueGray?.[50]}
-      borderRadius={theme.spacing(1.5)}
-      boxShadow={theme.shadows[1]}
+      {...interactiveProps}
+      className={classNames(
+        'tw:w-full tw:min-w-0 tw:p-5 tw:rounded-xl tw:bg-primary tw:border tw:border-secondary tw:shadow-xs tw:transition-all',
+        onClick && 'tw:cursor-pointer tw:hover:shadow-md'
+      )}
       data-clickable={onClick ? 'true' : undefined}
       data-testid={`learning-resource-card-${resource.name}`}
-      sx={{
-        width: '100%',
-        minWidth: 0,
-        padding: theme.spacing(2.5),
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 1.5,
-        transition: 'all 0.2s ease',
-        ...(onClick && {
-          cursor: 'pointer',
-          '&:hover': {
-            boxShadow:
-              '0 4px 6px -2px rgba(10, 13, 18, 0.05), 0 2px 4px -2px rgba(10, 13, 18, 0.05)',
-          },
-        }),
-      }}
+      direction="col"
+      gap={3}
       onClick={() => onClick?.(resource)}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <Box align="start" className="tw:min-w-0 tw:min-h-10" gap={3}>
+        <Box className="tw:shrink-0 tw:mt-0.5">
+          <ResourceTypeIcon resourceType={resource.resourceType} />
+        </Box>
+        <Typography
+          as="span"
+          className="tw:flex-1 tw:min-w-0 tw:text-primary"
+          ellipsis={{ rows: 2 }}
+          size="text-sm"
+          weight="semibold">
+          {resource.displayName || resource.name}
+        </Typography>
+      </Box>
+
+      <Box className="tw:min-h-14" direction="col" gap={1}>
+        {renderDescription()}
+      </Box>
+
+      <Box direction="col" gap={3}>
         <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 1.5,
-            minWidth: 0,
-            minHeight: 40,
-          }}>
-          <Box sx={{ flexShrink: 0, mt: '2px' }}>{resourceTypeIcon}</Box>
-          <Typography
-            component="span"
-            sx={{
-              flex: 1,
-              minWidth: 0,
-              fontSize: theme.typography.body2.fontSize,
-              lineHeight: theme.typography.body2.lineHeight,
-              color: theme.palette.allShades?.gray?.[900],
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              fontWeight: 600,
-            }}>
-            {resource.displayName || resource.name}
-          </Typography>
+          align="center"
+          className="tw:min-w-0 tw:gap-1.5 tw:overflow-hidden">
+          {renderCategories()}
         </Box>
 
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: 56,
-          }}>
-          {resource.description ? (
-            <>
-              <Typography
-                aria-label={resource.description}
-                component="span"
-                data-testid="learning-resource-description"
-                sx={{
-                  fontSize: theme.typography.caption.fontSize,
-                  lineHeight: theme.typography.body2.lineHeight,
-                  color: theme.palette.allShades?.gray?.[600],
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: showViewMore ? 2 : 3,
-                  WebkitBoxOrient: 'vertical',
-                  flex: 1,
-                  minHeight: 0,
-                }}>
-                {resource.description}
-              </Typography>
-              {showViewMore && (
-                <Link
-                  component="button"
-                  sx={{
-                    fontSize: theme.typography.caption.fontSize,
-                    color: theme.palette.allShades?.brand?.[600],
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    alignSelf: 'flex-start',
-                    '&:hover': { textDecoration: 'underline' },
-                  }}
-                  type="button"
-                  onClick={handleViewMoreClick}>
-                  {t('label.view-more')}
-                </Link>
-              )}
-            </>
-          ) : (
-            <Typography
-              component="span"
-              data-testid="learning-resource-description"
-              sx={{
-                color: theme.palette.allShades?.gray?.[500],
-                fontFamily: theme.typography.fontFamily,
-                fontSize: theme.typography.body2.fontSize,
-                fontStyle: 'italic',
-                fontWeight: theme.typography.fontWeightRegular,
-                lineHeight: theme.typography.body2.lineHeight,
-              }}>
-              {t('label.no-entity-added', {
-                entity: t('label.description-lowercase'),
-              })}
-            </Typography>
-          )}
-        </Box>
-
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1.5,
-          }}>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: theme.spacing(0.75),
-              minWidth: 0,
-              overflow: 'hidden',
-            }}>
-            {categoryTags.visible.length > 0 ? (
-              <>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexWrap: 'nowrap',
-                    gap: theme.spacing(0.75),
-                    minWidth: 0,
-                    overflow: 'hidden',
-                  }}>
-                  {categoryTags.visible.map((category) => {
-                    const colors = getCategoryColors(category);
-
-                    return (
-                      <Box
-                        component="span"
-                        key={category}
-                        sx={{
-                          flexShrink: 0,
-                          fontSize: theme.typography.caption.fontSize,
-                          lineHeight: theme.typography.body2.lineHeight,
-                          padding: theme.spacing(0.25, 0.75),
-                          borderRadius: theme.spacing(0.75),
-                          fontWeight: theme.typography.fontWeightMedium,
-                          backgroundColor: colors.bgColor,
-                          border: '1px solid',
-                          borderColor: colors.borderColor,
-                          color: colors.color,
-                        }}>
-                        {LEARNING_CATEGORIES[
-                          category as keyof typeof LEARNING_CATEGORIES
-                        ]?.label ?? category}
-                      </Box>
-                    );
-                  })}
-                </Box>
-                {categoryTags.remaining > 0 && (
-                  <>
-                    <Box
-                      component="span"
-                      sx={{
-                        flexShrink: 0,
-                        fontSize: theme.typography.caption.fontSize,
-                        lineHeight: theme.typography.body2.lineHeight,
-                        padding: theme.spacing(0.25, 0.75),
-                        borderRadius: theme.spacing(0.75),
-                        fontWeight: theme.typography.fontWeightMedium,
-                        backgroundColor: theme.palette.allShades?.brand?.[50],
-                        border: 'none',
-                        color: theme.palette.allShades?.brand?.[700],
-                        cursor: 'pointer',
-                        '&:hover': {
-                          backgroundColor:
-                            theme.palette.allShades?.brand?.[100],
-                        },
-                      }}
-                      onClick={handleMoreTagClick}>
-                      +{categoryTags.remaining}
-                    </Box>
-                    <Popover
-                      anchorEl={anchorEl}
-                      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                      open={Boolean(anchorEl)}
-                      slotProps={{
-                        root: {
-                          onClick: (e: React.MouseEvent) => e.stopPropagation(),
-                        },
-                      }}
-                      transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                      onClose={handlePopoverClose}>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: 0.5,
-                          maxWidth: 250,
-                          p: 1.5,
-                        }}
-                        onClick={(e) => e.stopPropagation()}>
-                        {categoryTags.hidden.map((category) => {
-                          const colors = getCategoryColors(category);
-
-                          return (
-                            <Box
-                              component="span"
-                              key={category}
-                              sx={{
-                                fontSize: theme.typography.caption.fontSize,
-                                lineHeight: theme.typography.body2.lineHeight,
-                                padding: theme.spacing(0.25, 0.75),
-                                borderRadius: theme.spacing(0.75),
-                                fontWeight: theme.typography.fontWeightMedium,
-                                backgroundColor: colors.bgColor,
-                                border: '1px solid',
-                                borderColor: colors.borderColor,
-                                color: colors.color,
-                              }}>
-                              {LEARNING_CATEGORIES[
-                                category as keyof typeof LEARNING_CATEGORIES
-                              ]?.label ?? category}
-                            </Box>
-                          );
-                        })}
-                      </Box>
-                    </Popover>
-                  </>
-                )}
-              </>
-            ) : (
-              <Typography
-                component="span"
-                sx={{
-                  color: theme.palette.allShades?.gray?.[500],
-                  fontFamily: theme.typography.fontFamily,
-                  fontSize: theme.typography.body2.fontSize,
-                  fontStyle: 'italic',
-                  fontWeight: theme.typography.fontWeightRegular,
-                  lineHeight: theme.typography.body2.lineHeight,
-                }}>
-                {t('label.no-entity-added', {
-                  entity: t('label.category-lowercase'),
-                })}
-              </Typography>
-            )}
-          </Box>
-
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.75,
-              flexShrink: 0,
-            }}>
-            {formattedDate && (
-              <Typography
-                component="span"
-                sx={{
-                  fontSize: theme.typography.caption.fontSize,
-                  color: theme.palette.allShades?.gray?.[600],
-                }}>
-                {formattedDate}
-              </Typography>
-            )}
-            {formattedDate && formattedDuration && (
-              <Typography
-                component="span"
-                sx={{
-                  fontSize: theme.typography.caption.fontSize,
-                  color: theme.palette.allShades?.blueGray?.[100],
-                }}>
-                |
-              </Typography>
-            )}
-            {formattedDuration && (
-              <Typography
-                component="span"
-                sx={{
-                  fontSize: theme.typography.caption.fontSize,
-                  color: theme.palette.allShades?.gray?.[600],
-                }}>
-                {formattedDuration}
-              </Typography>
-            )}
-          </Box>
+        <Box align="center" className="tw:shrink-0 tw:gap-1.5">
+          {renderMetadata()}
         </Box>
       </Box>
     </Box>

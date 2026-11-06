@@ -1,10 +1,12 @@
+from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-from sqlalchemy import Column, Integer
+from sqlalchemy import Column, Integer, select
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.sql.selectable import CTE
+from sqlalchemy.sql.selectable import CTE  # noqa: TC002
+from sqlalchemy_bigquery import dialect as bigquery_dialect
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
@@ -23,16 +25,16 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig, SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.orm.functions.table_metric_computer import TableType
-from metadata.sampler.models import (
-    ProfileSampleConfig,
-    ProfileSampleConfigType,
-    SampleConfig,
-    StaticSamplingConfig,
-)
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sqlalchemy.bigquery.sampler import BigQuerySampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
@@ -62,6 +64,27 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
+
+
+class DigitLeadingColumns(Base):
+    __tablename__ = "digit_leading_columns"
+    id = Column(Integer, primary_key=True)
+    revenue = Column("2024_revenue", Integer)
+    external_id = Column("123_id", Integer)
+    normal = Column(Integer)
+
+
+class CollidingDigitLeadingColumns(Base):
+    __tablename__ = "colliding_digit_leading_columns"
+    id = Column(Integer, primary_key=True)
+    digit_id = Column("123_id", Integer)
+    underscored_id = Column("_123_id", Integer)
+
+
+class MixedCaseColumns(Base):
+    __tablename__ = "mixed_case_columns"
+    id = Column(Integer, primary_key=True)
+    user_id = Column("UserId", Integer, key="userid")
 
 
 @patch.object(SQASampler, "build_table_orm", return_value=User)
@@ -119,18 +142,20 @@ class SampleTest(TestCase):
             service_connection_config=self.bq_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
                 )
             ),
             table_type=TableType.Regular,
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE system(50.0 PERCENT)"
         assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
@@ -155,17 +180,19 @@ class SampleTest(TestCase):
             service_connection_config=self.bq_conn,
             ometa_client=None,
             entity=view_entity,
-            sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
                 )
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users.id AS id, ABS(RANDOM()) * 100 %% 100 AS random \n'
             'FROM users)\n SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id, "9bc65c2abec141778ffaa729489f3e87_rnd".random \n'
@@ -194,24 +221,26 @@ class SampleTest(TestCase):
             service_connection_config=self.bq_conn,
             ometa_client=None,
             entity=view_entity,
-            sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
-                )
-            ),
-            partition_details=PartitionProfilerConfig(
-                enablePartitioning=True,
-                partitionColumnName="id",
-                partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
-                partitionValues=["1", "2"],
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
+                ),
+                partition_details=PartitionProfilerConfig(
+                    enablePartitioning=True,
+                    partitionColumnName="id",
+                    partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                    partitionValues=["1", "2"],
+                ),
             ),
             table_type=TableType.View,
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users.id AS id, ABS(RANDOM()) * 100 %% 100 AS random \n'
             "FROM users \nWHERE id in ('1', '2'))\n SELECT \"9bc65c2abec141778ffaa729489f3e87_rnd\".id, \"9bc65c2abec141778ffaa729489f3e87_rnd\".random \n"
@@ -227,24 +256,203 @@ class SampleTest(TestCase):
             service_connection_config=self.bq_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
-                )
-            ),
-            partition_details=PartitionProfilerConfig(
-                enablePartitioning=True,
-                partitionColumnName="id",
-                partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
-                partitionValues=["1", "2"],
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
+                ),
+                partition_details=PartitionProfilerConfig(
+                    enablePartitioning=True,
+                    partitionColumnName="id",
+                    partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                    partitionValues=["1", "2"],
+                ),
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE system(50.0 PERCENT) \nWHERE id IN ('1', '2')"
         )
         assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+
+    def test_sampling_struct_child_column(self, sampler_mock):
+        """A struct child metric (`address.zip`) samples the parent struct column."""
+        from sqlalchemy_bigquery import STRUCT
+
+        class StructUser(Base):
+            __tablename__ = "struct_users"
+            id = Column(Integer, primary_key=True)
+            address = Column(STRUCT(zip=Integer))
+
+        with patch.object(SQASampler, "build_table_orm", return_value=StructUser):
+            sampler = BigQuerySampler(
+                service_connection_config=self.bq_conn,
+                ometa_client=None,
+                entity=self.table_entity,
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(
+                                profileSample=50.0,
+                                profileSampleType=ProfileSampleType.PERCENTAGE,
+                            ),
+                        )
+                    )
+                ),
+                table_type=TableType.Regular,
+            )
+            query: CTE = sampler.get_sample_query(sampler._resolve_sample_config, column=Column("address.zip", Integer))
+        compiled = str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        assert "select struct_users_1.address" in compiled
+        assert "tablesample system(50.0 percent)" in compiled
+
+    def test_partitioned_sampling_uses_emitted_bigquery_cte_column_names(self, sampler_mock):
+        """Digit-leading columns must be referenced using BigQuery's CTE labels."""
+        sampler = object.__new__(BigQuerySampler)
+        sampler._table = DigitLeadingColumns
+        sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
+        sampler.partition_details = PartitionProfilerConfig(
+            enablePartitioning=True,
+            partitionColumnName="normal",
+            partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+            partitionValues=["1"],
+        )
+
+        query = sampler._partitioned_table()
+        compiled = str(select(*query.c).compile(dialect=bigquery_dialect(), compile_kwargs={"literal_binds": True}))
+        outer_sql = compiled.rsplit(")\n SELECT", 1)[-1]
+
+        assert "2024_revenue" in query.c
+        assert "123_id" in query.c
+        assert "AS `_2024_revenue`" in compiled
+        assert "AS `_123_id`" in compiled
+        assert "`_2024_revenue`" in outer_sql
+        assert "`2024_revenue`" not in outer_sql
+        assert "`normal` IN ('1')" in compiled
+
+    def test_partitioned_sampling_disambiguates_sanitized_column_names(self, sampler_mock):
+        sampler = object.__new__(BigQuerySampler)
+        sampler._table = CollidingDigitLeadingColumns
+        sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
+        sampler.partition_details = PartitionProfilerConfig(
+            enablePartitioning=True,
+            partitionColumnName="id",
+            partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+            partitionValues=["1"],
+        )
+
+        query = sampler._partitioned_table()
+        compiled = str(select(*query.c).compile(dialect=bigquery_dialect()))
+
+        assert list(query.c.keys()) == ["id", "123_id", "_123_id"]
+        assert "AS `_123_id_1`" in compiled
+        assert "`123_id`" not in compiled.rsplit(")\n SELECT", 1)[-1]
+
+    def test_bigquery_partition_column_name_only_rewrites_digit_leading_names(self, sampler_mock):
+        sampler = object.__new__(BigQuerySampler)
+
+        assert sampler._partition_cte_column_name("123_id") == "_123_id"
+        assert sampler._partition_cte_column_name("user-name") == "user-name"
+        assert sampler._partition_cte_column_name("user name") == "user name"
+
+    def test_partitioned_metric_resolves_digit_leading_column(self, sampler_mock):
+        sampler = object.__new__(BigQuerySampler)
+        sampler._table = DigitLeadingColumns
+        sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
+        sampler.partition_details = PartitionProfilerConfig(
+            enablePartitioning=True,
+            partitionColumnName="normal",
+            partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+            partitionValues=["1"],
+        )
+        dataset = sampler._partitioned_table()
+        session = MagicMock()
+        session.query.side_effect = select
+        runner = QueryRunner(session=session, dataset=dataset, raw_dataset=DigitLeadingColumns.__table__)
+
+        query = runner._select_from_sample(Mean(DigitLeadingColumns.__table__.c["2024_revenue"]).fn())
+        outer_sql = str(query.compile(dialect=bigquery_dialect())).rsplit(")\n SELECT", 1)[-1]
+
+        assert "`_2024_revenue`" in outer_sql
+        assert "`2024_revenue`" not in outer_sql
+
+    def test_partitioned_fetch_sample_data_preserves_logical_column_names(self, sampler_mock):
+        sampler = object.__new__(BigQuerySampler)
+        sampler.execution_source = None
+        sampler._table = DigitLeadingColumns
+        sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
+        sampler.partition_details = PartitionProfilerConfig(
+            enablePartitioning=True,
+            partitionColumnName="normal",
+            partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+            partitionValues=["1"],
+        )
+        sampler.sample_query = None
+        sampler.sample_config = None
+        sampler.sample_limit = 100
+        sampler._handle_array_column = lambda column: False
+        sampler.get_dataset = sampler._partitioned_table
+
+        session = MagicMock()
+        session.__enter__.return_value = session
+        session.query.return_value.select_from.return_value.limit.return_value.all.return_value = [(42,)]
+        sampler.session_factory = lambda: session
+
+        table_data = sampler.fetch_sample_data(columns=[DigitLeadingColumns.__table__.c["2024_revenue"]])
+
+        assert table_data.columns == [ColumnName("2024_revenue")]
+        assert table_data.rows == [[42]]
+
+    def test_partitioned_fetch_sample_data_matches_colliding_names_exactly(self, sampler_mock):
+        sampler = object.__new__(BigQuerySampler)
+        sampler.execution_source = None
+        sampler._table = CollidingDigitLeadingColumns
+        sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
+        sampler.partition_details = PartitionProfilerConfig(
+            enablePartitioning=True,
+            partitionColumnName="id",
+            partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+            partitionValues=["1"],
+        )
+        sampler.sample_query = None
+        sampler.sample_config = None
+        sampler.sample_limit = 100
+        sampler._handle_array_column = lambda column: False
+        sampler.get_dataset = sampler._partitioned_table
+
+        session = MagicMock()
+        session.__enter__.return_value = session
+        session.query.return_value.select_from.return_value.limit.return_value.all.return_value = [(42,)]
+        sampler.session_factory = lambda: session
+
+        table_data = sampler.fetch_sample_data(columns=[CollidingDigitLeadingColumns.__table__.c["_123_id"]])
+
+        assert table_data.columns == [ColumnName("_123_id")]
+        assert table_data.rows == [[42]]
+
+    def test_fetch_sample_data_preserves_physical_column_name(self, sampler_mock):
+        """ORM lookup keys must not replace mixed-case physical column names."""
+        sampler = object.__new__(SQASampler)
+        sampler._table = MixedCaseColumns
+        sampler.partition_details = None
+        sampler.sample_query = None
+        sampler.sample_config = None
+        sampler.sample_limit = 100
+        sampler._handle_array_column = lambda column: False
+        sampler.get_dataset = lambda: sampler.raw_dataset
+
+        session = MagicMock()
+        session.__enter__.return_value = session
+        session.query.return_value.select_from.return_value.limit.return_value.all.return_value = [(42,)]
+        sampler.session_factory = lambda: session
+
+        table_data = sampler.fetch_sample_data(columns=[MixedCaseColumns.__table__.c.userid])
+
+        assert table_data.columns == [ColumnName("UserId")]
+        assert table_data.rows == [[42]]

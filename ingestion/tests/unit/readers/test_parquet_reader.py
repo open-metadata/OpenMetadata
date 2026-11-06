@@ -57,7 +57,7 @@ class TestParquetReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     @patch("pyarrow.parquet.ParquetFile")
     @patch("os.path.getsize")

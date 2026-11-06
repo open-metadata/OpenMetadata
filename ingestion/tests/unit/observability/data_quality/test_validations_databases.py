@@ -42,6 +42,11 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
     "tableCustomSQLQuery",
 }
 
+ABORTED_BEFORE_ROW_COUNT = {
+    "test_case_table_custom_sql_unsafe_query_aborted",
+    "test_case_column_value_in_set_missing_column",
+}
+
 
 # pylint: disable=line-too-long
 @pytest.mark.parametrize(
@@ -104,6 +109,13 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
         ),
         (
             "test_case_column_value_length_to_be_between_no_min",
+            "columnValueLengthsToBeBetween",
+            "COLUMN",
+            (TestCaseResult, None, None, TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
+            None,
+        ),
+        (
+            "test_case_column_value_length_to_be_between_no_bounds",
             "columnValueLengthsToBeBetween",
             "COLUMN",
             (TestCaseResult, None, None, TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
@@ -291,6 +303,45 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             None,
         ),
         (
+            "test_case_column_value_in_set_missing_column",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (TestCaseResult, None, None, TestCaseStatus.Aborted, None, None, None, None),
+            None,
+        ),
+        (
+            "test_case_column_values_not_in_set_boolean_strings",
+            "columnValuesToBeNotInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "40",
+                None,
+                TestCaseStatus.Failed,
+                40.0,
+                40.0,
+                50.0,
+                50.0,
+            ),
+            None,
+        ),
+        (
+            "test_case_column_values_not_in_set_boolean_json",
+            "columnValuesToBeNotInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30",
+                None,
+                TestCaseStatus.Failed,
+                50.0,
+                30.0,
+                62.5,
+                37.5,
+            ),
+            None,
+        ),
+        (
             "test_case_column_sum_to_be_between",
             "columnValuesSumToBeBetween",
             "COLUMN",
@@ -320,6 +371,13 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 100,
                 0,
             ),
+            None,
+        ),
+        (
+            "test_case_column_values_to_be_between_no_bounds",
+            "columnValuesToBeBetween",
+            "COLUMN",
+            (TestCaseResult, "30", None, TestCaseStatus.Success, 80, 0, 100, 0),
             None,
         ),
         (
@@ -413,6 +471,13 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             None,
         ),
         (
+            "test_case_column_to_match_set_ordered_false_sqa",
+            "tableColumnToMatchSet",
+            "TABLE",
+            (TestCaseResult, "1", None, TestCaseStatus.Success, None, None, None, None),
+            None,
+        ),
+        (
             "test_case_table_custom_sql_query",
             "tableCustomSQLQuery",
             "TABLE",
@@ -489,6 +554,20 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             None,
         ),
         (
+            "test_case_table_custom_sql_query_lowercase_strategy",
+            "tableCustomSQLQuery",
+            "TABLE",
+            (TestCaseResult, "30", None, TestCaseStatus.Success, None, None, None, None),
+            None,
+        ),
+        (
+            "test_case_table_custom_sql_query_blank_strategy",
+            "tableCustomSQLQuery",
+            "TABLE",
+            (TestCaseResult, "60", None, TestCaseStatus.Failed, None, None, None, None),
+            None,
+        ),
+        (
             "test_case_table_custom_sql_unsafe_query_aborted",
             "tableCustomSQLQuery",
             "TABLE",
@@ -522,6 +601,22 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
         ),
         (
             "test_case_column_value_in_set_boolean",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "70",
+                None,
+                TestCaseStatus.Success,
+                70.0,
+                10.0,
+                87.5,
+                12.5,
+            ),
+            None,
+        ),
+        (
+            "test_case_column_value_in_set_boolean_strings",
             "columnValuesToBeInSet",
             "COLUMN",
             (
@@ -1006,7 +1101,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
         ),
     ],
 )
-def test_suite_validation_database(
+def test_suite_validation_database(  # noqa: C901
     test_case_name,
     test_case_type,
     test_type,
@@ -1114,10 +1209,7 @@ def test_suite_validation_database(
     if failed_percentage:
         assert round(res.failedRowsPercentage, 2) == failed_percentage
     assert res.testCaseStatus == status
-    if (
-        test_case_type in TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED
-        and test_case_name != "test_case_table_custom_sql_unsafe_query_aborted"
-    ):
+    if test_case_type in TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED and test_case_name not in ABORTED_BEFORE_ROW_COUNT:
         assert res.failedRows is not None
         assert res.failedRowsPercentage is not None
         assert res.passedRows is not None
@@ -1147,3 +1239,49 @@ def test_suite_validation_database(
                 assert dim.failedRowsPercentage == expected_dim[5]
 
             assert dim.impactScore == expected_dim[6]
+
+
+BETWEEN_2_AND_11 = "Expected between 2 and 11, with no tolerance applied"
+FULL_TABLE = "Evaluated on the full table."
+
+
+@pytest.mark.parametrize(
+    "column_count,expected_message",
+    [
+        (1, f"Column count is 1. {BETWEEN_2_AND_11}, so this test failed. {FULL_TABLE}"),
+        (2, f"Column count is 2. {BETWEEN_2_AND_11}, so this test passed. {FULL_TABLE}"),
+        (5, f"Column count is 5. {BETWEEN_2_AND_11}, so this test passed. {FULL_TABLE}"),
+        (11, f"Column count is 11. {BETWEEN_2_AND_11}, so this test passed. {FULL_TABLE}"),
+        (0, f"Column count is 0. {BETWEEN_2_AND_11}, so this test failed. {FULL_TABLE}"),
+    ],
+)
+def test_table_column_count_to_be_between_result_message(
+    column_count,
+    expected_message,
+    test_case_table_column_count_to_be_between,
+    create_sqlite_table,
+):
+    """The message names the observed count, the bounds, the tolerance applied and the verdict"""
+    test_case = test_case_table_column_count_to_be_between
+
+    with patch(
+        "metadata.data_quality.validations.table.sqlalchemy.tableColumnCountToBeBetween.TableColumnCountToBeBetweenValidator._run_results",
+        return_value=column_count,
+    ):
+        test_handler_obj = import_test_case_class(
+            "TABLE",
+            "sqlalchemy",
+            "tableColumnCountToBeBetween",
+            "TableColumnCountToBeBetweenValidator",
+        )
+
+        test_handler = test_handler_obj(
+            create_sqlite_table,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
+        res = test_handler.run_validation()
+
+        assert isinstance(res, TestCaseResult)
+        assert res.result == expected_message

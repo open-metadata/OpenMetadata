@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { useEffect } from 'react';
-import { findFieldByFQN, getParentKeysToExpand } from '../utils/TableUtils';
+import { findFieldByFQN, getParentKeysToExpand } from '../utils/TablePureUtils';
 
 interface UseFqnDeepLinkProps<T> {
   data: T[];
@@ -45,12 +45,11 @@ export const useFqnDeepLink = <
     }
 
     const matchedField = findFieldByFQN(data, fullColumnFqn);
-    if (matchedField) {
-      if (
-        selectedColumn?.fullyQualifiedName !== matchedField.fullyQualifiedName
-      ) {
-        openColumnDetailPanel(matchedField);
-      }
+    if (
+      matchedField &&
+      selectedColumn?.fullyQualifiedName !== matchedField.fullyQualifiedName
+    ) {
+      openColumnDetailPanel(matchedField);
     }
   }, [
     columnPart,

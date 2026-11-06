@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EventFilterRule } from '../../../generated/events/eventSubscription';
+import { RuleSectionProps } from '../../observability/Alerts/AlertAiFormFields.interface';
 
-export interface ObservabilityFormFiltersItemProps {
-  supportedFilters?: EventFilterRule[];
+export interface ObservabilityFormFiltersItemProps
+  extends Pick<RuleSectionProps, 'value' | 'onChange' | 'validationErrors'> {
   isViewMode?: boolean;
 }

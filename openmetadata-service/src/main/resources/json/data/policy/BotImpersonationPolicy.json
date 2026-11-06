@@ -1,0 +1,18 @@
+{
+  "name": "BotImpersonationPolicy",
+  "displayName": "Bot Impersonation Policy",
+  "fullyQualifiedName": "BotImpersonationPolicy",
+  "description": "Policy for bots that are allowed to impersonate users. By default the scope is unrestricted - the bot can impersonate any user, including admins. To restrict admin impersonation, attach BotNonAdminImpersonationPolicy (or BotNonAdminImpersonationRole) instead, or add your own deny rules.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "BotImpersonationPolicy-Allow",
+      "description": "Allow the bot to impersonate users.",
+      "resources": ["user"],
+      "operations": ["Impersonate"],
+      "effect": "allow"
+    }
+  ]
+}

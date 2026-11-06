@@ -28,22 +28,24 @@ cd "$UI_DIR"
 
 declare -a FILES
 
+# BASE is resolved unconditionally: the no-new-debt guards below diff against it
+# even when explicit files were passed, so it cannot live inside the else branch.
+if git -C "$REPO_ROOT" rev-parse --verify origin/main &>/dev/null; then
+  BASE=$(git -C "$REPO_ROOT" merge-base HEAD origin/main)
+else
+  echo "origin/main not found locally — attempting to fetch..."
+  if git -C "$REPO_ROOT" fetch origin main --depth=1 2>/dev/null; then
+    BASE=$(git -C "$REPO_ROOT" merge-base HEAD origin/main)
+  else
+    echo "Fetch failed. Falling back to HEAD~1."
+    BASE=$(git -C "$REPO_ROOT" rev-parse HEAD~1 2>/dev/null \
+      || git -C "$REPO_ROOT" rev-parse HEAD)
+  fi
+fi
+
 if [ "$#" -gt 0 ]; then
   FILES=("$@")
 else
-  if git -C "$REPO_ROOT" rev-parse --verify origin/main &>/dev/null; then
-    BASE=$(git -C "$REPO_ROOT" merge-base HEAD origin/main)
-  else
-    echo "origin/main not found locally — attempting to fetch..."
-    if git -C "$REPO_ROOT" fetch origin main --depth=1 2>/dev/null; then
-      BASE=$(git -C "$REPO_ROOT" merge-base HEAD origin/main)
-    else
-      echo "Fetch failed. Falling back to HEAD~1."
-      BASE=$(git -C "$REPO_ROOT" rev-parse HEAD~1 2>/dev/null \
-        || git -C "$REPO_ROOT" rev-parse HEAD)
-    fi
-  fi
-
   FILES=()
   while IFS= read -r file; do
     FILES+=("$file")
@@ -51,6 +53,7 @@ else
     git -C "$REPO_ROOT" diff --name-only --diff-filter=ACM "$BASE" HEAD \
       | grep "^${UI_PREFIX}src/" \
       | grep -v 'src/generated/' \
+      | grep -v 'src/jsons/' \
       | grep -E '\.(ts|tsx|js|jsx|json)$' \
       | sed "s|^${UI_PREFIX}||"
   )
@@ -72,3 +75,27 @@ fi
 
 yarn i18n
 yarn generate:app-docs
+
+# The audit gates below are non-fixing: they report and fail. CI runs each with
+# continue-on-error and decides at the end, so mirror that here — running them
+# under `set -e` would stop at the first failure and hide the rest.
+set +e
+GATE_FAILURES=()
+
+if [ "${#FILES[@]}" -gt 0 ]; then
+  TSX_FILES=()
+  for f in "${FILES[@]}"; do
+    [[ "$f" =~ \.(ts|tsx|js|jsx)$ ]] && TSX_FILES+=("$f")
+  done
+  if [ "${#TSX_FILES[@]}" -gt 0 ]; then
+    node scripts/tw-audit.js "${TSX_FILES[@]}" || GATE_FAILURES+=("tw-audit")
+  fi
+fi
+
+node scripts/tw-deprecation-guard.js "$BASE" || GATE_FAILURES+=("tw-guard")
+
+if [ "${#GATE_FAILURES[@]}" -gt 0 ]; then
+  echo ""
+  echo "✖ ui-checkstyle failed: ${GATE_FAILURES[*]}"
+  exit 1
+fi

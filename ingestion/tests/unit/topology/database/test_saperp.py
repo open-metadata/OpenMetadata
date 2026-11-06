@@ -198,7 +198,7 @@ EXPECTED_TABLES_AND_COLUMNS = [
 
 def read_datasets(file_name: str) -> dict:
     mock_file_path = Path(__file__).parent.parent.parent / f"resources/datasets/saperp/{file_name}"
-    with open(mock_file_path, encoding="UTF-8") as file:
+    with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
         return json.load(file)
 
 
@@ -219,7 +219,7 @@ class SapErpUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.saperp.metadata.SaperpSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_saperp_config)
@@ -241,5 +241,5 @@ class SapErpUnitTest(TestCase):
         returned_tables = []
         for table in tables:
             returned_tables.extend([either.right for either in self.saperp.yield_table(table)])
-        for _, (expected, original) in enumerate(zip(EXPECTED_TABLES_AND_COLUMNS, returned_tables)):
+        for _, (expected, original) in enumerate(zip(EXPECTED_TABLES_AND_COLUMNS, returned_tables)):  # noqa: B905
             self.assertEqual(expected, original)

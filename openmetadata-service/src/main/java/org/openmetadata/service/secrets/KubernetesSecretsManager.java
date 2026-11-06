@@ -52,7 +52,7 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
   private String namespace;
 
   private KubernetesSecretsManager(SecretsConfig secretsConfig) {
-    super(SecretsManagerProvider.KUBERNETES, secretsConfig, 100);
+    super(SecretsManagerProvider.KUBERNETES, secretsConfig);
 
     // Check if we should skip initialization (for testing)
     boolean skipInit =
@@ -80,6 +80,11 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
   protected String buildSecretId(boolean addClusterPrefix, String... secretIdValues) {
     String secretId = super.buildSecretId(addClusterPrefix, secretIdValues);
     return sanitizeForK8s(secretId);
+  }
+
+  @Override
+  protected int maxSecretIdLength() {
+    return K8S_SECRET_NAME_MAX_LENGTH;
   }
 
   @VisibleForTesting
@@ -237,16 +242,24 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
 
   @Override
   public boolean existSecret(String secretName) {
+    boolean exists;
     try {
       apiClient.readNamespacedSecret(secretName, namespace).execute();
-      return true;
+      exists = true;
     } catch (ApiException e) {
       if (e.getCode() == 404) {
-        return false;
+        exists = false;
+      } else {
+        throw new SecretsManagerException(
+            String.format("Failed to check existence of Kubernetes secret: %s", secretName), e);
       }
-      throw new SecretsManagerException(
-          String.format("Failed to check existence of Kubernetes secret: %s", secretName), e);
     }
+    return exists;
+  }
+
+  @Override
+  protected boolean isNotFoundException(Exception exception) {
+    return exception instanceof ApiException apiException && apiException.getCode() == 404;
   }
 
   @Override

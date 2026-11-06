@@ -13,13 +13,14 @@ import io.github.jamsesso.jsonlogic.evaluator.JsonLogicExpression;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -29,6 +30,7 @@ public class LogicOps {
   public enum CustomLogicOps {
     LENGTH("length"),
     CONTAINS("contains"),
+    IS_PROPERTY_SET("isPropertySet"),
     IS_REVIEWER("isReviewer"),
     IS_OWNER("isOwner"),
     IS_UPDATED_BEFORE("isUpdatedBefore"),
@@ -49,6 +51,7 @@ public class LogicOps {
   }
 
   private static void addCustomPublicOps(JsonLogic jsonLogic) {
+    jsonLogic.addOperation(CustomLogicOps.IS_PROPERTY_SET.key, LogicOps::isPropertySet);
     jsonLogic.addOperation(
         CustomLogicOps.LENGTH.key,
         (args) -> {
@@ -148,6 +151,25 @@ public class LogicOps {
         });
   }
 
+  private static boolean isPropertySet(final Object[] arguments) {
+    if (arguments.length != 2
+        || !(arguments[0] instanceof Map<?, ?> values)
+        || !(arguments[1] instanceof String key)) {
+      return false;
+    }
+    final Object value = values.get(key);
+    if (value instanceof String text) {
+      return !text.isBlank();
+    }
+    if (value instanceof List<?> list) {
+      return !list.isEmpty();
+    }
+    if (value instanceof Map<?, ?> map) {
+      return !map.isEmpty();
+    }
+    return value != null;
+  }
+
   /**
    * Here we'll add validations that are not going to be exposed in the UI
    * in the rule settings.
@@ -198,14 +220,9 @@ public class LogicOps {
           Set<UUID> entityDomainIds =
               domains.stream().map(EntityReference::getId).collect(Collectors.toSet());
 
-          // Get all data product entities in bulk instead of using a loop
           try {
-            List<DataProduct> dpEntities =
-                Entity.getEntities(dataProducts, "domains", Include.NON_DELETED);
-
-            for (DataProduct dpEntity : dpEntities) {
-              List<EntityReference> dpDomains = dpEntity.getDomains();
-
+            for (EntityReference dataProduct : dataProducts) {
+              List<EntityReference> dpDomains = getDataProductDomains(dataProduct);
               if (nullOrEmpty(dpDomains)) {
                 continue; // If data product has no domains, skip validation
               }
@@ -270,5 +287,21 @@ public class LogicOps {
    */
   public static List<String> getCustomOpsKeys() {
     return Arrays.stream(CustomLogicOps.values()).map(op -> op.key).toList();
+  }
+
+  private static List<EntityReference> getDataProductDomains(EntityReference dataProduct) {
+    if (dataProduct == null || dataProduct.getId() == null) {
+      return Collections.emptyList();
+    }
+    return Entity.getEntityRelationshipRepository()
+        .getEntityReferences(
+            Entity.getCollectionDAO()
+                .relationshipDAO()
+                .findFrom(
+                    dataProduct.getId(), Entity.DATA_PRODUCT, Relationship.CONTAINS.ordinal()),
+            Include.NON_DELETED)
+        .stream()
+        .filter(ref -> Entity.DOMAIN.equals(ref.getType()))
+        .toList();
   }
 }

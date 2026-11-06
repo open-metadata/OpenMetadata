@@ -15,7 +15,7 @@ REST Auth & Client for QlikCloud
 import json
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional
+from collections.abc import Iterable
 
 from metadata.generated.schema.entity.services.connections.dashboard.qlikCloudConnection import (
     QlikCloudConnection,
@@ -75,7 +75,7 @@ class QlikCloudClient:
         )
         self.client = TrackedREST(client_config, source_name="qlikcloud")
 
-    def connect_websocket(self, dashboard_id: str = None) -> None:
+    def connect_websocket(self, dashboard_id: str = None) -> None:  # noqa: RUF013
         """
         Method to initialise websocket connection
         """
@@ -88,7 +88,7 @@ class QlikCloudClient:
             self.socket_connection.close()
         self.socket_connection = create_connection(
             f"wss://{clean_uri(self.config.hostPort.host)}/app/{dashboard_id or ''}",
-            sslopt={"cert_reqs": ssl.CERT_NONE},
+            sslopt={"cert_reqs": ssl.CERT_REQUIRED},
             header={"Authorization": f"Bearer {self.config.token.get_secret_value()}"},
         )
         self.socket_connection.recv()
@@ -97,7 +97,7 @@ class QlikCloudClient:
         if self.socket_connection:
             self.socket_connection.close()
 
-    def _websocket_send_request(self, request: dict, response: bool = False) -> Optional[Dict]:
+    def _websocket_send_request(self, request: dict, response: bool = False) -> dict | None:
         """
         Method to send request to websocket
 
@@ -110,7 +110,7 @@ class QlikCloudClient:
             return json.loads(resp)
         return None
 
-    def get_dashboard_charts(self, dashboard_id: str) -> List[QlikSheet]:
+    def get_dashboard_charts(self, dashboard_id: str) -> list[QlikSheet]:
         """
         Get dashboard chart list
         """
@@ -121,10 +121,10 @@ class QlikCloudClient:
             self._websocket_send_request(CREATE_SHEET_SESSION)
             sheets = self._websocket_send_request(GET_SHEET_LAYOUT, response=True)
             data = QlikSheetResult(**sheets)
-            return data.result.qLayout.qAppObjectList.qItems
+            return data.result.qLayout.qAppObjectList.qItems  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard charts")
+            logger.error("Failed to fetch the dashboard charts")
         return []
 
     def get_dashboards_list(self) -> Iterable[QlikApp]:
@@ -144,15 +144,15 @@ class QlikCloudClient:
                         break
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the app list")
+            logger.error("Failed to fetch the app list")
 
-    def get_dashboards_list_test_conn(self) -> Iterable[QlikApp]:
+    def get_dashboards_list_test_conn(self) -> Iterable[QlikApp]:  # noqa: RET503
         resp_apps = self.client.get("/v1/items?resourceType=app")
         if resp_apps:
             resp = QlikAppResponse(**resp_apps)
             return list(resp.apps)
 
-    def get_dashboard_details(self, dashboard_id: str) -> Optional[QlikApp]:
+    def get_dashboard_details(self, dashboard_id: str) -> QlikApp | None:
         """
         Get App Details
         """
@@ -164,10 +164,10 @@ class QlikCloudClient:
                 return QlikApp(**resp_dashboard.get("attributes"))
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
         return None
 
-    def get_dashboard_models(self) -> List[QlikTable]:
+    def get_dashboard_models(self) -> list[QlikTable]:
         """
         Get dashboard data models
         """
@@ -191,10 +191,10 @@ class QlikCloudClient:
             data_files = self.get_data_files()
             if data_files:
                 parsed_datamodels.extend(data_files)
-            return parsed_datamodels
+            return parsed_datamodels  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard datamodels")
+            logger.error("Failed to fetch the dashboard datamodels")
         return []
 
     def get_projects_list(self) -> Iterable[QlikSpace]:
@@ -214,9 +214,9 @@ class QlikCloudClient:
                         break
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the space list")
+            logger.error("Failed to fetch the space list")
 
-    def get_script_tables(self) -> Optional[List[QlikTable]]:
+    def get_script_tables(self) -> list[QlikTable] | None:
         """Get script tables from the dashboard script"""
         script_tables = []
         try:
@@ -231,13 +231,13 @@ class QlikCloudClient:
                         script_tables.append(QlikTable(tableName=table_name))
             if not script_tables:
                 logger.warning("No script tables found")
-            return script_tables
+            return script_tables  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the script tables")
+            logger.error("Failed to fetch the script tables")
         return script_tables
 
-    def get_data_files(self) -> List[QlikDataFile]:
+    def get_data_files(self) -> list[QlikDataFile]:
         """Get data files from the Qlik API"""
         data_files = []
         try:
@@ -246,5 +246,5 @@ class QlikCloudClient:
             data_files = parsed_resp.data or []
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch data files from api `/v1/data-files`")
+            logger.error("Failed to fetch data files from api `/v1/data-files`")
         return data_files

@@ -65,7 +65,7 @@ class MssqlProfilerSource(ProfilerSource):
         # pylint: disable=import-outside-toplevel
 
         # Get the configured scheme from the source connection
-        scheme = config.source.serviceConnection.root.config.scheme
+        scheme = config.source.serviceConnection.root.config.scheme  # pyright: ignore[reportAttributeAccessIssue]
 
         # Set the appropriate is_disconnect method based on the scheme
         if scheme == MssqlScheme.mssql_pytds:

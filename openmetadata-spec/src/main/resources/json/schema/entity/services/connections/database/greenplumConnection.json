@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/greenplumConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GreenplumConnection",
   "description": "Greenplum Database Connection Config",
   "type": "object",
@@ -60,7 +60,7 @@
     },
     "database": {
       "title": "Database",
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
+      "description": "Initial database to connect to. Metadata reading is restricted to this database unless Ingest All Databases is enabled, in which case this database is used as the entry point to discover and scan all databases.",
       "type": "string"
     },
     "sslMode": {
@@ -86,7 +86,11 @@
     "schemaFilterPattern":{
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
-      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^information_schema$", "^gp_toolkit$"]
+      }
     },
     "tableFilterPattern": {
       "title": "Default Table Filter Pattern",
@@ -96,7 +100,11 @@
     "databaseFilterPattern": {
       "title": "Default Database Filter Pattern",
       "description": "Regex to only include/exclude databases that matches the pattern.",
-      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^template1$", "^template0$"]
+      }
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
@@ -109,6 +117,10 @@
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     },
+    "supportsAutoPartitionDetection": {
+      "title": "Supports Auto Partition Detection",
+      "$ref": "../connectionBasicType.json#/definitions/supportsAutoPartitionDetection"
+    },
     "supportsDatabase": {
       "title": "Supports Database",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
@@ -116,10 +128,6 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
-    },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     },
     "supportsViewLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"

@@ -13,7 +13,6 @@ Generic source to build database connectors.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Set, Tuple
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
@@ -25,7 +24,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
@@ -39,13 +37,12 @@ class SqlAlchemySource(ABC):
 
     engine: Engine
     metadata: OpenMetadata
-    context: TopologyContextManager
-    database_source_state: Set
+    database_source_state: set
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
 
     @abstractmethod
-    def standardize_table_name(self, schema_name: str, table: str) -> Tuple[str, str]:
+    def standardize_table_name(self, schema_name: str, table: str) -> tuple[str, str]:
         """
         Method formats Table names if required
         """
@@ -67,15 +64,13 @@ class SqlAlchemySource(ABC):
     @abstractmethod
     def get_columns_and_constraints(
         self, schema_name: str, table_name: str, inspector: Inspector
-    ) -> Optional[List[Column]]:
+    ) -> list[Column] | None:
         """
         Method to fetch table columns data
         """
 
     @abstractmethod
-    def get_schema_definition(
-        self, table_type, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Optional[str]:
+    def get_schema_definition(self, table_type, table_name: str, schema_name: str, inspector: Inspector) -> str | None:
         """
         Method to fetch schema definition
         """

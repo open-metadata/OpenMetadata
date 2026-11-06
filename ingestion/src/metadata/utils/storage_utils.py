@@ -16,8 +16,6 @@ that walks bucket trees can reuse the same sentinel-file detection and
 cold-storage filtering.
 """
 
-from typing import FrozenSet
-
 # -------------------------------------------------------------------
 # Path segments that are always skipped during listing / discovery.
 # These are internal directories written by Spark, Delta Lake, and
@@ -25,7 +23,7 @@ from typing import FrozenSet
 # contains any of these segments will be dropped before we try to
 # sample files or infer schema.
 # -------------------------------------------------------------------
-DEFAULT_EXCLUDE_SEGMENTS: FrozenSet[str] = frozenset(
+DEFAULT_EXCLUDE_SEGMENTS: frozenset[str] = frozenset(
     {
         "_delta_log",
         "_temporary",
@@ -40,7 +38,7 @@ DEFAULT_EXCLUDE_SEGMENTS: FrozenSet[str] = frozenset(
 # tier. Reading these files would fail or incur high retrieval costs,
 # so they are skipped during ``list_keys`` and sample-file selection.
 # -------------------------------------------------------------------
-COLD_STORAGE_CLASSES: FrozenSet[str] = frozenset(
+COLD_STORAGE_CLASSES: frozenset[str] = frozenset(
     {
         "GLACIER",
         "DEEP_ARCHIVE",
@@ -73,9 +71,9 @@ def is_excluded_artifact(key: str) -> bool:
     leaf = key.rsplit("/", 1)[-1]
     if leaf == "_SUCCESS" or leaf.startswith("_SUCCESS."):
         return True
-    if leaf.startswith("_committed_") or leaf.startswith("_started_"):
+    if leaf.startswith("_committed_") or leaf.startswith("_started_"):  # noqa: PIE810
         return True
-    if leaf.endswith(".crc"):
+    if leaf.endswith(".crc"):  # noqa: SIM103
         return True
 
     return False

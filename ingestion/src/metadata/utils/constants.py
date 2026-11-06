@@ -13,6 +13,9 @@
 Define constants useful for the metadata ingestion
 """
 
+from metadata.generated.schema.entity.ai.aiApplication import AIApplication
+from metadata.generated.schema.entity.ai.llmModel import LLMModel
+from metadata.generated.schema.entity.ai.mcpServer import McpServer
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
@@ -21,15 +24,21 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataContract import DataContract
+from metadata.generated.schema.entity.data.directory import Directory
+from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.page import Page
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.spreadsheet import Spreadsheet
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.data.worksheet import Worksheet
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.apiService import ApiService
@@ -41,9 +50,6 @@ from metadata.generated.schema.entity.services.connections.database.couchbaseCon
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeType,
-)
-from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
-    DeltaLakeType,
 )
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseType,
@@ -57,6 +63,9 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBType,
 )
+from metadata.generated.schema.entity.services.connections.database.neo4jConnection import (
+    Neo4jType,
+)
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceType,
 )
@@ -68,6 +77,9 @@ from metadata.generated.schema.entity.services.connections.database.sasConnectio
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.driveService import DriveService
+from metadata.generated.schema.entity.services.llmService import LLMService
+from metadata.generated.schema.entity.services.mcpService import McpService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
@@ -85,26 +97,10 @@ THREE_MIN = 3 * 60
 UTF_8 = "utf-8"
 CHUNKSIZE = 100000
 DEFAULT_DATABASE = "default"
-DEFAULT_DASHBAORD = "default"
+DEFAULT_DASHBOARD = "default"
 BUILDER_PASSWORD_ATTR = "password"
 TIMEDELTA = "timedelta"
 COMPLEX_COLUMN_SEPARATOR = "_##"
-
-ES_SOURCE_TO_ES_OBJ_ARGS = {
-    "caCerts": "ca_certs",
-    "regionName": "region_name",
-    "timeout": "timeout",
-    "useAwsCredentials": "use_AWS_credentials",
-    "useSSL": "use_ssl",
-    "verifyCerts": "verify_certs",
-}
-
-ES_SOURCE_IGNORE_KEYS = {
-    "searchIndexMappingLanguage",
-    "batchSize",
-    "recreateIndex",
-    "type",
-}
 
 QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
 
@@ -115,6 +111,12 @@ AUTHORIZATION_HEADER = "Authorization"
 NO_ACCESS_TOKEN = "no_token"
 
 SAMPLE_DATA_DEFAULT_COUNT = 50
+
+# Auto-classification may read up to SAMPLE_DATA_MAX_COUNT rows, but only
+# SAMPLE_DATA_MAX_STORED_COUNT of them are persisted, so raising the classification
+# budget never grows the stored sample. Bounds rows returned, not database scan cost.
+SAMPLE_DATA_MAX_COUNT = 1_000
+SAMPLE_DATA_MAX_STORED_COUNT = 50
 
 # Max length for any individual cell value in sample data.
 # Prevents OOM when tables contain large TEXT/CLOB columns.
@@ -132,6 +134,9 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "metadataService": MetadataService,
     "searchService": SearchService,
     "securityService": SecurityService,
+    "driveService": DriveService,
+    "llmService": LLMService,
+    "mcpService": McpService,
     # Data Asset Entities
     "apiCollection": APICollection,
     "apiEndpoint": APIEndpoint,
@@ -147,6 +152,16 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "searchIndex": SearchIndex,
     "mlmodel": MlModel,
     "container": Container,
+    "page": Page,
+    # AI Governance Entities
+    "llmModel": LLMModel,
+    "mcpServer": McpServer,
+    "aiApplication": AIApplication,
+    # Drive Entities
+    "directory": Directory,
+    "file": File,
+    "spreadsheet": Spreadsheet,
+    "worksheet": Worksheet,
     # User Entities
     "user": User,
     "team": Team,
@@ -157,6 +172,7 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "metric": Metric,
     "glossary": Glossary,
     "glossaryTerm": GlossaryTerm,
+    "dataContract": DataContract,
     "eventSubscription": EventSubscription,
 }
 
@@ -168,11 +184,11 @@ NON_SQA_DATABASE_CONNECTIONS = (
     DatalakeType.Datalake.value,
     BigtableType.BigTable.value,
     CouchbaseType.Couchbase.value,
-    DeltaLakeType.DeltaLake.value,
     DomoDatabaseType.DomoDatabase.value,
     DynamoDBType.DynamoDB.value,
     GlueType.Glue.value,
     MongoDBType.MongoDB.value,
+    Neo4jType.Neo4j.value,
     SalesforceType.Salesforce.value,
     SapErpType.SapErp.value,
     SasType.SAS.value,

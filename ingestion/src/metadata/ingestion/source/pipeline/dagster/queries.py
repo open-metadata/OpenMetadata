@@ -72,7 +72,7 @@ TEST_QUERY_GRAPHQL = """
 query Pipeline {
   pipelineRunsOrError(limit: 1) {
     __typename
-    ... on PipelineRuns {
+    ... on Runs {
       results {
         assetSelection {
           path

@@ -35,6 +35,8 @@ export enum DetailPageWidgetKeys {
   TABLE_CONSTRAINTS = 'KnowledgePanel.TableConstraints',
   EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
   PARTITIONED_KEYS = 'KnowledgePanel.PartitionedKeys',
+  TABLE_SHARDING = 'KnowledgePanel.TableSharding',
+  TABLE_ALIASES = 'KnowledgePanel.TableAliases',
   STORED_PROCEDURE_CODE = 'KnowledgePanel.StoredProcedureCode',
   DATA_MODEL = 'KnowledgePanel.DataModel',
   CONTAINER_CHILDREN = 'KnowledgePanel.ContainerChildren',
@@ -47,6 +49,10 @@ export enum DetailPageWidgetKeys {
   API_ENDPOINTS = 'KnowledgePanel.APIEndpoints',
   API_SCHEMA = 'KnowledgePanel.APISchema',
   RELATED_METRICS = 'KnowledgePanel.RelatedMetrics',
+  METRIC_HIERARCHY = 'KnowledgePanel.MetricHierarchy',
+  METRIC_DEFINITION = 'KnowledgePanel.MetricDefinition',
+  METRIC_DIMENSIONS = 'KnowledgePanel.MetricDimensions',
+  METRIC_MEASURES = 'KnowledgePanel.MetricMeasures',
   ML_MODEL_FEATURES = 'KnowledgePanel.MlModelFeatures',
   CONTAINER_SCHEMA = 'KnowledgePanel.ContainerSchema',
   DIRECTORY_CHILDREN = 'KnowledgePanel.DirectoryChildren',
@@ -57,6 +63,8 @@ export enum DetailPageWidgetKeys {
   MARKETPLACE_DATA_PRODUCTS = 'KnowledgePanel.MarketplaceDataProducts',
   MARKETPLACE_DOMAINS = 'KnowledgePanel.MarketplaceDomains',
   MARKETPLACE_ANNOUNCEMENTS = 'KnowledgePanel.MarketplaceAnnouncements',
+  KNOWLEDGE_ARTICLE = 'KnowledgePanel.KnowledgeArticle',
+  ASSET_HEALTH = 'KnowledgePanel.AssetHealth',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

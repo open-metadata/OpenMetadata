@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
-import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { MessageChatSquare } from '@openmetadata/ui-core-components/icons';
+import { MouseEvent } from 'react';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
-import { ThreadType } from '../generated/entity/feed/thread';
-import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 
 export const getFieldThreadElement = (
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void,
+  onThreadLinkSelect: (value: string) => void,
   entityType: EntityType,
   entityFqn: string,
   columnName: string,
@@ -34,23 +34,20 @@ export const getFieldThreadElement = (
   );
 
   return (
-    <Tooltip
-      destroyTooltipOnHide
-      overlayClassName="ant-popover-request-description"
-      title={t('label.list-entity', {
+    <ButtonUtility
+      className="hover-cell-icon"
+      data-testid="field-thread"
+      icon={MessageChatSquare}
+      size="xs"
+      tooltip={t('label.list-entity', {
         entity: t('label.conversation'),
-      })}>
-      <IconComments
-        className="table-action-icon hover-cell-icon"
-        data-testid="field-thread"
-        name="comments"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
+      })}
+      onClick={(e: MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
 
-          onThreadLinkSelect(entityLink);
-        }}
-      />
-    </Tooltip>
+        onThreadLinkSelect(entityLink);
+      }}
+    />
   );
 };

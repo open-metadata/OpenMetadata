@@ -9,6 +9,10 @@ argument-hint: "[branch name, PR number, or file paths]"
 
 Two-stage review process: requirements compliance first, then code quality.
 
+**The bar is `REVIEW.md` at the repository root.** Read it first. Its "How to review" order, its
+finding format (trigger → result → fix), its test and flaky-test shapes and its "Do not report" list
+override the generic checklist below wherever they differ.
+
 ## When to Use
 
 - Before creating a PR
@@ -88,18 +92,17 @@ Now review the implementation quality.
 **Python:**
 - [ ] pytest style (plain `assert`, no `unittest.TestCase`)
 - [ ] Type hints on public functions
-- [ ] `make py_format && make lint` passes
+- [ ] `make py_format && make py_format_check` passes
 - [ ] Pydantic 2.x patterns (not v1 compatibility layer)
 
 **TypeScript/React:**
 - [ ] No `any` types — use proper types or `unknown` with type guards
-- [ ] No MUI imports — use `openmetadata-ui-core-components`
 - [ ] Tailwind classes use `tw:` prefix
 - [ ] Strings use i18n (`t('label.xxx')`) not string literals
 - [ ] CSS custom properties for colors/spacing, no hardcoded values
 - [ ] Loading states and error handling with `showErrorToast`/`showSuccessToast`
 
-**Testing (use `/test-enforcement` for full analysis):**
+**Testing (use `/test-enforcement` for full analysis; `REVIEW.md` § Tests lists the shapes reviewers reject):**
 - [ ] 90% line coverage on changed Java classes
 - [ ] Integration tests for new/changed API endpoints
 - [ ] Jest tests for new/changed React components
@@ -111,6 +114,10 @@ Now review the implementation quality.
 - [ ] User input validated at system boundaries
 - [ ] No SQL injection vectors (parameterized queries)
 - [ ] No XSS vectors in frontend (proper escaping)
+
+**Decisions (`docs/decisions/`, rules in its `README.md`):**
+- [ ] No change undoes an Accepted record without adding the record that supersedes it
+- [ ] A durable decision — a contract another component or repo must agree with, a new default or limit, an ordering that must hold, a rule stated only in the PR description — ships its record in this PR
 
 ### Report Format (Stage 2)
 

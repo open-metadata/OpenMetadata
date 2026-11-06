@@ -17,21 +17,16 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
+from collections.abc import Collection, Iterable, Iterator, Sequence
+from dataclasses import dataclass
 from typing import (
+    Annotated,
     Generic,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Set,
-    Type,
     TypeVar,
-    Union,
 )
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from pydantic import Field, field_validator
-from typing_extensions import Annotated
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.query import Query
@@ -42,12 +37,35 @@ from metadata.ingestion.ometa.utils import quote
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import ES_INDEX_MAP, get_entity_from_es_result
-from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
+
+# Search requests are GETs that carry every term in the URL; 100 checksums or ids
+# keep the request line well under the server's default 8 KiB header limit
+SEARCH_TERMS_BATCH_SIZE = 100
+
+SERVICE_NAME_FIELD = "service.name.keyword"
+
+
+def _batched(values: Sequence[str], size: int) -> Iterator[list[str]]:
+    for start in range(0, len(values), size):
+        yield list(values[start : start + size])
+
+
+class SearchCursorStalledError(RuntimeError):
+    """search_after pagination cannot page an index that does not sort on the id tiebreaker."""
+
+
+@dataclass(frozen=True)
+class FqnSearchResult:
+    """Unhydrated FQN candidates and the server's hit count."""
+
+    fqns: tuple[str, ...]
+    total: int
+    total_is_exact: bool
 
 
 class TotalModel(BaseModel):
@@ -62,17 +80,17 @@ class HitsModel(BaseModel):
 
     index: Annotated[str, Field(description="Index name", alias="_index")]
     type: Annotated[
-        Optional[str],
+        str | None,
         Field(default=None, description="Type of the document", alias="_type"),
     ]
     id: Annotated[str, Field(description="Document ID", alias="_id")]
     score: Annotated[
-        Optional[float],
+        float | None,
         Field(default=None, description="Score of the document", alias="_score"),
     ]
     source: Annotated[dict, Field(description="Document source", alias="_source")]
     sort: Annotated[
-        Optional[List[str]],
+        list[str | None] | None,
         Field(
             default=None,
             description="Sort field. Used internally to get the next page FQN",
@@ -80,7 +98,7 @@ class HitsModel(BaseModel):
     ]
 
     @field_validator("sort", mode="before")
-    def normalize_sort(cls, sort_value: list[str] | None):
+    def normalize_sort(cls, sort_value: list | None):  # noqa: N805
         """
         Return sort as a list of strings, regardless of the actual type.
         if sort_field is set to `_score`, sort is a list of the score and the sort value.
@@ -93,14 +111,15 @@ class HitsModel(BaseModel):
         if sort_value is None:
             return None
 
-        return [str(v) for v in sort_value]
+        # A null stays null: it marks a sort field the index cannot sort on.
+        return [None if v is None else str(v) for v in sort_value]
 
 
 class ESHits(BaseModel):
     """Elasticsearch hits model"""
 
     total: Annotated[TotalModel, Field(description="Total matched elements")]
-    hits: Annotated[List[HitsModel], Field(description="List of matched elements")]
+    hits: Annotated[list[HitsModel], Field(description="List of matched elements")]
 
 
 class ESResponse(BaseModel):
@@ -118,6 +137,76 @@ class ESMixin(Generic[T]):
 
     client: REST
 
+    def search_fqn_candidates(
+        self,
+        entity_type: type[T],
+        value: str,
+        *,
+        wildcard: bool = False,
+        size: int = 11,
+    ) -> FqnSearchResult:
+        """Search active FQNs without caching or hydration; propagate lookup failures."""
+        if size < 1:
+            raise ValueError("Candidate search size must be positive")
+        if not wildcard:
+            value = value.replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?")
+        params = urlencode(
+            {
+                "fieldName": "fullyQualifiedName",
+                "fieldValue": value,
+                "index": ES_INDEX_MAP[entity_type.__name__],
+                "deleted": "false",
+                "from": 0,
+                "size": size,
+            }
+        )
+        response = self.client.get("/search/fieldQuery?" + params)
+        return self._parse_fqn_candidates(response)
+
+    def search_filtered_fqns(
+        self, entity_type: type[T], query_filter: dict, max_candidates: int = 100
+    ) -> tuple[str, ...]:
+        """Return a complete bounded set of active FQNs matching a structured filter."""
+        if max_candidates < 1:
+            raise ValueError("Candidate limit must be positive")
+        params = urlencode(
+            {
+                "q": "",
+                "query_filter": json.dumps(query_filter),
+                "index": ES_INDEX_MAP[entity_type.__name__],
+                "deleted": "false",
+                "from": 0,
+                "size": max_candidates + 1,
+                "track_total_hits": "true",
+                "include_aggregations": "false",
+                "include_source_fields": "fullyQualifiedName",
+            }
+        )
+        found = self._parse_fqn_candidates(self.client.get("/search/query?" + params))
+        if found.total > max_candidates or len(found.fqns) > max_candidates:
+            raise ValueError("FQN candidate search exceeds the configured limit")
+        if not found.total_is_exact or found.total != len(found.fqns):
+            raise ValueError("Incomplete FQN candidate search")
+        return found.fqns
+
+    @staticmethod
+    def _parse_fqn_candidates(response: object) -> FqnSearchResult:
+        if not isinstance(response, dict):
+            raise TypeError("Invalid FQN search response")
+        if response.get("timed_out") or response.get("_shards", {}).get("failed", 0):
+            raise ValueError("Incomplete FQN search response")
+        hits = response["hits"]
+        total = hits["total"]
+        if isinstance(total, int):
+            count, exact = total, True
+        else:
+            count, exact = total["value"], total["relation"] == "eq"
+        return FqnSearchResult(
+            fqns=tuple(hit["_source"]["fullyQualifiedName"] for hit in hits["hits"]),
+            total=count,
+            total_is_exact=exact,
+        )
+
     fqdn_search = (
         "/search/fieldQuery?fieldName={field_name}&fieldValue={field_value}&from={from_}"
         "&size={size}&index={index}&deleted=false"
@@ -129,13 +218,13 @@ class ESMixin(Generic[T]):
         "&sort_field={sort_field}&sort_order={sort_order}{after}"
     )
 
-    @functools.lru_cache(maxsize=512)
+    @functools.lru_cache(maxsize=512)  # noqa: B019
     def _search_es_entity(
         self,
-        entity_type: Type[T],
+        entity_type: type[T],
         query_string: str,
-        fields: Optional[str] = None,
-    ) -> Optional[List[T]]:
+        fields: str | None = None,
+    ) -> list[T] | None:
         """
         Run the ES query and return a list of entities that match. It does an extra query to the OM API with the
         requested fields per each entity found in ES.
@@ -165,7 +254,7 @@ class ESMixin(Generic[T]):
 
         return None
 
-    def get_entity_from_es(self, entity: Type[T], query_string: str, fields: Optional[list] = None) -> Optional[T]:
+    def get_entity_from_es(self, entity: type[T], query_string: str, fields: list | None = None) -> T | None:
         """Fetch an entity instance from ES"""
 
         try:
@@ -178,12 +267,12 @@ class ESMixin(Generic[T]):
 
         return None
 
-    def yield_entities_from_es(self, entity: Type[T], query_string: str, fields: Optional[list] = None) -> Iterable[T]:
+    def yield_entities_from_es(self, entity: type[T], query_string: str, fields: list | None = None) -> Iterable[T]:
         """Fetch an entity instance from ES"""
 
         try:
             entity_list = self._search_es_entity(entity_type=entity, query_string=query_string, fields=fields)
-            for instance in entity_list or []:
+            for instance in entity_list or []:  # noqa: UP028
                 yield instance
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -193,12 +282,14 @@ class ESMixin(Generic[T]):
 
     def es_search_from_fqn(
         self,
-        entity_type: Type[T],
+        entity_type: type[T],
         fqn_search_string: str,
         from_count: int = 0,
         size: int = 10,
-        fields: Optional[str] = None,
-    ) -> Optional[List[T]]:
+        fields: str | None = None,
+        *,
+        raise_on_error: bool = False,
+    ) -> list[T] | None:
         """
         Given a service name and filters, search for entities using Elasticsearch.
 
@@ -209,6 +300,7 @@ class ESMixin(Generic[T]):
             from_count (int): The starting index of the search results.
             size (int): The maximum number of records to return.
             fields (Optional[str]): Comma-separated list of fields to be returned.
+            raise_on_error (bool): Propagate search errors instead of returning None.
 
         Returns:
             Optional[List[T]]: A list of entities that match the search criteria, or None if no entities are found.
@@ -220,6 +312,30 @@ class ESMixin(Generic[T]):
             from_count=from_count,
             size=size,
             fields=fields,
+            raise_on_error=raise_on_error,
+        )
+
+    def es_search_from_alias(
+        self,
+        entity_type: type[T],
+        alias_fqn: str,
+        from_count: int = 0,
+        size: int = 10,
+        fields: str | None = None,
+    ) -> list[T] | None:
+        """
+        Find entities carrying an exact alternate FQN in their aliases field.
+
+        Matches on the keyword subfield only: an alias is resolved for lineage,
+        where a fuzzy hit would silently attach an edge to the wrong table.
+        """
+        return self._es_search_entity(
+            entity_type=entity_type,
+            field_value=alias_fqn,
+            field_name="aliases.keyword",
+            from_count=from_count,
+            size=size,
+            fields=fields,
         )
 
     def es_search_container_by_path(
@@ -227,8 +343,8 @@ class ESMixin(Generic[T]):
         full_path: str,
         from_count: int = 0,
         size: int = 10,
-        fields: Optional[str] = None,
-    ) -> Optional[List[Container]]:
+        fields: str | None = None,
+    ) -> list[Container] | None:
         """
         Given a service name and filters, search for containers using Elasticsearch.
 
@@ -253,13 +369,15 @@ class ESMixin(Generic[T]):
 
     def _es_search_entity(
         self,
-        entity_type: Type[T],
+        entity_type: type[T],
         field_value: str,
         field_name: str,
         from_count: int = 0,
         size: int = 10,
-        fields: Optional[str] = None,
-    ) -> Optional[List[T]]:
+        fields: str | None = None,
+        *,
+        raise_on_error: bool = False,
+    ) -> list[T] | None:
         """
         Search for entities using Elasticsearch.
 
@@ -270,6 +388,7 @@ class ESMixin(Generic[T]):
             from_count (int, optional): The starting index of the search results. Defaults to 0.
             size (int, optional): The maximum number of search results to return. Defaults to 10.
             fields (Optional[str], optional): Comma-separated list of fields to be returned. Defaults to None.
+            raise_on_error (bool): Propagate search errors instead of returning None.
 
         Returns:
             Optional[List[T]]: A list of entities that match the search criteria, or None if no entities are found.
@@ -284,11 +403,15 @@ class ESMixin(Generic[T]):
 
         try:
             response = self._search_es_entity(entity_type=entity_type, query_string=query_string, fields=fields)
-            return response
+            return response  # noqa: RET504, TRY300
         except KeyError as err:
+            if raise_on_error:
+                raise
             logger.debug(traceback.format_exc())
             logger.warning(f"Cannot find the index in ES_INDEX_MAP for {entity_type.__name__}: {err}")
         except Exception as exc:
+            if raise_on_error:
+                raise
             logger.debug(traceback.format_exc())
             logger.warning(f"Elasticsearch search failed for query [{query_string}]: {exc}")
         return None
@@ -300,15 +423,15 @@ class ESMixin(Generic[T]):
                 "bool": {
                     "must": [
                         {"term": {"processedLineage": True}},
-                        {"term": {"service.name.keyword": service_name}},
+                        {"term": {SERVICE_NAME_FIELD: service_name}},
                     ]
                 }
             }
         }
         return quote(json.dumps(query_lineage_filter))
 
-    @functools.lru_cache(maxsize=12)
-    def es_get_queries_with_lineage(self, service_name: str) -> Optional[Set[str]]:
+    @functools.lru_cache(maxsize=12)  # noqa: B019
+    def es_get_queries_with_lineage(self, service_name: str) -> set[str] | None:
         """Get a set of query checksums that have already been processed for lineage"""
         try:
             resp = self.client.get(
@@ -328,7 +451,64 @@ class ESMixin(Generic[T]):
             logger.warning(f"Unknown error extracting results from ES query [{err}]")
             return None
 
-    def _get_include_fields_query(self, fields: Optional[List[str]]) -> str:
+    def es_get_lineage_processed_queries(self, service_name: str, checksums: Collection[str]) -> dict[str, set[str]]:
+        """
+        Map the checksum of each given query that the service already processed for
+        lineage to the ids of the entities the query is used in (`queryUsedIn`).
+
+        A query missing from the result was not processed, or could not be looked up.
+        """
+        processed: dict[str, set[str]] = {}
+        for batch in _batched(sorted(checksums), SEARCH_TERMS_BATCH_SIZE):
+            query_filter = {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"term": {"processedLineage": True}},
+                            {"term": {SERVICE_NAME_FIELD: service_name}},
+                            {"terms": {"checksum.keyword": batch}},
+                        ]
+                    }
+                }
+            }
+            for hit in self._search_page(
+                ES_INDEX_MAP[Query.__name__], query_filter, size=len(batch), fields=["checksum", "queryUsedIn"]
+            ):
+                processed[hit.source["checksum"]] = {ref["id"] for ref in hit.source.get("queryUsedIn") or []}
+        return processed
+
+    def es_get_upstream_entity_ids(self, entity: type[T], entity_ids: Collection[str]) -> dict[str, set[str]]:
+        """
+        Map each given id that belongs to an indexed entity of the given type, soft-deleted
+        entities included, to the ids of the entities its upstream lineage edges come from.
+        An id missing from the result has no entity, or could not be looked up.
+        """
+        upstreams: dict[str, set[str]] = {}
+        index = ES_INDEX_MAP[entity.__name__]
+        for batch in _batched(sorted(entity_ids), SEARCH_TERMS_BATCH_SIZE):
+            query_filter = {"query": {"ids": {"values": batch}}}
+            for hit in self._search_page(
+                index, query_filter, size=len(batch), fields=["id", "upstreamLineage.fromEntity.id"]
+            ):
+                upstreams[hit.id] = {
+                    edge["fromEntity"]["id"]
+                    for edge in hit.source.get("upstreamLineage") or []
+                    if (edge.get("fromEntity") or {}).get("id")
+                }
+        return upstreams
+
+    def _search_page(self, index: str, query_filter: dict, size: int, fields: list[str]) -> list[HitsModel]:
+        """
+        Hits of a single search request. Leaving `deleted` unset matches soft-deleted
+        entities too; a failed search is logged and returns no hits.
+        """
+        response = self._get_es_response(
+            f"/search/query?q=&index={index}&size={size}"
+            f"{self._get_include_fields_query(fields)}&query_filter={quote_plus(json.dumps(query_filter))}"
+        )
+        return response.hits.hits if response else []
+
+    def _get_include_fields_query(self, fields: list[str] | None) -> str:
         """Get the include fields query"""
         if fields:
             return "&include_source_fields=" + "&include_source_fields=".join(fields)
@@ -336,11 +516,11 @@ class ESMixin(Generic[T]):
 
     def _paginate_es_internal(
         self,
-        entity: Type[T],
-        query_filter: Optional[str] = None,
+        entity: type[T],
+        query_filter: str | None = None,
         size: int = 100,
         search_query: str = "",
-        include_fields: Optional[List[str]] = None,
+        include_fields: list[str] | None = None,
         sort_field: str = "fullyQualifiedName",
         sort_order: str = "desc",
     ) -> Iterator[ESResponse]:
@@ -366,7 +546,7 @@ class ESMixin(Generic[T]):
         if sort_order not in ("asc", "desc"):
             raise ValueError(f"sort_order must be 'asc' or 'desc', got '{sort_order}'")
 
-        after: Optional[str] = None
+        after: str = ""
         error_pages = 0
         query = functools.partial(
             self.paginate_query.format,
@@ -379,7 +559,7 @@ class ESMixin(Generic[T]):
             sort_order=sort_order,
         )
         while True:
-            query_string = query(after="&search_after=" + quote_plus(after) if after else "")
+            query_string = query(after=after)
             response = self._get_es_response(query_string)
 
             # Allow 3 errors getting pages before getting out of the loop
@@ -389,23 +569,41 @@ class ESMixin(Generic[T]):
                     continue
                 else:
                     break
+
+            next_after = self._next_search_after(response)
+            # The server sorts last on its id tiebreaker. An index without id.keyword sorts it as
+            # null, and each next page then starts again with the previous page's last hit, so
+            # the walk is refused before any page of it is handed out
+            # (ADR:2026-10-23-paged-search-indexes-sort-last-on-id-keyword).
+            last_hit = response.hits.hits[-1] if response.hits.hits else None
+            no_tiebreaker = bool(last_hit and last_hit.sort and last_hit.sort[-1] is None)
+            if no_tiebreaker or (after and next_after == after):
+                raise SearchCursorStalledError(
+                    f"Search cursor for {entity.__name__} cannot page its index"
+                    f" {ES_INDEX_MAP[entity.__name__]}: it cannot sort on the id tiebreaker. Reindex it."
+                )
             yield response
 
-            # Get next page
-            last_hit = response.hits.hits[-1] if response.hits.hits else None
-            if not last_hit or not last_hit.sort:
+            if not next_after:
                 logger.debug("No more pages to fetch")
                 break
 
-            after = ",".join(last_hit.sort)
+            after = next_after
+
+    @staticmethod
+    def _next_search_after(response: ESResponse) -> str:
+        """The search_after query parameters for the page after `response`, empty on the last page."""
+        last_hit = response.hits.hits[-1] if response.hits.hits else None
+        sort = last_hit.sort if last_hit else None
+        return "".join(f"&search_after={quote_plus(str(v))}" for v in sort or [])
 
     def paginate_es(
         self,
-        entity: Type[T],
-        query_filter: Optional[str] = None,
+        entity: type[T],
+        query_filter: str | None = None,
         size: int = 100,
         search_query: str = "",
-        fields: Optional[List[str]] = None,
+        fields: list[str] | None = None,
         sort_field: str = "fullyQualifiedName",
         sort_order: str = "desc",
     ) -> Iterator[T]:
@@ -436,7 +634,7 @@ class ESMixin(Generic[T]):
         ):
             yield from self._yield_hits_from_api(response=response, entity=entity, fields=fields)
 
-    def _get_es_response(self, query_string: str) -> Optional[ESResponse]:
+    def _get_es_response(self, query_string: str) -> ESResponse | None:
         """Get the Elasticsearch response"""
         try:
             response = self.client.get(query_string)
@@ -453,7 +651,7 @@ class ESMixin(Generic[T]):
             )
         return None
 
-    def _yield_hits_from_api(self, response: ESResponse, entity: Type[T], fields: Optional[List[str]]) -> Iterator[T]:
+    def _yield_hits_from_api(self, response: ESResponse, entity: type[T], fields: list[str] | None) -> Iterator[T]:
         """Get the data from the API based on ES responses"""
         for hit in response.hits.hits:
             try:
@@ -466,7 +664,6 @@ class ESMixin(Generic[T]):
             except Exception as exc:
                 logger.warning(f"Error while getting {hit.source['fullyQualifiedName']} - {exc}")
 
-    @calculate_execution_time_generator(context="ES.FetchViewDefinition")
     def yield_es_view_def(
         self,
         service_name: str,
@@ -482,7 +679,7 @@ class ESMixin(Generic[T]):
             "query": {
                 "bool": {
                     "must": [
-                        {"bool": {"should": [{"term": {"service.name.keyword": service_name}}]}},
+                        {"bool": {"should": [{"term": {SERVICE_NAME_FIELD: service_name}}]}},
                         {
                             "bool": {
                                 "must": [
@@ -536,10 +733,10 @@ class ESMixin(Generic[T]):
 
     def search_in_any_service(
         self,
-        entity_type: Type[T],
+        entity_type: type[T],
         fqn_search_string: str,
         fetch_multiple_entities: bool = False,
-    ) -> Optional[Union[List[Table], Table]]:
+    ) -> list[Table] | Table | None:
         """
         fetch table from es when with/without `db_service_name`
         """
@@ -552,7 +749,7 @@ class ESMixin(Generic[T]):
                 ),
                 fetch_multiple_entities=fetch_multiple_entities,
             )
-            return entity_result
+            return entity_result  # noqa: RET504, TRY300
         except Exception as exc:
             logger.debug(f"Error to fetch entity: fqn={fqn_search_string} from es: {exc}")
             logger.debug(traceback.format_exc())

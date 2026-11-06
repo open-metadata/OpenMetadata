@@ -13,12 +13,15 @@
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import {
   getClassificationByName,
   getClassificationVersionData,
   getClassificationVersionsList,
 } from '../../rest/tagAPI';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { MOCK_ALL_CLASSIFICATIONS } from '../TagsPage/TagsPage.mock';
 import ClassificationVersionPage from './ClassificationVersionPage';
 
@@ -47,13 +50,6 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<div>testErrorPlaceHolder</div>);
-  }
-);
-
-jest.mock(
   '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine',
   () => {
     return jest.fn().mockReturnValue(<div>testEntityVersionTimeLine</div>);
@@ -71,22 +67,32 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-const mockGetEntityPermissionByFqn = jest
-  .fn()
-  .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS));
+// ClassificationVersionPage now fetches its own permissions via useEntityPermissions (Task 8
+// batch-final) rather than an imperative usePermissionProvider().getEntityPermissionByFqn
+// call — mock the hook directly, mirroring ServiceVersionPage.test.tsx's setMockPermissions
+// helper.
+const mockUseEntityPermissions = jest.fn();
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
-  })),
-}));
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = ENTITY_PERMISSIONS,
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
 
-jest.mock('../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
-  DEFAULT_ENTITY_PERMISSION: {
-    ViewAll: true,
-    ViewBasic: true,
-  },
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 const mockClassification = { id: 123 };
@@ -120,6 +126,10 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 describe('ClassificationVersionPage component', () => {
+  beforeEach(() => {
+    setMockPermissions();
+  });
+
   it('should render Loader', async () => {
     render(<ClassificationVersionPage />, {
       wrapper: MemoryRouter,
@@ -147,12 +157,14 @@ describe('ClassificationVersionPage component', () => {
   });
 
   it('should renders ErrorPlaceHolder with permission error', async () => {
-    mockGetEntityPermissionByFqn.mockResolvedValueOnce({});
+    setMockPermissions({});
     render(<ClassificationVersionPage />, {
       wrapper: MemoryRouter,
     });
 
-    const errorPlaceholder = await screen.findByText('testErrorPlaceHolder');
+    const errorPlaceholder = await screen.findByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(errorPlaceholder).toBeInTheDocument();
   });
@@ -164,9 +176,10 @@ describe('ClassificationVersionPage component', () => {
       });
     });
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
-      'classification',
-      mockParams.fqn
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.CLASSIFICATION,
+      mockParams.fqn,
+      expect.objectContaining({ enabled: true })
     );
 
     expect(getClassificationByName).toHaveBeenCalledWith(mockParams.fqn);

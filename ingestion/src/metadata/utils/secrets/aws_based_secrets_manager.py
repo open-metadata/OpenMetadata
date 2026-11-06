@@ -108,4 +108,4 @@ class AWSBasedSecretsManager(ExternalSecretsManager, ABC):
             loader_fn = secrets_manager_client_loader.registry.get(self.loader.value)
             return loader_fn()
         except Exception as err:
-            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")
+            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")  # noqa: B904

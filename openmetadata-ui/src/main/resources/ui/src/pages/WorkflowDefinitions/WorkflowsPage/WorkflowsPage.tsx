@@ -12,35 +12,53 @@
  */
 
 import {
+  Box,
   Button,
   Input,
+  PageLayout,
   SlideoutMenu,
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import {
+  CursorClick01,
+  Plus,
+  Settings01,
+  ZapFast,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import classNames from 'classnames';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../../components/common/Loader/Loader';
+import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import PaginationComponent from '../../../components/PaginationComponent/PaginationComponent';
-import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  INITIAL_PAGING_VALUE,
+} from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ClientErrors } from '../../../enums/Axios.enum';
+import { CursorType } from '../../../enums/pagination.enum';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { Paging } from '../../../generated/type/paging';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import {
   createWorkflowDefinition,
   getWorkflowDefinitions,
   WorkflowDefinitionsParams,
 } from '../../../rest/workflowDefinitionsAPI';
-import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
 import { getWorkflowDefinitionDetailPath } from '../../../utils/WorkflowRouterUtils';
@@ -50,27 +68,57 @@ import {
   WORKFLOW_NAME_REGEX,
 } from '../../../utils/WorkflowValidationUtils';
 import { WorkflowDetailsTabs } from '../WorkflowDetails/workflow-details.interface';
+import WorkflowList, { WorkflowListItem } from './WorkflowList';
+import WorkflowsPageSection from './WorkflowsPageSection';
 
 const WorkflowsPage = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [loading, setLoading] = useState(true);
-  const [workflows, setWorkflows] = useState<SettingMenuItem[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowListItem[]>([]);
   const [paging, setPaging] = useState<Paging>({
     after: undefined,
     before: undefined,
     total: 0,
   });
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageCursorsRef = useRef<{ [key: number]: string }>({});
+  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+  const { savedPageSize: pageSize, savePageSize } = useSavedPageSize(
+    GRID_PAGE_SIZE_OPTIONS
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [workflowName, setWorkflowName] = useState('');
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<AxiosError>();
   const navigate = useNavigate();
   const allowCreateWorkflow = useMemo(
     () => workflowClassBase.getCapabilities().allowCreateWorkflow,
     []
+  );
+
+  const emptyStateFeatures = useMemo(
+    () => [
+      {
+        key: 'trigger',
+        icon: <ZapFast className="tw:text-fg-brand-primary" />,
+        title: t('label.pick-a-trigger'),
+        description: t('message.pick-a-trigger-description'),
+      },
+      {
+        key: 'action',
+        icon: <CursorClick01 className="tw:text-fg-warning-primary" />,
+        title: t('label.define-the-action'),
+        description: t('message.define-the-action-description'),
+      },
+      {
+        key: 'sit-back',
+        icon: <Settings01 className="tw:text-fg-success-primary" />,
+        title: t('label.sit-back'),
+        description: t('message.sit-back-description'),
+      },
+    ],
+    [t]
   );
 
   const validateWorkflowName = useCallback(
@@ -103,11 +151,16 @@ const WorkflowsPage = () => {
     setNameError('');
   }, []);
 
-  const onWorkflowClick = useCallback((key: string) => {
-    navigate(
-      getWorkflowDefinitionDetailPath(key, WorkflowDetailsTabs.WORKFLOW)
-    );
-  }, []);
+  const onWorkflowClick = useCallback(
+    (key: string) => {
+      const workflow = workflows.find((item) => item.key === key);
+      navigate(
+        (workflow && workflowClassBase.getWorkflowPath(workflow)) ??
+          getWorkflowDefinitionDetailPath(key, WorkflowDetailsTabs.WORKFLOW)
+      );
+    },
+    [workflows, navigate]
+  );
 
   const handleNewWorkflowClick = useCallback(() => {
     setIsModalOpen(true);
@@ -120,18 +173,18 @@ const WorkflowsPage = () => {
   }, [resetForm]);
 
   const getWorkflows = useCallback(
-    async (page?: number, cursor?: string) => {
+    async (
+      page: number = INITIAL_PAGING_VALUE,
+      cursor?: Partial<Record<CursorType, string>>
+    ) => {
       try {
         setLoading(true);
+        setLoadError(undefined);
 
         const params: WorkflowDefinitionsParams = {
-          limit: PAGE_SIZE_MEDIUM,
+          limit: pageSize,
+          ...cursor,
         };
-        const pageCursor = cursor || pageCursorsRef.current[page || 1];
-
-        if (pageCursor) {
-          params.after = pageCursor;
-        }
 
         const res = await getWorkflowDefinitions(params);
 
@@ -144,29 +197,24 @@ const WorkflowsPage = () => {
 
         setWorkflows(result);
         setPaging(res.paging || { total: 0 });
-
-        if (res.paging && res.paging.after) {
-          const nextPage = page ? page + 1 : 2;
-          pageCursorsRef.current[nextPage] = res.paging.after;
-        }
-
-        if (page) {
-          setCurrentPage(page);
-        }
+        setCurrentPage(page);
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        setLoadError(error as AxiosError);
       } finally {
         setLoading(false);
       }
     },
-    [PAGE_SIZE_MEDIUM]
+    [pageSize]
   );
 
   const handlePageChange = useCallback(
-    (page: number) => {
-      getWorkflows(page);
+    ({ cursorType, currentPage: page }: PagingHandlerParams) => {
+      const cursor = cursorType ? paging[cursorType] : undefined;
+      if (cursorType && cursor) {
+        getWorkflows(page, { [cursorType]: cursor });
+      }
     },
-    [getWorkflows]
+    [getWorkflows, paging]
   );
 
   useEffect(() => {
@@ -233,73 +281,152 @@ const WorkflowsPage = () => {
     getWorkflows,
   ]);
 
+  const createWorkflowButton = allowCreateWorkflow ? (
+    <Button
+      data-testid="create-workflow-button"
+      iconLeading={Plus}
+      size="sm"
+      onPress={handleNewWorkflowClick}>
+      {t('label.new-workflow')}
+    </Button>
+  ) : null;
+
   if (loading) {
     return <Loader />;
   }
 
-  if (!loading && workflows.length === 0) {
-    return (
-      <ErrorPlaceHolder
-        className="m-y-md"
-        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+  const isWorkflowsEmpty = workflows.length === 0;
+
+  const emptyPlaceholder = (
+    <Box className="tw:relative tw:flex-1 tw:min-h-0 tw:rounded-xl">
+      <FeaturesPlaceholder
+        actions={
+          allowCreateWorkflow
+            ? [
+                {
+                  key: 'new-workflow',
+                  label: t('label.new-workflow'),
+                  color: 'primary' as const,
+                  iconLeading: Plus,
+                  onPress: handleNewWorkflowClick,
+                },
+              ]
+            : undefined
+        }
+        description={t('message.workflow-empty-description')}
+        features={emptyStateFeatures}
+        title={t('message.put-your-data-operations-on-autopilot')}
       />
+    </Box>
+  );
+
+  const renderContent = () => {
+    if (loadError) {
+      return (
+        <Box className="tw:relative tw:flex-1 tw:min-h-0">
+          {loadError.response?.status === ClientErrors.FORBIDDEN ? (
+            <PermissionPlaceholder
+              permissionValue={t('label.view-entity', {
+                entity: t('label.workflow-plural'),
+              })}
+            />
+          ) : (
+            <SomethingWentWrongPlaceholder
+              title={t('server.entity-fetch-error', {
+                entity: t('label.workflow-plural'),
+              })}
+              onReload={() => getWorkflows()}
+            />
+          )}
+        </Box>
+      );
+    }
+
+    if (isWorkflowsEmpty) {
+      return (
+        <>
+          <WorkflowsPageSection />
+          {emptyPlaceholder}
+        </>
+      );
+    }
+
+    return (
+      <div
+        className={classNames('tw:flex tw:flex-1 tw:min-h-0 tw:flex-col', {
+          'tw:mx-2': isAiMode,
+        })}>
+        <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:pt-4">
+          <WorkflowsPageSection />
+          <WorkflowList
+            total={paging.total}
+            workflows={workflows}
+            onWorkflowClick={onWorkflowClick}
+          />
+          <div className="tw:py-3" data-testid="workflows-pagination">
+            <NextPrevious
+              currentPage={currentPage}
+              isLoading={loading}
+              pageSize={pageSize}
+              pageSizeOptions={GRID_PAGE_SIZE_OPTIONS}
+              paging={paging}
+              pagingHandler={handlePageChange}
+              onShowSizeChange={savePageSize}
+            />
+          </div>
+        </div>
+      </div>
     );
-  }
+  };
 
   return (
     <PageLayoutV1
-      className="workflow-page"
-      pageContainerStyle={{ paddingLeft: 0, paddingRight: 0 }}
-      pageTitle={t('label.workflow-plural')}>
-      <div className="tw:flex tw:flex-col tw:overflow-hidden tw:mx-6 tw:my-4">
-        <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:mb-4">
-          <div className="tw:flex tw:items-center tw:justify-between">
-            <PageHeader
-              data={{
-                header: t('label.workflow-plural'),
-                subHeader: t('message.workflow-subtitle'),
-              }}
-              learningPageId={LEARNING_PAGE_IDS.WORKFLOWS}
-              title={t('label.workflow-plural')}
-            />
-            {allowCreateWorkflow && (
-              <Button
-                data-testid="create-workflow-button"
-                iconLeading={Plus}
-                size="sm"
-                onPress={handleNewWorkflowClick}>
-                {t('label.new-workflow')}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:flex tw:flex-col tw:flex-1 tw:justify-between">
-          <div className="tw:mb-4">
-            <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5">
-              {workflows.map((workflow) => (
-                <WorkflowCard
-                  data={workflow}
-                  key={workflow.key}
-                  onClick={onWorkflowClick}
-                />
-              ))}
-            </div>
-          </div>
-          {paging.total > PAGE_SIZE_MEDIUM && (
-            <div
-              className="tw:flex tw:justify-center tw:py-4"
-              data-testid="workflows-pagination">
-              <PaginationComponent
-                current={currentPage}
-                hideOnSinglePage={false}
-                pageSize={PAGE_SIZE_MEDIUM}
-                total={paging.total}
-                onChange={handlePageChange}
+      fullHeight
+      className={classNames('workflow-page', { 'tw:!px-0': !isAiMode })}
+      mainContainerClassName="workflow-page-layout"
+      pageTitle={t('label.workflow-plural')}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <div
+        className={classNames(
+          'tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:gap-4',
+          { 'tw:mx-2': !isAiMode }
+        )}>
+        {isAiMode ? (
+          <PageLayout.PageHeader
+            actions={createWorkflowButton}
+            badge={<LearningIcon pageId={LEARNING_PAGE_IDS.WORKFLOWS} />}
+            breadcrumb={
+              <HeaderBreadcrumb
+                noMargin
+                items={[
+                  getGlossaryHomeCrumb(t),
+                  { label: t('label.workflow-plural') },
+                ]}
+                showHome={false}
               />
+            }
+            className="tw:mb-0!"
+            subtitle={t('message.workflow-subtitle')}
+            title={t('label.workflow-plural')}
+            variant="gradient"
+          />
+        ) : (
+          <div className="tw:px-6 tw:py-4 tw:bg-surface tw:rounded-xl tw:border tw:border-border-secondary">
+            <div className="tw:flex tw:items-center tw:justify-between">
+              <PageHeader
+                data={{
+                  header: t('label.workflow-plural'),
+                  subHeader: t('message.workflow-subtitle'),
+                }}
+                learningPageId={LEARNING_PAGE_IDS.WORKFLOWS}
+                title={t('label.workflow-plural')}
+              />
+              {createWorkflowButton}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {renderContent()}
       </div>
 
       <SlideoutMenu

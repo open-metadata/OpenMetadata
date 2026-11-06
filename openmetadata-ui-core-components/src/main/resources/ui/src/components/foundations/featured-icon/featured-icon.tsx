@@ -1,4 +1,5 @@
 import type { FC, ReactNode, Ref } from 'react';
+import { forwardRef } from 'react';
 import { isValidElement } from 'react';
 import { cx, sortCx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
@@ -10,7 +11,25 @@ const iconsSizes = {
   xl: 'tw:*:data-icon:size-7',
 };
 
+type FeaturedIconColor = 'brand' | 'gray' | 'success' | 'warning' | 'error';
+
+const squareRadii: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
+  sm: 'tw:rounded-sm',
+  md: 'tw:rounded-md',
+  lg: 'tw:rounded-lg',
+  xl: 'tw:rounded-xl',
+};
+
+const outlineBorders: Record<FeaturedIconColor, string> = {
+  brand: 'tw:border tw:border-utility-brand-200',
+  gray: 'tw:border tw:border-utility-gray-200',
+  error: 'tw:border tw:border-utility-error-200',
+  warning: 'tw:border tw:border-utility-warning-200',
+  success: 'tw:border tw:border-utility-success-200',
+};
+
 const styles = sortCx({
+  // Dark: tinted tile (the home topic-card look), not a solid fill.
   light: {
     base: 'tw:rounded-full',
     sizes: {
@@ -20,11 +39,15 @@ const styles = sortCx({
       xl: 'tw:size-14',
     },
     colors: {
-      brand: 'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand',
-      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray',
-      error: 'tw:bg-error-secondary tw:text-featured-icon-light-fg-error',
-      warning: 'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning',
-      success: 'tw:bg-success-secondary tw:text-featured-icon-light-fg-success',
+      brand:
+        'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand tw:dark:bg-utility-brand-50 tw:dark:text-utility-brand-600',
+      error:
+        'tw:bg-error-secondary tw:text-featured-icon-light-fg-error tw:dark:bg-utility-error-50 tw:dark:text-utility-error-600',
+      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray tw:dark:bg-utility-gray-50 tw:dark:text-utility-gray-600',
+      success:
+        'tw:bg-success-secondary tw:text-featured-icon-light-fg-success tw:dark:bg-utility-success-50 tw:dark:text-utility-success-600',
+      warning:
+        'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning tw:dark:bg-utility-warning-50 tw:dark:text-utility-warning-600',
     },
   },
 
@@ -50,7 +73,7 @@ const styles = sortCx({
   },
 
   dark: {
-    base: 'tw:text-fg-white tw:shadow-xs-skeumorphic tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
+    base: 'tw:text-fg-white tw:shadow-xs-skeuomorphic tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
     sizes: {
       sm: 'tw:size-8 tw:rounded-md tw:before:rounded-[5px]',
       md: 'tw:size-10 tw:rounded-lg tw:before:rounded-[7px]',
@@ -67,7 +90,7 @@ const styles = sortCx({
   },
 
   modern: {
-    base: 'tw:bg-primary tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-inset',
+    base: 'tw:bg-primary tw:shadow-xs-skeuomorphic tw:outline-1 tw:-outline-offset-1',
     sizes: {
       sm: 'tw:size-8 tw:rounded-md',
       md: 'tw:size-10 tw:rounded-lg',
@@ -76,7 +99,7 @@ const styles = sortCx({
     },
     colors: {
       brand: '',
-      gray: 'tw:text-fg-secondary tw:ring-primary',
+      gray: 'tw:text-fg-secondary tw:outline-primary',
       error: '',
       warning: '',
       success: '',
@@ -84,9 +107,9 @@ const styles = sortCx({
   },
   'modern-neue': {
     base: [
-      'tw:bg-primary_alt tw:ring-1 tw:ring-inset tw:before:absolute tw:before:inset-1',
+      'tw:bg-primary_alt tw:outline-1 tw:-outline-offset-1 tw:before:absolute tw:before:inset-1',
       // Shadow
-      'tw:before:shadow-[0px_1px_2px_0px_rgba(0,0,0,0.1),0px_3px_3px_0px_rgba(0,0,0,0.09),1px_8px_5px_0px_rgba(0,0,0,0.05),2px_21px_6px_0px_rgba(0,0,0,0),0px_0px_0px_1px_rgba(0,0,0,0.08),1px_13px_5px_0px_rgba(0,0,0,0.01),0px_-2px_2px_0px_rgba(0,0,0,0.13)_inset] tw:before:ring-1 tw:before:ring-secondary_alt',
+      'tw:before:shadow-[0px_1px_2px_0px_rgba(0,0,0,0.1),0px_3px_3px_0px_rgba(0,0,0,0.09),1px_8px_5px_0px_rgba(0,0,0,0.05),2px_21px_6px_0px_rgba(0,0,0,0),0px_0px_0px_1px_rgba(0,0,0,0.08),1px_13px_5px_0px_rgba(0,0,0,0.01),0px_-2px_2px_0px_rgba(0,0,0,0.13)_inset] tw:before:outline-1 tw:before:outline-secondary_alt',
     ].join(' '),
     sizes: {
       sm: 'tw:size-8 tw:rounded-[8px] tw:before:rounded-[4px]',
@@ -96,10 +119,29 @@ const styles = sortCx({
     },
     colors: {
       brand: '',
-      gray: 'tw:text-fg-secondary tw:ring-primary',
+      gray: 'tw:text-fg-secondary tw:outline-primary',
       error: '',
       warning: '',
       success: '',
+    },
+  },
+
+  // Entity page headers (metric, glossary, classification, …): a neutral
+  // bordered circle; md (36px) sits level with a one- or two-line title.
+  surface: {
+    base: 'tw:overflow-hidden tw:rounded-full tw:border tw:border-border-secondary tw:bg-surface tw:shadow-xs-skeumorphic',
+    sizes: {
+      sm: 'tw:size-8',
+      md: 'tw:size-9',
+      lg: 'tw:size-12',
+      xl: 'tw:size-14',
+    },
+    colors: {
+      brand: 'tw:text-utility-brand-700',
+      gray: 'tw:text-fg-secondary',
+      error: 'tw:text-utility-error-700',
+      warning: 'tw:text-utility-warning-700',
+      success: 'tw:text-utility-success-700',
     },
   },
 
@@ -131,19 +173,40 @@ interface FeaturedIconProps {
   className?: string;
   icon?: FC<{ className?: string }> | ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
-  color: 'brand' | 'gray' | 'success' | 'warning' | 'error';
-  theme?: 'light' | 'gradient' | 'dark' | 'outline' | 'modern' | 'modern-neue';
+  color: FeaturedIconColor;
+  theme?:
+    | 'light'
+    | 'gradient'
+    | 'dark'
+    | 'outline'
+    | 'modern'
+    | 'modern-neue'
+    | 'surface';
+  /** 'square' overrides the circular shape of the light theme with a rounded rectangle */
+  shape?: 'circle' | 'square';
+  /** Corner radius applied when shape='square'; ignored for circle */
+  radius?: 'sm' | 'md' | 'lg' | 'xl';
+  /** Adds a variant-coloured border ring around the container */
+  outlined?: boolean;
+  /** 'white' overrides the themed background colour with a plain white background */
+  bgColor?: 'colored' | 'white';
 }
 
-export const FeaturedIcon = (props: FeaturedIconProps) => {
+export const FeaturedIcon = forwardRef<
+  HTMLDivElement,
+  Omit<FeaturedIconProps, 'ref'>
+>(function FeaturedIcon(props, ref) {
   const {
-    ref,
     className,
     children,
     size = 'sm',
     theme: variant = 'light',
     color = 'brand',
     icon: Icon,
+    shape = 'circle',
+    radius = 'md',
+    outlined = false,
+    bgColor = 'colored',
     ...otherProps
   } = props;
 
@@ -154,12 +217,13 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
       data-featured-icon
       className={cx(
         'tw:relative tw:flex tw:shrink-0 tw:items-center tw:justify-center',
-
         iconsSizes[size],
         styles[variant].base,
         styles[variant].sizes[size],
         styles[variant].colors[color],
-
+        shape === 'square' && squareRadii[radius],
+        outlined && outlineBorders[color],
+        bgColor === 'white' && 'tw:bg-white',
         className
       )}>
       {isReactComponent(Icon) && <Icon data-icon className="tw:z-1" />}
@@ -168,4 +232,6 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
       {children}
     </div>
   );
-};
+});
+
+FeaturedIcon.displayName = 'FeaturedIcon';

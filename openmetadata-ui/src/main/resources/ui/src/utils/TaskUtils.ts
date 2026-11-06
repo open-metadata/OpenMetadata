@@ -11,49 +11,33 @@
  *  limitations under the License.
  */
 import { EntityType } from '../enums/entity.enum';
-import { Task, TaskEntityStatus, TaskEntityType } from '../rest/tasksAPI';
+import { ResolveTask } from '../generated/api/tasks/resolveTask';
+import {
+  Task,
+  TaskStatus as TaskEntityStatus,
+  TaskType,
+} from '../generated/entity/tasks/task';
 
-/**
- * Check if a task is a description-related task
- */
-export const isDescriptionTask = (type?: TaskEntityType): boolean => {
-  return (
-    type === TaskEntityType.DescriptionUpdate ||
-    type === TaskEntityType.Suggestion
-  );
-};
+export const isOntologyReviewTask = (
+  task: Pick<Task, 'type' | 'about'>
+): boolean =>
+  task.type === TaskType.RequestApproval &&
+  task.about?.type === 'ontologyRelease';
 
-/**
- * Check if a task is a tag-related task
- */
-export const isTagsTask = (type?: TaskEntityType): boolean => {
-  return type === TaskEntityType.TagUpdate;
-};
+export const getTaskResolveBody = (
+  task: Task,
+  body: ResolveTask
+): ResolveTask => {
+  if (!isOntologyReviewTask(task)) {
+    return body;
+  }
 
-/**
- * Check if a task is a glossary approval task
- */
-export const isGlossaryApprovalTask = (type?: TaskEntityType): boolean => {
-  return (
-    type === TaskEntityType.GlossaryApproval ||
-    type === TaskEntityType.RequestApproval
-  );
-};
-
-/**
- * Check if a task is a test case resolution task
- */
-export const isTestCaseResolutionTask = (type?: TaskEntityType): boolean => {
-  return type === TaskEntityType.TestCaseResolution;
-};
-
-/**
- * Check if a task is open
- */
-export const isTaskOpen = (status?: TaskEntityStatus): boolean => {
-  return (
-    status === TaskEntityStatus.Open || status === TaskEntityStatus.InProgress
-  );
+  // A native review votes on server-captured content; it cannot edit that content.
+  return {
+    transitionId: body.transitionId,
+    resolutionType: body.resolutionType,
+    comment: body.comment,
+  };
 };
 
 /**
@@ -71,7 +55,9 @@ export const isTaskClosed = (status?: TaskEntityStatus): boolean => {
 /**
  * Get the entity type from a task's about reference
  */
-export const getTaskEntityType = (task: Task): EntityType | undefined => {
+export const getTaskEntityType = (
+  task: Pick<Task, 'about'>
+): EntityType | undefined => {
   if (!task.about?.type) {
     return undefined;
   }
@@ -82,66 +68,22 @@ export const getTaskEntityType = (task: Task): EntityType | undefined => {
 /**
  * Get the entity FQN from a task's about reference
  */
-export const getTaskEntityFQN = (task: Task): string | undefined => {
+export const getTaskEntityFQN = (
+  task: Pick<Task, 'about'>
+): string | undefined => {
   return task.about?.fullyQualifiedName;
-};
-
-/**
- * Get the suggested value from a task's payload (for suggestion tasks)
- */
-export const getTaskSuggestedValue = (task: Task): string | undefined => {
-  if (!task.payload || typeof task.payload !== 'object') {
-    return undefined;
-  }
-
-  const payload = task.payload as Record<string, unknown>;
-
-  // For SuggestionPayload
-  if ('suggestedValue' in payload) {
-    return payload.suggestedValue as string;
-  }
-
-  // For legacy task payloads
-  if ('suggestion' in payload) {
-    return payload.suggestion as string;
-  }
-
-  if ('newValue' in payload) {
-    return payload.newValue as string;
-  }
-
-  return undefined;
-};
-
-/**
- * Get the old/current value from a task's payload
- */
-export const getTaskOldValue = (task: Task): string | undefined => {
-  if (!task.payload || typeof task.payload !== 'object') {
-    return undefined;
-  }
-
-  const payload = task.payload as Record<string, unknown>;
-
-  if ('currentValue' in payload) {
-    return payload.currentValue as string;
-  }
-
-  if ('oldValue' in payload) {
-    return payload.oldValue as string;
-  }
-
-  return undefined;
 };
 
 /**
  * Get the detail path for a task
  */
-export const getTaskDetailPath = (task: Task): string => {
+export const getTaskDetailPath = (
+  task: Pick<Task, 'id' | 'type' | 'about' | 'taskId'>
+): string => {
   const entityType = getTaskEntityType(task);
   const entityFQN = getTaskEntityFQN(task);
 
-  if (!entityType || !entityFQN) {
+  if (!entityType || !entityFQN || isOntologyReviewTask(task)) {
     return `/tasks/${task.id}`;
   }
 
@@ -150,78 +92,5 @@ export const getTaskDetailPath = (task: Task): string => {
   }`;
 };
 
-/**
- * Format task type for display
- */
-export const formatTaskType = (type?: TaskEntityType): string => {
-  if (!type) {
-    return 'Task';
-  }
-
-  const typeLabels: Record<TaskEntityType, string> = {
-    [TaskEntityType.GlossaryApproval]: 'Glossary Approval',
-    [TaskEntityType.RequestApproval]: 'Request Approval',
-    [TaskEntityType.DataAccessRequest]: 'Data Access Request',
-    [TaskEntityType.DescriptionUpdate]: 'Update Description',
-    [TaskEntityType.TagUpdate]: 'Update Tags',
-    [TaskEntityType.OwnershipUpdate]: 'Update Ownership',
-    [TaskEntityType.TierUpdate]: 'Update Tier',
-    [TaskEntityType.DomainUpdate]: 'Update Domain',
-    [TaskEntityType.Suggestion]: 'Suggestion',
-    [TaskEntityType.TestCaseResolution]: 'Test Case Resolution',
-    [TaskEntityType.IncidentResolution]: 'Incident Resolution',
-    [TaskEntityType.PipelineReview]: 'Pipeline Review',
-    [TaskEntityType.DataQualityReview]: 'Data Quality Review',
-    [TaskEntityType.CustomTask]: 'Custom Task',
-  };
-
-  return typeLabels[type] || type;
-};
-
-/**
- * Format task status for display
- */
-export const formatTaskStatus = (status?: TaskEntityStatus): string => {
-  if (!status) {
-    return 'Unknown';
-  }
-
-  return status;
-};
-
-/**
- * Get the color class for a task status badge
- */
-export const getTaskStatusColor = (
-  status?: TaskEntityStatus
-): 'success' | 'warning' | 'error' | 'processing' | 'default' => {
-  switch (status) {
-    case TaskEntityStatus.Completed:
-    case TaskEntityStatus.Approved:
-      return 'success';
-    case TaskEntityStatus.InProgress:
-    case TaskEntityStatus.Pending:
-      return 'processing';
-    case TaskEntityStatus.Rejected:
-    case TaskEntityStatus.Failed:
-    case TaskEntityStatus.Cancelled:
-      return 'error';
-    case TaskEntityStatus.Open:
-    default:
-      return 'default';
-  }
-};
-
-/**
- * Constants for task actions
- */
-export const TASK_ACTION_MODES = {
-  RESOLVE: 'resolve',
-  REJECT: 'reject',
-  CLOSE: 'close',
-  EDIT: 'edit',
-  RE_ASSIGN: 're_assign',
-} as const;
-
-export type TaskActionMode =
-  (typeof TASK_ACTION_MODES)[keyof typeof TASK_ACTION_MODES];
+export const getTaskStatusIconClassName = (isOpen: boolean) =>
+  isOpen ? 'tw:text-utility-success-600' : 'tw:text-utility-blue-700';

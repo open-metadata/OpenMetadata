@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/catalog/v1.json",
+    "dbt_version": "1.5.0",
+    "generated_at": "2024-01-01T00:00:00.000000Z",
+    "invocation_id": "abc-123",
+    "env": {}
+  },
+  "nodes": {
+    "model.my_project.customers": {
+      "metadata": {"type": "VIEW", "schema": "public", "name": "customers"},
+      "columns": {
+        "customer_id": {"type": "integer", "index": 1, "name": "customer_id"},
+        "name": {"type": "text", "index": 2, "name": "name"}
+      },
+      "stats": {},
+      "unique_id": "model.my_project.customers"
+    },
+    "model.my_project.orders": {
+      "metadata": {"type": "VIEW", "schema": "public", "name": "orders"},
+      "columns": {
+        "order_id": {"type": "integer", "index": 1, "name": "order_id"}
+      },
+      "stats": {},
+      "unique_id": "model.my_project.orders"
+    }
+  },
+  "sources": {
+    "source.my_project.raw.customers": {
+      "metadata": {"type": "TABLE", "schema": "raw", "name": "customers"},
+      "columns": {},
+      "stats": {},
+      "unique_id": "source.my_project.raw.customers"
+    }
+  },
+  "errors": null
+}

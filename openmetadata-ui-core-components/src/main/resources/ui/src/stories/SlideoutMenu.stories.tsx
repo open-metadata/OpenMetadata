@@ -13,6 +13,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '../components/base/buttons/button';
 import { SlideoutMenu } from '../components/application/slideout-menus/slideout-menu';
+import { Select } from '../components/base/select/select';
 
 const meta = {
   title: 'Components/SlideoutMenu',
@@ -72,7 +73,7 @@ export const WithFooter: Story = {
                     Name
                   </label>
                   <input
-                    className="tw:w-full tw:rounded-lg tw:border tw:border-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary tw:outline-none focus:tw:border-brand"
+                    className="tw:w-full tw:rounded-lg tw:border tw:border-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary tw:outline-hidden tw:focus:border-brand"
                     defaultValue="My Dataset"
                     type="text"
                   />
@@ -82,7 +83,7 @@ export const WithFooter: Story = {
                     Description
                   </label>
                   <textarea
-                    className="tw:w-full tw:rounded-lg tw:border tw:border-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary tw:outline-none tw:resize-none focus:tw:border-brand"
+                    className="tw:w-full tw:rounded-lg tw:border tw:border-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary tw:outline-hidden tw:resize-none tw:focus:border-brand"
                     defaultValue="A sample dataset for demonstration purposes."
                     rows={4}
                   />
@@ -313,6 +314,46 @@ export const WithRenderProps: Story = {
                 Done
               </Button>
             </SlideoutMenu.Footer>
+          </>
+        )}
+      </SlideoutMenu>
+    </SlideoutMenu.Trigger>
+  ),
+};
+
+const CLASSIFICATIONS = [
+  { id: 'pii', label: 'PII' },
+  { id: 'tier', label: 'Tier' },
+  { id: 'certification', label: 'Certification' },
+];
+
+export const WithSelect: Story = {
+  render: () => (
+    <SlideoutMenu.Trigger>
+      <Button color="secondary">Open with Select</Button>
+      <SlideoutMenu>
+        {({ close }) => (
+          <>
+            <SlideoutMenu.Header onClose={close}>
+              <h2 className="tw:text-lg tw:font-semibold tw:text-primary">
+                Classification
+              </h2>
+            </SlideoutMenu.Header>
+            <SlideoutMenu.Content>
+              <Select
+                items={CLASSIFICATIONS}
+                label="Classification"
+                placeholder="Select a classification">
+                {(item) => (
+                  <Select.Item
+                    id={item.id}
+                    key={item.id}
+                    textValue={item.label}>
+                    {item.label}
+                  </Select.Item>
+                )}
+              </Select>
+            </SlideoutMenu.Content>
           </>
         )}
       </SlideoutMenu>

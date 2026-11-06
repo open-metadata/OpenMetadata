@@ -14,9 +14,14 @@
 import { Select } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Key, useMemo } from 'react';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import {
+  getWidgetAriaProps,
+  getWidgetHint,
+  getWidgetLabel,
+} from './coreWidgetUtils';
 
 const CoreSelectWidget = ({
+  id,
   value,
   disabled,
   readonly,
@@ -28,6 +33,8 @@ const CoreSelectWidget = ({
   schema,
   options,
   onChange,
+  onFocus,
+  onBlur,
 }: WidgetProps) => {
   const items = useMemo(
     () =>
@@ -51,14 +58,23 @@ const CoreSelectWidget = ({
 
   return (
     <Select
+      {...getWidgetAriaProps({ label, schema })}
+      className="core-select-widget"
+      data-testid={id ? `select-widget-${id}` : undefined}
+      fontSize="sm"
       hint={getWidgetHint({ rawErrors, schema, options })}
+      id={id}
       isDisabled={disabled || readonly}
       isInvalid={!!rawErrors?.length}
       isRequired={required}
       items={items}
-      label={getWidgetLabel({ hideLabel, label })}
+      label={getWidgetLabel({ hideLabel, label, schema })}
       placeholder={placeholder}
+      popoverClassName="core-select-widget-popover"
       selectedKey={value === undefined || value === null ? null : String(value)}
+      size="sm"
+      onBlur={() => onBlur(id, value)}
+      onFocus={() => onFocus(id, value)}
       onSelectionChange={(key: Key | null) => {
         if (key === null) {
           onChange(options.emptyValue ?? undefined);
@@ -69,7 +85,11 @@ const CoreSelectWidget = ({
         onChange(optionValueMap.get(String(key)));
       }}>
       {(item) => (
-        <Select.Item id={item.id} key={item.id} textValue={item.label}>
+        <Select.Item
+          data-testid={`select-option-${item.id}`}
+          id={item.id}
+          key={item.id}
+          textValue={item.label}>
           {item.label}
         </Select.Item>
       )}

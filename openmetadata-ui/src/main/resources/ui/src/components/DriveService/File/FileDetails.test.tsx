@@ -34,11 +34,18 @@ jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
 const mockGetFeedCounts = jest.fn();
+const mockFetchEntityTaskCountsInto = jest.fn();
+const mockFetchEntityActivityCountInto = jest.fn();
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  ...jest.requireActual('../../../utils/CommonUtils'),
+jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(),
-  getFeedCounts: (...args: any[]) => mockGetFeedCounts(...args),
+}));
+jest.mock('../../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: (...args: unknown[]) =>
+    mockFetchEntityActivityCountInto(...args),
+  fetchEntityTaskCountsInto: (...args: unknown[]) =>
+    mockFetchEntityTaskCountsInto(...args),
+  getFeedCounts: (...args: unknown[]) => mockGetFeedCounts(...args),
 }));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
@@ -74,9 +81,15 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   )),
 }));
 
-jest.mock('../../common/Loader/Loader', () =>
-  jest.fn(() => <div data-testid="loader">Loading...</div>)
-);
+jest.mock('../../common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loading...</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest.fn(({ children }) => (
@@ -111,18 +124,6 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
 jest.mock('../../../hoc/LimitWrapper', () =>
   jest.fn(({ children }) => <div>{children}</div>)
 );
-
-jest.mock('../../common/IconButtons/EditIconButton', () => ({
-  AlignRightIconButton: jest.fn(({ onClick, title, className }) => (
-    <button
-      className={className}
-      data-testid="expand-button"
-      title={title}
-      onClick={onClick}>
-      Expand
-    </button>
-  )),
-}));
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -321,12 +322,16 @@ describe('FileDetails', () => {
     expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
   });
 
-  it('should call getFeedCounts on component mount', async () => {
+  it('should fetch feed counts on component mount', async () => {
     renderFileDetails();
 
     await waitFor(
       () => {
-        expect(mockGetFeedCounts).toHaveBeenCalledWith(
+        expect(mockFetchEntityTaskCountsInto).toHaveBeenCalledWith(
+          'test-service.test-file.txt',
+          expect.any(Function)
+        );
+        expect(mockFetchEntityActivityCountInto).toHaveBeenCalledWith(
           EntityType.FILE,
           'test-service.test-file.txt',
           expect.any(Function)
@@ -547,7 +552,7 @@ describe('FileDetails', () => {
   it('should toggle tab expanded state', async () => {
     renderFileDetails();
 
-    const expandButton = screen.queryByTestId('expand-button');
+    const expandButton = screen.queryByTestId('tab-expand-button');
     if (expandButton) {
       fireEvent.click(expandButton);
     }

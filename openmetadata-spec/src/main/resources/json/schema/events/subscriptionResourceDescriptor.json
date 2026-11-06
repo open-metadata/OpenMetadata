@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/events/subscriptionResourceDescriptor.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SubscriptionResourceDescriptor",
   "description": "Subscription descriptor",
   "type": "object",
@@ -35,6 +35,13 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/operation"
+      }
+    },
+    "containerEntities": {
+      "description": "Ancestor entity types whose fully qualified name is a prefix of this resource's FQN (e.g. a databaseSchema is contained by databaseService and database). Lets an Entity FQN filter scope an alert to all descendants of a parent.",
+      "type": "array",
+      "items": {
+        "type": "string"
       }
     }
   },

@@ -16,6 +16,7 @@ import {
   DATA_PRODUCTS_WIDGET,
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -28,7 +29,7 @@ import {
   getChartDetailPageTabs,
   getChartWidgetsFromKey,
 } from './ChartDetailsUtils';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 
 export interface ChartDetailsTabsProps {
   chartDetails: Chart;
@@ -49,7 +50,8 @@ type ChartDetailsWidgetKeys =
   | DetailPageWidgetKeys.DESCRIPTION
   | DetailPageWidgetKeys.DATA_PRODUCTS
   | DetailPageWidgetKeys.TAGS
-  | DetailPageWidgetKeys.GLOSSARY_TERMS;
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
 
 class ChartDetailsClassBase {
   defaultWidgetHeight: Record<ChartDetailsWidgetKeys, number>;
@@ -60,6 +62,7 @@ class ChartDetailsClassBase {
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
   }
 
@@ -124,6 +127,14 @@ class ChartDetailsClassBase {
         static: false,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.KNOWLEDGE_ARTICLE],
+        i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+        w: 2,
+        x: 6,
+        y: 5,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
@@ -144,6 +155,7 @@ class ChartDetailsClassBase {
       DATA_PRODUCTS_WIDGET,
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 

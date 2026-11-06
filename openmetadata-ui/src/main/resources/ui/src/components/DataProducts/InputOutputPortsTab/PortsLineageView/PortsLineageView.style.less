@@ -11,31 +11,29 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../../../styles/variables.less';
-
 .ports-lineage-view {
   .react-flow__renderer {
-    background-color: @grey-9;
+    background-color: var(--tw-background-color-secondary);
   }
 
   .react-flow__controls {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    border: 1px solid @grey-200;
+    box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-1);
+    border-radius: var(--om-radius-lg);
+    border: 1px solid var(--tw-border-color-secondary);
     overflow: hidden;
 
     .react-flow__controls-button {
       width: 28px;
       height: 28px;
       border: none;
-      border-bottom: 1px solid @grey-200;
+      border-bottom: 1px solid var(--tw-border-color-secondary);
 
       &:last-child {
         border-bottom: none;
       }
 
       &:hover {
-        background-color: @grey-100;
+        background-color: var(--tw-background-color-tertiary);
       }
     }
   }
@@ -45,13 +43,13 @@
   }
 
   .data-product-center-node {
-    background-color: @white;
-    border: 2px solid @primary-color;
-    border-radius: 12px;
-    padding: 16px 24px;
+    background-color: var(--tw-background-color-surface);
+    border: 2px solid var(--tw-color-fg-brand-primary);
+    border-radius: var(--om-radius-xl);
+    padding: var(--om-space-16) var(--om-space-24);
     min-width: 220px;
     max-width: 300px;
-    box-shadow: 0 4px 12px rgba(48, 98, 212, 0.15);
+    box-shadow: 0 4px 12px var(--om-legacy-color-48-98-212-0-15);
     position: relative;
 
     .data-product-badge {
@@ -59,37 +57,37 @@
       top: -12px;
       left: 50%;
       transform: translateX(-50%);
-      background-color: @primary-color;
-      color: @white;
-      padding: 2px 12px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 600;
+      background-color: var(--tw-background-color-brand-solid);
+      color: var(--tw-text-color-primary_on-brand);
+      padding: var(--om-space-2) var(--om-space-12);
+      border-radius: var(--om-radius-lg);
+      font-size: var(--om-font-size-11);
+      font-weight: var(--om-font-weight-semibold);
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--om-space-4);
     }
 
     .data-product-content {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
-      margin-top: 8px;
+      gap: var(--om-space-8);
+      margin-top: var(--om-space-8);
 
       .data-product-icon-container {
         width: 40px;
         height: 40px;
         border-radius: 50%;
-        background-color: @primary-1;
+        background-color: var(--tw-color-utility-brand-100);
         display: flex;
         align-items: center;
         justify-content: center;
       }
 
       .data-product-name {
-        font-weight: 600;
-        font-size: 15px;
+        font-weight: var(--om-font-weight-semibold);
+        font-size: var(--om-font-size-15);
         text-align: center;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -97,11 +95,5 @@
         max-width: 100%;
       }
     }
-  }
-}
-
-.ports-lineage-view-empty {
-  .ant-empty {
-    margin: 0;
   }
 }

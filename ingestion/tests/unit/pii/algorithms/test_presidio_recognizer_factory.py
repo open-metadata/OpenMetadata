@@ -123,7 +123,7 @@ class TestPresidioRecognizerFactory:
         assert result.supported_entities == [tag_fqn]
         assert len(result.patterns) == 3
 
-        for value, pattern in zip(exact_terms, result.patterns):
+        for value, pattern in zip(exact_terms, result.patterns):  # noqa: B905
             assert pattern.name == f"exact_term_{value}"
             assert pattern.regex == re.escape(value)
             assert pattern.score == 0.9
@@ -153,7 +153,7 @@ class TestPresidioRecognizerFactory:
         assert result.supported_entities == [tag_fqn]
         assert len(result.patterns) == 3
 
-        for word, pattern in zip(context_words, result.patterns):
+        for word, pattern in zip(context_words, result.patterns):  # noqa: B905
             assert pattern.name == f"context_{word}"
             assert abs(pattern.score - 0.6) < 0.0001  # (0.4 + 0.8) / 2
 
@@ -192,6 +192,58 @@ class TestPresidioRecognizerFactory:
         result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "Some.Tag")
 
         assert isinstance(result, EntityRecognizer)
+
+    @pytest.mark.parametrize(
+        ("name", "language", "text", "expected", "entity", "expected_score"),
+        [
+            (
+                PredefinedRecognizerName.CreditCardRecognizer,
+                ClassificationLanguage.es,
+                "Card 4111-1111-1111-1111 issued",
+                "4111-1111-1111-1111",
+                "CREDIT_CARD",
+                1.0,
+            ),
+            (
+                PredefinedRecognizerName.UrlRecognizer,
+                ClassificationLanguage.en,
+                "Visit https://example.org/a?x=1",
+                "https://example.org/a?x=1",
+                "URL",
+                0.6,
+            ),
+            (
+                PredefinedRecognizerName.IpRecognizer,
+                ClassificationLanguage.en,
+                "IP 2001:db8::1",
+                "2001:db8::1",
+                "IP_ADDRESS",
+                0.6,
+            ),
+        ],
+    )
+    def test_configured_predefined_candidate_spans(self, name, language, text, expected, entity, expected_score):
+        config = Recognizer(
+            name=f"configured_{name.value}",
+            enabled=True,
+            confidenceThreshold=0.6,
+            recognizerConfig=RecognizerConfig(
+                root=PredefinedRecognizer(
+                    type="predefined",
+                    name=name,
+                    supportedLanguage=language,
+                    context=["customer"],
+                )
+            ),
+        )
+        recognizer = PresidioRecognizerFactory.create_recognizer(config, "PII.Test")
+
+        assert recognizer is not None
+        assert recognizer.supported_language == language.value
+        assert recognizer.context == ["customer"]
+        assert recognizer.supported_entities == [entity]
+        results = recognizer.analyze(text, [entity])
+        assert [(text[result.start : result.end], result.score) for result in results] == [(expected, expected_score)]
 
     def test_create_predefined_recognizer_invalid_name(self):
         """Test that invalid predefined recognizer names return None"""

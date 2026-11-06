@@ -15,41 +15,13 @@
 
 .tag-popover-container {
   padding: 0;
-
-  .ant-popover-inner {
-    background-color: @background-color;
-    border-radius: 0;
-    box-shadow: @box-shadow-base;
-  }
-
-  .ant-popover-inner-content {
-    padding: 12px;
-
-    .text-left {
-      &:last-child {
-        .ant-tag {
-          margin: 0 !important;
-        }
-      }
-    }
-  }
-}
-.show-more-tags-button {
-  &.ant-btn-link {
-    span {
-      line-height: 22px;
-      color: @primary-heading-color;
-      font-weight: 400;
-      font-size: 12px;
-    }
-  }
 }
 
 .plus-more-tag {
   &.new-look {
     color: @primary-color;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-medium);
     background-color: unset;
     border: none;
     display: inline-flex;

@@ -10,24 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
 import { Tag } from '../../../generated/entity/classification/tag';
 
-export type CardWithListItems = {
-  id: string;
-  description: string;
-  data: string;
-  title: string;
-  style: Tag['style'];
-};
-
 export interface TierCardProps {
   currentTier?: string;
-  tierCardClassName?: string;
-  footerActionButtonsClassName?: string;
-  updateTier?: (value?: Tag) => Promise<void>;
+  updateTier?: (value?: Tag) => void | Promise<void>;
+  /** The element the picker opens from, e.g. an edit button. */
   children?: ReactNode;
-  popoverProps?: PopoverProps;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Called when the picker is dismissed without a pick or clear. */
   onClose?: () => void;
+  /** Classes for the trigger, e.g. to fill a grid cell. */
+  className?: string;
 }

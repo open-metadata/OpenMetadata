@@ -1,0 +1,88 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/sources/v3.json",
+    "dbt_version": "1.11.7",
+    "generated_at": "2026-08-12T06:00:05.000000Z",
+    "invocation_id": "00000000-0000-0000-0000-000000000000",
+    "env": {}
+  },
+  "elapsed_time": 4.2,
+  "results": [
+    {
+      "unique_id": "source.jaffle_shop.raw.orders",
+      "max_loaded_at": "2026-08-12T05:00:00.000000+00:00",
+      "snapshotted_at": "2026-08-12T06:00:00.000000+00:00",
+      "max_loaded_at_time_ago_in_s": 3600.0,
+      "status": "pass",
+      "criteria": {
+        "warn_after": { "count": 12, "period": "hour" },
+        "error_after": { "count": 24, "period": "hour" },
+        "filter": null
+      },
+      "adapter_response": {},
+      "timing": [
+        {
+          "name": "compile",
+          "started_at": "2026-08-12T05:59:58.000000Z",
+          "completed_at": "2026-08-12T05:59:59.000000Z"
+        },
+        {
+          "name": "execute",
+          "started_at": "2026-08-12T05:59:59.000000Z",
+          "completed_at": "2026-08-12T06:00:00.000000Z"
+        }
+      ],
+      "thread_id": "Thread-1",
+      "execution_time": 2.0
+    },
+    {
+      "unique_id": "source.jaffle_shop.raw.customers",
+      "max_loaded_at": "2026-08-11T12:00:00.000000+00:00",
+      "snapshotted_at": "2026-08-12T06:00:01.000000+00:00",
+      "max_loaded_at_time_ago_in_s": 64801.0,
+      "status": "warn",
+      "criteria": {
+        "warn_after": { "count": 12, "period": "hour" },
+        "error_after": { "count": 24, "period": "hour" },
+        "filter": null
+      },
+      "adapter_response": {},
+      "timing": [
+        {
+          "name": "execute",
+          "started_at": "2026-08-12T06:00:00.000000Z",
+          "completed_at": "2026-08-12T06:00:01.000000Z"
+        }
+      ],
+      "thread_id": "Thread-2",
+      "execution_time": 1.0
+    },
+    {
+      "unique_id": "source.jaffle_shop.raw.payments",
+      "max_loaded_at": "2026-08-09T06:00:00.000000+00:00",
+      "snapshotted_at": "2026-08-12T06:00:02.000000+00:00",
+      "max_loaded_at_time_ago_in_s": 259202.0,
+      "status": "error",
+      "criteria": {
+        "warn_after": { "count": 12, "period": "hour" },
+        "error_after": { "count": 24, "period": "hour" },
+        "filter": null
+      },
+      "adapter_response": {},
+      "timing": [
+        {
+          "name": "execute",
+          "started_at": "2026-08-12T06:00:01.000000Z",
+          "completed_at": "2026-08-12T06:00:02.000000Z"
+        }
+      ],
+      "thread_id": "Thread-3",
+      "execution_time": 1.0
+    },
+    {
+      "unique_id": "source.jaffle_shop.raw.returns",
+      "status": "runtime error",
+      "error": "Database Error\n  001003 (42000): SQL compilation error: Object 'RAW.RETURNS' does not exist."
+    }
+  ]
+}

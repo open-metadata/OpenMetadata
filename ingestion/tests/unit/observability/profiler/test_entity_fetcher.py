@@ -14,6 +14,7 @@ Validate entity fetcher filtering strategies
 """
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -25,9 +26,16 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableType,
 )
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,
 )
@@ -40,6 +48,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.progress.modes import ManualProgress
+from metadata.ingestion.progress.registry import ProgressRegistry
+from metadata.profiler.metrics.system.system import (
+    DEFAULT_SYSTEM_METRICS_BATCH_SIZE,
+    TABLE_BATCH_WINDOW,
+)
 from metadata.profiler.source.fetcher.fetcher_strategy import DatabaseFetcherStrategy
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 
@@ -79,6 +93,7 @@ def get_db_fetcher(source_config):
         metadata=...,
         global_profiler_config=...,
         status=Status(),
+        progress=ManualProgress(ProgressRegistry()),
     )
 
 
@@ -139,6 +154,12 @@ TEMP_DB = Database(
     id=uuid.uuid4(),
     name="temp_analytics",
     fullyQualifiedName="my_service.temp_analytics",
+    service=SERVICE_REF,
+)
+
+NO_FQN_DB = Database(
+    id=uuid.uuid4(),
+    name="no_fqn",
     service=SERVICE_REF,
 )
 
@@ -227,6 +248,58 @@ UNTAGGED_TABLE = Table(
     tableType=TableType.Regular,
 )
 
+MULTI_TAG_TABLE = Table(
+    id=uuid.uuid4(),
+    name="transactions",
+    fullyQualifiedName="my_service.prod.finance.transactions",
+    columns=[Column(name="id", dataType=DataType.INT)],
+    database=DB_REF,
+    databaseSchema=FINANCE_SCHEMA_REF,
+    tableType=TableType.Regular,
+    tags=[
+        TagLabel(
+            labelType="Manual",
+            name="PII",
+            tagFQN="PII.Sensitive",
+            state="Confirmed",
+            source="Classification",
+        ),
+        TagLabel(
+            labelType="Manual",
+            name="Revenue",
+            tagFQN="Finance.Revenue",
+            state="Confirmed",
+            source="Classification",
+        ),
+    ],
+)
+
+TIER_REVENUE_TABLE = Table(
+    id=uuid.uuid4(),
+    name="ledger",
+    fullyQualifiedName="my_service.prod.finance.ledger",
+    columns=[Column(name="id", dataType=DataType.INT)],
+    database=DB_REF,
+    databaseSchema=FINANCE_SCHEMA_REF,
+    tableType=TableType.Regular,
+    tags=[
+        TagLabel(
+            labelType="Manual",
+            name="Tier1",
+            tagFQN="Tier.Tier1",
+            state="Confirmed",
+            source="Classification",
+        ),
+        TagLabel(
+            labelType="Manual",
+            name="Revenue",
+            tagFQN="Finance.Revenue",
+            state="Confirmed",
+            source="Classification",
+        ),
+    ],
+)
+
 
 def _make_fetcher(source_config_overrides=None):
     """Build a DatabaseFetcherStrategy with a mocked metadata client"""
@@ -237,11 +310,13 @@ def _make_fetcher(source_config_overrides=None):
         cfg["source"]["sourceConfig"]["config"].update(source_config_overrides)
     workflow_config = OpenMetadataWorkflowConfig(**cfg)
     mock_metadata = MagicMock()
+    mock_metadata.list_entities.return_value = SimpleNamespace(total=0)
     return DatabaseFetcherStrategy(
         config=workflow_config,
         metadata=mock_metadata,
         global_profiler_config=None,
         status=Status(),
+        progress=ManualProgress(ProgressRegistry()),
     )
 
 
@@ -409,6 +484,51 @@ class TestGetTableEntities:
 
         assert result == [SALARY_TABLE]
 
+    def test_classification_include_keeps_table_with_extra_tags(self):
+        """A table carrying a matching include tag is kept even when it also
+        has other, non-matching tags. A single matching tag is sufficient."""
+        fetcher = _make_fetcher(
+            {
+                "classificationFilterPattern": {"includes": ["PII.*"]},
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([MULTI_TAG_TABLE, TIER_REVENUE_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == [MULTI_TAG_TABLE]
+
+    def test_classification_exclude_takes_precedence_over_include(self):
+        """When a table matches both an include and an exclude pattern,
+        exclude wins and the table is filtered out."""
+        fetcher = _make_fetcher(
+            {
+                "classificationFilterPattern": {
+                    "includes": ["Tier.*"],
+                    "excludes": ["Revenue.*"],
+                },
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([TIER_REVENUE_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == []
+
+    def test_classification_exclude_keeps_multi_tag_table_without_excluded_tag(self):
+        """A multi-tag table is kept when none of its tags match the exclude
+        pattern, regardless of how many other tags it carries."""
+        fetcher = _make_fetcher(
+            {
+                "classificationFilterPattern": {"excludes": ["PII.*"]},
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([TIER_REVENUE_TABLE, MULTI_TAG_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == [TIER_REVENUE_TABLE]
+
     def test_views_and_classifications_combined(self):
         """Both view filtering and classification filtering
         should apply simultaneously."""
@@ -530,6 +650,156 @@ class TestGetTableEntities:
         assert EMPLOYEES_TABLE not in result
         assert result == [ORDERS_TABLE]
 
+    def test_conflicting_modes_substring_table_exclude_drops_table_client_side(self):
+        fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"includes": ["finance"]},
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+
+        assert call_params["databaseSchemaRegex"] == "finance"
+        assert call_params["regexMode"] == "include"
+        assert "tableRegex" not in call_params
+
+        assert REVENUE_VIEW not in result
+        assert result == [ORDERS_TABLE]
+
+    def test_conflicting_modes_substring_schema_exclude_drops_table_client_side(self):
+
+        schema_ref = EntityReference(
+            id=uuid.uuid4(),
+            name="f_inanc_e_schema",
+            type="databaseSchema",
+            fullyQualifiedName="my_service.prod.f_inanc_e_schema",
+        )
+        ledger_table = Table(
+            id=uuid.uuid4(),
+            name="ledger",
+            fullyQualifiedName="my_service.prod.f_inanc_e_schema.ledger",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            database=DB_REF,
+            databaseSchema=schema_ref,
+            tableType=TableType.Regular,
+        )
+        fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"excludes": ["inanc"]},
+                "tableFilterPattern": {"includes": ["ledger"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ledger_table])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+
+        assert call_params["tableRegex"] == "ledger"
+        assert call_params["regexMode"] == "include"
+        assert "databaseSchemaRegex" not in call_params
+
+        assert ledger_table not in result
+        assert result == []
+
+    def test_non_conflicting_substring_exclude_forwards_to_server(self):
+        fetcher = _make_fetcher(
+            {
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW])
+
+        list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        assert call_params["tableRegex"] == "summary"
+        assert call_params["regexMode"] == "exclude"
+
+    def test_substring_table_exclude_drops_consistently_across_paths(self):
+        server_path_fetcher = _make_fetcher(
+            {
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+
+        server_path_fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE])
+        server_path_result = list(server_path_fetcher._get_table_entities(PROD_DB))
+
+        assert server_path_result == [ORDERS_TABLE]
+
+        client_path_fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"includes": ["finance"]},
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+
+        client_path_fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW])
+        client_path_result = list(client_path_fetcher._get_table_entities(PROD_DB))
+
+        assert client_path_result == [ORDERS_TABLE]
+        assert server_path_result == client_path_result
+
+    def test_deferred_table_exclude_is_case_insensitive(self):
+        """Case variants are excluded regardless of where the filter executes."""
+        summary_daily = Table(
+            id=uuid.uuid4(),
+            name="summary_daily",
+            fullyQualifiedName="my_service.prod.finance.summary_daily",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            database=DB_REF,
+            databaseSchema=FINANCE_SCHEMA_REF,
+            tableType=TableType.Regular,
+        )
+        fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"includes": ["finance"]},
+                "tableFilterPattern": {"excludes": ["Summary"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW, summary_daily])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == [ORDERS_TABLE]
+
+    @pytest.mark.parametrize("use_fqn", [False, True])
+    @pytest.mark.parametrize(
+        ("axis", "pattern", "filtered"),
+        [
+            ("schemaFilterPattern", "inanc", True),
+            ("schemaFilterPattern", "Inanc", True),
+            ("tableFilterPattern", "summary", True),
+            ("tableFilterPattern", "Summary", True),
+            ("tableFilterPattern", "^summary$", False),
+        ],
+    )
+    def test_deferred_excludes_match_substrings_without_case_sensitivity(self, use_fqn, axis, pattern, filtered):
+        other_axis = "tableFilterPattern" if axis == "schemaFilterPattern" else "schemaFilterPattern"
+        fetcher = _make_fetcher(
+            {
+                axis: {"excludes": [pattern]},
+                other_axis: {"includes": [".*"]},
+                "useFqnForFiltering": use_fqn,
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([REVENUE_VIEW])
+
+        assert list(fetcher._get_table_entities(PROD_DB)) == ([] if filtered else [REVENUE_VIEW])
+
 
 class TestFetch:
     """Validate end-to-end fetch() pipeline across multiple databases"""
@@ -636,3 +906,273 @@ class TestFetch:
         assert "connection failed for prod" in results[0].left.error
         assert results[1].right is not None
         assert results[1].right.entity == ORDERS_TABLE
+
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_fetch_does_not_abort_loop_when_database_lacks_fqn(self, mock_factory):
+        """A database missing fullyQualifiedName must not raise out of fetch()
+        and abort the remaining databases. It degrades to a single error record
+        while the sibling database is still fully processed."""
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = _make_fetcher({"includeViews": True})
+        fetcher.metadata.list_all_entities.side_effect = [
+            iter([NO_FQN_DB, PROD_DB]),
+            iter([ORDERS_TABLE]),
+        ]
+
+        results = list(fetcher.fetch())
+
+        errors = [r.left for r in results if r.left]
+        entities = [r.right.entity for r in results if r.right]
+        assert len(errors) == 1
+        assert errors[0].name == "no_fqn"
+        assert entities == [ORDERS_TABLE]
+
+
+class TestFetchTableBatches:
+    """fetch() hands tables over in batches so system metrics can scan a batch at once"""
+
+    @pytest.fixture(autouse=True)
+    def isolated_batch_window(self):
+        TABLE_BATCH_WINDOW.clear()
+        yield
+        TABLE_BATCH_WINDOW.clear()
+
+    @staticmethod
+    def _snowflake_fetcher(batch_size):
+        fetcher = _make_fetcher()
+        fetcher.config.source.serviceConnection = ServiceConnection(
+            DatabaseConnection(
+                config=SnowflakeConnection(
+                    username="user",
+                    account="account",
+                    warehouse="warehouse",
+                    systemMetricsBatchSize=batch_size,
+                )
+            )
+        )
+        return fetcher
+
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_connectors_without_the_setting_use_the_default_batch_size(self, mock_factory):
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = _make_fetcher()
+        tables = [
+            Table(id=uuid.uuid4(), name=f"t{i}", fullyQualifiedName=f"my_service.prod.finance.t{i}", columns=[])
+            for i in range(DEFAULT_SYSTEM_METRICS_BATCH_SIZE + 1)
+        ]
+        fetcher.metadata.list_all_entities.side_effect = [iter([PROD_DB]), iter(tables)]
+
+        batches = [
+            TABLE_BATCH_WINDOW.batch_for(record.right.entity.fullyQualifiedName.root) for record in fetcher.fetch()
+        ]
+
+        assert len(batches[0].table_fqns) == DEFAULT_SYSTEM_METRICS_BATCH_SIZE
+        assert batches[-1].table_fqns == (f"my_service.prod.finance.t{DEFAULT_SYSTEM_METRICS_BATCH_SIZE}",)
+
+    @pytest.mark.parametrize("close_early", [False, True])
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_finished_fetcher_does_not_leave_a_batch_for_a_later_run(self, mock_factory, close_early):
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = self._snowflake_fetcher(batch_size=2)
+        fetcher.metadata.list_all_entities.side_effect = [iter([PROD_DB]), iter([ORDERS_TABLE])]
+        records = fetcher.fetch()
+        next(records)
+        table_fqn = ORDERS_TABLE.fullyQualifiedName.root
+        assert TABLE_BATCH_WINDOW.batch_for(table_fqn) is not None
+
+        if close_early:
+            records.close()
+        else:
+            list(records)
+
+        assert TABLE_BATCH_WINDOW.batch_for(table_fqn) is None
+
+    @staticmethod
+    def _listing(tables, listed, error=None):
+        for table in tables:
+            listed.append(table)
+            yield table
+        if error:
+            raise error
+
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_each_batch_is_registered_before_its_tables_are_handed_over(self, mock_factory):
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = self._snowflake_fetcher(batch_size=2)
+        listed = []
+        fetcher.metadata.list_all_entities.side_effect = [
+            iter([PROD_DB]),
+            self._listing([ORDERS_TABLE, CUSTOMERS_TABLE, EMPLOYEES_TABLE], listed),
+        ]
+
+        records = fetcher.fetch()
+        first = next(records)
+
+        assert first.right.entity == ORDERS_TABLE
+        assert listed == [ORDERS_TABLE, CUSTOMERS_TABLE]
+        assert TABLE_BATCH_WINDOW.batch_for("my_service.prod.finance.orders").table_fqns == (
+            "my_service.prod.finance.orders",
+            "my_service.prod.finance.customers",
+        )
+
+        assert next(records).right.entity == CUSTOMERS_TABLE
+        assert next(records).right.entity == EMPLOYEES_TABLE
+        assert TABLE_BATCH_WINDOW.batch_for("my_service.prod.hr.employees").table_fqns == (
+            "my_service.prod.hr.employees",
+        )
+        assert list(records) == []
+
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_tables_listed_before_a_paging_failure_are_still_handed_over(self, mock_factory):
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = self._snowflake_fetcher(batch_size=5)
+        fetcher.metadata.list_all_entities.side_effect = [
+            iter([PROD_DB]),
+            self._listing([ORDERS_TABLE], [], error=RuntimeError("page 2 failed")),
+        ]
+
+        results = list(fetcher.fetch())
+
+        assert [r.right.entity for r in results if r.right] == [ORDERS_TABLE]
+        assert ["page 2 failed" in r.left.error for r in results if r.left] == [True]
+
+
+def _db_strategy_with_progress(tables, server_total, capture=None):
+    """DatabaseFetcherStrategy wired with a real ProgressRegistry, with its
+    database/table enumeration and profiler_source stubbed so fetch() runs in
+    isolation. `server_total` is what the seed count call reports."""
+    registry = ProgressRegistry()
+    progress = ManualProgress(registry)
+
+    strategy = DatabaseFetcherStrategy.__new__(DatabaseFetcherStrategy)
+    strategy.progress = progress
+    strategy.config = SimpleNamespace(source=SimpleNamespace(type="mysql", serviceConnection=None))
+    strategy.global_profiler_config = None
+    strategy.metadata = MagicMock()
+    strategy.metadata.list_entities.return_value = SimpleNamespace(total=server_total)
+
+    database = SimpleNamespace(fullyQualifiedName=SimpleNamespace(root="svc.db"))
+    strategy._get_database_entities = lambda: iter([database])
+    strategy._build_table_params = lambda db: {}
+
+    def _tables(_db):
+        first = True
+        for table in tables:
+            if capture is not None and first:
+                capture["mid"] = registry.global_counters()
+                first = False
+            yield table
+
+    strategy._get_table_entities = _tables
+    return strategy, registry, progress
+
+
+def _multi_db_strategy_with_progress(db_specs):
+    """DatabaseFetcherStrategy wired with a real ProgressRegistry across
+    MULTIPLE databases, each with its own seeded server total and its own
+    table list, to guard the per-database-scope reconciliation that sums
+    into a single global `Table` counter. `db_specs` is an ordered mapping
+    of database FQN -> (seed_total, tables)."""
+    registry = ProgressRegistry()
+    progress = ManualProgress(registry)
+
+    strategy = DatabaseFetcherStrategy.__new__(DatabaseFetcherStrategy)
+    strategy.progress = progress
+    strategy.config = SimpleNamespace(source=SimpleNamespace(type="mysql", serviceConnection=None))
+    strategy.global_profiler_config = None
+    strategy.metadata = MagicMock()
+    strategy.metadata.list_entities.side_effect = [SimpleNamespace(total=seed) for seed, _ in db_specs.values()]
+
+    databases = [SimpleNamespace(fullyQualifiedName=SimpleNamespace(root=fqn)) for fqn in db_specs]
+    strategy._get_database_entities = lambda: iter(databases)
+    strategy._build_table_params = lambda db: {}
+    strategy._get_table_entities = lambda db: iter(db_specs[db.fullyQualifiedName.root][1])
+    return strategy, registry, progress
+
+
+class TestDatabaseFetcherProgress:
+    def test_seeds_server_total_then_reconciles_to_observed(self):
+        with patch(
+            "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
+            return_value=MagicMock(spec=ProfilerSourceInterface),
+        ):
+            strategy, registry, _ = _db_strategy_with_progress(tables=[TABLE, TABLE], server_total=5)
+            records = list(strategy.fetch())
+
+        assert len(records) == 2
+        assert registry.global_counters() == [("Table", 2, 2)]
+        assert registry.assets_ingested() == 2
+
+    def test_seed_visible_before_reconcile(self):
+        capture = {}
+        with patch(
+            "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
+            return_value=MagicMock(spec=ProfilerSourceInterface),
+        ):
+            strategy, _, _ = _db_strategy_with_progress(tables=[TABLE, TABLE], server_total=5, capture=capture)
+            list(strategy.fetch())
+
+        assert capture["mid"] == [("Table", 0, 5)]
+
+    def test_seed_failure_falls_back_to_reconcile(self):
+        with patch(
+            "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
+            return_value=MagicMock(spec=ProfilerSourceInterface),
+        ):
+            strategy, registry, _ = _db_strategy_with_progress(tables=[TABLE], server_total=0)
+            strategy.metadata.list_entities.side_effect = RuntimeError("boom")
+            records = list(strategy.fetch())
+
+        assert len(records) == 1
+        assert registry.global_counters() == [("Table", 1, 1)]
+        assert registry.assets_ingested() == 1
+
+    def test_multi_database_aggregates_into_single_table_counter(self):
+        """Each database seeds and reconciles its own scope, but they all
+        roll up into one global `Table` counter: seeded totals (3 + 2) walk
+        down to observed totals (2 + 2) as each database's tables complete."""
+        with patch(
+            "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
+            return_value=MagicMock(spec=ProfilerSourceInterface),
+        ):
+            strategy, registry, _ = _multi_db_strategy_with_progress(
+                {
+                    "svc.db1": (3, [TABLE, TABLE]),
+                    "svc.db2": (2, [TABLE, TABLE]),
+                }
+            )
+            records = list(strategy.fetch())
+
+        assert len(records) == 4
+        assert registry.global_counters() == [("Table", 4, 4)]
+        assert registry.assets_ingested() == 4
+
+    def test_partial_db_failure_walks_back_phantom_seed(self):
+        """A failure creating the profiler source for db1 must not leave its
+        seeded total (5) inflating the shared `Table` counter: the `finally`
+        reconcile walks the phantom seed back to `observed=0` for that scope,
+        while db2 still contributes its real, completed total."""
+
+        def create_side_effect(*args, **kwargs):
+            database = args[2]
+            if database.fullyQualifiedName.root == "svc.db1":
+                raise RuntimeError("connection failed for db1")
+            return MagicMock(spec=ProfilerSourceInterface)
+
+        with patch(
+            "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
+            side_effect=create_side_effect,
+        ):
+            strategy, registry, _ = _multi_db_strategy_with_progress(
+                {
+                    "svc.db1": (5, [TABLE, TABLE]),
+                    "svc.db2": (2, [TABLE, TABLE]),
+                }
+            )
+            records = list(strategy.fetch())
+
+        errors = [record for record in records if record.left is not None]
+        assert len(errors) == 1
+        assert "connection failed for db1" in errors[0].left.error
+        assert registry.global_counters() == [("Table", 2, 2)]
+        assert registry.assets_ingested() == 2

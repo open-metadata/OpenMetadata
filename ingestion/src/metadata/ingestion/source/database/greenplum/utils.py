@@ -15,7 +15,6 @@ Greenplum SQLAlchemy util methods
 """
 
 import re
-from typing import Dict, Tuple
 
 from sqlalchemy import sql, util
 from sqlalchemy.dialects.postgresql.base import ENUM
@@ -94,7 +93,7 @@ def get_columns(  # pylint: disable=too-many-locals
         format_type,
         default_,
         notnull,
-        table_oid,
+        table_oid,  # noqa: B007
         comment,
         generated,
         identity,
@@ -123,7 +122,7 @@ def _get_numeric_args(charlen):
     return ()
 
 
-def _get_interval_args(charlen, attype, kwargs: Dict):
+def _get_interval_args(charlen, attype, kwargs: dict):
     field_match = re.match(r"interval (.+)", attype, re.I)
     if charlen:
         kwargs["precision"] = int(charlen)
@@ -141,7 +140,7 @@ def _get_bit_var_args(charlen, kwargs):
     return (), kwargs
 
 
-def get_column_args(charlen: str, args: Tuple, kwargs: Dict, attype: str) -> Tuple[Tuple, Dict]:
+def get_column_args(charlen: str, args: tuple, kwargs: dict, attype: str) -> tuple[tuple, dict]:
     """
     Method to determine the args and kwargs
     """

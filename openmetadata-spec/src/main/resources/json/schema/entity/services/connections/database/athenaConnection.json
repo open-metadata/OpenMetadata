@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/athenaConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AthenaConnection",
   "description": "AWS Athena Connection Config",
   "type": "object",
@@ -45,7 +45,7 @@
     },
     "workgroup": {
       "title": "Athena Workgroup",
-      "description": "Athena workgroup.",
+      "description": "Athena workgroup that runs the ingestion queries and whose query history usage and lineage read. When empty, queries run in the default workgroup and query history is read from every enabled workgroup.",
       "type": "string"
     },
     "catalogId": {
@@ -109,12 +109,8 @@
     "supportsDataDiff": {
         "title": "Supports Data Diff Extraction.",
         "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
-    },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,
-  "required": ["s3StagingDir", "awsConfig", "workgroup"]
+  "required": ["s3StagingDir", "awsConfig"]
 }

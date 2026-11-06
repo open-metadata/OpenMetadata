@@ -1,13 +1,13 @@
 {
   "$id": "https://open-metadata.org/schema/type/descriptionUpdatePayload.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DescriptionUpdatePayload",
   "description": "Payload for Description Update tasks.",
   "javaType": "org.openmetadata.schema.type.DescriptionUpdatePayload",
   "type": "object",
   "properties": {
     "fieldPath": {
-      "description": "Path to the field being updated (e.g., 'columns.customer_id.description' or just 'description' for entity-level).",
+      "description": "Path to the description being updated. Written as <container>.<name>[.<child name>...].description, for example 'columns.customer_id.description', 'columns.address.city.description' for a nested column or 'messageSchema.schemaFields.\"order.id\".description' for a name that contains a dot; 'description' alone, or no path, means the entity itself.",
       "type": "string"
     },
     "currentDescription": {

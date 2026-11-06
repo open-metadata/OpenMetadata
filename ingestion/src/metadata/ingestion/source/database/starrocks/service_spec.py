@@ -12,6 +12,7 @@
 StarRocks Service Spec
 """
 
+from metadata.ingestion.source.database.starrocks.connection import StarRocksConnection
 from metadata.ingestion.source.database.starrocks.lineage import StarRocksLineageSource
 from metadata.ingestion.source.database.starrocks.metadata import StarRocksSource
 from metadata.ingestion.source.database.starrocks.usage import StarRocksUsageSource
@@ -25,4 +26,5 @@ ServiceSpec = DefaultDatabaseSpec(
     lineage_source_class=StarRocksLineageSource,
     usage_source_class=StarRocksUsageSource,
     profiler_class=StarRocksProfilerInterface,
+    connection_class=StarRocksConnection,  # pyright: ignore[reportArgumentType]
 )

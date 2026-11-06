@@ -42,6 +42,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
 
   {
     supportsLifeCycle = true;
+    supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
     supportsDataContract = true;
@@ -155,17 +156,6 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().charts().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().charts().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().charts().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

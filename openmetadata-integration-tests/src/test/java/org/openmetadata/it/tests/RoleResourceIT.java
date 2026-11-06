@@ -49,7 +49,9 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
 
   public RoleResourceIT() {
+    supportsEntityStatus = false;
     supportsFollowers = false;
+    supportsCreationAudit = true;
     supportsTags = false;
     supportsDomains = false;
     supportsDataProducts = false;
@@ -545,17 +547,6 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().roles().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().roles().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().roles().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

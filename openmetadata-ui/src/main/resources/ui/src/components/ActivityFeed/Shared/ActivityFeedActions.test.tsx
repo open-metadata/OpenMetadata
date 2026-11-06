@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,376 +11,287 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
-  Post,
-  Thread,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
+  Conversation,
+  ConversationReply,
+  ConversationSource,
+} from '../../../generated/entity/feed/conversation';
 import ActivityFeedActions from './ActivityFeedActions';
 
 const mockDeleteFeed = jest.fn().mockResolvedValue(undefined);
-const mockShowDrawer = jest.fn();
 const mockHideDrawer = jest.fn();
-const mockUpdateEditorFocus = jest.fn();
+const mockUseApplicationStore = jest.fn();
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => mockUseApplicationStore(),
+}));
 
 jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
   useActivityFeedProvider: () => ({
     deleteFeed: mockDeleteFeed,
-    showDrawer: mockShowDrawer,
     hideDrawer: mockHideDrawer,
-    updateEditorFocus: mockUpdateEditorFocus,
   }),
 }));
 
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn(),
-}));
+jest.mock('../../Modals/ConfirmationModal/ConfirmationModal', () =>
+  jest.fn(({ visible, onCancel, onConfirm }) =>
+    visible ? (
+      <div data-testid="confirmation-modal">
+        <button data-testid="cancel-delete" onClick={onCancel}>
+          Cancel
+        </button>
+        <button data-testid="confirm-delete" onClick={onConfirm}>
+          Confirm
+        </button>
+      </div>
+    ) : null
+  )
+);
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: { dir: () => 'ltr' },
-  }),
-}));
+const conversation: Conversation = {
+  id: 'conversation-1',
+  about: '<#E::table::service.table>',
+  createdAt: 1,
+  createdBy: { id: 'author-id', type: 'user', name: 'alice' },
+  entityRef: { id: 'table-id', type: 'table', name: 'table' },
+  message: 'Root',
+  replyCount: 1,
+  resolved: false,
+  source: ConversationSource.User,
+  updatedAt: 1,
+};
 
-const mockUseApplicationStore = jest.requireMock(
-  '../../../hooks/useApplicationStore'
-).useApplicationStore;
+const reply: ConversationReply = {
+  id: 'reply-1',
+  conversationId: conversation.id,
+  author: { id: 'author-id', type: 'user', name: 'alice' },
+  createdAt: 2,
+  message: 'Reply',
+  updatedAt: 2,
+};
 
-const createMockPost = (from: string): Post => ({
-  id: 'post-123',
-  message: 'Test message',
-  postTs: 1234567890,
-  from,
-});
+const openMenu = () =>
+  fireEvent.click(screen.getByTestId('conversation-actions'));
 
-const createMockFeed = (
-  type: ThreadType,
-  createdBy: string = 'testuser'
-): Thread => ({
-  id: 'thread-123',
-  href: 'http://test',
-  threadTs: 1234567890,
-  about: '<#E::table::test>',
-  createdBy: createdBy,
-  updatedAt: 1234567890,
-  updatedBy: createdBy,
-  type,
-  message: 'Test thread message',
-  postsCount: 1,
-  posts: [],
-  reactions: [],
-});
+const getMenuLabels = async () =>
+  (await screen.findAllByRole('menuitem')).map((item) => item.textContent);
+
+const selectAction = async (name: string) => {
+  openMenu();
+  fireEvent.click(await screen.findByRole('menuitem', { name }));
+};
 
 describe('ActivityFeedActions', () => {
-  const mockOnEditPost = jest.fn();
-
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseApplicationStore.mockReturnValue({
-      currentUser: { name: 'testuser', isAdmin: false },
+      currentUser: { id: 'author-id', name: 'alice', isAdmin: false },
     });
   });
 
-  describe('Permission Checks - Edit', () => {
-    it('should show edit button when user is author of a post', () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Conversation);
+  it('offers only Edit and Delete for a conversation', async () => {
+    const onEditPost = jest.fn();
 
-      render(
-        <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
+    render(
+      <ActivityFeedActions
+        conversation={conversation}
+        conversationId={conversation.id}
+        isReply={false}
+        onEditPost={onEditPost}
+      />
+    );
+    openMenu();
 
-      expect(screen.getByTestId('edit-message')).toBeInTheDocument();
-    });
+    expect(await getMenuLabels()).toEqual(['label.edit', 'label.delete']);
 
-    it('should NOT show edit button when user is not author', () => {
-      const post = createMockPost('otheruser');
-      const feed = createMockFeed(ThreadType.Conversation);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.edit' }));
 
-      render(
-        <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      expect(screen.queryByTestId('edit-message')).not.toBeInTheDocument();
-    });
-
-    it('should NOT show edit button for task thread (non-post)', () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Task);
-
-      render(
-        <ActivityFeedActions
-          feed={feed}
-          isPost={false}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      expect(screen.queryByTestId('edit-message')).not.toBeInTheDocument();
-    });
-
-    it('should call onEditPost when edit button is clicked', () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Conversation);
-
-      render(
-        <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      fireEvent.click(screen.getByTestId('edit-message'));
-
-      expect(mockOnEditPost).toHaveBeenCalled();
-    });
+    expect(onEditPost).toHaveBeenCalled();
   });
 
-  describe('Permission Checks - Delete', () => {
-    it('should show delete button when user is author', () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Conversation);
+  it('offers Edit and Delete to a reply author', async () => {
+    render(
+      <ActivityFeedActions
+        isReply
+        conversation={conversation}
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
+    openMenu();
 
-      render(
-        <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      expect(screen.getByTestId('delete-message')).toBeInTheDocument();
-    });
-
-    it('should show delete button when user is admin (not author)', () => {
-      mockUseApplicationStore.mockReturnValue({
-        currentUser: { name: 'adminuser', isAdmin: true },
-      });
-
-      const post = createMockPost('otheruser');
-      const feed = createMockFeed(ThreadType.Conversation);
-
-      render(
-        <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      expect(screen.getByTestId('delete-message')).toBeInTheDocument();
-    });
-
-    it('should NOT show delete button when user is neither author nor admin', () => {
-      const post = createMockPost('otheruser');
-      const feed = createMockFeed(ThreadType.Conversation);
-
-      render(
-        <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      expect(screen.queryByTestId('delete-message')).not.toBeInTheDocument();
-    });
-
-    it('should NOT show delete button for task thread (non-post)', () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Task);
-
-      render(
-        <ActivityFeedActions
-          feed={feed}
-          isPost={false}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      expect(screen.queryByTestId('delete-message')).not.toBeInTheDocument();
-    });
-
-    it('should show delete button for task post when user is author', () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Task);
-
-      render(
-        <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      expect(screen.getByTestId('delete-message')).toBeInTheDocument();
-    });
+    expect(await getMenuLabels()).toEqual(['label.edit', 'label.delete']);
   });
 
-  describe('Delete Confirmation', () => {
-    it('should show confirmation modal when delete is clicked', () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Conversation);
-
-      render(
-        <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      fireEvent.click(screen.getByTestId('delete-message'));
-
-      expect(
-        screen.getByText('message.confirm-delete-message')
-      ).toBeInTheDocument();
+  it('renders no menu when the user may not act on the post', () => {
+    mockUseApplicationStore.mockReturnValue({
+      currentUser: { id: 'other-id', name: 'bob', isAdmin: false },
     });
 
-    it('should call deleteFeed when delete is confirmed for a post', async () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Conversation);
+    render(
+      <ActivityFeedActions
+        isReply
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
 
-      render(
-        <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      fireEvent.click(screen.getByTestId('delete-message'));
-      fireEvent.click(screen.getByText('label.delete'));
-
-      expect(mockDeleteFeed).toHaveBeenCalledWith(
-        'thread-123',
-        'post-123',
-        false
-      );
-    });
-
-    it('should call deleteFeed with isThread=true when deleting a thread', async () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Conversation);
-
-      render(
-        <ActivityFeedActions
-          feed={feed}
-          isPost={false}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      fireEvent.click(screen.getByTestId('delete-message'));
-      fireEvent.click(screen.getByText('label.delete'));
-
-      expect(mockDeleteFeed).toHaveBeenCalledWith(
-        'thread-123',
-        'post-123',
-        true
-      );
-      // hideDrawer is called synchronously in handleDelete after deleteFeed is called
-      expect(mockHideDrawer).toHaveBeenCalled();
-    });
-
-    it('should close modal when cancel is clicked', () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Conversation);
-
-      render(
-        <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      fireEvent.click(screen.getByTestId('delete-message'));
-
-      expect(
-        screen.getByText('message.confirm-delete-message')
-      ).toBeInTheDocument();
-
-      fireEvent.click(screen.getByText('label.cancel'));
-
-      expect(mockDeleteFeed).not.toHaveBeenCalled();
-    });
+    expect(
+      screen.queryByTestId('conversation-actions')
+    ).not.toBeInTheDocument();
   });
 
-  describe('Reply Button', () => {
-    it('should show reply button for non-post (thread)', () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Conversation);
-
-      render(
-        <ActivityFeedActions
-          feed={feed}
-          isPost={false}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
-
-      expect(screen.getByTestId('add-reply')).toBeInTheDocument();
+  it('allows an administrator to edit and delete another users reply', async () => {
+    mockUseApplicationStore.mockReturnValue({
+      currentUser: { id: 'admin-id', name: 'admin', isAdmin: true },
     });
 
-    it('should NOT show reply button for post', () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Conversation);
+    render(
+      <ActivityFeedActions
+        isReply
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
+    openMenu();
 
-      render(
-        <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
+    expect(await getMenuLabels()).toEqual(['label.edit', 'label.delete']);
+  });
 
-      expect(screen.queryByTestId('add-reply')).not.toBeInTheDocument();
+  it('honours canEdit and canDelete independently of the author rule', async () => {
+    mockUseApplicationStore.mockReturnValue({
+      currentUser: { id: 'other-id', name: 'bob', isAdmin: false },
     });
 
-    it('should call showDrawer and updateEditorFocus when reply is clicked', () => {
-      const post = createMockPost('testuser');
-      const feed = createMockFeed(ThreadType.Conversation);
+    render(
+      <ActivityFeedActions
+        canDelete
+        isReply
+        canEdit={false}
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
+    openMenu();
 
-      render(
-        <ActivityFeedActions
-          feed={feed}
-          isPost={false}
-          post={post}
-          onEditPost={mockOnEditPost}
-        />
-      );
+    expect(await getMenuLabels()).toEqual(['label.delete']);
+  });
 
-      fireEvent.click(screen.getByTestId('add-reply'));
+  it('places the menu trigger with the class handed down by the owning card', () => {
+    render(
+      <ActivityFeedActions
+        isReply
+        className="tw:absolute"
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
 
-      expect(mockShowDrawer).toHaveBeenCalledWith(feed);
-      expect(mockUpdateEditorFocus).toHaveBeenCalledWith(true);
+    expect(screen.getByTestId('conversation-actions')).toHaveClass(
+      'tw:absolute'
+    );
+  });
+
+  it('deletes a reply by conversation and reply id after confirmation', async () => {
+    render(
+      <ActivityFeedActions
+        isReply
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
+    await selectAction('label.delete');
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    expect(mockDeleteFeed).toHaveBeenCalledWith(
+      conversation.id,
+      reply.id,
+      false
+    );
+    expect(mockHideDrawer).not.toHaveBeenCalled();
+  });
+
+  it('deletes a user conversation root and closes the drawer', async () => {
+    render(
+      <ActivityFeedActions
+        conversation={conversation}
+        conversationId={conversation.id}
+        isReply={false}
+      />
+    );
+    await selectAction('label.delete');
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    expect(mockDeleteFeed).toHaveBeenCalledWith(
+      conversation.id,
+      conversation.id,
+      true
+    );
+    expect(mockHideDrawer).toHaveBeenCalled();
+  });
+
+  it('calls onDelete instead of the feed provider when one is supplied', async () => {
+    const onDelete = jest.fn();
+
+    render(<ActivityFeedActions canDelete isReply onDelete={onDelete} />);
+    await selectAction('label.delete');
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    expect(onDelete).toHaveBeenCalled();
+    expect(mockDeleteFeed).not.toHaveBeenCalled();
+  });
+
+  it('does not fire a second delete while one is in flight', async () => {
+    let settle: () => void = () => undefined;
+    const onDelete = jest.fn().mockReturnValue(
+      new Promise<void>((resolve) => {
+        settle = resolve;
+      })
+    );
+
+    render(<ActivityFeedActions canDelete isReply onDelete={onDelete} />);
+    await selectAction('label.delete');
+
+    // Double click while the request is still outstanding. Without the guard
+    // the second click deletes again and 404s against the missing comment.
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    await waitFor(() => {
+      expect(onDelete).toHaveBeenCalledTimes(1);
     });
+
+    settle();
+  });
+
+  it('keeps the confirmation open when onDelete rejects', async () => {
+    const onDelete = jest.fn().mockRejectedValue(new Error('boom'));
+
+    render(<ActivityFeedActions canDelete isReply onDelete={onDelete} />);
+    await selectAction('label.delete');
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    await waitFor(() => {
+      expect(onDelete).toHaveBeenCalled();
+    });
+
+    // Closing here would look like the delete had gone through.
+    expect(screen.getByTestId('confirmation-modal')).toBeInTheDocument();
+  });
+
+  it('closes the confirmation without deleting', async () => {
+    render(
+      <ActivityFeedActions
+        isReply
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
+    await selectAction('label.delete');
+    fireEvent.click(screen.getByTestId('cancel-delete'));
+
+    expect(screen.queryByTestId('confirmation-modal')).not.toBeInTheDocument();
+    expect(mockDeleteFeed).not.toHaveBeenCalled();
   });
 });

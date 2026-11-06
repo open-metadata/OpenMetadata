@@ -12,8 +12,9 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
-import { ModelType } from '../../../generated/entity/data/table';
+import { DataType, ModelType } from '../../../generated/entity/data/table';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { LineageNodeType } from '../../../interface/lineage.interface';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 
@@ -23,6 +24,12 @@ jest.mock('../../../hooks/useLineageStore', () => ({
 
 jest.mock('../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn(),
+}));
+
+jest.mock('../../../utils/i18next/LocalUtil', () => ({
+  Transi18next: ({ values }: { values: { count: number; entity: string } }) => (
+    <span>{`${values.count} ${values.entity}`}</span>
+  ),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -37,14 +44,18 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/EntityIconUtils', () => ({
+  getEntityIcon: jest.fn(() => <div>EntityIcon</div>),
+}));
+jest.mock('../../../utils/EntityServiceIconUtils', () => ({
   getServiceIcon: jest.fn(() => <div>ServiceIcon</div>),
-  getEntityTypeIcon: jest.fn(() => <div>EntityIcon</div>),
 }));
 
-jest.mock('../../../utils/EntityLineageUtils', () => ({
+jest.mock('../../../utils/EntityLineageNodeUtils', () => ({
   getEntityChildrenAndLabel: jest.fn((node) => {
-    const childrenCount = node.columns?.length ?? node.tasks?.length ?? 0;
+    const children =
+      node.entityType === 'pipeline' ? node.tasks ?? [] : node.columns ?? [];
+    const childrenCount = children.length;
     const isPlural = childrenCount !== 1;
     let childrenHeading = 'Columns';
 
@@ -55,23 +66,31 @@ jest.mock('../../../utils/EntityLineageUtils', () => ({
     }
 
     return {
-      children: node.columns ?? node.tasks ?? [],
+      children,
       childrenHeading,
       childrenCount,
     };
   }),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  getBreadcrumbsFromFqn: jest.fn((fqn) => {
+jest.mock('../../../utils/EntityBreadcrumbPureUtils', () => ({
+  getEntityBreadcrumbs: jest.fn((entity) => {
+    const fqn = entity?.fullyQualifiedName ?? '';
     if (!fqn) {
       return [];
     }
     const parts = fqn.split('.');
 
-    return parts.slice(0, -1).map((part) => ({ name: part }));
+    return parts.slice(0, -1).map((part: string) => ({ name: part, url: '' }));
   }),
-  getEntityName: jest.fn((entity) => entity.name || entity.displayName || ''),
+}));
+
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn((entity) => entity?.name || entity?.displayName || ''),
+  getEntityNameLabel: jest.fn(
+    (type: string) =>
+      ({ table: 'Table', apiEndpoint: 'API Endpoint' }[type] ?? type)
+  ),
 }));
 
 const mockToggleColumnsList = jest.fn();
@@ -82,17 +101,19 @@ const mockBasicNode = {
   fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
   name: 'dim_customer',
   entityType: EntityType.TABLE,
+  type: EntityType.TABLE,
   deleted: false,
   columns: [
-    { name: 'col1', dataType: 'VARCHAR', fullyQualifiedName: 'col1' },
-    { name: 'col2', dataType: 'VARCHAR', fullyQualifiedName: 'col2' },
-    { name: 'col3', dataType: 'VARCHAR', fullyQualifiedName: 'col3' },
+    { name: 'col1', dataType: DataType.Varchar, fullyQualifiedName: 'col1' },
+    { name: 'col2', dataType: DataType.Varchar, fullyQualifiedName: 'col2' },
+    { name: 'col3', dataType: DataType.Varchar, fullyQualifiedName: 'col3' },
   ],
-};
+} satisfies LineageNodeType;
 
 const mockNodeWithDbt = {
   ...mockBasicNode,
   dataModel: {
+    columns: mockBasicNode.columns,
     modelType: ModelType.Dbt,
     resourceType: 'model',
   },
@@ -101,6 +122,7 @@ const mockNodeWithDbt = {
 const mockNodeWithDbtSeed = {
   ...mockBasicNode,
   dataModel: {
+    columns: mockBasicNode.columns,
     modelType: ModelType.Dbt,
     resourceType: 'seed',
   },
@@ -126,13 +148,13 @@ const mockNodeWithoutChildren = {
   fullyQualifiedName: 'sample_data.ecommerce_db.shopify.no_children',
   name: 'no_children',
   entityType: EntityType.TABLE,
+  type: EntityType.TABLE,
   deleted: false,
   columns: [],
-};
+} satisfies LineageNodeType;
 
 const defaultLineageStore = {
   isDQEnabled: false,
-  isEditMode: false,
 };
 
 describe('LineageNodeLabelV1', () => {
@@ -149,6 +171,37 @@ describe('LineageNodeLabelV1', () => {
   });
 
   describe('EntityLabel Component', () => {
+    it('shows the asset count of a container node as a pill', () => {
+      render(
+        <LineageNodeLabelV1
+          isChildrenListExpanded={false}
+          node={{
+            ...mockBasicNode,
+            lineageMapSubtitle: 'Snowflake · service',
+            lineageMapCount: { count: 146, entity: 'tables' },
+          }}
+        />
+      );
+
+      expect(screen.getByTestId('lineage-node-count')).toHaveTextContent(
+        '146 tables'
+      );
+      expect(screen.getByText('Snowflake · service')).toBeInTheDocument();
+    });
+
+    it('shows no count pill for a node without a count', () => {
+      render(
+        <LineageNodeLabelV1
+          isChildrenListExpanded={false}
+          node={mockBasicNode}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('lineage-node-count')
+      ).not.toBeInTheDocument();
+    });
+
     it('should render entity label with display name', () => {
       render(
         <LineageNodeLabelV1
@@ -285,6 +338,18 @@ describe('LineageNodeLabelV1', () => {
       expect(screen.getByText('EntityIcon')).toBeInTheDocument();
     });
 
+    it('should label the entity type chip with its display name', () => {
+      render(
+        <LineageNodeLabelV1
+          isChildrenListExpanded={false}
+          node={{ ...mockBasicNode, entityType: EntityType.API_ENDPOINT }}
+        />
+      );
+
+      expect(screen.getByText('API Endpoint')).toBeInTheDocument();
+      expect(screen.queryByText('Apiendpoint')).not.toBeInTheDocument();
+    });
+
     it('should toggle columns list when dropdown button is clicked', () => {
       render(
         <LineageNodeLabelV1
@@ -397,12 +462,7 @@ describe('LineageNodeLabelV1', () => {
       ).toHaveBeenCalledTimes(1);
     });
 
-    it('should disable filter button in edit mode', () => {
-      (useLineageStore as unknown as jest.Mock).mockReturnValue({
-        ...defaultLineageStore,
-        isEditMode: true,
-      });
-
+    it('should expose the filter button tooltip as an accessible label', () => {
       render(
         <LineageNodeLabelV1
           isChildrenListExpanded={false}
@@ -416,29 +476,10 @@ describe('LineageNodeLabelV1', () => {
 
       const filterButton = screen.getByTestId('lineage-filter-button');
 
-      expect(filterButton).toBeDisabled();
-    });
-
-    it('should show tooltip on filter button hover', async () => {
-      render(
-        <LineageNodeLabelV1
-          isChildrenListExpanded={false}
-          isOnlyShowColumnsWithLineageFilterActive={false}
-          node={mockBasicNode}
-          toggleOnlyShowColumnsWithLineageFilterActive={
-            mockToggleOnlyShowColumnsWithLineageFilterActive
-          }
-        />
+      expect(filterButton).toHaveAttribute(
+        'aria-label',
+        'Only show columns with Lineage'
       );
-
-      const filterButton = screen.getByTestId('lineage-filter-button');
-      fireEvent.mouseOver(filterButton);
-
-      await waitFor(() => {
-        expect(
-          screen.getByText('Only show columns with Lineage')
-        ).toBeInTheDocument();
-      });
     });
 
     it('should stop event propagation when dropdown button is clicked', () => {
@@ -659,7 +700,11 @@ describe('LineageNodeLabelV1', () => {
       const nodeWithOneColumn = {
         ...mockBasicNode,
         columns: [
-          { name: 'col1', dataType: 'VARCHAR', fullyQualifiedName: 'col1' },
+          {
+            name: 'col1',
+            dataType: DataType.Varchar,
+            fullyQualifiedName: 'col1',
+          },
         ],
       };
 
@@ -676,9 +721,10 @@ describe('LineageNodeLabelV1', () => {
     it('should handle node with multiple entity types', () => {
       const pipelineNode = {
         ...mockBasicNode,
-        entityType: 'pipeline',
+        entityType: EntityType.PIPELINE,
+        type: EntityType.PIPELINE,
         tasks: [{ name: 'task1' }, { name: 'task2' }],
-        columns: undefined,
+        columns: [],
       };
 
       render(
@@ -715,7 +761,6 @@ describe('LineageNodeLabelV1', () => {
     it('should render complete component with all features enabled', async () => {
       (useLineageStore as unknown as jest.Mock).mockReturnValue({
         isDQEnabled: true,
-        isEditMode: false,
       });
 
       render(

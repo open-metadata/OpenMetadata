@@ -11,8 +11,6 @@
 
 """Table-level test definitions for DQ as Code API."""
 
-from typing import List, Optional
-
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.sdk.data_quality.tests.base_tests import TableTest
 
@@ -37,11 +35,11 @@ class TableColumnCountToBeBetween(TableTest):
 
     def __init__(
         self,
-        min_count: Optional[int] = None,
-        max_count: Optional[int] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_count: int | None = None,
+        max_count: int | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         default_desc = (
             f"Validates that the number of columns in the table is between "
@@ -78,9 +76,9 @@ class TableColumnCountToEqual(TableTest):
     def __init__(
         self,
         column_count: int,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableColumnCountToEqual",
@@ -111,11 +109,11 @@ class TableRowCountToBeBetween(TableTest):
 
     def __init__(
         self,
-        min_count: Optional[int] = None,
-        max_count: Optional[int] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_count: int | None = None,
+        max_count: int | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         default_desc = (
             f"Validates that the number of rows in the table is between {min_count or 'any'} and {max_count or 'any'}"
@@ -151,9 +149,9 @@ class TableRowCountToEqual(TableTest):
     def __init__(
         self,
         row_count: int,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableRowCountToEqual",
@@ -191,13 +189,13 @@ class TableRowInsertedCountToBeBetween(TableTest):
     def __init__(  # pylint: disable=too-many-arguments
         self,
         column_name: str,
-        min_count: Optional[int] = None,
-        max_count: Optional[int] = None,
+        min_count: int | None = None,
+        max_count: int | None = None,
         range_type: str = "DAY",
         range_interval: int = 1,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         default_desc = (
             f"Validates that rows inserted in the last {range_interval} "
@@ -239,11 +237,11 @@ class TableColumnToMatchSet(TableTest):
 
     def __init__(
         self,
-        column_names: List[str],
+        column_names: list[str],
         ordered: bool = False,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableColumnToMatchSet",
@@ -275,9 +273,9 @@ class TableColumnNameToExist(TableTest):
     def __init__(
         self,
         column_name: str,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableColumnNameToExist",
@@ -312,9 +310,9 @@ class TableCustomSQLQuery(TableTest):
         self,
         sql_expression: str,
         strategy: str = "ROWS",
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableCustomSQLQuery",
@@ -355,15 +353,15 @@ class TableDiff(TableTest):
     def __init__(  # pylint: disable=too-many-arguments
         self,
         table2: str,
-        key_columns: Optional[List[str]] = None,
-        table2_key_columns: Optional[List[str]] = None,
-        use_columns: Optional[List[str]] = None,
-        threshold: Optional[int] = None,
-        where: Optional[str] = None,
-        case_sensitive_columns: Optional[bool] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        key_columns: list[str] | None = None,
+        table2_key_columns: list[str] | None = None,
+        use_columns: list[str] | None = None,
+        threshold: int | None = None,
+        where: str | None = None,
+        case_sensitive_columns: bool | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableDiff",

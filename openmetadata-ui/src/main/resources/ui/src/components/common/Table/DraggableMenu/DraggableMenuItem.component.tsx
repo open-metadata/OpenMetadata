@@ -10,11 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EyeInvisibleFilled, EyeOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Eye,
+  EyeInvisibleFilled,
+  MenuDuo,
+} from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { ReactComponent as ColumnDragIcon } from '../../../../assets/svg/menu-duo.svg';
 import './draggable-menu-item.less';
 import { DraggableMenuItemProps } from './DraggableMenuItem.interface';
 
@@ -62,25 +65,33 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
   return (
     <div
       className={`draggable-menu-item ${isDragging ? 'dragging' : ''}`}
+      data-testid={`column-menu-item-${value}`}
       ref={(node) => {
         drag(drop(node));
       }}>
-      <ColumnDragIcon
-        className="text-grey-muted"
+      <MenuDuo
+        className="tw:text-quaternary"
         data-testid="draggable-menu-item-drag-icon"
-        height={16}
-        width={16}
+        size={16}
       />
 
       <Button
-        className="draggable-menu-item-button"
-        type="text"
+        className="tw:w-full"
+        color="tertiary"
+        iconTrailing={
+          isItemSelected ? (
+            <Eye data-icon="trailing" data-testid="eye-icon" />
+          ) : (
+            <EyeInvisibleFilled
+              data-icon="trailing"
+              data-testid="eye-invisible-icon"
+            />
+          )
+        }
         onClick={() => onSelect(value, !isItemSelected)}>
-        <Typography.Text className="draggable-menu-item-button-label">
+        <Typography className="draggable-menu-item-button-label">
           {label}
-        </Typography.Text>
-
-        {isItemSelected ? <EyeOutlined /> : <EyeInvisibleFilled />}
+        </Typography>
       </Button>
     </div>
   );

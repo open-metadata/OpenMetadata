@@ -14,7 +14,7 @@ import { create } from 'zustand';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { GlossaryTermWithChildren } from '../../rest/glossaryAPI';
-import { findAndUpdateNested } from '../../utils/GlossaryUtils';
+import { findAndUpdateNested } from '../../utils/GlossaryPureUtils';
 
 export type ModifiedGlossary = Glossary & {
   children?: GlossaryTermWithChildren[];
@@ -46,6 +46,9 @@ export const useGlossaryStore = create<{
   refreshGlossaryTerms: () => void;
   loadMoreTerms: () => void;
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => void;
+  /** The proposal open in the review panel, highlighted in the terms table too. */
+  selectedProposalId?: string;
+  setSelectedProposalId: (selectedProposalId?: string) => void;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
@@ -78,13 +81,20 @@ export const useGlossaryStore = create<{
     // Update the active glossary
     set({ activeGlossary: updatedGlossary });
 
-    // Update the corresponding glossary in the glossaries list
+    // Update the corresponding glossary in the glossaries list. Build a fresh
+    // array reference (rather than mutating in place) so referentially-keyed
+    // consumers — e.g. the `menuItems` useMemo in `GlossaryLeftPanel` — observe
+    // the change after a `displayName`-only edit that skips `fetchGlossaryList`.
     const index = glossaries.findIndex(
       (g) => g.fullyQualifiedName === updatedGlossary.fullyQualifiedName
     );
 
     if (index !== -1) {
-      glossaries[index] = updatedGlossary;
+      set({
+        glossaries: glossaries.map((g, i) =>
+          i === index ? updatedGlossary : g
+        ),
+      });
     }
   },
   insertNewGlossaryTermToChildTerms: (glossary: GlossaryTerm) => {
@@ -120,6 +130,9 @@ export const useGlossaryStore = create<{
   },
   setTermsLoading: (termsLoading: boolean) => {
     set({ termsLoading });
+  },
+  setSelectedProposalId: (selectedProposalId?: string) => {
+    set({ selectedProposalId });
   },
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {
     set({

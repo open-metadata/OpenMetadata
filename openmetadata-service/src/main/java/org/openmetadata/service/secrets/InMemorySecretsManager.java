@@ -25,7 +25,7 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
   @Getter private final Map<String, String> secretsMap = new HashMap<>();
 
   protected InMemorySecretsManager(SecretsConfig secretsConfig) {
-    super(SecretsManagerProvider.IN_MEMORY, secretsConfig, 0);
+    super(SecretsManagerProvider.IN_MEMORY, secretsConfig, SecretsManagerRateLimiter.noOp());
   }
 
   public static InMemorySecretsManager getInstance(SecretsConfig secretsConfig) {
@@ -54,9 +54,22 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
   String getSecret(String secretName) {
     String value = secretsMap.getOrDefault(secretName, null);
     if (value == null) {
-      throw new SecretsManagerException(
+      throw new KeyNotFoundException(
           String.format("Key [%s] not found in in-memory secrets manager", secretName));
     }
     return value;
+  }
+
+  @Override
+  protected boolean isNotFoundException(Exception exception) {
+    // Only a missing key is a not-found; a generic SecretsManagerException is a real failure and
+    // must not be reclassified as "absent" (which would route it to the create path).
+    return exception instanceof KeyNotFoundException;
+  }
+
+  private static class KeyNotFoundException extends SecretsManagerException {
+    KeyNotFoundException(String message) {
+      super(message);
+    }
   }
 }

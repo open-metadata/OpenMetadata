@@ -340,6 +340,11 @@ export interface GCPCredentialsConfiguration {
      */
     type?: string;
     /**
+     * Google Cloud service domain, used to override the default `googleapis.com` domain for
+     * sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).
+     */
+    universeDomain?: string;
+    /**
      * Path of the file containing the GCP credentials info
      */
     path?: string;
@@ -391,7 +396,7 @@ export interface GCPImpersonateServiceAccountValues {
  */
 export enum Scheme {
     Bigquery = "bigquery",
-    DatabricksConnector = "databricks+connector",
+    Databricks = "databricks",
     Snowflake = "snowflake",
     Trino = "trino",
 }

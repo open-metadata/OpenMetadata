@@ -77,17 +77,16 @@ class TestConnectionFallbackMechanism:
     # The ONLY 3 services that require fallback to all-lowercase module name
     # These were broken on Linux (case-sensitive FS) before the fix
     # Old formula produced wrong casing: sASConnection (tried) != sasConnection (actual)
-    FALLBACK_SERVICES = ["SAS", "SQLite", "SSAS"]
+    FALLBACK_SERVICES = ["SAS", "SQLite", "SSAS"]  # noqa: RUF012
 
     # Services with multi-word camelCase names (take standard path)
-    CAMELCASE_SERVICES = [
+    CAMELCASE_SERVICES = [  # noqa: RUF012
         "BigQuery",  # bigQueryConnection.py
         "AzureSQL",  # azureSQLConnection.py
         "DynamoDB",  # dynamoDBConnection.py
         "MariaDB",  # mariaDBConnection.py
         "MongoDB",  # mongoDBConnection.py
         "PinotDB",  # pinotDBConnection.py
-        "DeltaLake",  # deltaLakeConnection.py
         "SingleStore",  # singleStoreConnection.py
         "UnityCatalog",  # unityCatalogConnection.py
         "BigTable",  # bigTableConnection.py
@@ -98,7 +97,7 @@ class TestConnectionFallbackMechanism:
     ]
 
     # Services with single word or naturally lowercase names
-    SIMPLE_SERVICES = [
+    SIMPLE_SERVICES = [  # noqa: RUF012
         "Athena",
         "Cassandra",
         "Clickhouse",

@@ -30,7 +30,7 @@ def execute_sql_file(engine: Engine, sql_file: str) -> None:
     Method to create the connection and execute the sql query
     """
 
-    with open(sql_file, encoding="utf-8") as file:
+    with open(sql_file, encoding="utf-8") as file:  # noqa: PTH123
         failed_queries = 0
         all_queries = file.readlines()
         log_ansi_encoded_string(

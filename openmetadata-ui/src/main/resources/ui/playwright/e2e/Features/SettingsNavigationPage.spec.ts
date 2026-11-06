@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -20,6 +21,7 @@ import { redirectToHomePage } from '../../utils/common';
 import { setUserDefaultPersona } from '../../utils/customizeLandingPage';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
@@ -27,7 +29,7 @@ const persona = new PersonaClass();
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -67,7 +69,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await navigateToPersonaNavigation(page);
 
     // Verify page loads with expected elements
-    await expect(page.getByRole('tree')).toBeVisible();
+    await expect(page.getByRole('treegrid')).toBeVisible();
     await expect(page.getByTestId('save-button')).toBeVisible();
     await expect(page.getByTestId('reset-button')).toBeVisible();
 
@@ -154,8 +156,8 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     //   Make changes
     const navigateSwitch = page
-      .locator('.ant-tree-title:has-text("Insights")')
-      .locator('.ant-switch');
+      .getByRole('row', { name: 'Insights', exact: true })
+      .locator('[data-testid^="navigation-switch-"]');
 
     await navigateSwitch.click();
 
@@ -203,9 +205,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     //   Make changes
     const domainSwitch = page
-      .locator('.ant-tree-title:has-text("Domains")')
+      .getByRole('row', { name: 'Domains', exact: true })
       .first()
-      .locator('.ant-switch');
+      .locator('[data-testid^="navigation-switch-"]');
 
     await domainSwitch.click();
 
@@ -246,13 +248,17 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const treeItems = page.getByRole('treegrid').getByRole('row');
 
     // Wait for the tree to be fully ready
-    await expect(treeItems.first()).toBeVisible();
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
 
-    const homeItem = treeItems.getByTitle('label.home');
-    const exploreItem = treeItems.getByTitle('label.explore');
+    const homeItem = treeItems.filter({
+      has: page.getByText('Home', { exact: true }),
+    });
+    const exploreItem = treeItems.filter({
+      has: page.getByText('Explore', { exact: true }),
+    });
 
     const firstItemText = await homeItem.textContent();
 
@@ -270,9 +276,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
           x: firstItemBox.width / 2,
           y: firstItemBox.height / 2,
         },
+        // The middle of a row is a drop "on" it; its bottom edge drops after it.
         targetPosition: {
           x: secondItemBox.width / 2,
-          y: secondItemBox.height / 2 + 10,
+          y: secondItemBox.height - 2,
         },
       });
       await expect(treeItems.first()).not.toHaveText(firstItemText as string);
@@ -294,8 +301,8 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     const exploreSwitch = page.getByTestId('navigation-switch-/explore');
     const insightsSwitch = page
-      .locator('.ant-tree-title:has-text("Insights")')
-      .locator('.ant-switch')
+      .getByRole('row', { name: 'Insights', exact: true })
+      .locator('[data-testid^="navigation-switch-"]')
       .first();
 
     await exploreSwitch.click();
@@ -318,10 +325,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await expect(page.getByText('Switch Persona')).toBeVisible();
 
     // Initially should show limited personas (2 by default)
-    const initialPersonaLabels = page
-      .locator('[data-testid="persona-label"]')
-      .locator('input[type="radio"]');
-    await initialPersonaLabels.first().click();
+    await page
+      .getByRole('menuitem', { name: persona.responseData.displayName })
+      .click();
     await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
     await expect(page.getByTestId('app-bar-item-insights')).not.toBeVisible();
 
@@ -332,5 +338,231 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     const restoreResponse = page.waitForResponse('**/api/v1/docStore/**');
     await page.getByTestId('save-button').click();
     await restoreResponse;
+  });
+
+  // Regression for issue #28738: navigation ordering customisations used to
+  // revert to the default tree order after saving and reopening the page.
+  test('should persist a reordered sub-item after reload', async ({ page }) => {
+    test.slow();
+
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const treeItems = page.getByRole('treegrid').getByRole('row');
+
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
+
+    // Data Quality and Incident Manager are adjacent children of Observability
+    // near the top of the tree, which keeps the drag reliable.
+    const dataQualityItem = treeItems.filter({
+      has: page.getByText('Data Quality', { exact: true }),
+    });
+    const incidentManagerItem = treeItems.filter({
+      has: page.getByText('Incident Manager', { exact: true }),
+    });
+
+    await expect(dataQualityItem).toBeVisible();
+    await expect(incidentManagerItem).toBeVisible();
+
+    const isDataQualityBelowIncidentManager = async () => {
+      const dataQualityBox = await dataQualityItem.boundingBox();
+      const incidentManagerBox = await incidentManagerItem.boundingBox();
+
+      return (dataQualityBox?.y ?? 0) > (incidentManagerBox?.y ?? 0);
+    };
+
+    // Default order renders Data Quality above Incident Manager
+    expect(await isDataQualityBelowIncidentManager()).toBe(false);
+
+    await test.step('Reorder Data Quality below Incident Manager', async () => {
+      const dataQualityBox = await dataQualityItem.boundingBox();
+      const incidentManagerBox = await incidentManagerItem.boundingBox();
+
+      expect(dataQualityBox).not.toBeNull();
+      expect(incidentManagerBox).not.toBeNull();
+
+      await dataQualityItem.dragTo(incidentManagerItem, {
+        sourcePosition: {
+          x: (dataQualityBox?.width ?? 0) / 2,
+          y: (dataQualityBox?.height ?? 0) / 2,
+        },
+        // The middle of a row is a drop "on" it; its bottom edge drops after it.
+        targetPosition: {
+          x: (incidentManagerBox?.width ?? 0) / 2,
+          y: (incidentManagerBox?.height ?? 0) - 2,
+        },
+      });
+
+      await expect.poll(isDataQualityBelowIncidentManager).toBe(true);
+    });
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
+    const saveResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        ['POST', 'PATCH'].includes(response.request().method()) &&
+        /^\/api\/v1\/docStore(?:\/[^/]+)?$/.test(
+          new URL(response.url()).pathname
+        ),
+      [200, 201]
+    );
+    await page.getByTestId('save-button').click();
+    await saveResponse;
+
+    // Reopen the page: the new order must persist, not revert to default
+    await redirectToHomePage(page);
+    await navigateToPersonaNavigation(page);
+
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
+    await expect(dataQualityItem).toBeVisible();
+    await expect(incidentManagerItem).toBeVisible();
+
+    await expect.poll(isDataQualityBelowIncidentManager).toBe(true);
+
+    // Cleanup: restore the default navigation layout
+    await page.getByTestId('reset-button').click();
+
+    await expect(page.getByTestId('unsaved-changes-modal-title')).toContainText(
+      'Reset Default Layout'
+    );
+
+    await page.getByTestId('unsaved-changes-modal-save').click();
+
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
+    const resetResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        ['POST', 'PATCH'].includes(response.request().method()) &&
+        /^\/api\/v1\/docStore(?:\/[^/]+)?$/.test(
+          new URL(response.url()).pathname
+        ),
+      [200, 201]
+    );
+    await page.getByTestId('save-button').click();
+    await resetResponse;
+  });
+
+  // Issue #28738 follow-up: the rendered sidebar must reflect a cross-group
+  // move once the persona is applied, not just the editor tree.
+  test('should reflect a sub-item moved to another group in the sidebar after applying the persona', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const treeItems = page.getByRole('treegrid').getByRole('row');
+
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
+
+    const testLibraryItem = treeItems.filter({
+      has: page.getByText('Test Library', { exact: true }),
+    });
+    const dataMarketplaceItem = treeItems.filter({
+      has: page.getByText('Data Marketplace', { exact: true }),
+    });
+    const marketplaceOverviewItem = treeItems.filter({
+      has: page.getByTestId('navigation-switch-/data-marketplace'),
+    });
+
+    await expect(testLibraryItem).toBeVisible();
+    await expect(dataMarketplaceItem).toBeVisible();
+
+    await test.step('Move Test Library into Data Marketplace', async () => {
+      // Scrolling to the destination during an active drag can move a different
+      // tree row under the pointer before the browser starts dragging.
+      await marketplaceOverviewItem.scrollIntoViewIfNeeded();
+      await expect(testLibraryItem).toBeInViewport();
+      await expect(marketplaceOverviewItem).toBeInViewport();
+      const testLibraryBox = await testLibraryItem.boundingBox();
+      const marketplaceBox = await marketplaceOverviewItem.boundingBox();
+
+      expect(testLibraryBox).not.toBeNull();
+      expect(marketplaceBox).not.toBeNull();
+
+      // Overview appears in multiple groups; its route identifies the destination.
+      await testLibraryItem.dragTo(marketplaceOverviewItem, {
+        sourcePosition: {
+          x: (testLibraryBox?.width ?? 0) / 2,
+          y: (testLibraryBox?.height ?? 0) / 2,
+        },
+        targetPosition: {
+          x: (marketplaceBox?.width ?? 0) / 2,
+          y: 2,
+        },
+      });
+
+      await expect
+        .poll(async () => {
+          const item = await testLibraryItem.boundingBox();
+          const parent = await dataMarketplaceItem.boundingBox();
+          return item !== null && parent !== null && item.y > parent.y;
+        })
+        .toBe(true);
+    });
+
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
+    const saveResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        ['POST', 'PATCH'].includes(response.request().method()) &&
+        /^\/api\/v1\/docStore(?:\/[^/]+)?$/.test(
+          new URL(response.url()).pathname
+        ),
+      [200, 201]
+    );
+    await page.getByTestId('save-button').click();
+    await saveResponse;
+
+    // Apply the persona, then open the Data Marketplace section in the sidebar
+    await redirectToHomePage(page);
+    await page.getByTestId('dropdown-profile').click();
+    await page
+      .locator('[role="menu"].profile-dropdown')
+      .waitFor({ state: 'visible' });
+    await page
+      .getByRole('menuitem', { name: persona.responseData.displayName })
+      .click();
+
+    await page.hover('[data-testid="left-sidebar"]');
+    await page.click('[data-testid="data-marketplace-section"]');
+
+    // The moved item is now rendered under the Data Marketplace section
+    await expect(
+      page
+        .locator('[data-testid="app-bar-item-test-library"]')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
+
+    await page.click('[data-testid="data-marketplace-section"]');
+
+    // Cleanup: restore the default navigation layout
+    await navigateToPersonaNavigation(page);
+    await page.getByTestId('reset-button').click();
+
+    await expect(page.getByTestId('unsaved-changes-modal-title')).toContainText(
+      'Reset Default Layout'
+    );
+
+    await page.getByTestId('unsaved-changes-modal-save').click();
+
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
+    const resetResponseAfterMove = waitForResponseWithStatus(
+      page,
+      (response) =>
+        ['POST', 'PATCH'].includes(response.request().method()) &&
+        /^\/api\/v1\/docStore(?:\/[^/]+)?$/.test(
+          new URL(response.url()).pathname
+        ),
+      [200, 201]
+    );
+    await page.getByTestId('save-button').click();
+    await resetResponseAfterMove;
   });
 });

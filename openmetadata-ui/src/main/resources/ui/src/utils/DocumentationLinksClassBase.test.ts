@@ -12,16 +12,22 @@
  */
 import { DocumentationLinksClassBase } from './DocumentationLinksClassBase';
 
+class TestDocumentationLinksClassBase extends DocumentationLinksClassBase {
+  public setDocsBaseURL(url: string) {
+    this.updateDocsBaseURL(url);
+  }
+}
+
 describe('DocumentationLinksClassBase', () => {
-  let documentationLinksClassBase: DocumentationLinksClassBase;
+  let documentationLinksClassBase: TestDocumentationLinksClassBase;
 
   beforeEach(() => {
-    documentationLinksClassBase = new DocumentationLinksClassBase();
+    documentationLinksClassBase = new TestDocumentationLinksClassBase();
   });
 
   it('should return the default docsBaseURL', () => {
     expect(documentationLinksClassBase.getDocsBaseURL()).toBe(
-      'https://docs.open-metadata.org/'
+      'https://docs.open-metadata.org/latest/'
     );
   });
 
@@ -29,76 +35,85 @@ describe('DocumentationLinksClassBase', () => {
     const docsURLs = documentationLinksClassBase.getDocsURLS();
 
     expect(docsURLs.WORKFLOWS_PROFILER_DOCS).toBe(
-      'https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow'
+      'https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/profiler-workflow'
+    );
+    expect(docsURLs.DATA_QUALITY_PROFILER_WORKFLOW_DOCS).toBe(
+      'https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/profiler-workflow'
+    );
+    expect(docsURLs.AUTO_CLASSIFICATION_DOCS).toBe(
+      'https://docs.open-metadata.org/latest/how-to-guides/data-governance/classification/auto-classification'
     );
     expect(docsURLs.GLOSSARIES_DOCS).toBe(
-      'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/data/glossary'
+      'https://docs.open-metadata.org/latest/how-to-guides/data-governance/glossary'
     );
     expect(docsURLs.CONNECTORS_DOCS).toBe(
-      'https://docs.open-metadata.org/connectors'
+      'https://docs.open-metadata.org/latest/connectors'
     );
     expect(docsURLs.WORKFLOWS_METADATA_DOCS).toBe(
-      'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata'
+      'https://docs.open-metadata.org/latest/connectors/ingestion/workflows/metadata'
     );
     expect(docsURLs.INGESTION_FRAMEWORK_DEPLOYMENT_DOCS).toBe(
-      'https://docs.open-metadata.org/deployment/ingestion'
+      'https://docs.open-metadata.org/latest/deployment/ingestion'
     );
     expect(docsURLs.BOTS_DOCS).toBe(
-      'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/bot'
+      'https://docs.open-metadata.org/latest/developers/bots'
     );
     expect(docsURLs.TEAMS_DOCS).toBe(
-      'https://docs.open-metadata.org/how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata'
+      'https://docs.open-metadata.org/latest/how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata'
     );
     expect(docsURLs.ADD_CUSTOM_PROPERTIES_DOCS).toBe(
-      'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/custom'
+      'https://docs.open-metadata.org/latest/how-to-guides/guide-for-data-users/custom'
     );
     expect(docsURLs.ROLE_DOCS).toBe(
-      'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/teams/role'
+      'https://docs.open-metadata.org/latest/how-to-guides/admin-guide/roles-policies'
     );
     expect(docsURLs.DATA_INSIGHT_DOCS).toBe(
-      'https://docs.open-metadata.org/how-to-guides/data-insights'
+      'https://docs.open-metadata.org/latest/how-to-guides/data-insights'
     );
     expect(docsURLs.INGESTION_DOCS).toBe(
-      'https://docs.open-metadata.org/connectors/ingestion/workflows'
+      'https://docs.open-metadata.org/latest/connectors/ingestion/workflows'
     );
     expect(docsURLs.USAGE_DOCS).toBe(
-      'https://docs.open-metadata.org/connectors/ingestion/workflows/usage'
+      'https://docs.open-metadata.org/latest/connectors/ingestion/workflows/usage'
     );
     expect(docsURLs.LOCAL_DEPLOYMENT).toBe(
-      'https://docs.open-metadata.org/quick-start/local-docker-deployment'
+      'https://docs.open-metadata.org/latest/quick-start/local-docker-deployment'
     );
     expect(docsURLs.DATA_INSIGHTS_PIPELINE_DOCS).toBe(
-      'https://docs.open-metadata.org/how-to-guides/data-insights/ingestion'
+      'https://docs.open-metadata.org/latest/how-to-guides/data-insights/ingestion'
     );
     expect(docsURLs.ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS).toBe(
-      'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection'
+      'https://docs.open-metadata.org/latest/how-to-guides/admin-guide/reindexing-search'
     );
     expect(docsURLs.ALERTS_DOCS).toBe(
-      'https://docs.open-metadata.org/how-to-guides/admin-guide/alerts'
+      'https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/alerts-notifications'
     );
     expect(docsURLs.TAGS_DOCS).toBe(
-      'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/api/tags'
+      'https://docs.open-metadata.org/latest/how-to-guides/data-governance/classification'
     );
     expect(docsURLs.AIRFLOW_DOCS).toBe(
-      'https://docs.open-metadata.org/deployment/ingestion/external/airflow'
+      'https://docs.open-metadata.org/latest/deployment/ingestion/external/airflow'
     );
     expect(docsURLs.FOLLOW_DATA_ASSET).toBe(
-      'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/follow-data-asset'
+      'https://docs.open-metadata.org/latest/how-to-guides/guide-for-data-users/follow-data-asset'
     );
     expect(docsURLs.RECENTLY_VIEWED).toBe(
-      'https://docs.open-metadata.org/how-to-guides/data-discovery/discover'
+      'https://docs.open-metadata.org/latest/how-to-guides/data-discovery/discover'
     );
     expect(docsURLs.DATA_QUALITY_PROFILER_DOCS).toBe(
-      'https://docs.open-metadata.org/how-to-guides/data-quality-observability'
+      'https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability'
     );
     expect(docsURLs.CUSTOM_PROPERTIES_DOCS).toBe(
-      'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/custom'
+      'https://docs.open-metadata.org/latest/how-to-guides/guide-for-data-users/custom'
     );
     expect(docsURLs.DATA_DISCOVERY_DOCS).toBe(
-      'https://docs.open-metadata.org/how-to-guides/data-discovery'
+      'https://docs.open-metadata.org/latest/how-to-guides/data-discovery'
     );
     expect(docsURLs.HOW_TO_GUIDE_DOCS).toBe(
-      'https://docs.open-metadata.org/how-to-guides'
+      'https://docs.open-metadata.org/latest/how-to-guides'
+    );
+    expect(docsURLs.MOST_USED_ASSETS_WIDGET_DOCS).toBe(
+      'https://docs.open-metadata.org/latest/how-to-guides/data-insights/service-insights#most-used-data-assets'
     );
     expect(docsURLs.OMD_SLACK_LINK).toBe(
       'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow'
@@ -109,16 +124,15 @@ describe('DocumentationLinksClassBase', () => {
   });
 
   it('should return updated documentation URLs after changing the base URL', () => {
-    // Use a private method to update the base URL for testing purposes
     const newURL = 'https://new-docs-url.org/';
-    (documentationLinksClassBase as any).updateDocsBaseURL(newURL);
+    documentationLinksClassBase.setDocsBaseURL(newURL);
     const docsURLs = documentationLinksClassBase.getDocsURLS();
 
     expect(docsURLs.WORKFLOWS_PROFILER_DOCS).toBe(
-      `${newURL}how-to-guides/data-quality-observability/profiler/workflow`
+      `${newURL}how-to-guides/data-quality-observability/profiler/profiler-workflow`
     );
     expect(docsURLs.GLOSSARIES_DOCS).toBe(
-      `${newURL}main-concepts/metadata-standard/schemas/entity/data/glossary`
+      `${newURL}how-to-guides/data-governance/glossary`
     );
     expect(docsURLs.CONNECTORS_DOCS).toBe(`${newURL}connectors`);
     expect(docsURLs.WORKFLOWS_METADATA_DOCS).toBe(
@@ -127,9 +141,7 @@ describe('DocumentationLinksClassBase', () => {
     expect(docsURLs.INGESTION_FRAMEWORK_DEPLOYMENT_DOCS).toBe(
       `${newURL}deployment/ingestion`
     );
-    expect(docsURLs.BOTS_DOCS).toBe(
-      `${newURL}main-concepts/metadata-standard/schemas/entity/bot`
-    );
+    expect(docsURLs.BOTS_DOCS).toBe(`${newURL}developers/bots`);
     expect(docsURLs.TEAMS_DOCS).toBe(
       `${newURL}how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata`
     );
@@ -137,7 +149,7 @@ describe('DocumentationLinksClassBase', () => {
       `${newURL}how-to-guides/guide-for-data-users/custom`
     );
     expect(docsURLs.ROLE_DOCS).toBe(
-      `${newURL}main-concepts/metadata-standard/schemas/entity/teams/role`
+      `${newURL}how-to-guides/admin-guide/roles-policies`
     );
     expect(docsURLs.DATA_INSIGHT_DOCS).toBe(
       `${newURL}how-to-guides/data-insights`
@@ -155,13 +167,13 @@ describe('DocumentationLinksClassBase', () => {
       `${newURL}how-to-guides/data-insights/ingestion`
     );
     expect(docsURLs.ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS).toBe(
-      `${newURL}main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection`
+      `${newURL}how-to-guides/admin-guide/reindexing-search`
     );
     expect(docsURLs.ALERTS_DOCS).toBe(
-      `${newURL}how-to-guides/admin-guide/alerts`
+      `${newURL}how-to-guides/data-quality-observability/alerts-notifications`
     );
     expect(docsURLs.TAGS_DOCS).toBe(
-      `${newURL}main-concepts/metadata-standard/schemas/api/tags`
+      `${newURL}how-to-guides/data-governance/classification`
     );
     expect(docsURLs.AIRFLOW_DOCS).toBe(
       `${newURL}deployment/ingestion/external/airflow`
@@ -182,6 +194,15 @@ describe('DocumentationLinksClassBase', () => {
       `${newURL}how-to-guides/data-discovery`
     );
     expect(docsURLs.HOW_TO_GUIDE_DOCS).toBe(`${newURL}how-to-guides`);
+    expect(docsURLs.DATA_QUALITY_PROFILER_WORKFLOW_DOCS).toBe(
+      `${newURL}how-to-guides/data-quality-observability/profiler/profiler-workflow`
+    );
+    expect(docsURLs.AUTO_CLASSIFICATION_DOCS).toBe(
+      `${newURL}how-to-guides/data-governance/classification/auto-classification`
+    );
+    expect(docsURLs.MOST_USED_ASSETS_WIDGET_DOCS).toBe(
+      `${newURL}how-to-guides/data-insights/service-insights#most-used-data-assets`
+    );
     expect(docsURLs.OMD_SLACK_LINK).toBe(
       'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow'
     );

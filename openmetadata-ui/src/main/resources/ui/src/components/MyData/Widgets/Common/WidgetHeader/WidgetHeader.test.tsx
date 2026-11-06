@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
+import { TotalOccurrences } from '@openmetadata/ui-core-components/icons';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ReactComponent as TaskIcon } from '../../../../../assets/svg/ic-task.svg';
 import WidgetHeader from './WidgetHeader';
 
 const mockProps = {
   title: 'Test Widget',
-  icon: <TaskIcon data-testid="widget-icon" />,
+  icon: <TotalOccurrences data-testid="widget-icon" />,
   isEditView: false,
   sortOptions: [
     { key: 'name', label: 'Name' },
@@ -126,6 +126,7 @@ describe('WidgetHeader', () => {
       'Very Long Widget Title That Should Be Truncated'
     );
 
-    expect(title).toHaveClass('ant-typography-ellipsis');
+    expect(title.tagName).toBe('P');
+    expect(title).toHaveClass('tw:truncate');
   });
 });

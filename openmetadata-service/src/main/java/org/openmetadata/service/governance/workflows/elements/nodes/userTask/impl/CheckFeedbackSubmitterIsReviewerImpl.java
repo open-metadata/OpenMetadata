@@ -7,7 +7,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -17,6 +16,7 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 
 @Slf4j
 public class CheckFeedbackSubmitterIsReviewerImpl implements JavaDelegate {
@@ -30,13 +30,12 @@ public class CheckFeedbackSubmitterIsReviewerImpl implements JavaDelegate {
         execution.getProcessInstanceId());
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
 
       String feedbackJson =
           (String)
               varHandler.getNamespacedVariable(
-                  inputNamespaceMap.get(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
+                  inputNamespaces.namespaceFor(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
       RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
 
       String assigneesVarName = assigneesVarNameExpr.getValue(execution).toString();

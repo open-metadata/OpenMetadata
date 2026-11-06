@@ -1,0 +1,24 @@
+{
+  "name": "pii_dpia",
+  "displayName": "PII access requires DPIA",
+  "description": "Any AI asset that processes personal identifiable information must have a current Data Protection Impact Assessment on file. Catches PII pipelines that ship before legal review completes.",
+  "policyType": "DataAccess",
+  "enforcementLevel": "Blocking",
+  "enabled": true,
+  "rules": [
+    {
+      "name": "pii-requires-dpia",
+      "ruleType": "Requirement",
+      "condition": "accessesPII && !governanceMetadata.evidence.dpiaUrl",
+      "action": "Require_Approval",
+      "severity": "High",
+      "enabled": true
+    }
+  ],
+  "complianceRequirements": [
+    {
+      "standard": "GDPR",
+      "auditFrequency": "Quarterly"
+    }
+  ]
+}

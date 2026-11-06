@@ -1,3 +1,4 @@
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { TestSummary } from '../../../generated/tests/testSuite';
 
 /*
@@ -21,7 +22,8 @@ export interface SummaryPanelProps {
 export interface ChartData {
   name: string;
   value: number;
-  color: string;
+  /** Colour that carries meaning; otherwise the next palette colour. */
+  status?: ChartStatus;
 }
 
 export interface SummaryPieChartCardProps {
@@ -36,4 +38,34 @@ export interface SummaryPieChartCardProps {
     icon: React.ReactNode;
     className?: string;
   };
+}
+
+export enum TestSummaryCardKey {
+  TotalTests = 'total-tests',
+  Healthy = 'healthy',
+  Coverage = 'coverage',
+}
+
+export enum TestSummarySegmentId {
+  Success = 'success',
+  Aborted = 'aborted',
+  Failed = 'failed',
+  Healthy = 'healthy',
+  Unhealthy = 'unhealthy',
+  Covered = 'covered',
+  Uncovered = 'uncovered',
+}
+
+export interface TestSummarySegment {
+  id: TestSummarySegmentId;
+  name: string;
+  value: number;
+}
+
+export interface TestSummaryCard {
+  key: TestSummaryCardKey;
+  title: string;
+  value: number;
+  percentage: number | string;
+  segments: TestSummarySegment[];
 }

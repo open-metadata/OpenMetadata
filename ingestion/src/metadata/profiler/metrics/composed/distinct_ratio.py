@@ -14,7 +14,7 @@ Distinct Ratio Composed Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import ComposedMetric
@@ -35,7 +35,7 @@ class DistinctRatio(ComposedMetric):
         return MetricType.distinctProportion.value
 
     @classmethod
-    def required_metrics(cls) -> Tuple[str, ...]:
+    def required_metrics(cls) -> tuple[str, ...]:
         return Count.name(), DistinctCount.name()
 
     @property
@@ -46,7 +46,7 @@ class DistinctRatio(ComposedMetric):
         """
         return float
 
-    def fn(self, res: Dict[str, Any]) -> Optional[float]:
+    def fn(self, res: dict[str, Any]) -> float | None:
         """
         Safely compute distinct ratio based on the profiler
         results of other Metrics

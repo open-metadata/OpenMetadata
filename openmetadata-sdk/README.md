@@ -211,6 +211,32 @@ String lineage = Lineage.builder()
 
 ## Bulk Operations
 
+For test cases and glossary terms, the fluent API returns a typed `BulkCreateResult`:
+
+```java
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateResult;
+import org.openmetadata.sdk.fluent.GlossaryTerms;
+import org.openmetadata.sdk.fluent.TestCases;
+
+BulkCreateResult tests = TestCases.createMany(testCaseRequests).execute();
+BulkCreateResult terms = GlossaryTerms.createMany(glossaryTermRequests)
+    .onConflict(BulkCreateConflictPolicy.FAIL)
+    .execute();
+
+terms.getResults().forEach(item ->
+    System.out.printf("%d: %s (%s) %s%n",
+        item.getIndex(), item.getStatus(), item.getReason(), item.getMessage()));
+```
+
+Both builders default to `SKIP` and explicitly request detailed outcomes. `FAIL`
+marks conflicting inputs as failed while other valid inputs continue. The result
+has created, skipped, and failed counts, plus one ordered outcome per input with
+reasons/messages for skips and failures and IDs for created entities. Request-level
+errors still throw `OpenMetadataException`. These methods require a server that
+supports `onConflict`; the existing `client.testCases().createMany(requests)`
+service overload still returns the legacy created-entity list.
+
 ```java
 // Bulk create entities
 List<Object> entities = Arrays.asList(entity1, entity2, entity3);
@@ -341,6 +367,76 @@ TableCollection tables = Table.list(params);
 ## Thread Safety
 
 The OpenMetadataClient is thread-safe and can be shared across multiple threads. The static API methods use a shared default client instance.
+
+## Test utilities
+
+The SDK ships a small set of helpers under `org.openmetadata.sdk.test.*`
+(e.g. `JwtAuthProvider`, `RestClient`, `SdkClients`, `TestNamespace`) for
+projects that run integration tests against a real OpenMetadata server.
+
+Their dependencies — `java-jwt`, `jersey-client`, `jersey-apache-connector`,
+`jakarta.ws.rs-api`, `httpclient`, `jakarta.json-api`, `parsson`, and
+`junit-jupiter-api` — are declared on the SDK as `<optional>true</optional>`
+so projects that only use the core SDK don't inherit the full JAX-RS /
+JUnit stack transitively.
+
+If your module uses any of the `org.openmetadata.sdk.test.*` classes, add
+these deps to your own pom (typically with `<scope>test</scope>`):
+
+```xml
+<dependency>
+  <groupId>com.auth0</groupId>
+  <artifactId>java-jwt</artifactId>
+  <version>${jwt.version}</version>
+  <scope>test</scope>
+</dependency>
+<dependency>
+  <groupId>jakarta.ws.rs</groupId>
+  <artifactId>jakarta.ws.rs-api</artifactId>
+  <version>3.1.0</version>
+  <scope>test</scope>
+</dependency>
+<dependency>
+  <groupId>org.glassfish.jersey.core</groupId>
+  <artifactId>jersey-client</artifactId>
+  <version>3.1.9</version>
+  <scope>test</scope>
+</dependency>
+<dependency>
+  <groupId>org.glassfish.jersey.connectors</groupId>
+  <artifactId>jersey-apache-connector</artifactId>
+  <version>3.1.9</version>
+  <scope>test</scope>
+</dependency>
+<dependency>
+  <groupId>org.apache.httpcomponents</groupId>
+  <artifactId>httpclient</artifactId>
+  <version>4.5.14</version>
+  <scope>test</scope>
+</dependency>
+<dependency>
+  <groupId>jakarta.json</groupId>
+  <artifactId>jakarta.json-api</artifactId>
+  <version>2.1.3</version>
+  <scope>test</scope>
+</dependency>
+<dependency>
+  <groupId>org.eclipse.parsson</groupId>
+  <artifactId>parsson</artifactId>
+  <version>1.1.7</version>
+  <scope>test</scope>
+</dependency>
+<dependency>
+  <groupId>org.junit.jupiter</groupId>
+  <artifactId>junit-jupiter-api</artifactId>
+  <version>${junit.version}</version>
+  <scope>test</scope>
+</dependency>
+```
+
+Without these, classes like `RestClient` fail to initialize with
+`NoClassDefFoundError: org/glassfish/jersey/apache/connector/ApacheConnectorProvider`
+at test time.
 
 ## Examples
 

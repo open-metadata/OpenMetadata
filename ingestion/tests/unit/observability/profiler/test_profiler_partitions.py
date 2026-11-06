@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Optional, cast
+from typing import cast
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sampler.partition import get_partition_details
 from metadata.workflow.profiler import ProfilerWorkflow
@@ -86,18 +87,20 @@ MOCK_DATABASE = Database(
 
 
 class MockTable(BaseModel):
-    tablePartition: Optional[TablePartition]
-    tableProfilerConfig: Optional[TableProfilerConfig]
-    serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery
+    fullyQualifiedName: FullyQualifiedEntityName = FullyQualifiedEntityName("service.db.schema.table")  # noqa: N815
+    tablePartition: TablePartition | None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None  # noqa: N815
+    serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery  # noqa: N815
 
     class Config:
         arbitrary_types_allowed = True
 
 
 class MockRedshiftTable(BaseModel):
-    tablePartition: Optional[TablePartition]
-    tableProfilerConfig: Optional[TableProfilerConfig]
-    serviceType: DatabaseServiceType = DatabaseServiceType.Redshift
+    fullyQualifiedName: FullyQualifiedEntityName = FullyQualifiedEntityName("service.db.schema.table")  # noqa: N815
+    tablePartition: TablePartition | None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None  # noqa: N815
+    serviceType: DatabaseServiceType = DatabaseServiceType.Redshift  # noqa: N815
 
     class Config:
         arbitrary_types_allowed = True
@@ -118,7 +121,7 @@ class ProfilerPartitionUnitTest(TestCase):
     @patch("sqlalchemy_bigquery._helpers.create_bigquery_client")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         mock_create_bigquery_client,
         mock_connect,
         auth_default,
@@ -145,15 +148,15 @@ class ProfilerPartitionUnitTest(TestCase):
             tableProfilerConfig=None,
         )
 
-        table_entity = cast(Table, table_entity)
+        table_entity = cast(Table, table_entity)  # noqa: TC006
         resp = get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionColumnName == "e"
-            assert resp.partitionInterval == 1
+            assert resp.partitionInterval == 3
             assert not resp.partitionValues
         else:
-            assert False
+            assert False  # noqa: B011
 
         table_entity.tableProfilerConfig = TableProfilerConfig(
             partitioning=PartitionProfilerConfig(
@@ -170,7 +173,7 @@ class ProfilerPartitionUnitTest(TestCase):
             assert resp.partitionInterval == 3
             assert resp.partitionIntervalUnit == PartitionIntervalUnit.MONTH
         else:
-            assert False
+            assert False  # noqa: B011
 
     def test_partition_details_ingestion_time_date(self):
         table_entity = MockTable(
@@ -186,15 +189,15 @@ class ProfilerPartitionUnitTest(TestCase):
             tableProfilerConfig=None,
         )
 
-        table_entity = cast(Table, table_entity)
+        table_entity = cast(Table, table_entity)  # noqa: TC006
         resp = get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONDATE"
-            assert resp.partitionInterval == 1
+            assert resp.partitionInterval == 3
             assert not resp.partitionValues
         else:
-            assert False
+            assert False  # noqa: B011
 
         table_entity.tableProfilerConfig = TableProfilerConfig(
             partitioning=PartitionProfilerConfig(
@@ -210,7 +213,7 @@ class ProfilerPartitionUnitTest(TestCase):
             assert resp.partitionColumnName == "_PARTITIONDATE"
             assert resp.partitionIntervalUnit == PartitionIntervalUnit.DAY
         else:
-            assert False
+            assert False  # noqa: B011
 
     def test_partition_details_ingestion_time_hour(self):
         table_entity = MockTable(
@@ -226,15 +229,15 @@ class ProfilerPartitionUnitTest(TestCase):
             tableProfilerConfig=None,
         )
 
-        table_entity = cast(Table, table_entity)
+        table_entity = cast(Table, table_entity)  # noqa: TC006
         resp = get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONTIME"
-            assert resp.partitionInterval == 1
+            assert resp.partitionInterval == 24
             assert not resp.partitionValues
         else:
-            assert False
+            assert False  # noqa: B011
 
         table_entity.tableProfilerConfig = TableProfilerConfig(
             partitioning=PartitionProfilerConfig(
@@ -251,7 +254,7 @@ class ProfilerPartitionUnitTest(TestCase):
             assert resp.partitionColumnName == "_PARTITIONTIME"
             assert resp.partitionIntervalUnit == PartitionIntervalUnit.HOUR
         else:
-            assert False
+            assert False  # noqa: B011
 
     def test_partition_non_bq_table_profiler_partition_config(self):
         table_entity = MockRedshiftTable(
@@ -275,7 +278,7 @@ class ProfilerPartitionUnitTest(TestCase):
             ),
         )
 
-        table_entity = cast(Table, table_entity)
+        table_entity = cast(Table, table_entity)  # noqa: TC006
         resp = get_partition_details(table_entity)
         if resp:
             assert resp.enablePartitioning
@@ -284,7 +287,7 @@ class ProfilerPartitionUnitTest(TestCase):
             assert resp.partitionIntervalUnit == PartitionIntervalUnit.DAY
             assert resp.partitionInterval == 1
         else:
-            assert False
+            assert False  # noqa: B011
 
     def test_partition_non_bq_table_no_profiler_partition_config(self):
         table_entity = MockRedshiftTable(
@@ -300,7 +303,7 @@ class ProfilerPartitionUnitTest(TestCase):
             tableProfilerConfig=None,
         )
 
-        table_entity = cast(Table, table_entity)
+        table_entity = cast(Table, table_entity)  # noqa: TC006
         resp = get_partition_details(table_entity)
 
         assert resp is None

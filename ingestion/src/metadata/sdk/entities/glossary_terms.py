@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Type
-
 from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
 )
@@ -15,5 +13,5 @@ class GlossaryTerms(BaseEntity[GlossaryTerm, CreateGlossaryTermRequest]):
     """SDK facade for glossary term entities."""
 
     @classmethod
-    def entity_type(cls) -> Type[GlossaryTerm]:
+    def entity_type(cls) -> type[GlossaryTerm]:
         return GlossaryTerm

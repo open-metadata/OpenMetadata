@@ -11,260 +11,124 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
-import { isEmpty, isUndefined } from 'lodash';
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Box, Card } from '@openmetadata/ui-core-components';
+import { Bell01, Database01 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
-import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import ObservabilityFormTriggerItem from '../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
-import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import {
-  PAGE_SIZE_LARGE,
-  ROUTES,
-  VALIDATION_MESSAGES,
-} from '../../constants/constants';
-import { NAME_FIELD_RULES } from '../../constants/Form.constants';
-import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
-import {
-  NotificationTemplate,
-  ProviderType,
-} from '../../generated/entity/events/notificationTemplate';
-import { Operation } from '../../generated/entity/policies/policy';
-import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
-import {
-  AlertType,
-  EventSubscription,
-} from '../../generated/events/eventSubscription';
-import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { ClientErrors } from '../../enums/Axios.enum';
+import { ProviderType } from '../../generated/entity/events/notificationTemplate';
+import { AlertType } from '../../generated/events/eventSubscription';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useFqn } from '../../hooks/useFqn';
-import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
-import {
-  createObservabilityAlert,
-  getObservabilityAlertByFQN,
-  getResourceFunctions,
-  updateObservabilityAlert,
-} from '../../rest/observabilityAPI';
-import alertsClassBase from '../../utils/AlertsClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
-import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
-import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
-import {
-  ModifiedCreateEventSubscription,
-  ModifiedEventSubscription,
-} from './AddObservabilityPage.interface';
+import { useIsAiMode } from '../../hooks/useAppMode';
+import { AddObservabilityPageProps } from './AddObservabilityPage.interface';
+import ObservabilityAlertForm from './components/ObservabilityAlertForm';
+import { useAlertFormAccess } from './hooks/useAlertFormAccess';
+import { useObservabilityAlertForm } from './hooks/useObservabilityAlertForm';
 
-function AddObservabilityPage() {
-  const navigate = useNavigate();
+function AddObservabilityPage({
+  alertType = AlertType.Observability,
+}: Readonly<AddObservabilityPageProps>) {
   const { t } = useTranslation();
-  const [form] = useForm<ModifiedCreateEventSubscription>();
-  const { getResourcePermission } = usePermissionProvider();
-  const { fqn } = useFqn();
-  const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
-    useApplicationStore();
+  const formState = useObservabilityAlertForm({ alertType });
+  const { alert, alertError, breadcrumb, fetchAlert, isEditMode, isLoading } =
+    formState;
+  const isNotification = alertType === AlertType.Notification;
+  const isAiMode = useIsAiMode();
+  const { hasAccess, isPermissionLoading, permissionError, refreshPermission } =
+    useAlertFormAccess(isEditMode);
 
-  const [filterResources, setFilterResources] = useState<
-    FilterResourceDescriptor[]
-  >([]);
-
-  const [alert, setAlert] = useState<ModifiedEventSubscription>();
-  const [initialData, setInitialData] = useState<EventSubscription>();
-  const [loadingState, setLoadingState] = useState<AddAlertPageLoadingState>({
-    alerts: false,
-    functions: false,
-    templates: false,
-  });
-  const [saving, setSaving] = useState<boolean>(false);
-  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
-  const [templateResourcePermission, setTemplateResourcePermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-
-  const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
-  const { getResourceLimit } = useLimitStore();
-
-  const fetchAlert = async () => {
-    try {
-      setLoadingState((state) => ({ ...state, alerts: true }));
-
-      const observabilityAlert = await getObservabilityAlertByFQN(fqn);
-      const modifiedAlertData =
-        alertsClassBase.getModifiedAlertDataForForm(observabilityAlert);
-
-      setInitialData(observabilityAlert);
-      setAlert(modifiedAlertData);
-    } catch (error) {
-      // Error handling
-    } finally {
-      setLoadingState((state) => ({ ...state, alerts: false }));
+  const getAlertLoadErrorPlaceholder = (status?: number) => {
+    if (status === ClientErrors.NOT_FOUND) {
+      return (
+        <NoDataPlaceholder
+          description={t('message.alert-not-found-description')}
+          icon={<Bell01 className="tw:text-secondary" />}
+          title={t('label.alert-not-found')}
+        />
+      );
     }
+
+    if (status === ClientErrors.FORBIDDEN) {
+      return (
+        <PermissionPlaceholder
+          permissionValue={t('label.edit-entity', {
+            entity: t('label.alert'),
+          })}
+        />
+      );
+    }
+
+    return <SomethingWentWrongPlaceholder onReload={fetchAlert} />;
   };
 
-  const fetchFunctions = async () => {
-    try {
-      setLoadingState((state) => ({ ...state, functions: true }));
-      const filterResources = await getResourceFunctions();
-
-      setFilterResources(filterResources.data);
-    } catch (error) {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
-      );
-    } finally {
-      setLoadingState((state) => ({ ...state, functions: false }));
+  const getAccessPlaceholder = () => {
+    if (isPermissionLoading) {
+      return <Loader />;
     }
+
+    if (permissionError) {
+      return (
+        <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+          <SomethingWentWrongPlaceholder onReload={refreshPermission} />
+        </Box>
+      );
+    }
+
+    if (!hasAccess) {
+      return (
+        <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+          <PermissionPlaceholder
+            permissionValue={t(
+              isEditMode ? 'label.edit-entity' : 'label.create-entity',
+              { entity: t('label.alert') }
+            )}
+          />
+        </Box>
+      );
+    }
+
+    return null;
   };
 
-  useEffect(() => {
-    fetchFunctions();
-    if (!fqn) {
-      return;
-    }
-    fetchAlert();
-  }, [fqn]);
+  const accessPlaceholder = getAccessPlaceholder();
 
-  const breadcrumb = useMemo(
-    () => [
-      {
-        name: t('label.observability'),
-        url: '',
-      },
-      {
-        name: t('label.alert-plural'),
-        url: ROUTES.OBSERVABILITY_ALERTS,
-      },
-      {
-        name: fqn
-          ? t('label.edit-entity', { entity: t('label.alert') })
-          : t('label.create-entity', { entity: t('label.alert') }),
-        url: '',
-      },
-    ],
-    [fqn]
-  );
+  if (accessPlaceholder) {
+    return accessPlaceholder;
+  }
 
-  const handleSave = useCallback(
-    async (data: ModifiedCreateEventSubscription) => {
-      try {
-        setSaving(true);
-
-        await alertsClassBase.handleAlertSave({
-          data,
-          fqn,
-          initialData,
-          currentUser,
-          createAlertAPI: createObservabilityAlert,
-          updateAlertAPI: updateObservabilityAlert,
-          afterSaveAction: async (fqn: string) => {
-            !fqn && (await getResourceLimit('eventsubscription', true, true));
-            navigate(getObservabilityAlertDetailsPath(fqn));
-          },
-          setInlineAlertDetails,
-        });
-      } catch {
-        // Error handling done in "handleAlertSave"
-      } finally {
-        setSaving(false);
-      }
-    },
-    [fqn, navigate, initialData, currentUser]
-  );
-
-  const [selectedTrigger] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
-
-  const supportedFilters = useMemo(
-    () =>
-      filterResources.find((resource) => resource.name === selectedTrigger)
-        ?.supportedFilters,
-    [filterResources, selectedTrigger]
-  );
-
-  const supportedTriggers = useMemo(
-    () =>
-      filterResources.find((resource) => resource.name === selectedTrigger)
-        ?.supportedActions,
-    [filterResources, selectedTrigger]
-  );
-
-  const shouldShowFiltersSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
-    [selectedTrigger, supportedFilters]
-  );
-
-  const shouldShowActionsSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
-    [selectedTrigger, supportedTriggers]
-  );
-
-  const extraFormWidgets = useMemo(
-    () => alertsClassBase.getAddAlertFormExtraWidgets(),
-    []
-  );
-
-  const extraFormButtons = useMemo(
-    () => alertsClassBase.getAddAlertFormExtraButtons(),
-    []
-  );
-
-  const fetchTemplates = useCallback(async () => {
-    setLoadingState((state) => ({ ...state, templates: true }));
-    try {
-      const permission = await getResourcePermission(
-        ResourceEntity.NOTIFICATION_TEMPLATE
-      );
-
-      setTemplateResourcePermission(permission);
-
-      if (getPrioritizedViewPermission(permission, Operation.ViewAll)) {
-        const { data } = await getAllNotificationTemplates({
-          limit: PAGE_SIZE_LARGE,
-          provider: ProviderType.User,
-        });
-
-        setTemplates(data);
-      }
-    } catch {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.template-plural') })
-      );
-    } finally {
-      setLoadingState((state) => ({ ...state, templates: false }));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isEmpty(extraFormWidgets)) {
-      fetchTemplates();
-    }
-  }, [extraFormWidgets]);
-
-  const isLoading = useMemo(
-    () => Object.values(loadingState).some((val) => val),
-    [loadingState]
-  );
+  // Only the edit route fetches an alert, and a retry clears the error first.
+  if (alertError) {
+    return (
+      <Box className="tw:py-4" direction="col" gap={4}>
+        <TitleBreadcrumb titleLinks={breadcrumb} />
+        <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+          {getAlertLoadErrorPlaceholder(alertError.response?.status)}
+        </Box>
+      </Box>
+    );
+  }
 
   if (isLoading || (isEditMode && isEmpty(alert))) {
     return <Loader />;
+  }
+
+  if (alert?.provider === ProviderType.System) {
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={t('message.system-alert-edit-message')}
+          icon={<Database01 />}
+        />
+      </div>
+    );
   }
 
   return (
@@ -275,171 +139,18 @@ function AddObservabilityPage() {
         className: 'content-resizable-panel-container ',
         allowScroll: true,
         children: (
-          <Card className="steps-form-container">
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <TitleBreadcrumb titleLinks={breadcrumb} />
-              </Col>
-
-              <Col span={24}>
-                <Typography.Title level={5}>
-                  {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
-                    entity: t('label.alert'),
-                  })}
-                </Typography.Title>
-                <Typography.Text>
-                  {t('message.alerts-description')}
-                </Typography.Text>
-              </Col>
-
-              <Col span={24}>
-                <Form<ModifiedCreateEventSubscription>
-                  form={form}
-                  initialValues={{
-                    ...alert,
-                    displayName: getEntityName(alert),
-                    resources: alert?.filteringRules?.resources,
-                  }}
-                  validateMessages={VALIDATION_MESSAGES}
-                  onFinish={handleSave}>
-                  <Row gutter={[20, 20]}>
-                    <Col span={24}>
-                      <Form.Item
-                        label={t('label.name')}
-                        labelCol={{ span: 24 }}
-                        name="displayName"
-                        rules={NAME_FIELD_RULES}>
-                        <Input placeholder={t('label.name')} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={24}>
-                      <Form.Item
-                        label={t('label.description')}
-                        labelCol={{ span: 24 }}
-                        name="description"
-                        trigger="onTextChange">
-                        <RichTextEditor
-                          data-testid="description"
-                          initialValue={alert?.description}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={24}>
-                      <Row justify="center">
-                        <Col span={24}>
-                          <AlertFormSourceItem
-                            filterResources={filterResources}
-                          />
-                        </Col>
-                        {shouldShowFiltersSection && (
-                          <>
-                            <Col>
-                              <Divider dashed type="vertical" />
-                            </Col>
-                            <Col span={24}>
-                              <ObservabilityFormFiltersItem
-                                supportedFilters={supportedFilters}
-                              />
-                            </Col>
-                          </>
-                        )}
-                        {shouldShowActionsSection && (
-                          <>
-                            <Col>
-                              <Divider dashed type="vertical" />
-                            </Col>
-                            <Col span={24}>
-                              <ObservabilityFormTriggerItem
-                                supportedTriggers={supportedTriggers}
-                              />
-                            </Col>
-                          </>
-                        )}
-                        <Col>
-                          <Divider dashed type="vertical" />
-                        </Col>
-                        <Col span={24}>
-                          <DestinationFormItem />
-                        </Col>
-
-                        {!isEmpty(extraFormWidgets) && (
-                          <>
-                            {Object.entries(extraFormWidgets).map(
-                              ([name, Widget]) => (
-                                <Fragment key={name}>
-                                  <Col>
-                                    <Divider dashed type="vertical" />
-                                  </Col>
-                                  <Col span={24}>
-                                    <Widget
-                                      alertDetails={alert}
-                                      formRef={form}
-                                      loading={isLoading}
-                                      templateResourcePermission={
-                                        templateResourcePermission
-                                      }
-                                      templates={templates}
-                                    />
-                                  </Col>
-                                </Fragment>
-                              )
-                            )}
-                          </>
-                        )}
-                      </Row>
-                    </Col>
-                    <Form.Item
-                      hidden
-                      initialValue={AlertType.Observability}
-                      name="alertType"
-                    />
-                    <Form.Item
-                      hidden
-                      initialValue={ProviderType.User}
-                      name="provider"
-                    />
-
-                    {!isUndefined(inlineAlertDetails) && (
-                      <Col span={24}>
-                        <InlineAlert {...inlineAlertDetails} />
-                      </Col>
-                    )}
-
-                    <Col span={24}>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          data-testid="cancel-button"
-                          type="text"
-                          onClick={() => navigate(-1)}>
-                          {t('label.cancel')}
-                        </Button>
-
-                        {Object.entries(extraFormButtons).map(
-                          ([name, ButtonComponent]) => (
-                            <ButtonComponent
-                              alertDetails={alert}
-                              formRef={form}
-                              key={name}
-                              templateResourcePermission={
-                                templateResourcePermission
-                              }
-                              templates={templates}
-                            />
-                          )
-                        )}
-                        <Button
-                          data-testid="save-button"
-                          htmlType="submit"
-                          loading={saving}
-                          type="primary">
-                          {t('label.save')}
-                        </Button>
-                      </div>
-                    </Col>
-                  </Row>
-                </Form>
-              </Col>
-            </Row>
+          <Card
+            className={classNames('steps-form-container', {
+              'tw:my-4': isAiMode,
+            })}>
+            <Card.Content>
+              <ObservabilityAlertForm
+                {...formState}
+                shouldShowActionsSection={
+                  !isNotification && formState.shouldShowActionsSection
+                }
+              />
+            </Card.Content>
           </Card>
         ),
         minWidth: 700,
@@ -447,7 +158,9 @@ function AddObservabilityPage() {
         wrapInCard: false,
       }}
       pageTitle={t('label.add-entity', {
-        entity: t('label.observability'),
+        entity: t(
+          isNotification ? 'label.notification-alert' : 'label.observability'
+        ),
       })}
       secondPanel={{
         children: <></>,

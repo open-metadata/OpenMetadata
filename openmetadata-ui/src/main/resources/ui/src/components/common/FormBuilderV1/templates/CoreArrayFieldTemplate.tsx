@@ -11,33 +11,40 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
-import { ArrayFieldTemplateProps } from '@rjsf/utils';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { ADDITIONAL_PROPERTY_FLAG, ArrayFieldTemplateProps } from '@rjsf/utils';
 import { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export const CoreArrayFieldTemplate: FunctionComponent<
   ArrayFieldTemplateProps
-> = ({ title, canAdd, onAddClick, items, idSchema }) => {
+> = ({ title, canAdd, onAddClick, items, idSchema, schema }) => {
   const { t } = useTranslation();
+  // A map entry's key is already shown beside its value.
+  const isMapEntry = ADDITIONAL_PROPERTY_FLAG in schema;
 
   return (
     <Fragment>
-      <div className="tw:flex tw:items-center tw:justify-between">
-        <label className="tw:text-sm tw:font-medium tw:text-[var(--color-text-primary)]">
-          {title}
-        </label>
+      <div className="tw:flex tw:items-center tw:justify-between tw:bg-utility-gray-blue-50">
+        {!isMapEntry && (
+          <Typography
+            as="label"
+            className="tw:text-primary"
+            size="text-sm"
+            weight="medium">
+            {title}
+          </Typography>
+        )}
         {canAdd && (
-          <Button
-            aria-label={t('label.add-entity', { entity: title })}
+          <ButtonUtility
             color="primary"
             data-testid={`add-item-${title}`}
+            icon={Plus}
             id={`${idSchema.$id}`}
-            size="sm"
-            onClick={onAddClick}>
-            <Plus data-icon size={14} />
-          </Button>
+            tooltip={t('label.add-entity', { entity: title })}
+            onClick={onAddClick}
+          />
         )}
       </div>
       {items.map((element, index) => (
@@ -45,18 +52,18 @@ export const CoreArrayFieldTemplate: FunctionComponent<
           className={`tw:flex tw:w-full tw:items-center${
             index > 0 ? ' tw:mt-2' : ''
           }`}
-          key={`${element.key}-${index}`}>
+          key={element.key}>
           <div className="tw:flex-1">{element.children}</div>
           {element.hasRemove && (
-            <button
-              aria-label={t('label.remove')}
-              className="tw:ml-2 tw:flex tw:items-center tw:text-[var(--color-text-error-primary)] hover:tw:opacity-80"
-              type="button"
-              onClick={(event) =>
+            <ButtonUtility
+              className="tw:ml-2"
+              icon={Trash01}
+              size="sm"
+              tooltip={t('label.remove')}
+              onClick={(event: React.MouseEvent<HTMLButtonElement>) =>
                 element.onDropIndexClick(element.index)(event)
-              }>
-              <Trash01 size={16} />
-            </button>
+              }
+            />
           )}
         </div>
       ))}

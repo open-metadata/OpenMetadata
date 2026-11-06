@@ -19,7 +19,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.fivetranConn
 )
 from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
 
-from .conftest import FivetranMockHandler
+from .conftest import FivetranMockHandler  # noqa: TID252
 
 
 @pytest.mark.integration

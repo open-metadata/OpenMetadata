@@ -10,20 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { toast } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { omit } from 'lodash';
 import imageClassBase from '../components/BlockEditor/Extensions/image/ImageClassBase';
-import { CoverImageFileValue } from '../components/common/CoverImageUpload/CoverImageUpload.interface';
 import { ERROR_MESSAGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
+import { queryClient } from '../queryClient';
+import { invalidateDomainStyles } from '../rest/queries/domainStyleQuery';
 import { getIsErrorMatch } from './APIUtils';
-import {
-  showNotistackError,
-  showNotistackSuccess,
-  showNotistackWarning,
-} from './NotistackUtils';
+import { showErrorToast } from './ToastUtils';
+
+const STYLED_CHIP_ENTITY_TYPES: ReadonlySet<EntityType> = new Set([
+  EntityType.DOMAIN,
+  EntityType.DATA_PRODUCT,
+]);
+
+/**
+ * Position offset for cover image using CSS percentage values
+ * @property y - Vertical offset percentage using CSS translateY()
+ */
+export interface CoverImagePosition {
+  y?: string;
+}
+
+/**
+ * Cover image value with File (not uploaded yet)
+ * @property file - The File object to be uploaded later
+ * @property position - Optional positioning offset
+ */
+export interface CoverImageFileValue {
+  file: File;
+  position?: CoverImagePosition;
+}
 
 /**
  * Options for uploading cover image after entity creation
@@ -120,12 +140,12 @@ export interface CreateEntityWithCoverImageOptions<TFormData, TEntity> {
   createEntity: (cleanFormData: TFormData) => Promise<TEntity>;
   patchEntity: (entityId: string, patch: Operation[]) => Promise<TEntity>;
   onSuccess: (entity: TEntity) => void | Promise<void>;
-  enqueueSnackbar: (
-    message: React.ReactNode,
-    options?: Record<string, unknown>
-  ) => void;
-  closeSnackbar: () => void;
   t: (key: string, options?: Record<string, unknown>) => string;
+  /**
+   * When true, the create-error toast is skipped so the caller can surface the
+   * failure itself (e.g. as an inline field error). The error is still rethrown.
+   */
+  suppressErrorToast?: boolean;
 }
 
 /**
@@ -154,8 +174,6 @@ export interface CreateEntityWithCoverImageOptions<TFormData, TEntity> {
  *     closeDrawer();
  *     refetch();
  *   },
- *   enqueueSnackbar,
- *   closeSnackbar,
  *   t,
  * });
  * ```
@@ -171,9 +189,8 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
     createEntity,
     patchEntity,
     onSuccess,
-    enqueueSnackbar,
-    closeSnackbar,
     t,
+    suppressErrorToast = false,
   } = options;
 
   try {
@@ -236,25 +253,20 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
 
     // Step 5: Show appropriate notification based on upload status
     if (uploadFailed) {
-      // Entity created but upload failed - show warning
-      showNotistackWarning(
-        enqueueSnackbar,
-        <Typography className="tw:font-bold">
-          {t('message.entity-created-but-cover-image-failed', {
-            entity: entityLabel,
-          })}
-        </Typography>,
-        closeSnackbar
+      toast.warning(
+        t('message.entity-created-but-cover-image-failed', {
+          entity: entityLabel,
+        }),
+        { autoDismiss: false }
       );
     } else {
-      // Entity created successfully (with or without cover image)
-      showNotistackSuccess(
-        enqueueSnackbar,
-        <Typography className="tw:font-bold">
-          {t('server.create-entity-success', { entity: entityLabel })}
-        </Typography>,
-        closeSnackbar
-      );
+      toast.success(t('server.create-entity-success', { entity: entityLabel }));
+    }
+
+    // A new styled domain or data product must be in the chip style list
+    // before its chips render. ADR:2026-11-02-domain-chips-resolve-their-style-by-domain-id
+    if (STYLED_CHIP_ENTITY_TYPES.has(entityType)) {
+      void invalidateDomainStyles(queryClient);
     }
 
     // Step 6: Call success callback
@@ -262,26 +274,20 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
 
     return finalEntity;
   } catch (error) {
-    // Error handling
-    showNotistackError(
-      enqueueSnackbar,
-      getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
-        <Typography className="tw:font-bold">
-          {t('server.entity-already-exist', {
-            entity: entityLabel,
-            entityPlural: entityPluralLabel,
-            name: (formData as { name?: string }).name,
-          })}
-        </Typography>
-      ) : (
-        (error as AxiosError)
-      ),
-      t('server.add-entity-error', {
-        entity: entityLabel.toLowerCase(),
-      }),
-      { vertical: 'top', horizontal: 'center' },
-      closeSnackbar
-    );
+    if (!suppressErrorToast) {
+      showErrorToast(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
+              entity: entityLabel,
+              entityPlural: entityPluralLabel,
+              name: (formData as { name?: string }).name,
+            })
+          : (error as AxiosError),
+        t('server.add-entity-error', {
+          entity: entityLabel.toLowerCase(),
+        })
+      );
+    }
 
     throw error;
   }

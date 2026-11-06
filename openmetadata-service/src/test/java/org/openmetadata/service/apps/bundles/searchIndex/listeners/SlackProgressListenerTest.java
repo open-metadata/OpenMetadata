@@ -37,7 +37,6 @@ class SlackProgressListenerTest {
             .maxConcurrentRequests(8)
             .payloadSize(5L * 1024 * 1024)
             .autoTune(true)
-            .recreateIndex(false)
             .build();
 
     listener.onJobConfigured(mock(ReindexingJobContext.class), config);
@@ -53,7 +52,7 @@ class SlackProgressListenerTest {
     assertEquals("2", details.get("Producer threads"));
     assertEquals("500", details.get("Queue size"));
     assertEquals("1", details.get("Total entities"));
-    assertEquals("No", details.get("Recreating indices"));
+    assertEquals("Staged indexes with alias promotion", details.get("Indexing mode"));
     assertEquals("5 MB", details.get("Payload size"));
     assertEquals("8", details.get("Concurrent requests"));
   }
@@ -74,7 +73,6 @@ class SlackProgressListenerTest {
             .queueSize(200)
             .maxConcurrentRequests(3)
             .payloadSize(2L * 1024 * 1024)
-            .recreateIndex(true)
             .build();
     Stats stats =
         new Stats()

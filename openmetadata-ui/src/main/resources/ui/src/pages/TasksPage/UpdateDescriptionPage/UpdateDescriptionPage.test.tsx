@@ -32,14 +32,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ entityType: 'table' }),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
-jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
-  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
-    <>
-      <div>{firstPanel.children}</div>
-      <div>{secondPanel.children}</div>
-    </>
-  ))
-);
 const mockTableData = {
   id: 'id1',
   name: 'dim_location',
@@ -68,15 +60,20 @@ const mockTableData = {
     },
   ],
 };
-jest.mock('../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../utils/TasksUtils'),
+jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskEntityFetchUtils'),
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
       setEntityData(mockTableData);
     }),
-  fetchOptions: jest.fn(),
   getBreadCrumbList: jest.fn().mockReturnValue([]),
+}));
+jest.mock('../../../utils/TaskAssigneeUtils', () => ({
+  fetchOptions: jest.fn(),
+}));
+jest.mock('../../../utils/TaskFieldUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskFieldUtils'),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
   getTaskFieldColumns: jest
     .fn()
@@ -112,10 +109,8 @@ jest.mock('../../../rest/taskFormSchemasAPI', () => ({
   resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../../rest/tasksAPI'),
   createTask: jest.fn().mockResolvedValue({}),
-  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
-  TaskEntityType: { DescriptionUpdate: 'DescriptionUpdate' },
-  TaskPriority: { Medium: 'Medium' },
 }));
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
@@ -172,22 +167,21 @@ describe('UpdateDescriptionPage', () => {
       category: 'MetadataUpdate',
       type: 'DescriptionUpdate',
       priority: 'Medium',
-      about: 'sample_data.ecommerce_db.shopify.dim_location',
-      aboutType: 'table',
+      about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
       assignees: ['sample_data'],
       payload: {
         newDescription:
           'Unique identifier for the store. This column is the primary key for this table.',
         currentDescription:
           'Unique identifier for the store. This column is the primary key for this table.',
-        fieldPath: 'columns::shop_id::description',
+        fieldPath: 'columns.shop_id.description',
       },
     });
   });
 
   it('should render description editor when current description is empty', async () => {
     const { getColumnObjectByPath } = jest.requireMock(
-      '../../../utils/TasksUtils'
+      '../../../utils/TaskFieldUtils'
     );
     getColumnObjectByPath.mockReturnValueOnce({
       description: '',

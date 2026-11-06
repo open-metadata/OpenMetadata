@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactNode } from 'react';
 
 export interface DeleteModalProps {
   /** Whether the modal is open */
@@ -17,7 +18,7 @@ export interface DeleteModalProps {
   /** Title of the entity being deleted */
   entityTitle: string;
   /** Confirmation message to display */
-  message: string;
+  message: ReactNode;
   /** Whether the delete action is in progress */
   isDeleting?: boolean;
   /** Callback when cancel is clicked */

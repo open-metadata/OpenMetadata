@@ -10,23 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LeftOutlined } from '@ant-design/icons';
+
 import {
   Alert,
+  Box,
   Button,
-  Carousel,
-  Col,
-  Row,
-  Space,
+  Grid,
   Tooltip,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronLeft,
+  Completeness,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { uniqueId } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppScreenshots } from './AppScreenshots';
+
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CheckMarkIcon } from '../../../../assets/svg/ic-cloud-checkmark.svg';
 import { ROUTES } from '../../../../constants/constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
@@ -34,8 +36,8 @@ import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getApplicationByName } from '../../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../../../rest/applicationMarketPlaceAPI';
-import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { isCacheWarmupApplication } from '../../../../utils/ApplicationUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getAppInstallPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -56,6 +58,12 @@ const MarketPlaceAppDetails = () => {
   const [appScreenshots, setAppScreenshots] = useState<JSX.Element[]>([]);
 
   const isAppDisabled = useMemo(() => appData?.enabled === false, [appData]);
+  const isCacheWarmupDisabled = useMemo(
+    () =>
+      isAppDisabled &&
+      isCacheWarmupApplication(appData?.name ?? appData?.fullyQualifiedName),
+    [appData, isAppDisabled]
+  );
 
   const loadScreenshot = async (screenshotName: string) => {
     try {
@@ -65,10 +73,15 @@ const MarketPlaceAppDetails = () => {
       const imageSrc = imageModule.default;
 
       return (
-        <img alt={screenshotName} src={imageSrc} style={{ height: '320px' }} />
+        <img
+          alt={screenshotName}
+          key={screenshotName}
+          src={imageSrc}
+          style={{ height: '320px' }}
+        />
       );
     } catch (error) {
-      return <></>;
+      return <Fragment key={screenshotName} />;
     }
   };
 
@@ -126,6 +139,10 @@ const MarketPlaceAppDetails = () => {
       return t('message.app-already-installed');
     }
     if (isAppDisabled) {
+      if (isCacheWarmupDisabled) {
+        return t('message.cache-service-not-configured-message');
+      }
+
       return (
         <Transi18next
           i18nKey="message.paid-addon-description"
@@ -140,94 +157,156 @@ const MarketPlaceAppDetails = () => {
     }
 
     return '';
-  }, [isInstalled, isAppDisabled, appData?.displayName]);
+  }, [
+    isInstalled,
+    isAppDisabled,
+    isCacheWarmupDisabled,
+    appData?.displayName,
+    t,
+  ]);
 
   const leftPanel = useMemo(() => {
     return (
-      <div className="p-x-md p-t-md ">
+      <div className="p-x-md p-t-md">
         <Button
-          className="p-0"
-          icon={<LeftOutlined />}
-          size="small"
-          type="text"
+          color="tertiary"
+          iconLeading={ChevronLeft}
+          size="xs"
           onClick={onBrowseAppsClick}>
-          <Typography.Text className="font-medium">
+          <Typography className="font-medium">
             {t('label.browse-app-plural')}
-          </Typography.Text>
+          </Typography>
         </Button>
         <div className="flex-center m-t-md">
           <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         </div>
-        <Tooltip placement="top" title={tooltipTitle} trigger="hover">
+        <Tooltip
+          arrow
+          excludeTriggerFromTabOrder
+          isDisabled={!tooltipTitle}
+          placement="top"
+          title={tooltipTitle}
+          triggerClassName="tw:block tw:w-full m-t-md">
           <Button
-            block
-            className="m-t-md"
+            className="tw:w-full"
+            color="primary"
             data-testid="install-application"
-            disabled={isInstalled || isAppDisabled}
-            type="primary"
-            onClick={installApp}>
+            isDisabled={isInstalled || isAppDisabled}
+            size="md"
+            onPress={installApp}>
             {t('label.install')}
           </Button>
         </Tooltip>
 
         {isAppDisabled && (
           <Alert
-            className="m-t-md text-xs d-flex items-start p-xs"
-            message={
-              <>
-                <Typography.Text>
-                  <Transi18next
-                    i18nKey="message.paid-addon-description"
-                    renderElement={
-                      <span data-testid="appName" style={{ fontWeight: 600 }} />
-                    }
-                    values={{
-                      app: appData?.displayName,
-                    }}
-                  />
-                </Typography.Text>
+            className="m-t-md"
+            showIcon={false}
+            title={
+              isCacheWarmupDisabled ? (
+                <Typography>
+                  {t('message.cache-service-not-configured-message')}
+                </Typography>
+              ) : (
+                <>
+                  <Typography>
+                    <Transi18next
+                      i18nKey="message.paid-addon-description"
+                      renderElement={
+                        <span
+                          data-testid="appName"
+                          style={{ fontWeight: 600 }}
+                        />
+                      }
+                      values={{
+                        app: appData?.displayName,
+                      }}
+                    />
+                  </Typography>
 
-                <Typography.Text className="d-block">
-                  {t('message.please-contact-us')}
-                </Typography.Text>
-              </>
+                  <Typography className="d-block">
+                    {t('message.please-contact-us')}
+                  </Typography>
+                </>
+              )
             }
-            type="info"
+            variant="brand"
           />
         )}
         <div className="m-t-md">
-          <CheckMarkIcon className="v-middle m-r-xss" />
-          <Typography.Text className="text-xs font-medium text-grey-muted">
-            {t('message.marketplace-verify-msg', {
-              brandName: brandClassBase.getPageTitle(),
-            })}
-          </Typography.Text>
+          <Completeness
+            className="tw:align-middle tw:mr-1 tw:text-utility-blue-700"
+            size={16}
+          />
+          <Typography className="text-xs font-medium" color="secondary">
+            {t('message.marketplace-verify-msg')}
+          </Typography>
         </div>
-        <Space className="p-t-lg" direction="vertical" size={8}>
-          <Typography.Text>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space p-t-lg"
+          direction="col"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Typography>
             {appData?.supportEmail && (
-              <Typography.Link
-                data-testid="app-support-email"
-                href={`mailto:${appData?.supportEmail}`}
-                target="_blank">
-                <Space>{t('label.get-app-support')}</Space>
-              </Typography.Link>
+              <Typography>
+                <a
+                  data-testid="app-support-email"
+                  href={`mailto:${appData?.supportEmail}`}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    {t('label.get-app-support')}
+                  </Box>
+                </a>
+              </Typography>
             )}
             {appData?.developerUrl && (
-              <Typography.Link href={appData?.developerUrl} target="_blank">
-                <Space>{t('label.visit-developer-website')}</Space>
-              </Typography.Link>
+              <Typography>
+                <a
+                  href={appData?.developerUrl}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    {t('label.visit-developer-website')}
+                  </Box>
+                </a>
+              </Typography>
             )}
             {appData?.privacyPolicyUrl && (
-              <Typography.Link href={appData?.privacyPolicyUrl} target="_blank">
-                <Space>{t('label.privacy-policy')}</Space>
-              </Typography.Link>
+              <Typography>
+                <a
+                  href={appData?.privacyPolicyUrl}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    {t('label.privacy-policy')}
+                  </Box>
+                </a>
+              </Typography>
             )}
-          </Typography.Text>
-        </Space>
+          </Typography>
+        </Box>
       </div>
     );
-  }, [appData, isInstalled, tooltipTitle]);
+  }, [appData, isInstalled, isCacheWarmupDisabled, tooltipTitle]);
 
   useEffect(() => {
     fetchAppDetails();
@@ -242,42 +321,28 @@ const MarketPlaceAppDetails = () => {
     <PageLayoutV1
       leftPanel={leftPanel}
       leftPanelWidth={260}
-      pageTitle={t('label.application-plural')}>
-      <Row>
-        <Col span={24}>
-          <Typography.Title className="p-md m-0 p-t-xss" level={2}>
+      pageTitle={getEntityName(appData) || t('label.application-plural')}>
+      <Grid className="layout-row layout-grid">
+        <Grid.Item className="layout-column" span={24}>
+          <Typography as="h2" className="p-md m-0 p-t-xss">
             {getEntityName(appData)}
-          </Typography.Title>
-        </Col>
-      </Row>
-      <Row>
-        <Col span={24}>
-          <Carousel
-            autoplay
-            dots
-            autoplaySpeed={3000}
-            className="p-x-md"
-            easing="ease-in-out">
-            {appScreenshots.map((data) => (
-              <div
-                className="app-slider-container"
-                data-testid="slider-container"
-                key={uniqueId()}>
-                {data}
-              </div>
-            ))}
-          </Carousel>
-        </Col>
+          </Typography>
+        </Grid.Item>
+      </Grid>
+      <Grid className="layout-row layout-grid">
+        <Grid.Item className="layout-column" span={24}>
+          <AppScreenshots key={fqn} screenshots={appScreenshots} />
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <div className="p-md">
             <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
               markdown={appData?.description ?? ''}
             />
           </div>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

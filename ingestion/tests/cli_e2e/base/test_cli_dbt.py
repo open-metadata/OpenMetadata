@@ -14,7 +14,6 @@ Test DBT with CLI
 """
 
 from abc import abstractmethod
-from typing import List
 from unittest import TestCase
 
 import pytest
@@ -23,7 +22,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.ingestion.api.status import Status
 
-from .test_cli import CliBase
+from .test_cli import CliBase  # noqa: TID252
 
 
 class CliDBTBase(TestCase):
@@ -69,8 +68,14 @@ class CliDBTBase(TestCase):
             test_case_entity_list = self.openmetadata.list_entities(
                 entity=TestDefinition,
                 params={"testPlatform": TestPlatform.dbt.value},
+                # default limit=100 would silently truncate if this ever grows past it.
+                limit=1000,
             )
-            self.assertTrue(len(test_case_entity_list.entities) == 26)
+            # TestDefinition is shared per dbt test *type*, not per test case: one
+            # definition per generic test type (unique, not_null, accepted_values,
+            # relationships), plus a separate definition per type when a test resolves
+            # to a table-level link instead of a single column (unique_table).
+            self.assertEqual(len(test_case_entity_list.entities), 6)
 
         # 5. test dbt lineage
         @pytest.mark.order(5)
@@ -100,7 +105,7 @@ class CliDBTBase(TestCase):
 
         @staticmethod
         @abstractmethod
-        def fqn_dbt_tables() -> List[str]:
+        def fqn_dbt_tables() -> list[str]:
             raise NotImplementedError()
 
         @abstractmethod

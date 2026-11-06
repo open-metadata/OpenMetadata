@@ -15,8 +15,8 @@
   width: 180px;
 
   .chip-tag-link {
-    font-weight: 400;
-    font-size: 14px;
+    font-weight: var(--om-font-weight-regular);
+    font-size: var(--om-font-size-sm);
     line-height: 20px;
     color: @text-color;
     &:hover {
@@ -25,17 +25,6 @@
     }
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .chip-text {
-    color: @primary-heading-color;
-    &:hover {
-      color: @primary-heading-color;
-    }
-    &::after {
-      animation: none !important;
-      display: none !important;
-    }
   }
 }
 .no-data-chip-placeholder {

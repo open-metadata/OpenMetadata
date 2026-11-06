@@ -10,16 +10,20 @@
 #  limitations under the License.
 
 """
-Regex-based parser for AWS Glue PySpark/GlueContext scripts to extract lineage.
+Lineage of AWS Glue PySpark/GlueContext scripts.
 
-Parses GlueContext DynamicFrame APIs and Spark DataFrame APIs to identify
-source and target entities (S3 paths, Glue Catalog tables, JDBC tables).
+S3 paths, Glue Catalog tables and JDBC tables used by GlueContext DynamicFrame
+and Spark DataFrame calls are matched with regular expressions over the source.
+Snowflake tables are found from the script's Python AST, in snowflake_parser.
 """
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
 
+from metadata.ingestion.source.pipeline.gluepipeline.snowflake_parser import (
+    SnowflakeRef,
+    parse_snowflake_refs,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -124,7 +128,7 @@ SPARK_WRITE_INSERTINTO_PATTERN = re.compile(
 S3_PATH_PATTERN = re.compile(r"s3[an]?://[^\s\"',\]\}]+")
 
 
-def _extract_kwarg(block: str, key: str) -> Optional[str]:
+def _extract_kwarg(block: str, key: str) -> str | None:
     pattern = re.compile(
         rf'{key}\s*=\s*["\']([^"\']+)["\']',
     )
@@ -132,7 +136,7 @@ def _extract_kwarg(block: str, key: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
-def _extract_dict_value(block: str, key: str) -> Optional[str]:
+def _extract_dict_value(block: str, key: str) -> str | None:
     pattern = re.compile(
         rf'["\']?{key}["\']?\s*:\s*["\']([^"\']+)["\']',
     )
@@ -140,8 +144,12 @@ def _extract_dict_value(block: str, key: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
-def _extract_s3_paths(block: str) -> List[str]:
+def _extract_s3_paths(block: str) -> list[str]:
     return list(set(S3_PATH_PATTERN.findall(block)))
+
+
+def _is_snowflake(connection_type: str | None) -> bool:
+    return bool(connection_type) and connection_type.lower() == "snowflake"
 
 
 @dataclass
@@ -152,20 +160,22 @@ class CatalogRef:
 
 @dataclass
 class JDBCRef:
-    connection_name: Optional[str] = None
-    jdbc_url: Optional[str] = None
-    database: Optional[str] = None
-    table: Optional[str] = None
+    connection_name: str | None = None
+    jdbc_url: str | None = None
+    database: str | None = None
+    table: str | None = None
 
 
 @dataclass
 class ScriptLineageResult:
-    s3_sources: List[str] = field(default_factory=list)
-    s3_targets: List[str] = field(default_factory=list)
-    catalog_sources: List[CatalogRef] = field(default_factory=list)
-    catalog_targets: List[CatalogRef] = field(default_factory=list)
-    jdbc_sources: List[JDBCRef] = field(default_factory=list)
-    jdbc_targets: List[JDBCRef] = field(default_factory=list)
+    s3_sources: list[str] = field(default_factory=list)
+    s3_targets: list[str] = field(default_factory=list)
+    catalog_sources: list[CatalogRef] = field(default_factory=list)
+    catalog_targets: list[CatalogRef] = field(default_factory=list)
+    jdbc_sources: list[JDBCRef] = field(default_factory=list)
+    jdbc_targets: list[JDBCRef] = field(default_factory=list)
+    snowflake_sources: list[SnowflakeRef] = field(default_factory=list)
+    snowflake_targets: list[SnowflakeRef] = field(default_factory=list)
 
     @property
     def has_lineage(self) -> bool:
@@ -176,6 +186,8 @@ class ScriptLineageResult:
             or self.catalog_targets
             or self.jdbc_sources
             or self.jdbc_targets
+            or self.snowflake_sources
+            or self.snowflake_targets
         )
 
 
@@ -188,14 +200,19 @@ def parse_glue_script(source_code: str) -> ScriptLineageResult:
     _parse_glue_context_targets(source_code, result)
     _parse_spark_read(source_code, result)
     _parse_spark_write(source_code, result)
+    result.snowflake_sources, result.snowflake_targets = parse_snowflake_refs(source_code)
 
     logger.debug(
-        f"Script lineage result: "
-        f"s3_sources={result.s3_sources}, s3_targets={result.s3_targets}, "
-        f"catalog_sources={len(result.catalog_sources)}, "
-        f"catalog_targets={len(result.catalog_targets)}, "
-        f"jdbc_sources={len(result.jdbc_sources)}, "
-        f"jdbc_targets={len(result.jdbc_targets)}"
+        "Script lineage result: s3_sources=%s, s3_targets=%s, catalog_sources=%d, catalog_targets=%d, "
+        "jdbc_sources=%d, jdbc_targets=%d, snowflake_sources=%d, snowflake_targets=%d",
+        result.s3_sources,
+        result.s3_targets,
+        len(result.catalog_sources),
+        len(result.catalog_targets),
+        len(result.jdbc_sources),
+        len(result.jdbc_targets),
+        len(result.snowflake_sources),
+        len(result.snowflake_targets),
     )
 
     return result
@@ -222,6 +239,8 @@ def _parse_glue_context_sources(source_code: str, result: ScriptLineageResult):
                 result.s3_sources.extend(paths)
                 for p in paths:
                     logger.debug(f"Found S3 source: {p}")
+            elif _is_snowflake(conn_type):
+                continue  # parsed from the AST by snowflake_parser
             elif conn_type and conn_type.lower() in (
                 "jdbc",
                 "mysql",
@@ -239,7 +258,7 @@ def _parse_glue_context_sources(source_code: str, result: ScriptLineageResult):
             logger.debug(f"Failed to parse from_options block: {exc}")
 
 
-def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult):
+def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult):  # noqa: C901
     for match in WRITE_JDBC_CONF_PATTERN.finditer(source_code):
         try:
             block = match.group(1)
@@ -267,6 +286,8 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult):
                 result.s3_targets.extend(paths)
                 for p in paths:
                     logger.debug(f"Found S3 target: {p}")
+            elif _is_snowflake(conn_type):
+                continue  # parsed from the AST by snowflake_parser; not a bare JDBC target
             elif conn_type:
                 table = _extract_dict_value(block, "dbtable")
                 connection_name = _extract_kwarg(block, "catalog_connection")
@@ -301,14 +322,14 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult):
 def _parse_spark_read(source_code: str, result: ScriptLineageResult):
     for match in SPARK_READ_FORMAT_PATTERN.finditer(source_code):
         path = match.group(1)
-        if path.startswith(("s3://", "s3a://", "s3n://")):
+        if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_sources:
                 result.s3_sources.append(path)
                 logger.debug(f"Found Spark read S3 source: {path}")
 
     for match in SPARK_READ_FORMAT_LOAD_PATTERN.finditer(source_code):
         path = match.group(1)
-        if path.startswith(("s3://", "s3a://", "s3n://")):
+        if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_sources:
                 result.s3_sources.append(path)
                 logger.debug(f"Found Spark read.format().load() S3 source: {path}")
@@ -335,14 +356,14 @@ def _parse_spark_read(source_code: str, result: ScriptLineageResult):
 def _parse_spark_write(source_code: str, result: ScriptLineageResult):
     for match in SPARK_WRITE_FORMAT_PATTERN.finditer(source_code):
         path = match.group(1)
-        if path.startswith(("s3://", "s3a://", "s3n://")):
+        if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_targets:
                 result.s3_targets.append(path)
                 logger.debug(f"Found Spark write S3 target: {path}")
 
     for match in SPARK_WRITE_FORMAT_SAVE_PATTERN.finditer(source_code):
         path = match.group(1)
-        if path.startswith(("s3://", "s3a://", "s3n://")):
+        if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_targets:
                 result.s3_targets.append(path)
                 logger.debug(f"Found Spark write.format().save() S3 target: {path}")

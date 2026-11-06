@@ -10,76 +10,53 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as CheckIcon } from '../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as ErrorIcon } from '../assets/svg/ic-close-circle.svg';
-import { ReactComponent as UsageIcon } from '../assets/svg/ic-database.svg';
-import { ReactComponent as LineageIcon } from '../assets/svg/ic-inherited-roles.svg';
-import { ReactComponent as PendingIcon } from '../assets/svg/ic-pending.svg';
-import { ReactComponent as RunningIcon } from '../assets/svg/ic-running.svg';
 
-import { ReactComponent as AutoClassificationIcon } from '../assets/svg/ic-auto-classification.svg';
-import { ReactComponent as AutoTieringIcon } from '../assets/svg/ic-auto-tiering.svg';
-import { ReactComponent as MetadataIcon } from '../assets/svg/ic-empty-doc.svg';
-import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-stack-quality.svg';
-import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.svg';
-
-import { Skeleton, Typography } from 'antd';
-import { groupBy, isEmpty, isUndefined, reduce } from 'lodash';
-import { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
+import { Skeleton, Typography } from '@openmetadata/ui-core-components';
 import {
+  AutoClassification,
+  AutoTiering,
+  CheckCircle02,
+  Database,
+  File04,
+  InheritedRoles,
+  Loading01,
+  PendingChanges,
+  StackQuality,
+  StackSearch,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
+import { isEmpty, isUndefined, reduce } from 'lodash';
+import type { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
+import type {
   AgentsLiveInfo,
   CollateAgentLiveInfo,
 } from '../components/ServiceInsights/ServiceInsightsTab.interface';
+import { AUTOPILOT_AGENTS_ORDERED_LIST } from '../constants/AgentsStatusWidget.constant';
 import {
-  AUTOPILOT_AGENTS_ORDERED_LIST,
-  AUTOPILOT_AGENTS_STATUS_ORDERED_LIST,
-} from '../constants/AgentsStatusWidget.constant';
-import {
-  COLLATE_AUTO_TIER_APP_NAME,
-  COLLATE_DATA_QUALITY_APP_NAME,
-  COLLATE_DOCUMENTATION_APP_NAME,
+  DATA_QUALITY_AUTOMATION_TEMPLATE,
+  DOCUMENTATION_AUTOMATION_TEMPLATE,
+  TIER_AUTOMATION_TEMPLATE,
 } from '../constants/Applications.constant';
-import { NO_RUNS_STATUS } from '../constants/ServiceInsightsTab.constants';
 import { AgentStatus } from '../enums/ServiceInsights.enum';
-import { App } from '../generated/entity/applications/app';
+import type { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import {
-  AppRunRecord,
-  Status,
-} from '../generated/entity/applications/appRunRecord';
-import {
-  IngestionPipeline,
-  PipelineState,
   PipelineType,
   ProviderType,
+  type IngestionPipeline,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
-  WorkflowInstance,
   WorkflowStatus,
+  type WorkflowInstance,
 } from '../generated/governance/workflows/workflowInstance';
+import type { CollateAgentAutomation } from '../rest/applicationAPI';
+import {
+  getAgentLabelFromType,
+  getAgentStatusLabelFromStatus,
+  getAutomationTemplate,
+} from './AgentsStatusWidgetPureUtils';
 import { t } from './i18next/LocalUtil';
 
-export const getAgentLabelFromType = (agentType: string) => {
-  switch (agentType) {
-    case PipelineType.Metadata:
-      return t('label.metadata');
-    case PipelineType.Lineage:
-      return t('label.lineage');
-    case PipelineType.Usage:
-      return t('label.usage');
-    case PipelineType.AutoClassification:
-      return t('label.auto-classification');
-    case PipelineType.Profiler:
-      return t('label.profiler');
-    case COLLATE_DOCUMENTATION_APP_NAME:
-      return t('label.documentation');
-    case COLLATE_DATA_QUALITY_APP_NAME:
-      return t('label.data-quality');
-    case COLLATE_AUTO_TIER_APP_NAME:
-      return t('label.auto-tier');
-    default:
-      return '';
-  }
-};
+const COLLATE_AGENT_ICON = 'collate-agent-icon';
 
 export const getAgentIconFromType = (agentType: string) => {
   let Icon: SvgComponent = () => null;
@@ -87,38 +64,38 @@ export const getAgentIconFromType = (agentType: string) => {
 
   switch (agentType) {
     case PipelineType.Metadata:
-      Icon = MetadataIcon;
+      Icon = File04;
 
       break;
     case PipelineType.Lineage:
-      Icon = LineageIcon;
+      Icon = InheritedRoles;
 
       break;
     case PipelineType.Usage:
-      Icon = UsageIcon;
+      Icon = Database;
 
       break;
     case PipelineType.AutoClassification:
-      Icon = AutoClassificationIcon;
+      Icon = AutoClassification;
 
       break;
     case PipelineType.Profiler:
-      Icon = ProfilerIcon;
+      Icon = StackSearch;
 
       break;
-    case COLLATE_DOCUMENTATION_APP_NAME:
-      Icon = MetadataIcon;
-      className = 'collate-agent-icon';
+    case DOCUMENTATION_AUTOMATION_TEMPLATE:
+      Icon = File04;
+      className = COLLATE_AGENT_ICON;
 
       break;
-    case COLLATE_DATA_QUALITY_APP_NAME:
-      Icon = DataQualityIcon;
-      className = 'collate-agent-icon';
+    case DATA_QUALITY_AUTOMATION_TEMPLATE:
+      Icon = StackQuality;
+      className = COLLATE_AGENT_ICON;
 
       break;
-    case COLLATE_AUTO_TIER_APP_NAME:
-      Icon = AutoTieringIcon;
-      className = 'collate-agent-icon';
+    case TIER_AUTOMATION_TEMPLATE:
+      Icon = AutoTiering;
+      className = COLLATE_AGENT_ICON;
 
       break;
   }
@@ -130,36 +107,10 @@ export const getAgentIconFromType = (agentType: string) => {
   );
 };
 
-export const getAgentStatusLabelFromStatus = (
-  status?: PipelineState | Status | typeof NO_RUNS_STATUS
-) => {
-  switch (status) {
-    case PipelineState.Success:
-    case PipelineState.PartialSuccess:
-    case Status.Active:
-    case Status.ActiveError:
-    case Status.Completed:
-      return AgentStatus.Successful;
-    case PipelineState.Failed:
-    case Status.Failed:
-      return AgentStatus.Failed;
-    case PipelineState.Running:
-    case Status.Running:
-    case Status.Started:
-    case Status.StopInProgress:
-      return AgentStatus.Running;
-    case PipelineState.Queued:
-    case Status.Pending:
-    case NO_RUNS_STATUS:
-    default:
-      return AgentStatus.Pending;
-  }
-};
-
 export const getFormattedAgentsList = (
   recentRunStatuses: Record<string, AppRunRecord[]>,
   agentsList: IngestionPipeline[] = [],
-  collateAIagentsList: App[] = []
+  collateAIagentsList: CollateAgentAutomation[] = []
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsList.filter(
     (agent) => agent.provider === ProviderType.Automation
@@ -171,19 +122,23 @@ export const getFormattedAgentsList = (
     isCollateAgent: false,
     label: getAgentLabelFromType(agent.pipelineType),
     status: getAgentStatusLabelFromStatus(
-      agent.pipelineStatuses?.pipelineState
+      agent.pipelineStatuses?.[0]?.pipelineState
     ),
   }));
 
-  const collateAIagents = collateAIagentsList.map((agent) => ({
-    agentIcon: getAgentIconFromType(agent.name),
-    agentType: agent.name,
-    isCollateAgent: true,
-    label: getAgentLabelFromType(agent.name),
-    status: getAgentStatusLabelFromStatus(
-      recentRunStatuses?.[agent.name]?.[0]?.status
-    ),
-  }));
+  const collateAIagents = collateAIagentsList.map((agent) => {
+    const template = getAutomationTemplate(agent.name) ?? agent.name;
+
+    return {
+      agentIcon: getAgentIconFromType(template),
+      agentType: template,
+      isCollateAgent: true,
+      label: getAgentLabelFromType(template),
+      status: getAgentStatusLabelFromStatus(
+        recentRunStatuses?.[template]?.[0]?.status
+      ),
+    };
+  });
 
   const allAgentsList: AgentsInfo[] = [
     ...formattedAgentsList,
@@ -207,7 +162,12 @@ export const getFormattedAgentsList = (
 
 export const getFormattedAgentsListFromAgentsLiveInfo = (
   agentsLiveInfo: AgentsLiveInfo[],
-  collateAIagentsLiveInfo: CollateAgentLiveInfo[]
+  collateAIagentsLiveInfo: CollateAgentLiveInfo[],
+  // The server folds a failed or partial automation lookup into an empty app status, so on a live
+  // frame an empty one cannot be told apart from "none left". Keep the Collate agents already on
+  // screen rather than wipe them for one frame. Frames that close the stream never get here — the
+  // caller drops them.
+  preservedCollateAgents: AgentsInfo[] = []
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsLiveInfo.filter(
     (agent) => agent.provider === ProviderType.Automation
@@ -221,13 +181,22 @@ export const getFormattedAgentsListFromAgentsLiveInfo = (
     status: getAgentStatusLabelFromStatus(agent.status),
   }));
 
-  const collateAIagents = collateAIagentsLiveInfo.map((agent) => ({
-    agentIcon: getAgentIconFromType(agent.appName ?? ''),
-    agentType: agent.appName ?? '',
-    isCollateAgent: true,
-    label: getAgentLabelFromType(agent.appName ?? ''),
-    status: getAgentStatusLabelFromStatus(agent.status),
-  }));
+  const liveCollateAgents = collateAIagentsLiveInfo.map((agent) => {
+    const template =
+      getAutomationTemplate(agent.appName ?? '') ?? agent.appName;
+
+    return {
+      agentIcon: getAgentIconFromType(template ?? ''),
+      agentType: template ?? '',
+      isCollateAgent: true,
+      label: getAgentLabelFromType(template ?? ''),
+      status: getAgentStatusLabelFromStatus(agent.status),
+    };
+  });
+
+  const collateAIagents = isEmpty(liveCollateAgents)
+    ? preservedCollateAgents
+    : liveCollateAgents;
 
   const allAgentsList: AgentsInfo[] = [
     ...formattedAgentsList,
@@ -249,45 +218,24 @@ export const getFormattedAgentsListFromAgentsLiveInfo = (
   return orderedAgentsList;
 };
 
-export const getAgentStatusSummary = (agentsList: AgentsInfo[]) => {
-  const newList = groupBy(agentsList, 'status');
-
-  const orderedStatusList = reduce(
-    AUTOPILOT_AGENTS_STATUS_ORDERED_LIST,
-    (acc, status) => {
-      if (isEmpty(newList[status])) {
-        return acc;
-      }
-
-      return {
-        ...acc,
-        [status]: newList[status].length,
-      };
-    },
-    {} as Record<string, number>
-  );
-
-  return orderedStatusList;
-};
-
 export const getIconFromStatus = (status?: string) => {
   let Icon: SvgComponent = () => null;
 
   switch (status) {
     case AgentStatus.Successful:
-      Icon = CheckIcon;
+      Icon = CheckCircle02;
 
       break;
     case AgentStatus.Failed:
-      Icon = ErrorIcon;
+      Icon = XCircle;
 
       break;
     case AgentStatus.Running:
-      Icon = RunningIcon;
+      Icon = Loading01;
 
       break;
     case AgentStatus.Pending:
-      Icon = PendingIcon;
+      Icon = PendingChanges;
 
       break;
   }
@@ -305,9 +253,7 @@ export const getAgentRunningStatusMessage = (
   liveAutoPilotStatusData?: WorkflowInstance
 ) => {
   if (isLoading) {
-    return (
-      <Skeleton active paragraph={{ rows: 1, width: '100%' }} title={false} />
-    );
+    return <Skeleton height={16} width="100%" />;
   }
 
   let message = '';
@@ -317,27 +263,27 @@ export const getAgentRunningStatusMessage = (
   switch (status) {
     case WorkflowStatus.Running:
       message = t('message.auto-pilot-agents-running-message');
-      Icon = RunningIcon;
+      Icon = Loading01;
 
       break;
     case WorkflowStatus.Failure:
       message = t('message.auto-pilot-agents-failed-message');
-      Icon = ErrorIcon;
+      Icon = XCircle;
 
       break;
     case WorkflowStatus.Finished:
       message = t('message.auto-pilot-agents-finished-message');
-      Icon = CheckIcon;
+      Icon = CheckCircle02;
 
       break;
     case WorkflowStatus.Exception:
       message = t('message.auto-pilot-agents-exception-message');
-      Icon = ErrorIcon;
+      Icon = XCircle;
 
       break;
   }
 
-  if (!isLoading && isEmpty(agentsInfo)) {
+  if (!isLoading && isEmpty(agentsInfo) && !status) {
     message = t('message.auto-pilot-no-agents-message');
   }
 
@@ -345,11 +291,12 @@ export const getAgentRunningStatusMessage = (
     <div className="flex items-center gap-1">
       <Icon className={status} height={14} width={14} />
 
-      <Typography.Text
-        className="text-grey-muted text-sm"
+      <Typography
+        className="text-sm"
+        color="secondary"
         data-testid="agents-status-message">
         {message}
-      </Typography.Text>
+      </Typography>
     </div>
   );
 };

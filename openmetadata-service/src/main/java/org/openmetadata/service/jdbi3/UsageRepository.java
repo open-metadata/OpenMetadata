@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
+import static org.openmetadata.service.util.EntityUtil.getLatestUsage;
 
 import jakarta.ws.rs.core.Response;
 import java.sql.ResultSet;
@@ -46,9 +47,11 @@ import org.openmetadata.schema.type.EntityUsage;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -115,21 +118,50 @@ public class UsageRepository {
     String fields = "usageSummary";
     // If table usage was reported, add the usage count to schema and database
     String type = entityType.toLowerCase();
-    switch (type) {
-      case TABLE:
-        return tableEntityUsage(method, fields, entityId, entityType, usage);
-      case PIPELINE:
-        return pipelineEntityUsage(method, fields, entityId, entityType, usage);
-      case DASHBOARD:
-        return dashboardEntityUsage(method, fields, entityId, entityType, usage);
-      case CHART:
-        return chartEntityUsage(method, fields, entityId, entityType, usage);
-      case MLMODEL:
-        return mlModelEntityUsage(method, fields, entityId, entityType, usage);
-      default:
-        LOG.error("Invalid Usage Entity Type");
-        throw new UnhandledServerException(
-            CatalogExceptionMessage.entityTypeNotSupported(entityType));
+    RestUtil.PutResponse<?> response =
+        switch (type) {
+          case TABLE -> tableEntityUsage(method, fields, entityId, entityType, usage);
+          case PIPELINE -> pipelineEntityUsage(method, fields, entityId, entityType, usage);
+          case DASHBOARD -> dashboardEntityUsage(method, fields, entityId, entityType, usage);
+          case CHART -> chartEntityUsage(method, fields, entityId, entityType, usage);
+          case MLMODEL -> mlModelEntityUsage(method, fields, entityId, entityType, usage);
+          default -> {
+            LOG.error("Invalid Usage Entity Type");
+            throw new UnhandledServerException(
+                CatalogExceptionMessage.entityTypeNotSupported(entityType));
+          }
+        };
+    // Usage is written via direct DAO calls, bypassing EntityRepository.update — so the
+    // entity-lifecycle search handler never fires and the search doc keeps a stale (or
+    // absent) usageSummary until the next full reindex. Refresh the reported entity's
+    // search doc so live queries (e.g. Explore "Sort by Weekly Usage") reflect usage
+    // immediately. We deliberately do NOT cascade to the rolled-up schema/database here:
+    // usage reporting can be high-volume, the table doc is the surface that matters, and
+    // schema/database usageSummary reconciles on the next reindex.
+    updateUsageInSearch(entityType, entityId);
+    return response;
+  }
+
+  private void updateUsageInSearch(String entityType, UUID entityId) {
+    SearchRepository search = Entity.getSearchRepository();
+    if (search == null) {
+      return;
+    }
+    try {
+      // Patch only usageSummary. A full updateEntity re-indexes with no change description,
+      // which makes the table column sync delete and rebuild every column doc on each report —
+      // hundreds of MiB per report on wide tables (#35866). Read the summary from the DAO: an
+      // entity read here would return the request-cached copy loaded before the usage insert.
+      EntityReference ref = Entity.getEntityReferenceById(entityType, entityId, Include.ALL);
+      search.updateEntityFieldInSearch(
+          entityType,
+          entityId.toString(),
+          ref.getFullyQualifiedName(),
+          FIELD_USAGE_SUMMARY,
+          JsonUtils.getMap(getLatestUsage(dao.usageDAO(), entityId)));
+    } catch (Exception e) {
+      // A search-index hiccup must not fail the usage write, which is already committed.
+      LOG.warn("Failed to update search index with usage for {} {}", entityType, entityId, e);
     }
   }
 
@@ -224,7 +256,7 @@ public class UsageRepository {
   }
 
   private ChangeEvent getChangeEvent(
-      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+      EntityInterface<?> updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEntity(updated)

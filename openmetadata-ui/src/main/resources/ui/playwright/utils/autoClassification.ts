@@ -43,20 +43,13 @@ export const addAndTriggerAutoClassificationPipeline = async (
 
   await page.click('[data-testid="add-new-ingestion-button"]');
 
-  await page
-    .locator('.ant-dropdown:visible [data-menu-id*="autoClassification"]')
-    .waitFor();
+  await page.getByTestId('agent-item-autoClassification').click();
 
-  await page.locator('[data-menu-id*="autoClassification"]').waitFor();
-
-  await page.click('[data-menu-id*="autoClassification"]');
-
-  // Fill the auto classification form details
-  await page.locator('#root\\/tableFilterPattern\\/includes').waitFor();
+  await waitForAllLoadersToDisappear(page);
 
   await mysqlService.fillIngestionDetails(page);
 
-  await page.click('[data-testid="submit-btn"]');
+  await page.getByTestId('next-button').click();
 
   // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
   await mysqlService.scheduleIngestion(page);
@@ -70,10 +63,7 @@ export const addAndTriggerAutoClassificationPipeline = async (
   if (await metadataTab2.isVisible()) {
     await metadataTab2.click();
   }
-  await page
-    .getByLabel('agents')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
   const response = await apiContext
     .get(
@@ -83,18 +73,12 @@ export const addAndTriggerAutoClassificationPipeline = async (
     )
     .then((res) => res.json());
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-  await page.waitForTimeout(3000);
-
-  await page.click(
-    `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
-  );
-  await page.getByTestId('run-button').click();
-
+  const startedAfter = Date.now();
+  await page
+    .getByTestId(`agent-card-${response.data[0].fullyQualifiedName}`)
+    .getByTestId('run-agent-button')
+    .click();
   await toastNotification(page, `Pipeline triggered successfully!`);
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
-  await page.waitForTimeout(2000);
-
-  await mysqlService.handleIngestionRetry('autoClassification', page);
+  await mysqlService.waitForIngestion(page, startedAfter, 'autoClassification');
 };

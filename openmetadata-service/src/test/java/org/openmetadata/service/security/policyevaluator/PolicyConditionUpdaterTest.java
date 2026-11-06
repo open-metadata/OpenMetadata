@@ -13,15 +13,25 @@
 
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.ROLE_FUNCTIONS;
+import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.SERVICE_FUNCTIONS;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.TAG_FUNCTIONS;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.TEAM_FUNCTIONS;
 
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.FunctionCall;
 
 class PolicyConditionUpdaterTest {
+
+  /** Entity names may contain parentheses, commas and apostrophes. */
+  private static final String NAME_WITH_PUNCTUATION = "Cls.Retail (EU), Men's Wear";
+
+  private static final String QUOTED_NAME_WITH_PUNCTUATION = "'Cls.Retail (EU), Men''s Wear'";
 
   // ===================================================================
   // RENAME TESTS
@@ -183,7 +193,7 @@ class PolicyConditionUpdaterTest {
     String result =
         PolicyConditionUpdater.removeByPrefixFromCondition(
             "matchAnyTag('PII.Name', 'PII.Email')", "PII", TAG_FUNCTIONS);
-    assertNull(result);
+    assertEquals("false", result);
   }
 
   @Test
@@ -191,7 +201,7 @@ class PolicyConditionUpdaterTest {
     String result =
         PolicyConditionUpdater.removeByPrefixFromCondition(
             "matchAnyTag('PII')", "PII", TAG_FUNCTIONS);
-    assertNull(result);
+    assertEquals("false", result);
   }
 
   @Test
@@ -207,7 +217,7 @@ class PolicyConditionUpdaterTest {
     String result =
         PolicyConditionUpdater.removeByPrefixFromCondition(
             "matchAnyTag('PII.Name') && hasAnyRole('Admin')", "PII", TAG_FUNCTIONS);
-    assertEquals("hasAnyRole('Admin')", result);
+    assertEquals("false && hasAnyRole('Admin')", result);
   }
 
   // ===================================================================
@@ -226,7 +236,7 @@ class PolicyConditionUpdaterTest {
   void removeFromCondition_removeOnlyArg() {
     String result =
         PolicyConditionUpdater.removeFromCondition("matchAnyTag('A.B')", "A.B", TAG_FUNCTIONS);
-    assertNull(result);
+    assertEquals("false", result);
   }
 
   @Test
@@ -234,7 +244,7 @@ class PolicyConditionUpdaterTest {
     String result =
         PolicyConditionUpdater.removeFromCondition(
             "matchAnyTag('A.B') && hasAnyRole('R1')", "A.B", TAG_FUNCTIONS);
-    assertEquals("hasAnyRole('R1')", result);
+    assertEquals("false && hasAnyRole('R1')", result);
   }
 
   @Test
@@ -248,7 +258,7 @@ class PolicyConditionUpdaterTest {
   void removeFromCondition_roleOnlyArg() {
     String result =
         PolicyConditionUpdater.removeFromCondition("hasAnyRole('R1')", "R1", ROLE_FUNCTIONS);
-    assertNull(result);
+    assertEquals("false", result);
   }
 
   @Test
@@ -256,7 +266,7 @@ class PolicyConditionUpdaterTest {
     String result =
         PolicyConditionUpdater.removeFromCondition(
             "inAnyTeam('marketing') || hasAnyRole('R1')", "marketing", TEAM_FUNCTIONS);
-    assertEquals("hasAnyRole('R1')", result);
+    assertEquals("false || hasAnyRole('R1')", result);
   }
 
   @Test
@@ -264,7 +274,7 @@ class PolicyConditionUpdaterTest {
     String result =
         PolicyConditionUpdater.removeFromCondition(
             "hasAnyRole('R1') && matchAnyTag('A') && inAnyTeam('T1')", "A", TAG_FUNCTIONS);
-    assertEquals("hasAnyRole('R1') && inAnyTeam('T1')", result);
+    assertEquals("hasAnyRole('R1') && false && inAnyTeam('T1')", result);
   }
 
   @Test
@@ -272,7 +282,7 @@ class PolicyConditionUpdaterTest {
     String result =
         PolicyConditionUpdater.removeFromCondition(
             "matchAllTags('A', 'B') && matchAnyTag('A')", "A", TAG_FUNCTIONS);
-    assertEquals("matchAllTags('B')", result);
+    assertEquals("false && false", result);
   }
 
   @Test
@@ -289,59 +299,276 @@ class PolicyConditionUpdaterTest {
   }
 
   // ===================================================================
-  // BOOLEAN SIMPLIFICATION TESTS
+  // SERVICE CONDITION TESTS
   // ===================================================================
 
+  /**
+   * matchAnyServiceTag takes a tag FQN, so a classification or tag rename has to rewrite it — a
+   * condition left pointing at the old FQN resolves to no service, and the Deny rule that was
+   * hiding a service's assets silently starts granting access.
+   */
   @Test
-  void simplifyBooleanExpression_trueAndX() {
-    assertEquals("X", PolicyConditionUpdater.simplifyBooleanExpression("true && X"));
-  }
-
-  @Test
-  void simplifyBooleanExpression_xAndTrue() {
-    assertEquals("X", PolicyConditionUpdater.simplifyBooleanExpression("X && true"));
-  }
-
-  @Test
-  void simplifyBooleanExpression_trueOrX() {
-    assertEquals("true", PolicyConditionUpdater.simplifyBooleanExpression("true || X"));
-  }
-
-  @Test
-  void simplifyBooleanExpression_xOrTrue() {
-    assertEquals("true", PolicyConditionUpdater.simplifyBooleanExpression("X || true"));
-  }
-
-  @Test
-  void simplifyBooleanExpression_justTrue() {
-    assertEquals("true", PolicyConditionUpdater.simplifyBooleanExpression("true"));
-  }
-
-  @Test
-  void simplifyBooleanExpression_noSimplification() {
+  void renameInCondition_serviceTagIsRewrittenWithTheOtherTagFunctions() {
     assertEquals(
-        "hasAnyRole('R1')", PolicyConditionUpdater.simplifyBooleanExpression("hasAnyRole('R1')"));
+        "matchAnyServiceTag('Environment.Dev')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceTag('Env.Dev')", "Env.Dev", "Environment.Dev", TAG_FUNCTIONS));
+  }
+
+  @Test
+  void renamePrefixInCondition_serviceTagFollowsAClassificationRename() {
+    assertEquals(
+        "matchAnyServiceTag('Environment.Development') && isOwner()",
+        PolicyConditionUpdater.renamePrefixInCondition(
+            "matchAnyServiceTag('Env.Development') && isOwner()",
+            "Env",
+            "Environment",
+            TAG_FUNCTIONS));
+  }
+
+  @Test
+  void removeFromCondition_serviceTagIsDroppedWhenTheTagIsDeleted() {
+    assertEquals(
+        "matchAnyServiceTag('Environment.Staging')",
+        PolicyConditionUpdater.removeFromCondition(
+            "matchAnyServiceTag('Environment.Development', 'Environment.Staging')",
+            "Environment.Development",
+            TAG_FUNCTIONS));
+  }
+
+  /** A service rename must follow the condition, for the same fail-open reason. */
+  @Test
+  void renameInCondition_serviceName() {
+    assertEquals(
+        "matchAnyServiceName('snowflake-production')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceName('snowflake-prod')",
+            "snowflake-prod",
+            "snowflake-production",
+            SERVICE_FUNCTIONS));
+  }
+
+  /** A tag rename must not reach into a service-name argument, or vice versa. */
+  @Test
+  void renameInCondition_serviceFunctionsAreScopedToTheirOwnArguments() {
+    String condition = "matchAnyServiceName('prod') && matchAnyServiceTag('prod')";
+
+    assertEquals(
+        "matchAnyServiceName('prod') && matchAnyServiceTag('staging')",
+        PolicyConditionUpdater.renameInCondition(condition, "prod", "staging", TAG_FUNCTIONS));
+    assertEquals(
+        "matchAnyServiceName('staging') && matchAnyServiceTag('prod')",
+        PolicyConditionUpdater.renameInCondition(condition, "prod", "staging", SERVICE_FUNCTIONS));
   }
 
   // ===================================================================
-  // EXTRACT ARGS TESTS
+  // SpEL ESCAPED-APOSTROPHE TESTS
   // ===================================================================
 
+  /**
+   * SpEL writes an apostrophe inside a string literal as {@code ''}. Read as two arguments it would
+   * rewrite into names that exist nowhere, disarming the rule — so the escape has to survive a
+   * round trip.
+   */
   @Test
-  void extractArgs_singleArg() {
+  void findCalls_readsAnEscapedApostropheAsOneArgument() {
     assertEquals(
-        java.util.List.of("A.B"), PolicyConditionUpdater.extractArgs("matchAnyTag('A.B')"));
+        List.of("bob's-db"),
+        onlyCall("matchAnyServiceName('bob''s-db')", SERVICE_FUNCTIONS).args());
   }
 
   @Test
-  void extractArgs_multipleArgs() {
+  void findCalls_keepsEscapedAndPlainArgumentsApart() {
     assertEquals(
-        java.util.List.of("A.B", "C.D"),
-        PolicyConditionUpdater.extractArgs("matchAnyTag('A.B', 'C.D')"));
+        List.of("bob's-db", "plain"),
+        onlyCall("matchAnyServiceName('bob''s-db', 'plain')", SERVICE_FUNCTIONS).args());
   }
 
   @Test
-  void extractArgs_noArgs() {
-    assertEquals(java.util.List.of(), PolicyConditionUpdater.extractArgs("isOwner()"));
+  void renameInCondition_renamesAServiceWhoseNameHasAnApostrophe() {
+    assertEquals(
+        "matchAnyServiceName('renamed')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceName('bob''s-db')", "bob's-db", "renamed", SERVICE_FUNCTIONS));
+  }
+
+  /** The new name has to be re-escaped, or the rewritten condition no longer parses as SpEL. */
+  @Test
+  void renameInCondition_reEscapesAnApostropheInTheNewName() {
+    assertEquals(
+        "matchAnyServiceName('bob''s-db')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceName('plain')", "plain", "bob's-db", SERVICE_FUNCTIONS));
+  }
+
+  @Test
+  void renameInCondition_leavesAnUnrelatedEscapedArgumentIntact() {
+    assertEquals(
+        "matchAnyServiceName('bob''s-db', 'renamed')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceName('bob''s-db', 'plain')", "plain", "renamed", SERVICE_FUNCTIONS));
+  }
+
+  @Test
+  void removeFromCondition_removesAnEscapedArgumentAndKeepsTheRest() {
+    assertEquals(
+        "matchAnyServiceName('plain')",
+        PolicyConditionUpdater.removeFromCondition(
+            "matchAnyServiceName('bob''s-db', 'plain')", "bob's-db", SERVICE_FUNCTIONS));
+  }
+
+  @Test
+  void removeFromCondition_keepsAnEscapedArgumentWhenAnotherIsRemoved() {
+    assertEquals(
+        "matchAnyServiceName('bob''s-db')",
+        PolicyConditionUpdater.removeFromCondition(
+            "matchAnyServiceName('bob''s-db', 'plain')", "plain", SERVICE_FUNCTIONS));
+  }
+
+  /** A hard delete of the only referenced service leaves a call that matches nothing. */
+  @Test
+  void removeFromCondition_neverMatchesWhenTheEscapedNameWasTheOnlyArgument() {
+    assertEquals(
+        "false",
+        PolicyConditionUpdater.removeFromCondition(
+            "matchAnyServiceName('bob''s-db')", "bob's-db", SERVICE_FUNCTIONS));
+  }
+
+  /** Tag FQNs carry the same hazard — a glossary term such as {@code Men's Wear}. */
+  @Test
+  void renameInCondition_renamesATagFqnContainingAnApostrophe() {
+    assertEquals(
+        "matchAnyTag('Glossary.Menswear')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyTag('Glossary.Men''s Wear')",
+            "Glossary.Men's Wear",
+            "Glossary.Menswear",
+            TAG_FUNCTIONS));
+  }
+
+  // ===================================================================
+  // NAMES WITH PUNCTUATION
+  // ===================================================================
+
+  /** A name with punctuation stays one argument through every later rewrite of the condition. */
+  @Test
+  void renameInCondition_keepsANameWithPunctuationAsOneArgumentAcrossLaterRewrites() {
+    String renamed =
+        PolicyConditionUpdater.renameInCondition(
+            "!matchAnyTag('Cls.Restricted')",
+            "Cls.Restricted",
+            NAME_WITH_PUNCTUATION,
+            TAG_FUNCTIONS);
+    assertEquals("!matchAnyTag(" + QUOTED_NAME_WITH_PUNCTUATION + ")", renamed);
+
+    assertEquals(
+        renamed,
+        PolicyConditionUpdater.renameInCondition(
+            renamed, "Other.Tag", "Other.Renamed", TAG_FUNCTIONS));
+    assertEquals(
+        renamed, PolicyConditionUpdater.removeFromCondition(renamed, "Other.Tag", TAG_FUNCTIONS));
+    assertEquals(List.of(NAME_WITH_PUNCTUATION), onlyCall(renamed, TAG_FUNCTIONS).args());
+  }
+
+  @Test
+  void renameInCondition_renamesANameWithPunctuation() {
+    assertEquals(
+        "!matchAnyTag('Cls.Restricted')",
+        PolicyConditionUpdater.renameInCondition(
+            "!matchAnyTag(" + QUOTED_NAME_WITH_PUNCTUATION + ")",
+            NAME_WITH_PUNCTUATION,
+            "Cls.Restricted",
+            TAG_FUNCTIONS));
+  }
+
+  @Test
+  void removeFromCondition_keepsANameWithPunctuationWhenAnotherArgumentIsRemoved() {
+    assertEquals(
+        "matchAnyTag(" + QUOTED_NAME_WITH_PUNCTUATION + ")",
+        PolicyConditionUpdater.removeFromCondition(
+            "matchAnyTag(" + QUOTED_NAME_WITH_PUNCTUATION + ", 'Cls.Other')",
+            "Cls.Other",
+            TAG_FUNCTIONS));
+  }
+
+  /** Every policy is rewritten on any rename, so an untouched call must come back byte for byte. */
+  @Test
+  void renameInCondition_leavesACallWithoutTheRenamedArgumentAsWritten() {
+    String condition = "hasAnyRole( 'R1' ,'R2' ) && isOwner()";
+    assertEquals(
+        condition, PolicyConditionUpdater.renameInCondition(condition, "R3", "R4", ROLE_FUNCTIONS));
+  }
+
+  @Test
+  void findCalls_spansTheWholeCallIncludingItsParentheses() {
+    String condition = "isOwner() && hasAnyRole( 'R1' , 'R2' )";
+    FunctionCall call = onlyCall(condition, ROLE_FUNCTIONS);
+    assertEquals("hasAnyRole( 'R1' , 'R2' )", condition.substring(call.start(), call.end()));
+  }
+
+  @Test
+  void removeFromCondition_leavesAnUnparseableConditionUnchanged() {
+    String condition = "matchAnyTag('A.B'";
+    assertEquals(
+        condition, PolicyConditionUpdater.removeFromCondition(condition, "A.B", TAG_FUNCTIONS));
+  }
+
+  /** A computed argument is not an entity name, so the call is left as written. */
+  @Test
+  void removeFromCondition_leavesACallWithAComputedArgumentUnchanged() {
+    String condition = "matchAnyTag('A.B', isOwner())";
+    assertEquals(
+        condition, PolicyConditionUpdater.removeFromCondition(condition, "A.B", TAG_FUNCTIONS));
+  }
+
+  // ===================================================================
+  // DELETED REFERENCES
+  // ===================================================================
+
+  /**
+   * matchAllTags needs every tag, and a deleted tag is on no asset, so losing any one argument
+   * means the call can no longer match.
+   */
+  @Test
+  void removeFromCondition_matchAllTagsNeverMatchesOnceAnyTagIsDeleted() {
+    assertEquals(
+        "false",
+        PolicyConditionUpdater.removeFromCondition(
+            "matchAllTags('A.B', 'C.D')", "A.B", TAG_FUNCTIONS));
+  }
+
+  @Test
+  void removeByPrefixFromCondition_matchAllTagsNeverMatchesOnceAnyTagIsDeleted() {
+    assertEquals(
+        "false",
+        PolicyConditionUpdater.removeByPrefixFromCondition(
+            "matchAllTags('PII.Name', 'Tier.Tier1')", "PII", TAG_FUNCTIONS));
+  }
+
+  /** No asset carries a deleted tag, so "not tagged with it" now holds everywhere. */
+  @Test
+  void removeFromCondition_keepsTheNegationAroundADeletedCall() {
+    assertEquals(
+        "!false",
+        PolicyConditionUpdater.removeFromCondition("!matchAnyTag('A.B')", "A.B", TAG_FUNCTIONS));
+  }
+
+  @Test
+  void removeFromCondition_producesConditionsThePolicyValidatorAccepts() {
+    for (String condition :
+        List.of(
+            "matchAnyTag('A.B')",
+            "isOwner() && matchAnyTag('A.B')",
+            "!matchAnyTag('A.B') || hasAnyRole('R1')")) {
+      String rewritten =
+          PolicyConditionUpdater.removeFromCondition(condition, "A.B", TAG_FUNCTIONS);
+      assertDoesNotThrow(() -> CompiledRule.parseExpression(rewritten), rewritten);
+    }
+  }
+
+  private static FunctionCall onlyCall(String condition, Set<String> functions) {
+    List<FunctionCall> calls = PolicyConditionUpdater.findCalls(condition, functions);
+    assertEquals(1, calls.size(), condition);
+    return calls.getFirst();
   }
 }

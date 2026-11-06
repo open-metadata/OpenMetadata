@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/mcp/mcpSearchResponse.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MCP Search Response",
   "description": "Response object for MCP search tool containing search results and metadata",
   "type": "object",
