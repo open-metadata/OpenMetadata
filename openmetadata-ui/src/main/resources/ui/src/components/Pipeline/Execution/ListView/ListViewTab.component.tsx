@@ -74,7 +74,7 @@ const ListView = ({
       typingInterval: 500,
       onSearch: handleSearch,
     }),
-    [searchString, handleSearch]
+    [t, searchString, handleSearch]
   );
 
   const reportedColumnKeys = useMemo(
