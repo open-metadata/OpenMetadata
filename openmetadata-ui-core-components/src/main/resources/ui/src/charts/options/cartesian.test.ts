@@ -294,6 +294,108 @@ describe('buildLineOption', () => {
     expect([second.smooth, second.showSymbol]).toEqual([false, true]);
   });
 
+  it('draws invisible symbols for hover on a dot-less line series', () => {
+    const option = buildLineOption(
+      { ...base, hasHover: true },
+      LIGHT_CHART_THEME
+    );
+    const [first] = seriesOf(option);
+    const itemStyle = first.itemStyle as Record<string, unknown>;
+
+    expect(first.showSymbol).toBe(true);
+    expect(itemStyle).toEqual({
+      color: 'transparent',
+      borderColor: 'transparent',
+      borderWidth: 0,
+    });
+    expect(first.symbolSize).toBe(10);
+  });
+
+  it('keeps the default dot-less look without hover callbacks', () => {
+    const option = buildLineOption(base, LIGHT_CHART_THEME);
+    const [first] = seriesOf(option);
+    const itemStyle = first.itemStyle as Record<string, unknown>;
+
+    expect(first.showSymbol).toBe(false);
+    expect(first.symbolSize).toBeUndefined();
+    expect(itemStyle).toEqual({ color: LIGHT_CHART_PALETTE.series[0] });
+  });
+
+  it('keeps visible dots with showDots even when hover is on', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        hasHover: true,
+        series: [
+          { key: 'passed', name: 'Passed', showDots: true },
+          { key: 'failed', name: 'Failed' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [dotted, plain] = seriesOf(option);
+    const dottedStyle = dotted.itemStyle as Record<string, unknown>;
+    const plainStyle = plain.itemStyle as Record<string, unknown>;
+
+    expect([dotted.showSymbol, dotted.symbolSize]).toEqual([true, undefined]);
+    expect(dottedStyle).toEqual({ color: LIGHT_CHART_PALETTE.series[0] });
+    // The dot-less series still gets invisible hover symbols.
+    expect(plain.showSymbol).toBe(true);
+    expect(plainStyle).toEqual({
+      color: 'transparent',
+      borderColor: 'transparent',
+      borderWidth: 0,
+    });
+  });
+
+  it('keeps pointStyle styling even when hover is on', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        hasHover: true,
+        series: [
+          {
+            key: 'passed',
+            name: 'Passed',
+            pointStyle: (datum) =>
+              datum.day === 'Mon' ? { status: 'failed' } : undefined,
+          },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [first] = seriesOf(option);
+    const [mon, tue] = first.data as Array<{
+      value: unknown;
+      symbol: string;
+      itemStyle?: Record<string, unknown>;
+    }>;
+
+    expect(first.showSymbol).toBe(true);
+    expect(first.symbolSize).toBeUndefined();
+    expect(mon.symbol).toBe('circle');
+    expect(mon.itemStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.status.failed,
+      borderColor: LIGHT_CHART_THEME.segmentBorder,
+      borderWidth: 1,
+    });
+    // A point whose pointStyle returns undefined still gets no symbol.
+    expect(tue).toEqual({ value: 5, symbol: 'none' });
+  });
+
+  it('keeps a lone point visible with hover on', () => {
+    const option = buildLineOption(
+      { ...base, data: [rows[0]], hasHover: true },
+      LIGHT_CHART_THEME
+    );
+    const [first] = seriesOf(option);
+    const itemStyle = first.itemStyle as Record<string, unknown>;
+
+    expect(first.showSymbol).toBe(true);
+    expect(itemStyle).toEqual({ color: LIGHT_CHART_PALETTE.series[0] });
+    expect(first.symbolSize).toBeUndefined();
+  });
+
   it('styles each point from pointStyle', () => {
     const option = buildLineOption(
       {
@@ -904,6 +1006,25 @@ describe('buildAreaOption', () => {
 
     expect(seriesOf(option).map((s) => s.stack)).toEqual(['total', 'total']);
   });
+
+  it('draws invisible symbols for hover on a dot-less area series', () => {
+    const option = buildAreaOption(
+      { ...base, hasHover: true },
+      LIGHT_CHART_THEME
+    );
+    const [first] = seriesOf(option);
+    const itemStyle = first.itemStyle as Record<string, unknown>;
+
+    expect(first.showSymbol).toBe(true);
+    expect(itemStyle).toEqual({
+      color: 'transparent',
+      borderColor: 'transparent',
+      borderWidth: 0,
+    });
+    expect(first.symbolSize).toBe(10);
+    // The area fill is still drawn.
+    expect(first.areaStyle).toBeDefined();
+  });
 });
 
 describe('buildBarOption', () => {
@@ -1076,5 +1197,33 @@ describe('buildComposedOption', () => {
     expect(line.id).toBe('value');
     expect(line.itemStyle).toEqual({ color: LIGHT_CHART_PALETTE.series[0] });
     expect((option.legend as LegendComponentOption).data).toEqual(['Value']);
+  });
+
+  it('draws invisible hover symbols on the line but not the bar', () => {
+    const option = buildComposedOption(
+      {
+        ...base,
+        hasHover: true,
+        series: [
+          { key: 'failed', name: 'Failed', type: 'line' },
+          { key: 'passed', name: 'Passed', type: 'bar' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [bar, line] = seriesOf(option);
+    const lineStyle = line.itemStyle as Record<string, unknown>;
+
+    // The bar series is unaffected: no symbol, no symbolSize.
+    expect(bar.type).toBe('bar');
+    expect(bar.showSymbol).toBeUndefined();
+    // The line series gets invisible hover symbols.
+    expect(line.showSymbol).toBe(true);
+    expect(line.symbolSize).toBe(10);
+    expect(lineStyle).toEqual({
+      color: 'transparent',
+      borderColor: 'transparent',
+      borderWidth: 0,
+    });
   });
 });

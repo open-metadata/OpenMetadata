@@ -147,6 +147,10 @@ const barSeries = <T extends object>(
 
 const POINT_SIZE = 8;
 const POINT_RING_WIDTH = 2;
+// Size of the invisible symbols drawn for hover hit-testing on dot-less
+// line/area series. Large enough to hover, invisible because the caller
+// did not ask for dots.
+const HOVER_SYMBOL_SIZE = 10;
 // A selected point's ring: 4px out from the dot, 2px wide, at 30% of the
 // dot's colour.
 const SELECTION_RING_GAP = 4;
@@ -238,17 +242,32 @@ const lineSeries = <T extends object>(
   const styles = ctx.input.data.map((datum, index) =>
     series.pointStyle?.(datum as Datum, index)
   );
+  const hasPointStyle = Boolean(series.pointStyle);
+  const showDots = series.showDots ?? false;
+  // A dot-less line series has no symbol elements, so ECharts never emits
+  // per-point mouseover/mouseout. When hover callbacks are present, draw
+  // invisible symbols so the events fire without changing the chart's
+  // appearance. A lone point already shows its symbol, and `pointStyle`
+  // already draws symbols, so neither needs the override.
+  const needsHoverSymbols =
+    ctx.input.hasHover &&
+    !hasPointStyle &&
+    !showDots &&
+    ctx.input.data.length !== 1;
 
   return {
     type: 'line',
     smooth: series.smooth ?? true,
     // A lone point has no segment to draw, so it needs its symbol to be visible.
     showSymbol:
-      series.pointStyle || ctx.input.data.length === 1
+      hasPointStyle || ctx.input.data.length === 1
         ? true
-        : series.showDots ?? false,
+        : needsHoverSymbols || showDots,
     lineStyle: { color, width: LINE_WIDTH, cap: 'round', join: 'round' },
-    itemStyle: { color },
+    itemStyle: needsHoverSymbols
+      ? { color: 'transparent', borderColor: 'transparent', borderWidth: 0 }
+      : { color },
+    symbolSize: needsHoverSymbols ? HOVER_SYMBOL_SIZE : undefined,
     // Always set, so a re-render that drops the fill or the selection clears
     // the old one.
     areaStyle: filled ? { color: areaGradient(color) } : undefined,

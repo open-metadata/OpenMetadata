@@ -24,6 +24,9 @@ import {
   VisualMapComponent,
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
+// `getECData` reads the non-enumerable inner store ECharts attaches to each
+// rendered element — the same store `packEventData` writes `dataIndex` into.
+import { getECData } from 'echarts/lib/util/innerStore.js';
 import { SVGRenderer } from 'echarts/renderers';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -228,6 +231,93 @@ describe('hovering a real chart right after a re-render', () => {
         chart.getZr().trigger('mousemove', { target, offsetX: 1, offsetY: 1 })
       )
     ).not.toThrow();
+  });
+});
+
+describe('per-point hover events on a dot-less line series', () => {
+  // ECharts only emits per-point mouseover/mouseout (with a dataIndex) when
+  // the series renders symbol elements. A dot-less line series (the wrapper's
+  // default) renders none, so the hover callbacks never fire. The fix draws
+  // invisible symbols when hasHover is set, restoring the events.
+  const lineInput = (extra: Partial<CartesianBuildInput<Row>> = {}) => ({
+    data: rows.slice(0, 5),
+    xKey: 'day',
+    ariaLabel: 'Hover',
+    series: [{ key: 'a', name: 'A' }],
+    ...extra,
+  });
+
+  it('renders symbol elements that carry a dataIndex when hasHover is set', () => {
+    const chart = mount(
+      buildLineOption(lineInput({ hasHover: true }), LIGHT_CHART_THEME)
+    );
+    const symbols = chart
+      .getZr()
+      .storage.getDisplayList(true)
+      .filter((el) => el.type === 'path');
+
+    expect(symbols).toHaveLength(5);
+    symbols.forEach((symbol, index) => {
+      const ecData = getECData(symbol) as { dataIndex?: number };
+
+      // Each symbol carries its per-point dataIndex — the property a
+      // mouseover event needs to resolve `data[event.dataIndex]`.
+      expect(ecData.dataIndex).toBe(index);
+    });
+  });
+
+  it('renders no symbol elements on a dot-less line without hasHover', () => {
+    const chart = mount(buildLineOption(lineInput(), LIGHT_CHART_THEME));
+    const symbols = chart
+      .getZr()
+      .storage.getDisplayList(true)
+      .filter((el) => el.type === 'path');
+
+    // No symbols → no per-point mouseover/mouseout events.
+    expect(symbols).toHaveLength(0);
+  });
+
+  it('emits a mouseover with the correct dataIndex when hasHover is set', () => {
+    const chart = mount(
+      buildLineOption(lineInput({ hasHover: true }), LIGHT_CHART_THEME)
+    );
+    const events: Array<{ dataIndex?: number; seriesId?: string }> = [];
+    chart.on(
+      'mouseover',
+      (params: { dataIndex?: number; seriesId?: string }) => {
+        events.push({ dataIndex: params.dataIndex, seriesId: params.seriesId });
+      }
+    );
+
+    // Dispatch a mousemove at the first data point's pixel position — the
+    // same path a real DOM mousemove takes through zrender's hit-test.
+    const [px, py] = chart
+      .convertToPixel({ seriesIndex: 0 }, [0, rows[0].a])
+      .map(Number) as [number, number];
+    chart.getZr().handler.dispatch('mousemove', { zrX: px, zrY: py });
+
+    expect(events).toHaveLength(1);
+    expect(events[0].dataIndex).toBe(0);
+    expect(events[0].seriesId).toBe('a');
+  });
+
+  it('emits no mouseover with a dataIndex on a dot-less line without hasHover', () => {
+    const chart = mount(buildLineOption(lineInput(), LIGHT_CHART_THEME));
+    const events: Array<{ dataIndex?: number }> = [];
+    chart.on('mouseover', (params: { dataIndex?: number }) => {
+      if (params.dataIndex !== undefined) {
+        events.push({ dataIndex: params.dataIndex });
+      }
+    });
+
+    // Dispatch at the same pixel position as the previous test — the line
+    // stroke is there, but without symbols no per-point event fires.
+    const [px, py] = chart
+      .convertToPixel({ seriesIndex: 0 }, [0, rows[0].a])
+      .map(Number) as [number, number];
+    chart.getZr().handler.dispatch('mousemove', { zrX: px, zrY: py });
+
+    expect(events).toHaveLength(0);
   });
 });
 
