@@ -226,8 +226,7 @@ public class JwtFilter implements ContainerRequestFilter {
       DecodedJWT decodedJwt = decodeAndVerify(tokenFromHeader);
       String tokenKeyId = decodedJwt.getKeyId();
       Map<String, Claim> claims = extractClaims(decodedJwt);
-      String userName =
-          findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+      String userName = resolveUserName(claims, tokenKeyId);
       String email =
           findEmailFromClaims(
               jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
@@ -350,6 +349,25 @@ public class JwtFilter implements ContainerRequestFilter {
     validatePersonalAccessToken(claims, tokenFromHeader, userName);
 
     validateSessionBoundToken(claims, userName);
+  }
+
+  /**
+   * The account a verified token names. The principal claims describe the provider's tokens; ours
+   * name the account they were minted for, and an email's local part can belong to another account
+   * (ADR:2026-11-03-an-openmetadata-token-resolves-to-the-account-it-names).
+   */
+  public String resolveUserName(Map<String, Claim> claims, String tokenKeyId) {
+    Optional<String> mintedUserName =
+        isInternallyIssuedToken(claims, tokenKeyId)
+            ? JWTTokenGenerator.mintedUserName(claims)
+            : Optional.empty();
+    return mintedUserName.orElseGet(
+        () -> findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims));
+  }
+
+  /** The account a verified token names, read with the token's own key id. */
+  public String resolveTokenUserName(String token, Map<String, Claim> claims) {
+    return resolveUserName(claims, JWT.decode(token).getKeyId());
   }
 
   private boolean isInternallyIssuedToken(Map<String, Claim> claims, String tokenKeyId) {
@@ -639,8 +657,9 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
-    Map<String, Claim> claims = validateJwtAndGetClaims(token);
-    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+    DecodedJWT decodedJwt = decodeAndVerify(token);
+    Map<String, Claim> claims = extractClaims(decodedJwt);
+    String userName = resolveUserName(claims, decodedJwt.getKeyId());
     String email =
         findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);

@@ -2,10 +2,13 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-26 (initial) · v2 2026-10-29 (user creation and restore, and
-  security configuration writes)
+  security configuration writes) · v3 2026-11-03 (policy and role writes; a team's default roles
+  and policies; bot targets of the restricted policy)
 - **Deciders:** Adrià Manero
 - **Guard:** `ImpersonationRestrictionFilterTest` (pins the `@IdentityEndpoint` methods of
-  `UserResource`, `SystemResource` and `ScimResource`); `BotImpersonationIT`; reviewer for new
+  `UserResource`, `SystemResource`, `ScimResource` and `TeamResource`, and every write of
+  `PolicyResource` and `RoleResource`); `BotImpersonationIT`;
+  `TeamResourceIT.test_impersonatedOwner_cannotChangeDefaultRolesOrPolicies`; reviewer for new
   endpoints
 - **Related:** PR #36231; PR #36591; ADR:2026-10-21-only-admins-change-a-users-domains
 
@@ -56,3 +59,19 @@ spellings of a blocked URL reached the handler without matching the list.
   affected.
 - `ImpersonationRestrictionFilterTest` pins the annotated methods of `SystemResource` and
   `ScimResource` as it does for `UserResource`.
+
+## Amendment: policy, role and team grant writes, and bot targets of the restricted policy (v3)
+
+- **An impersonated request does not write a policy or a role.** Every `POST`, `PUT`, `PATCH` and
+  `DELETE` of `PolicyResource` and `RoleResource` carries `@IdentityEndpoint`: such a write grants
+  privileges to everyone it applies to, the impersonating bot included. Reading them is not
+  affected, and MCP tool calls are not impersonated requests.
+- **An impersonated request does not change a team's default roles or policies**, which its
+  members hold, in either direction. `TeamResource` refuses a `PATCH` that touches `/defaultRoles`
+  or `/policies`, and a `POST` or `PUT` whose sets differ from the stored team's. The team CSV
+  imports carry `@IdentityEndpoint`: a row sets both, and the async import runs where the
+  request's impersonation cannot be seen. Other team edits stay open to impersonation.
+- **`BotNonAdminImpersonationPolicy` also denies bot targets** (`isBotUser()`). System and
+  application bots can edit every policy and role, this one included, so acting as one undid the
+  admin-target deny rule. The 2.1.0 data migration adds the rule to a stored policy that still
+  carries the admin-target deny rule; a policy an admin loosened is left alone.

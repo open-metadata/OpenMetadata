@@ -336,6 +336,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by user FQN who was mentioned in task comments")
           @QueryParam("mentionedUser")
           String mentionedUser) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
     ListFilter baseFilter =
         buildCountFilter(
             uriInfo,
@@ -815,7 +819,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    Task task = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    return task;
   }
 
   @GET
@@ -846,7 +852,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, taskId, fieldsParam, include);
+    Task task = getByNameInternal(uriInfo, securityContext, taskId, fieldsParam, include);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(task.getId()));
+    return task;
   }
 
   @GET
@@ -869,7 +877,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Task Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    EntityHistory history = super.listVersionsInternal(securityContext, id);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    return history;
   }
 
   @GET
@@ -899,7 +909,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    Task task = super.getVersionInternal(securityContext, id, version);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    return task;
   }
 
   @POST
@@ -1004,6 +1016,28 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
   private static boolean isApprovalTaskType(TaskEntityType type) {
     return type != null && APPROVAL_TASK_TYPES.contains(type);
+  }
+
+  /**
+   * The entity a task is about, read whatever fields the request asked for: a task discloses its
+   * target, so every read of it needs what reading the target needs, its creator and assignees
+   * included (ADR:2026-11-03-read-handlers-authorize-like-the-entity-reads-they-mirror).
+   */
+  private EntityReference aboutOf(UUID taskId) {
+    return repository
+        .get(null, taskId, repository.getFields(TaskRepository.FIELD_ABOUT), Include.ALL, false)
+        .getAbout();
+  }
+
+  private void authorizeViewOnAboutEntity(
+      SecurityContext securityContext, EntityReference aboutRef) {
+    if (aboutRef == null || aboutRef.getType() == null || aboutRef.getId() == null) {
+      return;
+    }
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(aboutRef.getType(), MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null, Include.ALL));
   }
 
   /**

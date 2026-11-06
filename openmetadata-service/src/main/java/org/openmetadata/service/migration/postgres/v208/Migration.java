@@ -52,6 +52,11 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         MigrationUtil.NEGATED_LIST_ENTITY_RULES_STEP,
         MigrationUtil::rewriteEntityRules);
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        MigrationUtil.DENY_BOT_USERS_STEP,
+        () -> MigrationUtil.addDenyBotUsersRuleToBotNonAdminImpersonationPolicy(collectionDAO));
     // `migrate` runs data migrations before it starts Flowable, and this step deploys workflows.
     runOnce(
         migrationDAO,

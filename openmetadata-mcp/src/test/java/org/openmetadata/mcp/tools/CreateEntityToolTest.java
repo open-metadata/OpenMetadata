@@ -800,6 +800,17 @@ class CreateEntityToolTest {
         MockedStatic<RuleEngine> rules = mockStatic(RuleEngine.class);
         MockedStatic<McpChangeEventUtil> events = mockStatic(McpChangeEventUtil.class)) {
       entities.when(() -> Entity.getEntityRepository(entityType)).thenReturn(repository);
+      // The create is authorized against its root parent (a term's glossary), loaded from that
+      // parent's own repository.
+      persisted.stream()
+          .map(EntityReference::getType)
+          .filter(type -> !type.equals(entityType))
+          .distinct()
+          .forEach(
+              type ->
+                  entities
+                      .when(() -> Entity.getEntityRepository(type))
+                      .thenReturn(mock(EntityRepository.class)));
       entities.when(() -> Entity.getEntityTypeFromClass(saved.getClass())).thenReturn(entityType);
       entities
           .when(() -> Entity.getEntityReference(any(EntityReference.class), any()))

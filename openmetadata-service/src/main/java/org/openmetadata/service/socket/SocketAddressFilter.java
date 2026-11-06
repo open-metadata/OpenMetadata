@@ -34,7 +34,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
@@ -207,9 +206,7 @@ public class SocketAddressFilter implements Filter {
       JwtFilter jwtFilter, String prefixedToken) {
     String token = JwtFilter.extractToken(prefixedToken);
     Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
-    String userName =
-        SecurityUtil.findUserNameFromClaims(
-            jwtFilter.getJwtPrincipalClaimsMapping(), jwtFilter.getJwtPrincipalClaims(), claims);
+    String userName = jwtFilter.resolveTokenUserName(token, claims);
     String impersonatedBy =
         claims.containsKey(JwtFilter.IMPERSONATED_USER_CLAIM)
             ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
@@ -224,9 +221,7 @@ public class SocketAddressFilter implements Filter {
 
   public static void checkForUsernameAndImpersonationValidation(
       String token, Map<String, Claim> claims, JwtFilter jwtFilter) {
-    String userName =
-        SecurityUtil.findUserNameFromClaims(
-            jwtFilter.getJwtPrincipalClaimsMapping(), jwtFilter.getJwtPrincipalClaims(), claims);
+    String userName = jwtFilter.resolveTokenUserName(token, claims);
     String impersonatedBy =
         claims.containsKey(JwtFilter.IMPERSONATED_USER_CLAIM)
             ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
