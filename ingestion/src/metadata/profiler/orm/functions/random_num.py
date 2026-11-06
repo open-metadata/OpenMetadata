@@ -44,6 +44,7 @@ def _(*_, **__):
 
 @compiles(RandomNumFn, Dialects.Hive)
 @compiles(RandomNumFn, Dialects.Impala)
+@compiles(RandomNumFn, Dialects.Impala4)
 @compiles(RandomNumFn, Dialects.MySQL)
 @compiles(RandomNumFn, Dialects.IbmDbSa)
 @compiles(RandomNumFn, Dialects.Db2)
