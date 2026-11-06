@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import QueryParserType
+from metadata.ingestion.api.step import IterStep, Summary
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
@@ -370,5 +371,156 @@ def test_ordinary_dotted_view_keeps_distinct_input_with_same_parsed_name(use_fac
             (source.fullyQualifiedName.root, view_entity.fullyQualifiedName.root),
             (parsed_entity.fullyQualifiedName.root, view_entity.fullyQualifiedName.root),
         }
+    finally:
+        search_cache.clear()
+
+
+@pytest.mark.parametrize(
+    ("schema_name", "table_name", "view_fqn"),
+    [
+        ("reporting", "missing", "svc.db.reporting.missing"),
+        ("dbo.reporting", "missing", 'svc.db."dbo.reporting".missing'),
+        ("reporting", "warehouse.missing", 'svc.db.reporting."warehouse.missing"'),
+    ],
+)
+@pytest.mark.parametrize("failure_mode", ["missing", "lookup_error", "search_error"])
+def test_view_lookup_failure_is_named_and_later_view_continues(schema_name, table_name, view_fqn, failure_mode):
+    search_cache.clear()
+    valid_view = _table("svc.db.reporting.orders")
+    source = _table("svc.db.reporting.src")
+    metadata = MagicMock()
+
+    def lookup(entity, fqn, **_):
+        if fqn == view_fqn and failure_mode == "lookup_error":
+            raise RuntimeError("catalog lookup unavailable")
+        return valid_view if fqn == valid_view.fullyQualifiedName.root else None
+
+    def search(entity_type, fqn_search_string, **_):
+        if fqn_search_string == view_fqn and failure_mode == "search_error":
+            raise RuntimeError("catalog search unavailable")
+        return [source] if fqn_search_string.endswith(".src") else []
+
+    metadata.get_by_name.side_effect = lookup
+    metadata.es_search_from_fqn.side_effect = search
+    queue = Queue()
+    query = "CREATE VIEW reporting.orders AS SELECT id FROM src WHERE id = 987654321"
+    try:
+        view_lineage_processor(
+            views=[
+                TableView(db_name="db", schema_name=schema_name, table_name=table_name, view_definition=query),
+                TableView(db_name="db", schema_name="reporting", table_name="orders", view_definition=query),
+            ],
+            queue=queue,
+            metadata=metadata,
+            service_name="svc",
+            connectionType="Mssql",
+            processCrossDatabaseLineage=False,
+            crossDatabaseServiceNames=[],
+            parsingTimeoutLimit=10,
+            overrideViewLineage=True,
+            parser_type=QueryParserType.Auto,
+        )
+        results = list(queue.queue)
+        assert len(results) == 2
+        failure, success = results
+        assert failure.right is None
+        assert failure.left.name == view_fqn
+        assert f"Could not resolve view [{view_fqn}]" in failure.left.error
+        cause = {
+            "missing": "View entity not found in the catalog",
+            "lookup_error": "catalog lookup unavailable",
+            "search_error": "catalog search unavailable",
+        }[failure_mode]
+        assert cause in failure.left.error
+        assert cause in failure.left.stackTrace
+        assert "987654321" not in failure.left.model_dump_json()
+        assert success.left is None
+        request = success.right.lineage_request
+        assert (request.from_entity_fqn, request.to_entity_fqn) == ("svc.db.reporting.src", "svc.db.reporting.orders")
+        assert (request.from_entity_id, request.to_entity_id) == (source.id, valid_view.id)
+        assert (
+            request.lineage_details.sqlQuery.root == "CREATE VIEW reporting.orders AS SELECT id FROM src WHERE id = ?"
+        )
+        assert success.right.override_lineage is True
+        (column,) = request.lineage_details.columnsLineage
+        assert [name.root for name in column.fromColumns] == ["svc.db.reporting.src.id"]
+        assert column.toColumn.root == "svc.db.reporting.orders.id"
+
+        class QueuedLineageStep(IterStep):
+            name = "View lineage"
+
+            @classmethod
+            def create(cls, config_dict, metadata, pipeline_name=None):
+                return cls()
+
+            def close(self):
+                pass
+
+            def _iter(self):
+                yield from results
+
+        step = QueuedLineageStep()
+        assert list(step.run()) == [None, success.right]
+        summary = Summary.from_step(step)
+        assert summary.errors == 1
+        assert summary.failures[0].name == view_fqn
+        assert cause in summary.failures[0].error
+    finally:
+        search_cache.clear()
+
+
+@pytest.mark.parametrize("definition", [None, ""])
+def test_view_without_definition_skips_missing_catalog_entity(definition):
+    metadata = MagicMock()
+    metadata.get_by_name.return_value = None
+    metadata.es_search_from_fqn.return_value = []
+    assert (
+        list(
+            get_view_lineage(
+                view=TableView(db_name="db", schema_name="reporting", table_name="missing", view_definition=definition),
+                metadata=metadata,
+                service_names="svc",
+                connection_type="Mssql",
+                timeout_seconds=10,
+                parser_type=QueryParserType.Auto,
+            )
+        )
+        == []
+    )
+
+
+@pytest.mark.parametrize("failure_stage", ["parser", "extension"])
+def test_view_lookup_fix_preserves_parser_and_extension_recovery(failure_stage):
+    search_cache.clear()
+    view = _table("svc.db.reporting.orders")
+    source = _table("svc.db.reporting.src")
+    metadata = MagicMock()
+    metadata.get_by_name.return_value = view
+    metadata.es_search_from_fqn.side_effect = lambda entity_type, fqn_search_string, **_: (
+        [source] if fqn_search_string.endswith(".src") else []
+    )
+
+    def fail(*_, **__):
+        raise RuntimeError("connector parsing failed")
+
+    try:
+        results = list(
+            get_view_lineage(
+                view=TableView(
+                    db_name="db", schema_name="reporting", table_name="orders", view_definition="SELECT id FROM src"
+                ),
+                metadata=metadata,
+                service_names="svc",
+                connection_type="Mssql",
+                timeout_seconds=10,
+                parser_type=QueryParserType.Auto,
+                parser_factory=fail if failure_stage == "parser" else None,
+                extension=fail if failure_stage == "extension" else None,
+            )
+        )
+        assert all(result.left is None for result in results)
+        assert [(result.right.from_entity_fqn, result.right.to_entity_fqn) for result in results] == (
+            [] if failure_stage == "parser" else [("svc.db.reporting.src", "svc.db.reporting.orders")]
+        )
     finally:
         search_cache.clear()
