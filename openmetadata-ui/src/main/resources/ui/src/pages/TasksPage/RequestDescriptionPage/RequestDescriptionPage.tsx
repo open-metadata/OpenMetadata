@@ -44,8 +44,8 @@ import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
 import { fetchEntityDetail } from '../../../utils/TaskEntityFetchUtils';
+import { buildTaskFieldPath } from '../../../utils/TaskFieldPathUtils';
 import {
-  getDescriptionTaskFieldPath,
   getTaskAssignee,
   getTaskEntityFQN,
   getTaskMessage,
@@ -110,7 +110,7 @@ const RequestDescription = () => {
   };
 
   const getTaskAbout = () => {
-    return getDescriptionTaskFieldPath(field, value);
+    return buildTaskFieldPath(field, value, 'description');
   };
 
   const onCreateTask = async (formValues: {
