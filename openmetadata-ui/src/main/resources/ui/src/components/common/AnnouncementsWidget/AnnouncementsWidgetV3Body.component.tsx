@@ -139,8 +139,11 @@ const AnnouncementsWidgetV3Body = ({
 
       {total > 1 && (
         <Box data-testid="announcement-dots" justify="center">
+          {/* One dot per announcement: as wide as the total, the siblings never
+          collapse into the core pager's ellipsis, which draws no gap here. */}
           <PaginationDot
             page={index + 1}
+            siblingCount={total}
             size="sm"
             total={total}
             onPageChange={handlePageChange}

@@ -13,9 +13,18 @@
 import { AnnouncementType } from '../../generated/entity/feed/announcement';
 import { AnnouncementEntity, listAnnouncements } from '../announcementsAPI';
 
-export const CRITICAL_ANNOUNCEMENTS_QUERY_KEY = [
+/**
+ * The prefix every Home announcement query shares — the critical banner, the
+ * rail and its "View all" dialog — so a change made in Settings can refresh
+ * all of them at once.
+ */
+export const HOME_ANNOUNCEMENTS_QUERY_KEY = [
   'landingPage',
   'announcements',
+] as const;
+
+export const CRITICAL_ANNOUNCEMENTS_QUERY_KEY = [
+  ...HOME_ANNOUNCEMENTS_QUERY_KEY,
   'critical',
 ] as const;
 

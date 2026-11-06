@@ -373,6 +373,31 @@ describe('CriticalAnnouncements', () => {
     expect(dots()[2]).toHaveAttribute('aria-current', 'page');
   });
 
+  // The core pager folds pages past seven into an ellipsis, which the dot
+  // variant draws as nothing: the dots would then stop matching banners.
+  it('keeps one dot per banner past seven of them', async () => {
+    respondWith(
+      Array.from({ length: 8 }, (_, index) => makeCritical(`c${index}`, index))
+    );
+
+    renderBanner();
+
+    await screen.findByText('Title c0');
+    const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 3200 });
+    const dots = within(
+      screen.getByTestId('critical-announcement-dots')
+    ).getAllByRole('listitem');
+
+    expect(dots).toHaveLength(8);
+
+    fireEvent.click(dots[7]);
+
+    expect(rail.scrollTo).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      left: 2800,
+    });
+  });
+
   it('hands focus to previous when next is disabled under it', async () => {
     respondWith([makeCritical('first', 1), makeCritical('second', 2)]);
 
