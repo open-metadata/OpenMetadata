@@ -12,21 +12,19 @@
  */
 
 import { Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Globe01,
+  InfoCircle,
+  LinkExternal01,
+  Teams,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { isEmpty, isString, isUndefined, lowerCase, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
-import { ReactComponent as IconInfoSecondary } from '../../../assets/svg/icon-info.svg';
-import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/TeamUtils';
@@ -49,7 +47,7 @@ const InfoIcon = ({ content }: { content: React.ReactNode }): JSX.Element => (
       aria-label="info-secondary"
       className="tw:inline-flex tw:items-center tw:align-[-0.125em] tw:leading-none"
       role="img">
-      <IconInfoSecondary height={12} width={12} />
+      <InfoCircle className="tw:text-utility-gray-500" size={12} />
     </span>
   </Tooltip>
 );
@@ -99,7 +97,7 @@ function OwnerRetVal({
         </>
       )}
       {isTeamOwner ? (
-        <IconTeamsGrey className="align-middle" height={18} width={18} />
+        <Teams className="align-middle tw:text-utility-gray-500" size={18} />
       ) : (
         <ProfilePicture
           displayName={displayVal}
@@ -139,12 +137,10 @@ function DomainRetVal({ displayVal }: { displayVal: ExtraInfo['value'] }) {
   }
 
   return (
-    <DomainIcon
-      className="d-flex"
-      color={DE_ACTIVE_COLOR}
-      height={16}
+    <Globe01
+      className="d-flex tw:text-utility-gray-500"
       name="folder"
-      width={16}
+      size={16}
     />
   );
 }
@@ -273,7 +269,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
               <span
                 className="tw:inline-flex tw:items-center tw:align-[-0.125em] tw:leading-none"
                 role="img">
-                <IconExternalLink {...ICON_DIMENSION} />
+                <LinkExternal01 size={14} />
               </span>
             </>
           )}

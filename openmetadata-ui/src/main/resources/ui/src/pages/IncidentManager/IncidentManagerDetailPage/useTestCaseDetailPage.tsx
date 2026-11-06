@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dimension } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare, Operation as PatchOperation } from 'fast-json-patch';
@@ -17,7 +18,6 @@ import { isUndefined, toString } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DimensionIcon } from '../../../assets/svg/data-observability/dimension.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -492,7 +492,7 @@ export const useTestCaseDetailPage = ({
         label: (
           <ManageButtonItemLabel
             description={t('message.edit-dimension-description')}
-            icon={DimensionIcon}
+            icon={Dimension}
             id="profiler-setting-button"
             name={t('label.dimension-plural')}
           />

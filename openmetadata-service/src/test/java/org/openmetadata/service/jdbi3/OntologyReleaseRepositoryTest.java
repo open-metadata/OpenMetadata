@@ -1,9 +1,13 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -11,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -18,6 +23,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.OntologyReleaseReviewReader.View;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.RestUtil;
 
@@ -44,9 +50,9 @@ class OntologyReleaseRepositoryTest {
                         .withName("stewards")));
     SubjectContext subject = new SubjectContext(alice, null);
 
-    ListFilter assigned = OntologyReleaseRepository.reviewTaskFilter(View.ASSIGNED, subject);
-    ListFilter pending = OntologyReleaseRepository.reviewTaskFilter(View.PENDING, subject);
-    ListFilter created = OntologyReleaseRepository.reviewTaskFilter(View.CREATED, subject);
+    ListFilter assigned = OntologyReleaseRepository.reviewTaskFilter(View.ASSIGNED, subject, null);
+    ListFilter pending = OntologyReleaseRepository.reviewTaskFilter(View.PENDING, subject, null);
+    ListFilter created = OntologyReleaseRepository.reviewTaskFilter(View.CREATED, subject, null);
 
     assertEquals("RequestApproval", assigned.getQueryParam("taskType"));
     assertEquals("Open,InProgress,Pending", assigned.getQueryParam("taskStatus"));
@@ -75,6 +81,38 @@ class OntologyReleaseRepositoryTest {
     assertTrue(
         created.getCondition("task_entity").contains("createdById IN (:createdById_0)"),
         created.getCondition("task_entity"));
+  }
+
+  @Test
+  void reviewListNarrowsToOneOntologyInTheDatabaseOnBothDialects() {
+    UUID ontologyId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+    SubjectContext subject =
+        new SubjectContext(new User().withId(UUID.fromString(ALICE_ID)).withName("alice"), null);
+
+    ListFilter scoped =
+        OntologyReleaseRepository.reviewTaskFilter(View.PENDING, subject, ontologyId);
+    ListFilter unscoped = OntologyReleaseRepository.reviewTaskFilter(View.PENDING, subject, null);
+
+    assertEquals(ontologyId.toString(), scoped.getQueryParam("ontologyReviewOntologyId"));
+    assertFalse(unscoped.getCondition("task_entity").contains("ontologyReview"));
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig config = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(config);
+      when(config.isMySQL()).thenReturn(true);
+      assertTrue(
+          scoped
+              .getCondition("task_entity")
+              .contains(
+                  "JSON_UNQUOTE(JSON_EXTRACT(task_entity.json, '$.ontologyReview.ontologyId')) = :ontologyReviewOntologyId"),
+          scoped.getCondition("task_entity"));
+      when(config.isMySQL()).thenReturn(false);
+      assertTrue(
+          scoped
+              .getCondition("task_entity")
+              .contains(
+                  "task_entity.json->'ontologyReview'->>'ontologyId' = :ontologyReviewOntologyId"),
+          scoped.getCondition("task_entity"));
+    }
   }
 
   @Test

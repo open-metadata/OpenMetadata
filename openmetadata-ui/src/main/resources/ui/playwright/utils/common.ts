@@ -1400,7 +1400,7 @@ export const testMetricsPaginationNavigation = async (page: Page) => {
   expect(page1Response.status()).toBe(200);
   const page1Url = new URL(page1Response.url());
   expect(page1Url.pathname).toContain('/api/v1/metrics/hierarchy');
-  expect(page1Url.searchParams.get('limit')).toBe('20');
+  expect(page1Url.searchParams.get('limit')).toBe('15');
   expect(page1Url.searchParams.get('offset')).toBe('0');
 
   await page.locator('table').waitFor({ state: 'visible' });
@@ -1416,8 +1416,8 @@ export const testMetricsPaginationNavigation = async (page: Page) => {
   ]);
   expect(page2Response.status()).toBe(200);
   const page2Url = new URL(page2Response.url());
-  expect(page2Url.searchParams.get('limit')).toBe('20');
-  expect(page2Url.searchParams.get('offset')).toBe('20');
+  expect(page2Url.searchParams.get('limit')).toBe('15');
+  expect(page2Url.searchParams.get('offset')).toBe('15');
 
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('metric-page-previous')).toBeEnabled();
