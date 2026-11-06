@@ -34,6 +34,7 @@ class WorkbookDetails(BaseModel):
     createdAt: str  # noqa: N815
     url: str
     path: str | None = None
+    latestVersion: int | float | None = None  # noqa: N815
     ownerId: str | None = None  # noqa: N815
     isArchived: bool | None = None  # noqa: N815
     description: str | None = None

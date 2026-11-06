@@ -46,6 +46,10 @@ Version of the Sigma REST API by default `v2`.
 To get to know the Sigma REST API Version visit <a href="https://help.sigmacomputing.com/reference/get-started-sigma-api#identify-your-api-request-url" target="_blank">here</a> and look into the `Token URL` section.
 $$
 
+## Custom Properties
+
+When **Include Custom Properties** is on, each workbook's dashboard gets a `latestVersion` custom property: the most recently published version of the workbook in Sigma. The property is added to every dashboard in OpenMetadata, and is left alone when a property of that name already exists with another type.
+
 ## Lineage
 
 The Sigma connector extracts lineage by parsing SQL queries from workbooks to identify source tables. If SQL queries are unavailable, it falls back to Sigma's lineage API to retrieve metadata-based lineage information.

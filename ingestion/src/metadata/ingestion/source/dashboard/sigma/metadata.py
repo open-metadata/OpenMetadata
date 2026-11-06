@@ -12,13 +12,18 @@
 
 import traceback
 from collections.abc import Iterable
+from functools import cached_property
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createCustomProperty import (
+    CreateCustomPropertyRequest,
+)
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
@@ -35,6 +40,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import (
+    EntityExtension,
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
@@ -45,6 +51,11 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.custom_properties import (
+    CustomPropertyDataTypes,
+    OMetaCustomProperties,
+)
+from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.sigma.models import (
@@ -64,6 +75,10 @@ from metadata.utils.helpers import (
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+# Dashboard custom property set from the workbook (ADR:2026-11-02-run-changing-dashboard-custom-properties-are-patched-after-the-dashboard).
+# The spec types it number(double), so it is not registered as an integer.
+LATEST_VERSION = "latestVersion"
 
 
 class SigmaSource(DashboardServiceSource):
@@ -441,6 +456,85 @@ class SigmaSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def yield_dashboard_extension(self, dashboard_details: WorkbookDetails) -> Iterable[Either[PatchRequest]]:
+        """The workbook's latest published version, which changes each time the workbook is published"""
+        if not (
+            dashboard_details
+            and self.source_config.includeCustomProperties
+            and dashboard_details.latestVersion is not None
+        ):
+            return
+        try:
+            if not self._latest_version_defined:
+                return
+            dashboard = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.workbookId),
+                fields=["extension"],
+            )
+            if not dashboard:
+                return
+            stored = dashboard.extension.root if dashboard.extension else {}
+            # The properties a user set on the dashboard are sent back as they are, so the patch only touches this one
+            yield Either(
+                left=None,
+                right=PatchRequest(
+                    original_entity=dashboard,
+                    new_entity=dashboard.model_copy(
+                        update={
+                            "extension": EntityExtension({**stored, LATEST_VERSION: dashboard_details.latestVersion})
+                        }
+                    ),
+                    override_metadata=True,
+                ),
+            )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=f"{dashboard_details.name} Custom Properties",
+                    error=f"Error setting the latest version of Sigma workbook {dashboard_details.workbookId}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
+
+    @cached_property
+    def _latest_version_defined(self) -> bool:
+        """
+        Whether dashboards hold LATEST_VERSION as a number, registering it once per run. A property of that name
+        with another type is left alone: changing its type would invalidate the value every dashboard holds.
+        """
+        defined = {
+            prop.get("name"): (prop.get("propertyType") or {}).get("name")
+            for prop in self.metadata.get_entity_custom_properties(entity_type=Dashboard) or []
+        }
+        if LATEST_VERSION in defined:
+            if defined[LATEST_VERSION] == CustomPropertyDataTypes.NUMBER.value:
+                return True
+            logger.warning(
+                "Dashboard custom property %s exists as %s, not %s; Sigma won't set it",
+                LATEST_VERSION,
+                defined[LATEST_VERSION],
+                CustomPropertyDataTypes.NUMBER.value,
+            )
+            return False
+        try:
+            self.metadata.create_or_update_custom_property(
+                OMetaCustomProperties(
+                    entity_type=Dashboard,
+                    createCustomPropertyRequest=CreateCustomPropertyRequest(
+                        name=EntityName(LATEST_VERSION),
+                        description=Markdown("The most recently published version of the Sigma workbook"),
+                        propertyType=self.metadata.get_property_type_ref(CustomPropertyDataTypes.NUMBER),
+                    ),
+                )
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not register dashboard custom property %s: %s", LATEST_VERSION, exc)
+            return False
+        return True
 
     def get_column_info(self, element: Elements) -> list[Column] | None:
         """Build data model columns"""
