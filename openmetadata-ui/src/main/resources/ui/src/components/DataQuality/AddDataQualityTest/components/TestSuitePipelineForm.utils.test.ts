@@ -61,6 +61,46 @@ describe('toTestSuiteIngestionData', () => {
     ).toBeUndefined();
     expect(toTestSuiteIngestionData({}).testCases).toBeUndefined();
   });
+
+  it('treats a picker select-all payload as "run all"', () => {
+    const result = toTestSuiteIngestionData({
+      selectAllTestCases: false,
+      testCases: {
+        selectAll: true,
+        includeIds: [],
+        excludeIds: ['tc-excluded'],
+        testCases: [],
+      } as unknown as string[],
+    });
+
+    expect(result.testCases).toBeUndefined();
+    expect(result.selectAllTestCases).toBe(true);
+  });
+
+  it('preserves selectAllTestCases when already true', () => {
+    const result = toTestSuiteIngestionData({
+      selectAllTestCases: true,
+      testCases: undefined,
+    });
+
+    expect(result.testCases).toBeUndefined();
+    expect(result.selectAllTestCases).toBe(true);
+  });
+
+  it('keeps specific test cases when selectAll is false in the payload', () => {
+    const result = toTestSuiteIngestionData({
+      selectAllTestCases: false,
+      testCases: {
+        selectAll: false,
+        includeIds: ['id-1'],
+        excludeIds: [],
+        testCases: [{ id: 'id-1', name: 'tc_a' }],
+      } as unknown as string[],
+    });
+
+    expect(result.testCases).toEqual(['tc_a']);
+    expect(result.selectAllTestCases).toBe(false);
+  });
 });
 
 describe('getTestSuitePipelineScope', () => {
