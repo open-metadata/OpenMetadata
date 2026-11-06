@@ -849,3 +849,58 @@ def test_table_file_is_read_once_for_elements_sharing_it(sigma_over_http):
 
     assert tables == [["ORDERS"], ["ORDERS"]]
     assert calls["GET", "/v2/files/T1"] == 1
+
+
+def stale_passes_run(source) -> list[str]:
+    """Read every workbook as the topology does, then run the stale passes; return the entity types sent to deleteStale"""
+    reconciled = []
+
+    def delete_stale_entities(entity, **_):
+        reconciled.append(entity.__name__)
+        return {}
+
+    source.metadata.delete_stale_entities = delete_stale_entities
+    source.source_config.includeOwners = False
+    for workbook in source.get_dashboards_list():
+        details = source.get_dashboard_details(workbook)
+        for stage in (source.yield_dashboard_chart, source.yield_datamodel, source.yield_dashboard):
+            list(stage(details))
+    for stale_pass in (
+        source.mark_dashboards_as_deleted,
+        source.mark_datamodels_as_deleted,
+        source.mark_charts_as_deleted,
+    ):
+        list(stale_pass())
+    return reconciled
+
+
+def test_every_stale_pass_runs_when_every_read_succeeds(sigma_over_http):
+    source, _ = sigma_over_http
+
+    assert stale_passes_run(source) == ["Dashboard", "DashboardDataModel", "Chart"]
+
+
+def test_a_failed_workbook_listing_page_skips_every_stale_pass(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks"] = {"entries": SIGMA_WORKBOOKS[:1], "nextPage": "2"}
+    routes["GET", "/v2/workbooks", 2] = 500
+
+    assert stale_passes_run(source) == []
+
+
+def test_a_failed_workbook_read_skips_every_stale_pass(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-2"] = 500
+
+    assert stale_passes_run(source) == []
+
+
+@pytest.mark.parametrize(
+    "failing_path",
+    ["/v2/workbooks/wb-2/pages", "/v2/workbooks/wb-2/pages/page-1/elements"],
+)
+def test_a_failed_element_read_keeps_charts_and_data_models(sigma_over_http, routes, failing_path):
+    source, _ = sigma_over_http
+    routes["GET", failing_path] = 500
+
+    assert stale_passes_run(source) == ["Dashboard"]

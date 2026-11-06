@@ -45,6 +45,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.sigma.models import (
@@ -495,6 +496,27 @@ class SigmaSource(DashboardServiceSource):
                             stackTrace=traceback.format_exc(),
                         )
                     )
+
+    def mark_dashboards_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Skip when a workbook read failed: the live workbooks it hid are missing from this run"""
+        if self.client.workbooks_incomplete:
+            logger.warning("Not marking dashboards as deleted: some Sigma workbooks could not be read")
+            return
+        yield from super().mark_dashboards_as_deleted()
+
+    def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Skip when a workbook or element read failed: the live data models it hid are missing from this run"""
+        if self.client.workbooks_incomplete or self.client.elements_incomplete:
+            logger.warning("Not marking data models as deleted: some Sigma workbooks or elements could not be read")
+            return
+        yield from super().mark_datamodels_as_deleted()
+
+    def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Skip when a workbook or element read failed: the live charts it hid are missing from this run"""
+        if self.client.workbooks_incomplete or self.client.elements_incomplete:
+            logger.warning("Not marking charts as deleted: some Sigma workbooks or elements could not be read")
+            return
+        yield from super().mark_charts_as_deleted()
 
     def get_owner_ref(self, dashboard_details: WorkbookDetails) -> EntityReferenceList | None:
         """

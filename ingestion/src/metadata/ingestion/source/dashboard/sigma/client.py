@@ -86,6 +86,10 @@ class SigmaApiClient:
         # Successful reads only: a failed read stays retryable for the next workbook or element.
         self._owner_cache: LRUCache[str, OwnerDetails] = LRUCache(maxsize=512)
         self._file_cache: LRUCache[str, NodeDetails] = LRUCache(maxsize=512)
+        # A failed read leaves live workbooks, or a workbook's elements, out of the run, so the
+        # source must not delete what this run did not see.
+        self.workbooks_incomplete = False
+        self.elements_incomplete = False
 
     def get_auth_token(self) -> tuple[str, int]:
         """
@@ -121,6 +125,7 @@ class SigmaApiClient:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(f"Error fetching Dashboards: {exc}")
+            self.workbooks_incomplete = True
         return workbooks
 
     def get_dashboard_detail(self, workbook_id: str) -> WorkbookDetails | None:
@@ -134,6 +139,7 @@ class SigmaApiClient:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(f"Error fetching Dashboard details for for workbook {workbook_id}: {exc}")
+            self.workbooks_incomplete = True
         return None
 
     def get_owner_detail(self, owner_id: str) -> OwnerDetails | None:
@@ -176,6 +182,7 @@ class SigmaApiClient:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch page elements for workbook {workbook_id}: {exc}")
+            self.elements_incomplete = True
         return elements
 
     def get_chart_details(self, workbook_id: str) -> list[Elements] | None:
@@ -208,6 +215,7 @@ class SigmaApiClient:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch chart details for workbook {workbook_id}: {exc}")
+            self.elements_incomplete = True
         return None
 
     def get_workbook_queries(self, workbook_id: str) -> WorkbookQueriesResponse | None:
