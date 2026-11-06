@@ -2089,15 +2089,19 @@ test.describe(
         const publish = page.getByTestId('ontology-publication-trigger');
 
         await expect(publish).toBeDisabled();
-        const box = await publish.boundingBox();
-        await page.mouse.move(10, 10);
-        await page.mouse.move((box?.x ?? 0) + 20, (box?.y ?? 0) + 10, {
-          steps: 8,
-        });
-        await expect(page.getByRole('tooltip')).toHaveText(
-          'Choose an ontology to publish'
-        );
-        await page.mouse.click((box?.x ?? 0) + 20, (box?.y ?? 0) + 10);
+        // The disabled button ignores the pointer, so the Tooltip's wrapper takes the hover. The
+        // header is right-aligned and the isolated-terms badge renders late, shifting the button
+        // left: re-hover on each attempt instead of trusting one early position.
+        const publishTrigger = publish.locator('..');
+        await expect(async () => {
+          await page.mouse.move(10, 10);
+          await publishTrigger.hover();
+          await expect(page.getByRole('tooltip')).toHaveText(
+            'Choose an ontology to publish',
+            { timeout: 2000 }
+          );
+        }).toPass({ timeout: 15000 });
+        await publishTrigger.click();
         await expect(
           page.getByTestId('ontology-publication-modal')
         ).toHaveCount(0);

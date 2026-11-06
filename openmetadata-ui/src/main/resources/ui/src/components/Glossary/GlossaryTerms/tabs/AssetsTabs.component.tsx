@@ -37,6 +37,7 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -514,6 +515,24 @@ const AssetsTabs = forwardRef(
         : getTagAssetsQueryFilter(encodedFqn);
     }, [type, entityFqn, queryFilter]);
 
+    // Each filter change starts a new search; a slower earlier one must not overwrite it.
+    const latestFetchId = useRef(0);
+
+    const applySearchResults = useCallback(
+      (res: Awaited<ReturnType<typeof searchQuery>>) => {
+        const hits = res.hits.hits as SearchedDataProps['data'];
+        const total = res.hits.total.value ?? 0;
+        handlePagingChange({ total });
+        setData(hits);
+        setAggregations(getAggregations(res?.aggregations));
+        if (assetCount === undefined) {
+          setTotalAssetCount(total);
+        }
+        setSelectedCard(hits[0]?._source);
+      },
+      [assetCount, handlePagingChange]
+    );
+
     const fetchAssets = useCallback(
       async ({
         index = [SearchIndex.ALL],
@@ -537,6 +556,7 @@ const AssetsTabs = forwardRef(
           return;
         }
 
+        const fetchId = ++latestFetchId.current;
         try {
           setIsLoading(true);
 
@@ -556,22 +576,15 @@ const AssetsTabs = forwardRef(
             query: `*${searchValue}*`,
             queryFilter: finalQueryFilter as Record<string, unknown>,
           });
-          const hits = res.hits.hits as SearchedDataProps['data'];
-          handlePagingChange({ total: res.hits.total.value ?? 0 });
-          setData(hits);
-          setAggregations(getAggregations(res?.aggregations));
-          if (assetCount === undefined) {
-            setTotalAssetCount(res.hits.total.value ?? 0);
-          }
-          if (hits[0]) {
-            setSelectedCard(hits[0]._source);
-          } else {
-            setSelectedCard(undefined);
+          if (fetchId === latestFetchId.current) {
+            applySearchResults(res);
           }
         } catch {
           // Nothing here
         } finally {
-          setIsLoading(false);
+          if (fetchId === latestFetchId.current) {
+            setIsLoading(false);
+          }
         }
       },
       [
@@ -582,6 +595,7 @@ const AssetsTabs = forwardRef(
         assetCount,
         skipSearch,
         preloadedData,
+        applySearchResults,
       ]
     );
 
