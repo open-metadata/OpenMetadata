@@ -1,9 +1,9 @@
 # Metric and metric group writes run the same checks through REST and MCP
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (CSV row and hierarchy authorization)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (CSV row and hierarchy authorization) · v3 2026-11-05 (checks run in the write path)
 - **Deciders:** Vishnu Jain
-- **Guard:** `McpMetricAuthorizationIT`, `MetricResourceIT#hierarchyWritesRequireEditPermissionOnParentAndGroupDestinations`, `MetricResourceTest#wholeDocumentReplaceCountsAsAHierarchyChange`, `MetricCsvAuthorizationIT`
+- **Guard:** `McpMetricAuthorizationIT`, `MetricResourceIT#hierarchyWritesRequireEditPermissionOnParentAndGroupDestinations`, `MetricResourceTest#wholeDocumentReplaceCountsAsAHierarchyChange`, `MetricCsvAuthorizationIT`, `MetricRepositoryTest#admitRefusesMovingAMetricIntoAGroupTheAuthorCannotEdit`, `MetricRepositoryTest#asyncBulkPutRefusesACreateIntoAGroupTheImpersonatedAuthorCannotEdit`
 - **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials
 
 ## Context
@@ -63,3 +63,24 @@ therefore apply to each row as they do to a synchronous write.
 
 `MetricCsvAuthorizationIT` guards inherited groups, pending-parent tag denies and owner allows,
 subtree moves, and async impersonation, in both dry and real imports.
+
+## Amendment v3: the checks run in the write path
+
+The EditAll and asset checks move into the repositories and run from the write itself, so a new
+endpoint or tool cannot leave them out.
+
+- `EntityRepository.authorizeWrite(original, updated, actor, edit)` is a hook the write runs next
+  to the domain move check (ADR:2026-10-21-domain-moves-are-authorized-in-the-write-pipeline):
+  `createInternal`, the create branch of `createOrUpdate`, `admit` (PUT and PATCH), the patch
+  preview, and bulk PUT, where a refused item fails alone with a 403. `createMany` does not run
+  it; no metric write goes through it. `original` and `edit` are null for a create; a system write
+  is not checked.
+- A metric PATCH runs the hierarchy check only when it names `parent` or `metricGroup`, as the
+  endpoint did: a PATCH stores only the fields it names.
+- `MetricRepository` and `MetricGroupRepository` override it through `Authorizer.authorizeActor`,
+  which applies the admin, reviewer and policy rules a request check applies. Policy conditions
+  on impersonation read it from the thread, so the async bulk job carries the request's.
+- CSV rows (`IMPORT_UPDATE`, `IMPORT_ROW`) skip the hook and keep `MetricCsv.authorizeRow`: a dry
+  run checks rows against earlier rows of the file that are not stored.
+- The endpoint and MCP calls to `MetricAuthorization` still run, so a write is checked twice until
+  they are removed (https://github.com/open-metadata/OpenMetadata/issues/37030).
