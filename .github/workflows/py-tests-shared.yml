@@ -157,7 +157,9 @@ jobs:
       # drops openmetadata-ui from it. Removing either pulls the whole frontend build back
       # in, which also needs the antlr4 CLI that this job deliberately does not install.
       - name: Build backend distribution
-        run: mvn -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
+        run: |
+          MVN=./mvnw; [ -x "$MVN" ] || MVN=mvn  # Open PR branches may not have the wrapper yet.
+          "$MVN" -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
         shell: bash
 
       - name: Upload backend distribution

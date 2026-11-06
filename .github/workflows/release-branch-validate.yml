@@ -113,7 +113,7 @@ jobs:
           echo "spotless:check regex: ${PATTERNS}"
           # Baseline drift on other files is intentionally ignored; scope
           # matches the "Determine changed X files" step above.
-          mvn -B spotless:check "-DspotlessFiles=${PATTERNS}"
+          ./mvnw -B spotless:check "-DspotlessFiles=${PATTERNS}"
 
   python-checkstyle:
     name: Python Checkstyle

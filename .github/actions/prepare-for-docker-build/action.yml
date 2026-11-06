@@ -46,7 +46,7 @@ runs:
       if: inputs.is_ingestion == 'false'
       shell: bash
       run: |
-        mvn -DskipTests clean package
+        ./mvnw -DskipTests clean package
 
     - name: Install OpenMetadata Ingestion Dependencies
       if: inputs.is_ingestion == 'true'

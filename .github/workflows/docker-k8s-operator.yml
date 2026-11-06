@@ -46,11 +46,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mvn -DskipTests clean install -pl openmetadata-k8s-operator -am
+          MVN=./mvnw; [ -x "$MVN" ] || MVN=mvn  # Open PR branches may not have the wrapper yet.
+          "$MVN" -DskipTests clean install -pl openmetadata-k8s-operator -am
 
       - name: Run K8s Operator Tests
         run: |
-          mvn test -pl openmetadata-k8s-operator
+          MVN=./mvnw; [ -x "$MVN" ] || MVN=mvn  # Open PR branches may not have the wrapper yet.
+          "$MVN" test -pl openmetadata-k8s-operator
 
       - name: Upload K8s Operator JAR to Artifact
         uses: actions/upload-artifact@v7

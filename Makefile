@@ -312,7 +312,7 @@ update_all:  ## To update all the release related files run make update_all RELE
 .PHONY: update_maven
 update_maven:  ## To update the common and pom.xml maven version
 	@echo "Updating Maven projects to version $(RELEASE_VERSION)..."; \
-	mvn versions:set -DnewVersion=$(RELEASE_VERSION)
+	$(CURDIR)/mvnw versions:set -DnewVersion=$(RELEASE_VERSION)
 #remove comment and use the below section when want to use this sub module "update_maven" independently to update github actions
 #make update_maven RELEASE_VERSION=2.2.2
 

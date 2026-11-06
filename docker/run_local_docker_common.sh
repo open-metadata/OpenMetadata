@@ -418,10 +418,10 @@ run_local_docker_main() {
   if [[ $skipMaven == "false" ]]; then
     if [[ $mode == "no-ui" ]]; then
       echo "Maven Build - Skipping Tests and UI"
-      mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+      ./mvnw -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
     else
       echo "Maven Build - Skipping Tests"
-      mvn -DskipTests clean package
+      ./mvnw -DskipTests clean package
     fi
   else
     echo "Skipping Maven Build"

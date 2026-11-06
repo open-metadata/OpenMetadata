@@ -14,8 +14,8 @@ if [[ -e "$rdf_scale_output/run.log" ]]; then
 fi
 
 if [[ "${BUILD:-true}" == true ]]; then
-  mvn -B -pl openmetadata-integration-tests -am install -DskipTests -DskipITs
-  mvn -B -pl openmetadata-integration-tests dependency:build-classpath \
+  ./mvnw -B -pl openmetadata-integration-tests -am install -DskipTests -DskipITs
+  ./mvnw -B -pl openmetadata-integration-tests dependency:build-classpath \
     "-Dmdep.outputFile=$rdf_scale_classpath_file" -DincludeScope=test
 fi
 

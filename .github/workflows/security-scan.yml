@@ -231,7 +231,7 @@ jobs:
       - name: Maven build
         id: maven-build
         continue-on-error: true
-        run: mvn -DskipTests clean install
+        run: ./mvnw -DskipTests clean install
 
       - name: Run Scan
         id: security-report

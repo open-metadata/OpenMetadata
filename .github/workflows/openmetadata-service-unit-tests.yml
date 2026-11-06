@@ -159,7 +159,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mvn -B clean package -pl openmetadata-service -am \
+          ./mvnw -B clean package -pl openmetadata-service -am \
             -Pstatic-code-analysis \
             -DfailIfNoTests=false \
             -Dsonar.skip=true
@@ -207,11 +207,11 @@ jobs:
 
       - name: Build k8s-operator dependencies
         run: |
-          mvn -B clean install -pl openmetadata-k8s-operator -am -DskipTests
+          ./mvnw -B clean install -pl openmetadata-k8s-operator -am -DskipTests
 
       - name: Run k8s-operator unit tests
         run: |
-          mvn -B test -pl openmetadata-k8s-operator
+          ./mvnw -B test -pl openmetadata-k8s-operator
 
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
@@ -272,7 +272,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mvn -B -DskipTests package -pl openmetadata-dist -am
+          ./mvnw -B -DskipTests package -pl openmetadata-dist -am
 
       - name: Smoke test the server image
         run: ./scripts/docker_smoke_test.sh
