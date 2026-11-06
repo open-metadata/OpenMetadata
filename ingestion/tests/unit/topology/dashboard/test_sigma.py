@@ -54,6 +54,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
@@ -1177,3 +1178,91 @@ def test_a_partly_read_workbook_lineage_keeps_the_prefix_service_dialect(sigma_o
     routes["GET", "/v2/workbooks/wb-1/lineage", "2"] = 500
 
     assert lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], BIGQUERY_ONLY_SQL) == []
+
+
+def sigma_data_model(data_model_id: str, name: str) -> dict:
+    return {
+        "dataModelId": data_model_id,
+        "dataModelUrlId": f"url-{data_model_id}",
+        "name": name,
+        "url": f"https://app.sigmacomputing.com/acme/data-model/url-{data_model_id}",
+        "path": "Shared/Models",
+        "latestVersion": 4,
+        "ownerId": "member-1",
+        "createdBy": "member-1",
+        "updatedBy": "member-1",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-02T00:00:00Z",
+    }
+
+
+@pytest.fixture
+def sigma_data_models(routes):
+    routes["GET", "/v2/dataModels"] = {"entries": [sigma_data_model("dm-1", "Sales Model")], "nextPage": None}
+    routes["GET", "/v2/dataModels/dm-1/elements"] = {
+        "entries": [
+            {"elementId": "dmEl1", "name": "Orders", "type": "table", "columns": ["Order Id", "Amount"]},
+            {"elementId": "dmEl2", "name": "Customers", "type": "table", "columns": ["Customer Id"]},
+        ],
+        "nextPage": None,
+    }
+    return routes
+
+
+def bulk_data_models(source) -> list:
+    return [either.right for model in source.list_datamodels() for either in source.yield_bulk_datamodel(model)]
+
+
+def test_a_sigma_data_model_is_one_data_model_with_a_table_column_per_element(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+
+    [data_model] = bulk_data_models(source)
+
+    assert (data_model.name.root, data_model.displayName, data_model.dataModelType.value) == (
+        "dm-1",
+        "Sales Model",
+        "SigmaDataModel",
+    )
+    assert data_model.sourceUrl.root == "https://app.sigmacomputing.com/acme/data-model/url-dm-1"
+    assert [
+        (column.name.root, column.displayName, column.dataType.value, [child.displayName for child in column.children])
+        for column in data_model.columns
+    ] == [
+        ("dmEl1", "Orders", "TABLE", ["Order Id", "Amount"]),
+        ("dmEl2", "Customers", "TABLE", ["Customer Id"]),
+    ]
+
+
+def test_sigma_data_models_are_not_read_when_data_models_are_off(sigma_over_http, sigma_data_models):
+    source, calls = sigma_over_http
+    source.source_config.includeDataModels = False
+
+    assert bulk_data_models(source) == []
+    assert calls["GET", "/v2/dataModels"] == 0
+
+
+def test_a_failed_element_read_keeps_the_existing_data_model(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/elements"] = 500
+    source.datamodel_source_state = set()
+
+    assert bulk_data_models(source) == []
+    assert source.datamodel_source_state == {"mock_sigma.model.dm-1"}
+
+
+def test_a_failed_data_model_listing_skips_the_data_model_stale_pass(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels"] = {"entries": [sigma_data_model("dm-1", "Sales Model")], "nextPage": "2"}
+    sigma_data_models["GET", "/v2/dataModels", "2"] = 500
+
+    bulk_data_models(source)
+
+    assert stale_passes_run(source) == ["Dashboard", "Chart"]
+
+
+def test_data_model_filter_pattern_applies_to_sigma_data_models(sigma_over_http, sigma_data_models):
+    source, calls = sigma_over_http
+    source.source_config.dataModelFilterPattern = FilterPattern(excludes=["^Sales Model$"])
+
+    assert bulk_data_models(source) == []
+    assert calls["GET", "/v2/dataModels/dm-1/elements"] == 0

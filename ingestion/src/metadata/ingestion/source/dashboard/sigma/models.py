@@ -124,6 +124,17 @@ class NodeDetails(BaseModel):
         return None
 
 
+class DataModel(BaseModel):
+    dataModelId: str  # noqa: N815
+    name: str | None = None
+    url: str | None = None
+
+
+class DataModelsResponse(BaseModel):
+    entries: list[DataModel] = []
+    nextPage: str | None = None  # noqa: N815
+
+
 class Connection(BaseModel):
     connectionId: str  # noqa: N815
     type: str

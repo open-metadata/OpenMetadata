@@ -14,6 +14,7 @@ REST Auth & Client for Sigma
 
 import traceback
 from base64 import b64encode
+from collections.abc import Iterator
 
 from cachetools import LRUCache
 
@@ -25,6 +26,8 @@ from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.sigma.models import (
     AuthToken,
     ConnectionsResponse,
+    DataModel,
+    DataModelsResponse,
     EdgeSource,
     EdgeSourceResponse,
     Elements,
@@ -93,6 +96,7 @@ class SigmaApiClient:
         # source must not delete what this run did not see.
         self.workbooks_incomplete = False
         self.elements_incomplete = False
+        self.data_models_incomplete = False
         self._connection_types: LRUCache[str, str] | None = None
 
     def get_auth_token(self) -> tuple[str, int]:
@@ -187,6 +191,36 @@ class SigmaApiClient:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch the lineage of workbook {workbook_id}: {exc}")
         return set()
+
+    def _read_all(self, path: str, response_model: type[DataModelsResponse | ElementsResponse]) -> Iterator:
+        """Every entry of a paginated Sigma listing; raises when a page cannot be read"""
+        data = None
+        while True:
+            result = response_model.model_validate(self.client.get(path, data=data))
+            yield from result.entries or []
+            if not result.nextPage:
+                return
+            data = {"page": result.nextPage}
+
+    def get_data_models(self) -> list[DataModel]:
+        """Every Sigma Data Model; a failed page marks the listing incomplete"""
+        data_models = []
+        try:
+            data_models.extend(self._read_all("/dataModels", DataModelsResponse))
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to list Sigma data models: {exc}")
+            self.data_models_incomplete = True
+        return data_models
+
+    def get_data_model_elements(self, data_model_id: str) -> list[Elements] | None:
+        """The elements of a Sigma Data Model, or None when they could not all be read"""
+        try:
+            return list(self._read_all(f"/dataModels/{data_model_id}/elements", ElementsResponse))
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch the elements of data model {data_model_id}: {exc}")
+        return None
 
     def get_owner_detail(self, owner_id: str) -> OwnerDetails | None:
         """

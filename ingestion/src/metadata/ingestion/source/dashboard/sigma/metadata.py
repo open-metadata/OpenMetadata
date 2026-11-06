@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
     SigmaConnection,
 )
@@ -54,6 +54,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.sigma.models import (
+    DataModel,
     Elements,
     NodeDetails,
     Workbook,
@@ -61,7 +62,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
+from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import (
     get_database_name_for_lineage,
     get_standard_chart_type,
@@ -534,8 +535,8 @@ class SigmaSource(DashboardServiceSource):
         yield from super().mark_dashboards_as_deleted()
 
     def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
-        """Skip when a workbook or element read failed: the live data models it hid are missing from this run"""
-        if self.client.workbooks_incomplete or self.client.elements_incomplete:
+        """Skip when a workbook, element or data model read failed: the live data models it hid are missing"""
+        if self.client.workbooks_incomplete or self.client.elements_incomplete or self.client.data_models_incomplete:
             logger.warning("Not marking data models as deleted: some Sigma workbooks or elements could not be read")
             return
         yield from super().mark_datamodels_as_deleted()
@@ -546,6 +547,61 @@ class SigmaSource(DashboardServiceSource):
             logger.warning("Not marking charts as deleted: some Sigma workbooks or elements could not be read")
             return
         yield from super().mark_charts_as_deleted()
+
+    def list_datamodels(self) -> Iterable[DataModel]:
+        """Sigma Data Models, ingested before the workbooks that read from them"""
+        return self.client.get_data_models() if self.source_config.includeDataModels else []
+
+    def yield_bulk_datamodel(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, data_model: DataModel
+    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        """One data model per Sigma Data Model, with a table column per element, as PowerBI models a dataset"""
+        display_name = data_model.name or data_model.dataModelId
+        if filter_by_datamodel(self.source_config.dataModelFilterPattern, display_name):
+            self.status.filter(display_name, "Data model filtered out.")
+            return
+        try:
+            elements = self.client.get_data_model_elements(data_model.dataModelId)
+            if elements is None:
+                # Rebuilt from an unread element list, the data model would lose its columns: keep it as it is
+                self.datamodel_source_state.add(
+                    fqn.build(
+                        self.metadata,
+                        entity_type=DashboardDataModel,
+                        service_name=vars(self.context.get())["dashboard_service"],
+                        data_model_name=data_model.dataModelId,
+                    )
+                )
+                return
+            data_model_request = CreateDashboardDataModelRequest(
+                name=EntityName(data_model.dataModelId),
+                displayName=display_name,
+                service=FullyQualifiedEntityName(vars(self.context.get())["dashboard_service"]),
+                dataModelType=DataModelType.SigmaDataModel,
+                serviceType=self.service_connection.type.value,
+                sourceUrl=SourceUrl(data_model.url) if data_model.url else None,
+                columns=[
+                    Column(
+                        name=ColumnName(truncate_column_name(element.elementId)),
+                        displayName=element.name or element.elementId,
+                        dataType=DataType.TABLE,
+                        dataTypeDisplay="Sigma Data Model Element",
+                        children=self.get_column_info(element),
+                    )
+                    for element in elements
+                ],
+            )
+            yield Either(left=None, right=data_model_request)
+            self.register_record_datamodel(datamodel_request=data_model_request)
+        except Exception as exc:
+            yield Either(
+                right=None,
+                left=StackTraceError(
+                    name=data_model.dataModelId,
+                    error=f"Error yielding Sigma data model [{data_model.dataModelId}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+            )
 
     def get_owner_ref(self, dashboard_details: WorkbookDetails) -> EntityReferenceList | None:
         """
