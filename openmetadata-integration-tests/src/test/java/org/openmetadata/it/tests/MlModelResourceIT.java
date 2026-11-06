@@ -1147,4 +1147,27 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     request.setName(ns.prefix("invalid_ml_model"));
     return request;
   }
+
+  @Test
+  void patch_rejectedRenameKeepsFeatureFqns(TestNamespace ns) {
+    MlModel created =
+        createEntity(
+            createMinimalRequest(ns)
+                .withMlFeatures(
+                    List.of(
+                        new MlFeature()
+                            .withName("feature1")
+                            .withDataType(MlFeatureDataType.Numerical))));
+    MlModel patch = getEntity(created.getId().toString());
+    patch.setName(created.getName() + "_renamed");
+
+    MlModel updated = patchEntity(created.getId().toString(), patch);
+
+    String fqn = created.getFullyQualifiedName();
+    List<String> featureFqns =
+        updated.getMlFeatures().stream().map(MlFeature::getFullyQualifiedName).toList();
+    assertEquals(fqn, updated.getFullyQualifiedName());
+    assertEquals(1, featureFqns.size());
+    assertTrue(featureFqns.stream().allMatch(f -> f.startsWith(fqn + ".")), featureFqns::toString);
+  }
 }
