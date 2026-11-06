@@ -19,7 +19,10 @@ import {
   Dropdown,
   Owner,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronDown,
+  TrendDown01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
@@ -30,7 +33,6 @@ import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { getLineageDropdownItems } from '../../constants/AdvancedSearch.constants';
 import {
   FULLSCREEN_QUERY_PARAM_KEY,
@@ -465,7 +467,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           <Button
             color="tertiary"
             data-testid="impact-on-dropdown"
-            iconLeading={TrendDownIcon}
+            iconLeading={TrendDown01}
             iconTrailing={ChevronDown}
             size="sm">
             <Transi18next

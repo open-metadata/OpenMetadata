@@ -40,7 +40,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Lock01: jest.fn(() => null),
   Plus: jest.fn(() => null),
   Share07: jest.fn(() => null),
-  X: jest.fn(() => null),
+  XClose: jest.fn(() => null),
 }));
 
 jest.mock(

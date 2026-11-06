@@ -12,7 +12,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Kind } from '../generated/api/data/metricHierarchyItem';
 import { getMetricGroupMetrics } from '../rest/metricGroupsAPI';
 import {
@@ -299,6 +299,67 @@ describe('useMetricHierarchy', () => {
       'group-id',
       expect.objectContaining({ q: 'new' })
     );
+  });
+
+  it('reloads group members when expanding all on returning to a cached page size', async () => {
+    (getMetricHierarchy as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          kind: Kind.MetricGroup,
+          group: { id: 'group-id', name: 'profitability', metricCount: 1 },
+        },
+      ],
+      paging: { offset: 0, limit: 15, total: 1 },
+    });
+    (getMetricGroupMetrics as jest.Mock).mockResolvedValue({
+      data: [{ id: 'm1', name: 'margin' }],
+      paging: { offset: 0, limit: 50, total: 1 },
+    });
+
+    // Mirrors MetricListPage: expand every group once per page/size/query scope.
+    const useExpandedHierarchy = (pageSize: number) => {
+      const hierarchy = useMetricHierarchy({ enabled: true, pageSize });
+      const expandedScope = useRef<number>();
+      const { expandAll, isPending, topLevelNodes } = hierarchy;
+
+      useEffect(() => {
+        if (
+          isPending ||
+          !topLevelNodes.length ||
+          expandedScope.current === pageSize
+        ) {
+          return;
+        }
+        expandedScope.current = pageSize;
+        expandAll();
+      }, [expandAll, isPending, pageSize, topLevelNodes]);
+
+      return hierarchy;
+    };
+
+    const { result, rerender } = renderHook(
+      ({ pageSize }: { pageSize: number }) => useExpandedHierarchy(pageSize),
+      { initialProps: { pageSize: 15 }, wrapper }
+    );
+
+    await waitFor(() =>
+      expect(result.current.topLevelNodes[0]?.members).toHaveLength(1)
+    );
+
+    rerender({ pageSize: 12 });
+    await waitFor(() => expect(getMetricGroupMetrics).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(result.current.topLevelNodes[0]?.members).toHaveLength(1)
+    );
+
+    rerender({ pageSize: 15 });
+
+    await waitFor(() =>
+      expect(result.current.topLevelNodes[0]?.members).toHaveLength(1)
+    );
+
+    expect(getMetricGroupMetrics).toHaveBeenCalledTimes(3);
+    expect(result.current.collapsedGroupIds).toEqual([]);
   });
 
   it('loads variants only after their parent is expanded', async () => {

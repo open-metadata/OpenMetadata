@@ -1,8 +1,28 @@
 # Java test selection
 
+## Task scope and publishing existing evidence
+
+For implementation, push and PR-creation tasks use `make java_affected ARGS="--scope focused"`
+and `make java_affected_run ARGS="--scope focused"`. Focused scope runs changed test classes,
+convention-named unit tests and explicit `--add-it`/`--add-unit` choices with `--reason`.
+It reports broader commands as deferred, and refuses an empty focused selection when the full
+plan has runnable checks. Use `--add-area` only when that area is the intended verification scope.
+A focused pass does not establish merge readiness. The default `--scope full` preserves existing
+selection and execution for merge-readiness tasks and other CLI callers.
+
+After a run, `make java_affected ARGS="--publish-results"` publishes the saved summary and details
+without planning or executing tests. It validates relevant source/build/config contents, configured
+Java/Maven paths and options, and report hashes. Documentation-only changes do not invalidate
+these inputs. Missing, changed or edited evidence is rejected; a saved failed run stays failed.
+The single evidence record is overwritten on each run, so storage is bounded. Changes to external
+services are not detectable from these files; rerun when the environment or observed behavior
+changes. Stop at the requested outcome and report pending broader checks. Monitoring CI or
+launching extra workflows requires that task scope.
+
+
 Where each Java suite runs:
 
-| Suite | PR checks | Merge queue | Nightly | Before you open the PR |
+| Suite | PR checks | Merge queue | Nightly | For merge readiness |
 | --- | --- | --- | --- | --- |
 | Unit tests (`openmetadata-service`, `openmetadata-k8s-operator`) | full | full | — | impacted classes |
 | Integration tests (`openmetadata-integration-tests`, every lane, MySQL+ES / PostgreSQL+OS / +Redis) | reports skipped | full | — | impacted classes |
@@ -12,7 +32,8 @@ Where each Java suite runs:
 | Collate integration tests against the OSS change (`maven-collate-ci`) | — | yes | — | — |
 
 The integration tests are gone from PR checks, so the merge queue is the first place CI sees an
-IT failure, and an ejection there costs every PR queued behind it. The local run is the gate:
+IT failure, and an ejection there costs every PR queued behind it. Full local or CI coverage is
+the merge-readiness gate; PR creation records focused results and pending broader coverage:
 
 ```bash
 make java_affected                              # list the impacted tests + the exact commands

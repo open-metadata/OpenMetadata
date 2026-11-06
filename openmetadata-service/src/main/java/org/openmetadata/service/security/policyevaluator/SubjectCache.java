@@ -106,7 +106,7 @@ public class SubjectCache {
   }
 
   private static final int DEFAULT_MAX_ENTRIES = 10000;
-  private static final Duration POLICIES_TTL = Duration.ofMinutes(2);
+  static final Duration POLICIES_TTL = Duration.ofMinutes(2);
 
   /** User contexts live this long when Redis pub/sub evicts them on every pod after a write. */
   static final Duration USER_CONTEXT_TTL = Duration.ofMinutes(15);

@@ -24,6 +24,7 @@ import {
   OperationStatus,
 } from '../../../generated/entity/data/ontologyChangeSet';
 import APIClient from '../../../rest/axiosClient';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useOntologyChangeSetApply } from './useOntologyChangeSetApply';
 
 jest.mock('../../../rest/axiosClient', () => ({
@@ -135,6 +136,31 @@ describe('native change-set application', () => {
     expect(onApplied).toHaveBeenCalledTimes(1);
   });
 
+  it('reports the create refusal, not the list refusal, when the caller lost the edit right', async () => {
+    const refusal = (message: string) =>
+      Object.assign(new Error(message), {
+        isAxiosError: true,
+        response: { status: 403, data: { message } },
+      });
+    post.mockRejectedValueOnce(refusal('operations [EditAll] not allowed'));
+    get.mockRejectedValueOnce(refusal('list refused'));
+    const { result } = renderHook(() =>
+      useOntologyChangeSetApply({ canApply: true, onApplied: jest.fn() })
+    );
+    await act(async () => {
+      await result.current.start(plan);
+    });
+
+    expect(result.current.status).toEqual({
+      kind: 'blocked',
+      message: 'server.unexpected-error',
+    });
+    expect(showErrorToast).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'operations [EditAll] not allowed' })
+    );
+    expect(createCalls()).toHaveLength(1);
+  });
+
   it('recovers a lost create response on a later cursor page without creating another draft', async () => {
     post.mockRejectedValueOnce(new Error('response lost'));
     get.mockResolvedValueOnce({
@@ -157,6 +183,7 @@ describe('native change-set application', () => {
       params: {
         fields: 'operations,applicationResult',
         limit: 100,
+        ontology: 'Sales',
         after: 'next',
       },
     });
@@ -323,6 +350,7 @@ describe('native change-set application', () => {
 
     expect(result.current.status.kind).toBe('blocked');
     expect(post).not.toHaveBeenCalled();
+    expect(get).not.toHaveBeenCalled();
   });
 
   it('blocks after lease contention and reacquires before retrying the retained draft', async () => {

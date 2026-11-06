@@ -527,6 +527,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           data-testid="rename-role-btn"
           icon={Edit}
           isDisabled={!canEditAll}
+          size="lg"
           tooltip={String(
             canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}

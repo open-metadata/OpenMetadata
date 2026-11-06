@@ -21,6 +21,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.REJECTION_C
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
+import static org.openmetadata.service.tasks.TaskFieldTarget.FIELD_PATH;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -61,6 +62,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
@@ -80,9 +82,10 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.FieldPathUtils;
-import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.FieldProperty;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 /**
@@ -193,7 +196,7 @@ public class TaskWorkflowHandler {
         transitionId,
         effectiveResolutionType,
         user);
-    TaskTagTarget.requireTagFieldToApply(task, effectiveResolutionType, resolvedPayload);
+    TaskFieldTarget.requireToApply(task, effectiveResolutionType, resolvedPayload);
 
     ReviewOutcome outcome =
         ApprovalDecisionService.recordForTask(task, effectiveResolutionType, review, comment, user);
@@ -325,16 +328,20 @@ public class TaskWorkflowHandler {
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
     }
 
-    if (isRejection(resolutionType, selectedTransition)) {
-      final String reason =
-          nullOrEmpty(comment)
-              ? latestCommentBy(
-                  user,
-                  taskRepository
-                      .get(null, taskId, taskRepository.getFields("comments"))
-                      .getComments())
-              : comment;
-      recordRejection(workflowHandler, taskId, reason, user);
+    final boolean rejection = isRejection(resolutionType, selectedTransition);
+    final String resolvedComment =
+        rejection && nullOrEmpty(comment)
+            ? latestCommentBy(
+                user,
+                taskRepository
+                    .get(null, taskId, taskRepository.getFields("comments"))
+                    .getComments())
+            : comment;
+    if (rejection) {
+      if (ontologyReview && nullOrEmpty(resolvedComment == null ? null : resolvedComment.strip())) {
+        throw new BadRequestException("A rejection requires a reason");
+      }
+      recordRejection(workflowHandler, taskId, resolvedComment, user);
     }
 
     // Resolve in Flowable workflow. A null namespace map means the runtime user task never
@@ -358,7 +365,7 @@ public class TaskWorkflowHandler {
               user,
               List.of(user),
               selectedTransition,
-              comment),
+              resolvedComment),
           namespacedVariables);
     }
     final TaskReviewVoteDecision voteDecision =
@@ -376,7 +383,7 @@ public class TaskWorkflowHandler {
                       task,
                       Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED),
                       voteDecision,
-                      comment,
+                      resolvedComment,
                       System.currentTimeMillis()))));
     } else {
       voteProcessId = null;
@@ -429,7 +436,7 @@ public class TaskWorkflowHandler {
             selectedTransition,
             newValue,
             resolvedPayload,
-            comment,
+            resolvedComment,
             user,
             null);
       }
@@ -490,7 +497,7 @@ public class TaskWorkflowHandler {
         selectedTransition,
         newValue,
         resolvedPayload,
-        comment,
+        resolvedComment,
         user,
         recordedVotes);
   }
@@ -878,10 +885,7 @@ public class TaskWorkflowHandler {
 
       if (payload != null) {
         JsonNode payloadNode = JsonUtils.valueToTree(payload);
-        fieldPath = readPayloadString(payloadNode, action.fieldPathField(), "fieldPath");
-        if (fieldPath == null || fieldPath.isEmpty()) {
-          fieldPath = payloadNode.path("field").asText(null);
-        }
+        fieldPath = readPayloadString(payloadNode, action.fieldPathField(), FIELD_PATH);
         if (newDescription == null || newDescription.isEmpty()) {
           newDescription = readPayloadString(payloadNode, action.valueField(), "suggestedValue");
         }
@@ -897,8 +901,9 @@ public class TaskWorkflowHandler {
           fieldPath,
           newDescription.length() > 50 ? newDescription.substring(0, 50) + "..." : newDescription);
 
+      EntityFieldPath path = fieldPathOf(task, fieldPath, FieldProperty.DESCRIPTION);
       String before = JsonUtils.pojoToJson(entity);
-      if (FieldPathUtils.setFieldDescription(entity, fieldPath, newDescription)) {
+      if (FieldPathUtils.setDescription(entity, path, newDescription)) {
         saveChange(entity, repository, user, before, null);
         LOG.info(
             "[TaskWorkflowHandler] Successfully applied description update for task '{}'",
@@ -927,7 +932,7 @@ public class TaskWorkflowHandler {
 
       if (payload != null) {
         JsonNode payloadNode = JsonUtils.valueToTree(payload);
-        fieldPath = readPayloadString(payloadNode, action.fieldPathField(), "fieldPath");
+        fieldPath = readPayloadString(payloadNode, action.fieldPathField(), FIELD_PATH);
         tagsToAdd =
             readTagLabels(payloadNode, action.addTagsField(), "tagsToAdd", "suggestedValue");
         tagsToRemove = readTagLabels(payloadNode, action.removeTagsField(), "tagsToRemove", null);
@@ -944,12 +949,13 @@ public class TaskWorkflowHandler {
         }
       }
 
-      if (TaskTagTarget.isEntityLevel(fieldPath)) {
-        // Entity-level: patch the entity so the versioned path runs — tag_usage is synced,
+      EntityFieldPath path = fieldPathOf(task, fieldPath, FieldProperty.TAGS);
+      if (path.isEntityLevel()) {
+        // Entity-level: patch the entity so the versioned path runs: tag_usage is synced,
         // version is bumped, change event fires. Same code path as PATCH /v1/tables/{id} tags.
         patchEntityTags(entity, repository, user, tagsToAdd, tagsToRemove);
       } else {
-        patchFieldTags(entity, repository, user, fieldPath, tagsToAdd, tagsToRemove);
+        patchFieldTags(entity, repository, user, path, tagsToAdd, tagsToRemove);
       }
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply TagUpdate", e);
@@ -975,18 +981,17 @@ public class TaskWorkflowHandler {
     saveChange(entity, repository, user, before, null);
   }
 
-  // Approval refuses a field path that names no tagged field (TaskTagTarget), so a field that is
+  // Approval refuses a field path that names no tagged field (TaskFieldTarget), so a field that is
   // missing here has gone since; nothing is written for it.
   @SuppressWarnings("unchecked")
   private void patchFieldTags(
       EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
-      String fieldPath,
+      EntityFieldPath fieldPath,
       List<TagLabel> tagsToAdd,
       List<TagLabel> tagsToRemove) {
-    Optional<Object> target =
-        FieldPathUtils.findField(entity, TaskTagTarget.locatablePath(fieldPath));
+    Optional<Object> target = FieldPathUtils.locate(entity, fieldPath);
     if (target.isEmpty()) {
       LOG.warn(
           "[TaskWorkflowHandler] Could not locate tagged field '{}'; no tags applied", fieldPath);
@@ -1272,7 +1277,7 @@ public class TaskWorkflowHandler {
     try {
       JsonNode payloadNode = JsonUtils.valueToTree(payload);
       String suggestionType = payloadNode.path("suggestionType").asText(null);
-      String fieldPath = payloadNode.path("fieldPath").asText(null);
+      String fieldPath = payloadNode.path(FIELD_PATH).asText(null);
       String suggestedValue = payloadNode.path("suggestedValue").asText(null);
 
       if (suggestedValue == null) {
@@ -1281,12 +1286,12 @@ public class TaskWorkflowHandler {
       }
 
       if ("Description".equals(suggestionType)) {
-        Optional<String> currentDescription = FieldPathUtils.getFieldDescription(entity, fieldPath);
+        EntityFieldPath path = fieldPathOf(task, fieldPath, FieldProperty.DESCRIPTION);
+        Optional<String> currentDescription = FieldPathUtils.getDescription(entity, path);
         if (currentDescription.isPresent() && suggestedValue.equals(currentDescription.get())) {
-          String changeSummaryField = resolveSuggestionChangeSummaryField(fieldPath);
-          if (changeSummaryField != null && isAgentAuthored(task, payloadNode, suggestedValue)) {
+          if (isAgentAuthored(task, payloadNode, suggestedValue)) {
             repository.patchChangeSummary(
-                entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
+                entity.getId(), path.toString(), ChangeSource.SUGGESTED, user);
           }
           LOG.info(
               "[TaskWorkflowHandler] Recorded no-op description suggestion change summary: fieldPath={}",
@@ -1294,7 +1299,7 @@ public class TaskWorkflowHandler {
           return;
         }
         String before = JsonUtils.pojoToJson(entity);
-        if (FieldPathUtils.setFieldDescription(entity, fieldPath, suggestedValue)) {
+        if (FieldPathUtils.setDescription(entity, path, suggestedValue)) {
           saveChange(
               entity,
               repository,
@@ -1311,12 +1316,11 @@ public class TaskWorkflowHandler {
         List<TagLabel> tags =
             JsonUtils.readValue(suggestedValue, new TypeReference<List<TagLabel>>() {});
         if (tags != null && !tags.isEmpty()) {
-          // Reuse the same field-path resolution as applyTagUpdate so both "::" and dot-form
-          // paths (e.g. columns.customer_id.tags) land on the suggested field, not the parent.
-          if (TaskTagTarget.isEntityLevel(fieldPath)) {
+          EntityFieldPath path = fieldPathOf(task, fieldPath, FieldProperty.TAGS);
+          if (path.isEntityLevel()) {
             applyEntityLevelTags(entity, repository, user, tags);
           } else {
-            patchFieldTags(entity, repository, user, fieldPath, tags, null);
+            patchFieldTags(entity, repository, user, path, tags, null);
           }
           LOG.info(
               "[TaskWorkflowHandler] Applied tag suggestion: {} tags for entity '{}'",
@@ -1338,25 +1342,9 @@ public class TaskWorkflowHandler {
     saveChange(entity, repository, user, before, null);
   }
 
-  private String resolveSuggestionChangeSummaryField(String fieldPath) {
-    if (fieldPath == null
-        || fieldPath.isBlank()
-        || fieldPath.equals("description")
-        || fieldPath.equals("entity")) {
-      return "description";
-    }
-
-    FieldPathUtils.FieldPathComponents components = FieldPathUtils.parseFieldPath(fieldPath);
-    if (components == null || !"description".equals(components.property())) {
-      return null;
-    }
-
-    if (components.fieldName() == null || components.fieldName().isBlank()) {
-      return "description";
-    }
-
-    return FullyQualifiedName.build(
-        components.containerName(), components.fieldName(), components.property());
+  // Approval has already refused a path that is not valid for the task (TaskFieldTarget).
+  private static EntityFieldPath fieldPathOf(Task task, String fieldPath, FieldProperty property) {
+    return TaskFieldTarget.parse(fieldPath, task.getAbout().getType(), property);
   }
 
   private List<EntityReference> readEntityReferences(
