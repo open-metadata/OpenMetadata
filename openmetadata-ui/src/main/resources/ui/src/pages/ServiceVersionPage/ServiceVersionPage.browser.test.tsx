@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { http, HttpResponse } from 'msw';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { many, named } from '../../test/browser/fixtures/entities';
 import {
-  DASHBOARD_SERVICE,
-  serveEntities,
+    DASHBOARD_SERVICE,
+    serveEntities
 } from '../../test/browser/fixtures/hierarchy';
 import { worker } from '../../test/browser/msw';
 import { describePaginatedList } from '../../test/browser/paginationContract';
@@ -30,8 +31,8 @@ describePaginatedList({
   isPageRequest: (url) => url.searchParams.get('limit') !== '0',
   items: dashboards,
   itemLabel: (d) => d.displayName,
-  // The version view lists children 10 at a time with no size selector.
-  fixedPageSize: 10,
+  // The version view lists children at the base page size, with no size selector.
+  fixedPageSize: PAGE_SIZE_BASE,
   setup: () => {
     serveEntities([['/api/v1/services/dashboardServices', DASHBOARD_SERVICE]]);
     worker.use(

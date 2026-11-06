@@ -12,6 +12,7 @@
  */
 import { beforeAll, describe, expect, test } from 'vitest';
 import { Locator, page, userEvent } from 'vitest/browser';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
   encodeCursor,
   RecordedCall,
@@ -74,7 +75,7 @@ const urlOf = (route: string, params: Record<string, string>) =>
 const settle = () => new Promise((resolve) => setTimeout(resolve, 300));
 
 export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
-  const pageSize = spec.fixedPageSize ?? 15;
+  const pageSize = spec.fixedPageSize ?? PAGE_SIZE_BASE;
   const base = { ...spec.query, pageSize: String(pageSize) };
   const within = () => spec.scope?.() ?? page;
   const next = () => within().getByTestId('next');
