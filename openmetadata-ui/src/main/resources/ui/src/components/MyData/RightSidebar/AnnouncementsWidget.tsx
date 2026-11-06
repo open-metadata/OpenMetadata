@@ -18,10 +18,12 @@
  * widget component itself had no consumer in this repo and was removed;
  * delete this file once Collate stops importing the type.
  */
-import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 
-export interface AnnouncementsWidgetProps extends WidgetCommonProps {
+// Deliberately does not extend WidgetCommonProps (a pages-layer type): the only
+// consumer intersects this with WidgetCommonProps itself, so the result is the
+// same and this file stays off the pages layer.
+export interface AnnouncementsWidgetProps {
   isAnnouncementLoading?: boolean;
   announcements?: AnnouncementEntity[];
 }
