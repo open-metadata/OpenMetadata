@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -29,6 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
+import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -41,9 +43,11 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
@@ -51,15 +55,18 @@ import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.ExtractedMemoryApprover;
 import org.openmetadata.service.context.review.MemoryEvidenceHolds;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 /**
  * ContextMemory is indexed whatever its {@code shareConfig.visibility}; privacy is enforced at
@@ -330,6 +337,60 @@ class ContextMemoryRepositoryTest {
                         ContextMemoryStatus.APPROVED,
                         null,
                         EntityRepository.Operation.PATCH)));
+  }
+
+  /**
+   * Review refuses an owner's own approval, so a document's owner approves its extracted memories
+   * only because the approver writes as a review decision does, through governance-bot.
+   */
+  @Test
+  void aDocumentOwnersApprovalPassesReviewOnlyAsTheApproverWritesIt() {
+    String impersonatedBy = impersonatorOfAnApprovalBy("alice");
+
+    withWriters(
+        () -> {
+          assertEquals(
+              ContextMemoryStatus.APPROVED,
+              stageMove(
+                  "alice",
+                  ContextMemoryStatus.APPROVED,
+                  impersonatedBy,
+                  EntityRepository.Operation.PATCH));
+          assertThrows(
+              AuthorizationException.class,
+              () ->
+                  stageMove(
+                      "alice",
+                      ContextMemoryStatus.APPROVED,
+                      null,
+                      EntityRepository.Operation.PATCH));
+        });
+  }
+
+  /** Who the approver's write of one extracted pill names as impersonating {@code user}. */
+  private String impersonatorOfAnApprovalBy(String user) {
+    ContextMemory pill =
+        memory(MemoryVisibility.ENTITY)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
+            .withVersion(0.1)
+            .withUpdatedAt(101L);
+    EntityReference file =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    ContextMemoryRepository listing = mock(ContextMemoryRepository.class);
+    ContextMemoryRepository writes = mock(ContextMemoryRepository.class);
+    when(listing.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE))
+        .thenReturn(List.of(pill));
+    when(writes.patch(any(), any(UUID.class), any(), any(), any(), any(), any()))
+        .thenReturn(new PatchResponse<>(Response.Status.OK, pill, EventType.ENTITY_UPDATED));
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entities.when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(writes);
+      new ExtractedMemoryApprover(listing).approve(file, user);
+    }
+    ArgumentCaptor<String> impersonatedBy = ArgumentCaptor.forClass(String.class);
+    verify(writes)
+        .patch(isNull(), eq(pill.getId()), eq(user), any(), any(), any(), impersonatedBy.capture());
+    return impersonatedBy.getValue();
   }
 
   /** A PUT re-sends its create request, stage included: it keeps the stored stage, as the create. */

@@ -32,6 +32,8 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.context.ApproveExtractedMemories;
 import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
 import org.openmetadata.schema.api.data.CreatePage;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
@@ -44,6 +46,7 @@ import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -135,6 +138,42 @@ public class ContextMemoryExtractedApprovalIT {
   }
 
   @Test
+  void aMemberOfTheTeamOwningTheDocumentApprovesItsExtractedMemories(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Team team =
+        admin
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("document-owners"))
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    String name = "approver_" + UUID.randomUUID().toString().substring(0, 8);
+    String email = name + "@test.openmetadata.org";
+    admin
+        .users()
+        .create(new CreateUser().withName(name).withEmail(email).withTeams(List.of(team.getId())));
+    EntityReference file = file(ns, "team-owned", team.getEntityReference());
+    ContextMemory window = stored(ns, file, "What is the refund window?", "30 days", pending());
+
+    ExtractedMemoryApproval result =
+        approve(SdkClients.createClient(email, email, new String[] {}), file);
+
+    assertEquals(1, result.getApproved());
+    assertEquals(ContextMemoryStatus.APPROVED, status(window));
+  }
+
+  /** Owning one of a document's memories decides that memory's sharing, not the document's. */
+  @Test
+  void owningALinkedMemoryDoesNotMakeSomeoneTheDocumentsOwner(TestNamespace ns) {
+    EntityReference file = file(ns, "memory-owner", shared().USER1_REF);
+    ContextMemory window =
+        stored(ns, file, "What is the refund window?", "30 days", pending(), shared().USER2_REF);
+
+    assertEquals(403, statusOf(() -> approve(SdkClients.user2Client(), file)));
+    assertEquals(ContextMemoryStatus.UNPROCESSED, status(window));
+  }
+
+  @Test
   void onlyAContextFileOrAPageIsASource() {
     EntityReference table = new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
 
@@ -185,6 +224,16 @@ public class ContextMemoryExtractedApprovalIT {
       String question,
       String answer,
       ContextMemoryStatus status) {
+    return stored(ns, source, question, answer, status, null);
+  }
+
+  private static ContextMemory stored(
+      TestNamespace ns,
+      EntityReference source,
+      String question,
+      String answer,
+      ContextMemoryStatus status,
+      EntityReference owner) {
     String name = ns.prefix("pill-" + UUID.randomUUID());
     ContextMemory memory =
         new ContextMemory()
@@ -201,6 +250,7 @@ public class ContextMemoryExtractedApprovalIT {
             .withSourceEntity(source)
             .withPrimaryEntity(source)
             .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY))
+            .withOwners(owner == null ? null : List.of(owner))
             .withUpdatedBy(Entity.ADMIN_USER_NAME)
             .withUpdatedAt(System.currentTimeMillis());
     memoryRepository().create(null, memory);

@@ -3,8 +3,10 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-06 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `ExtractedMemoryApproverTest`, `ContextMemoryExtractedApprovalIT`, and the Jest tests of
-  `CreateMemoryModal`, `ContextCenterMemoriesPage` and `ExtractedMemoriesCard`
+- **Guard:** `ExtractedMemoryApproverTest`, `ContextMemoryReconcilerTest`,
+  `ContextMemoryRepositoryTest#aDocumentOwnersApprovalPassesReviewOnlyAsTheApproverWritesIt`,
+  `ContextMemoryExtractedApprovalIT`, and the Jest tests of `CreateMemoryModal`,
+  `ContextCenterMemoriesPage` and `ExtractedMemoriesCard`
 - **Related:** ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values,
   ADR:2026-11-05-oss-memories-are-approved-without-reconciliation,
   ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory,
@@ -19,27 +21,36 @@ a non-admin's manual memory under review, and in OSS for the values extraction h
 
 ## Decision
 
-- The memory panel offers **Approve** and **Reject** to admins on an `Unprocessed` or `Draft`
-  memory. Each PATCHes `/entityStatus` to `Approved` or `Rejected`, moves
-  `ContextMemoryRepository.LIFECYCLE` allows from both stages. The Memories list lets an admin
-  approve the `Unprocessed` memories it shows in one action, one PATCH each, and reports those that
-  fail; Draft memories are left to the panel or their conflict review.
+- The memory panel offers **Approve** and **Reject** to admins on an `Unprocessed` memory or a
+  `Draft` held for no dispute. A Draft with disputes is decided by its conflict review: approving it
+  in the panel would release the disputes and leave both contradicting memories Approved
+  (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
+  Each PATCHes `/entityStatus` to `Approved` or `Rejected`, moves `ContextMemoryRepository.LIFECYCLE`
+  allows from both stages, after a `test` of `/updatedAt` against the memory the admin saw, so a
+  memory edited or reviewed meanwhile fails the decision instead of being overwritten. The
+  Memories list lets an admin approve the `Unprocessed` memories it shows in one action, one such
+  PATCH each, and reports those that fail; Draft memories are left to the panel or their review.
 - A document's extracted memories are approved from the document, its preview in Documents or an
   article's view, by an admin or an owner of the document as policies count owners (an owning
-  team's members included). They already decide the document's conflict reviews
+  team's members included). A document's owner is its uploader or author, who approves what the
+  document says and already decides its conflict reviews
   (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values).
   `GET /v1/contextCenter/memories/extractedApproval?sourceId&sourceType` previews what approval
   would do and `PUT` with `ApproveExtractedMemories` does it; both answer anyone else with 403 and
   accept only a context file or a page as the source.
 - Approval writes each of the document's `Unprocessed` extracted memories as a review decision
   does: as the person, impersonated by `governance-bot` and guarded on the version read, so a
-  distribution that requires review accepts an owner's decision. A memory refused or changed
-  meanwhile stays pending and is counted as failed; the others are still approved.
+  distribution that requires review accepts an owner's decision. A memory refused, changed or
+  released meanwhile is not approved and is counted as failed; the others are still approved.
 - A memory whose normalized question (`ContextMemoryExtractor.questionKey`) another `Unprocessed`,
   `Draft` or `Approved` memory of the same document shares is a second value of that question, as
-  extraction keeps two pills for one question only when their values conflict. Approval leaves it
-  pending and returns it as needing a decision. It never touches a `Draft` memory, which is under
-  conflict review, nor any other stage.
+  extraction keeps two pills for one question only when their values conflict. So is one that
+  re-extraction would hold for review beside a decided pill, by the predicate both share
+  (`MemoryReviewHolds.holds`): a value agreeing with a Rejected or Superseded pill, or beside a
+  correction a changed number whose question alone clears the bar, may be a value a reviewer
+  rejected or a person replaced, reworded. Approval leaves such memories pending and returns them as
+  needing a decision. It never touches a `Draft` memory, which is under conflict review, nor any
+  other stage.
 - This is the product path for approving a memory held for review that the earlier records
   pointed to the API for.
 

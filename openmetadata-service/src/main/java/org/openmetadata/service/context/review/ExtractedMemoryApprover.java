@@ -28,6 +28,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.context.center.ContextMemoryExtractor;
+import org.openmetadata.service.context.center.MemoryReviewHolds;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
@@ -37,7 +39,8 @@ import org.openmetadata.service.security.AuthorizationException;
  * Approves a document's Unprocessed extracted memories for a person who decides them, written as a
  * review decision is (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).
  * A pill sharing its question with another pending or Approved pill of the document is a second
- * value, left pending for a person to decide.
+ * value, and one re-extraction would hold beside a decided pill may be that decision reworded: both
+ * stay pending for a person to decide.
  */
 @Slf4j
 public final class ExtractedMemoryApprover {
@@ -94,8 +97,19 @@ public final class ExtractedMemoryApprover {
         memories.stream()
             .filter(ExtractedMemoryApprover::awaitsApproval)
             .collect(
-                Collectors.partitioningBy(memory -> valuesByQuestion.get(questionKey(memory)) > 1));
+                Collectors.partitioningBy(
+                    memory -> isContested(memory, memories, valuesByQuestion)));
     return new Plan(contested.get(false), contested.get(true));
+  }
+
+  /**
+   * Another value of its question needs a person to choose, and so does a value re-extraction would
+   * hold beside a decided pill: it may be a value a reviewer rejected or replaced, reworded.
+   */
+  private static boolean isContested(
+      ContextMemory memory, List<ContextMemory> memories, Map<String, Long> valuesByQuestion) {
+    return valuesByQuestion.get(questionKey(memory)) > 1
+        || memories.stream().anyMatch(decided -> MemoryReviewHolds.holds(decided, memory));
   }
 
   /** Only an Unprocessed pill extraction made: a Draft awaits its conflict review. */
@@ -112,7 +126,7 @@ public final class ExtractedMemoryApprover {
     return repository.listExtractedMemories(source.getId(), source.getType());
   }
 
-  /** A pill refused or changed meanwhile stays pending without failing the others. */
+  /** A pill refused, changed or released meanwhile is not approved and does not fail the others. */
   private static boolean approveOne(ContextMemory pill, String user) {
     boolean approved = false;
     try {
@@ -121,9 +135,12 @@ public final class ExtractedMemoryApprover {
           new GuardedMemoryPatch.Writer(
               user, ChangeSource.MANUAL, GOVERNANCE_BOT, CHANGED_WHILE_APPROVING));
       approved = true;
-    } catch (PreconditionFailedException | BadRequestException | AuthorizationException e) {
+    } catch (PreconditionFailedException
+        | BadRequestException
+        | AuthorizationException
+        | EntityNotFoundException e) {
       LOG.info(
-          "[ExtractedMemoryApproval] memory {} stays pending: {}", pill.getId(), e.getMessage());
+          "[ExtractedMemoryApproval] memory {} was not approved: {}", pill.getId(), e.getMessage());
     }
     return approved;
   }
