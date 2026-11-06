@@ -39,8 +39,8 @@ class WorkbookDetails(BaseModel):
     description: str | None = None
     # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages.
     elements: list["Elements"] = []
-    # Read from the workbook's lineage on its first SQL lineage call, then reused for each db service prefix.
-    connection_ids: set[str] | None = None
+    # Read from the workbook's lineage on first use, then reused by every lineage step of the workbook.
+    lineage: list["WorkbookLineageEntry"] | None = None
 
 
 class WorkBookResponseDetails(BaseModel):
@@ -148,6 +148,9 @@ class ConnectionsResponse(BaseModel):
 
 class WorkbookLineageEntry(BaseModel):
     connectionId: str | None = None  # noqa: N815
+    elementId: str | None = None  # noqa: N815
+    dataSourceIds: list[str] | None = None  # noqa: N815
+    dataModelId: str | None = None  # noqa: N815
 
 
 class WorkbookLineageResponse(BaseModel):

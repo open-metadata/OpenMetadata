@@ -50,6 +50,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -59,6 +60,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
     NodeDetails,
     Workbook,
     WorkbookDetails,
+    WorkbookLineageEntry,
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
@@ -464,16 +466,43 @@ class SigmaSource(DashboardServiceSource):
                     )
                 )
 
+    def _workbook_lineage(self, dashboard_details: WorkbookDetails) -> list[WorkbookLineageEntry]:
+        lineage = dashboard_details.lineage
+        if lineage is None:
+            lineage = self.client.get_workbook_lineage(dashboard_details.workbookId)
+            dashboard_details.lineage = lineage
+        return lineage
+
     def _workbook_dialect(self, dashboard_details: WorkbookDetails) -> Dialect | None:
         """The dialect of the warehouse Sigma runs the workbook's SQL on, when all its sources use one connection"""
-        connection_ids = dashboard_details.connection_ids
-        if connection_ids is None:
-            connection_ids = self.client.get_workbook_connection_ids(dashboard_details.workbookId)
-            dashboard_details.connection_ids = connection_ids
+        connection_ids = {
+            entry.connectionId for entry in self._workbook_lineage(dashboard_details) if entry.connectionId
+        }
         if len(connection_ids) != 1:
             return None
         connection_type = self.client.get_connection_type(next(iter(connection_ids)))
         return SIGMA_CONNECTION_DIALECTS.get((connection_type or "").lower())
+
+    def yield_dashboard_lineage(self, dashboard_details: WorkbookDetails) -> Iterable[Either[OMetaLineageRequest]]:
+        """Also link each Sigma Data Model to the workbook elements reading it, once per workbook"""
+        yield from super().yield_dashboard_lineage(dashboard_details)
+        if not (dashboard_details and self.source_config.includeDataModels):
+            return
+        lineage = self._workbook_lineage(dashboard_details)
+        data_model_ids = {entry.dataModelId for entry in lineage if entry.dataModelId}
+        # An element row lists the data models it reads among its root sources (dataSourceIds)
+        links = {
+            (data_model_id, entry.elementId)
+            for entry in lineage
+            if entry.elementId
+            for data_model_id in data_model_ids.intersection(entry.dataSourceIds or [])
+        }
+        for data_model_id, element_id in sorted(links):
+            from_entity, to_entity = self._get_datamodel(data_model_id), self._get_datamodel(element_id)
+            if from_entity and to_entity:
+                yield from self.yield_lineage_request(
+                    self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+                )
 
     def get_column_info(self, element: Elements) -> list[Column] | None:
         """Build data model columns"""

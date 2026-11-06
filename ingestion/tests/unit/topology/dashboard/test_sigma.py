@@ -371,7 +371,7 @@ class SigmaUnitTest(TestCase):
         """
         # Setup mocks
         self.sigma.client.get_workbook_queries = lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
-        self.sigma.client.get_workbook_connection_ids = lambda *_: set()
+        self.sigma.client.get_workbook_lineage = lambda *_: []
         self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
@@ -1281,3 +1281,69 @@ def test_a_sigma_data_model_is_owned_by_its_owner(sigma_over_http, sigma_data_mo
     [data_model] = bulk_data_models(source)
 
     assert [owner.name for owner in data_model.owners.root] == ["ada@example.com"]
+
+
+# Sigma's documented example response for the workbook lineage endpoint (list-lineage-tree): element
+# 3fqWi0z9SWwxuilnuq8w34 lists the data model d5a56ed4-… among its root sources.
+DOCUMENTED_WORKBOOK_LINEAGE = json.loads(
+    """
+{
+  "entries": [
+    {"dataSourceIds": ["QzcnTZrK9y8TjZs0T6OKO/En4r45kOFn"], "elementId": "5AbJJlOiPPtgpL3cCk7GqA",
+     "sourceIds": ["QzcnTZrK9y8TjZs0T6OKO"], "type": "element"},
+    {"dataSourceIds": ["QzcnTZrK9y8TjZs0T6OKO/En4r45kOFn"], "elementId": "5AbJJlOiPPtgpL3cCk7GqA",
+     "sourceIds": ["4ZJD7G8AR03qf2oySPwoc3"], "type": "element"},
+    {"dataSourceIds": ["QzcnTZrK9y8TjZs0T6OKO/En4r45kOFn", "d5a56ed4-16bf-4de3-be32-e0738f31be42"],
+     "elementId": "3fqWi0z9SWwxuilnuq8w34", "sourceIds": ["2MLjb1f67ldr3FMNI2L6Pf", "4ZJD7G8AR03qf2oySPwoc3"],
+     "type": "element"},
+    {"connectionId": "dd76be0a-08bc-4c88-8a79-9956f933e701", "dataModelId": "d5a56ed4-16bf-4de3-be32-e0738f31be42",
+     "name": "Docks data model", "type": "data-model"},
+    {"connectionId": "dd76be0a-08bc-4c88-8a79-9956f933e701", "inodeId": "eef50bc2-16c5-44ee-a913-9ae9d95e5295",
+     "name": "DOCKS", "type": "table"}
+  ],
+  "nextPage": null
+}
+"""
+)
+
+
+def data_model_edges(source) -> list[tuple[str, str]]:
+    """The data model -> data model edges the lineage stage sends for wb-1; every data model is known to OpenMetadata"""
+
+    def get_by_name(entity, fqn, **_):
+        if entity is not DashboardDataModel:
+            return None
+        return DashboardDataModel(
+            id=str(uuid5(NAMESPACE_URL, fqn)),
+            name=fqn.rsplit(".", 1)[-1],
+            fullyQualifiedName=fqn,
+            dataModelType="SigmaDataModel",
+            columns=[],
+        )
+
+    source.metadata.get_by_name = get_by_name
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+    return [
+        (request.edge.fromEntity.fullyQualifiedName, request.edge.toEntity.fullyQualifiedName)
+        for either in source.yield_dashboard_lineage(details)
+        if (request := getattr(either.right, "lineage_request", None))
+        and request.edge.fromEntity.type == "dashboardDataModel"
+    ]
+
+
+def test_a_workbook_element_reading_a_sigma_data_model_gets_lineage_from_it(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-1/lineage"] = DOCUMENTED_WORKBOOK_LINEAGE
+
+    assert data_model_edges(source) == [
+        ("mock_sigma.model.d5a56ed4-16bf-4de3-be32-e0738f31be42", "mock_sigma.model.3fqWi0z9SWwxuilnuq8w34")
+    ]
+
+
+def test_no_data_model_lineage_is_read_when_data_models_are_off(sigma_over_http, routes):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-1/lineage"] = DOCUMENTED_WORKBOOK_LINEAGE
+    source.source_config.includeDataModels = False
+
+    assert data_model_edges(source) == []
+    assert calls["GET", "/v2/workbooks/wb-1/lineage"] == 0

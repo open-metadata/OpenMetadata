@@ -36,6 +36,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
     OwnerDetails,
     Workbook,
     WorkbookDetails,
+    WorkbookLineageEntry,
     WorkbookLineageResponse,
     WorkBookPageResponse,
     WorkbookQueriesResponse,
@@ -171,28 +172,21 @@ class SigmaApiClient:
                 logger.warning(f"Failed to list Sigma connections: {exc}")
         return self._connection_types.get(connection_id)
 
-    def get_workbook_connection_ids(self, workbook_id: str) -> set[str]:
+    def get_workbook_lineage(self, workbook_id: str) -> list[WorkbookLineageEntry]:
         """
-        The connections the workbook's sources run on, from its lineage rows. Empty when the read fails, so a
-        partial read never looks like a workbook on a single connection.
+        The workbook's lineage rows. Empty when the read fails, so a partial read never looks like a workbook on a
+        single connection or misses a data model it reads.
         """
-        connection_ids = set()
         try:
-            data = None
-            while True:
-                result = WorkbookLineageResponse.model_validate(
-                    self.client.get(f"/workbooks/{workbook_id}/lineage", data=data)
-                )
-                connection_ids.update(entry.connectionId for entry in result.entries if entry.connectionId)
-                if not result.nextPage:
-                    return connection_ids
-                data = {"page": result.nextPage}
+            return list(self._read_all(f"/workbooks/{workbook_id}/lineage", WorkbookLineageResponse))
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch the lineage of workbook {workbook_id}: {exc}")
-        return set()
+        return []
 
-    def _read_all(self, path: str, response_model: type[DataModelsResponse | ElementsResponse]) -> Iterator:
+    def _read_all(
+        self, path: str, response_model: type[DataModelsResponse | ElementsResponse | WorkbookLineageResponse]
+    ) -> Iterator:
         """Every entry of a paginated Sigma listing; raises when a page cannot be read"""
         data = None
         while True:
