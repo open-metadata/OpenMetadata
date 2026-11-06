@@ -46,9 +46,19 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
           + "strings: describe the role or team instead. Return ONLY the JSON array, no prose.";
 
   private final LLMCompletionClient llmClient;
+  private final ContextMemoryStatus initialStatus;
 
   public ContextMemoryExtractor(LLMCompletionClient llmClient) {
+    this(llmClient, ContextMemoryStatus.APPROVED);
+  }
+
+  /**
+   * A provider that reviews extracted memories before they ground answers starts them Unprocessed.
+   * ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values
+   */
+  public ContextMemoryExtractor(LLMCompletionClient llmClient, ContextMemoryStatus initialStatus) {
     this.llmClient = llmClient;
+    this.initialStatus = initialStatus;
   }
 
   /**
@@ -158,14 +168,31 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
     return result;
   }
 
+  /**
+   * One pill per question, except that an answer whose numbers conflict with every kept answer to
+   * that question is a second value the document gives, kept for review; any other is a rewording.
+   */
   private List<KnowledgePill> dedupe(List<KnowledgePill> pills) {
-    Map<String, KnowledgePill> byQuestion = new LinkedHashMap<>();
+    Map<String, List<KnowledgePill>> byQuestion = new LinkedHashMap<>();
     for (KnowledgePill pill : pills) {
       if (isValid(pill)) {
-        byQuestion.putIfAbsent(pill.question().trim().toLowerCase(Locale.ROOT), pill);
+        List<KnowledgePill> kept =
+            byQuestion.computeIfAbsent(normalize(pill.question()), ignored -> new ArrayList<>());
+        boolean newValue =
+            kept.stream()
+                .allMatch(
+                    other ->
+                        MemoryTextSimilarity.hasConflictingNumbers(other.answer(), pill.answer()));
+        if (newValue) {
+          kept.add(pill);
+        }
       }
     }
-    return new ArrayList<>(byQuestion.values());
+    return byQuestion.values().stream().flatMap(List::stream).toList();
+  }
+
+  private static String normalize(String text) {
+    return text.trim().toLowerCase(Locale.ROOT);
   }
 
   private boolean isValid(KnowledgePill pill) {
@@ -189,7 +216,7 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
         .withSummary(pill.summary())
         .withMemoryType(parseType(pill.memoryType()))
         .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
-        .withEntityStatus(ContextMemoryStatus.APPROVED)
+        .withEntityStatus(initialStatus)
         .withSourceType(sourceType)
         .withSourceEntity(sourceRef)
         .withPrimaryEntity(sourceRef)
