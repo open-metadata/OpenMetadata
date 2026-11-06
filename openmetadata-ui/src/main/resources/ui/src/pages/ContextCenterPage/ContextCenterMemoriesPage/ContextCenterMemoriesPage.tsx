@@ -18,6 +18,7 @@ import {
   Input,
   PageLayout,
   PaginationCardMinimal,
+  selectedTriggerClassName,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -162,6 +163,12 @@ const searchOutsideReview = (
 const isEmptyOnceLoaded = (isLoading: boolean, count: number) =>
   !isLoading && count === 0;
 
+const isStatusFilterChanged = (selectedStatuses: ContextMemoryStatus[]) =>
+  selectedStatuses.length !== DEFAULT_MEMORY_LIST_STATUSES.length ||
+  DEFAULT_MEMORY_LIST_STATUSES.some(
+    (status) => !selectedStatuses.includes(status)
+  );
+
 const getMemoriesViewFlags = ({
   selectedAsset,
   selectedAuthor,
@@ -186,10 +193,7 @@ const getMemoriesViewFlags = ({
   const hasActiveFilters = Boolean(
     selectedAsset ||
       selectedAuthor ||
-      selectedStatuses.length !== DEFAULT_MEMORY_LIST_STATUSES.length ||
-      DEFAULT_MEMORY_LIST_STATUSES.some(
-        (status) => !selectedStatuses.includes(status)
-      )
+      isStatusFilterChanged(selectedStatuses)
   );
   const isMemoriesSearching = Boolean(debouncedSearch.trim());
   const isMemoriesFilteredOnly = Boolean(
@@ -1016,6 +1020,11 @@ const ContextCenterMemoriesPage: FC = () => {
                   gap={2}>
                   <Dropdown.Root>
                     <Button
+                      className={
+                        isStatusFilterChanged(selectedStatuses)
+                          ? selectedTriggerClassName(true)
+                          : undefined
+                      }
                       color="secondary"
                       data-testid="memory-status-filter"
                       iconLeading={
