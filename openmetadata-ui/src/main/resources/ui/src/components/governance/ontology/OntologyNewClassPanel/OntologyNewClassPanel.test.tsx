@@ -1633,7 +1633,7 @@ describe('mappings are picked by label', () => {
 
   it('shows a loading row, then the matches of concepts that arrive after typing', async () => {
     let release: () => void = () => undefined;
-    const arrival = new Promise((resolve) => {
+    const arrival = new Promise<void>((resolve) => {
       release = resolve;
     });
     const base = get.getMockImplementation();
