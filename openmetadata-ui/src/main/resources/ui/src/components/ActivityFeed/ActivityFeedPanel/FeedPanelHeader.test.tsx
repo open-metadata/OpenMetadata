@@ -11,167 +11,47 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { Conversation } from '../../../generated/entity/feed/conversation';
-import EntityLink from '../../../utils/EntityLink';
+import { fireEvent, render, screen } from '@testing-library/react';
 import FeedPanelHeader from './FeedPanelHeader';
 
-const mockFeedPanelHeaderProp = {
-  onCancel: jest.fn(),
-  noun: 'Conversations',
-  onShowNewConversation: jest.fn(),
-  entityLink:
-    '<#E::table::sample_data.ecommerce_db.shopify.dim_address::description>',
-};
-
 describe('Test FeedPanelHeader Component', () => {
-  it('Check if FeedPanelHeader has all child elements', async () => {
-    const { container } = render(
-      <FeedPanelHeader {...mockFeedPanelHeaderProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
+  it('titles the panel Conversation alone', () => {
+    render(<FeedPanelHeader onCancel={jest.fn()} />);
+
+    expect(screen.getByTestId('header-title')).toHaveTextContent(
+      /^label\.conversation$/
     );
-
-    const title = await findByTestId(container, 'header-title');
-    const noun = await findByTestId(container, 'header-noun');
-    const newConversationButton = await findByTestId(
-      container,
-      'add-new-conversation'
-    );
-
-    const drawerCloseButton = await findByTestId(container, 'closeDrawer');
-
-    expect(title).toBeInTheDocument();
-    expect(noun).toHaveTextContent('Conversations label.on-lowercase');
-    expect(newConversationButton).toBeInTheDocument();
-    expect(drawerCloseButton).toBeInTheDocument();
   });
 
-  it('Check if FeedPanelHeader has onShowNewConversation as undefined', async () => {
-    const { container } = render(
+  it('offers a new conversation only when it can start one', () => {
+    const onShowNewConversation = jest.fn();
+    const { rerender } = render(<FeedPanelHeader onCancel={jest.fn()} />);
+
+    expect(
+      screen.queryByTestId('add-new-conversation')
+    ).not.toBeInTheDocument();
+
+    rerender(
       <FeedPanelHeader
-        {...mockFeedPanelHeaderProp}
-        onShowNewConversation={undefined}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const newConversationButton = queryByTestId(
-      container,
-      'add-new-conversation'
-    );
-
-    // onShowNewConversation is undefined so add-new-conversation should not be in the document
-    expect(newConversationButton).not.toBeInTheDocument();
-  });
-
-  it('Check if FeedPanelHeader has noun as undefined', async () => {
-    const { container } = render(
-      <FeedPanelHeader {...mockFeedPanelHeaderProp} noun={undefined} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const noun = await findByTestId(container, 'header-noun');
-
-    // noun is undefined so default noun should be present in text content
-    expect(noun).toHaveTextContent('label.conversation label.on-lowercase');
-  });
-
-  it('Should render entityFQN if entityField is empty', async () => {
-    const { container } = render(
-      <FeedPanelHeader
-        {...mockFeedPanelHeaderProp}
-        entityLink="<#E::testCase::sample_data.ecommerce_db.shopify.dim_address.address_id.unique_column_test>"
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const entityAttribute = await findByTestId(container, 'entity-attribute');
-
-    expect(entityAttribute).toHaveTextContent('unique_column_test');
-  });
-
-  it('defaults the noun to conversation', async () => {
-    const { container } = render(
-      <FeedPanelHeader {...mockFeedPanelHeaderProp} noun={undefined} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const noun = await findByTestId(container, 'header-noun');
-
-    expect(noun).toHaveTextContent(/Conversation label.on-lowercase/i);
-  });
-
-  it('reads the entity from the thread reference, not its about link', async () => {
-    // A thread created from an activity event links the changed field
-    // (`::entityStatus`), which the EntityLink grammar does not list, so
-    // parsing it made ANTLR log a syntax error.
-    const splitSpy = jest.spyOn(EntityLink, 'split');
-    const feed = {
-      about: '<#E::table::service.db.schema.orders::entityStatus>',
-      entityRef: {
-        id: 'id-1',
-        type: 'table',
-        name: 'orders',
-        fullyQualifiedName: 'service.db.schema.orders',
-      },
-    } as Conversation;
-
-    const { container } = render(
-      <FeedPanelHeader
-        entityLink="<#E::table::service.db.schema.orders>"
-        feed={feed}
         onCancel={jest.fn()}
-      />,
-      { wrapper: MemoryRouter }
+        onShowNewConversation={onShowNewConversation}
+      />
     );
+    fireEvent.click(screen.getByTestId('add-new-conversation'));
 
-    expect(splitSpy).not.toHaveBeenCalled();
-    expect(await findByTestId(container, 'entitylink')).toHaveAttribute(
-      'href',
-      expect.stringContaining('service.db.schema.orders')
-    );
-
-    splitSpy.mockRestore();
+    expect(onShowNewConversation).toHaveBeenCalledWith(true);
   });
 
-  it('does not parse an activity-sourced about link the drawer passes as entityLink', async () => {
-    const splitSpy = jest.spyOn(EntityLink, 'split');
-    const about = '<#E::table::service.db.schema.orders::entityStatus>';
+  it('closes from the close icon unless it is hidden', () => {
+    const onCancel = jest.fn();
+    const { rerender } = render(<FeedPanelHeader onCancel={onCancel} />);
 
-    const { container } = render(
-      <FeedPanelHeader
-        entityLink={about}
-        feed={
-          {
-            about,
-            entityRef: {
-              id: 'id-1',
-              type: 'table',
-              fullyQualifiedName: 'service.db.schema.orders',
-            },
-          } as Conversation
-        }
-        onCancel={jest.fn()}
-      />,
-      { wrapper: MemoryRouter }
-    );
+    fireEvent.click(screen.getByTestId('closeDrawer'));
 
-    expect(splitSpy).not.toHaveBeenCalled();
-    expect(await findByTestId(container, 'entity-attribute')).toHaveTextContent(
-      /entityStatus/i
-    );
+    expect(onCancel).toHaveBeenCalled();
 
-    splitSpy.mockRestore();
+    rerender(<FeedPanelHeader hideCloseIcon onCancel={onCancel} />);
+
+    expect(screen.queryByTestId('closeDrawer')).not.toBeInTheDocument();
   });
 });

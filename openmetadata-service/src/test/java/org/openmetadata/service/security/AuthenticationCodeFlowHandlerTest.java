@@ -27,12 +27,15 @@ import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import com.nimbusds.common.contenttype.ContentType;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.PlainJWT;
+import com.nimbusds.oauth2.sdk.AuthorizationCode;
 import com.nimbusds.oauth2.sdk.TokenRequest;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
 import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.http.HTTPResponse;
 import com.nimbusds.oauth2.sdk.id.ClientID;
+import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken;
+import com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
@@ -2005,6 +2008,36 @@ class AuthenticationCodeFlowHandlerTest {
   @Test
   void handleCallback_codeFlowFrontChannelTokenWithoutCode_rejectedWithoutActivatingSession()
       throws Exception {
+    assertCodelessCallbackRejectedWithoutActivatingSession("code");
+  }
+
+  @Test
+  void handleCallback_implicitResponseTypeWithoutCode_rejectedWithoutActivatingSession()
+      throws Exception {
+    assertCodelessCallbackRejectedWithoutActivatingSession("id_token");
+  }
+
+  @Test
+  void buildCredentials_keepsOnlyTheAuthorizationCode() {
+    AuthenticationSuccessResponse callback =
+        new AuthenticationSuccessResponse(
+            URI.create(TEST_SERVER_URL + "/callback"),
+            new AuthorizationCode("authorization-code-1"),
+            new PlainJWT(new JWTClaimsSet.Builder().subject("admin").build()),
+            new BearerAccessToken("front-channel-access-token"),
+            new State("state-abc"),
+            null,
+            null);
+
+    OidcCredentials credentials = AuthenticationCodeFlowHandler.buildCredentials(callback);
+
+    assertEquals("authorization-code-1", credentials.getCode());
+    assertNull(credentials.getIdToken());
+    assertNull(credentials.toAccessToken());
+  }
+
+  private void assertCodelessCallbackRejectedWithoutActivatingSession(String responseType)
+      throws Exception {
     UserSession pendingSession =
         UserSession.builder()
             .id("pending-session")
@@ -2016,7 +2049,7 @@ class AuthenticationCodeFlowHandlerTest {
     when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
     when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
     when(oidcConfiguration.isWithState()).thenReturn(false);
-    when(oidcConfiguration.getResponseType()).thenReturn("code");
+    when(oidcConfiguration.getResponseType()).thenReturn(responseType);
     OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
     when(metadata.supportsAuthorizationResponseIssuerParam()).thenReturn(false);
     IOidcOpMetadataResolver metadataResolver = mock(IOidcOpMetadataResolver.class);
@@ -2045,28 +2078,6 @@ class AuthenticationCodeFlowHandlerTest {
     assertTrue(captureOutputStream.getCapturedOutput().contains("Authorization code is required"));
     verify(sessionService, never())
         .activatePendingSession(any(), any(), any(), any(), any(), any());
-  }
-
-  @Test
-  void expectsAuthorizationCode_trueForCodeAndHybridAndDefault_falseForImplicit() throws Exception {
-    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
-    AuthenticationCodeFlowHandler handler =
-        createHandlerWithMockedInternals(sessionService, oidcClient);
-    Method expectsCode =
-        AuthenticationCodeFlowHandler.class.getDeclaredMethod("expectsAuthorizationCode");
-    expectsCode.setAccessible(true);
-
-    when(oidcConfiguration.getResponseType()).thenReturn("code");
-    assertEquals(Boolean.TRUE, expectsCode.invoke(handler));
-
-    when(oidcConfiguration.getResponseType()).thenReturn("code id_token");
-    assertEquals(Boolean.TRUE, expectsCode.invoke(handler));
-
-    when(oidcConfiguration.getResponseType()).thenReturn(null);
-    assertEquals(Boolean.TRUE, expectsCode.invoke(handler));
-
-    when(oidcConfiguration.getResponseType()).thenReturn("id_token");
-    assertEquals(Boolean.FALSE, expectsCode.invoke(handler));
   }
 
   private AuthenticationCodeFlowHandler createHandlerWithMockedInternals(

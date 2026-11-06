@@ -11,20 +11,22 @@
  *  limitations under the License.
  */
 import { ButtonUtility, Divider } from '@openmetadata/ui-core-components';
+import {
+  Code01,
+  FormatBulletList,
+  Image01,
+  Italic01,
+  Link03,
+  Minus,
+  QuoteMarks,
+  TextEditorBold,
+  TextEditorCode,
+  TextEditorNumberedList,
+  TextEditorStrikethrough,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import { FC, Fragment, MouseEvent } from 'react';
-import { ReactComponent as BlockQuoteIcon } from '../../../assets/svg/ic-format-block-quote.svg';
-import { ReactComponent as BoldIcon } from '../../../assets/svg/ic-format-bold.svg';
-import { ReactComponent as UnorderedListIcon } from '../../../assets/svg/ic-format-bullet-list.svg';
-import { ReactComponent as CodeBlockIcon } from '../../../assets/svg/ic-format-code-block.svg';
-import { ReactComponent as HorizontalLineIcon } from '../../../assets/svg/ic-format-horizontal-line.svg';
-import { ReactComponent as ImageIcon } from '../../../assets/svg/ic-format-image-inline.svg';
-import { ReactComponent as InlineCodeIcon } from '../../../assets/svg/ic-format-inline-code.svg';
-import { ReactComponent as ItalicIcon } from '../../../assets/svg/ic-format-italic.svg';
-import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-format-link.svg';
-import { ReactComponent as OrderedListIcon } from '../../../assets/svg/ic-format-numbered-list.svg';
-import { ReactComponent as StrikeIcon } from '../../../assets/svg/ic-format-strike.svg';
 import { BarMenuProps, FileType } from '../BlockEditor.interface';
 
 const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
@@ -32,19 +34,19 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
     [
       {
         name: 'bold',
-        icon: BoldIcon,
+        icon: TextEditorBold,
         command: () => editor.chain().focus().toggleBold().run(),
         isActive: () => editor.isActive('bold'),
       },
       {
         name: 'italic',
-        icon: ItalicIcon,
+        icon: Italic01,
         command: () => editor.chain().focus().toggleItalic().run(),
         isActive: () => editor.isActive('italic'),
       },
       {
         name: 'strike',
-        icon: StrikeIcon,
+        icon: TextEditorStrikethrough,
         command: () => editor.chain().focus().toggleStrike().run(),
         isActive: () => editor.isActive('strike'),
       },
@@ -52,7 +54,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
     [
       {
         name: 'inline-code',
-        icon: InlineCodeIcon,
+        icon: Code01,
         command: () => editor.chain().focus().toggleCode().run(),
         isActive: () => editor.isActive('code'),
       },
@@ -60,13 +62,13 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
     [
       {
         name: 'unordered-list',
-        icon: UnorderedListIcon,
+        icon: FormatBulletList,
         command: () => editor.chain().focus().toggleBulletList().run(),
         isActive: () => editor.isActive('bulletList'),
       },
       {
         name: 'ordered-list',
-        icon: OrderedListIcon,
+        icon: TextEditorNumberedList,
         command: () => editor.chain().focus().toggleOrderedList().run(),
         isActive: () => editor.isActive('orderedList'),
       },
@@ -74,7 +76,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
     [
       {
         name: 'link',
-        icon: LinkIcon,
+        icon: Link03,
         command: () => {
           editor.chain().focus().setLink({ href: '' }).run();
           onLinkToggle?.();
@@ -83,7 +85,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
       },
       {
         name: 'image',
-        icon: ImageIcon,
+        icon: Image01,
         command: () => {
           const { state } = editor.view;
           const { selection } = state;
@@ -122,19 +124,19 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
       },
       {
         name: 'code-block',
-        icon: CodeBlockIcon,
+        icon: TextEditorCode,
         command: () => editor.chain().focus().toggleCodeBlock().run(),
         isActive: () => editor.isActive('codeBlock'),
       },
       {
         name: 'block-quote',
-        icon: BlockQuoteIcon,
+        icon: QuoteMarks,
         command: () => editor.chain().focus().toggleBlockquote().run(),
         isActive: () => editor.isActive('blockquote'),
       },
       {
         name: 'horizontal-line',
-        icon: HorizontalLineIcon,
+        icon: Minus,
         command: () => editor.chain().focus().setHorizontalRule().run(),
         isActive: () => false,
       },
@@ -165,13 +167,12 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
                         ? 'tw:bg-(--om-legacy-color-e8e8e9) tw:hover:bg-(--om-legacy-color-e8e8e9)! tw:dark:bg-tertiary tw:dark:hover:bg-tertiary!'
                         : 'tw:hover:bg-(--om-legacy-color-ecedee)! tw:dark:hover:bg-secondary_hover!'
                     )}
-                    color="tertiary"
                     icon={
                       // Inline SVG so the glyph follows the theme; light keeps the
                       // black it had as an <img> (currentColor defaulted to black).
                       <item.icon
                         aria-hidden
-                        className="bar-menu-wrapper--format--button--icon tw:size-7 tw:text-black tw:dark:text-fg-secondary"
+                        className="bar-menu-wrapper--format--button--icon tw:size-7 tw:p-1.25 tw:text-black tw:dark:text-fg-secondary"
                       />
                     }
                     key={item.name}

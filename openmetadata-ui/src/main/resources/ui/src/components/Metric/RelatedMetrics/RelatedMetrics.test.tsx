@@ -16,15 +16,6 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { Metric } from '../../../generated/entity/data/metric';
 import RelatedMetrics from './RelatedMetrics';
 
-jest.mock('../../common/WidgetActionButton/WidgetActionButton', () => ({
-  WidgetPlusButton: (props: { 'data-testid'?: string }) => (
-    <button data-testid={props['data-testid']}>plus</button>
-  ),
-  WidgetEditButton: (props: { 'data-testid'?: string }) => (
-    <button data-testid={props['data-testid']}>edit</button>
-  ),
-}));
-
 jest.mock('../../common/WidgetCard/WidgetCard', () =>
   jest.fn().mockImplementation(({ headerExtra, children }) => (
     <div data-testid="widget-card">

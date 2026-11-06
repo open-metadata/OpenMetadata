@@ -19,10 +19,19 @@ import type {
   PlatformSettingsPageProps,
 } from '../../components/discovery/personal-space/Profile/tabs/platform-settings/PlatformSettings.types';
 
+export interface SparkAgentConfigProps {
+  /**
+   * How a delete is confirmed. The settings modal confirms in an anchored
+   * popover (ADR:2026-10-27-settings-modal-confirms-in-anchored-popovers);
+   * the legacy page keeps its modal.
+   */
+  confirmation?: 'modal' | 'popover';
+}
+
 class ProfilerConfigurationClassBase {
   /** Rendered with no props on the classic settings page. */
   public getSparkAgentConfigComponent():
-    | ComponentType<Partial<PlatformSettingsPageProps>>
+    | ComponentType<Partial<PlatformSettingsPageProps> & SparkAgentConfigProps>
     | undefined {
     return undefined;
   }

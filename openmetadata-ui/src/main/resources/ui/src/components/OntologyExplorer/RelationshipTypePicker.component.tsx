@@ -26,6 +26,7 @@ import {
   Category,
   RelationshipType,
 } from '../../generated/entity/data/relationshipType';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { listRelationshipTypes } from '../../rest/ontologyAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -42,9 +43,27 @@ const SearchInputIcon = ({ className }: { className?: string }) => (
   <Search aria-hidden="true" className={className} />
 );
 
-const toOption = (type: RelationshipType): RelationTypeOption => ({
+/** The registry stores an inverse as `{ id, fullyQualifiedName }` with no `name` or `displayName`. */
+const inverseLabelOf = (
+  type: RelationshipType,
+  byId: ReadonlyMap<string, RelationshipType>
+): string | undefined => {
+  if (!type.inverse) {
+    return undefined;
+  }
+  const inverse = byId.get(type.inverse.id);
+
+  return inverse
+    ? inverse.displayName || inverse.name
+    : type.inverse.fullyQualifiedName ?? type.inverse.name;
+};
+
+const toOption = (
+  type: RelationshipType,
+  byId: ReadonlyMap<string, RelationshipType>
+): RelationTypeOption => ({
   id: type.name,
-  inverseLabel: type.inverse?.name,
+  inverseLabel: inverseLabelOf(type, byId),
   label: type.displayName || type.name,
   paletteKey: type.paletteKey,
 });
@@ -52,7 +71,8 @@ const toOption = (type: RelationshipType): RelationTypeOption => ({
 const renderGroup = (
   group: RelationTypeOptionGroup,
   onSelect: (relationType: string) => void,
-  inverseLabel: string
+  inverseLabel: string,
+  isAiMode: boolean
 ) =>
   group.options.length === 0 ? null : (
     <div
@@ -79,7 +99,12 @@ const renderGroup = (
               RELATION_PALETTE_SWATCH_CLASSES[option.paletteKey]
             )}
           />
-          <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-body tw:text-xs tw:font-medium tw:text-primary">
+          <span
+            className={
+              isAiMode
+                ? 'tw:min-w-0 tw:flex-1 tw:truncate tw:font-body tw:text-sm tw:text-primary'
+                : 'tw:min-w-0 tw:flex-1 tw:truncate tw:font-body tw:text-xs tw:font-medium tw:text-primary'
+            }>
             {option.label}
           </span>
           {option.inverseLabel ? (
@@ -92,6 +117,48 @@ const renderGroup = (
     </div>
   );
 
+interface RelationMessagesProps {
+  issue?: string;
+  warning?: { message: string };
+  onContinue: () => void;
+}
+
+const RelationMessages = ({
+  issue,
+  warning,
+  onContinue,
+}: RelationMessagesProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {warning ? (
+        <div
+          className="tw:flex tw:flex-col tw:gap-2 tw:border-b tw:border-warning_subtle tw:bg-warning-primary tw:px-3 tw:py-2 tw:font-body tw:text-xs tw:text-warning-primary"
+          data-testid="relation-clash-warning"
+          role="alert">
+          {warning.message}
+          <Button
+            color="secondary"
+            data-testid="relation-clash-continue"
+            size="xs"
+            onPress={onContinue}>
+            {t('label.add-anyway')}
+          </Button>
+        </div>
+      ) : null}
+      {issue ? (
+        <div
+          className="tw:border-b tw:border-error_subtle tw:bg-error-primary tw:px-3 tw:py-2 tw:font-body tw:text-xs tw:text-error-primary"
+          data-testid="relation-check-message"
+          role="alert">
+          {issue}
+        </div>
+      ) : null}
+    </>
+  );
+};
+
 const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
   onSelect,
   onCancel,
@@ -100,11 +167,34 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
   targetLabel,
   groups,
   canCreateType = false,
+  checkRelation,
+  warnRelation,
 }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [relationTypes, setRelationTypes] = useState<RelationshipType[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(!groups);
+  const [issue, setIssue] = useState<string>();
+  const [warning, setWarning] = useState<{ type: string; message: string }>();
+  const select = (relationType: string) => {
+    const found = checkRelation?.(relationType);
+    setIssue(found);
+    setWarning(undefined);
+    if (found) {
+      return;
+    }
+    if (!warnRelation) {
+      onSelect(relationType);
+
+      return;
+    }
+    void warnRelation(relationType).then((message) =>
+      message
+        ? setWarning({ message, type: relationType })
+        : onSelect(relationType)
+    );
+  };
 
   useEffect(() => {
     if (groups) {
@@ -132,26 +222,29 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
     };
   }, [groups]);
 
-  const availableGroups = useMemo<RelationTypeOptionGroup[]>(
-    () =>
-      groups ?? [
-        {
-          id: 'system-defined',
-          options: relationTypes
-            .filter((type) => type.category !== Category.Custom)
-            .map(toOption),
-          title: t('label.core-owl-skos'),
-        },
-        {
-          id: 'custom',
-          options: relationTypes
-            .filter((type) => type.category === Category.Custom)
-            .map(toOption),
-          title: t('label.custom-admin-defined'),
-        },
-      ],
-    [groups, relationTypes, t]
-  );
+  const availableGroups = useMemo<RelationTypeOptionGroup[]>(() => {
+    if (groups) {
+      return groups;
+    }
+    const byId = new Map(relationTypes.map((type) => [type.id, type]));
+
+    return [
+      {
+        id: 'system-defined',
+        options: relationTypes
+          .filter((type) => type.category !== Category.Custom)
+          .map((type) => toOption(type, byId)),
+        title: t('label.core-owl-skos'),
+      },
+      {
+        id: 'custom',
+        options: relationTypes
+          .filter((type) => type.category === Category.Custom)
+          .map((type) => toOption(type, byId)),
+        title: t('label.custom-admin-defined'),
+      },
+    ];
+  }, [groups, relationTypes, t]);
 
   const term = search.trim();
   const visibleGroups = useMemo(() => {
@@ -191,7 +284,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
       <>
         {hasResults ? (
           visibleGroups.map((group) =>
-            renderGroup(group, onSelect, t('label.inverse'))
+            renderGroup(group, select, t('label.inverse'), isAiMode)
           )
         ) : (
           <span
@@ -207,7 +300,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
             data-testid="relation-type-create"
             iconLeading={Plus}
             size="sm"
-            onClick={() => onSelect(`${NEW_RELATION_TYPE_PREFIX}${term}`)}>
+            onClick={() => select(`${NEW_RELATION_TYPE_PREFIX}${term}`)}>
             {t('label.new-relationship-type-name', { name: term })}
           </Button>
         ) : null}
@@ -215,32 +308,39 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
     );
   };
 
+  const labelClass = isAiMode
+    ? 'tw:max-w-28 tw:truncate tw:font-body tw:text-sm tw:font-semibold tw:text-primary'
+    : 'tw:max-w-20 tw:truncate tw:font-body tw:text-xs tw:font-semibold tw:text-primary';
+
   return (
     <div
       className={classNames(
-        'tw:flex tw:w-64 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary',
+        isAiMode
+          ? 'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary'
+          : 'tw:flex tw:w-64 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary',
         'tw:shadow-xl',
         className
       )}
       data-testid="relationship-type-picker">
-      <div className="tw:flex tw:items-center tw:gap-1.5 tw:border-b tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2.5">
-        <span className="tw:max-w-20 tw:truncate tw:font-body tw:text-xs tw:font-semibold tw:text-primary">
-          {sourceLabel}
-        </span>
+      <div
+        className={
+          isAiMode
+            ? 'tw:flex tw:items-center tw:gap-2 tw:border-b tw:border-secondary tw:bg-secondary_alt tw:py-3 tw:pr-2.5 tw:pl-4'
+            : 'tw:flex tw:items-center tw:gap-1.5 tw:border-b tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2.5'
+        }>
+        <span className={labelClass}>{sourceLabel}</span>
         <ArrowRight
           aria-hidden="true"
           className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
         />
-        <span className="tw:max-w-20 tw:truncate tw:font-body tw:text-xs tw:font-semibold tw:text-primary">
-          {targetLabel}
-        </span>
+        <span className={labelClass}>{targetLabel}</span>
         <span className="tw:flex-1" />
         {onCancel ? (
           <ButtonUtility
-            className="tw:size-5 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-fg-quaternary hover:tw:text-fg-secondary"
+            className="tw:shrink-0"
             data-testid="relation-type-cancel"
             icon={XClose}
-            size="xs"
+            size="lg"
             tooltip={t('label.close')}
             onClick={onCancel}
           />
@@ -250,8 +350,9 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
       <div className="tw:border-b tw:border-secondary tw:px-3 tw:py-2">
         <Input
           aria-label={t('label.filter-relationships')}
+          autoComplete="off"
           icon={SearchInputIcon}
-          inputClassName="tw:text-xs"
+          inputClassName={isAiMode ? undefined : 'tw:text-xs'}
           inputDataTestId="relation-type-search"
           placeholder={t('label.filter-relationships')}
           size="sm"
@@ -260,7 +361,18 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
         />
       </div>
 
-      <div className="tw:flex tw:max-h-64 tw:flex-col tw:overflow-auto tw:p-1.5">
+      <RelationMessages
+        issue={issue}
+        warning={warning}
+        onContinue={() => warning && onSelect(warning.type)}
+      />
+
+      <div
+        className={
+          isAiMode
+            ? 'tw:flex tw:max-h-75 tw:flex-col tw:overflow-auto tw:px-1.5 tw:pt-1 tw:pb-2'
+            : 'tw:flex tw:max-h-64 tw:flex-col tw:overflow-auto tw:p-1.5'
+        }>
         {renderRelationTypeList()}
       </div>
     </div>

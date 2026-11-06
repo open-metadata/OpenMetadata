@@ -15,6 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { CreateContextMemory } from '../generated/api/context/createContextMemory';
 import { ContextMemory } from '../generated/entity/context/contextMemory';
 import { MemoryDerivation } from '../generated/entity/context/memoryDerivation';
+import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
 import { PagingResponse } from '../interface/common/paging.interface';
 import Fqn from '../utils/Fqn';
@@ -63,8 +64,8 @@ export const updateContextMemory = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const deleteContextMemory = async (id: string) => {
-  await APIClient.delete(`${BASE_URL}/${id}`);
+export const deleteContextMemory = async (id: string, hardDelete = false) => {
+  await APIClient.delete(`${BASE_URL}/${id}`, { params: { hardDelete } });
 };
 
 export const pinContextMemory = async (id: string) => {
@@ -88,6 +89,17 @@ export const getContextMemoryById = async (
   const response = await APIClient.get<ContextMemory>(`${BASE_URL}/${id}`, {
     params: fields ? { fields } : undefined,
   });
+
+  return response.data;
+};
+
+/** Every version of a memory, each listing only the Query evidence the caller may view. */
+export const getContextMemoryVersions = async (
+  id: string
+): Promise<EntityHistory> => {
+  const response = await APIClient.get<EntityHistory>(
+    `${BASE_URL}/${id}/versions`
+  );
 
   return response.data;
 };

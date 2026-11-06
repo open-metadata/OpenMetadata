@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
+import { RJSFSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
-import { pick } from 'lodash';
+import { isEmpty, omit, pick, uniq } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClientErrors } from '../../../../enums/Axios.enum';
 import { MCPConfiguration } from '../../../../generated/configuration/mcpConfiguration';
 import { SettingType } from '../../../../generated/settings/settings';
 import { useSettingsSource } from '../../../../hooks/platform/useSettingsSource';
-import { getMcpConfig, updateMcpConfig } from '../../../../rest/mcpConfigAPI';
+import {
+  getMcpConfig,
+  getMcpTools,
+  updateMcpConfig,
+} from '../../../../rest/mcpConfigAPI';
 import {
   applyManagedPathsToUiSchema,
   findSettingSource,
@@ -35,24 +40,54 @@ import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
  * wrong base URL breaks the OAuth metadata behind a load balancer. The response cap depends on
  * which MCP clients connect, so it is set here too. Everything else in the stored
  * `mcpConfiguration` (timeouts, plus fields no code reads) stays out of the form but is merged
- * back on save, because the PUT replaces the whole setting.
+ * back on save, because the PUT replaces the whole setting. Read-only mode and disabled tools are
+ * admin choices, so they are edited here as well.
  */
 const EDITABLE_MCP_CONFIG_FIELDS: (keyof MCPConfiguration)[] = [
   'baseUrl',
   'allowedOrigins',
   'maxResponseChars',
+  'readOnly',
+  'disabledTools',
 ];
 
 const MCP_SETTING_TYPES = [SettingType.MCPConfiguration];
+
+/**
+ * Which tools exist depends on the server: Collate adds its own and RDF tools are left out when RDF
+ * is off, so the options are fetched, like the reindex entity list. Saved names stay options, or one
+ * the server no longer registers would fail validation and block every save. With no list (it
+ * failed, or the server registered none) the picker would offer only "All", which saves nothing, so
+ * the field falls back to typing names, like Allowed Origins.
+ */
+export const withMcpToolNames = (
+  schema: RJSFSchema,
+  toolNames: string[] | undefined,
+  savedNames: string[] = []
+): RJSFSchema => {
+  if (!toolNames) {
+    return schema;
+  }
+  const field = schema.properties?.disabledTools as RJSFSchema;
+  const disabledTools: RJSFSchema = isEmpty(toolNames)
+    ? omit(field, ['uiFieldType', 'expandAllValue'])
+    : {
+        ...field,
+        items: { type: 'string', enum: uniq([...toolNames, ...savedNames]) },
+      };
+
+  return { ...schema, properties: { ...schema.properties, disabledTools } };
+};
 
 /**
  * The MCP app entity holds no configuration of its own. Everything the MCP server actually reads
  * lives in the `mcpConfiguration` system setting, so the form talks to `/system/mcp/config`
  * directly rather than going through the app entity's `appConfiguration`.
  */
-export const useMcpConfiguration = () => {
+export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
   const { t } = useTranslation();
   const [formConfig, setFormConfig] = useState<MCPConfiguration>({});
+  const [toolNames, setToolNames] = useState<string[]>();
   const [isFetching, setIsFetching] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   // Fields outside the form are not rendered but must survive a save, since the PUT replaces the
@@ -104,9 +139,24 @@ export const useMcpConfiguration = () => {
     }
   }, [applyConfig]);
 
+  const fetchMcpTools = useCallback(async () => {
+    try {
+      setToolNames(await getMcpTools());
+    } catch (error) {
+      setToolNames([]);
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
+
   useEffect(() => {
     void fetchMcpConfig();
-  }, [fetchMcpConfig]);
+    void fetchMcpTools();
+  }, [fetchMcpConfig, fetchMcpTools]);
+
+  const formSchema = useMemo(
+    () => withMcpToolNames(jsonSchema, toolNames, formConfig.disabledTools),
+    [jsonSchema, toolNames, formConfig.disabledTools]
+  );
 
   const saveMcpConfig = useCallback(
     // Callers pass form data already run through `formatFormDataForSubmit`.
@@ -134,6 +184,7 @@ export const useMcpConfiguration = () => {
 
   return {
     formConfig,
+    formSchema,
     formUiSchema,
     isEveryFieldManaged,
     isFetching,

@@ -78,6 +78,39 @@ class RdfExtensionProjectionTest {
             .size());
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void extensionKeysWithSpacesProduceValidIrisAndNoMintedPredicates(final boolean bulk) {
+    // Regression for COLLATE-BACKEND-30: a custom property named "table test" used to mint
+    // <om:ext_table test>, an invalid IRI that Fuseki rejected with HTTP 400.
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", "table");
+    final Table table =
+        new Table()
+            .withId(UUID.fromString("00000000-0000-0000-0000-000000000003"))
+            .withName("spaced")
+            .withFullyQualifiedName("service.db.schema.spaced")
+            .withExtension(Map.of("table test", "value", "cost center / $()", "Engineering"));
+    store(table, bulk);
+    assertTrue(graph.contains(null, graph.createProperty(OM + "extensionKey"), "table test"));
+    assertTrue(graph.contains(null, graph.createProperty(OM + "extensionValue"), "value"));
+    graph
+        .listStatements()
+        .forEachRemaining(
+            statement -> {
+              final String predicate = statement.getPredicate().getURI();
+              assertFalse(predicate.startsWith(OM + "ext_"), "minted predicate " + predicate);
+              assertFalse(predicate.contains(" "), "invalid predicate IRI " + predicate);
+              assertFalse(
+                  statement.getSubject().isURIResource()
+                      && statement.getSubject().getURI().contains(" "),
+                  "invalid subject IRI " + statement.getSubject());
+              assertFalse(
+                  statement.getObject().isURIResource()
+                      && statement.getObject().asResource().getURI().contains(" "),
+                  "invalid object IRI " + statement.getObject());
+            });
+  }
+
   private void store(final Table table, final boolean bulk) {
     final Model model = translator.toRdf(table);
     try {

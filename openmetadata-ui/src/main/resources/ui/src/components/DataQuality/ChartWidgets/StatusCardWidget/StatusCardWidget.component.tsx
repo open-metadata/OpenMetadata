@@ -22,8 +22,8 @@ import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
 import { DataQualityDimensions } from '../../../../enums/DataQuality.enum';
+import { getDimensionIconClassName } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import '../chart-widgets.less';
 import './status-card-widget.less';
 import { StatusCardWidgetProps } from './StatusCardWidget.interface';
@@ -53,7 +53,12 @@ const StatusDataWidget = ({
       direction="col"
       gap={4}>
       <div className="d-flex items-center gap-2">
-        <IconSvg color={PRIMARY_COLOR} height={20} width={20} />
+        <IconSvg
+          className={getDimensionIconClassName(
+            statusData.title as DataQualityDimensions
+          )}
+          size={20}
+        />
         <Typography
           as="span"
           className="font-semibold text-sm"

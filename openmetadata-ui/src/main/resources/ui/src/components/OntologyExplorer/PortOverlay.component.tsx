@@ -11,18 +11,53 @@
  *  limitations under the License.
  */
 
-import { Check } from '@openmetadata/ui-core-components/icons';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Check, Link01, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { Point, useOntologyGraphEdit } from './hooks/useOntologyGraphEdit';
 import {
   OntologyEditNodeClickDetail,
+  OntologyEditPortDownDetail,
   ONTOLOGY_EDIT_CANCEL_EVENT,
   ONTOLOGY_EDIT_NODE_CLICK_EVENT,
+  ONTOLOGY_EDIT_PORT_DOWN_EVENT,
+  ONTOLOGY_EDIT_PORT_DRAG_END_EVENT,
   PortOverlayProps,
 } from './PortOverlay.interface';
 import RelationshipTypePicker from './RelationshipTypePicker.component';
+import { useRelationWarning } from './RelationWarning.context';
+import { NODE_HEIGHT, NODE_WIDTH } from './utils/graphConfig';
+
+const DRAG_THRESHOLD_PX = 6;
+
+interface ClientPoint {
+  x: number;
+  y: number;
+}
+
+/** The node under a client point, read from the positions the graph publishes on its container. */
+const nodeAtClientPoint = (
+  container: HTMLElement,
+  point: ClientPoint
+): string | undefined => {
+  try {
+    const positions: Record<string, ClientPoint> = JSON.parse(
+      container.dataset.nodePositions ?? '{}'
+    );
+    const zoom = Number(container.dataset.graphZoom ?? 1) || 1;
+
+    return Object.entries(positions).find(
+      ([, center]) =>
+        Math.abs(center.x - point.x) <= (NODE_WIDTH / 2) * zoom &&
+        Math.abs(center.y - point.y) <= (NODE_HEIGHT / 2) * zoom
+    )?.[0];
+  } catch {
+    return undefined;
+  }
+};
 
 /**
  * Relationship-editing presentation layer. Node ports and target hit areas are
@@ -36,8 +71,11 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
   onCreateRelation,
   relationTypeGroups,
   canCreateRelationType,
+  checkRelation,
 }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const warnRelation = useRelationWarning();
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const toLocalPoint = useCallback(
@@ -54,6 +92,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
     armedFromId,
     cancel,
     confirmRelationType,
+    connect,
     cursor,
     dismissPending,
     pendingRelation,
@@ -65,6 +104,83 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
     toLocalPoint,
     onCreateRelation,
   });
+
+  const gesture = useRef({ cancel, connect, startArm, toLocalPoint });
+  gesture.current = { cancel, connect, startArm, toLocalPoint };
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!isEditMode || !container) {
+      return undefined;
+    }
+    let drag: { nodeId: string; start: ClientPoint; isActive: boolean } | null =
+      null;
+    const handleDragMove = (event: PointerEvent) => {
+      if (
+        drag &&
+        !drag.isActive &&
+        Math.hypot(event.clientX - drag.start.x, event.clientY - drag.start.y) >
+          DRAG_THRESHOLD_PX
+      ) {
+        drag.isActive = true;
+        const origin = gesture.current.toLocalPoint(drag.start.x, drag.start.y);
+        if (origin) {
+          gesture.current.startArm(drag.nodeId, origin);
+        }
+      }
+    };
+    // stopDrag and handleDragEnd detach each other, so the pointerup handler is
+    // held here until it is defined.
+    const listeners: { end: (event: PointerEvent) => void } = {
+      end: () => undefined,
+    };
+    const stopDrag = () => {
+      drag = null;
+      window.removeEventListener('pointermove', handleDragMove);
+      window.removeEventListener('pointerup', listeners.end);
+    };
+    const handleDragEnd = (event: PointerEvent) => {
+      const dragged = drag?.isActive ? drag : null;
+      stopDrag();
+      if (!dragged) {
+        return;
+      }
+      container.dispatchEvent(new Event(ONTOLOGY_EDIT_PORT_DRAG_END_EVENT));
+      const targetId = nodeAtClientPoint(container, {
+        x: event.clientX,
+        y: event.clientY,
+      });
+      const point = gesture.current.toLocalPoint(event.clientX, event.clientY);
+      const origin = gesture.current.toLocalPoint(
+        dragged.start.x,
+        dragged.start.y
+      );
+      if (targetId && point && origin) {
+        gesture.current.connect(dragged.nodeId, origin, targetId, point);
+      } else {
+        gesture.current.cancel();
+      }
+    };
+    listeners.end = handleDragEnd;
+    const handlePortDown = (event: Event) => {
+      const { clientX, clientY, nodeId } = (
+        event as CustomEvent<OntologyEditPortDownDetail>
+      ).detail;
+      stopDrag();
+      drag = { isActive: false, nodeId, start: { x: clientX, y: clientY } };
+      window.addEventListener('pointermove', handleDragMove);
+      window.addEventListener('pointerup', listeners.end);
+    };
+    container.addEventListener(ONTOLOGY_EDIT_PORT_DOWN_EVENT, handlePortDown);
+
+    return () => {
+      stopDrag();
+      container.removeEventListener(
+        ONTOLOGY_EDIT_PORT_DOWN_EVENT,
+        handlePortDown
+      );
+    };
+  }, [containerRef, isEditMode]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -79,9 +195,9 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
       if (!point) {
         return;
       }
-      if (armedFromId !== null && nodeId !== armedFromId) {
+      if (armedFromId !== null || nodeId === pendingRelation?.fromId) {
         editEvent.preventDefault();
-        selectTarget(nodeId, point);
+        selectTarget(nodeId, point, { isPort });
 
         return;
       }
@@ -111,6 +227,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
     containerRef,
     dismissPending,
     isEditMode,
+    pendingRelation,
     selectTarget,
     startArm,
     toLocalPoint,
@@ -122,6 +239,62 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
 
   const getNodeLabel = (nodeId: string) => nodeLabels[nodeId] ?? nodeId;
 
+  const renderAiInstruction = (fromId: string) => (
+    <div
+      className={classNames(
+        'tw:absolute tw:top-4 tw:left-4 tw:z-10 tw:flex tw:h-10 tw:items-center tw:gap-2.5',
+        'tw:rounded-full tw:border tw:border-brand tw:bg-brand-primary tw:pr-2 tw:pl-3.5 tw:font-body tw:whitespace-nowrap tw:shadow-md'
+      )}
+      data-testid="ontology-connect-instruction"
+      role="status">
+      <Link01
+        aria-hidden="true"
+        className="tw:size-4 tw:text-fg-brand-primary"
+      />
+      <span className="tw:text-sm tw:font-medium tw:text-brand-secondary">
+        {t('message.click-another-term-to-draw-connection', {
+          term: getNodeLabel(fromId),
+        })}
+      </span>
+      <kbd className="tw:rounded tw:border tw:border-secondary tw:bg-primary tw:px-1.5 tw:font-body tw:text-xs tw:text-tertiary">
+        {t('label.esc')}
+      </kbd>
+      <ButtonUtility
+        className="tw:pointer-events-auto"
+        data-testid="ontology-connect-cancel"
+        icon={XClose}
+        size="xs"
+        tooltip={t('label.cancel')}
+        onClick={() => {
+          cancel();
+          dismissPending();
+        }}
+      />
+    </div>
+  );
+
+  const renderInstruction = (fromId: string) =>
+    isAiMode ? (
+      renderAiInstruction(fromId)
+    ) : (
+      <div
+        className={classNames(
+          'tw:absolute tw:left-1/2 tw:top-3.5 tw:z-10 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2',
+          'tw:rounded-full tw:border tw:border-brand tw:bg-brand-primary tw:px-4 tw:py-2',
+          'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-brand-secondary tw:shadow-sm'
+        )}
+        data-testid="ontology-connect-instruction">
+        <span className="tw:grid tw:size-3.5 tw:place-items-center tw:rounded tw:border tw:border-brand">
+          <Check aria-hidden="true" className="tw:size-2.5" />
+        </span>
+        <span>
+          {t('message.click-another-term-to-draw-connection', {
+            term: getNodeLabel(fromId),
+          })}
+        </span>
+      </div>
+    );
+
   const lineStart = pendingRelation?.from ?? armedAt;
   const lineEnd = pendingRelation?.to ?? cursor;
 
@@ -130,30 +303,14 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
       className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-5"
       data-testid="ontology-port-overlay"
       ref={overlayRef}>
-      {armedFromId ? (
-        <div
-          className={classNames(
-            'tw:absolute tw:left-1/2 tw:top-3.5 tw:z-10 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2',
-            'tw:rounded-full tw:border tw:border-brand tw:bg-brand-primary tw:px-4 tw:py-2',
-            'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-brand-secondary tw:shadow-sm'
-          )}
-          data-testid="ontology-connect-instruction">
-          <span className="tw:grid tw:size-3.5 tw:place-items-center tw:rounded tw:border tw:border-brand">
-            <Check aria-hidden="true" className="tw:size-2.5" />
-          </span>
-          <span>
-            {t('message.click-another-term-to-draw-connection', {
-              term: getNodeLabel(armedFromId),
-            })}
-          </span>
-        </div>
-      ) : null}
+      {armedFromId ? renderInstruction(armedFromId) : null}
 
       {lineStart && lineEnd ? (
         <svg
           className="tw:absolute tw:inset-0 tw:h-full tw:w-full"
           style={{ overflow: 'visible' }}>
           <line
+            className="tw:motion-safe:animate-pulse"
             data-testid="ontology-connection-line"
             stroke="var(--tw-color-bg-brand-solid)"
             strokeDasharray="6 5"
@@ -177,9 +334,23 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
           }}>
           <RelationshipTypePicker
             canCreateType={canCreateRelationType}
+            checkRelation={(relationType) =>
+              checkRelation?.(
+                pendingRelation.fromId,
+                pendingRelation.toId,
+                relationType
+              )
+            }
             groups={relationTypeGroups}
             sourceLabel={getNodeLabel(pendingRelation.fromId)}
             targetLabel={getNodeLabel(pendingRelation.toId)}
+            warnRelation={(relationType) =>
+              warnRelation?.(
+                pendingRelation.fromId,
+                pendingRelation.toId,
+                relationType
+              ) ?? Promise.resolve(undefined)
+            }
             onCancel={dismissPending}
             onSelect={(relationType) => confirmRelationType(relationType)}
           />

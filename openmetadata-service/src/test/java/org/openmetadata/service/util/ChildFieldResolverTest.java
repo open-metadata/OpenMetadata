@@ -2,7 +2,6 @@ package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -35,7 +34,6 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.MlFeature;
-import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContainerRepository;
@@ -233,154 +231,50 @@ class ChildFieldResolverTest {
   }
 
   @Test
-  void containerListFor_directAndNestedContainers() {
-    Table table = new Table().withColumns(List.of(new Column().withName("id")));
-    assertEquals(1, ChildFieldResolver.containerListFor(table, "columns").size());
-
-    Topic topic =
-        new Topic()
-            .withMessageSchema(
-                new MessageSchema().withSchemaFields(List.of(new Field().withName("f"))));
-    assertEquals(1, ChildFieldResolver.containerListFor(topic, "messageSchema").size());
-
-    Pipeline pipeline = new Pipeline().withTasks(List.of(new Task().withName("t1")));
-    assertEquals(1, ChildFieldResolver.containerListFor(pipeline, "tasks").size());
-  }
-
-  @Test
-  void containerListFor_resolvesEveryRegistryTypeFromItsPojoClass() {
-    // containerListFor maps a POJO to its registry type by lowercased simple class name. That
-    // holds for all nine today; this pins it, because a future registry type whose class name
-    // does not lowercase to its entity type would silently resolve to null instead of failing.
-    assertNotNull(
-        ChildFieldResolver.containerListFor(new Table().withColumns(List.of()), "columns"));
-    assertNotNull(
-        ChildFieldResolver.containerListFor(
-            new DashboardDataModel().withColumns(List.of()), "columns"));
-    assertNotNull(
-        ChildFieldResolver.containerListFor(
-            new Topic().withMessageSchema(new MessageSchema().withSchemaFields(List.of())),
-            "messageSchema"));
-    assertNotNull(
-        ChildFieldResolver.containerListFor(
-            new Container().withDataModel(new ContainerDataModel().withColumns(List.of())),
-            "dataModel"));
-    assertNotNull(
-        ChildFieldResolver.containerListFor(new MlModel().withMlFeatures(List.of()), "mlFeatures"));
-    assertNotNull(
-        ChildFieldResolver.containerListFor(new Pipeline().withTasks(List.of()), "tasks"));
-    assertNotNull(
-        ChildFieldResolver.containerListFor(new SearchIndex().withFields(List.of()), "fields"));
-    assertNotNull(
-        ChildFieldResolver.containerListFor(
-            new APIEndpoint().withRequestSchema(new APISchema().withSchemaFields(List.of())),
-            "requestSchema"));
-    assertNotNull(
-        ChildFieldResolver.containerListFor(new Worksheet().withColumns(List.of()), "columns"));
-  }
-
-  @Test
-  void containerListFor_unknownContainerOrTypeReturnsNull() {
-    assertNull(ChildFieldResolver.containerListFor(new Table(), "mlFeatures"));
-    assertNull(ChildFieldResolver.containerListFor(new Glossary(), "columns"));
-  }
-
-  // The "columns" alias. One test per registry type, because the point is that the alias is
-  // uniform and not a special case for the types that already happened to work.
-
-  @Test
-  void columnsAlias_tableAndDashboardDataModelAndWorksheet_returnTheSameLiveListAsBefore() {
-    // For these three the registry's container path IS "columns", so alias and declared path
-    // coincide. assertSame is the proof: the very same list instance comes back, so nothing
-    // downstream can observe a difference.
+  void containerListFor_returnsTheLiveListAtEveryDeclaredPath() {
     Table table = new Table().withColumns(List.of(new Column().withName("id")));
     assertSame(table.getColumns(), ChildFieldResolver.containerListFor(table, "columns"));
-
-    DashboardDataModel model =
-        new DashboardDataModel().withColumns(List.of(new Column().withName("id")));
+    DashboardDataModel model = new DashboardDataModel().withColumns(List.of());
     assertSame(model.getColumns(), ChildFieldResolver.containerListFor(model, "columns"));
-
-    Worksheet worksheet = new Worksheet().withColumns(List.of(new Column().withName("id")));
+    Worksheet worksheet = new Worksheet().withColumns(List.of());
     assertSame(worksheet.getColumns(), ChildFieldResolver.containerListFor(worksheet, "columns"));
-  }
-
-  @Test
-  void columnsAlias_topicResolvesToMessageSchemaFields() {
-    Topic topic =
-        new Topic()
-            .withMessageSchema(
-                new MessageSchema().withSchemaFields(List.of(new Field().withName("customer_id"))));
-    List<?> children = ChildFieldResolver.containerListFor(topic, "columns");
-    assertEquals(1, children.size());
-    assertEquals("customer_id", ((Field) children.getFirst()).getName());
-  }
-
-  @Test
-  void columnsAlias_pipelineResolvesToTasks() {
-    Pipeline pipeline = new Pipeline().withTasks(List.of(new Task().withName("extract")));
-    assertEquals(
-        "extract",
-        ((Task) ChildFieldResolver.containerListFor(pipeline, "columns").getFirst()).getName());
-  }
-
-  @Test
-  void columnsAlias_mlModelResolvesToMlFeatures() {
-    MlModel model = new MlModel().withMlFeatures(List.of(new MlFeature().withName("age")));
-    assertEquals(
-        "age",
-        ((MlFeature) ChildFieldResolver.containerListFor(model, "columns").getFirst()).getName());
-  }
-
-  @Test
-  void columnsAlias_searchIndexResolvesToFields() {
-    SearchIndex index =
-        new SearchIndex().withFields(List.of(new SearchIndexField().withName("title")));
-    assertEquals(
-        "title",
-        ((SearchIndexField) ChildFieldResolver.containerListFor(index, "columns").getFirst())
-            .getName());
-  }
-
-  @Test
-  void columnsAlias_containerResolvesToDataModelColumns() {
+    Topic topic = new Topic().withMessageSchema(new MessageSchema().withSchemaFields(List.of()));
+    assertSame(
+        topic.getMessageSchema().getSchemaFields(),
+        ChildFieldResolver.containerListFor(topic, "messageSchema.schemaFields"));
     Container container =
-        new Container()
-            .withDataModel(
-                new ContainerDataModel().withColumns(List.of(new Column().withName("payload"))));
-    assertEquals(
-        "payload",
-        ((Column) ChildFieldResolver.containerListFor(container, "columns").getFirst()).getName());
+        new Container().withDataModel(new ContainerDataModel().withColumns(List.of()));
+    assertSame(
+        container.getDataModel().getColumns(),
+        ChildFieldResolver.containerListFor(container, "dataModel.columns"));
+    MlModel mlModel = new MlModel().withMlFeatures(List.of());
+    assertSame(mlModel.getMlFeatures(), ChildFieldResolver.containerListFor(mlModel, "mlFeatures"));
+    Pipeline pipeline = new Pipeline().withTasks(List.of());
+    assertSame(pipeline.getTasks(), ChildFieldResolver.containerListFor(pipeline, "tasks"));
+    SearchIndex index = new SearchIndex().withFields(List.of());
+    assertSame(index.getFields(), ChildFieldResolver.containerListFor(index, "fields"));
   }
 
   @Test
-  void columnsAlias_apiEndpointConcatenatesBothSchemasRequestFirst() {
-    // The only two-path type. The alias must see BOTH schemas, and the declaration order in
-    // containerPaths (request, then response) is the tie-break when a name exists in both.
+  void containerListFor_apiEndpointResolvesEachSchemaOnItsOwn() {
     APIEndpoint endpoint =
         new APIEndpoint()
-            .withRequestSchema(
-                new APISchema().withSchemaFields(List.of(new Field().withName("shared"))))
-            .withResponseSchema(
-                new APISchema()
-                    .withSchemaFields(
-                        List.of(new Field().withName("shared"), new Field().withName("userId"))));
-    List<?> children = ChildFieldResolver.containerListFor(endpoint, "columns");
-    assertEquals(3, children.size());
-    assertSame(endpoint.getRequestSchema().getSchemaFields().getFirst(), children.getFirst());
+            .withRequestSchema(new APISchema().withSchemaFields(List.of()))
+            .withResponseSchema(new APISchema().withSchemaFields(List.of()));
+    assertSame(
+        endpoint.getRequestSchema().getSchemaFields(),
+        ChildFieldResolver.containerListFor(endpoint, "requestSchema.schemaFields"));
+    assertSame(
+        endpoint.getResponseSchema().getSchemaFields(),
+        ChildFieldResolver.containerListFor(endpoint, "responseSchema.schemaFields"));
   }
 
   @Test
-  void columnsAlias_registryTypeWithNullContainer_returnsEmptyNotNull() {
-    // childrenOf is null-tolerant, so the alias yields an empty list rather than null. Callers
-    // then get "field not found" rather than "unknown container", which is the same outcome with
-    // a clearer log line. Pinned so the distinction is deliberate.
-    assertEquals(List.of(), ChildFieldResolver.containerListFor(new Topic(), "columns"));
-  }
-
-  @Test
-  void columnsAlias_doesNotApplyToNonRegistryTypes() {
-    // Glossary has no registered child container. The alias must not invent one; FieldPathUtils'
-    // plain getter path still serves types the registry does not cover.
+  void containerListFor_refusesAPathTheTypeDoesNotDeclare() {
+    Topic topic = new Topic().withMessageSchema(new MessageSchema().withSchemaFields(List.of()));
+    assertNull(ChildFieldResolver.containerListFor(topic, "messageSchema"));
+    assertNull(ChildFieldResolver.containerListFor(topic, "columns"));
+    assertNull(ChildFieldResolver.containerListFor(new Table(), "mlFeatures"));
     assertNull(ChildFieldResolver.containerListFor(new Glossary(), "columns"));
   }
 
