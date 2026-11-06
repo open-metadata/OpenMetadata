@@ -182,23 +182,79 @@ def test_nested_fields_resolve_in_other_dialects_with_struct_columns(dialect):
     }
 
 
-def test_real_table_qualifier_is_not_read_as_a_struct_column():
-    orders = _table("orders", [_column("orders", "id", "INT")])
-    customers = _table(
-        "customers",
+def test_unqualified_table_name_stays_a_table_next_to_a_struct_path():
+    orders = _table(
+        "orders",
         [
-            _column("customers", "id", "INT"),
-            _column("customers", "orders", "STRUCT", [_column("customers", "orders.id")]),
+            _column("orders", "id", "INT"),
+            _column("orders", "orders", "STRUCT", [_column("orders", "orders.total", "INT")]),
+            _customer("orders"),
         ],
     )
-    view = _table("v", [_column("v", "order_id", "INT")])
+    view = _table("v", [_column("v", "order_id", "INT"), _column("v", "e")])
 
     edges = _column_edges(
-        "CREATE VIEW ds.v AS SELECT orders.id AS order_id FROM ds.orders JOIN ds.customers ON orders.id = customers.id",
-        [orders, customers, view],
+        "CREATE VIEW ds.v AS SELECT orders.id AS order_id, customer.email AS e FROM orders",
+        [orders, view],
     )
 
-    assert edges == {("orders.id", "v.order_id")}
+    assert edges == {("orders.id", "v.order_id"), ("orders.customer.email", "v.e")}
+
+
+def test_field_path_through_a_struct_name_used_twice_gets_no_lineage():
+    def address(table: str, path: str) -> dict:
+        return _column(table, path, "STRUCT", [_column(table, f"{path}.zip")])
+
+    accounts = _table(
+        "accounts",
+        [
+            _column("accounts", "billing", "STRUCT", [address("accounts", "billing.address")]),
+            _column("accounts", "shipping", "STRUCT", [address("accounts", "shipping.address")]),
+        ],
+    )
+    view = _table("v", [_column("v", "zip")])
+
+    edges = _column_edges("CREATE VIEW ds.v AS SELECT billing.address.zip AS zip FROM ds.accounts", [accounts, view])
+
+    assert edges == set()
+
+
+def test_field_path_skips_a_same_named_column_that_is_not_a_struct():
+    profiles = _table("profiles", [_column("profiles", "address"), _customer("profiles")])
+    view = _table("v", [_column("v", "zip")])
+
+    edges = _column_edges("CREATE VIEW ds.v AS SELECT customer.address.zip AS zip FROM ds.profiles", [profiles, view])
+
+    assert edges == {("profiles.customer.address.zip", "v.zip")}
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "CREATE VIEW ds.v AS SELECT customer.email AS e FROM (SELECT billing AS customer FROM ds.users) s",
+        "CREATE VIEW ds.v AS SELECT s.customer.email AS e FROM (SELECT billing AS customer FROM ds.users) s",
+        "CREATE VIEW ds.v AS WITH c AS (SELECT billing AS customer FROM ds.users) SELECT customer.email AS e FROM c",
+    ],
+    ids=["subquery", "qualified-subquery", "cte"],
+)
+def test_struct_name_a_subquery_could_define_gets_no_lineage(query):
+    users = _table("users", [_customer("users"), _customer("users", "billing")])
+    view = _table("v", [_column("v", "e")])
+
+    assert _column_edges(query, [users, view]) == set()
+
+
+def test_struct_path_in_a_multi_statement_query_gets_no_lineage():
+    inter = _table("inter", [_column("inter", "id", "INT"), _customer("inter")])
+    target = _table("tgt", [_column("tgt", "e")])
+
+    edges = _column_edges(
+        "INSERT INTO ds.inter SELECT * FROM ds.users; "
+        "INSERT INTO ds.tgt SELECT customer.email AS e FROM ds.inter JOIN ds.users ON inter.id = users.id",
+        [USERS, inter, target],
+    )
+
+    assert not {edge for edge in edges if edge[1] == "tgt.e"}
 
 
 def test_join_gives_struct_paths_no_lineage_rather_than_the_wrong_table():

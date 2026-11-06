@@ -465,15 +465,12 @@ def _nested_column_lineage(from_column: TableColumn, to_column: TableColumn) -> 
 
 def _find_struct(columns: list[TableColumn], name: str) -> TableColumn | None:
     """
-    The STRUCT a field path runs through. A top-level column wins, as it does in the SQL;
-    for a deeper path the parser keeps only the segment above the field, so a nested
-    STRUCT is used only when exactly one has that name.
+    The STRUCT a field path runs through. The parser keeps only the path segment above the
+    field, so `address.zip` and `customer.address.zip` both arrive as `address`: the path is
+    resolved only when exactly one STRUCT, at any depth, has that name.
     """
-    top_level = _find_column(columns, name)
-    if top_level is not None:
-        return top_level if top_level.children else None
     found = []
-    pending = [child for column in columns for child in column.children or []]
+    pending = list(columns or [])
     while pending:
         column = pending.pop()
         if column.children:
@@ -510,11 +507,12 @@ def _key_struct_field_parents(column_lineage_map: dict, lineage_parser: LineageP
     table `customer`; only an unqualified name can be such a STRUCT, and a name the query
     does read as a table keeps its key.
 
-    The parser drops the table qualifier of such a path, so with several source tables it
-    cannot tell whose STRUCT it is: those paths keep their key and get no lineage rather
-    than lineage from the wrong table.
+    The parser drops the qualifier of such a path, so it is resolved only when nothing else
+    in the query can own that name: one source table, no intermediate table, and no subquery
+    or CTE that could rename a column to it. Otherwise the path keeps its key and gets no
+    lineage rather than lineage from the wrong column. ADR:2026-11-06-sql-column-lineage-follows-nested-fields
     """
-    if len(lineage_parser.source_tables) != 1:
+    if len(lineage_parser.source_tables) != 1 or lineage_parser.intermediate_tables or lineage_parser.has_subqueries:
         return
     read_tables = {
         str(table)

@@ -22,7 +22,7 @@ from logging.config import DictConfigurator
 import sqlparse
 from cached_property import cached_property
 from collate_sqllineage import SQLPARSE_DIALECT
-from collate_sqllineage.core.models import Column, DataFunction, Location, Table
+from collate_sqllineage.core.models import Column, DataFunction, Location, SubQuery, Table
 from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
 from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyzer
 from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
@@ -166,6 +166,21 @@ class LineageParser:
             # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
             return self.retrieve_tables(self.parser.source_tables)
         return []
+
+    # pylint: disable=protected-access
+    @cached_property
+    def has_subqueries(self) -> bool:
+        """
+        Whether the query reads a subquery or a CTE. A query the parser could not read counts
+        as having one, so callers that need there to be none stay conservative.
+        """
+        if self.parser is None:
+            return True
+        try:
+            return any(isinstance(node, SubQuery) for node in self.parser._sql_holder.graph.nodes)
+        except Exception as err:
+            logger.debug(f"[{self.query_hash}] Cannot inspect the query for subqueries: {err}")
+            return True
 
     @cached_property
     def target_tables(self) -> list[Table | Location]:
