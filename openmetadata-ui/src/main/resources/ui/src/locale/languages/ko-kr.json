@@ -5759,6 +5759,7 @@
     "ontology-class-draft-notice": "초안입니다. 이 클래스는 작업 온톨로지의 일부가 되며 게시 전에 검토해야 합니다.",
     "ontology-class-lease-holder": "이 초안은 {{holder}}님이 잠갔습니다. 편집 잠금이 해제되면 다시 시도하세요.",
     "ontology-class-refresh-failed": "클래스를 만들었습니다. 선택하려면 모델을 다시 불러오세요.",
+    "ontology-column-binding-partial": "Saved {{saved}}. Not saved: {{tables}}. The bindings could not refresh after that write, so saving stopped. Save again to bind the rest.",
     "ontology-column-extra-bindings_one": "+{{count}} more binding, kept as is",
     "ontology-column-extra-bindings_other": "+{{count}} more bindings, kept as is",
     "ontology-column-list-truncated": "Only the first {{count}} columns are listed. Bindings on other columns are kept; bind those from the table's own page.",

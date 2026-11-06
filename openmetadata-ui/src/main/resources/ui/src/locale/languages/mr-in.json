@@ -5759,6 +5759,7 @@
     "ontology-class-draft-notice": "मसुदा. हा वर्ग कार्यरत ऑन्टोलॉजीचा भाग बनतो आणि प्रकाशनापूर्वी त्याचे पुनरावलोकन करणे आवश्यक आहे.",
     "ontology-class-lease-holder": "हा मसुदा {{holder}} यांनी लॉक केला आहे. त्यांचा संपादन लॉक उपलब्ध झाल्यावर पुन्हा प्रयत्न करा.",
     "ontology-class-refresh-failed": "वर्ग तयार झाला. तो निवडण्यासाठी मॉडेल पुन्हा लोड करा.",
+    "ontology-column-binding-partial": "Saved {{saved}}. Not saved: {{tables}}. The bindings could not refresh after that write, so saving stopped. Save again to bind the rest.",
     "ontology-column-extra-bindings_one": "+{{count}} more binding, kept as is",
     "ontology-column-extra-bindings_other": "+{{count}} more bindings, kept as is",
     "ontology-column-list-truncated": "Only the first {{count}} columns are listed. Bindings on other columns are kept; bind those from the table's own page.",

@@ -5759,6 +5759,7 @@
     "ontology-class-draft-notice": "Rascunho. Esta classe passa a fazer parte da ontologia de trabalho e precisa ser revisada antes da publicação.",
     "ontology-class-lease-holder": "Este rascunho está bloqueado por {{holder}}. Tente novamente quando o bloqueio de edição dessa pessoa estiver disponível.",
     "ontology-class-refresh-failed": "Classe criada. Recarregue o modelo para selecioná-la.",
+    "ontology-column-binding-partial": "Saved {{saved}}. Not saved: {{tables}}. The bindings could not refresh after that write, so saving stopped. Save again to bind the rest.",
     "ontology-column-extra-bindings_one": "+{{count}} more binding, kept as is",
     "ontology-column-extra-bindings_other": "+{{count}} more bindings, kept as is",
     "ontology-column-list-truncated": "Only the first {{count}} columns are listed. Bindings on other columns are kept; bind those from the table's own page.",

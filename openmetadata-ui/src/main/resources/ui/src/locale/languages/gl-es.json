@@ -5759,6 +5759,7 @@
     "ontology-class-draft-notice": "Borrador. Esta clase pasa a formar parte da ontoloxía de traballo e débese revisar antes de publicala.",
     "ontology-class-lease-holder": "Este borrador está bloqueado por {{holder}}. Tente de novo cando o seu bloqueo de edición estea dispoñible.",
     "ontology-class-refresh-failed": "Clase creada. Recargue o modelo para seleccionala.",
+    "ontology-column-binding-partial": "Saved {{saved}}. Not saved: {{tables}}. The bindings could not refresh after that write, so saving stopped. Save again to bind the rest.",
     "ontology-column-extra-bindings_one": "+{{count}} more binding, kept as is",
     "ontology-column-extra-bindings_other": "+{{count}} more bindings, kept as is",
     "ontology-column-list-truncated": "Only the first {{count}} columns are listed. Bindings on other columns are kept; bind those from the table's own page.",
