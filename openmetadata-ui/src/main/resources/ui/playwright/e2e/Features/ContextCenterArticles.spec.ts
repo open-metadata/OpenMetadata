@@ -1198,23 +1198,44 @@ test.describe('Context Center Articles', () => {
         needsDecision: [],
       });
       expect(await getMemoryStatus(apiContext, memory.id)).toBe('Approved');
+      const reloadedApproval = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === `${MEMORIES_API}/extractedApproval` &&
+            url.searchParams.get('sourceId') === article.id
+          );
+        },
+        200
+      );
       await page.reload();
+      expect(await (await reloadedApproval).json()).toMatchObject({
+        approved: 0,
+        approvable: [],
+      });
       await expect(
         card.getByTestId(`extracted-memory-${memory.id}`)
       ).toBeVisible();
       await expect(approve).toHaveCount(0);
     } finally {
       try {
-        const results = await Promise.allSettled([
-          apiContext
-            .delete(`${MEMORIES_API}/name/${memoryName}?hardDelete=true`)
-            .then(async (response) => {
-              expect([200, 404], await response.text()).toContain(
-                response.status()
-              );
-            }),
-          deleteArticleByFqn(apiContext, articleName),
-        ]);
+        const results = [
+          ...(await Promise.allSettled([
+            apiContext
+              .delete(`${MEMORIES_API}/name/${memoryName}?hardDelete=true`)
+              .then(async (response) => {
+                expect([200, 404], await response.text()).toContain(
+                  response.status()
+                );
+              }),
+          ])),
+          ...(await Promise.allSettled([
+            deleteArticleByFqn(apiContext, articleName),
+          ])),
+        ];
         expect(
           results.filter((result) => result.status === 'rejected')
         ).toEqual([]);
