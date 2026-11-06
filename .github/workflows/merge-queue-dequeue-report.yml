@@ -99,6 +99,12 @@ jobs:
                        | "\(.reason)\t\(.beforeCommit.oid // "")\t\(.createdAt)"' > event.tsv || true
 
             if [ -s event.tsv ]; then
+              case "$(cut -f1 event.tsv)" in
+                manual|MANUAL)
+                  echo "Manual removal; skipping notifications."
+                  exit 0
+                  ;;
+              esac
               {
                 echo "reason=$(cut -f1 event.tsv)"
                 echo "sha=$(cut -f2 event.tsv)"
