@@ -22,17 +22,17 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Copy01,
+  DotsVertical,
   Edit01,
+  NoFilterFunnel,
+  NoSearch,
   ThumbsDown,
   ThumbsUp,
+  Time,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
-import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
-import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
-import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import { MEMORY_STATUS_LABEL_KEYS } from '../../../constants/ContextCenter.constants';
@@ -62,7 +62,7 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
     <Dropdown.Root>
       <ButtonUtility
         data-testid="manage-button"
-        icon={DotsVerticalIcon}
+        icon={DotsVertical}
         size="lg"
         tooltip={t('label.manage-entity', { entity: t('label.memory') })}
       />
@@ -217,7 +217,7 @@ const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
       className="tw:mt-1 tw:text-quaternary"
       data-testid="memory-usage-info"
       gap={1}>
-      <ClockIcon height={16} width={16} />
+      <Time size={16} />
       <Typography className="tw:whitespace-nowrap" size="text-xs">
         {count === undefined ? '' : t('label.cited-n-times', { count })}
         {lastAt ? ` · ${t('label.last')} ${getShortRelativeTime(lastAt)}` : ''}
@@ -516,13 +516,13 @@ const MemoriesView: FC<MemoriesViewProps> = ({
       ? {
           Component: NoSearchResultsPlaceholder,
           description: t('message.check-spelling-or-try-different-term'),
-          icon: <NoSearchResultIcon />,
+          icon: <NoSearch />,
           title: t('label.no-matching-results'),
         }
       : {
           Component: NoFilteredResultsPlaceholder,
           description: t('message.no-results-for-filters-description'),
-          icon: <NoFilterResultsIcon />,
+          icon: <NoFilterFunnel />,
           title: t('label.no-results-for-filters'),
         };
     const EmptyStatePlaceholder = emptyState.Component;

@@ -83,6 +83,11 @@ export interface OntologyChangeOperation {
     rationale?:    string;
     relationship?: OntologyRelationship;
     /**
+     * IRIs of concepts that an import expects to create in the same change set. Applying the
+     * operation without an UPSERT_CONCEPT operation for each of them is refused.
+     */
+    requiresConceptIris?: string[];
+    /**
      * Published context memories that support this AI suggestion.
      */
     sourceMemoryIds?: string[];
@@ -941,7 +946,7 @@ export interface OntologyProperty {
      * OWL key, or uniqueness in source data.
      */
     isIdentifier?: boolean;
-    kind:          Kind;
+    kind:          PropertyKind;
     name:          string;
     /**
      * Owning ontology entity. Glossaries do not own ontology definitions.
@@ -981,7 +986,7 @@ export enum Characteristic {
     Transitive = "TRANSITIVE",
 }
 
-export enum Kind {
+export enum PropertyKind {
     Annotation = "ANNOTATION",
     Data = "DATA",
     Object = "OBJECT",
@@ -1252,6 +1257,12 @@ export interface NativeOntologyImportSummary {
      */
     detectedFormat: Format;
     /**
+     * Every parsed definition in the order the source lists them, each with the status applying
+     * it would give. On a preview against a target each NEW or UPDATE item names its change set
+     * operation; a preview against a new ontology has no operations yet.
+     */
+    items?: NativeOntologyImportItem[];
+    /**
      * Label of the source ontology, when the source declares exactly one ontology header with a
      * label.
      */
@@ -1298,4 +1309,76 @@ export enum Format {
     Ntriples = "ntriples",
     Rdfxml = "rdfxml",
     Turtle = "turtle",
+}
+
+/**
+ * One definition an import source states, with what applying it would do to the target.
+ */
+export interface NativeOntologyImportItem {
+    /**
+     * Concepts the warning names, the clashing concept first.
+     */
+    conceptIds?: string[];
+    /**
+     * IRIs of the NEW concepts of this same import that the item states a fact about. A
+     * relationship or rule applies only with every one of them.
+     */
+    dependsOnIris?: string[];
+    /**
+     * For UPDATE, what changes, for example `Description: none to A customer.`.
+     */
+    detail?: string;
+    /**
+     * Derived from what the item states, so it is the same in every preview of one source and a
+     * selection survives a second preview.
+     */
+    id: string;
+    /**
+     * IRI of the concept or property, or of the subject of a relationship or rule.
+     */
+    iri?: string;
+    kind: ItemKind;
+    /**
+     * What a reader calls the item: a display name, or the sentence of a relationship or rule.
+     */
+    label: string;
+    /**
+     * The change set operation that applies this item. Absent for ALREADY_EXISTS, DUPLICATE,
+     * and SKIPPED.
+     */
+    operationId?: string;
+    /**
+     * Why the item is DUPLICATE or SKIPPED.
+     */
+    reason?: string;
+    status:  Status;
+    /**
+     * A finding applying the item would cause, for example a disjointness clash. The item stays
+     * selectable.
+     */
+    warning?: string;
+}
+
+/**
+ * What the item is. A rule is any axiom other than a named subclass link or an object
+ * property assertion between two named concepts.
+ */
+export enum ItemKind {
+    Concept = "CONCEPT",
+    Property = "PROPERTY",
+    Relationship = "RELATIONSHIP",
+    Rule = "RULE",
+}
+
+/**
+ * NEW and UPDATE carry a change set operation. ALREADY_EXISTS matches a stored definition.
+ * DUPLICATE repeats an earlier item of the same source. SKIPPED names a reason in `reason`
+ * and carries no operation.
+ */
+export enum Status {
+    AlreadyExists = "ALREADY_EXISTS",
+    Duplicate = "DUPLICATE",
+    New = "NEW",
+    Skipped = "SKIPPED",
+    Update = "UPDATE",
 }

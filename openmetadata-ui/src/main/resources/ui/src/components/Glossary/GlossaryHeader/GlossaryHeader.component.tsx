@@ -18,6 +18,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
+  Brush01,
+  ChangeHierarchy02,
   ChevronDown,
   Download01,
   Edit01,
@@ -32,8 +34,6 @@ import { cloneDeep, isEmpty, toString } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ChangeHierarchyIcon } from '../../../assets/svg/ic-change-hierarchy.svg';
-import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -92,7 +92,7 @@ import { DEFAULT_GLOSSARY_TERM_ICON } from '../../common/IconPicker/IconPicker.c
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
-import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import ProposalCard from '../../governance/glossary/GlossaryReview/ProposalCard';
@@ -227,7 +227,7 @@ const buildManageButtonContent = ({
               description={t('message.edit-entity-style-description', {
                 entity: t('label.glossary-term'),
               })}
-              icon={StyleIcon}
+              icon={Brush01}
               id="edit-style-button"
               name={t('label.style')}
             />
@@ -245,7 +245,7 @@ const buildManageButtonContent = ({
               description={t('message.modify-hierarchy-entity-description', {
                 entity: t('label.term'),
               })}
-              icon={ChangeHierarchyIcon}
+              icon={ChangeHierarchy02}
               id="change-parent-button"
               name={t('label.change-parent-entity', {
                 entity: t('label.term'),
@@ -290,11 +290,6 @@ const buildManageButtonContent = ({
 
 const getGlossaryHeaderSuffix = (isGlossary: boolean): ReactNode =>
   !isGlossary && <LearningIcon pageId={LEARNING_PAGE_IDS.GLOSSARY_TERM} />;
-
-const getGlossaryTitleColor = (
-  isGlossary: boolean,
-  color?: string
-): string | undefined => (isGlossary ? undefined : color);
 
 interface GlossaryHeaderActionsProps {
   isVersionView?: boolean;
@@ -748,7 +743,7 @@ const GlossaryHeader = ({
   const statusBadge = useMemo(() => {
     const entityStatus = selectedData.entityStatus ?? EntityStatus.Approved;
 
-    return <EntityStatusBadge showDivider status={entityStatus} />;
+    return <EntityStatusBadge showDivider={false} status={entityStatus} />;
   }, [selectedData]);
 
   const createButtons = useMemo(() => {
@@ -905,17 +900,13 @@ const GlossaryHeader = ({
         className="glossary-header"
         data-testid="glossary-header"
         title={
-          <EntityHeaderTitle
-            badge={statusBadge}
-            color={getGlossaryTitleColor(isGlossary, selectedData.style?.color)}
+          <EntityPageTitle
+            actions={getGlossaryHeaderSuffix(isGlossary)}
+            badges={statusBadge}
             deleted={selectedData.deleted}
             displayName={selectedData.displayName}
-            displayNameClassName="text-xl"
             icon={icon}
             name={selectedData.name}
-            nameClassName="text-xl"
-            serviceName=""
-            suffix={getGlossaryHeaderSuffix(isGlossary)}
           />
         }
         variant={isAiMode ? 'gradient' : 'flat'}

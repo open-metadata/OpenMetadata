@@ -12,11 +12,10 @@
  */
 
 import { Box, ProgressBarBase } from '@openmetadata/ui-core-components';
-import { Check } from '@openmetadata/ui-core-components/icons';
+import { Check, StatusRunning } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as RunRunningIcon } from '../../../assets/svg/agents/run-running.svg';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Agent } from '../AgentsPage.interface';
 import { fmtNum, formatEtaShort, getEtaInfo } from '../utils/agents.utils';
@@ -195,11 +194,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
     return allDone ? (
       <Check size={22} />
     ) : (
-      <RunRunningIcon
-        className="tw:animate-spin tw:text-fg-white"
-        height={22}
-        width={22}
-      />
+      <StatusRunning className="tw:animate-spin tw:text-fg-white" size={22} />
     );
   }
 

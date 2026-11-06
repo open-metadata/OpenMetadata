@@ -43,23 +43,6 @@ jest.mock('../../../../../utils/date-time/DateTimeUtils');
 jest.mock('../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils');
 
 // Mock SVG components
-jest.mock('../../../../../assets/svg/ic-check-circle-new.svg', () => ({
-  ReactComponent: ({
-    'data-testid': testId,
-  }: {
-    'data-testid'?: string;
-    [key: string]: unknown;
-  }) => <div data-testid={testId} />,
-}));
-
-jest.mock('../../../../../assets/svg/pending-badge.svg', () => ({
-  ReactComponent: ({
-    'data-testid': testId,
-  }: {
-    'data-testid'?: string;
-    [key: string]: unknown;
-  }) => <div data-testid={testId} />,
-}));
 
 const mockGlossaryTerm: GlossaryTerm = {
   id: 'test-glossary-term-id',

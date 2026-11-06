@@ -269,10 +269,9 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock(
-  '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
-  () => jest.fn().mockImplementation(() => <div>EntityHeader</div>)
-);
+jest.mock('../../components/Entity/EntityPageTitle/EntityPageTitle', () => ({
+  EntityPageTitle: jest.fn().mockImplementation(() => <div>EntityHeader</div>),
+}));
 
 jest.mock(
   '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component',
