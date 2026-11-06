@@ -33,7 +33,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -201,15 +200,11 @@ public class AppConfigurationIT {
   }
 
   private JsonNode auditEntries(OpenMetadataClient client, String name) {
-    String response =
-        client
-            .getHttpClient()
-            .execute(
-                HttpMethod.GET,
-                "/v1/audit/logs?entityType=app&entityFQN=" + name,
-                null,
-                String.class);
-    return JsonUtils.readTree(response).path("data");
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET, "/v1/audit/logs?entityType=app&entityFQN=" + name, null, JsonNode.class)
+        .path("data");
   }
 
   private void assertRuntimePropertiesAbsent(App app) {
