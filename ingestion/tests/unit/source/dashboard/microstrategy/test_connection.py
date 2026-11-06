@@ -68,9 +68,10 @@ def test_get_projects_fails_when_the_listing_fails():
     # The legacy step returned [] on any error, so a broken listing passed the test.
     client = MagicMock()
     client.get_projects_list.side_effect = MicroStrategyApiError("GET /projects failed")
+    provider = _checks(client)
 
     with pytest.raises(CheckError):
-        _checks(client).get_projects()
+        provider.get_projects()
 
 
 def test_get_projects_counts_the_projects():

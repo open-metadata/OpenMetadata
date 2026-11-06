@@ -66,6 +66,8 @@ from metadata.ingestion.source.dashboard.microstrategy.models import (
     MstrDashboard,
     MstrDashboardDetails,
     MstrDataset,
+    MstrPage,
+    MstrVisualization,
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
@@ -387,36 +389,41 @@ class MicrostrategySource(DashboardServiceSource):
         # A chart update that leaves out its dashboards unlinks it from them, so a chart names its
         # dashboard once that exists. A new dashboard is created after its charts and links them.
         dashboards = [FullyQualifiedEntityName(existing.fullyQualifiedName.root)] if existing else None
+        for page, visualization in self._visualizations(dashboard_details):
+            if filter_by_chart(self.source_config.chartFilterPattern, visualization.name):
+                self.status.filter(visualization.name, "Chart Pattern not allowed")
+                continue
+            try:
+                chart_request = CreateChartRequest(
+                    name=EntityName(chart_name(dashboard_details.id, page.key, visualization.key)),
+                    displayName=visualization.name,
+                    chartType=(
+                        get_standard_chart_type(visualization.visualizationType)
+                        if visualization.visualizationType
+                        else None
+                    ),
+                    service=FullyQualifiedEntityName(self._service),
+                    dashboards=dashboards,
+                    **self._carried_over(legacy_charts.get(f"{page.key}{visualization.key}")),
+                )
+                yield Either(left=None, right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
+            except Exception as exc:
+                yield Either(
+                    right=None,
+                    left=StackTraceError(
+                        name=f"Chart {visualization.key}",
+                        error=f"Error creating chart [{visualization.name}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    ),
+                )
+
+    @staticmethod
+    def _visualizations(dashboard_details: MstrDashboardDetails) -> Iterable[tuple[MstrPage, MstrVisualization]]:
         for chapter in dashboard_details.chapters:
             for page in chapter.pages:
                 for visualization in page.visualizations:
-                    try:
-                        if filter_by_chart(self.source_config.chartFilterPattern, visualization.name):
-                            self.status.filter(visualization.name, "Chart Pattern not allowed")
-                            continue
-                        chart_request = CreateChartRequest(
-                            name=EntityName(chart_name(dashboard_details.id, page.key, visualization.key)),
-                            displayName=visualization.name,
-                            chartType=(
-                                get_standard_chart_type(visualization.visualizationType)
-                                if visualization.visualizationType
-                                else None
-                            ),
-                            service=FullyQualifiedEntityName(self._service),
-                            dashboards=dashboards,
-                            **self._carried_over(legacy_charts.get(f"{page.key}{visualization.key}")),
-                        )
-                        yield Either(left=None, right=chart_request)
-                        self.register_record_chart(chart_request=chart_request)
-                    except Exception as exc:
-                        yield Either(
-                            right=None,
-                            left=StackTraceError(
-                                name=f"Chart {visualization.key}",
-                                error=f"Error creating chart [{visualization.name}]: {exc}",
-                                stackTrace=traceback.format_exc(),
-                            ),
-                        )
+                    yield page, visualization
 
     def _charts_unknown(self, dashboard_details: MstrDashboardDetails, exc: Exception) -> None:
         logger.debug(traceback.format_exc())
