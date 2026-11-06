@@ -88,13 +88,13 @@ def pytest_pycollect_makeitem(collector, name, obj):
     # until that test's teardown, so work in __init__ runs for the whole suite up front, once
     # per xdist worker. Building sources there peaked the unit run at ~3.5 GB per worker and
     # OOM-killed the swapless nightly runner.
-    if (
-        isinstance(obj, type)
-        and issubclass(obj, unittest.TestCase)
-        and not obj.__module__.startswith("unittest")
-        and "__init__" in vars(obj)
-    ):
-        pytest.fail(f"{obj.__qualname__} overrides TestCase.__init__; move that setup into setUp", pytrace=False)
+    if isinstance(obj, type) and issubclass(obj, unittest.TestCase):
+        owner = next(c for c in obj.__mro__ if "__init__" in vars(c))
+        if not owner.__module__.startswith("unittest"):
+            pytest.fail(
+                f"{obj.__qualname__} overrides TestCase.__init__ (via {owner.__qualname__}); move that setup into setUp",
+                pytrace=False,
+            )
     try:
         if obj.__name__ in ("TestSuiteSource", "TestSuiteInterfaceFactory"):
             return []
