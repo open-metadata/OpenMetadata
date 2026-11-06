@@ -42,8 +42,13 @@ import {
 } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.utils';
 import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';
 import OntologyDataGraph from '../../../OntologyExplorer/OntologyDataGraph';
-import { OntologyNode } from '../../../OntologyExplorer/OntologyExplorer.interface';
+import {
+  BoundColumn,
+  OntologyNode,
+} from '../../../OntologyExplorer/OntologyExplorer.interface';
+import { columnNodeKey } from '../../../OntologyExplorer/utils/dataColumnLayout';
 import OntologyDataAssetPanel from './OntologyDataAssetPanel';
+import OntologyDataColumnPanel from './OntologyDataColumnPanel';
 import OntologyDataConceptPicker, {
   OntologyDataConceptChip,
 } from './OntologyDataConceptPicker';
@@ -116,6 +121,7 @@ const OntologyNativeDataMode = ({
   const [isPicking, setIsPicking] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
   const [panelAssetId, setPanelAssetId] = useState<string>();
+  const [panelColumnKey, setPanelColumnKey] = useState<string>();
 
   const choose = useCallback(
     (conceptId: string | undefined, announce: boolean) => {
@@ -123,6 +129,7 @@ const OntologyNativeDataMode = ({
       setIsPicking(false);
       setIsLinking(false);
       setPanelAssetId(undefined);
+      setPanelColumnKey(undefined);
       rememberDataPick(ontologyId, conceptId);
       setRecentIds(readDataPick(ontologyId).recentIds);
       if (conceptId && announce) {
@@ -213,9 +220,21 @@ const OntologyNativeDataMode = ({
         return;
       }
       setPanelAssetId(node.entityRef?.id);
+      setPanelColumnKey(undefined);
     },
     [onSelectConcept]
   );
+  const selectColumn = useCallback(
+    (asset: OntologyNode, column: BoundColumn) => {
+      setPanelAssetId(asset.entityRef?.id);
+      setPanelColumnKey(columnNodeKey(asset.id, column.path));
+    },
+    []
+  );
+  const clearPanel = useCallback(() => {
+    setPanelAssetId(undefined);
+    setPanelColumnKey(undefined);
+  }, []);
 
   const summary = (() => {
     if (!pickedCluster) {
@@ -436,6 +455,19 @@ const OntologyNativeDataMode = ({
     if (!panelNode || !picked) {
       return null;
     }
+    const panelColumn = panelNode.boundColumns?.find(
+      (column) => columnNodeKey(panelNode.id, column.path) === panelColumnKey
+    );
+    if (panelColumn) {
+      return (
+        <OntologyDataColumnPanel
+          asset={panelNode}
+          column={panelColumn}
+          onClose={clearPanel}
+          onOpenAsset={() => setPanelColumnKey(undefined)}
+        />
+      );
+    }
     const binding = bindings.data?.assets.find(
       (item) => item.assetId === panelAssetId
     );
@@ -446,7 +478,7 @@ const OntologyNativeDataMode = ({
         canUnlink={canEditBindings && Boolean(bindings.editableSnapshot)}
         conceptName={picked.name}
         node={panelNode}
-        onClose={() => setPanelAssetId(undefined)}
+        onClose={clearPanel}
         onOpenAsset={() => {
           const path =
             panelNode.entityRef && getOntologyAssetPath(panelNode.entityRef);
@@ -479,11 +511,13 @@ const OntologyNativeDataMode = ({
           hasMoreTerms={false}
           isLoadingMoreTerms={false}
           relationTypes={NO_RELATION_TYPES}
+          selectedColumnKey={panelColumnKey}
           selectedNodeId={selectedConceptId}
           variant="native"
           onLoadMore={(node) => loadMoreAssets(node.id)}
           onLoadMoreTerms={loadMoreClusters}
-          onPaneClick={() => setPanelAssetId(undefined)}
+          onPaneClick={clearPanel}
+          onSelectColumn={selectColumn}
           onSelectNode={selectNode}
         />
       ) : null}
