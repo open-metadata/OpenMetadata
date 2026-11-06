@@ -982,8 +982,9 @@ public class DomainRepository extends EntityRepository<Domain> {
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.DOMAIN, renamedDomains);
       EntityRepository.finishInvalidateCacheForRenameCascade(
           Entity.DATA_PRODUCT, renamedDataProducts);
-      // Cached authorization contexts hold the old FQN that hasDomain() matches on
-      SubjectCache.invalidateAllUserContextsEverywhere();
+      // Cached authorization contexts hold the old FQN that hasDomain() matches on; evict again
+      // after commit so a load overlapping this transaction cannot re-cache it
+      UserRepository.evictNowAndAfterCommit(SubjectCache::invalidateAllUserContextsEverywhere);
     }
 
     private void invalidateDomainReferencers(UUID domainId) {
