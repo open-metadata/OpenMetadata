@@ -76,7 +76,7 @@ import metabase from '../assets/img/service-icon-metabase.webp';
 import microstrategy from '../assets/img/service-icon-microstrategy.svg';
 import mode from '../assets/img/service-icon-mode.webp';
 import omni from '../assets/img/service-icon-omni.webp';
-import powerbi from '../assets/img/service-icon-power-bi.webp';
+import powerbi from '../assets/img/service-icon-power-bi.svg';
 import qliksense from '../assets/img/service-icon-qlik-sense.webp';
 import quicksight from '../assets/img/service-icon-quicksight.webp';
 import redash from '../assets/img/service-icon-redash.webp';
