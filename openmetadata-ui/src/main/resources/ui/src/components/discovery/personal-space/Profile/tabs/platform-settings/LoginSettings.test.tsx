@@ -60,7 +60,7 @@ describe('Login configuration settings', () => {
     (updateSettingsConfig as jest.Mock).mockResolvedValue({ data: {} });
   });
 
-  it('shows each limit, with the JWT expiry in seconds', async () => {
+  it('shows each limit, with the JWT expiry in hours and minutes', async () => {
     render(
       <LoginSettings onNavigate={onNavigate} onSetHeaderActions={jest.fn()} />
     );
@@ -69,9 +69,7 @@ describe('Login configuration settings', () => {
       await screen.findByTestId('max-login-fail-attampts')
     ).toHaveTextContent('3');
     expect(screen.getByTestId('access-block-time')).toHaveTextContent('600');
-    expect(screen.getByTestId('jwt-token-expiry-time')).toHaveTextContent(
-      '3600 label.second-plural'
-    );
+    expect(screen.getByTestId('jwt-token-expiry-time')).toHaveTextContent('1h');
   });
 
   it('saves numbers and treats a cleared field as unset', async () => {

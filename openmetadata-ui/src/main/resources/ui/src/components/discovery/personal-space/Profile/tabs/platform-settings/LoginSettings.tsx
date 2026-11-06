@@ -13,6 +13,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { getLoginConfig } from '../../../../../../rest/settingConfigAPI';
+import { convertSecondsToHumanReadableFormat } from '../../../../../../utils/date-time/DateTimeUtils';
 import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
@@ -57,7 +58,10 @@ const LoginSettings = (props: PlatformSettingsPageProps) => {
           value={
             config?.jwtTokenExpiryTime === undefined
               ? undefined
-              : `${config.jwtTokenExpiryTime} ${t('label.second-plural')}`
+              : convertSecondsToHumanReadableFormat(
+                  config.jwtTokenExpiryTime,
+                  2
+                )
           }
         />
       </ReadOnlyRow>

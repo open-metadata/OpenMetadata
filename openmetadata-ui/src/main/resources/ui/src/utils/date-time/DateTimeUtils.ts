@@ -221,13 +221,6 @@ export const formatDateTimeWithTimezone = (
 };
 
 /**
- * @param seconds EPOCH seconds
- * @returns Formatted duration for valid input. Format: 00:09:31
- */
-export const formatTimeDurationFromSeconds = (seconds: number) =>
-  isNil(seconds) ? '' : Duration.fromObject({ seconds }).toFormat('hh:mm:ss');
-
-/**
  * @param milliseconds EPOCH millis
  * @param format Custom format string
  * @returns Formatted date

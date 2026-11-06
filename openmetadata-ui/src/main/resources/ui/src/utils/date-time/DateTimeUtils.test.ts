@@ -25,7 +25,6 @@ import {
   formatDateTimeLong,
   formatMonth,
   formatRunDuration,
-  formatTimeDurationFromSeconds,
   getActiveTimeFormat,
   getElapsedTime,
   getMappedTimeFormat,
@@ -82,10 +81,6 @@ describe('DateTimeUtils tests', () => {
     expect(formatDateTimeLong(0)).toBe(
       `January 01, 1970, 12:00 AM (UTC+00:00)`
     );
-  });
-
-  it(`formatTimeDurationFromSeconds should formate date and time both`, () => {
-    expect(formatTimeDurationFromSeconds(60)).toBe(`00:01:00`);
   });
 
   it(`formatRunDuration should show milliseconds for short runs`, () => {

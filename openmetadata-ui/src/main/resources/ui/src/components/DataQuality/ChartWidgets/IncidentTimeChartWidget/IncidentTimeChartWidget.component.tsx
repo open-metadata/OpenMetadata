@@ -75,7 +75,7 @@ const IncidentTimeChartWidget = ({
         size="text-xl"
         weight="semibold">
         {chartData.length > 0
-          ? convertMillisecondsToHumanReadableFormat(avgTime)
+          ? convertMillisecondsToHumanReadableFormat(avgTime, 2)
           : '--'}
       </Typography>
     );

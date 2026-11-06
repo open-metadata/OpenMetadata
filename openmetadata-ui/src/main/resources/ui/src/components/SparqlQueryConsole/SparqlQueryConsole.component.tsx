@@ -39,6 +39,7 @@ import {
   SparqlPlaygroundInference,
   SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
+import { formatRunDuration } from '../../utils/date-time/DateTimeUtils';
 import { downloadCsv } from '../../utils/Export/ExportUtils';
 import {
   getAvailableSparqlInferences,
@@ -275,10 +276,10 @@ const ResultStatusLine = ({
     size="text-xs"
     weight="medium">
     {tabularResult
-      ? `✓ ${tabularResult.rows.length} ${t('label.result-plural')} · ${
-          result.durationMs
-        } ms`
-      : `${result.format} · ${result.durationMs} ms`}
+      ? `✓ ${tabularResult.rows.length} ${t(
+          'label.result-plural'
+        )} · ${formatRunDuration(result.durationMs)}`
+      : `${result.format} · ${formatRunDuration(result.durationMs)}`}
   </Typography>
 );
 

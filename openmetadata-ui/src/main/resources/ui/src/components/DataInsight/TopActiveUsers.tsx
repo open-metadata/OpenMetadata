@@ -26,8 +26,8 @@ import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUser
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import {
+  convertSecondsToHumanReadableFormat,
   formatDateTime,
-  formatTimeDurationFromSeconds,
 } from '../../utils/date-time/DateTimeUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -116,7 +116,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'avgSessionDuration',
         render: (avgSessionDuration: number) => (
           <Typography className="tw:text-primary">
-            {formatTimeDurationFromSeconds(avgSessionDuration)}
+            {convertSecondsToHumanReadableFormat(avgSessionDuration, 2)}
           </Typography>
         ),
       },

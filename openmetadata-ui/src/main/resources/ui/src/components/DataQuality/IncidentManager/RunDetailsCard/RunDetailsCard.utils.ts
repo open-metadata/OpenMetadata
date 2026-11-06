@@ -232,7 +232,8 @@ export const formatRunDuration = (milliseconds: number) => {
   return seconds < 60
     ? `${seconds.toFixed(1)}s`
     : convertMillisecondsToHumanReadableFormat(
-        Math.round(milliseconds / 1000) * 1000
+        Math.round(milliseconds / 1000) * 1000,
+        2
       );
 };
 

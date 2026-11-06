@@ -24,6 +24,7 @@ import {
   Status,
   StepStats,
 } from '../generated/entity/applications/appRunRecord';
+import { formatRunDuration } from './date-time/DateTimeUtils';
 import { formatJsonString } from './StringUtils';
 
 // The generated `appSchedule` type is a loose JSON-schema union; only the object form carries a cron.
@@ -120,7 +121,7 @@ export const formatLatencyAverage = (
     return `${avgMs.toFixed(1)} ms`;
   }
 
-  return `${(avgMs / 1000).toFixed(2)} s`;
+  return formatRunDuration(avgMs);
 };
 
 export const getEntityStatsData = (data: {

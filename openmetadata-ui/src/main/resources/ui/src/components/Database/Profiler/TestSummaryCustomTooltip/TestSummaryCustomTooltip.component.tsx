@@ -120,7 +120,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
             {key === TABLE_FRESHNESS_KEY && isNumber(value)
               ? convertSecondsToHumanReadableFormat(
                   value,
-                  undefined,
+                  2,
                   `${t('label.late-by')} `
                 )
               : tooltipValue}
