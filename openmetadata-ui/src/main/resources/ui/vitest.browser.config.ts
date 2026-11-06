@@ -49,7 +49,7 @@ const mswServiceWorker = (): Plugin => {
 
 const headless = process.env.HEADED !== 'true';
 
-// Set on main's full run: each test file records the source files it executed
+// Set on a full run (the merge queue's feeds PRs): each test file records the source files it executed
 // (src/test/browser/impact.ts). PRs select tests from the merged map
 // (scripts/select-browser-tests.mjs).
 const impactDir = process.env.BROWSER_IMPACT_DIR;

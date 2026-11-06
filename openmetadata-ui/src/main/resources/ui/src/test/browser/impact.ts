@@ -47,7 +47,7 @@ const hits = () => {
 
 /**
  * Records which source files this test file executed, for test selection.
- * Only active on main's full run with coverage (BROWSER_IMPACT_DIR). Workers
+ * Only active on a full run with coverage (BROWSER_IMPACT_DIR). Workers
  * reuse modules across files (`isolate: false`), so code that only runs at
  * load time is attributed to the first file; the selection script covers that
  * by also matching the direct imports of every executed file.
