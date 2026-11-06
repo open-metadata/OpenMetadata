@@ -45,6 +45,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -927,7 +928,9 @@ class TaskWorkflowHandlerTest {
     applyMergeTagsAction.setAccessible(true);
     applyMergeTagsAction.invoke(
         TaskWorkflowHandler.getInstance(),
-        new Task().withId(UUID.randomUUID()),
+        new Task()
+            .withId(UUID.randomUUID())
+            .withAbout(new EntityReference().withId(table.getId()).withType(Entity.TABLE)),
         table,
         mock(EntityRepository.class),
         "admin",
@@ -973,6 +976,35 @@ class TaskWorkflowHandlerTest {
         Set.copyOf(
             applyColumnTagUpdate(
                 List.of(tag("Tier.A"), tag("PII.Sensitive")), payload, List.of(tag("Tier.B")))));
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_dropsALiveTagFromTheSameExclusiveClassification()
+      throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath", "columns.email.tags",
+            "operation", "Replace",
+            "tagsToAdd", List.of(tag("Tier.B")),
+            "tagsToRemove", List.of(tag("Tier.A")),
+            "currentTags", List.of(tag("Tier.A")));
+
+    // Tier.A was swapped for Tier.C after the task was created, and PII.Sensitive was added
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () -> Entity.getEntityByName(Entity.CLASSIFICATION, "Tier", "", Include.NON_DELETED))
+          .thenReturn(new Classification().withMutuallyExclusive(true));
+      entityMock
+          .when(() -> Entity.getEntityByName(Entity.CLASSIFICATION, "PII", "", Include.NON_DELETED))
+          .thenReturn(new Classification().withMutuallyExclusive(false));
+
+      assertEquals(
+          Set.of("Tier.B", "PII.Sensitive"),
+          Set.copyOf(
+              applyColumnTagUpdate(
+                  List.of(tag("Tier.C"), tag("PII.Sensitive")), payload, List.of(tag("Tier.B")))));
+    }
   }
 
   @Test

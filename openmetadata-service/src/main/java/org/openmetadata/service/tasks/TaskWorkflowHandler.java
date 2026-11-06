@@ -964,6 +964,16 @@ public class TaskWorkflowHandler {
                   .filter(t -> !kept.contains(t.getTagFQN()))
                   .forEach(removed::add);
             }
+            // A live tag under the same mutually exclusive parent as a newValue tag can't stay
+            // next to it, even if the task never saw it (e.g. the Tier was swapped since).
+            List<TagLabel> live = currentTags(entity, path);
+            if (live != null) {
+              Set<String> survivors =
+                  TagLabelUtil.mergeTagsWithIncomingPrecedence(live, newTags).stream()
+                      .map(TagLabel::getTagFQN)
+                      .collect(Collectors.toSet());
+              live.stream().filter(t -> !survivors.contains(t.getTagFQN())).forEach(removed::add);
+            }
             tagsToRemove = removed;
           }
         }
