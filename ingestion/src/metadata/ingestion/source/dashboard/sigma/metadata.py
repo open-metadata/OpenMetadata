@@ -272,12 +272,12 @@ class SigmaSource(DashboardServiceSource):
                     lookup=TableLookup.SEARCH,
                 )
             except UnsupportedTableReferenceError as exc:
-                logger.debug(f"Skipping unsupported Sigma table reference {table} in {service}: {exc}")
+                logger.debug("Skipping unsupported Sigma table reference %s in %s: %s", table, service, exc)
                 continue
             for found in found_tables:
                 matches.setdefault(model_str(found.id), (found, prefix))
         if len(matches) != 1:
-            logger.debug(f"Skipping Sigma table reference {table}: it matches {len(matches)} tables")
+            logger.debug("Skipping Sigma table reference %s: it matches %d tables", table, len(matches))
             return None
         found, prefix = next(iter(matches.values()))
         return found if prefix == db_service_prefix else None

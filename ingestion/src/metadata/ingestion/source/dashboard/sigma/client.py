@@ -169,7 +169,7 @@ class SigmaApiClient:
                     data = {"page": result.nextPage}
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to list Sigma connections: {exc}")
+                logger.warning("Failed to list Sigma connections: %s", exc)
         return self._connection_types.get(connection_id)
 
     def get_workbook_lineage(self, workbook_id: str) -> list[WorkbookLineageEntry]:
@@ -181,7 +181,7 @@ class SigmaApiClient:
             return list(self._read_all(f"/workbooks/{workbook_id}/lineage", WorkbookLineageResponse))
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the lineage of workbook {workbook_id}: {exc}")
+            logger.warning("Failed to fetch the lineage of workbook %s: %s", workbook_id, exc)
         return []
 
     def _read_all(
@@ -203,7 +203,7 @@ class SigmaApiClient:
             data_models.extend(self._read_all("/dataModels", DataModelsResponse))
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to list Sigma data models: {exc}")
+            logger.warning("Failed to list Sigma data models: %s", exc)
             self.data_models_incomplete = True
         return data_models
 
@@ -213,7 +213,7 @@ class SigmaApiClient:
             return list(self._read_all(f"/dataModels/{data_model_id}/elements", ElementsResponse))
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the elements of data model {data_model_id}: {exc}")
+            logger.warning("Failed to fetch the elements of data model %s: %s", data_model_id, exc)
         return None
 
     def get_owner_detail(self, owner_id: str) -> OwnerDetails | None:
@@ -345,7 +345,7 @@ class SigmaApiClient:
                         source_nodes.append(node_details)
                 except Exception as node_exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to fetch node details for {node_id}: {node_exc}")
+                    logger.warning("Failed to fetch node details for %s: %s", node_id, node_exc)
                     continue
 
             return source_nodes if source_nodes else None  # noqa: TRY300
