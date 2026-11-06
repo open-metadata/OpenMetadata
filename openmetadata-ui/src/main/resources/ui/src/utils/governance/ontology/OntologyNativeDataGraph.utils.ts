@@ -12,6 +12,7 @@
  */
 import { isAxiosError } from 'axios';
 import {
+  BoundColumn,
   LineageNote,
   OntologyEdge,
   OntologyGraphData,
@@ -30,6 +31,7 @@ import {
   Kind,
   NativeOntologyDataGraphPageRequest,
 } from '../../../generated/api/data/nativeOntologyDataGraphPageRequest';
+import { AssetBinding } from '../../../generated/type/ontologyConceptBindingsResponse';
 import { getEntityName } from '../../EntityNameUtils';
 
 export const NATIVE_CLUSTER_PAGE_SIZE = 12;
@@ -258,7 +260,8 @@ const toConceptNode = (
 const toAssetNode = (
   conceptId: string,
   row: NativeAssetRow,
-  lineageNotes?: LineageNote[]
+  lineageNotes?: LineageNote[],
+  boundColumns?: BoundColumn[]
 ): OntologyNode => ({
   id: assetNodeId(conceptId, row.id),
   label: getEntityName(row.asset),
@@ -267,6 +270,7 @@ const toAssetNode = (
   fullyQualifiedName: row.asset.fullyQualifiedName,
   serviceLabel: row.serviceType,
   columnCount: row.columnCount,
+  boundColumns,
   lineageNotes,
 });
 
@@ -362,7 +366,8 @@ const buildLineage = (
 export const buildNativeDataGraph = (
   graph: NativeDataGraph,
   loadingConceptIds: ReadonlySet<string>,
-  lineageLabel: string
+  lineageLabel: string,
+  boundColumnsByAsset: ReadonlyMap<string, BoundColumn[]> = new Map()
 ): OntologyGraphData => {
   const conceptIds = new Set(graph.clusters.map((item) => item.concept.id));
   const lineage = buildLineage(
@@ -376,7 +381,8 @@ export const buildNativeDataGraph = (
       toAssetNode(
         cluster.concept.id,
         row,
-        lineage.notesByNodeId.get(assetNodeId(cluster.concept.id, row.id))
+        lineage.notesByNodeId.get(assetNodeId(cluster.concept.id, row.id)),
+        boundColumnsByAsset.get(row.id)
       )
     ),
   ]);
@@ -402,3 +408,21 @@ export const buildNativeDataGraph = (
     ],
   };
 };
+
+/** The columns each asset binds to a property of the concept, keyed by asset id. */
+export const toBoundColumnsByAsset = (
+  assets: readonly AssetBinding[]
+): Map<string, BoundColumn[]> =>
+  new Map(
+    assets.map((binding) => [
+      binding.assetId,
+      binding.columns.map((column) => ({
+        path: column.columnPath,
+        type: column.column?.dataTypeDisplay ?? column.column?.dataType,
+        propertyLabel: column.property
+          ? getEntityName(column.property)
+          : column.propertyId,
+        isResolved: column.state === 'resolved',
+      })),
+    ])
+  );

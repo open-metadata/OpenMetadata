@@ -1,6 +1,8 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -9,8 +11,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -77,6 +82,19 @@ class RowDecisionGateTest {
             CompiledRule.enforcedRules(policy("OwnerOnly", conditional)));
 
     assertTrue(mayDiffer(List.of(conditionalAllow), List.of(), "rowGateConditional"));
+  }
+
+  @Test
+  void theTeamDenyAnswerExpiresLikeTheCompiledPolicies() {
+    AtomicLong nanos = new AtomicLong();
+    Cache<String, Boolean> answers = RowDecisionGate.teamDenyRuleCache(nanos::get);
+    answers.put("0|table|[ViewBasic]", false);
+
+    nanos.addAndGet(SubjectCache.POLICIES_TTL.minusSeconds(1).toNanos());
+    assertEquals(false, answers.getIfPresent("0|table|[ViewBasic]"));
+
+    nanos.addAndGet(Duration.ofSeconds(2).toNanos());
+    assertNull(answers.getIfPresent("0|table|[ViewBasic]"));
   }
 
   private static boolean mayDiffer(

@@ -20,6 +20,10 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
+import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
+import org.openmetadata.schema.api.data.NativeOntologyImportItem;
+import org.openmetadata.schema.api.data.NativeOntologyImportItemKind;
+import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.OntologyConceptType;
@@ -84,6 +88,59 @@ public class IndependentOntologyReleaseExportFormatsIT extends OntologyReleaseEx
                 skosXl.getResource(CUSTOMER.toString()), skosXl.createProperty(SKOSXL + "altLabel"))
             .toList()
             .size());
+  }
+
+  @Test
+  void skosExportImportsAgainWithTheSameConceptsLabelsAndBroaderLinks(TestNamespace ns) {
+    var client = SdkClients.adminClient();
+    Ontology source = createOntology(ns, "skosSource");
+    client
+        .ontologyConcepts()
+        .create(
+            new CreateOntologyConcept()
+                .withName("Customer")
+                .withDisplayName("Customer account")
+                .withIri(CUSTOMER)
+                .withConceptType(OntologyConceptType.OWL_CLASS)
+                .withSynonyms(Set.of("Client"))
+                .withOntology(source.getFullyQualifiedName()));
+    declareClass(source, "Party", PARTY);
+    declareClass(source, "Supplier", SUPPLIER);
+    client.ontologyAxioms().create(axiom(source));
+    client
+        .ontologyAxioms()
+        .create(axiom(source).withName("supplier-is-party").withSubjectIri(SUPPLIER));
+    OntologyRelease release = capture(source);
+    String skos = export(client, release.getId(), "skos");
+
+    Ontology target = createOntology(ns, "skosTarget");
+    var preview =
+        client
+            .ontologies()
+            .previewImport(
+                target.getId(),
+                new PreviewNativeOntologyImport()
+                    .withFormat(NativeOntologyImportFormat.TURTLE)
+                    .withData(skos));
+
+    var counts = preview.getSummary().getCounts();
+    assertEquals(3, counts.getNewConcepts(), "every exported concept imports");
+    assertEquals(2, counts.getNewRelations(), "one broader link per parent edge");
+    assertEquals(0, counts.getNewProperties());
+    assertEquals(
+        List.of("Customer account", "Party", "Supplier"),
+        preview.getSummary().getItems().stream()
+            .filter(item -> item.getKind() == NativeOntologyImportItemKind.CONCEPT)
+            .map(NativeOntologyImportItem::getLabel)
+            .sorted()
+            .toList());
+    assertEquals(
+        Set.of("Client"),
+        preview.getChangeSet().getOperations().stream()
+            .filter(operation -> operation.getConcept() != null)
+            .filter(operation -> CUSTOMER.equals(operation.getConcept().getIri()))
+            .flatMap(operation -> operation.getConcept().getSynonyms().stream())
+            .collect(java.util.stream.Collectors.toSet()));
   }
 
   @Test

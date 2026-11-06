@@ -92,7 +92,7 @@ import { DEFAULT_GLOSSARY_TERM_ICON } from '../../common/IconPicker/IconPicker.c
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
-import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import ProposalCard from '../../governance/glossary/GlossaryReview/ProposalCard';
@@ -290,11 +290,6 @@ const buildManageButtonContent = ({
 
 const getGlossaryHeaderSuffix = (isGlossary: boolean): ReactNode =>
   !isGlossary && <LearningIcon pageId={LEARNING_PAGE_IDS.GLOSSARY_TERM} />;
-
-const getGlossaryTitleColor = (
-  isGlossary: boolean,
-  color?: string
-): string | undefined => (isGlossary ? undefined : color);
 
 interface GlossaryHeaderActionsProps {
   isVersionView?: boolean;
@@ -625,7 +620,7 @@ const GlossaryHeader = ({
   const icon = useMemo(
     () => (
       <FeaturedIcon
-        color="brand"
+        color="gray"
         icon={
           isGlossary ? (
             GlossaryIcon
@@ -748,7 +743,7 @@ const GlossaryHeader = ({
   const statusBadge = useMemo(() => {
     const entityStatus = selectedData.entityStatus ?? EntityStatus.Approved;
 
-    return <EntityStatusBadge showDivider status={entityStatus} />;
+    return <EntityStatusBadge showDivider={false} status={entityStatus} />;
   }, [selectedData]);
 
   const createButtons = useMemo(() => {
@@ -905,17 +900,13 @@ const GlossaryHeader = ({
         className="glossary-header"
         data-testid="glossary-header"
         title={
-          <EntityHeaderTitle
-            badge={statusBadge}
-            color={getGlossaryTitleColor(isGlossary, selectedData.style?.color)}
+          <EntityPageTitle
+            actions={getGlossaryHeaderSuffix(isGlossary)}
+            badges={statusBadge}
             deleted={selectedData.deleted}
             displayName={selectedData.displayName}
-            displayNameClassName="text-xl"
             icon={icon}
             name={selectedData.name}
-            nameClassName="text-xl"
-            serviceName=""
-            suffix={getGlossaryHeaderSuffix(isGlossary)}
           />
         }
         variant={isAiMode ? 'gradient' : 'flat'}

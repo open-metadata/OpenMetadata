@@ -43,9 +43,11 @@ const HeaderField = ({
   children: React.ReactNode;
 }) => (
   <div className="tw:flex tw:flex-col tw:gap-1.5">
+    {/* min-h-6 matches the label row of fields that carry an edit button
+        (status, severity), so every value starts on the same line. */}
     <Typography
       as="span"
-      className="tw:whitespace-nowrap tw:text-secondary"
+      className="tw:flex tw:min-h-6 tw:items-center tw:whitespace-nowrap tw:text-secondary"
       size="text-sm"
       weight="medium">
       {label}

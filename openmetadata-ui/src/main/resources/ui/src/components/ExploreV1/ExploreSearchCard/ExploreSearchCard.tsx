@@ -541,6 +541,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       matchedQueries,
       highlight,
       classNameForBreadcrumb,
+      variant,
     },
     ref
   ) => {
@@ -910,6 +911,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
+        variant={variant}
         onClick={(e) => {
           // Toggling selection must not also open the summary panel.
           if ((e.target as HTMLElement).closest('.assets-checkbox')) {

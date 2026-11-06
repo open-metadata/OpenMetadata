@@ -14,14 +14,15 @@ import {
   Box,
   Button,
   Divider,
+  FeaturedIcon,
   PageHeader,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import {
   Brush01,
-  Classification,
   Edit01,
+  Tag01,
   TagOff,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
@@ -61,7 +62,7 @@ import { GenericProvider } from '../../components/Customization/GenericProvider/
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
-import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityPageTitle } from '../../components/Entity/EntityPageTitle/EntityPageTitle';
 import { EntityStatusBadge } from '../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -72,7 +73,6 @@ import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameM
 import IconColorModal from '../../components/Modals/IconColorModal/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  BLACK_COLOR,
   CERTIFICATION_CATEGORY,
   ROUTES,
   TIER_CATEGORY,
@@ -768,17 +768,23 @@ const TagPage = () => {
     [tabItems]
   );
 
-  const icon = useMemo(() => {
-    if (tagItem?.style?.iconURL) {
-      return (
-        <div className="align-middle" data-testid="icon">
-          <Icon iconValue={tagItem.style.iconURL} size={36} />
-        </div>
-      );
-    }
-
-    return <Classification className="tw:text-utility-gray-500" size={36} />;
-  }, [tagItem]);
+  const icon = useMemo(
+    () => (
+      <FeaturedIcon
+        color="gray"
+        icon={
+          tagItem?.style?.iconURL ? (
+            <Icon iconValue={tagItem.style.iconURL} size={20} />
+          ) : (
+            Tag01
+          )
+        }
+        size="md"
+        theme="surface"
+      />
+    ),
+    [tagItem]
+  );
 
   const badge = useMemo(() => {
     if (!tagItem) {
@@ -860,9 +866,7 @@ const TagPage = () => {
     );
   }
 
-  const learningIcon = (
-    <LearningIcon className="m-t-xss" pageId={LEARNING_PAGE_IDS.TAGS} />
-  );
+  const learningIcon = <LearningIcon pageId={LEARNING_PAGE_IDS.TAGS} />;
 
   const renderAddAssetsButton = () =>
     !isCertificationClassification && !tagItem.disabled ? (
@@ -938,15 +942,14 @@ const TagPage = () => {
       className="data-classification"
       data-testid="data-classification"
       title={
-        <EntityHeaderTitle
-          badge={badge}
-          color={tagItem.style?.color ?? BLACK_COLOR}
+        <EntityPageTitle
+          actions={learningIcon}
+          badges={badge}
           deleted={tagItem.deleted}
           displayName={tagItem.displayName}
           icon={icon}
           name={tagItem.name}
-          serviceName={tagItem.name}
-          suffix={learningIcon}
+          testId={`${tagItem.name}-${tagItem.name}`}
         />
       }
     />

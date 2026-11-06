@@ -46,6 +46,24 @@ class RdfProjectionStateResolverTest {
     assertEquals(RdfProjectionState.REBUILDING, resolver.resolve());
   }
 
+  @Test
+  void reportsRebuildingWhileTheFirstRunIsStarting() {
+    final AppRunRecord run = new AppRunRecord().withStatus(AppRunRecord.Status.STARTED);
+    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
+        .thenReturn(List.of(JsonUtils.pojoToJson(run)));
+
+    assertEquals(RdfProjectionState.REBUILDING, resolver.resolve());
+  }
+
+  @Test
+  void reportsReadyOnceTheFirstRunSucceedsOnAnEmptyCatalog() {
+    final AppRunRecord run = new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS);
+    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
+        .thenReturn(List.of(JsonUtils.pojoToJson(run)));
+
+    assertEquals(RdfProjectionState.READY, resolver.resolve());
+  }
+
   @ParameterizedTest
   @MethodSource("projectionStates")
   void mapsLatestApplicationRunState(

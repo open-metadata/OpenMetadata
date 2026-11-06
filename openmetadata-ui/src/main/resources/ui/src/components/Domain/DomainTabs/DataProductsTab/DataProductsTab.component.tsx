@@ -168,6 +168,7 @@ const DataProductsTab = forwardRef(
                     ...dataProduct,
                     entityType: EntityType.DATA_PRODUCT,
                   }}
+                  variant="muted"
                 />
               ))}
               <NextPrevious

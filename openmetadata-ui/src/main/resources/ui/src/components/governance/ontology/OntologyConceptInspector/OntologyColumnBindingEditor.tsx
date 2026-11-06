@@ -29,6 +29,7 @@ import { useOntologyConceptBindings } from '../../../../hooks/governance/ontolog
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { searchTableColumnsById } from '../../../../rest/tableAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { suggestColumnForProperty } from '../../../../utils/governance/ontology/OntologyBindingSuggestion.utils';
 import {
   getOntologyBindingWriteMessage,
   getOntologyColumnOptions,
@@ -39,12 +40,16 @@ import { ConceptFormCard } from './OntologyConceptSection';
 interface OntologyColumnBindingEditorProps {
   conceptId: string;
   propertyId: string;
+  propertyLabel?: string;
+  isIdentifier?: boolean;
   onClose: () => void;
 }
 
 const OntologyColumnBindingEditor = ({
   conceptId,
   propertyId,
+  propertyLabel,
+  isIdentifier,
   onClose,
 }: OntologyColumnBindingEditorProps) => {
   const { t } = useTranslation();
@@ -66,6 +71,12 @@ const OntologyColumnBindingEditor = ({
   const query = useDebouncedValue(search, 250);
   const [page, setPage] = useState(0);
   const [columnId, setColumnId] = useState('');
+  // Until the person chooses, the editor holds the suggested column.
+  const [hasChosen, setHasChosen] = useState(false);
+  const resetColumn = () => {
+    setColumnId('');
+    setHasChosen(false);
+  };
   const table = tables.find((asset) => asset.assetId === tableId);
   const columns = useQuery({
     queryKey: ['ontology-binding-columns', tableId, query, page],
@@ -90,7 +101,18 @@ const OntologyColumnBindingEditor = ({
         : [],
     [columns.data, table?.asset.fullyQualifiedName]
   );
-  const selected = options.find((option) => option.id === columnId);
+  const suggested = useMemo(
+    () =>
+      propertyLabel
+        ? suggestColumnForProperty(
+            { label: propertyLabel, isIdentifier },
+            options
+          )
+        : undefined,
+    [isIdentifier, options, propertyLabel]
+  );
+  const activeColumnId = hasChosen ? columnId : suggested?.id ?? columnId;
+  const selected = options.find((option) => option.id === activeColumnId);
   const save = async () => {
     const signal = lifecycle.current?.signal;
     if (!signal || signal.aborted) {
@@ -151,16 +173,24 @@ const OntologyColumnBindingEditor = ({
           items={options}
           label={t('label.column')}
           size="sm"
-          value={columnId}
-          onChange={(id) => setColumnId(String(id))}>
+          value={activeColumnId}
+          onChange={(id) => {
+            setHasChosen(true);
+            setColumnId(String(id));
+          }}>
           {(item) => (
             <Select.Item
               id={item.id}
               key={item.id}
               label={item.label}
-              supportingText={
-                options.find((option) => option.id === item.id)?.datatype
-              }
+              supportingText={[
+                item.id === suggested?.id
+                  ? t('label.ontology-suggested-column')
+                  : undefined,
+                options.find((option) => option.id === item.id)?.datatype,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             />
           )}
         </Select>
@@ -173,7 +203,7 @@ const OntologyColumnBindingEditor = ({
             size="xs"
             onPress={() => {
               setPage((value) => value - 1);
-              setColumnId('');
+              resetColumn();
             }}>
             {t('label.previous')}
           </Button>
@@ -185,7 +215,7 @@ const OntologyColumnBindingEditor = ({
             size="xs"
             onPress={() => {
               setPage((value) => value + 1);
-              setColumnId('');
+              resetColumn();
             }}>
             {t('label.next')}
           </Button>
@@ -207,7 +237,7 @@ const OntologyColumnBindingEditor = ({
         onChange={(id) => {
           setTableId(String(id));
           setPage(0);
-          setColumnId('');
+          resetColumn();
         }}>
         {(item) => (
           <Select.Item id={item.id} key={item.id} label={item.label} />
@@ -217,6 +247,7 @@ const OntologyColumnBindingEditor = ({
         aria-label={t('label.search-entity', {
           entity: t('label.column-plural'),
         })}
+        autoComplete="off"
         icon={Search}
         inputDataTestId="ontology-binding-column-search"
         size="sm"
@@ -224,7 +255,7 @@ const OntologyColumnBindingEditor = ({
         onChange={(value) => {
           setSearch(value);
           setPage(0);
-          setColumnId('');
+          resetColumn();
         }}
       />
     </>
