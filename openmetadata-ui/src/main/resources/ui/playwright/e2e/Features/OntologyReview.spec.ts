@@ -2103,8 +2103,8 @@ test.describe(
           await expect(publish).toHaveAccessibleDescription(
             'Choose an ontology to publish'
           );
-          // A late badge can shift the header, so click wherever the button is now.
-          await publish.click({ force: true });
+          const box = await publish.boundingBox();
+          await page.mouse.click((box?.x ?? 0) + 20, (box?.y ?? 0) + 10);
           await expect(
             page.getByTestId('ontology-publication-modal')
           ).toHaveCount(0);
