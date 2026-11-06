@@ -6132,7 +6132,6 @@
     "pipeline-service-disabled-agent-actions": "このデプロイではパイプラインサービスが無効です。エージェントは最後に記録された状態で表示され、有効にするまでデプロイや実行は何も行われません。",
     "pipeline-service-unreachable-agent-actions": "パイプラインサービスに接続できません。エージェントと実行履歴は最後に記録された状態で表示され、サービスが再び応答するまでエージェントの操作は利用できません。",
     "pipeline-status-empty-description": "Airflow などのパイプラインサービスを接続し、最初の実行が完了すると、ここに実行結果が表示されます。",
-    "pipeline-tree-view-truncated": "このパイプラインには、ツリービューで表示できる数を超えるタスクパスがあります。表示は {{limit}} 行で停止し、それ以降のタスクは下流タスクなしで表示されます。",
     "pipeline-type-pipeline-failed": "{{pipelineType}}パイプラインが失敗しました",
     "pipeline-type-pipeline-partially-failed": "{{pipelineType}}パイプラインが部分的に失敗しました",
     "pipeline-will-trigger-manually": "パイプラインは手動でのみ実行されます。",

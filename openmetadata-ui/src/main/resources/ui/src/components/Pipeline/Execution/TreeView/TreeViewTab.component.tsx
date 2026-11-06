@@ -12,7 +12,6 @@
  */
 
 import {
-  Alert,
   Box,
   Card,
   Grid,
@@ -33,11 +32,7 @@ import {
 import { TreeNode } from '../../../../interface/tree.interface';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
-import {
-  getTreeData,
-  getTreeViewData,
-  MAX_TREE_NODES,
-} from '../../../../utils/executionUtils';
+import { getTreeData, getTreeViewData } from '../../../../utils/executionUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import './tree-view-tab.less';
 
@@ -61,7 +56,7 @@ const TreeViewTab = ({
     [executions, status]
   );
 
-  const { treeDataList, treeLabelList, isTruncated } = useMemo(
+  const { treeDataList, treeLabelList } = useMemo(
     () => getTreeData(tasks, viewData),
     [tasks, viewData]
   );
@@ -125,36 +120,24 @@ const TreeViewTab = ({
             />
           </Box>
         ) : (
-          <>
-            {isTruncated && (
-              <Alert
-                className="tw:mb-4"
-                data-testid="tree-view-truncated-warning"
-                title={t('message.pipeline-tree-view-truncated', {
-                  limit: MAX_TREE_NODES,
-                })}
-                variant="warning"
-              />
-            )}
-            <Grid className="layout-row layout-grid w-full">
-              <Grid.Item className="layout-column" span={12}>
-                <Tree
-                  aria-label={t('label.task-plural')}
-                  defaultExpandedKeys={expandedKeys(treeLabelList)}
-                  selectionMode="none">
-                  {treeLabelList.map((node) => renderNode(node, true))}
-                </Tree>
-              </Grid.Item>
-              <Grid.Item className="layout-column" span={12}>
-                <Tree
-                  aria-label={t('label.task-plural')}
-                  defaultExpandedKeys={expandedKeys(treeDataList)}
-                  selectionMode="none">
-                  {treeDataList.map((node) => renderNode(node, false))}
-                </Tree>
-              </Grid.Item>
-            </Grid>
-          </>
+          <Grid className="layout-row layout-grid w-full">
+            <Grid.Item className="layout-column" span={12}>
+              <Tree
+                aria-label={t('label.task-plural')}
+                defaultExpandedKeys={expandedKeys(treeLabelList)}
+                selectionMode="none">
+                {treeLabelList.map((node) => renderNode(node, true))}
+              </Tree>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={12}>
+              <Tree
+                aria-label={t('label.task-plural')}
+                defaultExpandedKeys={expandedKeys(treeDataList)}
+                selectionMode="none">
+                {treeDataList.map((node) => renderNode(node, false))}
+              </Tree>
+            </Grid.Item>
+          </Grid>
         )}
       </Card.Content>
     </Card>

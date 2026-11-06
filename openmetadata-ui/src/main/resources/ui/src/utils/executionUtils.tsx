@@ -13,7 +13,7 @@
 
 import { Box, Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { groupBy, isEmpty, isUndefined, map, toLower } from 'lodash';
+import { groupBy, isUndefined, map, toLower } from 'lodash';
 import React from 'react';
 import { MenuOptions } from '../constants/execution.constants';
 import {
@@ -164,32 +164,7 @@ const checkIsDownStreamTask = (currentTask: Task, tasks: Task[]) =>
     taskData.downstreamTasks?.includes(currentTask.name)
   );
 
-export const MAX_TREE_NODES = 5000;
-
 type ViewElement = { key: string; value: React.ReactNode };
-
-export type TreeBuildState = {
-  visited: Set<string>;
-  rendered: Set<string>;
-  remaining: number;
-  truncated: boolean;
-};
-
-type TreeBuildContext = {
-  data: Task[];
-  viewElements: ViewElement[];
-  icon: React.ReactNode | null;
-  state: TreeBuildState;
-};
-
-export const createTreeBuildState = (
-  remaining = MAX_TREE_NODES
-): TreeBuildState => ({
-  visited: new Set(),
-  rendered: new Set(),
-  remaining,
-  truncated: false,
-});
 
 const createNode = (
   nodeKey: string,
@@ -203,73 +178,27 @@ const createNode = (
   return { key: nodeKey, title, children: [] };
 };
 
-const makeLeafNode = (
-  parentNodeKey: string,
-  childKey: string,
-  { data, viewElements, icon, state }: TreeBuildContext
-): TreeNode => {
-  state.rendered.add(childKey);
-  if (!isEmpty(data.find((item) => item.name === childKey)?.downstreamTasks)) {
-    state.truncated = true;
-  }
-
-  const leaf: TreeNode = {
-    key: parentNodeKey + '-' + childKey,
-    title: viewElements.find((item) => item.key === childKey)?.value ?? null,
-  };
-  if (icon != null) {
-    leaf.icon = icon;
-  }
-
-  return leaf;
-};
-
-function expandNodeChildren(
-  node: TreeNode,
-  entry: Task | undefined,
-  nodeKey: string,
-  context: TreeBuildContext
-): void {
-  const { data, viewElements, icon, state } = context;
-  if (!entry || state.visited.has(entry.name)) {
-    return;
-  }
-
-  state.visited.add(entry.name);
-  for (const childKey of new Set(entry.downstreamTasks ?? [])) {
-    node.children?.push(
-      state.remaining > 0
-        ? // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutual recursion with buildCompleteTree
-          buildCompleteTree(data, viewElements, icon, childKey, nodeKey, state)
-        : makeLeafNode(nodeKey, childKey, context)
-    );
-  }
-  state.visited.delete(entry.name);
-}
-
 export function buildCompleteTree(
   data: Task[],
   viewElements: ViewElement[],
   icon: React.ReactNode | null,
   key: string,
   parentKey: string,
-  state?: TreeBuildState
-) {
+  expanded = new Set<string>()
+): TreeNode {
   const nodeKey: string = parentKey + '-' + key;
-  const buildState = state ?? createTreeBuildState();
-  buildState.remaining -= 1;
-  buildState.rendered.add(key);
-
   const title = viewElements.find((item) => item.key === key)?.value ?? null;
   const node = createNode(nodeKey, title, icon);
   const entry = data.find((item) => item.name === key);
 
-  expandNodeChildren(node, entry, nodeKey, {
-    data,
-    viewElements,
-    icon,
-    state: buildState,
-  });
+  if (entry && !expanded.has(key)) {
+    expanded.add(key);
+    for (const childKey of new Set(entry.downstreamTasks ?? [])) {
+      node.children?.push(
+        buildCompleteTree(data, viewElements, icon, childKey, nodeKey, expanded)
+      );
+    }
+  }
 
   if (node.children?.length === 0) {
     delete node.children;
@@ -283,8 +212,6 @@ export const getTreeData = (
   viewData: Record<string, ViewDataInterface[]>
 ) => {
   const icon = <div className="tree-view-dot" />;
-  const treeDataList: TreeNode[] = [];
-  const treeLabelList: TreeNode[] = [];
 
   // map execution element to task name
   const viewElements = map(
@@ -357,31 +284,34 @@ export const getTreeData = (
       .filter((task) => !checkIsDownStreamTask(task, tasks))
       .map((task) => task.name)
   );
-  const dataState = createTreeBuildState();
-  const labelState = createTreeBuildState();
+  const buildTreeList = (
+    elements: ViewElement[],
+    nodeIcon: React.ReactNode | null
+  ) => {
+    const expanded = new Set<string>();
+    const trees = [...roots].map((taskName) =>
+      buildCompleteTree(tasks, elements, nodeIcon, taskName, 'root', expanded)
+    );
+    tasks.forEach((task) => {
+      if (!expanded.has(task.name)) {
+        trees.push(
+          buildCompleteTree(
+            tasks,
+            elements,
+            nodeIcon,
+            task.name,
+            'root',
+            expanded
+          )
+        );
+      }
+    });
 
-  const addRoot = (taskName: string) => {
-    treeDataList.push(
-      buildCompleteTree(tasks, viewElements, null, taskName, 'root', dataState)
-    );
-    treeLabelList.push(
-      buildCompleteTree(
-        tasks,
-        labelElements,
-        icon,
-        taskName,
-        'root',
-        labelState
-      )
-    );
+    return trees;
   };
 
-  roots.forEach(addRoot);
-  tasks.forEach((task) => {
-    if (!labelState.rendered.has(task.name)) {
-      addRoot(task.name);
-    }
-  });
-
-  return { treeDataList, treeLabelList, isTruncated: labelState.truncated };
+  return {
+    treeDataList: buildTreeList(viewElements, null),
+    treeLabelList: buildTreeList(labelElements, icon),
+  };
 };

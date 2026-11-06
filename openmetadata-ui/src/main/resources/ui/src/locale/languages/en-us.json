@@ -6132,7 +6132,6 @@
     "pipeline-service-disabled-agent-actions": "The pipeline service is disabled for this deployment. Agents are listed from their last recorded state, and deploying or running them has no effect until it is enabled.",
     "pipeline-service-unreachable-agent-actions": "The pipeline service cannot be reached. Agents and their run history are shown from their last recorded state, and agent actions stay unavailable until the service responds again.",
     "pipeline-status-empty-description": "Runs appear here after you connect a pipeline service such as Airflow and its first run completes.",
-    "pipeline-tree-view-truncated": "This pipeline has more task paths than Tree view can show. It stops at {{limit}} rows; tasks past that point are shown without their downstream tasks.",
     "pipeline-type-pipeline-failed": "{{pipelineType}} pipeline failed",
     "pipeline-type-pipeline-partially-failed": "{{pipelineType}} pipeline partially failed",
     "pipeline-will-trigger-manually": "Pipeline will only be triggered manually.",

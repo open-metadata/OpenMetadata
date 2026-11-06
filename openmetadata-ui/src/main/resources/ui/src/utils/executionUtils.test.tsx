@@ -15,9 +15,7 @@ import { Task } from '../generated/entity/data/pipeline';
 import { TreeNode } from '../interface/tree.interface';
 import {
   buildCompleteTree,
-  createTreeBuildState,
   getTreeData,
-  MAX_TREE_NODES,
   ViewDataInterface,
 } from './executionUtils';
 
@@ -70,14 +68,12 @@ describe('executionUtils', () => {
       expect(tree.children?.[0].children?.[0].children).toBeUndefined();
     });
 
-    it('terminates on a cycle reachable from the root without overflowing the stack', () => {
-      // A -> B -> C -> B  (B<->C cycle behind a real root A)
+    it('terminates on a cycle reachable from the root', () => {
       const tasks = makeTasks({ A: ['B'], B: ['C'], C: ['B'] });
       const labels = labelElementsFor(['A', 'B', 'C']);
 
       const tree = buildCompleteTree(tasks, labels, null, 'A', 'root');
 
-      // A -> B -> C -> B(leaf): every cycle member renders once, then stops
       expect(collectTitles([tree])).toEqual(['A', 'B', 'C', 'B']);
       expect(
         tree.children?.[0]?.children?.[0]?.children?.[0]?.children
@@ -104,22 +100,7 @@ describe('executionUtils', () => {
       expect(tree.children?.[0]?.children).toBeUndefined();
     });
 
-    it('renders every node of a diamond graph without throwing', () => {
-      const tasks = makeTasks({ A: ['B', 'D'], B: ['C'], D: ['C'], C: [] });
-      const labels = labelElementsFor(['A', 'B', 'C', 'D']);
-
-      const tree = buildCompleteTree(tasks, labels, null, 'A', 'root');
-
-      expect(new Set(collectTitles([tree]))).toEqual(
-        new Set(['A', 'B', 'C', 'D'])
-      );
-      expect(tree.children?.map((child) => child.title)).toEqual(['B', 'D']);
-    });
-
-    it('expands a shared task under every branch that reaches it (diamond with tail)', () => {
-      // A -> [B, D], B -> C -> E, D -> C -> E.
-      // C and E must appear under both the B and D branches, not just the
-      // first one visited.
+    it('expands a shared task once and shows the repeat as a row', () => {
       const tasks = makeTasks({
         A: ['B', 'D'],
         B: ['C'],
@@ -130,18 +111,15 @@ describe('executionUtils', () => {
       const labels = labelElementsFor(['A', 'B', 'C', 'D', 'E']);
 
       const tree = buildCompleteTree(tasks, labels, null, 'A', 'root');
-
       const [bBranch, dBranch] = tree.children ?? [];
 
-      expect(String(bBranch.title)).toBe('B');
-      expect(String(dBranch.title)).toBe('D');
-      // Both branches must expand C and its downstream E.
       expect(collectTitles([bBranch])).toEqual(['B', 'C', 'E']);
-      expect(collectTitles([dBranch])).toEqual(['D', 'C', 'E']);
+      expect(collectTitles([dBranch])).toEqual(['D', 'C']);
+      expect(dBranch.children?.[0]?.children).toBeUndefined();
     });
 
     it('renders a dangling downstream reference as a leaf', () => {
-      const tasks = makeTasks({ A: ['X'] }); // X is not present in tasks
+      const tasks = makeTasks({ A: ['X'] });
       const labels = labelElementsFor(['A']);
 
       const tree = buildCompleteTree(tasks, labels, null, 'A', 'root');
@@ -150,9 +128,7 @@ describe('executionUtils', () => {
       expect(tree.children?.[0]?.children).toBeUndefined();
     });
 
-    it('starts from a fresh visited set on each top-level call', () => {
-      // A shared/static visited set would wrongly prune the second root's
-      // subtree; each top-level build must expand independently.
+    it('starts from a fresh expanded set on each top-level call', () => {
       const tasks = makeTasks({ A: ['B'], B: ['A'] });
       const labels = labelElementsFor(['A', 'B']);
 
@@ -163,79 +139,15 @@ describe('executionUtils', () => {
       expect(collectTitles([second])).toEqual(collectTitles([first]));
     });
 
-    it('bounds total expansion for a branching cycle so Tree View cannot freeze', () => {
-      // A complete graph of 8 tasks where each lists the other 7 as
-      // downstream. Every permutation is a valid path (no node repeats on a
-      // path), so without a total node bound this would produce ~8! nodes
-      // per root. The budget must cap the expansion well below that.
-      const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-      const graph: Record<string, string[]> = {};
-      for (const name of names) {
-        graph[name] = names.filter((other) => other !== name);
-      }
-      const tasks = makeTasks(graph);
-      const labels = labelElementsFor(names);
+    it('draws one row per edge for a fully connected graph instead of one per path', () => {
+      const tasks = makeTasks(makeCompleteGraph(ALL_TO_ALL));
+      const labels = labelElementsFor(ALL_TO_ALL);
 
-      const tree = buildCompleteTree(tasks, labels, null, 'A', 'root');
+      const tree = buildCompleteTree(tasks, labels, null, 'P1', 'root');
+      const edgeCount = ALL_TO_ALL.length * (ALL_TO_ALL.length - 1);
 
-      const totalNodes = collectKeys([tree]).length;
-
-      // Renders something (the root and at least its first children), but
-      // never millions of nodes — the recursive expansion is bounded by
-      // MAX_TREE_NODES. Leaf preservation for tasks that fall outside the
-      // budget can add at most O(tasks × fan-out) extra leaf nodes on top,
-      // which stays tiny for real graphs.
-      expect(totalNodes).toBeGreaterThan(0);
-      expect(totalNodes).toBeLessThanOrEqual(
-        MAX_TREE_NODES + names.length * names.length
-      );
-    });
-
-    it('preserves later siblings as leaves when the node budget is exhausted', () => {
-      // A root that points first into a chain (which spends the budget)
-      // and then to a separate task Z. Z must still appear as a leaf
-      // even when the budget runs out while expanding the chain, instead
-      // of being silently dropped by a break.
-      const tasks = makeTasks({
-        A: ['B', 'Z'],
-        B: ['C'],
-        C: ['D'],
-        D: [],
-        Z: [],
-      });
-      const labels = labelElementsFor(['A', 'B', 'C', 'D', 'Z']);
-
-      // Budget of 3: A (1), B (2), C (3). D and Z would exceed the budget.
-      const tree = buildCompleteTree(
-        tasks,
-        labels,
-        null,
-        'A',
-        'root',
-        createTreeBuildState(3)
-      );
-
-      // Every task appears at least once; no task is silently dropped.
-      expect(new Set(collectTitles([tree]))).toEqual(
-        new Set(['A', 'B', 'C', 'D', 'Z'])
-      );
-
-      // Z is a direct child of A and must be present as a leaf.
-      const rootChildren = tree.children ?? [];
-
-      expect(rootChildren.some((child) => String(child.title) === 'Z')).toBe(
-        true
-      );
-
-      // D is a child of C and must be present as a leaf even though C's
-      // expansion was stopped by the budget.
-      const bNode = rootChildren.find((child) => String(child.title) === 'B');
-      const cNode = bNode?.children?.[0];
-
-      expect(String(cNode?.title)).toBe('C');
-      expect(
-        cNode?.children?.some((child) => String(child.title) === 'D')
-      ).toBe(true);
+      expect(collectKeys([tree])).toHaveLength(1 + edgeCount);
+      expect(new Set(collectTitles([tree]))).toEqual(new Set(ALL_TO_ALL));
     });
   });
 
@@ -248,12 +160,11 @@ describe('executionUtils', () => {
         D: ['E'],
         E: [],
       });
-      const { treeDataList, treeLabelList, isTruncated } = getTreeData(
+      const { treeDataList, treeLabelList } = getTreeData(
         tasks,
         makeViewData(['A', 'B', 'C', 'D', 'E'])
       );
 
-      expect(isTruncated).toBe(false);
       expect(treeLabelList.map((node) => String(node.title))).toEqual([
         'A',
         'D',
@@ -276,22 +187,19 @@ describe('executionUtils', () => {
       expect(collectTitles(treeLabelList)).toEqual(['A', 'B', 'C']);
     });
 
-    it('falls back to all tasks as roots for a pure 2-task cycle instead of rendering an empty tree', () => {
+    it('renders a pure 2-task cycle instead of an empty tree', () => {
       const tasks = makeTasks({ A: ['B'], B: ['A'] });
       const { treeLabelList, treeDataList } = getTreeData(
         tasks,
         makeViewData(['A', 'B'])
       );
 
-      // Without the fallback, root detection yields [] and the tab is empty.
-      expect(treeLabelList.length).toBeGreaterThan(0);
-      expect(treeDataList.length).toBeGreaterThan(0);
-      expect(new Set(collectTitles(treeLabelList))).toEqual(
-        new Set(['A', 'B'])
-      );
+      expect(treeLabelList.map((node) => String(node.title))).toEqual(['A']);
+      expect(collectTitles(treeLabelList)).toEqual(['A', 'B', 'A']);
+      expect(collectKeys(treeDataList)).toEqual(collectKeys(treeLabelList));
     });
 
-    it('falls back to all tasks as roots for a self-loop', () => {
+    it('renders a self-loop', () => {
       const tasks = makeTasks({ A: ['A'] });
       const { treeLabelList } = getTreeData(tasks, makeViewData(['A']));
 
@@ -299,8 +207,7 @@ describe('executionUtils', () => {
       expect(collectTitles(treeLabelList)).toEqual(['A', 'A']);
     });
 
-    it('renders a cycle reachable from a real root without crashing', () => {
-      // A -> B -> C -> B  (root A, B<->C cycle)
+    it('renders a cycle reachable from a real root', () => {
       const tasks = makeTasks({ A: ['B'], B: ['C'], C: ['B'] });
       const { treeLabelList, treeDataList } = getTreeData(
         tasks,
@@ -323,32 +230,8 @@ describe('executionUtils', () => {
         'A',
         'C',
       ]);
-      expect(new Set(collectTitles(treeLabelList))).toEqual(
-        new Set(['A', 'B', 'C', 'D'])
-      );
+      expect(collectTitles(treeLabelList)).toEqual(['A', 'B', 'C', 'D', 'C']);
       expect(collectKeys(treeDataList)).toEqual(collectKeys(treeLabelList));
-    });
-
-    it('bounds the node count across all roots of a pure branching cycle', () => {
-      const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-      const graph: Record<string, string[]> = {};
-      for (const name of names) {
-        graph[name] = names.filter((other) => other !== name);
-      }
-      const { treeDataList, treeLabelList, isTruncated } = getTreeData(
-        makeTasks(graph),
-        makeViewData(names)
-      );
-
-      expect(treeLabelList).toHaveLength(1);
-      expect(isTruncated).toBe(true);
-
-      const labelKeys = collectKeys(treeLabelList);
-
-      expect(labelKeys.length).toBeLessThanOrEqual(
-        MAX_TREE_NODES + 2 * names.length * names.length
-      );
-      expect(collectKeys(treeDataList)).toEqual(labelKeys);
     });
 
     it('draws a disconnected ring once instead of once per member', () => {
@@ -362,7 +245,22 @@ describe('executionUtils', () => {
       expect(collectTitles(treeLabelList)).toEqual(['A', 'B', 'C', 'A']);
     });
 
-    it('keeps a task whose parent became a budget leaf', () => {
+    it('renders a fully connected pipeline completely in one tree', () => {
+      const { treeDataList, treeLabelList } = getTreeData(
+        makeTasks(makeCompleteGraph(ALL_TO_ALL)),
+        makeViewData(ALL_TO_ALL)
+      );
+      const edgeCount = ALL_TO_ALL.length * (ALL_TO_ALL.length - 1);
+
+      expect(treeLabelList).toHaveLength(1);
+      expect(collectKeys(treeLabelList)).toHaveLength(1 + edgeCount);
+      expect(new Set(collectTitles(treeLabelList))).toEqual(
+        new Set(ALL_TO_ALL)
+      );
+      expect(collectKeys(treeDataList)).toEqual(collectKeys(treeLabelList));
+    });
+
+    it('keeps every task and its downstream when a root also enters a dense loop', () => {
       const graph = {
         ...makeCompleteGraph(ALL_TO_ALL),
         R: ['P1', 'Z'],
@@ -370,17 +268,21 @@ describe('executionUtils', () => {
         Y: [],
       };
       const names = Object.keys(graph);
-      const { treeDataList, treeLabelList, isTruncated } = getTreeData(
+      const { treeDataList, treeLabelList } = getTreeData(
         makeTasks(graph),
         makeViewData(names)
       );
+      const zNode = treeLabelList[0].children?.find(
+        (child) => String(child.title) === 'Z'
+      );
 
-      expect(isTruncated).toBe(true);
+      expect(treeLabelList.map((node) => String(node.title))).toEqual(['R']);
       expect(new Set(collectTitles(treeLabelList))).toEqual(new Set(names));
+      expect(collectTitles([zNode as TreeNode])).toEqual(['Z', 'Y']);
       expect(collectKeys(treeDataList)).toEqual(collectKeys(treeLabelList));
     });
 
-    it('keeps the subtree of a later root after an earlier root spends the budget', () => {
+    it('keeps the subtree of a later root that reaches no shared task', () => {
       const graph = {
         R1: ['P1'],
         ...makeCompleteGraph(ALL_TO_ALL),
@@ -394,6 +296,11 @@ describe('executionUtils', () => {
         makeViewData(names)
       );
 
+      expect(treeLabelList.map((node) => String(node.title))).toEqual([
+        'R1',
+        'R2',
+      ]);
+      expect(collectTitles([treeLabelList[1]])).toEqual(['R2', 'X', 'Y']);
       expect(new Set(collectTitles(treeLabelList))).toEqual(new Set(names));
       expect(collectKeys(treeDataList)).toEqual(collectKeys(treeLabelList));
     });
@@ -403,9 +310,8 @@ describe('executionUtils', () => {
         makeTasks({ A: ['B', 'B'], B: [] }),
         makeViewData(['A', 'B'])
       );
-      const keys = collectKeys(treeLabelList);
 
-      expect(keys).toEqual(['root-A', 'root-A-B']);
+      expect(collectKeys(treeLabelList)).toEqual(['root-A', 'root-A-B']);
     });
 
     it('returns empty lists for empty tasks', () => {

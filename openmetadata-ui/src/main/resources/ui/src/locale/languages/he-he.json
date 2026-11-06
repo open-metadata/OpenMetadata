@@ -6132,7 +6132,6 @@
     "pipeline-service-disabled-agent-actions": "שירות הצינורות מושבת בפריסה הזו. הסוכנים מוצגים לפי המצב האחרון שנרשם, ופריסה או הרצה שלהם לא ישפיעו עד שהשירות יופעל.",
     "pipeline-service-unreachable-agent-actions": "לא ניתן להגיע לשירות הצינורות. הסוכנים והיסטוריית ההרצות שלהם מוצגים לפי המצב האחרון שנרשם, ופעולות על הסוכנים יישארו לא זמינות עד שהשירות יגיב שוב.",
     "pipeline-status-empty-description": "הרצות יופיעו כאן לאחר חיבור שירות תהליכי טעינה כגון Airflow והשלמת ההרצה הראשונה שלו.",
-    "pipeline-tree-view-truncated": "לצינור הזה יש יותר נתיבי משימות ממה שתצוגת העץ יכולה להציג. התצוגה נעצרת אחרי {{limit}} שורות; משימות שאחרי נקודה זו מוצגות ללא המשימות שבהמשכן.",
     "pipeline-type-pipeline-failed": "תהליך הטעינה {{pipelineType}} נכשל",
     "pipeline-type-pipeline-partially-failed": "תהליך הטעינה {{pipelineType}} נכשל חלקית",
     "pipeline-will-trigger-manually": "תהליך הטעינה יופעל באופן ידני בלבד.",

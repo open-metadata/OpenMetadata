@@ -6132,7 +6132,6 @@
     "pipeline-service-disabled-agent-actions": "El servicio de pipelines está deshabilitado en esta instalación. Los agentes se muestran en su último estado registrado, y desplegarlos o ejecutarlos no tendrá ningún efecto hasta que se habilite.",
     "pipeline-service-unreachable-agent-actions": "No se puede acceder al servicio de pipelines. Los agentes y su historial de ejecuciones se muestran en su último estado registrado, y las acciones sobre los agentes seguirán no disponibles hasta que el servicio vuelva a responder.",
     "pipeline-status-empty-description": "Las ejecuciones aparecen aquí después de que conectes un servicio de pipelines como Airflow y se complete su primera ejecución.",
-    "pipeline-tree-view-truncated": "Este pipeline tiene más rutas de tareas de las que puede mostrar la vista de árbol. Se detiene en {{limit}} filas; las tareas posteriores se muestran sin sus tareas descendentes.",
     "pipeline-type-pipeline-failed": "El pipeline de {{pipelineType}} falló",
     "pipeline-type-pipeline-partially-failed": "El pipeline de {{pipelineType}} falló parcialmente",
     "pipeline-will-trigger-manually": "El pipeline solo se activará manualmente.",

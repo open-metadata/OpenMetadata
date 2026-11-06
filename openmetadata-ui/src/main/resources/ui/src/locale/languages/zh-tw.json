@@ -6132,7 +6132,6 @@
     "pipeline-service-disabled-agent-actions": "此部署已停用管線服務。代理程式會依最後記錄的狀態顯示，在啟用該服務之前，部署或執行代理程式不會有任何效果。",
     "pipeline-service-unreachable-agent-actions": "無法連線至管線服務。代理程式及其執行紀錄會依最後記錄的狀態顯示，在服務恢復回應之前，代理程式的操作將無法使用。",
     "pipeline-status-empty-description": "連接 Airflow 等管線服務且其首次執行完成後，執行紀錄將顯示於此處。",
-    "pipeline-tree-view-truncated": "此管線的任務路徑超出樹狀檢視可顯示的數量。樹狀檢視最多顯示 {{limit}} 列，之後的任務將不顯示其下游任務。",
     "pipeline-type-pipeline-failed": "{{pipelineType}} 管線失敗",
     "pipeline-type-pipeline-partially-failed": "{{pipelineType}} 管線部分失敗",
     "pipeline-will-trigger-manually": "管線只會手動觸發。",

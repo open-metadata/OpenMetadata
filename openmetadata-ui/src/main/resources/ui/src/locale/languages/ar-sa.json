@@ -6132,7 +6132,6 @@
     "pipeline-service-disabled-agent-actions": "خدمة خطوط المعالجة معطّلة في هذا النشر. يتم عرض الوكلاء وفق آخر حالة مسجّلة، ولن يكون لنشرهم أو تشغيلهم أي تأثير إلى أن تُفعّل الخدمة.",
     "pipeline-service-unreachable-agent-actions": "تعذّر الوصول إلى خدمة خطوط المعالجة. يتم عرض الوكلاء وسجل تشغيلهم وفق آخر حالة مسجّلة، وتظل إجراءات الوكلاء غير متاحة إلى أن تستجيب الخدمة مجددًا.",
     "pipeline-status-empty-description": "تظهر عمليات التشغيل هنا بعد ربط خدمة خطوط أنابيب مثل Airflow واكتمال أول عملية تشغيل لها.",
-    "pipeline-tree-view-truncated": "يحتوي خط المعالجة هذا على مسارات مهام أكثر مما يمكن لعرض الشجرة إظهاره. يتوقف العرض عند {{limit}} صف؛ وتظهر المهام بعد ذلك دون مهامها اللاحقة.",
     "pipeline-type-pipeline-failed": "فشل سير عمل {{pipelineType}}",
     "pipeline-type-pipeline-partially-failed": "فشل سير عمل {{pipelineType}} جزئيًا",
     "pipeline-will-trigger-manually": "سيتم تشغيل المسار (pipeline) يدويًا فقط.",

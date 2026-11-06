@@ -6132,7 +6132,6 @@
     "pipeline-service-disabled-agent-actions": "De pipelineservice is uitgeschakeld in deze installatie. Agents worden getoond in hun laatst vastgelegde staat, en ze uitrollen of uitvoeren heeft geen effect totdat de service is ingeschakeld.",
     "pipeline-service-unreachable-agent-actions": "De pipelineservice is niet bereikbaar. Agents en hun uitvoeringsgeschiedenis worden getoond in hun laatst vastgelegde staat, en agentacties blijven niet beschikbaar totdat de service weer reageert.",
     "pipeline-status-empty-description": "Uitvoeringen verschijnen hier nadat je een pijplijnservice zoals Airflow hebt verbonden en de eerste uitvoering is voltooid.",
-    "pipeline-tree-view-truncated": "Deze pipeline heeft meer taakpaden dan de boomweergave kan tonen. De weergave stopt bij {{limit}} rijen; taken daarna worden getoond zonder hun downstream-taken.",
     "pipeline-type-pipeline-failed": "{{pipelineType}}-pipeline mislukt",
     "pipeline-type-pipeline-partially-failed": "{{pipelineType}}-pipeline gedeeltelijk mislukt",
     "pipeline-will-trigger-manually": "Pipeline wordt alleen handmatig geactiveerd.",
