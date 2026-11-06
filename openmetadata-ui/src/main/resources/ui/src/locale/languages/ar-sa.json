@@ -5859,6 +5859,7 @@
     "ontology-live-data-bindings-unavailable": "Bindings could not load. Retry to generate the query.",
     "ontology-live-data-needs-binding": "Bind this concept to a table to generate its query.",
     "ontology-live-data-unavailable": "تعذر إنشاء SQL لهذا المفهوم.",
+    "ontology-mapping-already-added": "This mapping is already added.",
     "ontology-name-duplicate": "An ontology named {{name}} already exists.",
     "ontology-name-forbidden-character": "The name cannot contain double quotes, “>”, “::” or control characters.",
     "ontology-name-id-required": "No ID can be made from this name. Open Advanced and enter an ID made of letters and digits.",
