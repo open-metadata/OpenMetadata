@@ -41,6 +41,11 @@ import { getContainerByFQN } from '../rest/storageAPI';
 import { getEntityChildDetailsV1 } from './EntitySummaryPanelUtilsV1';
 import { showErrorToast } from './ToastUtils';
 
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
+  Nested: jest.fn(() => <div data-testid="nested-icon">Nested Icon</div>),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string, options?: Record<string, unknown>) => {
@@ -132,12 +137,6 @@ jest.mock('../components/common/Loader/Loader', () => ({
 jest.mock('../utils/TablePureUtils', () => ({
   ...jest.requireActual('../utils/TablePureUtils'),
   pruneEmptyChildren: jest.fn((columns) => columns),
-}));
-
-jest.mock('../assets/svg/nested.svg', () => ({
-  ReactComponent: jest.fn(() => (
-    <div data-testid="nested-icon">Nested Icon</div>
-  )),
 }));
 
 const { getTableColumnsByFQN, searchTableColumnsByFQN } =

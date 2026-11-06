@@ -19,11 +19,11 @@ import {
   Dropdown,
   Grid,
 } from '@openmetadata/ui-core-components';
+import { WeeklyEmailPreferences } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { map } from 'lodash';
 import { Key, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';
 import {
   EXECUTION_FILTER_RANGE,
   MenuOptions,
@@ -151,7 +151,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                   className="tw:text-brand-secondary tw:after:outline-brand"
                   color="secondary"
                   data-testid="status-button"
-                  iconLeading={FilterIcon}
+                  iconLeading={WeeklyEmailPreferences}
                   size="sm">
                   {status === MenuOptions.all ? t('label.status') : status}
                 </Button>

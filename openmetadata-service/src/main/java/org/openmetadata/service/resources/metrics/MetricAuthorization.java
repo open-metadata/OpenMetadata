@@ -13,8 +13,14 @@
 
 package org.openmetadata.service.resources.metrics;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
+import jakarta.json.JsonException;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -48,6 +54,8 @@ import org.openmetadata.service.util.JsonPatchUtils;
  * also run them on every write through {@code EntityRepository.authorizeWrite}.
  */
 public final class MetricAuthorization {
+  private static final List<String> RELATION_FIELDS =
+      List.of("parent", "metricGroup", "children", "relatedMetrics");
 
   private MetricAuthorization() {}
 
@@ -95,10 +103,12 @@ public final class MetricAuthorization {
       SecurityContext securityContext,
       JsonPatch patch,
       Supplier<Metric> original) {
-    validateMetricPatch(patch);
+    // The hierarchy check runs first so a move the caller may not make is a 403 whatever its shape;
+    // the caller is authorized on the metric before this runs.
     if (patchMutatesHierarchy(patch)) {
       authorizePatchedHierarchy(authorizer, securityContext, original.get(), patch);
     }
+    validateMetricPatch(patch);
   }
 
   private static void authorizePatchedHierarchy(
@@ -131,6 +141,19 @@ public final class MetricAuthorization {
   }
 
   static void validateMetricPatch(JsonPatch patch) {
+    // The read-only and hierarchy guards work from the field names a patch touches. An operation on
+    // the document root rewrites every field while naming none
+    // (ADR:2026-11-03-metric-hierarchy-and-membership-patches-are-authorized-before-they-apply).
+    if (JsonPatchUtils.replacesWholeDocument(patch)) {
+      throw new IllegalArgumentException(
+          "A metric patch operation must name a field; the document root can't be patched");
+    }
+    if (readsRelationElsewhere(patch)) {
+      throw new IllegalArgumentException(
+          "A metric patch can't test the document root or "
+              + String.join(", ", RELATION_FIELDS)
+              + ", or copy or move a value out of them into another field");
+    }
     Set<String> fields = JsonUtils.extractPatchedFields(patch);
     if (fields.contains("assets")) {
       throw new IllegalArgumentException(
@@ -144,6 +167,38 @@ public final class MetricAuthorization {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.readOnlyAttribute(Entity.METRIC, "childrenCount"));
     }
+  }
+
+  // Responses drop the relation references the caller may not view, but an operation is authorized
+  // by its path only (e.g. copy /parent/description into /description needs EditDescription, and a
+  // test of /parent/name answers whether a guess is right).
+  private static boolean readsRelationElsewhere(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .map(JsonValue::asJsonObject)
+        .anyMatch(MetricAuthorization::readsRelationElsewhere);
+  }
+
+  private static boolean readsRelationElsewhere(JsonObject operation) {
+    String path = operation.getString("path", "");
+    boolean readsRelation;
+    if ("test".equals(operation.getString("op", ""))) {
+      readsRelation = path.isEmpty() || RELATION_FIELDS.contains(topLevelField(path));
+    } else if (operation.containsKey("from")) {
+      String from = operation.getString("from", "");
+      String fromField = topLevelField(from);
+      readsRelation =
+          from.isEmpty()
+              || (RELATION_FIELDS.contains(fromField) && !fromField.equals(topLevelField(path)));
+    } else {
+      readsRelation = false;
+    }
+    return readsRelation;
+  }
+
+  private static String topLevelField(String pointer) {
+    String stripped = pointer.startsWith("/") ? pointer.substring(1) : pointer;
+    int slash = stripped.indexOf('/');
+    return slash < 0 ? stripped : stripped.substring(0, slash);
   }
 
   static void authorizeRequestedAssets(
@@ -182,9 +237,43 @@ public final class MetricAuthorization {
       SecurityContext securityContext,
       MetricGroup original,
       JsonPatch patch) {
-    MetricGroup updated = JsonUtils.applyPatch(original, patch, MetricGroup.class);
+    if (addressesMembers(patch)) {
+      authorizeMemberView(authorizer, securityContext, original);
+    }
+    MetricGroup updated;
+    try {
+      updated = JsonUtils.applyPatch(original, patch, MetricGroup.class);
+    } catch (JsonException e) {
+      // The JSON-P message prints the document the operation failed on, members included.
+      throw new IllegalArgumentException("The JSON Patch cannot be applied to the metric group");
+    }
     groups().prepareInternal(updated, true);
     authorizeMembershipMutation(authorizer, securityContext, original, updated);
+  }
+
+  /** Whether any operation's path or from is the document root, /metrics, or below it. */
+  static boolean addressesMembers(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .map(JsonValue::asJsonObject)
+        .anyMatch(
+            operation ->
+                pointsAtMembers(operation.getString("path", null))
+                    || pointsAtMembers(operation.getString("from", null)));
+  }
+
+  private static boolean pointsAtMembers(String pointer) {
+    return pointer != null
+        && (pointer.isEmpty() || pointer.equals("/metrics") || pointer.startsWith("/metrics/"));
+  }
+
+  private static void authorizeMemberView(
+      Authorizer authorizer, SecurityContext securityContext, MetricGroup group) {
+    for (EntityReference metric : listOrEmpty(group.getMetrics())) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(Entity.METRIC, MetadataOperation.VIEW_BASIC),
+          new ResourceContext<>(Entity.METRIC, metric.getId(), metric.getFullyQualifiedName()));
+    }
   }
 
   static void authorizeMembershipMutation(

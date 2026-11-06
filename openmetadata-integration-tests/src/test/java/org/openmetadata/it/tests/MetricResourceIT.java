@@ -992,6 +992,53 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   // HIERARCHY
   // ===================================================================
 
+  @Test
+  void patchCannotCopyAHiddenRelationIntoAReadableField(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String hiddenDescription = "Hidden parent description " + ns.uniqueShortId();
+    Metric hiddenParent =
+        createEntity(
+            createRequest(ns.prefix("copy_hidden_parent"), ns)
+                .withDescription(hiddenDescription)
+                .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN))));
+    Metric child = createChild(ns, "copy_visible_child", hiddenParent);
+
+    withRestrictedEditor(
+        ns,
+        new Rule()
+            .withName("DenyViewingRestrictedMetrics")
+            .withResources(List.of("metric", "metricGroup"))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC))
+            .withCondition("matchAnyTag('" + RESTRICTED_TAG_FQN + "')")
+            .withEffect(Rule.Effect.DENY),
+        editor -> {
+          assertNull(editor.metrics().get(child.getId().toString(), "parent").getParent());
+          for (String from : List.of("/parent/description", "/parent/name")) {
+            JsonNode copy =
+                JSON.createArrayNode()
+                    .add(
+                        JSON.createObjectNode()
+                            .put("op", "copy")
+                            .put("from", from)
+                            .put("path", "/description"));
+            try {
+              editor.metrics().patch(child.getId(), copy);
+            } catch (RuntimeException refused) {
+              // asserted below
+            }
+            String description =
+                editor.metrics().get(child.getId().toString(), "parent").getDescription();
+            assertFalse(
+                description.contains(hiddenDescription)
+                    || description.equals(hiddenParent.getName()),
+                "copy from " + from + " exposed the hidden parent: " + description);
+            assertApiStatus(400, () -> editor.metrics().patch(child.getId(), copy));
+          }
+        });
+    assertEquals(
+        "Child metric", admin.metrics().get(child.getId().toString(), "").getDescription());
+  }
+
   private Metric createChild(TestNamespace ns, String name, Metric parent) {
     return createEntity(
         new CreateMetric()

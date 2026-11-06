@@ -62,6 +62,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
@@ -327,16 +328,20 @@ public class TaskWorkflowHandler {
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
     }
 
-    if (isRejection(resolutionType, selectedTransition)) {
-      final String reason =
-          nullOrEmpty(comment)
-              ? latestCommentBy(
-                  user,
-                  taskRepository
-                      .get(null, taskId, taskRepository.getFields("comments"))
-                      .getComments())
-              : comment;
-      recordRejection(workflowHandler, taskId, reason, user);
+    final boolean rejection = isRejection(resolutionType, selectedTransition);
+    final String resolvedComment =
+        rejection && nullOrEmpty(comment)
+            ? latestCommentBy(
+                user,
+                taskRepository
+                    .get(null, taskId, taskRepository.getFields("comments"))
+                    .getComments())
+            : comment;
+    if (rejection) {
+      if (ontologyReview && nullOrEmpty(resolvedComment == null ? null : resolvedComment.strip())) {
+        throw new BadRequestException("A rejection requires a reason");
+      }
+      recordRejection(workflowHandler, taskId, resolvedComment, user);
     }
 
     // Resolve in Flowable workflow. A null namespace map means the runtime user task never
@@ -360,7 +365,7 @@ public class TaskWorkflowHandler {
               user,
               List.of(user),
               selectedTransition,
-              comment),
+              resolvedComment),
           namespacedVariables);
     }
     final TaskReviewVoteDecision voteDecision =
@@ -378,7 +383,7 @@ public class TaskWorkflowHandler {
                       task,
                       Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED),
                       voteDecision,
-                      comment,
+                      resolvedComment,
                       System.currentTimeMillis()))));
     } else {
       voteProcessId = null;
@@ -431,7 +436,7 @@ public class TaskWorkflowHandler {
             selectedTransition,
             newValue,
             resolvedPayload,
-            comment,
+            resolvedComment,
             user,
             null);
       }
@@ -492,7 +497,7 @@ public class TaskWorkflowHandler {
         selectedTransition,
         newValue,
         resolvedPayload,
-        comment,
+        resolvedComment,
         user,
         recordedVotes);
   }
