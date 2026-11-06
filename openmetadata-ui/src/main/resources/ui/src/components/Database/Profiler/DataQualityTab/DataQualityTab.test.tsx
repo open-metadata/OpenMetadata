@@ -358,6 +358,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     Box: MockBox,
     Button: MockButton,
+    ButtonUtility: ({
+      icon: _icon,
+      size: _size,
+      tooltip,
+      ...props
+    }: {
+      icon?: unknown;
+      size?: string;
+      tooltip?: string;
+      [key: string]: unknown;
+    }) => <MockButton aria-label={tooltip} {...props} />,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Skeleton: () => <span data-testid="skeleton">Loading...</span>,
     Table: MockTable,
@@ -538,12 +549,21 @@ jest.mock('../../../common/DeleteWidget/DeleteEntityModal', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ visible, onCancel, afterDeleteAction, allowSoftDelete }) =>
+      ({
+        visible,
+        onCancel,
+        afterDeleteAction,
+        allowSoftDelete,
+        isRecursiveDelete,
+      }) =>
         visible ? (
           <div>
             <p>DeleteEntityModal</p>
             <span data-testid="allow-soft-delete">
               {String(Boolean(allowSoftDelete))}
+            </span>
+            <span data-testid="recursive-delete">
+              {String(Boolean(isRecursiveDelete))}
             </span>
             <button
               data-testid="soft-delete-confirm"
@@ -1840,7 +1860,37 @@ describe('DataQualityTab test', () => {
 
       expect(await screen.findByText('DeleteEntityModal')).toBeInTheDocument();
       expect(screen.getByTestId('allow-soft-delete')).toHaveTextContent('true');
+      expect(screen.getByTestId('recursive-delete')).toHaveTextContent('true');
       expect(screen.queryByText('DeleteModal')).not.toBeInTheDocument();
+    });
+
+    it('should keep the test case name in the delete modal while it closes', async () => {
+      const firstRowData = MOCK_TEST_CASE[0];
+      const deleteEntityModalMock = jest.requireMock(
+        '../../../common/DeleteWidget/DeleteEntityModal'
+      ) as jest.Mock;
+      render(
+        <DataQualityTab
+          {...mockProps}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[firstRowData]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${firstRowData.name}`)
+      );
+      fireEvent.click(await screen.findByTestId(`delete-${firstRowData.name}`));
+      fireEvent.click(await screen.findByText('cancel'));
+
+      await waitFor(() =>
+        expect(deleteEntityModalMock.mock.lastCall?.[0]).toEqual(
+          expect.objectContaining({
+            entityName: getEntityName(firstRowData),
+            visible: false,
+          })
+        )
+      );
     });
 
     it('should show restore as the only action for a deleted test case', async () => {

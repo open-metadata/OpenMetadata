@@ -32,14 +32,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ entityType: 'table' }),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
-jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
-  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
-    <>
-      <div>{firstPanel.children}</div>
-      <div>{secondPanel.children}</div>
-    </>
-  ))
-);
 const mockTableData = {
   id: 'id1',
   name: 'dim_location',
@@ -182,7 +174,7 @@ describe('UpdateDescriptionPage', () => {
           'Unique identifier for the store. This column is the primary key for this table.',
         currentDescription:
           'Unique identifier for the store. This column is the primary key for this table.',
-        fieldPath: 'columns::shop_id::description',
+        fieldPath: 'columns.shop_id.description',
       },
     });
   });

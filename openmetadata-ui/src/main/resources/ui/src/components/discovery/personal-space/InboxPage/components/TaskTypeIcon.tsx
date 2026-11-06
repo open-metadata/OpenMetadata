@@ -12,7 +12,7 @@
  */
 
 import {
-  AlertTriangle,
+  Alert,
   Archive,
   CheckCircle,
   File02,
@@ -30,7 +30,7 @@ export const TASK_TYPE_ICON: Record<TaskTypeIconKey, typeof CheckCircle> = {
   approval: CheckCircle,
   deprecation: Archive,
   description: File02,
-  incident: AlertTriangle,
+  incident: Alert,
   ownership: Users01,
   tag: Tag01,
   tier: Star01,
@@ -77,7 +77,7 @@ const TaskTypeIcon: React.FC<TaskTypeIconProps> = ({ badge }) => {
         TINT_CLASS[badge.color] ?? TINT_CLASS.gray
       )}
       data-testid="task-type-icon">
-      <Icon height={14} width={14} />
+      <Icon size={14} />
     </span>
   );
 };

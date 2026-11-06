@@ -11,22 +11,29 @@
  *  limitations under the License.
  */
 import { isAxiosError } from 'axios';
-import {
-  CreateOntology,
-  Layer,
-} from '../../../../generated/api/data/createOntology';
+import { CreateOntology } from '../../../../generated/api/data/createOntology';
 import { OntologyPackManifest } from '../../../../generated/api/data/ontologyPackManifest';
+import { isOntologyNameTaken } from '../../../../hooks/governance/ontology/useNativeOntologyInstall';
 import {
   createOntology,
   getOntologyByName,
 } from '../../../../rest/ontologyAPI';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { getOwnersOrCurrentUser } from '../../../Glossary/AddGlossary/AddGlossary.utils';
+import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
 
 export const nativeLibraryOntologyRequest = (
   pack: OntologyPackManifest,
-  userId: string
+  userId: string,
+  identity?: GeneratedOntologyIdentity
 ): CreateOntology => {
+  if (identity) {
+    return {
+      ...identity,
+      layer: pack.layer,
+      owners: getOwnersOrCurrentUser([], userId),
+    };
+  }
   const id = generateUUID();
 
   return {
@@ -34,7 +41,7 @@ export const nativeLibraryOntologyRequest = (
     displayName: pack.name,
     iri: `urn:openmetadata:ontology:${id}`,
     namespace: `urn:openmetadata:ontology:${id}:`,
-    layer: Layer.L1,
+    layer: pack.layer,
     owners: getOwnersOrCurrentUser([], userId),
   };
 };
@@ -73,6 +80,11 @@ export const resolveNativeLibraryTarget = async (
   try {
     return await createOntology(request);
   } catch (error) {
+    // A 409 is the server saying a different ontology holds the name; only a
+    // create whose answer was lost may be recovered as ours.
+    if (isOntologyNameTaken(error)) {
+      throw error;
+    }
     const found = await recoverTarget(request);
     if (found) {
       return found;

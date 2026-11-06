@@ -3,6 +3,8 @@
   "bundled": true,
   "description": "A compact OpenMetadata starter subset of ANSI/ISA-95 manufacturing operations concepts.",
   "id": "isa-95",
+  "industry": "manufacturing",
+  "layer": "L2",
   "license": "MIT",
   "licenseUrl": "https://www.isa.org/standards-and-publications/isa-standards/isa-95-standard",
   "modules": [

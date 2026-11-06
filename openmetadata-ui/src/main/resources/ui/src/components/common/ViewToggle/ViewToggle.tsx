@@ -12,9 +12,12 @@
  */
 
 import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
-import { Grid01, Menu01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Grid01,
+  Menu01,
+  TreeView,
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
-import { ReactComponent as WorkflowIcon } from '../../../assets/svg/data-flow.svg';
 import { PageViewMode } from '../../../generated/type/personaPreferences';
 
 interface ViewToggleProps {
@@ -27,13 +30,13 @@ const DEFAULT_VIEWS: PageViewMode[] = [PageViewMode.Table, PageViewMode.Card];
 
 const getIconElement = (mode: PageViewMode, isActive: boolean) => {
   const iconClass = `tw:size-4 ${
-    isActive ? 'tw:text-fg-brand-primary' : 'tw:text-fg-secondary'
+    isActive ? 'tw:text-utility-brand-600' : 'tw:text-fg-secondary'
   }`;
   switch (mode) {
     case PageViewMode.Card:
       return <Grid01 className={iconClass} />;
     case PageViewMode.Tree:
-      return <WorkflowIcon aria-label="Tree view" className={iconClass} />;
+      return <TreeView aria-label="Tree view" className={iconClass} />;
     case PageViewMode.Table:
     default:
       return <Menu01 className={iconClass} />;

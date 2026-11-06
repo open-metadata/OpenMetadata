@@ -13,6 +13,7 @@
 
 import {
   Button,
+  ButtonUtility,
   Card,
   Grid,
   Input,
@@ -203,11 +204,12 @@ const DynamicSampleConfig = ({
             <Card className="m-b-sm" key={index} size="sm">
               <Card.Header
                 extra={
-                  <Button
+                  <ButtonUtility
                     color="tertiary-destructive"
                     data-testid={`remove-threshold-${index}`}
-                    iconLeading={Trash01}
-                    size="sm"
+                    icon={Trash01}
+                    size="lg"
+                    tooltip={t('label.remove')}
                     onClick={() => onRemoveThreshold(index)}
                   />
                 }

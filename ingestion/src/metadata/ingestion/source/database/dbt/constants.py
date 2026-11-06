@@ -142,6 +142,7 @@ class DbtTestFailureEnum(Enum):
     FAILURE = "failure"
     FAIL = "fail"
     ERROR = "error"
+    WARN = "warn"
 
 
 class DbtCommonEnum(Enum):

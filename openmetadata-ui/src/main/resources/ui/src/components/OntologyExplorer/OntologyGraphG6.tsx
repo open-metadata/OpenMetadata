@@ -114,10 +114,12 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       explorationMode = 'model',
       hierarchyCombos,
       graphSearchHighlight = null,
+      conflictEdgeKeys,
       focusNodeId,
       onNodeClick,
       onNodeDoubleClick,
       onPaneClick,
+      onCanvasDoubleClick,
       onEdgeClick,
       onScrollNearEdge,
       nodePositions,
@@ -126,9 +128,11 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       relationTypeGroups,
       canCreateRelationType,
       studioMode,
+      keepCanvasOnAdd,
       isAuthoringMode,
       isEditMode,
       onCreateRelation,
+      checkRelation,
     },
     ref
   ) => {
@@ -178,6 +182,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       glossaryColorMap,
       hierarchyCombos: hierarchyCombos ?? [],
       graphSearchHighlight,
+      conflictEdgeKeys,
       isEditMode: Boolean(isAuthoringMode || isEditMode),
       layoutType,
       nodePositions,
@@ -190,6 +195,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       useOntologyGraph({
         containerRef,
         graphData,
+        nodePositions,
         inputNodes,
         mergedEdgesList,
         explorationMode,
@@ -202,6 +208,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
         onNodeClick,
         onNodeDoubleClick,
         onPaneClick,
+        onCanvasDoubleClick,
         onScrollNearEdge,
         setClickedEdgeId,
         neighborSet,
@@ -211,6 +218,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
         hierarchicalRelationTypes,
         isEditMode,
         studioMode,
+        keepCanvasOnAdd,
       });
 
     useImperativeHandle(
@@ -325,6 +333,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
         />
         <PortOverlay
           canCreateRelationType={canCreateRelationType}
+          checkRelation={checkRelation}
           containerRef={containerRef}
           isEditMode={Boolean(isEditMode)}
           nodeLabels={nodeLabels}

@@ -395,6 +395,15 @@ def test_athena_url_other_staging_dir():
     assert AthenaConnection.get_connection_url(_config(s3StagingDir="s3://postgres/intput/")) == expected
 
 
+@pytest.mark.parametrize("workgroup", [None, ""])
+def test_athena_url_without_workgroup_runs_in_the_default_workgroup(workgroup):
+    expected = (
+        "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443"
+        "?s3_staging_dir=s3%3A%2F%2Fpostgres%2Finput%2F"
+    )
+    assert AthenaConnection.get_connection_url(_config(workgroup=workgroup)) == expected
+
+
 def test_get_tables_caveats_when_all_targeted_schemas_empty():
     checks = _checks(catalogId="my_catalog")
     inspector = MagicMock()

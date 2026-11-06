@@ -15,10 +15,9 @@ import {
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
+import { Announcement02, XClose } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as MegaphoneIcon } from '../../../../assets/svg/announcements-v1.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { AnnouncementEntity } from '../../../../rest/announcementsAPI';
@@ -80,7 +79,7 @@ const AnnouncementsWidgetV1 = ({
           justify="between">
           <Box align="center" className="header-left" gap={2}>
             <Box align="center" className="header-icon" justify="center">
-              <MegaphoneIcon />
+              <Announcement02 />
             </Box>
             <Typography
               as="h5"
@@ -104,10 +103,10 @@ const AnnouncementsWidgetV1 = ({
           </Box>
           <ButtonUtility
             className="close-button"
-            color="tertiary"
             data-testid="announcements-widget-v1-close"
             icon={XClose}
             isDisabled={disabled}
+            size="lg"
             onClick={handleClose}
           />
         </Box>

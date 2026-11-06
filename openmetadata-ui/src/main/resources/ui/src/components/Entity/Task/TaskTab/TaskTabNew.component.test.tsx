@@ -70,7 +70,7 @@ const MOCK_TASK: Task = {
   ],
   payload: {
     field: 'tags',
-    fieldPath: 'columns::shop_id::tags',
+    fieldPath: 'columns.shop_id.tags',
     currentValue: '[]',
     suggestedValue: JSON.stringify([
       {
@@ -438,14 +438,6 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
   Owner: jest.fn().mockReturnValue(null),
-}));
-
-jest.mock('../../../common/IconButtons/EditIconButton', () => ({
-  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button type="button" onClick={onClick} {...props}>
-      EditIconButton
-    </button>
-  )),
 }));
 
 jest.mock(
@@ -956,8 +948,8 @@ describe('TaskTabNew Component', () => {
     });
 
     const commentInput = screen.getByTestId('comments-input-field');
-    await act(async () => {
-      fireEvent.click(commentInput);
+    act(() => {
+      commentInput.focus();
     });
 
     expect(screen.getByText('ActivityFeedEditorNew')).toBeInTheDocument();

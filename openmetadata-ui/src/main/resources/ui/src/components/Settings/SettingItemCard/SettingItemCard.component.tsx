@@ -25,6 +25,8 @@ const ICON_TILE_COLORS: Record<
   string
 > = {
   blue: 'tw:bg-utility-blue-50 tw:text-utility-blue-700',
+  green: 'tw:bg-utility-success-50 tw:text-utility-success-700',
+  grayBlue: 'tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-700',
 };
 
 interface SettingMenuItemProps {

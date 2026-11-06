@@ -161,6 +161,36 @@ class ESMixin(Generic[T]):
             }
         )
         response = self.client.get("/search/fieldQuery?" + params)
+        return self._parse_fqn_candidates(response)
+
+    def search_filtered_fqns(
+        self, entity_type: type[T], query_filter: dict, max_candidates: int = 100
+    ) -> tuple[str, ...]:
+        """Return a complete bounded set of active FQNs matching a structured filter."""
+        if max_candidates < 1:
+            raise ValueError("Candidate limit must be positive")
+        params = urlencode(
+            {
+                "q": "",
+                "query_filter": json.dumps(query_filter),
+                "index": ES_INDEX_MAP[entity_type.__name__],
+                "deleted": "false",
+                "from": 0,
+                "size": max_candidates + 1,
+                "track_total_hits": "true",
+                "include_aggregations": "false",
+                "include_source_fields": "fullyQualifiedName",
+            }
+        )
+        found = self._parse_fqn_candidates(self.client.get("/search/query?" + params))
+        if found.total > max_candidates or len(found.fqns) > max_candidates:
+            raise ValueError("FQN candidate search exceeds the configured limit")
+        if not found.total_is_exact or found.total != len(found.fqns):
+            raise ValueError("Incomplete FQN candidate search")
+        return found.fqns
+
+    @staticmethod
+    def _parse_fqn_candidates(response: object) -> FqnSearchResult:
         if not isinstance(response, dict):
             raise TypeError("Invalid FQN search response")
         if response.get("timed_out") or response.get("_shards", {}).get("failed", 0):

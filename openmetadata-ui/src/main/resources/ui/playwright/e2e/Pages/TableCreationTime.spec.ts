@@ -13,20 +13,26 @@
 import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { test } from '../fixtures/pages';
 
 // 2021-01-01T00:00:00Z — fixed so the rendered string is deterministic.
 const CREATED_TIMESTAMP = 1609459200000;
+// The year-0001 placeholder older ingestion clients send for a source that reported no creation
+// time (ADR:2026-10-29-lifecycle-timestamps-before-the-epoch-are-dropped-on-write).
+const PLACEHOLDER_TIMESTAMP = -62135596800000;
+const ACCESSED_TIMESTAMP = 1695059900000;
 
 const tableWithCreationTime = new TableClass();
 const tableWithoutCreationTime = new TableClass();
+const tableWithPlaceholderCreationTime = new TableClass();
 
 test.describe('Table source creation time in the entity header', () => {
   test.beforeAll('Create the tables under test', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await tableWithCreationTime.create(apiContext);
     await tableWithoutCreationTime.create(apiContext);
+    await tableWithPlaceholderCreationTime.create(apiContext);
 
     // Connectors populate lifeCycle.created from the source system (e.g. BigQuery
     // INFORMATION_SCHEMA.TABLES.creation_time); patch it directly here.
@@ -40,6 +46,19 @@ test.describe('Table source creation time in the entity header', () => {
         },
       ],
     });
+    await tableWithPlaceholderCreationTime.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/lifeCycle',
+          value: {
+            created: { timestamp: PLACEHOLDER_TIMESTAMP },
+            accessed: { timestamp: ACCESSED_TIMESTAMP },
+          },
+        },
+      ],
+    });
     await afterAction();
   });
 
@@ -47,6 +66,7 @@ test.describe('Table source creation time in the entity header', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await tableWithCreationTime.delete(apiContext);
     await tableWithoutCreationTime.delete(apiContext);
+    await tableWithPlaceholderCreationTime.delete(apiContext);
     await afterAction();
   });
 
@@ -68,6 +88,25 @@ test.describe('Table source creation time in the entity header', () => {
     page,
   }) => {
     await tableWithoutCreationTime.visitEntityPage(page);
+
+    await expect(page.getByTestId('data-assets-header')).toBeVisible();
+    await expect(page.getByTestId('table-created-time')).toHaveCount(0);
+  });
+
+  test('drops the year-0001 placeholder and keeps the other life cycle times', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const response = await apiContext.get(
+      `/api/v1/tables/${tableWithPlaceholderCreationTime.entityResponseData.id}?fields=lifeCycle`
+    );
+    const { lifeCycle } = await response.json();
+    await afterAction();
+
+    expect(lifeCycle?.created).toBeUndefined();
+    expect(lifeCycle?.accessed?.timestamp).toBe(ACCESSED_TIMESTAMP);
+
+    await tableWithPlaceholderCreationTime.visitEntityPage(page);
 
     await expect(page.getByTestId('data-assets-header')).toBeVisible();
     await expect(page.getByTestId('table-created-time')).toHaveCount(0);

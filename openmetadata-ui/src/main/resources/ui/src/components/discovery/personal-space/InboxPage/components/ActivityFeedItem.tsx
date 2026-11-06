@@ -23,6 +23,7 @@ import {
   ChevronUp,
   MessageDotsCircle,
   ThumbsUp,
+  ThumbsUpFilled,
 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
@@ -30,7 +31,6 @@ import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { uniqBy } from 'lodash';
 import React, {
-  SVGProps,
   useCallback,
   useEffect,
   useMemo,
@@ -179,14 +179,17 @@ const getEntityPath = (entity: EntityReference | undefined) =>
     ? entityUtilClassBase.getEntityLink(entity.type, entity.fullyQualifiedName)
     : undefined;
 
-// "Hide replies" while open; otherwise how many there are, or "Reply" while
-// there are none.
+const isReplyCountKnown = (hasLoaded: boolean, feed?: Conversation) =>
+  hasLoaded || feed?.replyCount !== undefined;
+
+// "Reply" with no replies; else "Hide replies" while open, or the count.
 const getThreadButtonLabel = (
   isOpen: boolean,
   count: number,
+  isCountKnown: boolean,
   t: TFunction
 ): string => {
-  if (isOpen) {
+  if (isOpen && (count || !isCountKnown)) {
     return t('label.hide-reply-plural');
   }
   if (!count) {
@@ -198,21 +201,15 @@ const getThreadButtonLabel = (
     : t('label.number-reply-plural', { number: count });
 };
 
-// The footer's text buttons: 16px icons in the reaction smiley's color, like
-// the smiley between them, and tighter padding, which alone spaces the row.
+// The footer's text buttons: the 18px icon frame of the reaction smiley between
+// them, and tighter padding, which alone spaces the row.
 const FOOTER_BUTTON_CLASS =
-  'tw:px-2 tw:*:data-icon:size-4 tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover';
+  'tw:px-2 tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px]';
 
 // A toggle (Like, the replies thread) reads brand while it is on: its text and
 // icon, without the link underline a link-colored button draws on hover.
 const TOGGLE_ON_CLASS =
-  'tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-fg-brand-primary tw:hover:*:data-icon:text-fg-brand-primary';
-
-// A liked card fills its thumb. Every prop passes through: the Button sizes
-// and colors its icon by the `data-icon` it sets.
-const FilledThumbsUp = (props: SVGProps<SVGSVGElement>) => (
-  <ThumbsUp {...props} fill="currentColor" />
-);
+  'tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-600';
 
 const getLikeLabel = (
   likeCount: number,
@@ -249,7 +246,7 @@ const LikeButton = ({ likeCount, isLiked, onToggle }: LikeButtonProps) => {
       )}
       color="tertiary"
       data-testid="activity-like"
-      iconLeading={isLiked ? FilledThumbsUp : ThumbsUp}
+      iconLeading={isLiked ? ThumbsUpFilled : ThumbsUp}
       size="sm"
       onPress={onToggle}>
       {getLikeLabel(likeCount, isLiked, t)}
@@ -263,6 +260,7 @@ const getThreadChevron = (isOpen: boolean) =>
 interface ThreadButtonProps {
   isOpen: boolean;
   count: number;
+  isCountKnown: boolean;
   // Loaded only once the thread has been opened; until then no faces show.
   replies: ConversationReply[];
   onToggle: () => void;
@@ -271,12 +269,12 @@ interface ThreadButtonProps {
 /**
  * The card's one button for its thread: "Reply" while the thread is closed and
  * has no replies, how many replied (and who, once they are loaded) when it has
- * some, and "Hide replies" while it is open — so it can close even once its
- * last reply is deleted.
+ * some, and "Hide replies" while it is open with replies.
  */
 const ThreadButton = ({
   isOpen,
   count,
+  isCountKnown,
   replies,
   onToggle,
 }: ThreadButtonProps) => {
@@ -316,7 +314,7 @@ const ThreadButton = ({
       iconTrailing={isReply ? undefined : getThreadChevron(isOpen)}
       size="sm"
       onPress={onToggle}>
-      {getThreadButtonLabel(isOpen, count, t)}
+      {getThreadButtonLabel(isOpen, count, isCountKnown, t)}
     </Button>
   );
 };
@@ -636,6 +634,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
           />
           <ThreadButton
             count={replyCount}
+            isCountKnown={isReplyCountKnown(hasLoaded, feed)}
             isOpen={isThreadOpen}
             replies={replies}
             // Nothing to read yet: open straight into the composer.

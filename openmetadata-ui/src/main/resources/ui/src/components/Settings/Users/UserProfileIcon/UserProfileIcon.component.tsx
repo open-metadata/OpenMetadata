@@ -18,6 +18,14 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  InheritedRoles,
+  LogOut01,
+  Persona,
+  Role,
+  Teams,
+} from '@openmetadata/ui-core-components/icons';
 
 import { isEmpty, orderBy } from 'lodash';
 import {
@@ -31,12 +39,6 @@ import {
 } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
-import { ReactComponent as IconStruct } from '../../../../assets/svg/ic-inherited-roles.svg';
-import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
-import { ReactComponent as RoleIcon } from '../../../../assets/svg/ic-roles.svg';
-import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg';
-import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
 import { TERM_ADMIN } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -88,7 +90,7 @@ const renderListSection = ({
   return (
     <Dropdown.Section id={id}>
       <Dropdown.SectionHeader className="tw:flex tw:items-center tw:gap-2 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-primary">
-        <Icon className="tw:text-fg-quaternary" height={20} width={20} />
+        <Icon className="tw:size-5 tw:text-utility-gray-500" />
         {title}
       </Dropdown.SectionHeader>
       {isEmpty(items) ? (
@@ -300,7 +302,7 @@ export const UserProfileIcon = () => {
               : getEntityName(selectedPersona)}
           </Typography>
         </div>
-        <DropDownIcon width={12} />
+        <ChevronDown size={12} />
       </AriaButton>
       <Dropdown.Popover
         className="user-profile-dropdown-overlay tw:w-68"
@@ -318,7 +320,7 @@ export const UserProfileIcon = () => {
           <Dropdown.Separator />
           {renderListSection({
             id: 'personas',
-            icon: PersonaIcon,
+            icon: Persona,
             title: t('label.switch-persona'),
             listItems: sortedPersonas,
             sizeLimit: showAllPersona ? sortedPersonas.length : 2,
@@ -337,7 +339,7 @@ export const UserProfileIcon = () => {
           <Dropdown.Separator />
           {renderListSection({
             id: 'roles',
-            icon: RoleIcon,
+            icon: Role,
             title: t('label.role-plural'),
             listItems: roles ?? [],
             labelRenderer: getEntityName,
@@ -346,7 +348,7 @@ export const UserProfileIcon = () => {
           <Dropdown.Separator />
           {renderListSection({
             id: 'inheritedRoles',
-            icon: IconStruct,
+            icon: InheritedRoles,
             title: t('label.inherited-role-plural'),
             listItems: inheritedRoles ?? [],
             labelRenderer: getEntityName,
@@ -355,7 +357,7 @@ export const UserProfileIcon = () => {
           <Dropdown.Separator />
           {renderListSection({
             id: 'teams',
-            icon: TeamIcon,
+            icon: Teams,
             title: t('label.team-plural'),
             listItems: teams ?? [],
             labelRenderer: getEntityName,
@@ -364,7 +366,7 @@ export const UserProfileIcon = () => {
           })}
           <Dropdown.Separator />
           <Dropdown.Item
-            icon={LogoutIcon}
+            icon={LogOut01}
             id="logout"
             label={t('label.logout')}
             onAction={onLogoutHandler}
