@@ -16,70 +16,93 @@ import { Operation } from '../generated/entity/policies/policy';
 import { PERMISSION_POLICY } from './permissionPolicy';
 import { getOperationPermissions } from './PermissionsUtils';
 
-const resourcePermission = (access: Access) => ({
+const resourcePermission = (operation: Operation, access: Access) => ({
   resource: 'databaseService',
-  permissions: [{ operation: Operation.ViewAll, access }],
+  permissions: [{ operation, access }],
 });
 
-describe('permissionPolicy — resourceLevelConditionalAllow seam', () => {
-  it('ships as "strict" — behavior parity with base commit 9cf866cd23', () => {
-    // Locks the live default. This is the assertion that fails loudly if
-    // someone flips the switch without meaning to (or without updating the
-    // Playwright suite documented in permissionPolicy.ts).
-    expect(PERMISSION_POLICY.resourceLevelConditionalAllow).toBe('strict');
+// Mirrors PermissionProvider.tsx's RESOURCE_ALLOW_CONDITIONAL derivation.
+const resourceAllowConditional = (operation: Operation) =>
+  PERMISSION_POLICY.resourceLevelConditionalOperations.has(operation);
+
+// Both resource-level "depends on the entity" answers; which one the backend
+// reports depends only on whether a matching conditional rule has a deny effect.
+const CONDITIONAL_ACCESS = [Access.ConditionalAllow, Access.ConditionalDeny];
+
+describe('permissionPolicy — resourceLevelConditionalOperations seam', () => {
+  it('allow-lists exactly ViewBasic and ViewAll — the fix for OpenMetadata#31783, #33834 and #33356', () => {
+    // Locks the live default. Fails loudly if someone widens the allow-list
+    // to a Create/Edit/Delete/Trigger-class operation, which would turn a
+    // UI navigation fix into real cross-domain write access (see
+    // permissionPolicy.ts for why those endpoints treat this check as
+    // enforcement, not just gating).
+    expect(
+      Array.from(PERMISSION_POLICY.resourceLevelConditionalOperations).sort()
+    ).toEqual([Operation.ViewAll, Operation.ViewBasic].sort());
   });
 
-  // Exercises the translation the same way PermissionProvider.tsx derives
-  // `allowConditional` from the policy (`=== 'attempt'`), for BOTH policy
-  // values — so the 'attempt' path (the #31783 fix) is proven correct
-  // *before* anyone flips PERMISSION_POLICY.resourceLevelConditionalAllow.
-  // Uses local literal mode values rather than mutating the frozen policy
-  // object (its property is typed readonly via `as const`).
+  describe.each([Operation.ViewBasic, Operation.ViewAll])(
+    'operation = %s (allow-listed)',
+    (operation) => {
+      it.each(CONDITIONAL_ACCESS)(
+        'translates a resource-level %s to permitted',
+        (access) => {
+          const permissions = getOperationPermissions(
+            resourcePermission(operation, access),
+            resourceAllowConditional
+          );
+
+          expect(permissions[operation]).toBe(true);
+        }
+      );
+
+      it('leaves an explicit Allow unaffected', () => {
+        const permissions = getOperationPermissions(
+          resourcePermission(operation, Access.Allow),
+          resourceAllowConditional
+        );
+
+        expect(permissions[operation]).toBe(true);
+      });
+
+      it('leaves an explicit Deny unaffected', () => {
+        const permissions = getOperationPermissions(
+          resourcePermission(operation, Access.Deny),
+          resourceAllowConditional
+        );
+
+        expect(permissions[operation]).toBe(false);
+      });
+    }
+  );
+
   describe.each([
-    ['strict', false],
-    ['attempt', true],
-  ] as const)('mode = %s', (mode, expectAllowed) => {
-    const allowConditional = mode === 'attempt';
+    Operation.Create,
+    Operation.EditAll,
+    Operation.Delete,
+    Operation.Trigger,
+  ])('operation = %s (stays strict)', (operation) => {
+    it.each(CONDITIONAL_ACCESS)(
+      'a resource-level %s stays denied',
+      (access) => {
+        const permissions = getOperationPermissions(
+          resourcePermission(operation, access),
+          resourceAllowConditional
+        );
 
-    it(`translates a resource-level conditionalAllow to ${expectAllowed}`, () => {
-      const permissions = getOperationPermissions(
-        resourcePermission(Access.ConditionalAllow),
-        allowConditional
-      );
-
-      expect(permissions[Operation.ViewAll]).toBe(expectAllowed);
-    });
-
-    it('leaves an explicit Allow unaffected', () => {
-      const permissions = getOperationPermissions(
-        resourcePermission(Access.Allow),
-        allowConditional
-      );
-
-      expect(permissions[Operation.ViewAll]).toBe(true);
-    });
-
-    it('leaves an explicit Deny unaffected', () => {
-      const permissions = getOperationPermissions(
-        resourcePermission(Access.Deny),
-        allowConditional
-      );
-
-      expect(permissions[Operation.ViewAll]).toBe(false);
-    });
-  });
-
-  it('the live policy setting reproduces the "strict" row above end-to-end', () => {
-    const allowConditional =
-      PERMISSION_POLICY.resourceLevelConditionalAllow === 'attempt';
-    const permissions = getOperationPermissions(
-      resourcePermission(Access.ConditionalAllow),
-      allowConditional
+        expect(permissions[operation]).toBe(false);
+      }
     );
-
-    // While the policy stays 'strict' this must be denied — the same
-    // observable behavior PermissionProvider.tsx's RESOURCE_ALLOW_CONDITIONAL
-    // produces for every logged-in-user / resource-level permission fetch.
-    expect(permissions[Operation.ViewAll]).toBe(false);
   });
+
+  it.each(CONDITIONAL_ACCESS)(
+    'entity-level gating (no allowConditional passed) keeps %s strict regardless of operation',
+    (access) => {
+      const permissions = getOperationPermissions(
+        resourcePermission(Operation.ViewBasic, access)
+      );
+
+      expect(permissions[Operation.ViewBasic]).toBe(false);
+    }
+  );
 });
