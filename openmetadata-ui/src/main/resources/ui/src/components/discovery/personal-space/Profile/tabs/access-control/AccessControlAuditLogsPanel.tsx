@@ -25,7 +25,11 @@ import {
   ProgressBarBase,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Search, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
@@ -38,15 +42,12 @@ import React, {
 } from 'react';
 import type { DateValue } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExportIcon } from '../../../../../../assets/svg/ic-download.svg';
 import AuditLogList from '../../../../../../components/AuditLog/AuditLogList.component';
 import '../../../../../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../../../../../components/common/Banner/Banner';
 import { CSVExportWebsocketResponse } from '../../../../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
   SOCKET_EVENTS,
 } from '../../../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../../../context/WebSocketProvider/WebSocketProvider';
@@ -65,6 +66,7 @@ import {
   AuditLogListResponse,
 } from '../../../../../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../../../../../utils/AuditLogUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -125,16 +127,6 @@ async function walkToPageCursor(
   return { cursor, discoveredCursors };
 }
 
-function resolvePageSize(hash: number | undefined): number {
-  return hash || PAGE_SIZE_MEDIUM;
-}
-
-// ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
-// A non-default page size keeps the control visible so the user can switch back.
-function shouldShowPagination(total: number | undefined, pageSize: number) {
-  return (total ?? 0) > pageSize || pageSize !== PAGE_SIZE_MEDIUM;
-}
-
 interface AccessControlAuditLogsPanelProps {
   /** Callback to inject action buttons into the page header. */
   onSetHeaderActions?: (actions: React.ReactNode) => void;
@@ -148,12 +140,12 @@ const AccessControlAuditLogsPanel: React.FC<
 
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = resolvePageSize(hashPageSize);
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [paging, setPaging] = useState<Paging>(INITIAL_PAGING);
@@ -248,9 +240,10 @@ const AccessControlAuditLogsPanel: React.FC<
   const handlePageSizeChange = useCallback(
     (size: number) => {
       pageCursorsRef.current = {};
+      savePageSize(size);
       setHashPage(1, undefined, undefined, size);
     },
-    [setHashPage]
+    [savePageSize, setHashPage]
   );
 
   const handleFiltersChange = useCallback(
@@ -574,7 +567,7 @@ const AccessControlAuditLogsPanel: React.FC<
       <Button
         color="primary"
         data-testid="export-audit-logs-button"
-        iconLeading={ExportIcon}
+        iconLeading={Download01}
         ref={exportButtonRef}
         onPress={() => setIsExportModalOpen(true)}>
         {t('label.export')}
@@ -681,6 +674,7 @@ const AccessControlAuditLogsPanel: React.FC<
               className="tw:shrink-0"
               data-testid="audit-log-search-container">
               <Input
+                autoComplete="off"
                 className="tw:max-w-86"
                 icon={Search as React.FC}
                 inputDataTestId="audit-log-search"
@@ -767,16 +761,12 @@ const AccessControlAuditLogsPanel: React.FC<
         </Box>
 
         {/* Pagination inside card */}
-        {shouldShowPagination(paging.total, pageSize) && (
+        {shouldShowPager(logs) && (
           <Box className="tw:shrink-0 tw:border-t tw:border-secondary">
             <PaginationCardWithControls
               page={currentPage}
               pageSize={pageSize}
-              pageSizeOptions={[
-                PAGE_SIZE_BASE,
-                PAGE_SIZE_MEDIUM,
-                PAGE_SIZE_LARGE,
-              ]}
+              pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
               total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
               onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}
@@ -845,7 +835,9 @@ const AccessControlAuditLogsPanel: React.FC<
         onConfirm={() =>
           new Promise<boolean>((resolve) => {
             settleExportRef.current = resolve;
-            handleExport().then((started) => !started && resolve(false));
+            handleExport()
+              .then((started) => !started && resolve(false))
+              .catch(() => resolve(false));
           })
         }
         onOpenChange={(open) => !open && handleExportModalClose()}

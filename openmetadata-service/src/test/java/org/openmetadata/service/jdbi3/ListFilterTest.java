@@ -198,48 +198,6 @@ class ListFilterTest {
   }
 
   @Test
-  void test_escapeForMySqlRegexReplacement_passesThroughPlainStrings() {
-    assertEquals("abcd", ListFilter.escapeForMySqlRegexReplacement("abcd"));
-    assertEquals("", ListFilter.escapeForMySqlRegexReplacement(""));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_doublesApostrophesOnce() {
-    // Apostrophes only matter for the SQL string-literal layer — REGEXP_REPLACE's
-    // replacement context doesn't reserve them. Expect a single ' → '' doubling.
-    assertEquals("a''b", ListFilter.escapeForMySqlRegexReplacement("a'b"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_quadruplesBackslashes() {
-    // One input backslash needs to round-trip to one literal backslash in the
-    // REGEXP_REPLACE output, so it must be FOUR backslashes in the emitted SQL text:
-    //   SQL text  : \\\\  (4 backslashes)
-    //   SQL parser: \\    (2 backslashes — '\\' is the SQL string-literal escape for '\')
-    //   regex eng : \     (1 backslash — '\\' in the regex replacement is a literal '\')
-    // Without the regex-replacement escape, the regex engine would interpret the lone
-    // remaining '\' as the start of an escape/backref sequence.
-    assertEquals("a\\\\\\\\b", ListFilter.escapeForMySqlRegexReplacement("a\\b"));
-    assertEquals("\\\\\\\\", ListFilter.escapeForMySqlRegexReplacement("\\"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_protectsBackreferenceLookalikes() {
-    // Without the extra regex-replacement layer, "\1" in the input would survive as "\1"
-    // in the regex replacement and be interpreted as a backreference to capture group 1
-    // (REGEXP_REPLACE doesn't have groups when called like updateFqn does, but the
-    // behaviour is implementation-defined — usually empty-string substitution). After
-    // the double escape it survives as a literal "\1" in the output.
-    assertEquals("\\\\\\\\1bar", ListFilter.escapeForMySqlRegexReplacement("\\1bar"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_combinesBackslashAndApostrophe() {
-    // Backslashes get four-x'd, apostrophes double once.
-    assertEquals("a\\\\\\\\''b", ListFilter.escapeForMySqlRegexReplacement("a\\'b"));
-  }
-
-  @Test
   void addCondition() {
     String condition;
     ListFilter filter = new ListFilter();
@@ -284,6 +242,22 @@ class ListFilterTest {
     assertTrue(condition.contains("serverId = :serverId"), condition);
 
     assertFalse(new ListFilter().getCondition().contains("agentId"));
+  }
+
+  @Test
+  void getCondition_changeSetOntologyBindsTheIdAndOnlyFiltersChangeSets() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("changeSetOntologyId", "11111111-1111-1111-1111-111111111111");
+
+    String condition = filter.getCondition("ontology_change_set_entity");
+
+    assertTrue(condition.contains("ontology_change_set_entity.id IN (SELECT"), condition);
+    assertTrue(condition.contains("entity_relationship.fromId = :changeSetOntologyIdParam"));
+    assertTrue(condition.contains("entity_relationship.fromEntity = 'ontology'"));
+    assertFalse(condition.contains("11111111"), condition);
+    assertEquals(
+        "11111111-1111-1111-1111-111111111111", filter.getQueryParam("changeSetOntologyIdParam"));
+    assertFalse(filter.getCondition("ontology_concept_entity").contains("changeSetOntologyId"));
   }
 
   @Test

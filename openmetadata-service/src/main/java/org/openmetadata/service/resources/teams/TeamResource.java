@@ -30,7 +30,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
-import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -51,6 +50,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -59,6 +59,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
@@ -76,6 +77,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
@@ -85,10 +87,14 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonPatchUtils;
 
 @Slf4j
@@ -106,6 +112,9 @@ import org.openmetadata.service.util.JsonPatchUtils;
     requiredForOps = true) // Load after roles, and policy resources
 public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
+  private static final String IMPERSONATED_GRANT_CHANGE =
+      "Impersonated requests cannot change a team's default roles or policies";
+  private static final List<String> GRANT_POINTERS = List.of("/defaultRoles", "/policies");
   private final TeamMapper mapper = new TeamMapper();
   static final String FIELDS =
       "owners,profile,users,owns,defaultRoles,defaultPersona,parents,children,descendantTeams,policies,userCount,childrenCount,domains,extension";
@@ -286,7 +295,62 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("isJoinable")
           Boolean isJoinable) {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    return new ResultList<>(repository.listHierarchy(filter, limitParam, isJoinable));
+    // Someone signing up has no user yet and picks from the joinable teams; everyone else reads
+    // the hierarchy as they read teams
+    // (ADR:2026-11-03-read-handlers-authorize-like-the-entity-reads-they-mirror).
+    if (Boolean.TRUE.equals(isJoinable) && isSigningUp(securityContext)) {
+      return new ResultList<>(repository.listHierarchy(filter, limitParam, true));
+    }
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
+    List<TeamHierarchy> hierarchy = repository.listHierarchy(filter, limitParam, isJoinable);
+    if (rowsMayDiffer(securityContext, Fields.EMPTY_FIELDS)) {
+      hierarchy = viewableHierarchy(securityContext, hierarchy);
+    }
+    return new ResultList<>(hierarchy);
+  }
+
+  private static boolean isSigningUp(SecurityContext securityContext) {
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    if (authConfig == null || !Boolean.TRUE.equals(authConfig.getEnableSelfSignup())) {
+      return false;
+    }
+    try {
+      Entity.getEntityReferenceByName(
+          Entity.USER, securityContext.getUserPrincipal().getName(), Include.ALL);
+      return false;
+    } catch (EntityNotFoundException e) {
+      return true;
+    }
+  }
+
+  /** The hierarchy without the teams the caller may not view, and without what lies below them. */
+  private List<TeamHierarchy> viewableHierarchy(
+      SecurityContext securityContext, List<TeamHierarchy> hierarchy) {
+    List<EntityReference> teams = new ArrayList<>();
+    collectTeams(hierarchy, teams);
+    Set<UUID> viewable = viewPermissionFilter.viewableIds(securityContext, teams);
+    return prune(hierarchy, viewable);
+  }
+
+  private static void collectTeams(List<TeamHierarchy> nodes, List<EntityReference> teams) {
+    for (TeamHierarchy node : listOrEmpty(nodes)) {
+      teams.add(new EntityReference().withId(node.getId()).withType(Entity.TEAM));
+      collectTeams(node.getChildren(), teams);
+    }
+  }
+
+  private static List<TeamHierarchy> prune(List<TeamHierarchy> nodes, Set<UUID> viewable) {
+    List<TeamHierarchy> kept = new ArrayList<>();
+    for (TeamHierarchy node : listOrEmpty(nodes)) {
+      if (viewable.contains(node.getId())) {
+        node.setChildren(prune(node.getChildren(), viewable));
+        kept.add(node);
+      }
+    }
+    return kept;
   }
 
   @GET
@@ -527,6 +591,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateTeam ct) {
     Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
+    rejectImpersonatedGrant(containerRequestContext, team);
     if (team.getDefaultPersona() != null) {
       authorizeDefaultPersonaChange(securityContext, containerRequestContext);
     }
@@ -554,6 +619,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateTeam ct) {
     Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
+    rejectImpersonatedGrant(containerRequestContext, team);
     if (grantsDefaultPersona(team)) {
       authorizeDefaultPersonaChange(securityContext, containerRequestContext);
     }
@@ -585,7 +651,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           String name,
       @Valid BulkAssets request) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok()
         .entity(
@@ -617,7 +683,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           String name,
       @Valid BulkAssets request) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok()
         .entity(
@@ -743,6 +809,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    rejectImpersonatedGrant(containerRequestContext, patch);
     authorizeDefaultPersonaPatch(securityContext, containerRequestContext, patch);
     return withRedactedEntity(
         patchInternal(uriInfo, securityContext, id, patch), ProfileWebhookSecrets::mask);
@@ -775,6 +842,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    rejectImpersonatedGrant(containerRequestContext, patch);
     authorizeDefaultPersonaPatch(securityContext, containerRequestContext, patch);
     return withRedactedEntity(
         patchInternal(uriInfo, securityContext, fqn, patch), ProfileWebhookSecrets::mask);
@@ -786,16 +854,17 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   // Members of a Group inherit its default persona, and holding a persona opens its AI context, so
   // only an admin sets it (ADR:2026-11-03-only-admins-assign-personas). EditAll on the team cannot
   // stand in for that: the owner rule allows the owner of a team every operation on it. A
-  // root-level operation (path "") replaces the whole document, so it covers the field too.
+  // root-level operation (path "") replaces the whole document, so it covers the field too. A move
+  // or copy also touches its "from" location
+  // (ADR:2026-11-03-a-patch-is-authorized-at-every-location-it-touches).
   private void authorizeDefaultPersonaPatch(
       SecurityContext securityContext,
       ContainerRequestContext containerRequestContext,
       JsonPatch patch) {
     boolean touchesDefaultPersona =
-        patch.toJsonArray().stream()
-            .map(JsonValue::asJsonObject)
-            .map(op -> op.getString("path", ""))
-            .anyMatch(path -> path.isEmpty() || path.startsWith(DEFAULT_PERSONA_PATCH_PATH));
+        JsonPatchUtils.touchedLocations(patch).stream()
+            .anyMatch(
+                location -> location.isEmpty() || location.startsWith(DEFAULT_PERSONA_PATCH_PATH));
     if (touchesDefaultPersona) {
       authorizeDefaultPersonaChange(securityContext, containerRequestContext);
     }
@@ -984,6 +1053,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @PUT
   @Path("/name/{name}/import")
+  @IdentityEndpoint
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
   @Operation(
@@ -1082,6 +1152,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @PUT
   @Path("/name/{name}/importAsync")
+  @IdentityEndpoint
   @Consumes(MediaType.TEXT_PLAIN)
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
@@ -1134,5 +1205,60 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         getResourceContext());
     java.util.Map<String, Integer> result = repository.getAllTeamsWithAssetsCount(securityContext);
     return Response.ok(result).build();
+  }
+
+  /**
+   * Members hold a team's default roles and are governed by its policies, so an impersonated
+   * request may not change either: the grant would outlive the request
+   * (ADR:2026-10-26-impersonated-requests-never-reach-credentials-or-grant-privileges). A PATCH is
+   * judged by the locations it touches.
+   */
+  private static void rejectImpersonatedGrant(
+      ContainerRequestContext requestContext, JsonPatch patch) {
+    if (SecurityUtil.isImpersonated(requestContext.getSecurityContext())
+        && JsonPatchUtils.touchedLocations(patch).stream()
+            .anyMatch(TeamResource::isGrantLocation)) {
+      throw new AuthorizationException(IMPERSONATED_GRANT_CHANGE);
+    }
+  }
+
+  /** A create or a PUT is judged against the stored team, when there is one. */
+  private void rejectImpersonatedGrant(ContainerRequestContext requestContext, Team written) {
+    if (SecurityUtil.isImpersonated(requestContext.getSecurityContext())
+        && changesGrants(storedGrants(written.getName()), written)) {
+      throw new AuthorizationException(IMPERSONATED_GRANT_CHANGE);
+    }
+  }
+
+  private static boolean isGrantLocation(String location) {
+    return GRANT_POINTERS.stream()
+        .anyMatch(pointer -> JsonPatchUtils.isAtOrUnder(location, pointer));
+  }
+
+  private Team storedGrants(String name) {
+    Team stored = repository.findByNameOrNull(name, Include.ALL);
+    return stored == null
+        ? new Team()
+        : repository.get(
+            null, stored.getId(), repository.getFields(GRANT_FIELDS), Include.ALL, false);
+  }
+
+  private static boolean changesGrants(Team stored, Team written) {
+    return !referenceIds(stored.getDefaultRoles()).equals(referenceIds(written.getDefaultRoles()))
+        || !referenceIds(stored.getPolicies()).equals(referenceIds(written.getPolicies()));
+  }
+
+  private static Set<UUID> referenceIds(List<EntityReference> references) {
+    return listOrEmpty(references).stream().map(EntityReference::getId).collect(Collectors.toSet());
+  }
+
+  @Override
+  protected List<ReferenceListField<Team>> viewFilteredReferenceFields() {
+    return List.of(
+        new ReferenceListField<>("owns", Team::getOwns, Team::setOwns),
+        new ReferenceListField<>("children", Team::getChildren, Team::setChildren),
+        new ReferenceListField<>(
+            "descendantTeams", Team::getDescendantTeams, Team::setDescendantTeams),
+        new ReferenceListField<>("parents", Team::getParents, Team::setParents));
   }
 }

@@ -13,8 +13,8 @@
 
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import {
-  Building01,
-  GlossaryTerm,
+  IntakeForms,
+  KnowledgePanels,
 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,14 +32,14 @@ interface LandingCard {
 const LANDING_CARDS: LandingCard[] = [
   {
     id: 'glossary-relations',
-    icon: GlossaryTerm,
+    icon: KnowledgePanels,
     titleKey: 'label.glossary-term-relation-plural',
     descriptionKey: 'message.glossary-term-relation-settings-description',
     view: { type: 'glossary-list' },
   },
   {
     id: 'intake-forms',
-    icon: Building01,
+    icon: IntakeForms,
     titleKey: 'label.intake-form-plural',
     descriptionKey: 'message.intake-form-plural-description',
     view: { type: 'intake-list' },

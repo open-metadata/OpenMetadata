@@ -14,7 +14,11 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
+import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.OntologyAxiomType;
+import org.openmetadata.schema.type.OntologyConceptType;
+import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyCsvCodec.Column;
@@ -125,6 +129,30 @@ class NativeOntologyCsvCodecTest {
   void writesTheCanonicalCsvForAnOntologyThatUsesEveryColumn() {
     final String expected = readResource("every-column.csv");
     assertEquals(expected, NativeOntologyCsvCodec.write(fromTurtle()));
+  }
+
+  @Test
+  void aDefinitionWithoutADisplayNameIsLabelledByItsName() {
+    final NativeOntologyDocument document =
+        new NativeOntologyDocument(
+            null,
+            List.of(
+                new OntologyConcept()
+                    .withName("Account")
+                    .withIri(URI.create(EX + "Account"))
+                    .withConceptType(OntologyConceptType.OWL_CLASS)),
+            List.of(
+                new OntologyProperty()
+                    .withName("owns")
+                    .withIri(URI.create(EX + "owns"))
+                    .withKind(OntologyPropertyKind.OBJECT)),
+            List.of());
+
+    final NativeOntologyDocument reread =
+        NativeOntologyCsvCodec.read(NativeOntologyCsvCodec.write(document));
+
+    assertEquals("Account", reread.concepts().getFirst().getDisplayName());
+    assertEquals("owns", reread.properties().getFirst().getDisplayName());
   }
 
   @Test

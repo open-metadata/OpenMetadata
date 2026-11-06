@@ -58,14 +58,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../assets/svg/ic-domain.svg', () => ({
-  ReactComponent: () => <div data-testid="domain-icon">Domain Icon</div>,
-}));
-
-jest.mock('../../../assets/svg/ic-inherit.svg', () => ({
-  ReactComponent: () => <div data-testid="inherit-icon">Inherit Icon</div>,
-}));
-
 jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
   __esModule: true,
   default: ({

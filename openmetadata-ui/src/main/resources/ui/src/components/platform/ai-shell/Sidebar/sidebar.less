@@ -99,9 +99,10 @@
 @ask-text-secondary: var(--tw-text-color-secondary);
 @ask-text-tertiary: var(--tw-text-color-tertiary);
 @ask-text-quaternary: var(--tw-text-color-quaternary);
-// Rest-state nav/list icons: quaternary (gray-400) in light, gray-600 in dark to
-// match the recording — quaternary reads a step too bright on the dark surface.
-@ask-icon-rest: var(--ask-rest-icon, var(--tw-text-color-quaternary));
+// Rest-state nav/list icons: quaternary in both themes, the same colour as the
+// list icons in page widgets (Context Center), so the nav does not read dimmer
+// (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel).
+@ask-icon-rest: var(--tw-text-color-quaternary);
 @ask-brand: var(--tw-color-brand-600);
 @ask-brand-active: var(--ask-selected-fg, var(--tw-color-utility-brand-800));
 @ask-brand-50: var(--tw-color-utility-brand-50);
@@ -121,7 +122,6 @@
 //    dark palette); a solid gray-blue-900 was invisible against the panel.
 //  - selected label/icon -> brand-400 (#53b1fd); the utility-brand-800 scale lands
 //    on brand-200 in dark, one step too pale.
-//  - rest nav/list icons -> gray-600; quaternary (gray-400) is a step too bright.
 //  - hover fill -> white @6% (secondary_hover), per the devrel dark palette.
 //  - border/divider -> gray-700; the PageShell nav/card edges sit on gray-700.
 .dark-mode {
@@ -131,7 +131,6 @@
     transparent
   );
   --ask-selected-fg: var(--tw-color-brand-400);
-  --ask-rest-icon: var(--color-gray-600);
   --ask-hover: var(--tw-background-color-secondary_hover);
   --ask-border: var(--om-color-gray-700);
 }

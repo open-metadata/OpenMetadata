@@ -17,10 +17,10 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Nested } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
 import PanelEmptyPlaceholder from '../components/common/EmptyPlaceholder/PanelEmptyPlaceholder';
 import FieldCard from '../components/common/FieldCard/FieldCard';
 import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
@@ -125,7 +125,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
           <div className="d-flex align-items-center m-l-md gap-1">
             {!isExpanded && (
               <span className="d-flex">
-                <NestedIcon />
+                <Nested className="tw:text-utility-gray-500" />
               </span>
             )}
             <Button
@@ -204,7 +204,7 @@ const NestedSchemaFieldCard: React.FC<{
           <div className="d-flex align-items-center m-l-md gap-1">
             {!isExpanded && (
               <span className="d-flex">
-                <NestedIcon />
+                <Nested className="tw:text-utility-gray-500" />
               </span>
             )}
             <Button

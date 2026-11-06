@@ -16,12 +16,11 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Globe01, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
@@ -241,7 +240,10 @@ export const DomainLabel = ({
         <div className="tw:flex tw:w-full tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:pt-5 tw:pb-2.5 tw:mb-5">
           <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
             <div style={{ width: '16px' }}>
-              <DomainIcon height={16} style={{ marginLeft: '2px' }} />
+              <Globe01
+                className="tw:ml-0.5 tw:text-utility-gray-500"
+                size={16}
+              />
             </div>
 
             <div className="d-flex justify-between w-full">

@@ -276,7 +276,7 @@
                                     "description": "Details of patterns that matched during recognition",
                                     "type": "array",
                                     "items": {
-                                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items/properties/metadata/properties/recognizer/definitions/patternMatch"
+                                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/9/properties/tier/properties/metadata/properties/recognizer/definitions/patternMatch"
                                     }
                                   }
                                 },

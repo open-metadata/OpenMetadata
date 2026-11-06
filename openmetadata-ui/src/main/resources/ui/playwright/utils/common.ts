@@ -627,15 +627,20 @@ export const searchFromSearchInput = async (
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
-  await page.locator('[data-testid="dropdown-profile"] svg').click();
-  await page.locator('[role="menu"].profile-dropdown').waitFor({
-    state: 'visible',
-  });
-  const userResponse = page.waitForResponse(
-    '/api/v1/users/name/*?fields=*&include=all'
-  );
-  await page.getByTestId('user-name').click();
-  await userResponse;
+  await page.getByTestId('dropdown-profile').click();
+  const menu = page.locator('[role="menu"].profile-dropdown');
+  await expect(menu).toBeVisible();
+  const profileLink = menu.getByTestId('user-name');
+  const href = await profileLink.getAttribute('href');
+  if (!href) {
+    throw new Error('Profile menu item is missing its destination.');
+  }
+  const profileUrl = new URL(href, page.url()).href;
+
+  // Returning to a cached profile does not issue another user request.
+  await profileLink.click();
+  await expect(page).toHaveURL(profileUrl);
+  await waitForAllLoadersToDisappear(page);
   await clickOutside(page);
 };
 
@@ -1395,7 +1400,7 @@ export const testMetricsPaginationNavigation = async (page: Page) => {
   expect(page1Response.status()).toBe(200);
   const page1Url = new URL(page1Response.url());
   expect(page1Url.pathname).toContain('/api/v1/metrics/hierarchy');
-  expect(page1Url.searchParams.get('limit')).toBe('20');
+  expect(page1Url.searchParams.get('limit')).toBe('15');
   expect(page1Url.searchParams.get('offset')).toBe('0');
 
   await page.locator('table').waitFor({ state: 'visible' });
@@ -1411,8 +1416,8 @@ export const testMetricsPaginationNavigation = async (page: Page) => {
   ]);
   expect(page2Response.status()).toBe(200);
   const page2Url = new URL(page2Response.url());
-  expect(page2Url.searchParams.get('limit')).toBe('20');
-  expect(page2Url.searchParams.get('offset')).toBe('20');
+  expect(page2Url.searchParams.get('limit')).toBe('15');
+  expect(page2Url.searchParams.get('offset')).toBe('15');
 
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('metric-page-previous')).toBeEnabled();

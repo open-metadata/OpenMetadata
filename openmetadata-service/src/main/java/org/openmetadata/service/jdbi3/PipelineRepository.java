@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.type.Relationship.OWNS;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -87,6 +88,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -309,7 +311,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Index pipeline execution in Elasticsearch for analytics
     try {
-      indexPipelineExecutionInES(pipeline, pipelineStatus);
+      indexPipelineExecutionInES(
+          PipelineExecutionIndex.withAccessFields(pipeline.getEntityReference()), pipelineStatus);
     } catch (Exception e) {
       LOG.error("Failed to index pipeline execution in Elasticsearch", e);
       // Don't fail the entire operation if ES indexing fails
@@ -342,17 +345,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     Map<Long, PipelineStatus> stored = loadStoredStatuses(pipeline, incoming);
     List<PipelineStatus> written = new ArrayList<>();
-    List<String> changeEvents = new ArrayList<>();
-
-    // incoming is ordered oldest first, so change events are emitted chronologically.
     for (PipelineStatus status : incoming) {
       StatusChange statusChange = resolveStatusChange(stored.get(status.getTimestamp()), status);
-      if (statusChange.outcome() == StatusOutcome.UNCHANGED) {
-        continue;
+      if (statusChange.outcome() != StatusOutcome.UNCHANGED) {
+        written.add(status);
       }
-      written.add(status);
-      buildStatusChangeEvent(pipeline, status, statusChange.previous(), updatedBy)
-          .ifPresent(changeEvents::add);
     }
 
     PipelineStatus latestStatus = incoming.getLast();
@@ -373,7 +370,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // This endpoint emits one change event per status, which the response filter cannot do, so the
     // repository owns emission and ENTITY_NO_CHANGE stops the filter adding a duplicate.
-    insertChangeEventsInChunks(changeEvents);
+    insertStatusChangeEvents(pipeline, written, stored, updatedBy);
 
     return new RestUtil.PutResponse<>(
         Response.Status.OK, pipeline.withPipelineStatus(latestStatus), ENTITY_NO_CHANGE);
@@ -426,10 +423,42 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return buildChangeEventJsonForBulkOperation(snapshot, ENTITY_UPDATED, updatedBy);
   }
 
-  private void insertChangeEventsInChunks(List<String> changeEvents) {
-    for (int i = 0; i < changeEvents.size(); i += CHANGE_EVENT_CHUNK_SIZE) {
-      insertChangeEventsBatch(
-          changeEvents.subList(i, Math.min(i + CHANGE_EVENT_CHUNK_SIZE, changeEvents.size())));
+  /**
+   * Inserts one change event per written status. Every event embeds the whole pipeline, so each
+   * chunk is inserted before the next is built: a request holds one chunk of events, not one event
+   * per status.
+   */
+  void insertStatusChangeEvents(
+      Pipeline pipeline,
+      List<PipelineStatus> written,
+      Map<Long, PipelineStatus> stored,
+      String updatedBy) {
+    ChangeEventChunk chunk = new ChangeEventChunk();
+    // written is ordered oldest first, so change events are emitted chronologically.
+    for (PipelineStatus status : written) {
+      buildStatusChangeEvent(pipeline, status, stored.get(status.getTimestamp()), updatedBy)
+          .ifPresent(chunk::add);
+    }
+    chunk.flush();
+  }
+
+  /** Change events waiting to be inserted, flushed once they reach a count or a size. */
+  private final class ChangeEventChunk {
+    private List<String> events = new ArrayList<>();
+    private long chars;
+
+    void add(String event) {
+      events.add(event);
+      chars += event.length();
+      if (events.size() >= CHANGE_EVENT_CHUNK_SIZE || chars >= MAX_CHANGE_EVENT_CHUNK_CHARS) {
+        flush();
+      }
+    }
+
+    void flush() {
+      insertChangeEventsBatch(events);
+      events = new ArrayList<>();
+      chars = 0;
     }
   }
 
@@ -454,6 +483,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   record StatusChange(StatusOutcome outcome, PipelineStatus previous) {}
 
   private static final int CHANGE_EVENT_CHUNK_SIZE = 100;
+
+  /**
+   * About 8 MB of change-event JSON per insert, so a large pipeline's events go out a few at a time
+   * (ADR:2026-11-05-bulk-status-change-events-are-inserted-a-chunk-at-a-time).
+   */
+  static final long MAX_CHANGE_EVENT_CHUNK_CHARS = 8L * 1024 * 1024;
 
   private static final Comparator<Status> BY_TASK_NAME =
       Comparator.comparing(Status::getName, Comparator.nullsFirst(String::compareTo));
@@ -978,6 +1013,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,tasks");
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Pipeline pipeline = (Pipeline) entity;
@@ -1135,7 +1175,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         updatedTask.setTags(
             updateTags(
                 storedTask.getFullyQualifiedName(),
-                EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
+                EntityUtil.getFieldName(
+                    EntityFieldPath.childKey(TASKS_FIELD, updatedTask.getName()), FIELD_TAGS),
                 storedTask.getTags(),
                 updatedTask.getTags()));
       }
@@ -1168,7 +1209,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         return;
       }
       recordChange(
-          EntityUtil.getFieldName(TASKS_FIELD, origTask.getName(), FIELD_DISPLAY_NAME),
+          EntityUtil.getFieldName(
+              EntityFieldPath.childKey(TASKS_FIELD, origTask.getName()), FIELD_DISPLAY_NAME),
           origTask.getDisplayName(),
           updatedTask.getDisplayName());
     }
@@ -1185,7 +1227,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   && !origTask.getDescription().equals(updatedTask.getDescription()))
               || !nullOrEmpty(updatedTask.getDescription()))) {
         recordChange(
-            "tasks." + origTask.getName() + ".description",
+            EntityUtil.getFieldName(
+                EntityFieldPath.childKey(TASKS_FIELD, origTask.getName()), FIELD_DESCRIPTION),
             origTask.getDescription(),
             updatedTask.getDescription());
       }
@@ -2446,7 +2489,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Get all pipelines
     ListFilter filter = new ListFilter(NON_DELETED);
-    List<Pipeline> pipelines = listAll(new Fields(Set.of("service")), filter);
+    List<Pipeline> pipelines =
+        listAll(getFields("service," + PipelineExecutionIndex.ACCESS_FIELDS), filter);
 
     int totalIndexed = 0;
     int totalFailed = 0;

@@ -20,7 +20,11 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronCollapseVertical,
+  Edit01,
+  Sort,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -28,13 +32,10 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
-import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
   ENTITY_PATH,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
@@ -160,7 +161,7 @@ const SchemaTable = () => {
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const { filters, setFilters } = useTableFilters({
     columnSearch: undefined as string | undefined,
@@ -852,7 +853,7 @@ const SchemaTable = () => {
             color="tertiary"
             data-testid="name-column-header"
             iconTrailing={
-              <IconSortIndicator
+              <ChevronCollapseVertical
                 className={classNames(
                   'tw:transition-transform',
                   sortOrder === 'desc' && 'tw:rotate-180'
@@ -1090,7 +1091,7 @@ const SchemaTable = () => {
                 <Button
                   color="tertiary"
                   data-testid="sort-dropdown"
-                  iconLeading={IconSort}
+                  iconLeading={Sort}
                   size="sm">
                   {t('label.sort')}
                 </Button>
