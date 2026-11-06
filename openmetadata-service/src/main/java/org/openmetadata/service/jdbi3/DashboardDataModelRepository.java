@@ -229,10 +229,6 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     // Patch can't make changes to following fields. Ignore the changes
     super.restorePatchAttributes(original, updated);
     updated.withService(original.getService());
-    // Child FQNs were derived from the patched name; re-derive them from the restored FQN.
-    if (updated.getColumns() != null) {
-      ColumnUtil.setColumnFQN(updated.getFullyQualifiedName(), updated.getColumns());
-    }
   }
 
   @Override
