@@ -68,6 +68,6 @@ a permission-based `isProtected` here and an amendment to this record.
   the banner alone owns, dismissals included (each surface keeps its own dismissal scope). Its
   badge is the server's `paging.total` less the banner's live criticals, read from the banner's
   own cached query (`rest/queries/criticalAnnouncementsQuery.ts`).
-- The carousels that show one announcement at a time — the critical banner and the entity-page
-  banner — draw core `PaginationDot` (`size="sm"`) under them, one dot per announcement, and a dot
-  jumps there. The rail shows several cards at once, so it pages by its arrows alone.
+- The carousels that show one announcement at a time — the critical banner and the announcement
+  banner on data asset, domain, data product, Data Marketplace and service pages — draw core
+  `PaginationDot` (`size="sm"`) under them, one dot per announcement, and a dot jumps there. The rail shows several cards at once, so it pages by its arrows alone.

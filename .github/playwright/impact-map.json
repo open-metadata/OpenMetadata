@@ -1083,6 +1083,7 @@
       ],
       "projects": ["chromium"],
       "specs": [
+        "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts",
         "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
         "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts"

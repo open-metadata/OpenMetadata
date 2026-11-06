@@ -351,8 +351,7 @@ describe('CriticalAnnouncements', () => {
 
     await screen.findByText('Title first');
     const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 1200 });
-    // Core renders each dot as a list item; their labels come from core's
-    // own i18n, which these tests do not load.
+    // Core renders each dot as a list item.
     const dots = () =>
       within(screen.getByTestId('critical-announcement-dots')).getAllByRole(
         'listitem'
