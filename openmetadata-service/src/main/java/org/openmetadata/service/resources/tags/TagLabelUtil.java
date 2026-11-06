@@ -33,6 +33,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
@@ -595,6 +596,52 @@ public class TagLabelUtil {
         }
       }
     }
+  }
+
+  /**
+   * The glossary terms {@code tagLabels} apply in their own right. DERIVED labels are computed on
+   * read and never stored, so sending one back applies nothing.
+   */
+  public static Set<String> appliedGlossaryTermFqns(List<TagLabel> tagLabels) {
+    return listOrEmpty(tagLabels).stream()
+        .filter(tag -> TagSource.GLOSSARY.equals(tag.getSource()))
+        .filter(tag -> !isSystemGenerated(tag))
+        .map(TagLabel::getTagFQN)
+        .collect(Collectors.toCollection(HashSet::new));
+  }
+
+  /**
+   * Only an Approved glossary term can be applied to a data asset, whichever API applies it: the UI
+   * offers no other. Callers pass the terms a write newly applies, so a term that leaves Approved
+   * later stays on the assets that already hold it.
+   */
+  public static void checkGlossaryTermsApproved(Set<String> termFqns) {
+    unapprovedGlossaryTerms(termFqns).stream()
+        .findFirst()
+        .ifPresent(TagLabelUtil::rejectUnapprovedTerm);
+  }
+
+  /** The terms among {@code termFqns} that are not Approved, looked up in one batch. */
+  public static List<GlossaryTerm> unapprovedGlossaryTerms(Set<String> termFqns) {
+    return termFqns.isEmpty()
+        ? List.of()
+        : getGlossaryTerms(List.copyOf(termFqns)).stream()
+            .filter(term -> !isApproved(term))
+            .toList();
+  }
+
+  public static String unapprovedTermMessage(GlossaryTerm term) {
+    return CatalogExceptionMessage.glossaryTermNotApproved(
+        term.getFullyQualifiedName(), term.getEntityStatus());
+  }
+
+  private static void rejectUnapprovedTerm(GlossaryTerm term) {
+    throw new IllegalArgumentException(unapprovedTermMessage(term));
+  }
+
+  // A term without a stage predates the glossary approval lifecycle; the UI treats it as Approved.
+  private static boolean isApproved(GlossaryTerm term) {
+    return term.getEntityStatus() == null || EntityStatus.APPROVED.equals(term.getEntityStatus());
   }
 
   public static void checkMutuallyExclusiveForParentAndSubField(
