@@ -137,6 +137,49 @@ class EntityRepositoryKeysetEndTest {
                 new Fields(Set.of())));
   }
 
+  @Test
+  void readContinuesPastAPageOfUnreadableRowsFromTheLastRowsStoredKey() {
+    Pipeline last = pipeline("a3");
+    when(pipelineDAO.listAfter(any(ListFilter.class), eq(LIMIT + 1), any(), any()))
+        .thenReturn(
+            List.of(
+                unreadable(pipeline("a1")),
+                unreadable(pipeline("a2")),
+                unreadable(last),
+                json(pipeline("a4"))));
+
+    ResultList<Pipeline> page =
+        repo.listAfterKeyset(
+            new ListFilter(Include.ALL), LIMIT, null, null, 0, true, new Fields(Set.of()));
+
+    assertEquals(List.of(), page.getData());
+    assertEquals(cursor(last), page.getPaging().getAfter());
+  }
+
+  @Test
+  void readFailsWhenTheLastRowOfAnUnreadablePageHasNoStoredKey() {
+    when(pipelineDAO.listAfter(any(ListFilter.class), eq(LIMIT + 1), any(), any()))
+        .thenReturn(
+            List.of(
+                unreadable(pipeline("a1")),
+                unreadable(pipeline("a2")),
+                "{\"tags\": \"not-a-list\"}",
+                json(pipeline("a4"))));
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repo.listAfterKeyset(
+                new ListFilter(Include.ALL), LIMIT, null, null, 0, true, new Fields(Set.of())));
+  }
+
+  /** A stored row that keeps its name and id but no longer deserializes into the entity class. */
+  private static String unreadable(Pipeline pipeline) {
+    return String.format(
+        "{\"id\": \"%s\", \"name\": \"%s\", \"tags\": \"not-a-list\"}",
+        pipeline.getId(), pipeline.getName());
+  }
+
   private static Pipeline pipeline(String name) {
     return new Pipeline()
         .withId(UUID.randomUUID())

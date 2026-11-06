@@ -1,7 +1,7 @@
 # Reindex partitions are key ranges fixed when the job is created, and every server reads them from the partition row
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial); v2 2026-10-26 (boundary re-checked after each page read); v3 2026-10-27 (unsettled boundary fails the read)
+- **Revisions:** v1 2026-10-26 (initial); v2 2026-10-26 (boundary re-checked after each page read); v3 2026-10-27 (unsettled boundary fails the read); v4 2026-11-06 (unreadable page continues from its stored name and id)
 - **Deciders:** Sonika Shah
 - **Guard:** `DistributedReindexConcurrentWritesIT`, `PartitionWorkerTest`
   (`keyRangePartitionReadsFromItsStartKeyUntilTheReaderReportsNoMoreRows`,
@@ -39,6 +39,9 @@ no partition and disappeared from search when the new index was promoted, while 
   before this change) keeps the offset range.
 - In a key range, a batch that was read but not written is counted failed and reading continues
   after it; a failed read fails the partition, which is retried from its start key.
+- A page in which no row could be loaded continues from its last row's key. When that row no
+  longer deserializes, the key is its stored `name` and `id` (what the offset path re-seeks by);
+  a row without them fails the read rather than end the partition as if it were finished.
 
 ## Consequences
 

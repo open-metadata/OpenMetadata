@@ -3130,16 +3130,28 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Continues past a page in which no row could be loaded, so the rows after it are still read.
-   * Returns null when even the stored row cannot be read back.
+   * Continues past a page in which no row could be loaded, so the rows after it are still read. A
+   * row that no longer deserializes is continued from its stored name and id, the key the offset
+   * path's {@link #getCursorAtOffset} uses; a row without them fails the read.
    */
   private String cursorOfStoredRow(String json, ListFilter filter) {
     try {
       return getCursorValue(JsonUtils.readValue(json, entityClass), filter);
     } catch (Exception e) {
-      LOG.warn("Cannot continue past an unreadable {} row", entityType, e);
-      return null;
+      LOG.warn("Continuing past an unreadable {} row from its stored name and id", entityType, e);
+      return storedKeyCursor(json);
     }
+  }
+
+  private String storedKeyCursor(String json) {
+    String name = fieldOf(json, "name");
+    String id = fieldOf(json, "id");
+    if (name == null || id == null) {
+      throw new IllegalStateException(
+          String.format(
+              "Cannot continue past an unreadable %s row without a name and id", entityType));
+    }
+    return getCursorValue(name, id);
   }
 
   private Map<String, String> decodeKeysetCursor(String cursor) {
@@ -3201,14 +3213,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return index;
   }
 
-  /** Reads only the top-level {@code id} of a stored entity, without parsing the rest of it. */
   private static String idOf(String json) {
+    return fieldOf(json, "id");
+  }
+
+  /** Reads one top-level field of a stored entity, without parsing the rest of it. */
+  private static String fieldOf(String json, String name) {
     try (JsonParser parser = JsonUtils.getObjectMapper().createParser(json)) {
       parser.nextToken();
       while (parser.nextToken() == JsonToken.FIELD_NAME) {
         String field = parser.currentName();
         parser.nextToken();
-        if ("id".equals(field)) {
+        if (name.equals(field)) {
           return parser.getValueAsString();
         }
         parser.skipChildren();
