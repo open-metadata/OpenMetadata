@@ -1,6 +1,6 @@
 # Manual AutoPilot runs require application Trigger and target-service EditAll
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-06-manual-autopilot-runs-require-service-trigger
 - **Revisions:** v1 2026-10-27 (initial) · v2 2026-11-05 (app-owned trigger preparation)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `AppsResourceIT#test_autopilotTriggerRequiresEditAllOnEffectiveService`, `AppsResourceIT#test_autopilotInactiveDoesNotRequireTarget`, `AppsResourceIT#test_autopilotInvalidPayloadDoesNotStartWorkflow`

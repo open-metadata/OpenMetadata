@@ -553,7 +553,7 @@ export const DataAssetsHeader = ({
     { enabled: SERVICE_TYPES.includes(entityType) }
   );
   const hasTriggerPermission =
-    flags.canEditAll && canAutoPilot(Operation.Trigger);
+    can(Operation.Trigger) && canAutoPilot(Operation.Trigger);
   const editStylePermission = Boolean(onStyleUpdate) && flags.canEditAll;
 
   const hasEditableMetadata = computeHasEditableMetadata(

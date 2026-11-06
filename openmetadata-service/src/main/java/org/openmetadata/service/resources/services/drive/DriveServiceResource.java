@@ -94,7 +94,7 @@ public class DriveServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public DriveServiceResource(Authorizer authorizer, Limits limits) {

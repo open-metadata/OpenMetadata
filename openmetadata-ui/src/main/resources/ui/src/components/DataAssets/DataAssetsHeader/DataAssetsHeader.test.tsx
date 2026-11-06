@@ -1051,12 +1051,27 @@ describe('DataAssetsHeader component', () => {
   });
 
   it.each([
-    { serviceEdit: false, appTrigger: true, visible: false },
-    { serviceEdit: true, appTrigger: false, visible: false },
-    { serviceEdit: true, appTrigger: true, visible: true },
+    {
+      serviceTrigger: false,
+      appTrigger: true,
+      serviceEdit: true,
+      visible: false,
+    },
+    {
+      serviceTrigger: true,
+      appTrigger: false,
+      serviceEdit: false,
+      visible: false,
+    },
+    {
+      serviceTrigger: true,
+      appTrigger: true,
+      serviceEdit: false,
+      visible: true,
+    },
   ])(
-    'shows AutoPilot for serviceEdit=$serviceEdit and appTrigger=$appTrigger',
-    ({ serviceEdit, appTrigger, visible }) => {
+    'shows AutoPilot for serviceTrigger=$serviceTrigger and appTrigger=$appTrigger',
+    ({ serviceTrigger, appTrigger, serviceEdit, visible }) => {
       (useEntityPermissions as jest.Mock).mockReturnValue({
         ...getDerivedPermissionFlags({
           ...DEFAULT_ENTITY_PERMISSION,
@@ -1077,7 +1092,7 @@ describe('DataAssetsHeader component', () => {
           permissions={{
             ...DEFAULT_ENTITY_PERMISSION,
             EditAll: serviceEdit,
-            Trigger: true,
+            Trigger: serviceTrigger,
           }}
         />
       );
@@ -1098,7 +1113,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -1123,7 +1138,7 @@ describe('DataAssetsHeader component', () => {
           serviceType: DatabaseServiceType.BigQuery,
         }}
         entityType={EntityType.DATABASE_SERVICE}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -1142,7 +1157,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -1163,7 +1178,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButtonMessage={customMessage}
         entityType={EntityType.DATABASE_SERVICE}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -1183,7 +1198,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 

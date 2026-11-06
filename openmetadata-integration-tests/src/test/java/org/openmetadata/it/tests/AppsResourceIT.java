@@ -35,6 +35,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -91,6 +92,8 @@ import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -624,12 +627,6 @@ public class AppsResourceIT {
     assertTrue(exception.getMessage().contains("thisShouldFail"));
   }
 
-  /**
-   * The seeded DataSteward role may trigger any app but edit none. Its holder may pass a declared
-   * runtime parameter, but changing a configuration key, even one the stored config leaves unset,
-   * needs EditAll. Both requests fail before a run starts, so the shared indexing app never
-   * reindexes.
-   */
   @Test
   void test_triggerApp_triggerOnlyPrincipalCannotOverrideConfiguration(TestNamespace ns) {
     String trigger = "/v1/apps/trigger/SearchIndexingApplication";
@@ -644,15 +641,14 @@ public class AppsResourceIT {
     assertEquals(403, denied.getStatusCode());
     assertTrue(denied.getMessage().contains("EditAll"), denied.getMessage());
 
-    // The runtime parameter clears both authorization checks; search indexing then rejects it as an
-    // unknown key during configuration validation, before anything is scheduled.
-    Map<String, Object> runtimeParameter = new HashMap<>();
-    runtimeParameter.put("entityLink", "<#E::table::" + ns.prefix("svc") + ".db.schema.table>");
+    Map<String, Object> undeclaredParameter =
+        Map.of("entityLink", "<#E::databaseService::my_service>");
     OpenMetadataException rejected =
         assertThrows(
             OpenMetadataException.class,
-            () -> dataSteward.execute(HttpMethod.POST, trigger, runtimeParameter, Void.class));
-    assertNotEquals(403, rejected.getStatusCode(), rejected.getMessage());
+            () -> dataSteward.execute(HttpMethod.POST, trigger, undeclaredParameter, Void.class));
+    assertEquals(403, rejected.getStatusCode(), rejected.getMessage());
+    assertTrue(rejected.getMessage().contains("EditAll"), rejected.getMessage());
   }
 
   /**
@@ -1336,21 +1332,20 @@ public class AppsResourceIT {
 
   @ParameterizedTest(name = "existingAgent={0}, derivedApp={1}")
   @CsvSource({"false,false", "true,false", "false,true", "true,true"})
-  void test_autopilotTriggerRequiresEditAllOnEffectiveService(
+  void test_autopilotTriggerRequiresTriggerOnEffectiveService(
       boolean existingAgent, boolean derivedApp, TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
-    User caller = createAutoPilotTriggerCaller(ns);
-    DatabaseService ownedService = DatabaseServiceTestFactory.createPostgres(ns);
-    ownedService.setOwners(List.of(caller.getEntityReference()));
-    admin.databaseServices().update(ownedService.getId().toString(), ownedService);
+    DatabaseService allowedService = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseService otherService = DatabaseServiceTestFactory.createPostgres(ns);
+    User caller =
+        createAutoPilotTriggerCaller(ns, allowedService.getName(), MetadataOperation.TRIGGER, true);
     OpenMetadataClient client =
         SdkClients.createClient(caller.getEmail(), caller.getEmail(), new String[] {});
 
     App app = derivedApp ? installDerivedAutoPilot(ns) : Apps.getByName("AutoPilotApplication");
     Object originalConfig = app.getAppConfiguration();
     String triggerPath = "/v1/apps/trigger/" + app.getName();
-    String ownedLink = "<#E::databaseService::" + ownedService.getFullyQualifiedName() + ">";
+    String allowedLink = "<#E::databaseService::" + allowedService.getFullyQualifiedName() + ">";
     String otherLink = "<#E::databaseService::" + otherService.getFullyQualifiedName() + ">";
     AsyncExecutor executor =
         ProcessEngines.getDefaultProcessEngine().getProcessEngineConfiguration().getAsyncExecutor();
@@ -1372,7 +1367,7 @@ public class AppsResourceIT {
                         .withSourceConfig(
                             new SourceConfig().withConfig(new DatabaseServiceMetadataPipeline())));
       }
-      setAutoPilotConfig(app, Map.of("active", true, "entityLink", ownedLink));
+      setAutoPilotConfig(app, Map.of("active", true, "entityLink", allowedLink));
       assertThrows(
           ForbiddenException.class,
           () ->
@@ -1412,15 +1407,29 @@ public class AppsResourceIT {
           ForbiddenException.class,
           () -> client.getHttpClient().executeForString(HttpMethod.POST, triggerPath, Map.of()));
 
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.PATCH,
+                      "/v1/services/databaseServices/" + allowedService.getId(),
+                      "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Updated description\"}]",
+                      RequestOptions.builder()
+                          .header("Content-Type", "application/json-patch+json")
+                          .build()));
       client
           .getHttpClient()
-          .executeForString(HttpMethod.POST, triggerPath, Map.of("entityLink", ownedLink));
+          .executeForString(HttpMethod.POST, triggerPath, Map.of("entityLink", allowedLink));
       assertEquals(
-          1, autoPilotInstances(ownedLink).size(), "Authorized active run must start its workflow");
+          1,
+          autoPilotInstances(allowedLink).size(),
+          "Authorized active run must start its workflow");
       assertTrue(autoPilotInstances(otherLink).isEmpty());
     } finally {
       try {
-        for (String link : List.of(ownedLink, otherLink)) {
+        for (String link : List.of(allowedLink, otherLink)) {
           for (ProcessInstance process : autoPilotInstances(link)) {
             WorkflowHandler.getInstance()
                 .getRuntimeService()
@@ -1437,6 +1446,46 @@ public class AppsResourceIT {
           executor.start();
         }
       }
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"EDIT_ALL,true", "TRIGGER,false"})
+  void test_autopilotRequiresBothTriggerPermissions(
+      MetadataOperation serviceOperation, boolean appTrigger, TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    User caller = createAutoPilotTriggerCaller(ns, service.getName(), serviceOperation, appTrigger);
+    OpenMetadataClient client =
+        SdkClients.createClient(caller.getEmail(), caller.getEmail(), new String[] {});
+    ResourcePermission permission =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/permissions/databaseService/" + service.getId(),
+                null,
+                ResourcePermission.class);
+    assertTrue(
+        permission.getPermissions().stream()
+            .anyMatch(
+                p ->
+                    p.getOperation() == serviceOperation
+                        && p.getAccess() == Permission.Access.ALLOW));
+    App app = Apps.getByName("AutoPilotApplication");
+    Object originalConfig = app.getAppConfiguration();
+    String link = "<#E::databaseService::" + service.getFullyQualifiedName() + ">";
+    try {
+      setAutoPilotConfig(app, Map.of("active", true, "entityLink", link));
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.POST, "/v1/apps/trigger/AutoPilotApplication", null));
+      assertTrue(autoPilotInstances(link).isEmpty());
+    } finally {
+      setAutoPilotConfig(app, originalConfig);
     }
   }
 
@@ -1496,22 +1545,49 @@ public class AppsResourceIT {
   }
 
   private User createAutoPilotTriggerCaller(TestNamespace ns) {
+    return createAutoPilotTriggerCaller(ns, null, MetadataOperation.TRIGGER, true);
+  }
+
+  private User createAutoPilotTriggerCaller(
+      TestNamespace ns,
+      String serviceName,
+      MetadataOperation serviceOperation,
+      boolean appTrigger) {
     OpenMetadataClient admin = SdkClients.adminClient();
+    List<Rule> rules = new ArrayList<>();
+    if (appTrigger) {
+      rules.add(
+          new Rule()
+              .withName("triggerApps")
+              .withEffect(Rule.Effect.ALLOW)
+              .withResources(List.of(Entity.APPLICATION))
+              .withOperations(List.of(MetadataOperation.TRIGGER)));
+    }
+    if (serviceName != null) {
+      rules.add(
+          new Rule()
+              .withName("serviceOperation")
+              .withEffect(Rule.Effect.ALLOW)
+              .withResources(List.of(Entity.DATABASE_SERVICE))
+              .withOperations(List.of(serviceOperation))
+              .withCondition("matchAnyServiceName('" + serviceName + "')"));
+      if (serviceOperation == MetadataOperation.TRIGGER) {
+        rules.add(
+            new Rule()
+                .withName("readOnlyService")
+                .withEffect(Rule.Effect.DENY)
+                .withResources(List.of(Entity.DATABASE_SERVICE))
+                .withOperations(List.of(MetadataOperation.EDIT_ALL))
+                .withCondition("matchAnyServiceName('" + serviceName + "')"));
+      }
+    }
     Policy policy =
         ns.trackRoot(
             Entity.POLICY,
             admin
                 .policies()
                 .create(
-                    new CreatePolicy()
-                        .withName(ns.shortPrefix("triggerPolicy"))
-                        .withRules(
-                            List.of(
-                                new Rule()
-                                    .withName("triggerApps")
-                                    .withEffect(Rule.Effect.ALLOW)
-                                    .withResources(List.of(Entity.APPLICATION))
-                                    .withOperations(List.of(MetadataOperation.TRIGGER))))));
+                    new CreatePolicy().withName(ns.shortPrefix("triggerPolicy")).withRules(rules)));
     Role role =
         ns.trackRoot(
             Entity.ROLE,

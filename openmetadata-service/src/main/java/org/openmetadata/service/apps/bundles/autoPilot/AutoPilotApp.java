@@ -106,7 +106,7 @@ public class AutoPilotApp extends AbstractNativeApplication {
     ServiceEntityInterface service = Entity.getEntity(entityLink, "", Include.NON_DELETED);
     AuthRequest request =
         new AuthRequest(
-            new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
+            new OperationContext(entityLink.getEntityType(), MetadataOperation.TRIGGER),
             new ResourceContext<>(entityLink.getEntityType(), service.getId(), null));
     return new AppTrigger(List.of(request), () -> triggerWorkflow(entityLink));
   }
