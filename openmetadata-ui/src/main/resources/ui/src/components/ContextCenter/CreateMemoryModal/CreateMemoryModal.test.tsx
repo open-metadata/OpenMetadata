@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import React from 'react';
 import {
   Control,
@@ -28,9 +34,13 @@ import {
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getContextMemoryVersions } from '../../../rest/contextMemoryAPI';
+import {
+  getContextMemoryVersions,
+  updateContextMemory,
+} from '../../../rest/contextMemoryAPI';
 import { getUserByName } from '../../../rest/userAPI';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateMemoryModal from './CreateMemoryModal.component';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
 
@@ -149,11 +159,24 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest.fn(
     ({
       children,
+      'data-testid': testId,
+      isDisabled,
       onClick,
     }: {
       children: React.ReactNode;
+      'data-testid'?: string;
+      isDisabled?: boolean;
       onClick?: () => void;
-    }) => <button onClick={onClick}>{children}</button>
+    }) => (
+      // The core Button is type="button" unless told otherwise, so it never submits the form.
+      <button
+        data-testid={testId}
+        disabled={isDisabled}
+        type="button"
+        onClick={onClick}>
+        {children}
+      </button>
+    )
   ),
   ButtonUtility: jest.fn(({ onClick }: { onClick?: () => void }) => (
     <button onClick={onClick}>x</button>
@@ -870,5 +893,124 @@ describe('CreateMemoryModal', () => {
     );
 
     expect(screen.getByText('new-memory')).not.toHaveAttribute('href');
+  });
+
+  describe('deciding a memory that awaits approval', () => {
+    const awaiting = (entityStatus: ContextMemoryStatus): ContextMemory => ({
+      id: 'memory-id',
+      name: 'vat-rate',
+      title: 'VAT rate',
+      entityStatus,
+    });
+
+    it.each([ContextMemoryStatus.Unprocessed, ContextMemoryStatus.Draft])(
+      'offers an admin Approve and Reject on a %s memory',
+      (status) => {
+        renderMemory(awaiting(status), { isAdminUser: true });
+
+        expect(screen.getByTestId('memory-approve-btn')).toHaveTextContent(
+          'label.approve'
+        );
+        expect(screen.getByTestId('memory-reject-btn')).toHaveTextContent(
+          'label.reject'
+        );
+      }
+    );
+
+    it.each<[string, ContextMemoryStatus, Partial<CreateMemoryModalProps>]>([
+      ['an admin', ContextMemoryStatus.Approved, { isAdminUser: true }],
+      ['a non-admin', ContextMemoryStatus.Unprocessed, { isAdminUser: false }],
+      ['a non-admin', ContextMemoryStatus.Draft, {}],
+      [
+        'an admin editing',
+        ContextMemoryStatus.Unprocessed,
+        { isAdminUser: true, viewOnly: false, canEdit: true },
+      ],
+    ])('offers %s no decision on a %s memory', (_viewer, status, props) => {
+      renderMemory(awaiting(status), props);
+
+      expect(screen.getByText('label.cancel')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('memory-approve-btn')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('memory-reject-btn')).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ['memory-approve-btn', 'Approved'],
+      ['memory-reject-btn', 'Rejected'],
+    ])(
+      '%s moves the memory to %s and hands the update to the parent',
+      async (testId, status) => {
+        const onUpdated = jest.fn();
+        (updateContextMemory as jest.Mock).mockResolvedValue({
+          ...awaiting(ContextMemoryStatus.Unprocessed),
+          entityStatus: status,
+        });
+        renderMemory(awaiting(ContextMemoryStatus.Unprocessed), {
+          isAdminUser: true,
+          onUpdated,
+        });
+
+        fireEvent.click(screen.getByTestId(testId));
+
+        await waitFor(() => expect(onUpdated).toHaveBeenCalledTimes(1));
+
+        expect(updateContextMemory).toHaveBeenCalledTimes(1);
+        expect(updateContextMemory).toHaveBeenCalledWith('memory-id', [
+          { op: 'replace', path: '/entityStatus', value: status },
+        ]);
+        expect(showSuccessToast).toHaveBeenCalledWith(
+          'server.entity-updated-success'
+        );
+        expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    it('reports a refused decision and keeps the memory open', async () => {
+      const error = new Error('Draft cannot move to Approved');
+      const onUpdated = jest.fn();
+      (updateContextMemory as jest.Mock).mockRejectedValue(error);
+      renderMemory(awaiting(ContextMemoryStatus.Draft), {
+        isAdminUser: true,
+        onUpdated,
+      });
+
+      fireEvent.click(screen.getByTestId('memory-approve-btn'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('memory-approve-btn')).toBeEnabled()
+      );
+
+      expect(showErrorToast).toHaveBeenCalledWith(error);
+      expect(showSuccessToast).not.toHaveBeenCalled();
+      expect(onUpdated).not.toHaveBeenCalled();
+      expect(defaultProps.onClose).not.toHaveBeenCalled();
+    });
+
+    it('holds both decisions while one is being saved', async () => {
+      let finishSave: ((memory: ContextMemory) => void) | undefined;
+      (updateContextMemory as jest.Mock).mockReturnValue(
+        new Promise<ContextMemory>((resolve) => {
+          finishSave = resolve;
+        })
+      );
+      renderMemory(awaiting(ContextMemoryStatus.Unprocessed), {
+        isAdminUser: true,
+      });
+
+      fireEvent.click(screen.getByTestId('memory-approve-btn'));
+      fireEvent.click(screen.getByTestId('memory-reject-btn'));
+
+      expect(screen.getByTestId('memory-approve-btn')).toBeDisabled();
+      expect(screen.getByTestId('memory-reject-btn')).toBeDisabled();
+      expect(updateContextMemory).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        finishSave?.(awaiting(ContextMemoryStatus.Approved));
+      });
+
+      expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+    });
   });
 });

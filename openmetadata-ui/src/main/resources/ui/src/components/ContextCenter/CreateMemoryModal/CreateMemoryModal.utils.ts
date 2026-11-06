@@ -15,6 +15,7 @@ import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSe
 import { ROUTES } from '../../../constants/constants';
 import {
   CONTEXT_FILE_ENTITY_TYPE,
+  MEMORY_STATUSES_AWAITING_DECISION,
   MEMORY_TYPE_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -91,6 +92,18 @@ export const getLinkedAssetPath = (
       )
     : undefined;
 };
+
+/** An admin decides a memory they view while it awaits approval. */
+export const canDecideMemoryStatus = (
+  memory: ContextMemory | undefined,
+  isAdminUser: boolean,
+  isViewOnly: boolean
+): boolean =>
+  isAdminUser &&
+  isViewOnly &&
+  MEMORY_STATUSES_AWAITING_DECISION.some(
+    (status) => status === memory?.entityStatus
+  );
 
 export const getAssetKey = (asset: DataAssetOption): string =>
   asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');

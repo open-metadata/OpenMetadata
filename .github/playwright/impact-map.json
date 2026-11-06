@@ -563,6 +563,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/KnowledgeCenterFilterPage/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.test.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/knowledgeCenterAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/ContextCenter.constants.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/KnowledgeCenter.constant.ts",

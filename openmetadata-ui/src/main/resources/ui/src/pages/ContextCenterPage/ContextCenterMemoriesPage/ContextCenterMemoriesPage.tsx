@@ -52,6 +52,7 @@ import {
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
+import ApprovePendingMemoriesButton from '../../../components/discovery/context-center/ApprovePendingMemoriesButton/ApprovePendingMemoriesButton';
 import MemoryConflictReviews from '../../../components/discovery/context-center/MemoryConflictReviews/MemoryConflictReviews';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../../components/discovery/personal-space/inbox.constants';
 import {
@@ -716,6 +717,15 @@ const ContextCenterMemoriesPage: FC = () => {
     }
   }, [memoryToDelete, fetchMemories, fetchMemoryCounts, t]);
 
+  const handlePendingApproved = useCallback(async () => {
+    void queryClient.invalidateQueries({
+      queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+    });
+    void refreshMemoryReviews();
+    await fetchMemories();
+    await fetchMemoryCounts();
+  }, [fetchMemories, fetchMemoryCounts]);
+
   const fetchCompleteMemory = useCallback(async (memory: ContextMemory) => {
     try {
       return await getContextMemoryById(memory.id, MEMORY_FIELDS);
@@ -1185,6 +1195,12 @@ const ContextCenterMemoriesPage: FC = () => {
                     'tw:hidden': isReviewing,
                   })}
                   gap={4}>
+                  <ApprovePendingMemoriesButton
+                    isAdmin={currentUser?.isAdmin}
+                    isLoading={isMemoriesLoading}
+                    memories={memories}
+                    onApproved={handlePendingApproved}
+                  />
                   {hasActiveFilters && (
                     <Button
                       color="link-color"

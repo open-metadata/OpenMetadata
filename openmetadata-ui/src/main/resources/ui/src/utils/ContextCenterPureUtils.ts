@@ -13,13 +13,17 @@
 
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { Operation } from 'fast-json-patch';
 import { isNull, isUndefined } from 'lodash';
 import { MemorySortBy } from '../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Asset } from '../generated/attachments/asset';
 import { AssetType } from '../generated/attachments/asset';
-import type { ContextMemory } from '../generated/entity/context/contextMemory';
+import type {
+  ContextMemory,
+  ContextMemoryStatus,
+} from '../generated/entity/context/contextMemory';
 import type { ContextFile } from '../generated/entity/data/contextFile';
 import { ListParams } from '../interface/API.interface';
 import type {
@@ -188,6 +192,11 @@ export const getMemoryCitations = (
     ? { count: memory.usageCount, lastAt: memory.lastUsedAt }
     : { count: outcomes.appliedCount ?? 0, lastAt: outcomes.lastAppliedAt };
 };
+
+/** The JSON patch that moves a memory to another lifecycle stage. */
+export const getMemoryStatusPatch = (
+  status: ContextMemoryStatus
+): Operation[] => [{ op: 'replace', path: '/entityStatus', value: status }];
 
 export const getSortConfig = (
   sortBy: MemorySortBy

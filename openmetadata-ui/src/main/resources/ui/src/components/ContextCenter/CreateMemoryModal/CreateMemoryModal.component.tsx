@@ -86,8 +86,12 @@ import {
 import { useMemoryStatusReason } from '../../../hooks/discovery/context-center/useMemoryStatusReason';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { queryClient } from '../../../queryClient';
-import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
+import {
+  deleteContextMemory,
+  updateContextMemory,
+} from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getMemoryStatusPatch } from '../../../utils/ContextCenterPureUtils';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
@@ -95,9 +99,10 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { navigatesThisTab } from '../../../utils/LinkClickUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
-import { showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
 import MemoryDerivedTerm from '../../discovery/context-center/MemoryDerivedTerm/MemoryDerivedTerm';
+import MemoryStatusActions from '../../discovery/context-center/MemoryStatusActions/MemoryStatusActions';
 import TagSelector from '../../Tag/TagSelector/TagSelector';
 import {
   CreateMemoryModalProps,
@@ -110,6 +115,7 @@ import {
 } from './CreateMemoryModal.interface';
 import {
   buildMemoryFormState,
+  canDecideMemoryStatus,
   getAssetKey,
   getLinkedAssetPath,
   getPrimaryAndRelatedEntities,
@@ -448,6 +454,7 @@ const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
   handleSwitchToEdit,
   showSubmitButton,
   isSubmitDisabled,
+  statusActions,
   submitLabel,
   t,
 }) => (
@@ -473,6 +480,7 @@ const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
         onClick={handleClose}>
         {t('label.cancel')}
       </Button>
+      {statusActions}
       {showEditButton && (
         <Button
           color="primary"
@@ -976,6 +984,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const [linkedAssets, setLinkedAssets] = useState<DataAssetOption[]>([]);
   const [selectedTags, setSelectedTags] = useState<TagLabel[]>([]);
   const [showTagForm, setShowTagForm] = useState(false);
+  const [decidingStatus, setDecidingStatus] = useState<ContextMemoryStatus>();
+  const canDecideStatus = canDecideMemoryStatus(
+    memoryToEdit,
+    Boolean(isAdminUser),
+    isViewOnly
+  );
 
   const isOwner = useMemo(
     () =>
@@ -1119,6 +1133,28 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       );
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleDecideStatus = async (status: ContextMemoryStatus) => {
+    if (!memoryToEdit) {
+      return;
+    }
+    setDecidingStatus(status);
+    try {
+      await updateContextMemory(memoryToEdit.id, getMemoryStatusPatch(status));
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+      });
+      showSuccessToast(
+        t('server.entity-updated-success', { entity: t(MEMORY_LABEL_KEY) })
+      );
+      onUpdated?.();
+      handleClose();
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setDecidingStatus(undefined);
     }
   };
 
@@ -1360,6 +1396,15 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 memoryToEdit={memoryToEdit}
                 showEditButton={showEditButton}
                 showSubmitButton={showSubmitButton}
+                statusActions={
+                  canDecideStatus && (
+                    <MemoryStatusActions
+                      decidingStatus={decidingStatus}
+                      isDisabled={isDeleting}
+                      onDecide={handleDecideStatus}
+                    />
+                  )
+                }
                 submitLabel={submitLabel}
                 t={t}
               />

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { FormSelectItem } from '@openmetadata/ui-core-components';
-import { Dispatch, SetStateAction } from 'react';
+import { Dispatch, ReactNode, SetStateAction } from 'react';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import {
   ContextMemory,
@@ -85,6 +85,8 @@ export interface MemoryModalFooterProps {
   handleSwitchToEdit: () => void;
   showSubmitButton: boolean | undefined;
   isSubmitDisabled: boolean;
+  /** Approve and Reject, shown to an admin while the memory awaits a decision. */
+  statusActions?: ReactNode;
   submitLabel: string;
   t: TFunc;
 }
