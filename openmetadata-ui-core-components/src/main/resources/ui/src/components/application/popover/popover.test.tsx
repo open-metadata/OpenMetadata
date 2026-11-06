@@ -28,7 +28,7 @@ describe('Popover surface', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
 
-    const surface = screen.getByText('Body copy').closest('.tw\\:bg-raised');
+    const surface = screen.getByText('Body copy').closest('.tw\\:bg-floating');
 
     expect(surface).not.toBeNull();
     // Portal content otherwise inherits the body colour, which is black in dark mode.

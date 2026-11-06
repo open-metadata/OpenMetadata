@@ -93,7 +93,7 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
       isOpen
       className={cx(
         'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:shadow-raised',
-        variant === 'muted' ? 'tw:bg-primary_alt' : 'tw:bg-raised',
+        variant === 'muted' ? 'tw:bg-primary_alt' : 'tw:bg-floating',
         className
       )}
       placement="right top"

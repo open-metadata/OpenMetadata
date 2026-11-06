@@ -23,10 +23,10 @@ describe('Dropdown theme roles', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
 
-    const surface = screen.getByRole('menu').closest('.tw\\:bg-raised');
+    const surface = screen.getByRole('menu').closest('.tw\\:bg-floating');
 
     expect(surface).not.toBeNull();
-    expect(surface).toHaveClass('tw:bg-raised', 'tw:shadow-raised');
+    expect(surface).toHaveClass('tw:bg-floating', 'tw:shadow-raised');
     // Menus sit one step above modal/slideout panels so they stay visible over a drawer.
     expect(surface).not.toHaveClass('tw:bg-overlay-surface');
     expect(surface).not.toHaveClass('tw:bg-primary');
