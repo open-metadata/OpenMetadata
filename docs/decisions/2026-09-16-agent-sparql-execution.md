@@ -3,13 +3,14 @@
 - **Status:** Accepted for a scoped first implementation (2026-09-16, review 3). Code is
   reviewed separately.
 - **Revisions:** v1 2026-09-16 (initial) · v2 2026-09-29 (§2a: default grant through Data
-  Consumer, [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231)) · v3 2026-10-13 (MCP knowledge-graph tools, #34270; reconciled with current column projection) · v4 2026-10-21 (the test profile runs the published Fuseki image)
+  Consumer, [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231)) · v3 2026-10-13 (MCP knowledge-graph tools, #34270; reconciled with current column projection) · v4 2026-10-21 (the test profile runs the published Fuseki image) · v5 2026-11-06 (the inspector and the federation guard share one query walker)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `AgentSparqlResourceIT`, `AgentSparqlServiceTest`, `AgentSparqlQueryValidatorTest`,
   `AgentSparqlQueryInspectorTest`, `AgentSparqlTransportTest`
 - **Issue:** [OpenMetadata #33384](https://github.com/open-metadata/OpenMetadata/issues/33384)
 - **Amended by:** [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231),
-  [OpenMetadata #34270](https://github.com/open-metadata/OpenMetadata/issues/34270)
+  [OpenMetadata #34270](https://github.com/open-metadata/OpenMetadata/issues/34270),
+  [OpenMetadata #33436](https://github.com/open-metadata/OpenMetadata/issues/33436)
   (MCP knowledge-graph tools — see the amendment before the Review log),
   ADR:2026-10-14-fuseki-image-of-record (the test profile's image).
 - **Related:** ai-platform epic #224, ai-platform #1299, ai-platform PR #1310 (design, pinned at
@@ -620,6 +621,15 @@ longer describe the tree. With no `rdfContainerImage` set, `TestSuiteBootstrap` 
 `docker/rdf-store`. The union default graph comes from that image's
 `FUSEKI_UNION_DEFAULT_GRAPH=true`, not `docker/rdf-store/config.ttl`. The requirement is unchanged:
 without the union default graph, agent queries succeed with empty results.
+
+## Amendment — 2026-11-06: the inspector and the federation guard share one walker
+
+§4 kept `SparqlFederationGuard` off this path partly because the guard walked only the WHERE
+pattern. That reason no longer holds: the guard missed `SERVICE` inside `EXISTS` in every
+expression position, the inspector missed a bare `EXISTS { … }` pattern element, and both now walk
+queries with `SparqlQueryWalker`, which reaches every element and expression (#33436). The
+decision stands on its other reasons: the inspector grants no endpoint allowlist, and it reports
+`FEDERATION_NOT_ALLOWED` where the guard, ordered first, would report `QUERY_INVALID`.
 
 ## Review log
 
