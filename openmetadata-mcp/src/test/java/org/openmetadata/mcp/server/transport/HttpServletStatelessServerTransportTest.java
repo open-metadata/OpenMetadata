@@ -233,6 +233,7 @@ class HttpServletStatelessServerTransportTest {
   private static HttpServletRequest requestFor(String accept, String payload) throws Exception {
     HttpServletRequest request = mock(HttpServletRequest.class);
     when(request.getRequestURI()).thenReturn(MCP_ENDPOINT);
+    when(request.getContentType()).thenReturn("application/json");
     when(request.getHeader(HttpServletStatelessServerTransport.ACCEPT)).thenReturn(accept);
     when(request.getInputStream())
         .thenReturn(bodyOf(new ByteArrayInputStream(payload.getBytes(StandardCharsets.UTF_8))));
@@ -302,6 +303,28 @@ class HttpServletStatelessServerTransportTest {
 
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     assertThat(body.toString()).contains("\"code\":-32603");
+  }
+
+  @Test
+  void doPost_nonJsonContentType_answers415WithoutReachingTheHandler() throws Exception {
+    McpStatelessServerHandler handler = mock(McpStatelessServerHandler.class);
+    HttpServletRequest request = requestFor("application/json", UNKNOWN_METHOD_REQUEST);
+    when(request.getContentType()).thenReturn("text/plain");
+
+    transportWith(handler).doPost(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+    verify(handler, never()).handleRequest(any(), any());
+  }
+
+  @Test
+  void doPost_jsonWithCharset_reachesTheHandler() throws Exception {
+    HttpServletRequest request = requestFor("application/json", UNKNOWN_METHOD_REQUEST);
+    when(request.getContentType()).thenReturn("Application/JSON; charset=utf-8");
+
+    transportRejectingWith(methodNotFound("server/discover")).doPost(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_OK);
   }
 
   @Test
