@@ -12,11 +12,12 @@
  */
 import { beforeAll, describe, expect, test } from 'vitest';
 import { Locator, page, userEvent } from 'vitest/browser';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
-    encodeCursor,
-    RecordedCall,
-    serveList,
-    serveSearch
+  encodeCursor,
+  RecordedCall,
+  serveList,
+  serveSearch,
 } from './fixtures/paging';
 import { worker } from './msw';
 import { currentUrl, renderApp } from './renderWithApp';
