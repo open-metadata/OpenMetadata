@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.alerting.content.template.handlebars.helpers;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -61,6 +63,21 @@ class HandlebarsHelperExampleTest {
     String rendered = sandbox.render(example, eventContext());
 
     assertFalse(rendered.isBlank(), () -> helperName + " example renders nothing: " + example);
+  }
+
+  /** These two examples print literal text around the helper, so non-blank proves nothing. */
+  @Test
+  void mathExampleNumbersTheOwners() throws IOException {
+    assertEquals("1. alice 2. bob ", renderFirstExampleOf(new MathHelper()));
+  }
+
+  @Test
+  void filterExampleCountsOnlyTheMatchingTags() throws IOException {
+    assertEquals("1 classification tags", renderFirstExampleOf(new FilterHelper()));
+  }
+
+  private static String renderFirstExampleOf(HandlebarsHelper helper) throws IOException {
+    return sandbox.render(helper.getMetadata().getUsages().get(0).getExample(), eventContext());
   }
 
   private static Stream<Arguments> examples() {
