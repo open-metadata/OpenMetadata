@@ -26,10 +26,7 @@ import { PagingHandlerParams } from '../../../components/common/NextPrevious/Nex
 import { StatusType } from '../../../components/common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../components/common/StatusBadge/StatusBadgeV2.component';
 import TableV2 from '../../../components/common/Table/TableV2';
-import {
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_BASE,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { getStatusMapping } from '../../../constants/WorkflowBuilder.constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -39,6 +36,7 @@ import {
   WorkflowStatus,
 } from '../../../generated/governance/workflows/workflowInstance';
 import { Paging } from '../../../generated/type/paging';
+import { usePageSizeState } from '../../../hooks/paging/usePageSizeState';
 import { useFqn } from '../../../hooks/useFqn';
 import { getWorkflowInstancesByFQN } from '../../../rest/workflowDefinitionsAPI';
 import {
@@ -48,6 +46,7 @@ import {
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
+import { shouldShowPager } from '../../../utils/PaginationUtils';
 
 const GLOBAL_RELATED_ENTITY_VARIABLE = 'global_relatedEntity';
 
@@ -67,7 +66,7 @@ export const WorkflowExecutionHistory: React.FC<
   const [loadError, setLoadError] = useState<AxiosError>();
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(PAGE_SIZE_BASE);
+  const [pageSize] = usePageSizeState();
   const statusMapping = useMemo(() => getStatusMapping(t), [t]);
 
   const getStatusInfo = useCallback(
@@ -251,7 +250,7 @@ export const WorkflowExecutionHistory: React.FC<
             onReload={() => {
               // The retry reads the first page, so the pager must show page 1.
               setCurrentPage(1);
-              fetchExecutionHistory();
+              void fetchExecutionHistory();
             }}
           />
         )}
@@ -294,7 +293,7 @@ export const WorkflowExecutionHistory: React.FC<
           tableLayout="auto"
         />
       </div>
-      {paging.total > pageSize && (
+      {shouldShowPager(instances) && (
         <div className="tw:shrink-0">
           <NextPrevious
             currentPage={currentPage}

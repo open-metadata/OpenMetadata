@@ -2311,8 +2311,8 @@ class DbtSource(DbtServiceSource):
         """
         Map a dbt result status onto an OpenMetadata test case status.
 
-        Statuses that are neither a known success nor a known failure (dbt's
-        ``warn`` and ``runtime error``) fall through to Aborted.
+        Warnings represent an executed check that exceeded its threshold and map
+        to Failed. Unrecognized statuses, including ``runtime error``, map to Aborted.
         """
         if status_value in [item.value for item in DbtTestSuccessEnum]:
             return TestCaseStatus.Success, 1

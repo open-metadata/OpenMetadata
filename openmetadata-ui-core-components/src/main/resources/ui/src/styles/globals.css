@@ -90,7 +90,10 @@
   --shadow-3xl: 0px 32px 64px -12px rgba(10, 13, 18, 0.14),
     0px 5px 5px -2.5px rgba(10, 13, 18, 0.04);
   --shadow-card: theme(--shadow-xs);
-  --shadow-raised: theme(--shadow-lg);
+  /* Floating overlays only. Deeper than shadow-lg so menus lift off white too. */
+  --shadow-raised: 0px 12px 16px -4px rgba(10, 13, 18, 0.14),
+    0px 4px 6px -2px rgba(10, 13, 18, 0.08),
+    0px 2px 2px -1px rgba(10, 13, 18, 0.06);
   --shadow-overlay: theme(--shadow-xl);
 
   --shadow-skeumorphic: 0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset,
@@ -848,6 +851,7 @@
   --color-bg-canvas: var(--color-bg-canvas, theme(--color-bg-secondary));
   --color-bg-surface: var(--color-bg-surface, theme(--color-bg-primary));
   --color-bg-raised: var(--color-bg-raised, theme(--color-bg-primary));
+  --color-bg-floating: var(--color-bg-floating, theme(--color-bg-primary));
   --color-bg-overlay-surface: var(--color-bg-overlay-surface, theme(--color-bg-primary));
   --color-bg-brand-primary: var(--color-bg-brand-primary, theme(--color-brand-50));
   --color-bg-brand-primary_alt: var(--color-bg-brand-primary_alt, theme(--color-brand-50));
@@ -909,6 +913,7 @@
   --background-color-canvas: var(--background-color-canvas, theme(--color-bg-canvas));
   --background-color-surface: var(--background-color-surface, theme(--color-bg-surface));
   --background-color-raised: var(--background-color-raised, theme(--color-bg-raised));
+  --background-color-floating: var(--background-color-floating, theme(--color-bg-floating));
   --background-color-overlay-surface: var(--background-color-overlay-surface, theme(--color-bg-overlay-surface));
   --background-color-brand-primary: var(--background-color-brand-primary, theme(--color-bg-brand-primary));
   --background-color-brand-primary_alt: var(--background-color-brand-primary_alt, theme(--color-bg-brand-primary_alt));
@@ -1294,15 +1299,18 @@
     --color-bg-primary_alt: theme(--color-bg-secondary);
     --color-bg-primary_hover: --alpha(theme(--color-white) / 6%);
 
-    /* Empty-placeholder "features" gradient — dark: fade to the page (gray-950)
-       with a subtle blue tint top/bottom, mirroring the light gradient. */
+    /* Empty-placeholder "features" gradient — dark: the middle is the card
+       surface (gray-800) it sits on, with a subtle blue tint top/bottom,
+       mirroring the light gradient whose middle is the white card. A
+       gray-950 middle and an opaque bottom tint read as a dark band with
+       hard edges on the card, so both tints stay translucent. */
     --gradient-empty-placeholder-features: linear-gradient(
       180deg,
       rgba(41, 53, 74, 0.5) 0%,
-      theme(--color-bg-primary) 25%,
-      theme(--color-bg-primary) 49.52%,
-      theme(--color-bg-primary) 75%,
-      rgba(41, 53, 74, 1) 100%
+      theme(--color-bg-surface) 25%,
+      theme(--color-bg-surface) 49.52%,
+      theme(--color-bg-surface) 75%,
+      rgba(41, 53, 74, 0.5) 100%
     );
     --color-bg-secondary: theme(--color-gray-900);
     --color-bg-secondary-solid: theme(--color-gray-600);
@@ -1338,7 +1346,11 @@
     --color-bg-canvas: theme(--color-gray-900);
     --color-bg-surface: theme(--color-gray-800);
     --color-bg-raised: theme(--color-gray-700);
-    /* Modal/slideout panel matches bg-surface (gray-800, rgb(34,38,47)). */
+    /* Modal/slideout panel matches bg-surface (gray-800, rgb(34,38,47)). Floating
+       overlays (popover, menu, select, date picker) sit a subtle step above it
+       (#2b2f37) and rely on the overlay shadow for lift
+       (ADR:2026-11-06-floating-overlays-sit-on-bg-floating). */
+    --color-bg-floating: color-mix(in srgb, theme(--color-gray-800) 96%, white);
     --color-bg-overlay-surface: theme(--color-gray-800);
     --color-bg-brand-section: theme(--color-bg-secondary);
     --color-bg-brand-section_subtle: theme(--color-bg-primary);
@@ -1528,6 +1540,7 @@
     --tw-background-color-canvas: var(--color-bg-canvas);
     --tw-background-color-surface: var(--color-bg-surface);
     --tw-background-color-raised: var(--color-bg-raised);
+    --tw-background-color-floating: var(--color-bg-floating);
     --tw-background-color-overlay-surface: var(--color-bg-overlay-surface);
     --tw-background-color-primary-solid: var(--color-bg-primary-solid);
     --tw-background-color-primary: var(--color-bg-primary);
@@ -1901,3 +1914,12 @@ fields on the dark surface. */
 /* Let the consumer generate utilities for classes used inside the packaged
 core-components bundle. */
 @source "../../dist/**/*.{js,mjs,cjs}";
+
+/* Dark: shadow-raised's near-black values vanish on dark surfaces, and Tailwind
+inlines the value, so a token override cannot reach it. Deepen it here so every
+floating overlay reads as lifted above the drawer or page it opens from.
+ADR:2026-11-06-floating-overlays-sit-on-bg-floating */
+.dark-mode .tw\:shadow-raised {
+  --tw-shadow: 0px 12px 16px -4px rgb(0 0 0 / 0.5),
+    0px 4px 6px -2px rgb(0 0 0 / 0.3), 0px 2px 2px -1px rgb(0 0 0 / 0.3);
+}

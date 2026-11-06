@@ -18,11 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -31,6 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.json.Json;
+import jakarta.json.JsonPatch;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -62,7 +65,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.MetricGroupRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -275,14 +280,15 @@ class MetricGroupResourceTest {
   @Test
   void patchResponseSanitizesMembershipAndStillHidesMembers() {
     UUID groupId = UUID.randomUUID();
-    MetricGroup original = groupWithMember(groupId, "profitability");
+    MetricGroup original =
+        groupWithMember(groupId, "profitability").withDescription("Original description");
     MetricGroup patched = groupWithMember(groupId, "profitability");
     MetricGroup sanitized = groupWithMember(groupId, "profitability");
     try (ResourceFixture fixture = resourceFixture()) {
       SecurityContext securityContext = securityContext("alice");
       when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
           .thenReturn(metricViewPermission(Permission.Access.CONDITIONAL_ALLOW));
-      when(fixture.repository().getWithMembers(groupId, Include.NON_DELETED)).thenReturn(original);
+      when(fixture.repository().get(any(), eq(groupId), any())).thenReturn(original);
       when(fixture.repository().patch(any(), eq(groupId), anyString(), any(), any(), any(), any()))
           .thenReturn(new PatchResponse<>(Response.Status.OK, patched, EventType.ENTITY_UPDATED));
       when(fixture.repository().sanitizeMembership(eq(patched), any())).thenReturn(sanitized);
@@ -357,12 +363,34 @@ class MetricGroupResourceTest {
     MetricGroup metadataOnly = new MetricGroup().withMetrics(List.of(retained, removed));
     MetricGroup membershipUpdate = new MetricGroup().withMetrics(List.of(retained, added));
 
-    assertEquals(List.of(), MetricAuthorization.membershipMutationTargets(original, metadataOnly));
+    assertEquals(List.of(), MetricGroupRepository.membershipChanges(original, metadataOnly));
     assertEquals(
         Set.of(removed.getId(), added.getId()),
-        MetricAuthorization.membershipMutationTargets(original, membershipUpdate).stream()
+        MetricGroupRepository.membershipChanges(original, membershipUpdate).stream()
             .map(EntityReference::getId)
             .collect(java.util.stream.Collectors.toSet()));
+  }
+
+  @Test
+  void patchIsAuthorizedOnTheGroupBeforeItIsSimulated() {
+    UUID groupId = UUID.randomUUID();
+    SecurityContext securityContext = securityContext("alice");
+    AuthorizationException denied = new AuthorizationException("denied");
+    // Cannot be applied to any group: the JSON-P error would print the stored group and members.
+    JsonPatch unapplicable = Json.createPatchBuilder().copy("/displayName", "/x/y").build();
+    try (ResourceFixture fixture = resourceFixture()) {
+      doThrow(denied)
+          .when(fixture.authorizer())
+          .authorize(eq(securityContext), any(OperationContext.class), any());
+
+      AuthorizationException thrown =
+          assertThrows(
+              AuthorizationException.class,
+              () -> fixture.resource().patch(null, securityContext, groupId, unapplicable));
+
+      assertEquals(denied, thrown);
+      verify(fixture.repository(), never()).get(any(), any(UUID.class), any());
+    }
   }
 
   @Test

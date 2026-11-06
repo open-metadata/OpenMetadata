@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert as AlertIcon,
   CheckCircle,
   XCircle,
   Zap,
@@ -51,6 +51,7 @@ import {
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { ConfigData } from '../../../interface/service.interface';
 import {
   addWorkflow,
@@ -59,6 +60,10 @@ import {
   getWorkflowById,
   triggerWorkflowById,
 } from '../../../rest/workflowAPI';
+import {
+  EXTENSION_POINTS,
+  TestConnectionActionContribution,
+} from '../../../utils/ExtensionPointTypes';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
 import { getSnowflakeAccountDisplayHost } from '../../../utils/ServiceConnectionUtils';
@@ -68,6 +73,7 @@ import {
   shouldTestConnection,
 } from '../../../utils/ServicePureUtils';
 import { getErrorText } from '../../../utils/StringUtils';
+import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import Loader from '../Loader/Loader';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
@@ -166,10 +172,16 @@ const TestConnection: FC<TestConnectionProps> = ({
   isFormValidationPending = false,
   hostIp,
   extraInfo,
-  renderFailureAction,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
+  const isAiMode = useIsAiMode();
+  const { extensionRegistry } = useApplicationsProvider();
+  const failureActions = isAiMode
+    ? extensionRegistry?.getContributions<TestConnectionActionContribution>(
+        EXTENSION_POINTS.SERVICE_DETAILS_TEST_CONNECTION_ACTIONS
+      ) ?? []
+    : [];
 
   // local state
   const [isTestingConnection, setIsTestingConnection] =
@@ -739,7 +751,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       return XCircle;
     }
     if (testStatus === 'Warning') {
-      return AlertTriangle;
+      return AlertIcon;
     }
 
     return Zap;
@@ -851,7 +863,20 @@ const TestConnection: FC<TestConnectionProps> = ({
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
         progress={progress}
-        renderFailureAction={renderFailureAction}
+        renderFailureAction={
+          failureActions.length > 0
+            ? (failure, onClose) =>
+                failureActions.map(({ key, component: Action }) => (
+                  <Action
+                    failure={failure}
+                    key={key}
+                    serviceName={serviceName}
+                    serviceType={connectionType}
+                    onClose={onClose}
+                  />
+                ))
+            : undefined
+        }
         serviceType={serviceType}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}

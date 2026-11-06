@@ -2854,6 +2854,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     List<UUID> testCaseIds = new ArrayList<>();
     List<UUID> statusIds = new ArrayList<>();
+    List<UUID> stateIds = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       TestCase testCase =
           TestCaseBuilder.create(client)
@@ -2869,8 +2870,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
       newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
       var status = client.testCaseResolutionStatuses().create(newStatus);
       statusIds.add(status.getId());
+      stateIds.add(status.getStateId());
       assertEquals(
           1, countRowsById("test_case_resolution_status_time_series", status.getId().toString()));
+      assertEquals(1, countIncidentRows(status.getStateId()));
     }
 
     Map<String, String> params = new HashMap<>();
@@ -2891,6 +2894,12 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                     countRowsById("test_case_resolution_status_time_series", statusId.toString()),
                     "Ancestor deletion must eventually remove incident history");
                 assertEquals(0, countRelationshipsTo(statusId));
+              }
+              for (UUID stateId : stateIds) {
+                assertEquals(
+                    0,
+                    countIncidentRows(stateId),
+                    "Ancestor deletion must eventually remove the incident summary");
               }
             });
   }
@@ -2921,6 +2930,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         "resolution-status time-series row should exist before delete");
     assertEquals(
         1, countRelationshipsTo(statusId), "parentOf relationship should exist before delete");
+    assertEquals(
+        1, countIncidentRows(status.getStateId()), "incident summary should exist before delete");
 
     Map<String, String> params = new HashMap<>();
     params.put("hardDelete", "true");
@@ -2940,7 +2951,22 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   0,
                   countRelationshipsTo(statusId),
                   "parentOf relationship must be cleaned up, otherwise it is left orphaned");
+              assertEquals(
+                  0,
+                  countIncidentRows(status.getStateId()),
+                  "incident summary must be deleted with the incident's last record");
             });
+  }
+
+  private int countIncidentRows(UUID stateId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM test_case_incident WHERE stateId = :stateId")
+                    .bind("stateId", stateId.toString())
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   private int countRowsById(String tableName, String id) {

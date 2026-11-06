@@ -118,6 +118,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
+import TableLinkedConcepts from './TableLinkedConcepts';
 // The incidents API 403s without ViewTests/ViewAll, so skip it and report no incidents.
 const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
   canViewTests
@@ -1054,6 +1055,10 @@ const TableDetailsPageV1: React.FC = () => {
               onVersionClick={versionHandler}
             />
           </div>
+          <TableLinkedConcepts
+            columnFqn={columnFqn}
+            tableId={tableDetails.id}
+          />
           {/* Entity Tabs */}
           <div className="entity-details-page-tabs">{renderTabs()}</div>
           <LimitWrapper resource="table">

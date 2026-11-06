@@ -15,7 +15,7 @@ import { HookForm } from '@openmetadata/ui-core-components';
 import { FormEvent, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { ModifiedCreateEventSubscription } from '../../../utils/AlertsClassBase.interface';
 import { FormHintDoc } from '../../common/atoms/drawer/formHint/FormHintDoc';
 import { FormHintEmptyState } from '../../common/atoms/drawer/formHint/FormHintEmptyState';
 import { FormHintHeader } from '../../common/atoms/drawer/formHint/FormHintHeader';

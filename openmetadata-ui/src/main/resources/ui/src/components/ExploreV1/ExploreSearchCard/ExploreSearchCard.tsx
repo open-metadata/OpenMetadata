@@ -19,6 +19,7 @@ import {
   Owner,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { RankingDetails } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
@@ -26,7 +27,6 @@ import type { ExtraInfo } from 'Models';
 import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   EntityStatus,
@@ -264,7 +264,7 @@ const BreadcrumbAndScoreCell = ({
       />
       {score !== undefined && (
         <div className="flex items-center gap-1 score-container">
-          <ScoreIcon />
+          <RankingDetails className="tw:text-utility-blue-700" size={12} />
 
           <Typography className="text-xs score">
             <span className="font-normal">
@@ -541,6 +541,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       matchedQueries,
       highlight,
       classNameForBreadcrumb,
+      variant,
     },
     ref
   ) => {
@@ -910,6 +911,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
+        variant={variant}
         onClick={(e) => {
           // Toggling selection must not also open the summary panel.
           if ((e.target as HTMLElement).closest('.assets-checkbox')) {
