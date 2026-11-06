@@ -1,6 +1,9 @@
 import pytest
 
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
+    PowerBIConnection,
+)
 from metadata.generated.schema.type.basic import Markdown
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
@@ -95,7 +98,7 @@ test_cases = {
 
 class MockPowerbiSource(PowerbiSource):
     def __init__(self):
-        pass
+        self.service_connection = PowerBIConnection(clientId="client_id", clientSecret="secret", tenantId="tenant_id")
 
 
 @pytest.mark.parametrize("test_case_name, test_case", test_cases.items())

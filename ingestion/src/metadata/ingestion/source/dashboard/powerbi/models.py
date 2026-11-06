@@ -183,6 +183,7 @@ class PowerBiTable(BaseModel):
     """
 
     name: str | None = None
+    isHidden: bool | None = False  # noqa: N815
     columns: list[PowerBiColumns] | None = None
     measures: list[PowerBiMeasures] | None = None
     description: str | None = None
