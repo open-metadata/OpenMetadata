@@ -145,12 +145,24 @@ would replace their column lineage whenever `overrideLineage` is on.
   queried, a flow keeps the tasks it already has in OpenMetadata rather than
   collapsing to a single task; a flow with no lineage records is a single
   task.
-- **Partial listings delete nothing.** When the extract refresh tasks, or one
-  of their data sources / workbooks, cannot be read, no pipeline is marked as
-  deleted that run. A data source or workbook that no longer exists is
+- **Partial listings delete nothing.** When the flows, the extract refresh
+  tasks, or one of their data sources / workbooks, cannot be read, no pipeline
+  is marked as deleted that run. A data source or workbook that no longer exists is
   skipped normally.
 - **Retries.** 429 and 502-504 answers are retried three times with backoff,
-  honouring `Retry-After`.
+  honouring a `Retry-After` of up to 30 seconds. A longer one, as Tableau Cloud
+  sends once a site's hourly flow quota is used up, is not waited out: the call
+  fails at once with Tableau's message and a warning
+  (ADR:2026-10-30-tableau-pipeline-retry-after-cap).
+- **Timeouts.** Each attempt gives up after 10 seconds without a connection,
+  retried like other connection errors, or after 60 seconds without data, which
+  is not retried (ADR:2026-10-30-tableau-pipeline-http-timeout).
+- **One session per token.** Tableau ends a personal access token's session when
+  the same token signs in elsewhere, for example from another ingestion. The
+  connector then signs in again once and repeats the call, which ends the other
+  client's session in turn; the Tableau dashboard connector does not sign in
+  again. Give each ingestion its own token
+  (ADR:2026-10-30-tableau-pipeline-sign-in-again).
 - **Metadata API node limit.** A query that exceeds the node limit (20,000
   by default on Tableau Server) returns partial data plus `errors`; the
   connector logs the errors and ingests what was returned.

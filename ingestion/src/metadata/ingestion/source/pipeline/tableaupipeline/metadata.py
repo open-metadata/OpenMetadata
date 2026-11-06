@@ -63,6 +63,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
@@ -73,6 +74,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauFlowRecordError,
     TableauMetadataApiError,
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
@@ -187,6 +189,9 @@ class TableaupipelineSource(PipelineServiceSource):
         return self._current_flow_lineage  # pyright: ignore[reportReturnType]
 
     def _log_metadata_api_failure(self, exc: Exception) -> None:
+        if isinstance(exc, TableauFlowRecordError):
+            logger.warning("%s", exc)
+            return
         if self._metadata_api_failed:
             logger.debug("%s", exc)
             return
@@ -197,6 +202,14 @@ class TableaupipelineSource(PipelineServiceSource):
             exc,
         )
         self._metadata_api_failed = True
+
+    def _iter(self) -> Iterable[Either]:
+        """Fail a run whose flow listing stopped part way, whatever the success
+        threshold. Raised once the topology is done because the runner only
+        records a producer's exception, then reconciles anyway."""
+        yield from super()._iter()
+        if not self.connection.flow_listing_complete:
+            raise WorkflowFatalError("Some Tableau flows could not be listed, so this run failed.")
 
     def get_pipeline_name(self, pipeline_details: TableauPipelineDetails) -> str:
         return pipeline_details.display_name or pipeline_details.name
@@ -245,8 +258,11 @@ class TableaupipelineSource(PipelineServiceSource):
             )
 
     def mark_pipelines_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
-        """A partial extract refresh listing would make every pipeline it missed
-        look deleted in Tableau, so nothing is marked deleted that run."""
+        """A partial flow or extract refresh listing would make every pipeline it
+        missed look deleted in Tableau, so nothing is marked deleted that run."""
+        if not self.connection.flow_listing_complete:
+            logger.warning("Some Tableau flows could not be listed, so no pipeline is marked as deleted this run.")
+            return
         if self.service_connection.includeExtractRefreshes and not self.connection.extract_refresh_listing_complete:
             logger.warning(
                 "Some Tableau extract refreshes could not be listed, so no pipeline is marked as deleted this run."
