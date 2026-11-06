@@ -327,8 +327,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
   /**
    * A run that finds another run holding the lock is redundant rather than broken, so it ends
-   * STOPPED with the holder named, as a deferred run does, and does not trip failure alerting or
-   * mark the projection degraded.
+   * STOPPED with the holder named, as a deferred run does, and does not trip failure alerting. A
+   * run that ends here, either way, never touched the projection, so it leaves the projection state
+   * as the last indexing run left it.
    */
   private boolean acquireRunLockOrSkip(JobExecutionContext jobExecutionContext) {
     boolean acquired = false;
@@ -341,6 +342,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       endBeforeIndexing(jobExecutionContext, EventPublisherJob.Status.STOPPED, held.getMessage());
     } catch (RuntimeException lockUnavailable) {
       LOG.error("Could not take the RDF reindex lock", lockUnavailable);
+      projectionUnchanged = true;
       endBeforeIndexing(
           jobExecutionContext,
           EventPublisherJob.Status.FAILED,

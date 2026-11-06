@@ -31,6 +31,8 @@ import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 public final class RdfProjectionStateResolver {
   static final String RDF_INDEX_APP = "RdfIndexApp";
   static final int RUN_PAGE_SIZE = 10;
+  // Every status read pages back through skipped runs; past this many it reports REBUILDING.
+  static final int MAX_RUN_PAGES = 5;
   private static final String PROJECTION_UNCHANGED = "projectionUnchanged";
   private final AppExtensionTimeSeries runStore;
   private final BooleanSupplier isDegraded;
@@ -56,13 +58,14 @@ public final class RdfProjectionStateResolver {
   }
 
   /**
-   * A run skipped because another run held the reindex lock, or deferred behind a search reindex,
-   * ends STOPPED without touching the projection, so the state comes from the newest run that did.
+   * A run that ended before indexing (the reindex lock held or unavailable, or deferred behind a
+   * search reindex) never touched the projection, so the state comes from the newest run that did.
    */
   private Optional<RdfProjectionState> latestProjectingRunState() {
     Optional<RdfProjectionState> state;
     List<String> page;
     int offset = 0;
+    int pages = 0;
     do {
       page =
           runStore.listAppExtensionByName(
@@ -73,7 +76,8 @@ public final class RdfProjectionStateResolver {
               .flatMap(Optional::stream)
               .findFirst();
       offset += RUN_PAGE_SIZE;
-    } while (state.isEmpty() && page.size() == RUN_PAGE_SIZE);
+      pages++;
+    } while (state.isEmpty() && page.size() == RUN_PAGE_SIZE && pages < MAX_RUN_PAGES);
     return state;
   }
 

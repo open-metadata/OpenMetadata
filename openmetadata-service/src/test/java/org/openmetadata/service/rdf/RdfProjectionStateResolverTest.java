@@ -14,8 +14,12 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collections;
@@ -144,6 +148,16 @@ class RdfProjectionStateResolverTest {
         .thenReturn(List.of(run(AppRunRecord.Status.FAILED)));
 
     assertEquals(RdfProjectionState.DEGRADED, resolver.resolve());
+  }
+
+  @Test
+  void stopsPagingAfterTheCapAndReportsRebuilding() {
+    when(runStore.listAppExtensionByName(eq("RdfIndexApp"), eq(PAGE), anyInt(), eq("status")))
+        .thenReturn(Collections.nCopies(PAGE, skippedRun()));
+
+    assertEquals(RdfProjectionState.REBUILDING, resolver.resolve());
+    verify(runStore, times(RdfProjectionStateResolver.MAX_RUN_PAGES))
+        .listAppExtensionByName(eq("RdfIndexApp"), eq(PAGE), anyInt(), eq("status"));
   }
 
   private static String run(final AppRunRecord.Status status) {
