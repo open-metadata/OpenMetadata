@@ -169,8 +169,7 @@ def custom_column_compare(self, other):
 class CassandraUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.cassandra.connection.CassandraConnection._get_client")
     @patch("metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection")
-    def __init__(self, methodName, get_client, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, get_client, test_connection) -> None:
         get_client.return_value = False
         test_connection.return_value = False
 

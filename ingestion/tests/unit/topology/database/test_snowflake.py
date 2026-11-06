@@ -235,8 +235,7 @@ class SnowflakeUnitTest(TestCase):
     Unit test for snowflake source
     """
 
-    def __init__(self, methodName) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self) -> None:
         self.sources = get_snowflake_sources()
 
     def test_partition_parse_columns(self):

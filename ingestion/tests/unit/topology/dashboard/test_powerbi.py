@@ -715,8 +715,7 @@ class PowerBIUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def __init__(self, methodName, create_connection, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, create_connection, test_connection) -> None:
         create_connection.return_value.client = False
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)

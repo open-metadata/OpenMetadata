@@ -176,8 +176,7 @@ EXPECTED_LOCATION_PATHS = [
 
 class GlueUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
         self.glue_source = GlueSource.create(

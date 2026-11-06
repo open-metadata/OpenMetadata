@@ -243,8 +243,7 @@ class AirbyteUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("metadata.ingestion.source.pipeline.airbyte.connection.AirbyteConnection._get_client")
-    def __init__(self, methodName, airbyte_client, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, airbyte_client, test_connection) -> None:
         test_connection.return_value = False
         config = OpenMetadataWorkflowConfig.model_validate(mock_airbyte_config)
         self.airbyte = AirbyteSource.create(
@@ -264,10 +263,6 @@ class AirbyteUnitTest(TestCase):
         self.airbyte.airbyte_cloud = False
         # Self-hosted internal API: jobs carry nested `attempts`.
         self.airbyte.use_public_api = False
-
-    def setUp(self):
-        self.airbyte.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.airbyte.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
 
     def test_pipeline_list(self):
         assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_AIRBYTE_DETAILS  # noqa: RUF015
@@ -787,8 +782,7 @@ class AirbyteCloudUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("metadata.ingestion.source.pipeline.airbyte.connection.AirbyteConnection._get_client")
-    def __init__(self, methodName, airbyte_cloud_client, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, airbyte_cloud_client, test_connection) -> None:
         test_connection.return_value = False
 
         from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
@@ -812,10 +806,6 @@ class AirbyteCloudUnitTest(TestCase):
         self.airbyte.airbyte_cloud = True
         self.airbyte.use_public_api = True
         self.airbyte.source_url_prefix = "https://cloud.airbyte.com"
-
-    def setUp(self):
-        self.airbyte.context.get().__dict__["pipeline"] = MOCK_CLOUD_PIPELINE.name.root
-        self.airbyte.context.get().__dict__["pipeline_service"] = MOCK_CLOUD_PIPELINE_SERVICE.name.root
 
     def test_pipeline_list(self):
         assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_CLOUD_AIRBYTE_DETAILS  # noqa: RUF015

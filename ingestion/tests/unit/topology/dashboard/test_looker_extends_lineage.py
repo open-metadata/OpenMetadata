@@ -37,8 +37,7 @@ class LookerExtendsLineageTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_LOOKER_CONFIG)
         self.looker = LookerSource.create(

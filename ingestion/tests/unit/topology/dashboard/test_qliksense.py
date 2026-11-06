@@ -223,8 +223,7 @@ class QlikSenseUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.qliksense.metadata.QliksenseSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_qliksense_config)
         self.qliksense = QliksenseSource.create(
