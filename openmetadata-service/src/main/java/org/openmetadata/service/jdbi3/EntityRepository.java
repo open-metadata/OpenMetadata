@@ -6410,7 +6410,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
-  private void checkAppliedGlossaryTermsApproved(T entity) {
+  final void checkAppliedGlossaryTermsApproved(T entity) {
     ApprovedGlossaryTermGuard.checkApplied(
         ApprovedGlossaryTermGuard.tagsByTarget(entity, entityType));
   }
@@ -11219,7 +11219,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // version, so the baseline is the stored entity this request changes.
     private void checkNewlyAppliedGlossaryTermsApproved() {
       ApprovedGlossaryTermGuard.checkNewlyApplied(
-          ApprovedGlossaryTermGuard.tagsByTarget(updated, entityType),
+          ApprovedGlossaryTermGuard.tagsByStoredTarget(updated, original, entityType),
           ApprovedGlossaryTermGuard.tagsByTarget(original, entityType));
     }
 

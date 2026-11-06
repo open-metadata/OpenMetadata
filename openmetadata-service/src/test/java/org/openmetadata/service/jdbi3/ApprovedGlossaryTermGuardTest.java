@@ -169,6 +169,46 @@ class ApprovedGlossaryTermGuardTest {
         tagsByTarget);
   }
 
+  /** A move rewrites field FQNs before their stored labels are re-keyed. */
+  @Test
+  void aMovedFieldIsKeyedByItsStoredFqn() {
+    String movedTable = "svc.db.other.orders";
+    Table stored =
+        new Table()
+            .withFullyQualifiedName(TABLE_FQN)
+            .withColumns(List.of(column("id", COLUMN_A, List.of(label(DEPRECATED)))));
+    Table moved =
+        new Table()
+            .withFullyQualifiedName(movedTable)
+            .withColumns(
+                List.of(
+                    column("id", movedTable + ".id", List.of(label(DEPRECATED))),
+                    column("total", movedTable + ".total", List.of())));
+
+    Map<String, List<TagLabel>> requested =
+        ApprovedGlossaryTermGuard.tagsByStoredTarget(moved, stored, Entity.TABLE);
+
+    assertEquals(
+        Map.of(
+            TABLE_FQN,
+            List.of(),
+            COLUMN_A,
+            List.of(label(DEPRECATED)),
+            movedTable + ".total",
+            List.of()),
+        requested);
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        requested, ApprovedGlossaryTermGuard.tagsByTarget(stored, Entity.TABLE));
+  }
+
+  private static Column column(String name, String fqn, List<TagLabel> tags) {
+    return new Column()
+        .withName(name)
+        .withDataType(ColumnDataType.INT)
+        .withFullyQualifiedName(fqn)
+        .withTags(tags);
+  }
+
   private static TagLabel label(GlossaryTerm term) {
     return new TagLabel()
         .withTagFQN(term.getFullyQualifiedName())

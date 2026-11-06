@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,10 +48,27 @@ public final class ApprovedGlossaryTermGuard {
   public static Map<String, List<TagLabel>> tagsByTarget(
       EntityInterface<?> entity, String entityType) {
     Map<String, List<TagLabel>> tagsByTarget = new HashMap<>();
-    tagsByTarget.put(entity.getFullyQualifiedName(), listOrEmpty(entity.getTags()));
-    if (ChildFieldResolver.supports(entityType)) {
-      collectFieldTags(ChildFieldResolver.childrenOf(entity, entityType), tagsByTarget);
-    }
+    taggedTargets(entity, entityType)
+        .forEach(target -> tagsByTarget.put(target.fqn(), target.tags()));
+    return tagsByTarget;
+  }
+
+  /**
+   * Like {@link #tagsByTarget}, but keyed by the FQN {@code stored} gives the same target. A move
+   * rewrites the FQNs of an entity's fields before the write re-keys their stored labels, so a
+   * field is matched to its stored self by its name path, not by its FQN.
+   */
+  public static Map<String, List<TagLabel>> tagsByStoredTarget(
+      EntityInterface<?> entity, EntityInterface<?> stored, String entityType) {
+    Map<List<String>, String> storedFqnByPath = new HashMap<>();
+    taggedTargets(stored, entityType)
+        .forEach(target -> storedFqnByPath.put(target.namePath(), target.fqn()));
+    Map<String, List<TagLabel>> tagsByTarget = new HashMap<>();
+    taggedTargets(entity, entityType)
+        .forEach(
+            target ->
+                tagsByTarget.put(
+                    storedFqnByPath.getOrDefault(target.namePath(), target.fqn()), target.tags()));
     return tagsByTarget;
   }
 
@@ -101,11 +119,28 @@ public final class ApprovedGlossaryTermGuard {
     return rejections;
   }
 
-  private static void collectFieldTags(
-      List<? extends FieldInterface> fields, Map<String, List<TagLabel>> tagsByTarget) {
+  // A target is the entity (empty name path) or a field, named by the field names leading to it.
+  private record TaggedTarget(List<String> namePath, String fqn, List<TagLabel> tags) {}
+
+  private static List<TaggedTarget> taggedTargets(EntityInterface<?> entity, String entityType) {
+    List<TaggedTarget> targets = new ArrayList<>();
+    targets.add(
+        new TaggedTarget(List.of(), entity.getFullyQualifiedName(), listOrEmpty(entity.getTags())));
+    if (ChildFieldResolver.supports(entityType)) {
+      collectFields(ChildFieldResolver.childrenOf(entity, entityType), List.of(), targets);
+    }
+    return targets;
+  }
+
+  private static void collectFields(
+      List<? extends FieldInterface> fields, List<String> parentPath, List<TaggedTarget> targets) {
     for (FieldInterface field : listOrEmpty(fields)) {
-      tagsByTarget.put(field.getFullyQualifiedName(), listOrEmpty(field.getTags()));
-      collectFieldTags(field.getChildren(), tagsByTarget);
+      List<String> namePath = new ArrayList<>(parentPath);
+      namePath.add(field.getName());
+      targets.add(
+          new TaggedTarget(
+              List.copyOf(namePath), field.getFullyQualifiedName(), listOrEmpty(field.getTags())));
+      collectFields(field.getChildren(), namePath, targets);
     }
   }
 

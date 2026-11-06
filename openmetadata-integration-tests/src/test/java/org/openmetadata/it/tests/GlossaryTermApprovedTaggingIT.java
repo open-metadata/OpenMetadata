@@ -27,6 +27,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -34,18 +35,27 @@ import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.data.BulkColumnUpdatePreview;
 import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
 import org.openmetadata.schema.api.data.ColumnUpdate;
+import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.BulkCreateItemResult;
+import org.openmetadata.schema.type.BulkCreateItemResult.Reason;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TagLabel;
@@ -54,6 +64,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 
 /**
@@ -250,6 +261,92 @@ public class GlossaryTermApprovedTaggingIT {
                     request,
                     BulkColumnUpdatePreview.class),
         term);
+  }
+
+  /** createMany judges each input on its own: one input with a Deprecated term fails alone. */
+  @Test
+  void createManyWithDeprecatedTerm_failsThatInputOnly(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(client, ns);
+    Table table = client.tables().create(tableRequest(ns, schema(ns), "create_many_dep"));
+    CreateTestCase valid = rowCountTestCase(table, ns.shortPrefix("valid_case"));
+    CreateTestCase tagged =
+        rowCountTestCase(table, ns.shortPrefix("tagged_case")).withTags(List.of(label(term)));
+
+    BulkCreateResult result =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/dataQuality/testCases/createMany",
+                List.of(valid, tagged),
+                BulkCreateResult.class,
+                RequestOptions.builder().queryParam("onConflict", "skip").build());
+
+    assertEquals(1, result.getCreatedCount());
+    assertEquals(1, result.getFailedCount());
+    BulkCreateItemResult rejected = result.getResults().get(1);
+    assertEquals(Reason.VALIDATION_ERROR, rejected.getReason());
+    assertTrue(
+        rejected.getMessage().contains(NOT_APPROVED),
+        () -> "Unexpected failure: %s".formatted(rejected.getMessage()));
+  }
+
+  /**
+   * Moving a container rewrites its data-model column FQNs before their stored labels are re-keyed,
+   * so a term a column already holds must still count as held after it leaves Approved.
+   */
+  @Test
+  void movingContainerKeepsColumnTermThatLeftApproved(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = approvedTerm(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = client.containers().create(containerRequest(ns, "parent_a", service));
+    Container parentB = client.containers().create(containerRequest(ns, "parent_b", service));
+    Container child =
+        client
+            .containers()
+            .create(
+                withTaggedColumn(
+                    containerRequest(ns, "child", service).withParent(parentA.getEntityReference()),
+                    term));
+    deprecate(client, term);
+
+    Container loaded = client.containers().get(child.getId().toString(), "dataModel,parent");
+    loaded.setParent(parentB.getEntityReference());
+    Container moved = client.containers().update(child.getId().toString(), loaded);
+
+    Container refetched = client.containers().get(moved.getId().toString(), "dataModel,parent");
+    assertEquals(parentB.getId(), refetched.getParent().getId());
+    assertTrue(hasTerm(refetched.getDataModel().getColumns().get(0).getTags(), term));
+  }
+
+  private static CreateContainer containerRequest(
+      TestNamespace ns, String suffix, StorageService service) {
+    return new CreateContainer()
+        .withName(ns.shortPrefix(suffix))
+        .withService(service.getFullyQualifiedName());
+  }
+
+  private static CreateContainer withTaggedColumn(CreateContainer request, GlossaryTerm term) {
+    return request.withDataModel(
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withDataType(ColumnDataType.INT)
+                        .withTags(List.of(label(term))))));
+  }
+
+  private static CreateTestCase rowCountTestCase(Table table, String name) {
+    return new CreateTestCase()
+        .withName(name)
+        .withEntityLink("<#E::table::%s>".formatted(table.getFullyQualifiedName()))
+        .withTestDefinition("tableRowCountToEqual")
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withName("value").withValue("100")));
   }
 
   /**
