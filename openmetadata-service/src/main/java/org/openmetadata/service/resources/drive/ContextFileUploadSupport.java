@@ -4,6 +4,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -144,6 +148,44 @@ public final class ContextFileUploadSupport {
     }
     String sanitized = fileName.replaceAll("[\"\\\\\\r\\n]", "_").trim();
     return sanitized.isEmpty() ? "download" : sanitized;
+  }
+
+  /**
+   * Recover the original name of an uploaded file. Browsers send the multipart
+   * {@code filename} as raw UTF-8 bytes, but the multipart parser decodes part headers as
+   * ISO-8859-1, so {@code Отчёт.xlsx} arrives as {@code ÐžÑ‚Ñ‡Ñ‘Ñ‚.xlsx}. Re-decodes such a
+   * name as UTF-8. Names that are ASCII, contain characters outside ISO-8859-1 (already
+   * decoded), or whose bytes are not valid UTF-8 are returned unchanged.
+   */
+  public static String decodeMultipartFileName(String fileName) {
+    if (fileName == null) {
+      return null;
+    }
+    boolean hasNonAscii = false;
+    for (int i = 0; i < fileName.length(); i++) {
+      char c = fileName.charAt(i);
+      if (c > '\u00FF') {
+        return fileName;
+      }
+      if (c > '\u007F') {
+        hasNonAscii = true;
+      }
+    }
+    if (!hasNonAscii) {
+      return fileName;
+    }
+    CharsetDecoder decoder =
+        StandardCharsets.UTF_8
+            .newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT);
+    try {
+      return decoder
+          .decode(ByteBuffer.wrap(fileName.getBytes(StandardCharsets.ISO_8859_1)))
+          .toString();
+    } catch (CharacterCodingException e) {
+      return fileName;
+    }
   }
 
   /**
