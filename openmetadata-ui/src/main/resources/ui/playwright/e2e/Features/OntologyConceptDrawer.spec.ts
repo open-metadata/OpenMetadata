@@ -426,7 +426,10 @@ for (const mode of ['classic', 'ai'] as const) {
           await page.keyboard.press('Tab');
           await expect(input).toBeFocused();
 
-          const fieldBottom = (await input.boundingBox())?.y ?? Infinity;
+          const fieldBox = await input.boundingBox();
+          const fieldBottom = fieldBox
+            ? fieldBox.y + fieldBox.height
+            : Infinity;
           const footerTop = (
             await page.getByTestId('new-class-create').boundingBox()
           )?.y;

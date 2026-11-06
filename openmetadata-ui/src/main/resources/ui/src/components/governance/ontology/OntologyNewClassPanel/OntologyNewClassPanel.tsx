@@ -339,7 +339,8 @@ const OntologyNewClassPanel = ({
     conceptIri: mappingIri,
   };
   const mappingRowValid = isValidMapping(mappings, pendingMapping);
-  const mappingRowInvalid = Boolean(mappingIri.trim()) && !mappingRowValid;
+  const mappingRowUnresolved =
+    Boolean(mappingIri.trim()) && !isAbsoluteOntologyIri(mappingIri.trim());
   const isDuplicateMapping =
     isAbsoluteOntologyIri(mappingIri.trim()) && !mappingRowValid;
   const [mappingCommitTried, setMappingCommitTried] = useState(false);
@@ -383,7 +384,7 @@ const OntologyNewClassPanel = ({
         name: localName.trim(),
       });
     }
-    if (mappingRowInvalid && mappingCommitTried) {
+    if (mappingRowUnresolved && mappingCommitTried) {
       return t('message.invalid-concept-iri');
     }
 
@@ -611,8 +612,17 @@ const OntologyNewClassPanel = ({
 
     return fieldHint(undefined, ...NAME_ISSUES);
   };
+  const canSubmit = [permitted, !locked].every(Boolean);
   const create = async (keepOpen: boolean) => {
-    if (!valid || !permitted || locked || submitting.current) {
+    if (!canSubmit) {
+      return;
+    }
+    if (mappingRowUnresolved) {
+      setMappingCommitTried(true);
+
+      return;
+    }
+    if (!valid || submitting.current) {
       return;
     }
     submitting.current = true;
@@ -749,6 +759,15 @@ const OntologyNewClassPanel = ({
       </Box>
     );
   };
+  const mappingFieldError = (() => {
+    if (isDuplicateMapping) {
+      return t('message.ontology-mapping-already-added');
+    }
+
+    return mappingRowUnresolved && mappingCommitTried
+      ? t('message.invalid-concept-iri')
+      : undefined;
+  })();
   const renderMappings = () => (
     <>
       <Typography size="text-sm" weight="semibold">
@@ -791,11 +810,7 @@ const OntologyNewClassPanel = ({
         {(item) => <Select.Item id={item.id} label={item.label} />}
       </Select>
       <OntologyIriInput
-        error={
-          mappingRowInvalid && mappingCommitTried
-            ? t('message.invalid-concept-iri')
-            : undefined
-        }
+        error={mappingFieldError}
         isDisabled={locked}
         isLoading={mappingTargetsLoading}
         label={t('label.concept-iri')}
