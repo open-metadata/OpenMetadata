@@ -29,13 +29,13 @@
   flex-direction: column;
 }
 
-.assets-data-container {
-  overflow-y: auto;
-  flex: 1;
-}
-
 .glossary-term-resizable-panel {
   overflow-y: hidden !important;
+
+  // Matches the domain assets tab (domain.less): no grey behind the list and summary panel.
+  &.resizable-panels-layout {
+    background: none;
+  }
 
   .glossary-term-resizable-panel-container {
     overflow-y: auto;
