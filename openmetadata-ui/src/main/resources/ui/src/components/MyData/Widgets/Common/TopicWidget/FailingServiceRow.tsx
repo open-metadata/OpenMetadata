@@ -20,7 +20,6 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
-import { getServiceLogoThemeClass } from '../../../../../utils/ServiceIconUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import {
   getFailingServiceReason,
@@ -58,10 +57,7 @@ const FailingServiceRow: React.FC<FailingServiceRowProps> = ({
           icon={
             <img
               alt=""
-              className={classNames(
-                'tw:size-5 tw:object-contain',
-                getServiceLogoThemeClass(service.serviceType)
-              )}
+              className="tw:size-5 tw:object-contain"
               height={20}
               src={serviceUtilClassBase.getServiceLogo(service.serviceType)}
               width={20}

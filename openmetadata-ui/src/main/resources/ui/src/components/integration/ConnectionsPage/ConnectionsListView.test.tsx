@@ -508,30 +508,6 @@ describe('ConnectionsListView', () => {
     );
   });
 
-  // The Kafka artwork is black on transparent; without the dark-mode invert it vanishes on the dark row tile.
-  it.each([
-    ['Kafka', true],
-    ['Mysql', false],
-  ])(
-    'applies the dark-mode logo invert to the row logo for %s: %s',
-    (serviceType, inverted) => {
-      mockUseConnectionsData.mockImplementation(
-        ({ pageSizeOptions }: { pageSizeOptions: number[] }) => ({
-          ...defaultData,
-          pageSize: pageSizeOptions[0],
-          rows: [{ ...row, serviceType }],
-        })
-      );
-
-      renderView();
-
-      const logo = screen.getByAltText(serviceType);
-
-      expect(logo.classList.contains('tw:dark:invert')).toBe(inverted);
-      expect(logo.classList.contains('tw:dark:brightness-0')).toBe(inverted);
-    }
-  );
-
   it('drops the redundant Category column on a specific category tab', () => {
     render(
       <ConnectionsListView

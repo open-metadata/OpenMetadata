@@ -335,32 +335,6 @@ describe('ServiceConnectionCard', () => {
     );
   });
 
-  // The Kafka artwork is black on transparent; without the dark-mode invert it vanishes on the dark tile.
-  it.each([
-    ['Kafka', true],
-    ['Mysql', false],
-  ])(
-    'applies the dark-mode logo invert for %s: %s',
-    (serviceType, inverted) => {
-      render(
-        <ServiceConnectionCard
-          categoryKey={ServiceCategory.DATABASE_SERVICES}
-          service={
-            {
-              ...baseService,
-              serviceType,
-            } as Parameters<typeof ServiceConnectionCard>[0]['service']
-          }
-        />
-      );
-
-      const logo = screen.getByAltText(serviceType);
-
-      expect(logo.classList.contains('tw:dark:invert')).toBe(inverted);
-      expect(logo.classList.contains('tw:dark:brightness-0')).toBe(inverted);
-    }
-  );
-
   it('navigates to service details path on card click', () => {
     render(
       <ServiceConnectionCard

@@ -30,7 +30,6 @@ import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBas
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
-import { getServiceLogoThemeClass } from '../../../utils/ServiceIconUtils';
 import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
@@ -85,9 +84,7 @@ const ServiceConnectionCard: React.FC<ServiceConnectionCardProps> = ({
             serviceLogo ? (
               <img
                 alt={service.serviceType as string}
-                className={`tw:size-[22px] tw:object-contain ${getServiceLogoThemeClass(
-                  service.serviceType
-                )}`}
+                className="tw:size-[22px] tw:object-contain"
                 src={serviceLogo}
               />
             ) : undefined

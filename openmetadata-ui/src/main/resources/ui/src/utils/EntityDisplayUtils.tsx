@@ -13,7 +13,6 @@
 
 import { isNull } from 'lodash';
 import { SearchSourceAlias } from '../interface/search.interface';
-import { getServiceLogoThemeClass } from './ServiceIconUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
 export const getServiceLogo = (
@@ -25,13 +24,7 @@ export const getServiceLogo = (
   } as SearchSourceAlias);
 
   if (!isNull(logo)) {
-    return (
-      <img
-        alt=""
-        className={`${className} ${getServiceLogoThemeClass(serviceType)}`}
-        src={logo}
-      />
-    );
+    return <img alt="" className={className} src={logo} />;
   }
 
   return null;
