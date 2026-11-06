@@ -39,6 +39,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getInverseRelationLabel } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import {
   DataPropertyInput,
+  getBindableConceptProperties,
   getConceptAncestors,
   getConceptPropertyRows,
   getConceptRelationRows,
@@ -380,6 +381,10 @@ const OntologyConceptInspector = ({
   );
   const properties = useMemo(
     () => getConceptPropertyRows(model, relations, concept),
+    [concept, model, relations]
+  );
+  const bindableProperties = useMemo(
+    () => getBindableConceptProperties(model, relations, concept),
     [concept, model, relations]
   );
   const unavailableProperties = useMemo(() => {
@@ -857,6 +862,7 @@ const OntologyConceptInspector = ({
           presentation={
             isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
           }
+          properties={bindableProperties}
         />
       </div>
     </aside>
@@ -1011,6 +1017,7 @@ const OntologyConceptInspector = ({
           presentation={
             isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
           }
+          properties={bindableProperties}
         />
         <OntologyConceptLiveData
           bindingState={liveDataBindingState}

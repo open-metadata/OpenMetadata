@@ -98,6 +98,7 @@ import {
   buildOntologyStudioGraph,
   buildReusePropertyPatch,
   DataPropertyInput,
+  getBindableConceptProperties,
   OntologyModelRelation,
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
@@ -1110,6 +1111,17 @@ const OntologyGraphView = ({
     [model?.concepts]
   );
 
+  const getConceptProperties = useCallback(
+    (conceptId: string) => {
+      const concept = model?.concepts.find((item) => item.id === conceptId);
+
+      return model && concept
+        ? getBindableConceptProperties(model, relations, concept)
+        : [];
+    },
+    [model, relations]
+  );
+
   if ([isError, !model].every(Boolean)) {
     return (
       <Alert variant="error">
@@ -1417,6 +1429,7 @@ const OntologyGraphView = ({
         <OntologyNativeDataMode
           canEditBindings={canEditConcept}
           concepts={dataConcepts}
+          getConceptProperties={getConceptProperties}
           isActive={graphMode === 'data'}
           ontologyId={ontology.id}
           revision={dataRevision}
