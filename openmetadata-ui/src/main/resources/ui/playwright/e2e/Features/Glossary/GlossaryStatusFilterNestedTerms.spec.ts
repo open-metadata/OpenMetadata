@@ -17,6 +17,10 @@ import {
   createNewPage,
   disableEtagConditionalReads,
 } from '../../../utils/common';
+import {
+  excludeGlossaryFromApprovalWorkflow,
+  includeGlossaryInApprovalWorkflow,
+} from '../../../utils/glossary';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -231,6 +235,8 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
+    // Excluded until afterAll so a late approval run cannot overwrite the seeded statuses.
+    await excludeGlossaryFromApprovalWorkflow(apiContext, glossary);
 
     // Create basic hierarchy: Parent (Approved) -> Child (Draft)
     basicParent = new GlossaryTerm(glossary, undefined, 'BasicParent');
@@ -305,6 +311,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    await includeGlossaryInApprovalWorkflow(apiContext, glossary);
     await glossary.delete(apiContext);
     await afterAction();
   });
