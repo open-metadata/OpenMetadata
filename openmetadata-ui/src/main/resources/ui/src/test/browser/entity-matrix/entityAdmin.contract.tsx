@@ -38,7 +38,7 @@ import {
   serveEntities,
 } from '../fixtures/hierarchy';
 import { ADMIN, DATA_CONSUMER } from '../fixtures/personas';
-import { suiteTimeout } from '../timeouts';
+import { scaled, suiteTimeout } from '../timeouts';
 import {
   announcementLifecycle,
   DeleteTarget,
@@ -133,7 +133,7 @@ export const describeAdminFlows = (label: EntityLabel) => {
 
     beforeEach(async () => {
       entity = await mountEntityPage(config, ADMIN);
-    }, 90_000);
+    }, scaled(90_000));
 
     test('domain and data products: add, update, remove', () =>
       domainWithDataProducts(server()));
@@ -215,7 +215,7 @@ export const describeAdminFlows = (label: EntityLabel) => {
           ...DATA_CONSUMER,
           denied: [Operation.EditDescription],
         });
-      }, 90_000);
+      }, scaled(90_000));
 
       test('no description editor; tags stay editable', async () => {
         const description = page.getByTestId('asset-description-container');

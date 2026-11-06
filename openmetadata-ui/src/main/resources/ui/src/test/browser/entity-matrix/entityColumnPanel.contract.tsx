@@ -44,7 +44,7 @@ import {
 } from '../fixtures/table';
 import { PERSONAL_DATA_PERSONAL, PII_NONE } from '../fixtures/tags';
 import { worker } from '../msw';
-import { suiteTimeout } from '../timeouts';
+import { scaled, suiteTimeout } from '../timeouts';
 import {
   childRow,
   ChildServer,
@@ -215,7 +215,7 @@ export const describeColumnPanelFlows = (label: EntityLabel) => {
       serveColumnTests([], []);
       entity = await mountEntityPage(config, ADMIN);
       await openChildrenTab(config);
-    }, 90_000);
+    }, scaled(90_000));
 
     const tagChip = (scope: Locator, fqn: string) =>
       scope.getByTestId(`tag-${fqn}`);
@@ -466,7 +466,7 @@ export const describeColumnPanelFlows = (label: EntityLabel) => {
         entity = await mountEntityPage(tableWith(NESTED_COLUMNS), ADMIN);
 
         await expect.element(rowOf(ID)()).toBeVisible();
-      }, 90_000);
+      }, scaled(90_000));
 
       test('nested columns: expand icons, nested section, navigation', async () => {
         await expect
@@ -611,7 +611,7 @@ export const describeColumnPanelFlows = (label: EntityLabel) => {
           ],
         });
         await openChildrenTab(config);
-      }, 90_000);
+      }, scaled(90_000));
 
       test('column panel: no tag, glossary or description editor', async () => {
         await openPanel(row, nameTestId);

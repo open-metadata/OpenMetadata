@@ -47,7 +47,7 @@ import {
   makeStorageService,
 } from '../fixtures/services';
 import { worker } from '../msw';
-import { suiteTimeout } from '../timeouts';
+import { scaled, suiteTimeout } from '../timeouts';
 import {
   addReplaceRemoveTeamOwner,
   addReplaceRemoveUserOwners,
@@ -261,7 +261,7 @@ export const describeServiceEntityFlows = (label: ServiceLabel) => {
 
     beforeEach(async () => {
       entity = await mountEntityPage(config, ADMIN);
-    }, 90_000);
+    }, scaled(90_000));
 
     test('domain and data products: add, update, remove', () =>
       domainWithDataProducts(server()));

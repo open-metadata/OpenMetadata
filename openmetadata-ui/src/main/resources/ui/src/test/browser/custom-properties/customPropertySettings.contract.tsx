@@ -29,7 +29,7 @@ import {
 import { serveEntityType, TypeServer } from '../fixtures/customProperties';
 import { serveSearch } from '../fixtures/search';
 import { renderApp } from '../renderWithApp';
-import { suiteTimeout } from '../timeouts';
+import { scaled, suiteTimeout } from '../timeouts';
 import { blockEditor } from './customPropertyEditors';
 
 /** One entity type's settings page, keyed as the spec keys it. */
@@ -388,7 +388,9 @@ export const describeCustomPropertySettings = (
           let screen = await renderApp(settings);
 
           await expect
-            .element(page.getByTestId('add-field-button'), { timeout: 90_000 })
+            .element(page.getByTestId('add-field-button'), {
+              timeout: scaled(90_000),
+            })
             .toBeVisible();
 
           await createProperty(types, kind, name);
@@ -401,7 +403,7 @@ export const describeCustomPropertySettings = (
 
             await expect
               .element(page.getByRole('button', { name: 'Tools' }), {
-                timeout: 90_000,
+                timeout: scaled(90_000),
               })
               .toBeVisible();
 

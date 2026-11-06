@@ -41,7 +41,7 @@ import { ADMIN } from '../fixtures/personas';
 import { serveSearch } from '../fixtures/search';
 import { EMPTY_LIST, worker } from '../msw';
 import { renderApp } from '../renderWithApp';
-import { suiteTimeout } from '../timeouts';
+import { scaled, suiteTimeout } from '../timeouts';
 import { expectCardShows, setValue, VALUES } from './customPropertyEditors';
 
 /** The entity type each page's custom properties belong to, and its Explore tab. */
@@ -175,7 +175,7 @@ export const describeCustomPropertyValues = (
         `table-data-card_${entity.fullyQualifiedName}`
       );
 
-      await expect.element(result, { timeout: 60_000 }).toBeVisible();
+      await expect.element(result, { timeout: scaled(60_000) }).toBeVisible();
 
       await userEvent.click(result);
       await userEvent.click(

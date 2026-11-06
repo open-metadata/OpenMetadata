@@ -76,6 +76,7 @@ import {
 } from '../fixtures/tags';
 import { EMPTY_LIST, worker } from '../msw';
 import { renderApp } from '../renderWithApp';
+import { scaled } from '../timeouts';
 
 declare module 'vitest/browser' {
   interface LocatorSelectors {
@@ -894,7 +895,7 @@ export const mountEntityPage = async (
     const screen = await renderApp(config.url, persona.user);
 
     // A worker's first mount also loads the page's lazy route chunks.
-    await expect.element(header(), { timeout: 60_000 }).toBeVisible();
+    await expect.element(header(), { timeout: scaled(60_000) }).toBeVisible();
 
     await config.afterMount?.();
 

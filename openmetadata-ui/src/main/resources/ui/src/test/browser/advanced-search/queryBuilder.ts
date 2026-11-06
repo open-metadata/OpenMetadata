@@ -24,6 +24,7 @@ import '../entity-matrix/entityMatrix';
 import { SearchCorpus, serveSearch } from '../fixtures/search';
 import { EMPTY_LIST, worker } from '../msw';
 import { renderApp } from '../renderWithApp';
+import { scaled } from '../timeouts';
 
 export const modal = () => page.getByTestId('advanced-search-modal');
 export const rule = (index: number) =>
@@ -229,7 +230,9 @@ export const openExplore = async (url = '/explore') => {
   const screen = await renderApp(url);
 
   await expect
-    .element(page.getByRole('button', { name: 'Tools' }), { timeout: 90_000 })
+    .element(page.getByRole('button', { name: 'Tools' }), {
+      timeout: scaled(90_000),
+    })
     .toBeVisible();
 
   return screen;

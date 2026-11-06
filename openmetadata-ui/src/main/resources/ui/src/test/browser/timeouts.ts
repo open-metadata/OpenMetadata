@@ -15,11 +15,15 @@
 declare const __BROWSER_TEST_TIME_SCALE__: number;
 
 /**
+ * A cold-load wait (a test's or an element's own limit), scaled the same way:
+ * a fixed 60 s that clears an uninstrumented run can time out under coverage.
+ */
+export const scaled = (ms: number) => ms * __BROWSER_TEST_TIME_SCALE__;
+
+/**
  * A suite's own time limit, scaled for coverage runs. A limit set on a
  * `describe` overrides the CLI `--testTimeout`, so without this a coverage
  * run (istanbul slows a cold page load several times over) would hit the
  * same limit an uninstrumented run gets.
  */
-export const suiteTimeout = (ms: number) => ({
-  timeout: ms * __BROWSER_TEST_TIME_SCALE__,
-});
+export const suiteTimeout = (ms: number) => ({ timeout: scaled(ms) });
