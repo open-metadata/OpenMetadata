@@ -35,13 +35,13 @@ class WorkbookDetails(BaseModel):
     url: str
     path: str | None = None
     ownerId: str | None = None  # noqa: N815
-    isArchived: bool  # noqa: N815
+    isArchived: bool | None = None  # noqa: N815
     description: str | None = None
 
 
 class WorkBookResponseDetails(BaseModel):
     entries: list[Workbook] | None = []
-    total: int
+    total: int | None = None
     nextPage: str | None = None  # noqa: N815
 
 
@@ -56,7 +56,7 @@ class WorkBookPage(BaseModel):
 
 class WorkBookPageResponse(BaseModel):
     entries: list[WorkBookPage] | None = []
-    total: int
+    total: int | None = None
     nextPage: str | None = None  # noqa: N815
 
 
@@ -69,7 +69,7 @@ class Elements(BaseModel):
 
 class ElementsResponse(BaseModel):
     entries: list[Elements] | None = []
-    total: int
+    total: int | None = None
     nextPage: str | None = None  # noqa: N815
 
 
@@ -122,12 +122,12 @@ class NodeDetails(BaseModel):
 
 class WorkbookQuery(BaseModel):
     elementId: str  # noqa: N815
-    name: str | None
+    name: str | None = None
     sql: str | None = None
     error: str | None = None
 
 
 class WorkbookQueriesResponse(BaseModel):
     entries: list[WorkbookQuery] | None = []
-    total: int
+    total: int | None = None
     nextPage: str | None = None  # noqa: N815
