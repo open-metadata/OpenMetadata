@@ -32,6 +32,7 @@ import {
   buildReusePropertyPatch,
   buildSubClassAxiomRequest,
   getAvailableName,
+  getBindableConceptProperties,
   getConceptAncestors,
   getConceptPropertyRows,
   getConceptRelationRows,
@@ -386,6 +387,28 @@ describe('OntologyStudioModel utils', () => {
         row.inheritedFrom?.name,
       ])
     ).toContainEqual(['internalNote', 'annotation', undefined]);
+  });
+
+  it('offers data properties to bind, own then inherited, and leaves out annotations', () => {
+    const note = {
+      ...orderTotal,
+      domain: [premiumCustomer.iri],
+      id: 'note-id',
+      kind: Kind.Annotation,
+      name: 'internalNote',
+      range: [],
+    };
+
+    expect(
+      getBindableConceptProperties(
+        { ...model, properties: [...model.properties, note] },
+        getModelRelations(model),
+        premiumCustomer
+      ).map(({ label, isIdentifier }) => [label, isIdentifier])
+    ).toEqual([
+      ['customer id', true],
+      ['legal name', undefined],
+    ]);
   });
 
   it('labels data types by their XSD local name, and enumerations as enum', () => {

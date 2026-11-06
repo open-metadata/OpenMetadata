@@ -640,9 +640,12 @@ public class AuditLogRepository {
   private AuditLogEntry toAuditLogEntry(AuditLogRecord record, boolean readsUserEmails) {
     ChangeEvent changeEvent = deserializeChangeEvent(record);
     // Only admins and bots read user emails; the summary is computed from the masked event.
-    boolean masked = !readsUserEmails && Entity.USER.equals(record.getEntityType());
+    boolean masked = Entity.APPLICATION.equals(record.getEntityType());
     if (masked) {
+      changeEvent = AppAuditProjection.apply(changeEvent);
+    } else if (!readsUserEmails && Entity.USER.equals(record.getEntityType())) {
       changeEvent = PIIMasker.maskUserChangeEvent(changeEvent);
+      masked = true;
     }
 
     if (record.getEntityFQN() == null) {
