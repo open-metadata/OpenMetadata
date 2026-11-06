@@ -43,6 +43,7 @@ on:
         default: true
 
 permissions:
+  actions: read
   checks: read
   contents: read
   issues: write
@@ -63,6 +64,11 @@ jobs:
       DRY_RUN: ${{ inputs.dry_run == true || vars.MQ_REPORT_DRY_RUN == 'true' }}
       SLACK_CHANNEL: C0AC5T013V1 # #ci-cleanup
     steps:
+      # pull_request_target checks out the trusted base, never the PR head.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
       - name: Resolve the dequeue event
         id: event
         shell: bash
@@ -164,6 +170,7 @@ jobs:
           # merge-group commit and nothing ever ran against it.
           if [ -z "$SHA" ]; then
             echo "The entry left the queue before it was built, so no checks ran against it." > detail.txt
+            cp detail.txt detail.slack
             {
               echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
               echo
@@ -228,6 +235,13 @@ jobs:
               echo "No failing check on merge-queue commit \`${SHA:0:7}\` — invalidated by an entry ahead in the queue, or a required check timed out." > detail.txt
             fi
 
+            cp detail.txt detail.slack
+            python3 .github/scripts/merge_queue_evidence.py compare \
+              --repo "$GH_REPO" --sha "$SHA" --branch "$BASE_REF" \
+              --failures actions.tsv > attribution.json
+            jq -r .markdown attribution.json >> detail.txt
+            jq -r .slack attribution.json >> detail.slack
+
             {
               echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
               echo
@@ -253,7 +267,7 @@ jobs:
           # so backticks and newlines from the check names survive as-is.
           {
             echo ":rotating_light: *<$GITHUB_SERVER_URL/$GH_REPO/pull/$PR|PR #$PR>* removed from the merge queue — \`$REASON\`"
-            cat detail.txt
+            cat detail.slack
             if [ -s runs.slack ]; then
               cat runs.slack
             fi
