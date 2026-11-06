@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-06 (initial)
 - **Deciders:** Harshit Shah, design review
-- **Guard:** `popover.test.tsx`, `dropdown.theme.test.tsx`, `field-doc-popover.test.tsx`; reviewer
+- **Guard:** `theme-contract.test.js`, `popover.test.tsx`, `dropdown.theme.test.tsx`, `field-doc-popover.test.tsx`; reviewer
 - **Related:** open-metadata/openmetadata-collate#7322, ADR:2026-10-12-dark-mode-targets-ai-mode-core-surfaces-only, ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel
 
 ## Context
@@ -29,6 +29,10 @@ was reverted, since caller overrides of core drift from other usages. Lifting ov
   near-black at 14 / 8 / 6%. Dark: black at 50 / 30 / 30%, same geometry. Tailwind inlines shadow
   values into the utility, so the dark value is applied by `.dark-mode .tw\:shadow-raised` in
   `globals.css` rather than a token override.
+- **Light-mode exception.** The styling rule freezes light mode. Design review deliberately changes
+  one light value: the floating-overlay shadow (`shadow-raised`), because 8% near-black barely shows
+  on white. Light surfaces, and every other light shadow, stay as they were.
+  `theme-contract.test.js` pins the new values.
 - Modals and slideouts keep `bg-overlay-surface` + `shadow-overlay`.
 - `Popover` and `HoverCard` set `dark:text-primary`. They portal to `body`, which sets no text colour,
   so inherited copy (a `Typography` paragraph) was black on the dark surface. Light keeps inheriting.
