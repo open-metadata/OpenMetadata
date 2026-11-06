@@ -15,47 +15,102 @@ flows and extract refreshes.
 ref: https://help.tableau.com/current/api/metadata_api/en-us/reference/flow.doc.html
 """
 
-# nextDownstreamFlows rather than downstreamFlows: the latter is transitive and
-# would add an A -> C edge next to A -> B -> C. Custom SQL is fetched separately
-# (TABLEAU_TABLE_QUERIES_QUERY) and only for unnamed tables: referencedByQueries
-# lists every query on the site that reads a table, which on a popular table
-# would spend most of the query's node budget.
+# A flow's own inputs and outputs are the tables and data sources of its input
+# and output fields. Flow.upstreamTables, upstreamDatasources, downstreamTables
+# and downstreamDatasources reach through other assets ("directly or
+# indirectly"), so they list the tables behind a data source the flow reads and
+# the outputs of flows that read its own. For the same reason nextDownstreamFlows
+# rather than downstreamFlows: the latter would add an A -> C edge next to
+# A -> B -> C. The fields make the answer grow with the flow's column count, so
+# they are read a page at a time (a finished side asks for 0) and a page cut
+# short by the node limit is a failed query. A custom SQL input
+# carries its own query; TABLEAU_TABLE_QUERIES_QUERY is only for unnamed tables
+# that come without one: referencedByQueries lists every query on the site that
+# reads a table, which on a popular table would spend most of the node budget.
 TABLEAU_FLOW_LINEAGE_QUERY = """
 {{
   flows(filter: {{luid: "{flow_luid}"}}) {{
-    upstreamTables {{
-      id
-      name
-      fullName
-      schema
-      database {{
-        name
-        connectionType
+    inputFieldsConnection(first: {inputFields_first}, after: {inputFields_after}) {{
+      pageInfo {{ hasNextPage endCursor }}
+      nodes {{
+      ... on FlowColumnInputField {{
+        column {{
+          table {{
+            __typename
+            id
+            name
+            ... on DatabaseTable {{
+              fullName
+              schema
+              database {{
+                name
+                connectionType
+              }}
+            }}
+            ... on CustomSQLTable {{
+              query
+              tables {{
+                id
+                name
+                fullName
+                schema
+                database {{
+                  name
+                  connectionType
+                }}
+              }}
+            }}
+          }}
+        }}
       }}
-    }}
-    upstreamDatasources {{
-      id
-      name
-      projectName
+      ... on FlowFieldInputField {{
+        field {{
+          datasource {{
+            id
+            name
+            ... on PublishedDatasource {{
+              projectName
+            }}
+          }}
+        }}
+      }}
+      }}
     }}
     outputSteps {{
       id
       name
     }}
-    downstreamTables {{
-      id
-      name
-      fullName
-      schema
-      database {{
-        name
-        connectionType
+    outputFieldsConnection(first: {outputFields_first}, after: {outputFields_after}) {{
+      pageInfo {{ hasNextPage endCursor }}
+      nodes {{
+      ... on FlowColumnOutputField {{
+        column {{
+          table {{
+            id
+            name
+            ... on DatabaseTable {{
+              fullName
+              schema
+              database {{
+                name
+                connectionType
+              }}
+            }}
+          }}
+        }}
       }}
-    }}
-    downstreamDatasources {{
-      id
-      name
-      projectName
+      ... on FlowFieldOutputField {{
+        field {{
+          datasource {{
+            id
+            name
+            ... on PublishedDatasource {{
+              projectName
+            }}
+          }}
+        }}
+      }}
+      }}
     }}
     nextDownstreamFlows {{
       luid
@@ -67,9 +122,7 @@ TABLEAU_FLOW_LINEAGE_QUERY = """
 
 # Which of a flow's inputs feed which of its outputs, read from the lineage of
 # every field its output steps write. Asked for only when a flow has several of
-# each, and in a query of its own: field-level lineage spends Metadata API nodes
-# per field, so the references carry ids only and a flow that exceeds the node
-# budget still keeps the lineage of the main query.
+# each, in a query of its own whose references carry ids only.
 TABLEAU_FLOW_FIELD_LINEAGE_QUERY = """
 {{
   flows(filter: {{luid: "{flow_luid}"}}) {{
