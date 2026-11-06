@@ -7368,7 +7368,7 @@
                           "default": "no-ssl"
                         },
                         "sslConfig": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
+                          "$ref": "#/definitions/source/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                         },
                         "dashboardFilterPattern": {
                           "description": "Regex to exclude or include dashboards that matches the pattern.",
