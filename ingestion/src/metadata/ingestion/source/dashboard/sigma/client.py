@@ -141,7 +141,7 @@ class SigmaApiClient:
             return NodeDetails.model_validate(self.client.get(f"/files/{workbook_id}")).badge
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch the badge of workbook {workbook_id}: {exc}")
+            logger.warning("Failed to fetch the badge of workbook %s: %s", workbook_id, exc)
         return None
 
     def get_owner_detail(self, owner_id: str) -> OwnerDetails | None:
