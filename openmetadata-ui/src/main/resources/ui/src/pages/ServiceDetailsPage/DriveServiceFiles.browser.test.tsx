@@ -21,6 +21,7 @@ import {
 import { encodeCursor, serveList } from '../../test/browser/fixtures/paging';
 import { describePaginatedList } from '../../test/browser/paginationContract';
 import { renderApp } from '../../test/browser/renderWithApp';
+import { scaled } from '../../test/browser/timeouts';
 
 const items = many(40, (i) =>
   named('file', i, DRIVE_SERVICE.fullyQualifiedName)
@@ -66,60 +67,66 @@ describe('Drive service › switching tabs resets pagination', () => {
   const hasCursor = (url: URL) =>
     url.searchParams.has('after') || url.searchParams.has('before');
 
-  test('a new tab starts without a cursor; reload keeps only the open tab on page 2', async () => {
-    serveEntities([['/api/v1/services/driveServices', DRIVE_SERVICE]]);
-    // Tab badges ask for limit=0 counts; only page loads matter here.
-    const isPage = (url: URL) => url.searchParams.get('limit') !== '0';
-    const fileCalls = serveList('/api/v1/drives/files', items, isPage);
-    const sheetCalls = serveList(
-      '/api/v1/drives/spreadsheets',
-      spreadsheets,
-      isPage
-    );
-    const dirCalls = serveList('/api/v1/drives/directories', directories);
-    let screen = await renderApp(
-      `/service/driveServices/${DRIVE_SERVICE.name}/files?pageSize=15`
-    );
+  test(
+    'a new tab starts without a cursor; reload keeps only the open tab on page 2',
+    async () => {
+      serveEntities([['/api/v1/services/driveServices', DRIVE_SERVICE]]);
+      // Tab badges ask for limit=0 counts; only page loads matter here.
+      const isPage = (url: URL) => url.searchParams.get('limit') !== '0';
+      const fileCalls = serveList('/api/v1/drives/files', items, isPage);
+      const sheetCalls = serveList(
+        '/api/v1/drives/spreadsheets',
+        spreadsheets,
+        isPage
+      );
+      const dirCalls = serveList('/api/v1/drives/directories', directories);
+      let screen = await renderApp(
+        `/service/driveServices/${DRIVE_SERVICE.name}/files?pageSize=15`
+      );
 
-    await expect.element(panel().getByText(items[0].displayName)).toBeVisible();
-    await expect.element(indicator()).toHaveTextContent(/1\s*of\s*\d+/);
+      await expect
+        .element(panel().getByText(items[0].displayName))
+        .toBeVisible();
+      await expect.element(indicator()).toHaveTextContent(/1\s*of\s*\d+/);
 
-    await userEvent.click(panel().getByTestId('next'));
+      await userEvent.click(panel().getByTestId('next'));
 
-    await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
+      await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
 
-    const sheetsBefore = sheetCalls.length;
-    await userEvent.click(page.getByTestId('spreadsheets'));
+      const sheetsBefore = sheetCalls.length;
+      await userEvent.click(page.getByTestId('spreadsheets'));
 
-    await expect.poll(() => sheetCalls.length).toBeGreaterThan(sheetsBefore);
-    expect(sheetCalls.slice(sheetsBefore).some(hasCursor)).toBe(false);
+      await expect.poll(() => sheetCalls.length).toBeGreaterThan(sheetsBefore);
+      expect(sheetCalls.slice(sheetsBefore).some(hasCursor)).toBe(false);
 
-    await userEvent.click(page.getByTestId('files'));
+      await userEvent.click(page.getByTestId('files'));
 
-    await expect.element(indicator()).toHaveTextContent(/1\s*of\s*\d+/);
+      await expect.element(indicator()).toHaveTextContent(/1\s*of\s*\d+/);
 
-    await userEvent.click(panel().getByTestId('next'));
+      await userEvent.click(panel().getByTestId('next'));
 
-    await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
-    // The user-facing check: page 2 rows, fetched with the page-1 cursor.
-    await expect
-      .element(panel().getByText(items[15].displayName))
-      .toBeVisible();
-    expect(fileCalls[fileCalls.length - 1].searchParams.get('after')).toBe(
-      encodeCursor(15)
-    );
+      await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
+      // The user-facing check: page 2 rows, fetched with the page-1 cursor.
+      await expect
+        .element(panel().getByText(items[15].displayName))
+        .toBeVisible();
+      expect(fileCalls[fileCalls.length - 1].searchParams.get('after')).toBe(
+        encodeCursor(15)
+      );
 
-    const dirsBefore = dirCalls.length;
-    const sheetsBeforeReload = sheetCalls.length;
-    const url = `${location.pathname}${location.search}`;
-    await screen.unmount();
-    screen = await renderApp(url);
+      const dirsBefore = dirCalls.length;
+      const sheetsBeforeReload = sheetCalls.length;
+      const url = `${location.pathname}${location.search}`;
+      await screen.unmount();
+      screen = await renderApp(url);
 
-    await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
-    await expect.poll(() => dirCalls.length).toBeGreaterThan(dirsBefore);
-    expect(dirCalls.slice(dirsBefore).some(hasCursor)).toBe(false);
-    expect(sheetCalls.slice(sheetsBeforeReload).some(hasCursor)).toBe(false);
+      await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
+      await expect.poll(() => dirCalls.length).toBeGreaterThan(dirsBefore);
+      expect(dirCalls.slice(dirsBefore).some(hasCursor)).toBe(false);
+      expect(sheetCalls.slice(sheetsBeforeReload).some(hasCursor)).toBe(false);
 
-    await screen.unmount();
-  }, 60_000);
+      await screen.unmount();
+    },
+    scaled(60_000)
+  );
 });

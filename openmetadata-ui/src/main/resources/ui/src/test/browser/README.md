@@ -43,3 +43,25 @@ ADR:2026-10-28-page-behaviour-is-tested-in-vitest-browser-mode-and-e2e-tests-lea
 - Visual checks: `toMatchScreenshot(name)`; set a viewport tall enough that the element
   fits, and park the pointer so nothing is hovered. Baselines are committed under
   `__screenshots__/`; regenerate with `--update`.
+
+## Which tests run in CI
+
+A pull request runs only the test files that execute the code it changes.
+`scripts/select-browser-tests.mjs` reads a map of the source files each test
+file executed (recorded by `impact.ts` during the full merge-queue run, published
+as a workflow artifact). It also follows the test helpers a test imports, and the direct
+imports of every executed file (constants, styles, assets). Changed `en-us.json`
+keys select the tests whose code names them.
+
+Everything runs when the map is missing, or when a change touches test setup,
+the Vitest/Vite config, dependencies or core components. Changed code that no
+browser test executes is listed in the PR comment, along with how many of the
+changed lines the tests that ran executed. The merge queue always runs every test
+file, so nothing a selection misses reaches main. To see what a branch would run:
+
+```bash
+node scripts/select-browser-tests.mjs --map impact-map.json --base origin/main
+```
+
+The static import graph alone cannot do this here: lazy imports tie about
+1,000 modules into one import cycle.

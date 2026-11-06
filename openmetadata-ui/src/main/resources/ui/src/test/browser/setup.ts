@@ -13,23 +13,44 @@
 import { initCoreI18n } from '@openmetadata/ui-core-components';
 import { afterAll, afterEach, beforeAll, expect } from 'vitest';
 import { cleanup } from 'vitest-browser-react';
+import { useExploreCache } from '../../hooks/useExploreCache';
 import '../../styles/globalStyles';
 import i18next from '../../utils/i18next/LocalUtil';
+import { recordImpact } from './impact';
 import { worker } from './msw';
 
 initCoreI18n(i18next);
 
+declare const __BROWSER_IMPACT__: boolean;
+if (__BROWSER_IMPACT__) {
+  recordImpact();
+}
+
 const runnerUrl = globalThis.location.href;
 const unhandledApiCalls: string[] = [];
+// API requests MSW has seen but not answered yet. A page can fire one just
+// before the test ends (e.g. a refetch after a mutation); resetting handlers
+// under it would report it as unhandled in whichever test runs next.
+const inFlight = new Set<string>();
+
+worker.events.on('request:start', ({ requestId }) => inFlight.add(requestId));
+worker.events.on('request:end', ({ requestId }) => inFlight.delete(requestId));
 
 beforeAll(async () => {
   await worker.start({
     quiet: true,
     onUnhandledRequest(request, print) {
-      const { pathname } = new URL(request.url);
+      const { pathname, searchParams } = new URL(request.url);
       // Only API traffic must be mocked; Vite module/asset requests pass through.
       if (pathname.startsWith('/api/')) {
-        unhandledApiCalls.push(`${request.method} ${pathname}`);
+        // index/q identify which picker a stray search came from.
+        const hint = ['index', 'q']
+          .filter((key) => searchParams.has(key))
+          .map((key) => `${key}=${searchParams.get(key)}`)
+          .join('&');
+        unhandledApiCalls.push(
+          `${request.method} ${pathname}${hint ? `?${hint}` : ''}`
+        );
         print.error();
       }
     },
@@ -40,14 +61,28 @@ afterEach(async () => {
   // vitest-browser-react only unmounts in the next test's beforeEach. Unmount
   // first so the page can't refetch against reset handlers or the reset URL.
   await cleanup();
-  // Every API call a page makes must be mocked on purpose, so a test can never
-  // pass because a request silently failed.
-  const unhandled = [...new Set(unhandledApiCalls.splice(0))];
-  worker.resetHandlers();
-  globalThis.history.replaceState(null, '', runnerUrl);
-  localStorage.clear();
+  // A mutation's onSettled refetch can start a moment after the last
+  // assertion; give it one tick to reach MSW, then let it finish.
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
-  expect(unhandled, 'API calls without an MSW handler').toEqual([]);
+  try {
+    await expect.poll(() => inFlight.size, { timeout: 5000 }).toBe(0);
+  } finally {
+    // Reset even when a request never settled, so one hung request fails only
+    // its own test instead of leaking handlers, URL and storage into the next.
+    // Every API call a page makes must be mocked on purpose, so a test can
+    // never pass because a request silently failed.
+    const unhandled = [...new Set(unhandledApiCalls.splice(0))];
+    inFlight.clear();
+    worker.resetHandlers();
+    globalThis.history.replaceState(null, '', runnerUrl);
+    localStorage.clear();
+    // Explore keeps search results for 30 s across mounts (as across a user's
+    // tab switches); a later test would render this test's results first.
+    useExploreCache.getState().clearCache();
+
+    expect(unhandled, 'API calls without an MSW handler').toEqual([]);
+  }
 });
 
 afterAll(() => worker.stop());

@@ -21,6 +21,7 @@ import {
 } from './fixtures/paging';
 import { worker } from './msw';
 import { currentUrl, renderApp } from './renderWithApp';
+import { scaled } from './timeouts';
 
 /**
  * The paginated-list contract every list page must keep. It replaces
@@ -140,7 +141,7 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
       await settle();
       await (await app.screen()).unmount();
       worker.resetHandlers();
-    }, 120_000);
+    }, scaled(120_000));
 
     it(
       'navigation',
@@ -357,7 +358,7 @@ export const describeClientPagedTable = (spec: ClientPagedTableSpec) => {
       }
       await screen.unmount();
       worker.resetHandlers();
-    }, 120_000);
+    }, scaled(120_000));
 
     test('pages 15 rows at a time, keeps the page in the URL across reload', async () => {
       spec.setup();
