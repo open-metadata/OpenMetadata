@@ -2960,7 +2960,6 @@
     "row-limit": "行数制限",
     "row-plural": "行",
     "row-sample-of": "{{value}} 行のサンプル",
-    "rows-filtered": "フィルター行数",
     "rows-processed": "処理済み行数",
     "rows-read": "読み取り行数",
     "rows-written": "書き込み行数",

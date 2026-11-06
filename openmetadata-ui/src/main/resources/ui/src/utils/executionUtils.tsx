@@ -43,8 +43,6 @@ export interface ViewDataInterface {
   duration?: string;
   rowsRead?: number;
   rowsWritten?: number;
-  rowsFiltered?: number;
-  executionTime?: string;
   logLink?: string;
 }
 
@@ -109,9 +107,16 @@ export const getTableViewData = (
     execution.taskStatus?.map((execute: TaskStatus) => {
       const startTime = execute.startTime;
       const endTime = execute.endTime;
-      const duration =
-        startTime && endTime ? formatDuration(endTime - startTime) : '--';
       const executionTimeMs = execute.metrics?.executionTimeMs;
+      // Wall-clock duration wins; the producer-reported execution time only
+      // fills the gap when start/end are missing, so the two never compete for
+      // a column (ADR:2026-11-04-pipeline-execution-metric-columns-render-only-when-reported).
+      let duration = '--';
+      if (startTime && endTime) {
+        duration = formatDuration(endTime - startTime);
+      } else if (!isUndefined(executionTimeMs)) {
+        duration = formatDuration(executionTimeMs);
+      }
 
       viewData.push({
         name: execute.name,
@@ -125,10 +130,6 @@ export const getTableViewData = (
         duration,
         rowsRead: execute.metrics?.rowsRead,
         rowsWritten: execute.metrics?.rowsWritten,
-        rowsFiltered: execute.metrics?.rowsFiltered,
-        executionTime: isUndefined(executionTimeMs)
-          ? undefined
-          : formatDuration(executionTimeMs),
         logLink: getSafeHttpUrl(execute.logLink),
       });
     });

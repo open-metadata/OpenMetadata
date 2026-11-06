@@ -54,12 +54,39 @@ describe('getTableViewData', () => {
       duration: formatDuration(2000),
       rowsRead: 1234,
       rowsWritten: 1200,
-      rowsFiltered: 34,
-      executionTime: formatDuration(1500),
       logLink: 'https://orchestrator.example/runs/1',
     });
     expect(rows?.[1]).toMatchObject({ name: 'notify', duration: '--' });
-    expect(rows?.[1].executionTime).toBeUndefined();
     expect(rows?.[1].logLink).toBeUndefined();
+  });
+
+  it('falls back to the reported execution time only when start or end is missing', () => {
+    const rows = getTableViewData(
+      [
+        {
+          timestamp: 1715404800000,
+          executionStatus: StatusType.Successful,
+          taskStatus: [
+            {
+              name: 'with_wall_clock',
+              executionStatus: StatusType.Successful,
+              startTime: 1715404800000,
+              endTime: 1715404802000,
+              metrics: { executionTimeMs: 90000 },
+            },
+            {
+              name: 'reported_only',
+              executionStatus: StatusType.Successful,
+              metrics: { executionTimeMs: 90000 },
+            },
+          ],
+        },
+      ],
+      StatusType.Successful,
+      undefined
+    );
+
+    expect(rows?.[0].duration).toBe(formatDuration(2000));
+    expect(rows?.[1].duration).toBe(formatDuration(90000));
   });
 });

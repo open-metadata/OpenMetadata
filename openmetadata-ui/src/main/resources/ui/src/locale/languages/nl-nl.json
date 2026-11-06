@@ -2960,7 +2960,6 @@
     "row-limit": "Rijlimiet",
     "row-plural": "Rijen",
     "row-sample-of": "Steekproef van {{value}} rijen",
-    "rows-filtered": "Gefilterde rijen",
     "rows-processed": "Verwerkte Rijen",
     "rows-read": "Gelezen rijen",
     "rows-written": "Geschreven rijen",

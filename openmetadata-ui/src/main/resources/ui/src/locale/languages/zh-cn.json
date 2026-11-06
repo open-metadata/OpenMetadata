@@ -2960,7 +2960,6 @@
     "row-limit": "行数限制",
     "row-plural": "行",
     "row-sample-of": "{{value}} 行样本",
-    "rows-filtered": "过滤行数",
     "rows-processed": "已处理行数",
     "rows-read": "读取行数",
     "rows-written": "写入行数",

@@ -2960,7 +2960,6 @@
     "row-limit": "จำกัดแถว",
     "row-plural": "แถวหลายรายการ",
     "row-sample-of": "ตัวอย่าง {{value}} แถว",
-    "rows-filtered": "แถวที่ถูกกรอง",
     "rows-processed": "แถวที่ประมวลผล",
     "rows-read": "แถวที่อ่าน",
     "rows-written": "แถวที่เขียน",

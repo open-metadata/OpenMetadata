@@ -2960,7 +2960,6 @@
     "row-limit": "Zeilenlimit",
     "row-plural": "Zeilen",
     "row-sample-of": "Stichprobe mit {{value}} Zeilen",
-    "rows-filtered": "Gefilterte Zeilen",
     "rows-processed": "Verarbeitete Zeilen",
     "rows-read": "Gelesene Zeilen",
     "rows-written": "Geschriebene Zeilen",

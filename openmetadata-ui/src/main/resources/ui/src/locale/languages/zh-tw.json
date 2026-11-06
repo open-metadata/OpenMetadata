@@ -2960,7 +2960,6 @@
     "row-limit": "列數限制",
     "row-plural": "資料列",
     "row-sample-of": "{{value}} 列樣本",
-    "rows-filtered": "篩選資料列數",
     "rows-processed": "已處理資料列",
     "rows-read": "讀取資料列數",
     "rows-written": "寫入資料列數",

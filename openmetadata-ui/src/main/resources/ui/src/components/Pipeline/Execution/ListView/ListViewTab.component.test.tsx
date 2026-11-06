@@ -96,25 +96,23 @@ describe('Test ListViewTab Component', () => {
             key: 1715404800000,
             rowsRead: 1234,
             rowsWritten: 1200,
-            rowsFiltered: 34,
-            executionTime: '2.00 seconds',
             logLink: 'https://orchestrator.example/runs/1',
           } as unknown as (typeof EXECUTION_LIST_MOCK)[number],
         ]}
       />
     );
 
+    expect(screen.getByText('label.rows-read')).toBeInTheDocument();
+    expect(screen.getByText('label.rows-written')).toBeInTheDocument();
     expect(screen.getByText('1,234')).toBeInTheDocument();
     expect(screen.getByText('1,200')).toBeInTheDocument();
-    expect(screen.getByText('34')).toBeInTheDocument();
-    expect(screen.getByText('2.00 seconds')).toBeInTheDocument();
     expect(screen.getByTestId('log-link-load_orders')).toHaveAttribute(
       'href',
       'https://orchestrator.example/runs/1'
     );
   });
 
-  it('Should render placeholders when a task has no metrics or log link', async () => {
+  it('Should hide the metric and log columns when no listed task reports them', async () => {
     render(
       <ListView
         {...mockProps}
@@ -129,9 +127,43 @@ describe('Test ListViewTab Component', () => {
       />
     );
 
-    expect(screen.getAllByText('--')).toHaveLength(7);
-    expect(
-      screen.queryByTestId('log-link-load_orders')
-    ).not.toBeInTheDocument();
+    expect(screen.getByText('label.duration')).toBeInTheDocument();
+    expect(screen.queryByText('label.rows-read')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.rows-written')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.log')).not.toBeInTheDocument();
+  });
+
+  it('Should show a placeholder for a task without metrics when another task reports them', async () => {
+    render(
+      <ListView
+        {...mockProps}
+        executions={
+          [
+            {
+              name: 'load_orders',
+              status: StatusType.Successful,
+              timestamp: '2024-05-11',
+              key: 1715404800000,
+              startTime: 1715404800000,
+              endTime: 1715404802000,
+              rowsRead: 1234,
+            },
+            {
+              name: 'notify',
+              status: StatusType.Successful,
+              timestamp: '2024-05-11',
+              key: 1715404800000,
+              startTime: 1715404800000,
+              endTime: 1715404802000,
+            },
+          ] as unknown as typeof EXECUTION_LIST_MOCK
+        }
+      />
+    );
+
+    expect(screen.getByText('label.rows-read')).toBeInTheDocument();
+    expect(screen.getByText('1,234')).toBeInTheDocument();
+    expect(screen.getAllByText('--')).toHaveLength(1);
+    expect(screen.queryByText('label.rows-written')).not.toBeInTheDocument();
   });
 });

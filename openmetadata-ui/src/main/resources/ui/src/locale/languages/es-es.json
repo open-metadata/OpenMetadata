@@ -2960,7 +2960,6 @@
     "row-limit": "Límite de filas",
     "row-plural": "Filas",
     "row-sample-of": "Muestra de {{value}} filas",
-    "rows-filtered": "Filas filtradas",
     "rows-processed": "Filas Procesadas",
     "rows-read": "Filas leídas",
     "rows-written": "Filas escritas",

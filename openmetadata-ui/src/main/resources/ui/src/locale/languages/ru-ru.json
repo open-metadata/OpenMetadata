@@ -2960,7 +2960,6 @@
     "row-limit": "Лимит строк",
     "row-plural": "Строки",
     "row-sample-of": "Выборка из {{value}} строк",
-    "rows-filtered": "Отфильтровано строк",
     "rows-processed": "Обработано строк",
     "rows-read": "Прочитано строк",
     "rows-written": "Записано строк",

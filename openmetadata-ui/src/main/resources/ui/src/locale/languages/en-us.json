@@ -2960,7 +2960,6 @@
     "row-limit": "Row Limit",
     "row-plural": "Rows",
     "row-sample-of": "{{value}}-row sample",
-    "rows-filtered": "Rows Filtered",
     "rows-processed": "Rows Processed",
     "rows-read": "Rows Read",
     "rows-written": "Rows Written",
