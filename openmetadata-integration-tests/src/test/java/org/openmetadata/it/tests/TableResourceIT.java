@@ -117,6 +117,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -235,6 +236,28 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     request.setColumns(columns);
 
     return request;
+  }
+
+  @Test
+  void patch_documentRoot_isRefused(TestNamespace ns) {
+    Table table = createEntity(createRequest(ns.prefix("rootpatch"), ns));
+    String rootPatch =
+        "[{\"op\":\"replace\",\"path\":\"\",\"value\":{\"name\":\"" + table.getName() + "\"}}]";
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH,
+                        "/v1/tables/" + table.getId(),
+                        rootPatch,
+                        org.openmetadata.sdk.network.RequestOptions.builder()
+                            .header("Content-Type", "application/json-patch+json")
+                            .build()));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
   }
 
   @Override
@@ -6335,6 +6358,89 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         versionAfterCreate,
         updatedTable.getVersion(),
         "Version should not change when referredColumns order changes but content is the same");
+  }
+
+  /**
+   * A multi-column foreign key keeps each local column paired with the column it references
+   * through an update, even when the two lists do not sort in the same order: here alt_type
+   * references type, and alt_type sorts before country while type sorts after it.
+   */
+  @Test
+  void put_multiColumnForeignKeyKeepsColumnPairing(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable parentRequest =
+        new CreateTable()
+            .withName(ns.prefix("fk_pairing_parent"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("country").withDataType(ColumnDataType.INT),
+                    new Column().withName("type").withDataType(ColumnDataType.INT)));
+    Table parent = client.tables().create(parentRequest);
+    String parentCountryFqn = parent.getColumns().get(0).getFullyQualifiedName();
+    String parentTypeFqn = parent.getColumns().get(1).getFullyQualifiedName();
+
+    CreateTable childRequest =
+        new CreateTable()
+            .withName(ns.prefix("fk_pairing_child"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("alt_type").withDataType(ColumnDataType.INT),
+                    new Column().withName("country").withDataType(ColumnDataType.INT)))
+            .withTableConstraints(
+                List.of(
+                    new TableConstraint()
+                        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                        .withColumns(List.of("alt_type", "country"))
+                        .withReferredColumns(List.of(parentTypeFqn, parentCountryFqn))));
+    Table child = client.tables().create(childRequest);
+
+    Table childToUpdate =
+        client.tables().getByName(child.getFullyQualifiedName(), "tableConstraints,columns");
+    childToUpdate.setDescription("Forces the update to be persisted");
+    client.tables().update(child.getId().toString(), childToUpdate);
+
+    TableConstraint storedAfterUpdate =
+        client
+            .tables()
+            .getByName(child.getFullyQualifiedName(), "tableConstraints")
+            .getTableConstraints()
+            .getFirst();
+    assertEquals(List.of("alt_type", "country"), storedAfterUpdate.getColumns());
+    assertEquals(
+        List.of(parentTypeFqn, parentCountryFqn),
+        storedAfterUpdate.getReferredColumns(),
+        "alt_type must still reference type and country must still reference country");
+
+    Table reingested =
+        client.tables().getByName(child.getFullyQualifiedName(), "tableConstraints,columns");
+    Double versionBeforeReingest = reingested.getVersion();
+    reingested.setTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("country", "alt_type"))
+                .withReferredColumns(List.of(parentCountryFqn, parentTypeFqn))));
+    Table afterReingest = client.tables().update(child.getId().toString(), reingested);
+
+    assertEquals(
+        versionBeforeReingest,
+        afterReingest.getVersion(),
+        "Reordering the column pairs consistently is not a change");
+    TableConstraint storedAfterReingest =
+        client
+            .tables()
+            .getByName(child.getFullyQualifiedName(), "tableConstraints")
+            .getTableConstraints()
+            .getFirst();
+    assertEquals(List.of("alt_type", "country"), storedAfterReingest.getColumns());
+    assertEquals(
+        List.of(parentTypeFqn, parentCountryFqn), storedAfterReingest.getReferredColumns());
   }
 
   // ===================================================================

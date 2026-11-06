@@ -284,15 +284,15 @@ class MetricGroupResourceTest {
   @Test
   void patchResponseSanitizesMembershipAndStillHidesMembers() {
     UUID groupId = UUID.randomUUID();
-    MetricGroup original = groupWithMember(groupId, "profitability");
+    MetricGroup original =
+        groupWithMember(groupId, "profitability").withDescription("Original description");
     MetricGroup patched = groupWithMember(groupId, "profitability");
     MetricGroup sanitized = groupWithMember(groupId, "profitability");
     try (ResourceFixture fixture = resourceFixture()) {
       SecurityContext securityContext = securityContext("alice");
       when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
           .thenReturn(metricViewPermission(Permission.Access.CONDITIONAL_ALLOW));
-      when(fixture.repository().get(null, groupId, EntityUtil.Fields.EMPTY_FIELDS))
-          .thenReturn(original);
+      when(fixture.repository().get(any(), eq(groupId), any())).thenReturn(original);
       when(fixture.repository().patch(any(), eq(groupId), anyString(), any(), any(), any(), any()))
           .thenReturn(new PatchResponse<>(Response.Status.OK, patched, EventType.ENTITY_UPDATED));
       when(fixture.repository().sanitizeMembership(eq(patched), any())).thenReturn(sanitized);

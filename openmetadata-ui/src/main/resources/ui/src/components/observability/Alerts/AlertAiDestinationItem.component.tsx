@@ -30,17 +30,15 @@ import {
   useState,
 } from 'react';
 import type { Key } from 'react-aria-components';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
+import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from '../../../constants/Alerts.constants';
 import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
 import { normalizeDestinationConfig } from '../../../utils/Alerts/AlertsUtilPure';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
-import {
-  ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH,
-  ALERT_AI_FORM_CLASS_NAMES,
-} from './AlertAiFormFields.constants';
+import { ALERT_AI_FORM_CLASS_NAMES } from './AlertAiFormFields.constants';
 import { AlertAiDestinationItemProps } from './AlertAiFormFields.interface';
 import {
   getDestinationTypeUpdate,
@@ -322,15 +320,18 @@ const AlertAiDestinationItem = ({
       destinationType === SubscriptionCategory.Owners &&
       destination.type !== SubscriptionType.Email;
 
-    const message = isOwnerNonEmailDestination
-      ? t('message.destination-owner-selection-warning', {
-          subscriptionCategory: destinationType,
-          subscriptionType: destination.type,
-        })
-      : t('message.destination-selection-warning', {
-          subscriptionCategory: destinationType,
-          subscriptionType: destination.type,
-        });
+    const message = isOwnerNonEmailDestination ? (
+      <Trans
+        components={[<strong key="team" />]}
+        i18nKey="message.destination-owner-selection-warning"
+        values={{ subscriptionType: destination.type }}
+      />
+    ) : (
+      t('message.destination-selection-warning', {
+        subscriptionCategory: destinationType,
+        subscriptionType: destination.type,
+      })
+    );
 
     return (
       // A one-line notice reads as body copy with a small icon; as a bold

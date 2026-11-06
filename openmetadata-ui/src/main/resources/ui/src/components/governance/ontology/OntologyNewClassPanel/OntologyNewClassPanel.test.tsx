@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { toastQueue } from '@openmetadata/ui-core-components';
+import {
+  act,
+  fireEvent,
+  render as renderNode,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useState } from 'react';
 import { Link, MemoryRouter } from 'react-router-dom';
@@ -26,10 +34,12 @@ import {
   useKeyEchoTranslations,
 } from '../../../../test/unit/enUsTranslation';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import OntologyNewClassPanel from './OntologyNewClassPanel';
 jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
   post: jest.fn(),
+  put: jest.fn(),
   delete: jest.fn(),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -55,6 +65,7 @@ const parents = ['Payment', 'Transaction'].map((name) => ({
 const model = { ontology, concepts: parents, properties: [], axioms: [] };
 const post = APIClient.post as jest.Mock;
 const get = APIClient.get as jest.Mock;
+const put = APIClient.put as jest.Mock;
 let retained: Record<string, unknown>;
 let applied = false;
 
@@ -83,9 +94,12 @@ const setup = (
       onBeforeCreate={jest.fn()}
       onClose={jest.fn()}
       onCreated={reconcile}
+      onUndone={jest.fn()}
       {...props}
     />
   );
+const openAdvanced = () =>
+  fireEvent.click(screen.getByTestId('new-class-advanced-toggle'));
 const fill = (id: string, value: string) =>
   fireEvent.change(screen.getByTestId(id), { target: { value } });
 
@@ -96,9 +110,23 @@ beforeEach(() => {
   useApplicationStore.setState({
     currentUser: { id: 'u', name: 'editor', email: 'editor@example.org' },
   });
-  get.mockImplementation(async (url: string) => ({
-    data: url.endsWith('/state') ? { workingRevision: 7 } : readDraft(url),
-  }));
+  get.mockImplementation(async (url: string) => {
+    if (url.includes('/ontologyConcepts/name/')) {
+      throw new AxiosError(
+        'Not found',
+        AxiosError.ERR_BAD_REQUEST,
+        undefined,
+        undefined,
+        {
+          status: 404,
+        } as AxiosResponse
+      );
+    }
+
+    return {
+      data: url.endsWith('/state') ? { workingRevision: 7 } : readDraft(url),
+    };
+  });
   post.mockImplementation(
     async (url: string, body: Record<string, unknown>) => {
       if (url.endsWith('/acquire')) {
@@ -121,8 +149,9 @@ beforeEach(() => {
   );
 });
 
-it('gates label, derives IRI, preserves manual local name, read-only layer and default owner', () => {
+it('gates the name, derives IRI, preserves manual local name, read-only layer and default owner', () => {
   setup({ canCreateProperty: false, canCreateAxiom: false });
+  openAdvanced();
 
   expect(screen.getByTestId('new-class-create')).toBeDisabled();
 
@@ -148,6 +177,7 @@ it('gates label, derives IRI, preserves manual local name, read-only layer and d
 
 it('commits synonyms on comma and Enter and requires two distinct enum chips', async () => {
   setup();
+  openAdvanced();
   fill('new-class-synonyms', 'Wire,');
   fill('new-class-synonyms', 'Transfer');
   fireEvent.keyDown(screen.getByTestId('new-class-synonyms'), { key: 'Enter' });
@@ -182,6 +212,7 @@ it('retains a completed atomic plan and only retries model reconciliation after 
   setup();
   fill('new-class-label', 'Funds Transfer');
   fill('new-class-description', 'Payment definition');
+  openAdvanced();
   fill('new-class-source', 'https://example.org/source');
   fill('new-class-synonyms', 'Wire,');
   fireEvent.click(screen.getByRole('checkbox', { name: 'label.abstract' }));
@@ -189,7 +220,12 @@ it('retains a completed atomic plan and only retries model reconciliation after 
     fireEvent.click(screen.getByTestId('new-class-create'));
   });
   await waitFor(() =>
-    expect(reconcile).toHaveBeenCalledWith(ontology.namespace + 'FundsTransfer')
+    expect(reconcile).toHaveBeenCalledWith(
+      ontology.namespace + 'FundsTransfer',
+      {
+        keepOpen: false,
+      }
+    )
   );
   const creates = () =>
     post.mock.calls.filter(([url]) => url === '/ontologyChangeSets');
@@ -228,6 +264,7 @@ it('retains a completed atomic plan and only retries model reconciliation after 
 
 it('adds a named own data property with Enter and its identifier flag', () => {
   setup();
+  openAdvanced();
   fill('new-class-property-name', 'reference');
   fireEvent.click(screen.getByRole('checkbox', { name: 'label.identifier' }));
   fireEvent.keyDown(screen.getByTestId('new-class-property-name'), {
@@ -257,6 +294,7 @@ it('shows polyhierarchy for multiple parents and never submits inherited propert
       ],
     },
   });
+  openAdvanced();
   const input = screen.getByRole('combobox', { name: 'label.subclass-of' });
   fireEvent.focus(input);
   fireEvent.change(input, { target: { value: 'Payment' } });
@@ -325,6 +363,7 @@ it('locks the panel through uncertain apply and retries the retained draft befor
           onClose={jest.fn()}
           onCreated={reconcile}
           onLockChange={lockChanged}
+          onUndone={jest.fn()}
         />
       </OntologyDraftProvider>
     </MemoryRouter>
@@ -356,7 +395,12 @@ it('locks the panel through uncertain apply and retries the retained draft befor
     fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
   });
   await waitFor(() =>
-    expect(reconcile).toHaveBeenCalledWith(ontology.namespace + 'FundsTransfer')
+    expect(reconcile).toHaveBeenCalledWith(
+      ontology.namespace + 'FundsTransfer',
+      {
+        keepOpen: false,
+      }
+    )
   );
 
   expect(
@@ -486,7 +530,10 @@ describe('after a failed attempt', () => {
     });
     await waitFor(() =>
       expect(reconcile).toHaveBeenCalledWith(
-        ontology.namespace + 'FundsTransfer'
+        ontology.namespace + 'FundsTransfer',
+        {
+          keepOpen: false,
+        }
       )
     );
 
@@ -514,7 +561,10 @@ describe('after a failed attempt', () => {
     });
     await waitFor(() =>
       expect(reconcile).toHaveBeenCalledWith(
-        ontology.namespace + 'FundsTransfer'
+        ontology.namespace + 'FundsTransfer',
+        {
+          keepOpen: false,
+        }
       )
     );
 
@@ -640,7 +690,10 @@ describe('after a failed attempt', () => {
     });
     await waitFor(() =>
       expect(reconcile).toHaveBeenCalledWith(
-        ontology.namespace + 'WireTransfer'
+        ontology.namespace + 'WireTransfer',
+        {
+          keepOpen: false,
+        }
       )
     );
     const creates = post.mock.calls.filter(
@@ -672,15 +725,22 @@ describe('with the shipped English translations', () => {
 
   it('renders every label from en-us.json', async () => {
     setup();
+    openAdvanced();
 
-    expect(screen.getByText('Identity')).toBeVisible();
-    expect(screen.getByRole('textbox', { name: /^Label/ })).toBeVisible();
-    expect(screen.getByText('Axioms')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: /^Name/ })).toBeVisible();
+    expect(
+      screen.getByRole('textbox', { name: /^Display Name/ })
+    ).toBeVisible();
+    expect(screen.getByText('Advanced')).toBeVisible();
     expect(
       screen.getByRole('textbox', { name: /^Property name/ })
     ).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: /Type/ }));
+    fireEvent.click(
+      within(screen.getByTestId('new-class-advanced')).getByRole('button', {
+        name: /Type/,
+      })
+    );
     await screen.findByRole('listbox');
 
     expect(document.body.textContent).not.toContain(MISSING_TRANSLATION_MARKER);
@@ -688,7 +748,12 @@ describe('with the shipped English translations', () => {
 
   it('offers the property types by name', async () => {
     setup();
-    fireEvent.click(screen.getByRole('button', { name: /Type/ }));
+    openAdvanced();
+    fireEvent.click(
+      within(screen.getByTestId('new-class-advanced')).getByRole('button', {
+        name: /Type/,
+      })
+    );
     const options = await screen.findAllByRole('option');
 
     expect(options.map((option) => option.textContent)).toEqual([
@@ -705,6 +770,7 @@ describe('with the shipped English translations', () => {
 
   it('names the type of an added property', () => {
     setup();
+    openAdvanced();
     fill('new-class-property-name', 'reference');
     fireEvent.keyDown(screen.getByTestId('new-class-property-name'), {
       key: 'Enter',
@@ -733,23 +799,656 @@ describe('focus', () => {
             onBeforeCreate={jest.fn()}
             onClose={() => setOpen(false)}
             onCreated={reconcile}
+            onUndone={jest.fn()}
           />
         ) : null}
       </>
     );
   };
 
-  it('moves to the label when the panel opens and back to the trigger when it closes', async () => {
+  it('moves to the name when the panel opens and back to the trigger when it closes', async () => {
     render(<Harness />);
     screen.getByTestId('trigger').focus();
     fireEvent.click(screen.getByTestId('trigger'));
 
     await waitFor(() =>
-      expect(screen.getByTestId('new-class-label')).toHaveFocus()
+      expect(screen.getByTestId('new-class-local-name')).toHaveFocus()
     );
 
     fireEvent.click(screen.getByTestId('ontology-new-class-close'));
 
     expect(screen.getByTestId('trigger')).toHaveFocus();
+  });
+});
+
+describe('one drawer for every entry point', () => {
+  const textboxNames = () =>
+    screen
+      .getAllByRole('textbox')
+      .map((box) => box.getAttribute('aria-label') ?? box.id);
+
+  it('orders Name, Display name, Description, Type, IRI, Synonyms and Mappings, with the rest under Advanced', () => {
+    setup();
+
+    expect(
+      screen
+        .getAllByRole('textbox')
+        .map((box) => (box as HTMLInputElement).dataset.testid)
+    ).toEqual([
+      'new-class-local-name',
+      'new-class-label',
+      'new-class-description',
+      'new-class-iri-input',
+      'new-class-synonyms',
+      'new-class-mapping-iri',
+    ]);
+    expect(
+      screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))
+    ).toEqual(['OWL_CLASS', 'SKOS_CONCEPT', 'BOTH']);
+    expect(textboxNames()).toHaveLength(6);
+    expect(
+      screen.queryByRole('combobox', { name: 'label.subclass-of' })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('new-class-source')).not.toBeInTheDocument();
+
+    openAdvanced();
+
+    expect(
+      ['label.subclass-of', 'label.equivalent-to', 'label.disjoint-with'].map(
+        (name) => screen.getByRole('combobox', { name }).tagName
+      )
+    ).toEqual(['INPUT', 'INPUT', 'INPUT']);
+    expect(
+      screen.getByRole('checkbox', { name: 'label.abstract' })
+    ).toBeVisible();
+    expect(screen.getByTestId('new-class-source')).toBeVisible();
+    expect(screen.getByTestId('new-class-property-name')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: /label.layer/ })).toBeVisible();
+    expect(screen.getByText(/editor.*label.you/)).toBeVisible();
+  });
+
+  it('derives the name from the display name and refuses Spaced Name! with a message', () => {
+    setup();
+    fill('new-class-label', 'Spaced Name');
+
+    expect(screen.getByTestId('new-class-local-name')).toHaveValue(
+      'SpacedName'
+    );
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+
+    fill('new-class-local-name', 'Spaced Name!');
+
+    expect(
+      screen.getAllByText('message.ontology-concept-name-invalid')
+    ).toHaveLength(2);
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByTestId('new-class-create-another')).toBeDisabled();
+    expect(screen.getByTestId('new-class-iri')).toHaveTextContent(
+      ontology.namespace + 'Spaced Name!'
+    );
+  });
+
+  it('blocks a duplicate name and a duplicate label beside the field', () => {
+    setup();
+    fill('new-class-local-name', 'Payment');
+
+    expect(
+      screen.getAllByText('message.ontology-concept-name-taken')
+    ).toHaveLength(2);
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+
+    fill('new-class-local-name', 'Remittance');
+    fill('new-class-label', 'transaction');
+
+    expect(
+      screen.getAllByText('message.ontology-concept-label-taken')
+    ).toHaveLength(2);
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+
+    fill('new-class-label', 'Remittance advice');
+
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+  });
+
+  it('rejects a relative IRI and an IRI already in use', () => {
+    setup();
+    fill('new-class-local-name', 'Remittance');
+    fill('new-class-iri-input', 'relative/iri');
+
+    expect(screen.getAllByText('message.invalid-concept-iri')).toHaveLength(2);
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+
+    fill('new-class-iri-input', parents[0].iri);
+
+    expect(
+      screen.getAllByText('message.ontology-concept-iri-taken')
+    ).toHaveLength(2);
+
+    fill('new-class-iri-input', 'https://example.org/other#Remittance');
+
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+    expect(screen.getByTestId('new-class-iri')).toHaveTextContent(
+      'https://example.org/other#Remittance'
+    );
+  });
+
+  it('states why Create is disabled', () => {
+    setup();
+
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByTestId('new-class-create-reason')).toHaveTextContent(
+      'message.ontology-concept-name-required'
+    );
+  });
+
+  it('states a missing permission as the reason', () => {
+    setup({ canCreate: false });
+    fill('new-class-label', 'Remittance');
+
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByTestId('new-class-create-reason')).toHaveTextContent(
+      'message.no-permission-for-action'
+    );
+  });
+
+  it('shows Unsaved changes once the form is touched', () => {
+    setup();
+
+    expect(screen.getByTestId('new-class-save-status')).toBeEmptyDOMElement();
+
+    fill('new-class-label', 'Remittance');
+
+    expect(screen.getByTestId('new-class-save-status')).toHaveTextContent(
+      'label.unsaved-changes'
+    );
+  });
+
+  it('plans the chosen type, IRI, synonyms and mappings', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    fireEvent.click(screen.getByRole('radio', { name: 'label.both-owl-skos' }));
+    fill('new-class-iri-input', 'https://example.org/other#Remittance');
+    fill('new-class-synonyms', 'Wire,');
+    fill('new-class-mapping-iri', 'https://schema.org/Payment');
+    fireEvent.click(screen.getByTestId('new-class-add-mapping'));
+
+    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
+      'Exact match · https://schema.org/Payment'
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+    await waitFor(() => expect(reconcile).toHaveBeenCalled());
+    const changeSetCall = post.mock.calls.find(
+      ([url]) => url === '/ontologyChangeSets'
+    );
+    const { concept } = changeSetCall?.[1].operations[0] ?? {};
+
+    expect(concept).toMatchObject({
+      name: 'Remittance',
+      iri: 'https://example.org/other#Remittance',
+      conceptType: 'BOTH',
+      displayName: 'Remittance',
+      synonyms: ['Wire'],
+      conceptMappings: [
+        {
+          mappingType: 'EXACT_MATCH',
+          conceptIri: 'https://schema.org/Payment',
+        },
+      ],
+    });
+    expect(reconcile).toHaveBeenCalledWith(
+      'https://example.org/other#Remittance',
+      { keepOpen: false }
+    );
+  });
+});
+
+describe('Create and add another', () => {
+  const creates = () =>
+    post.mock.calls.filter(([url]) => url === '/ontologyChangeSets');
+
+  it('clears the form, keeps the drawer open and refocuses Name each time', async () => {
+    reconcile.mockResolvedValue(true);
+    const onClose = jest.fn();
+    setup({ onClose });
+    for (const label of ['Remittance', 'Settlement']) {
+      fill('new-class-label', label);
+      fill('new-class-description', 'text');
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('new-class-create-another'));
+      });
+      await waitFor(() =>
+        expect(reconcile).toHaveBeenLastCalledWith(ontology.namespace + label, {
+          keepOpen: true,
+        })
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('new-class-local-name')).toHaveFocus()
+      );
+
+      expect(screen.getByTestId('new-class-label')).toHaveValue('');
+      expect(screen.getByTestId('new-class-local-name')).toHaveValue('');
+      expect(screen.getByTestId('new-class-description')).toHaveValue('');
+      expect(screen.getByTestId('new-class-label')).toBeEnabled();
+      expect(screen.getByTestId('new-class-save-status')).toHaveTextContent(
+        'label.all-changes-saved'
+      );
+    }
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ontology-new-class-panel')).toBeVisible();
+    expect(
+      creates().map(([, body]) => body.operations[0].concept.name)
+    ).toEqual(['Remittance', 'Settlement']);
+  });
+
+  it('does not release the change-set lease after it applied', async () => {
+    reconcile.mockResolvedValue(true);
+    setup();
+    fill('new-class-label', 'Remittance');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+    await waitFor(() => expect(reconcile).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(
+      (APIClient.delete as jest.Mock).mock.calls.filter(([url]) =>
+        String(url).includes('ontologyEditLocks')
+      )
+    ).toEqual([]);
+  });
+});
+
+describe('Undo after create', () => {
+  it('hard deletes what the change set created, dependents first, and refreshes', async () => {
+    reconcile.mockResolvedValue(true);
+    const onUndone = jest.fn();
+    const add = jest.spyOn(toastQueue, 'add').mockReturnValue('toast-key');
+    const close = jest.spyOn(toastQueue, 'close').mockImplementation();
+    (APIClient.delete as jest.Mock).mockResolvedValue({});
+    setup({ onUndone });
+    fill('new-class-label', 'Remittance');
+    openAdvanced();
+    const input = screen.getByRole('combobox', { name: 'label.subclass-of' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Payment' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: 'Payment' }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+    await waitFor(() => expect(add).toHaveBeenCalled());
+    const plan = post.mock.calls.find(
+      ([url]) => url === '/ontologyChangeSets'
+    )?.[1];
+    const message = add.mock.calls[0][0].message;
+    renderNode(<>{message}</>);
+
+    expect(screen.getByText('message.ontology-concept-created')).toBeVisible();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ontology-undo'));
+    });
+
+    expect(close).toHaveBeenCalledWith('toast-key');
+    expect(
+      (APIClient.delete as jest.Mock).mock.calls.map(([url, config]) => [
+        url,
+        config.params,
+      ])
+    ).toEqual([
+      ['/ontologyAxioms/' + plan.operations[1].axiom.id, { hardDelete: true }],
+      [
+        '/ontologyConcepts/' + plan.operations[0].concept.id,
+        { hardDelete: true },
+      ],
+    ]);
+    expect(onUndone).toHaveBeenCalledTimes(1);
+
+    add.mockRestore();
+    close.mockRestore();
+  });
+});
+
+describe('Ontology field for All ontologies', () => {
+  const second = {
+    ...ontology,
+    id: 'o2',
+    name: 'Risk',
+    fullyQualifiedName: 'Risk',
+  };
+  const field = (value: string, onChange = jest.fn()) => ({
+    options: [
+      { id: ontology.id, label: 'Finance' },
+      { id: second.id, label: 'Risk' },
+    ],
+    value,
+    onChange,
+  });
+
+  it('is absent when one ontology is open', () => {
+    setup();
+
+    expect(screen.queryByTestId('new-class-ontology')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('new-class-in-ontology')
+    ).not.toBeInTheDocument();
+  });
+
+  it('is the first field, preselected, and names the target in the header', () => {
+    setup({ ontologyField: field(ontology.id) });
+
+    expect(screen.getByTestId('new-class-in-ontology')).toHaveTextContent(
+      'label.in-entity'
+    );
+    expect(
+      screen
+        .getByTestId('new-class-ontology')
+        .compareDocumentPosition(screen.getByTestId('new-class-local-name')) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId('new-class-ontology')).getByRole('button')
+    ).toHaveTextContent('Finance');
+  });
+
+  it('reports a change of ontology to the host', async () => {
+    const onChange = jest.fn();
+    setup({ ontologyField: field(ontology.id, onChange) });
+    fireEvent.click(
+      within(screen.getByTestId('new-class-ontology')).getByRole('button')
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Risk' }));
+
+    expect(onChange).toHaveBeenCalledWith('o2');
+  });
+
+  it('keeps Create disabled, with the reason, until an ontology is chosen', () => {
+    setup({ ontologyField: field('') });
+    fill('new-class-label', 'Remittance');
+
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByTestId('new-class-create-reason')).toHaveTextContent(
+      'message.ontology-concept-ontology-required'
+    );
+  });
+});
+
+describe('a name held by a deleted concept', () => {
+  beforeEach(() => {
+    jest.useRealTimers();
+    useEnUsTranslations();
+    put.mockResolvedValue({ data: {} });
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  const settle = () =>
+    act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+  const typeName = async (name: string) => {
+    fill('new-class-local-name', name);
+    await settle();
+    await settle();
+  };
+
+  const holdName = (name: string) =>
+    get.mockImplementation(async (url: string) => {
+      if (url.includes('/ontologyConcepts/name/')) {
+        return {
+          data: {
+            id: 'deleted-id',
+            name,
+            deleted: true,
+            iri: ontology.namespace + name,
+          },
+        };
+      }
+
+      return {
+        data: url.endsWith('/state') ? { workingRevision: 7 } : readDraft(url),
+      };
+    });
+
+  it('names the deleted concept, offers Restore and keeps Create disabled', async () => {
+    holdName('Customer');
+    setup();
+    await typeName('Customer');
+
+    expect(
+      await screen.findByTestId('new-class-name-deleted')
+    ).toHaveTextContent(
+      'A deleted concept named Customer exists in this ontology.'
+    );
+    expect(screen.getByTestId('new-class-restore')).toHaveTextContent(
+      'Restore'
+    );
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(get).toHaveBeenCalledWith(
+      '/ontologyConcepts/name/Finance.Customer',
+      { params: { include: 'all' } }
+    );
+  });
+
+  it('restores through the concept resource and hands the concept to the host', async () => {
+    holdName('Customer');
+    reconcile.mockResolvedValue(true);
+    setup();
+    await typeName('Customer');
+    fireEvent.click(await screen.findByTestId('new-class-restore'));
+
+    await waitFor(() =>
+      expect(reconcile).toHaveBeenCalledWith(ontology.namespace + 'Customer', {
+        keepOpen: false,
+      })
+    );
+
+    expect(put).toHaveBeenCalledWith('/ontologyConcepts/restore', {
+      id: 'deleted-id',
+    });
+  });
+
+  it('does not warn for a name nothing holds', async () => {
+    setup();
+    await typeName('Supplier');
+
+    expect(get).toHaveBeenCalledWith(
+      '/ontologyConcepts/name/Finance.Supplier',
+      {
+        params: { include: 'all' },
+      }
+    );
+
+    expect(screen.queryByTestId('new-class-name-deleted')).toBeNull();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+  });
+
+  it('shows the server sentence beside the name on a plain 409, without a toast', async () => {
+    const normalPost = post.getMockImplementation();
+    post.mockImplementation(
+      async (url: string, body: Record<string, unknown>) => {
+        if (url === '/ontologyChangeSets') {
+          throw new AxiosError(
+            'Request failed with status code 409',
+            AxiosError.ERR_BAD_REQUEST,
+            undefined,
+            undefined,
+            {
+              status: 409,
+              data: { message: 'Entity already exists.' },
+            } as AxiosResponse
+          );
+        }
+
+        return normalPost?.(url, body);
+      }
+    );
+    setup();
+    await typeName('Supplier');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+
+    expect(
+      await screen.findByTestId('new-class-name-conflict')
+    ).toHaveTextContent('Entity already exists.');
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+});
+
+describe('a SKOS concept takes no OWL axioms', () => {
+  const SKOS_ERROR =
+    'A SKOS concept cannot have parents, equivalent or disjoint classes, or properties. Remove them, or choose OWL class or Both.';
+  const skosOnlyConcept = {
+    ...parents[0],
+    id: 'Vocabulary',
+    name: 'Vocabulary',
+    displayName: 'Vocabulary',
+    fullyQualifiedName: 'Finance.Vocabulary',
+    iri: ontology.namespace + 'Vocabulary',
+    conceptType: OntologyConceptType.SkosConcept,
+  };
+  const bothConcept = {
+    ...parents[0],
+    id: 'Hybrid',
+    name: 'Hybrid',
+    displayName: 'Hybrid',
+    fullyQualifiedName: 'Finance.Hybrid',
+    iri: ontology.namespace + 'Hybrid',
+    conceptType: OntologyConceptType.Both,
+  };
+
+  beforeEach(() => {
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  const chooseType = (type: OntologyConceptType) =>
+    fireEvent.click(screen.getByTestId('new-class-type-' + type));
+  const addParent = async (name: string) => {
+    const input = screen.getByRole('combobox', { name: 'Subclass of' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: name } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name }));
+  };
+  const addProperty = (name: string) => {
+    fill('new-class-property-name', name);
+    fireEvent.keyDown(screen.getByTestId('new-class-property-name'), {
+      key: 'Enter',
+    });
+  };
+  const createRequests = () =>
+    post.mock.calls.filter(([url]) => url === '/ontologyChangeSets');
+
+  it('refuses a parent added after choosing SKOS concept and clears when OWL class is chosen', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    openAdvanced();
+    chooseType(OntologyConceptType.SkosConcept);
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+
+    await addParent('Payment');
+
+    expect(screen.getByText(SKOS_ERROR)).toBeVisible();
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByText('Payment')).toBeVisible();
+
+    chooseType(OntologyConceptType.OwlClass);
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+  });
+
+  it('refuses a parent chosen before switching to SKOS concept and clears when Both is chosen', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    openAdvanced();
+    await addParent('Payment');
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+
+    chooseType(OntologyConceptType.SkosConcept);
+
+    expect(screen.getByText(SKOS_ERROR)).toBeVisible();
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+
+    chooseType(OntologyConceptType.Both);
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+  });
+
+  it('refuses an own property on a SKOS concept and clears once it is removed', () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    openAdvanced();
+    chooseType(OntologyConceptType.SkosConcept);
+    addProperty('reference');
+
+    expect(screen.getByText(SKOS_ERROR)).toBeVisible();
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByText(/reference · String/)).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove reference' }));
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+  });
+
+  it('creates a SKOS concept that has only synonyms and mappings', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    chooseType(OntologyConceptType.SkosConcept);
+    fill('new-class-synonyms', 'Wire,');
+    fill('new-class-mapping-iri', 'https://schema.org/Payment');
+    fireEvent.click(screen.getByTestId('new-class-add-mapping'));
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+    await waitFor(() => expect(reconcile).toHaveBeenCalled());
+
+    expect(createRequests()[0][1].operations).toHaveLength(1);
+    expect(createRequests()[0][1].operations[0].concept).toMatchObject({
+      conceptType: 'SKOS_CONCEPT',
+      synonyms: ['Wire'],
+    });
+  });
+
+  it('offers only OWL class and Both concepts as parents, equivalent, disjoint and range targets', async () => {
+    setup({
+      model: { ...model, concepts: [...parents, skosOnlyConcept, bothConcept] },
+    });
+    openAdvanced();
+
+    const input = screen.getByRole('combobox', { name: 'Subclass of' });
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+    expect(
+      await screen.findByRole('option', { name: 'Payment' })
+    ).toBeVisible();
+    expect(screen.getByRole('option', { name: 'Hybrid' })).toBeVisible();
+    expect(
+      screen.queryByRole('option', { name: 'Vocabulary' })
+    ).not.toBeInTheDocument();
   });
 });

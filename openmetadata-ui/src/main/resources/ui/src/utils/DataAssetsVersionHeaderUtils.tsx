@@ -13,8 +13,8 @@
 
 import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
@@ -127,7 +127,7 @@ export const getExtraInfoSourceUrl = (
               )}
             </Typography>
             {safeSourceUrl && (
-              <IconExternalLink className="tw:ml-1 tw:size-3.5 tw:shrink-0" />
+              <LinkExternal01 className="tw:ml-1 tw:shrink-0" size={14} />
             )}
           </div>
         </>

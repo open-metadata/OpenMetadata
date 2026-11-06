@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   ArrowRight,
   CheckCircle,
   ChevronRight,
@@ -228,7 +228,7 @@ export const InspectorGapNote = ({
   actionHref,
   actionTestId,
 }: GapNoteProps) => {
-  const Icon = tone === 'warning' ? AlertTriangle : CheckCircle;
+  const Icon = tone === 'warning' ? Alert : CheckCircle;
   const toneClass =
     tone === 'warning'
       ? 'tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:text-utility-warning-700'

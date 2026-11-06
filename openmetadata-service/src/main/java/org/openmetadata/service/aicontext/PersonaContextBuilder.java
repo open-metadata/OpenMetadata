@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricAssetDirection;
@@ -42,7 +43,6 @@ import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
@@ -685,9 +685,7 @@ public class PersonaContextBuilder {
         for (UUID pageId : pageIdsByAsset.getOrDefault(asset.id(), List.of())) {
           Page page = pages.get(pageId);
           if (page != null) {
-            KnowledgeItem full = fullKnowledgeItem(Entity.PAGE, page);
-            accumulator.add(full);
-            attachKnowledge(asset.context(), referenceOf(full), false);
+            attachFullKnowledge(Entity.PAGE, page, asset.context(), accumulator::add);
           }
         }
       }
@@ -695,9 +693,7 @@ public class PersonaContextBuilder {
         for (UUID metricId : metricIdsByAsset.getOrDefault(asset.id(), List.of())) {
           Metric metric = metrics.get(metricId);
           if (metric != null) {
-            KnowledgeItem full = fullKnowledgeItem(Entity.METRIC, metric);
-            accumulator.add(full);
-            attachKnowledge(asset.context(), referenceOf(full), false);
+            attachFullKnowledge(Entity.METRIC, metric, asset.context(), accumulator::add);
           }
         }
       }
@@ -830,7 +826,7 @@ public class PersonaContextBuilder {
   }
 
   static KnowledgeItem fullKnowledgeItem(String entityType, EntityInterface<?> entity) {
-    if (entity instanceof GlossaryTerm term && term.getEntityStatus() != EntityStatus.APPROVED) {
+    if (!AIContextBuilder.isGovernedDefinition(entity)) {
       return null;
     }
     KnowledgeItem.Type type =
@@ -848,6 +844,19 @@ public class PersonaContextBuilder {
         .withDisplayName(entity.getDisplayName())
         .withFullyQualifiedName(entity.getFullyQualifiedName())
         .withContent(AIContextBuilder.fullContentOf(entity));
+  }
+
+  /** An unapproved definition is no knowledge item, so it attaches nothing to the asset. */
+  static void attachFullKnowledge(
+      String entityType,
+      EntityInterface<?> entity,
+      AIContext context,
+      Consumer<KnowledgeItem> collect) {
+    KnowledgeItem full = fullKnowledgeItem(entityType, entity);
+    if (full != null) {
+      collect.accept(full);
+      attachKnowledge(context, referenceOf(full), false);
+    }
   }
 
   private static KnowledgeItem referenceOf(KnowledgeItem item) {

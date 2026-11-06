@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { FilterSelect } from '@openmetadata/ui-core-components';
+import { Certification as CertificationIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isNil } from 'lodash';
 import {
@@ -23,7 +24,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
 import {
   CERTIFICATION_CATEGORY,
   PAGE_SIZE_LARGE,
@@ -53,11 +53,7 @@ const Icon = lazy(() =>
 
 const renderCertificationIcon = (certification: Tag) => {
   const fallback = (
-    <CertificationIcon
-      className="tw:text-fg-secondary"
-      height={18}
-      width={18}
-    />
+    <CertificationIcon className="tw:text-fg-secondary" size={18} />
   );
   const iconURL = certification.style?.iconURL;
 

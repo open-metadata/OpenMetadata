@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -52,8 +51,7 @@ import org.openmetadata.service.util.JsonPatchUtils;
  *
  * <p>The create, PUT and PATCH endpoints of both resources and the metric bulk PUT call these, and
  * so do the MCP entity tools (ADR:2026-11-03-metric-writes-run-the-same-checks-through-rest-and-mcp).
- * CSV import does not yet, so a row can set a metric's parent or group without EditAll on them:
- * https://github.com/open-metadata/openmetadata-collate/issues/8228
+ * CSV import uses the same membership comparisons for row-level hierarchy authorization.
  */
 public final class MetricAuthorization {
   private static final List<String> RELATION_FIELDS =
@@ -122,7 +120,8 @@ public final class MetricAuthorization {
 
   static void authorizeHierarchyChange(
       Authorizer authorizer, SecurityContext securityContext, Metric original, Metric updated) {
-    boolean changed = original == null || hierarchyMembershipChanged(original, updated);
+    boolean changed =
+        original == null || MetricRepository.hierarchyMembershipChanged(original, updated);
     if (changed) {
       if (original != null) {
         authorizeHierarchyMutation(authorizer, securityContext, original.getId());
@@ -133,26 +132,13 @@ public final class MetricAuthorization {
 
   static void authorizeHierarchyDestinations(
       Authorizer authorizer, SecurityContext securityContext, Metric original, Metric updated) {
-    for (EntityReference destination : hierarchyDestinations(original, updated)) {
+    for (EntityReference destination : MetricRepository.hierarchyDestinations(original, updated)) {
       authorizer.authorize(
           securityContext,
           new OperationContext(destination.getType(), MetadataOperation.EDIT_ALL),
           new ResourceContext<>(
               destination.getType(), destination.getId(), destination.getFullyQualifiedName()));
     }
-  }
-
-  static List<EntityReference> hierarchyDestinations(Metric original, Metric updated) {
-    List<EntityReference> destinations = new ArrayList<>();
-    if (original == null || hierarchyMembershipChanged(original, updated)) {
-      if (updated.getParent() != null) {
-        destinations.add(updated.getParent());
-      }
-      if (updated.getMetricGroup() != null) {
-        destinations.add(updated.getMetricGroup());
-      }
-    }
-    return destinations;
   }
 
   private static void authorizeHierarchyMutation(
@@ -163,16 +149,6 @@ public final class MetricAuthorization {
           new OperationContext(Entity.METRIC, MetadataOperation.EDIT_ALL),
           new ResourceContext<>(Entity.METRIC, metric.getId(), metric.getFullyQualifiedName()));
     }
-  }
-
-  static boolean hierarchyMembershipChanged(Metric original, Metric updated) {
-    return !sameReference(original.getParent(), updated.getParent())
-        || !sameReference(original.getMetricGroup(), updated.getMetricGroup());
-  }
-
-  private static boolean sameReference(EntityReference left, EntityReference right) {
-    return left == right
-        || (left != null && right != null && Objects.equals(left.getId(), right.getId()));
   }
 
   /** A whole-document replace can set the parent too, and the patched fields leave it out. */

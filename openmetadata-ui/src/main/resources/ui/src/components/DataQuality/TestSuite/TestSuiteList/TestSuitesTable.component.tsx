@@ -19,11 +19,11 @@ import {
   Table,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { EmptyTableSuite } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EmptyTableSuiteIcon } from '../../../../assets/svg/ic-empty-table-suite.svg';
 import { DQ_CHART_SUCCESS_COLOR } from '../../../../constants/Color.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
@@ -162,6 +162,7 @@ export const TestSuitesTable = ({
       <Table.Cell>
         <Owner
           isCompactView={false}
+          labelVariant="cell"
           maxVisibleOwners={4}
           owners={record.owners}
           showLabel={false}
@@ -196,7 +197,9 @@ export const TestSuitesTable = ({
               : undefined
           }
           description={description}
-          icon={<EmptyTableSuiteIcon className="tw:text-fg-brand-primary" />}
+          icon={
+            <EmptyTableSuite className="tw:text-fg-brand-primary" size={24} />
+          }
           title={title}
         />
       </Box>

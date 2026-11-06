@@ -24,6 +24,8 @@ import {
   CheckCircleFilled,
   CloseCircleFilled,
   Comment,
+  SuccessfulTests,
+  TotalOccurrences,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -35,8 +37,6 @@ import {
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { EntityType } from '../../../enums/entity.enum';
@@ -56,7 +56,6 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
-import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getErrorText } from '../../../utils/StringUtils';
@@ -65,6 +64,7 @@ import {
   isRecognizerFeedbackTask,
   isTagsTaskType,
 } from '../../../utils/TaskActionUtils';
+import { getTaskFieldName } from '../../../utils/TaskFieldPathUtils';
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
@@ -73,6 +73,7 @@ import {
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
 import {
   getTaskResolveBody,
+  getTaskStatusIconClassName,
   isOntologyReviewTask,
 } from '../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -97,7 +98,7 @@ const getTaskRowGapClassName = (
 };
 
 const getTaskStatusIcon = (status?: TaskEntityStatus) =>
-  status === TaskEntityStatus.Open ? TaskOpenIcon : TaskCloseIcon;
+  status === TaskEntityStatus.Open ? TotalOccurrences : SuccessfulTests;
 
 const getReplyCountLabelKey = (commentsCount: number) =>
   commentsCount === 1 ? 'label.one-reply' : 'label.number-reply-plural';
@@ -177,11 +178,7 @@ const TaskFeedCardFromTask = ({
   );
 
   const taskColumnName = useMemo(() => {
-    const columnName = fieldPath
-      ? EntityLink.getTableColumnName(
-          `<#E::${entityType}::${entityFQN}::${fieldPath}>`
-        ) ?? ''
-      : '';
+    const columnName = getTaskFieldName(fieldPath);
 
     if (columnName) {
       return (
@@ -192,7 +189,7 @@ const TaskFeedCardFromTask = ({
     }
 
     return null;
-  }, [entityFQN, entityType, fieldPath, t]);
+  }, [fieldPath, t]);
 
   const handleTaskLinkClick = () => {
     navigate(getTaskDetailPathFromTask(task));
@@ -467,8 +464,14 @@ const TaskFeedCardFromTask = ({
         <Box align="start" className="tw:w-full tw:min-w-0" direction="col">
           <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center">
             <TaskStatusIcon
-              className="tw:mr-1 tw:size-3.5 tw:shrink-0"
+              className={classNames(
+                'tw:mr-1 tw:shrink-0',
+                getTaskStatusIconClassName(
+                  task.status === TaskEntityStatus.Open
+                )
+              )}
               data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
+              size={14}
             />
             <div className="tw:flex tw:min-w-0 tw:flex-1">
               {taskLinkTitleElement}
