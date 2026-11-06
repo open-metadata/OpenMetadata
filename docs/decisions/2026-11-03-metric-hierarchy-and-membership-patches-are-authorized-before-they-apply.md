@@ -1,14 +1,14 @@
 # Metric hierarchy and metric group membership patches are authorized before they apply, against the state they apply to
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
-- **Deciders:** karanh37
-- **Guard:** `MetricResourceTest#metricPatchRejectsOperationsOnTheDocumentRoot`,
-  `#metricPatchRejectsReadingARelationIntoAnotherFieldOrATest`,
-  `#hierarchyPatchIsAuthorizedOnTheMetricBeforeItIsSimulated`;
-  `MetricGroupResourceTest#patchIsAuthorizedOnTheGroupBeforeItIsSimulated`,
-  `#patchAddressingMembersRequiresViewOnEveryMember`,
-  `#memberPatchReachesTheRepositoryPinnedAndAnsweredWith412OnceMembersShift`;
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-06 (checks run in the repository before the patch applies; member pin removed)
+- **Deciders:** karanh37, Vishnu Jain (v2)
+- **Guard:** `MetricResourceTest#hierarchyPatchIsAuthorizedOnTheMetricBeforeItIsSimulated`;
+  `MetricRepositoryTest#metricPatchRejectsReadingARelationIntoAnotherFieldOrATest`,
+  `#aPatchMayNotSetAssetsChildrenOrChildrenCount`, `#aPatchToChildrenIsRefusedForTheAdminAccountToo`;
+  `MetricGroupResourceTest#patchIsAuthorizedOnTheGroupBeforeItIsSimulated`;
+  `MetricGroupRepositoryTest#patchAddressingMembersRequiresViewOnEveryMember`,
+  `#unapplicablePatchErrorDoesNotQuoteTheGroup`;
   `MetricResourceIT#patchCannotCopyAHiddenRelationIntoAReadableField`
 - **Related:** open-metadata/OpenMetadata#36909, ADR:2026-11-03-metric-writes-run-the-same-checks-through-rest-and-mcp
 
@@ -46,3 +46,25 @@ authorized on one load could be applied by the repository to a different member 
   through MCP can still race.
 - To revisit, the per-metric authorization would have to move to where the repository compares
   the member lists it actually writes, so that pinning is no longer needed.
+
+## Amendment v2: the checks run in the repository before the patch applies
+
+`MetricAuthorization` is removed (ADR:2026-11-03-metric-writes-run-the-same-checks-through-rest-and-mcp
+v4), and these checks move to where the write applies the patch.
+
+- `EntityRepository.authorizePatch(original, patch, actor)` runs before a user's patch is applied,
+  on the entity as stored with the patch fields: PATCH through REST and MCP `patch_entity`, bulk
+  edits, and the patch preview. The publishing of an approved change skips it, as it skips
+  `authorizeWrite`. Every other write runs it, so a refusal of the patch itself holds for every
+  account, `admin` included, which REST and MCP record as a system actor; only the member view
+  check skips a system actor, as `authorizeWrite` does.
+- `MetricRepository` refuses there the relation reads and tests above, and a patch to `assets`,
+  `children` or `childrenCount`. It no longer refuses the document root itself: every type refuses
+  that with a 400 (ADR:2026-11-03-input-parsing-is-bounded).
+- `MetricGroupRepository` requires VIEW_BASIC on every member there for a patch that addresses
+  them, and answers a patch it can't apply with a message that doesn't quote the group.
+- The member pin and its 412 are removed. EditAll on the metrics a patch adds or removes is checked
+  in the write against the member lists it stores, which is the condition the v1 "To revisit" note
+  gave. REST and MCP member patches now behave the same.
+- A refused shape (400) now comes before a refused move (403): the shape checks run before the
+  patch is applied, the move check in the write. The 400 depends only on the patch text.

@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -32,7 +33,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 
+import jakarta.json.Json;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -56,6 +59,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -669,6 +673,93 @@ class MetricGroupRepositoryTest {
       verify(authorizer, times(2))
           .authorizeActor(
               eq(actor), any(), argThat(resource -> Entity.METRIC.equals(resource.getResource())));
+    }
+  }
+
+  @Test
+  void patchAddressingMembersRequiresViewOnEveryMember() {
+    final MetricGroup original = group("kpis").withMetrics(List.of(member("margin")));
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    final Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("hidden metric"))
+        .when(authorizer)
+        .authorizeActor(
+            eq(actor),
+            argThat(operation -> operation.getOperations(null).contains(VIEW_BASIC)),
+            argThat(resource -> Entity.METRIC.equals(resource.getResource())));
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC))
+          .thenReturn(mock(MetricRepository.class));
+
+      assertThrows(
+          AuthorizationException.class,
+          () ->
+              repository.authorizePatch(
+                  original,
+                  Json.createPatchBuilder().copy("/description", "/metrics/0/description").build(),
+                  actor));
+      // A patch that names no member reads none, and a system write is not a caller.
+      repository.authorizePatch(
+          original, Json.createPatchBuilder().add("/description", "x").build(), actor);
+      repository.authorizePatch(
+          original,
+          Json.createPatchBuilder().copy("/displayName", "/metrics/0/name").build(),
+          ChangeActor.system("admin", null));
+      verify(authorizer, times(1)).authorizeActor(any(), any(), any());
+    }
+    assertTrue(
+        MetricGroupRepository.addressesMembers(
+            Json.createPatchBuilder().remove("/metrics/1").build()));
+    assertTrue(
+        MetricGroupRepository.addressesMembers(
+            Json.createPatchBuilder().add("", Json.createObjectBuilder().build()).build()));
+    assertFalse(
+        MetricGroupRepository.addressesMembers(
+            Json.createPatchBuilder().replace("/metricsNote", "x").build()));
+  }
+
+  @Test
+  void unapplicablePatchErrorDoesNotQuoteTheGroup() {
+    final MetricGroup original =
+        group("kpis").withDescription("board secrets").withMetrics(List.of(member("margin")));
+
+    final IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                repository.authorizePatch(
+                    original,
+                    Json.createPatchBuilder().copy("/description", "/nope/x").build(),
+                    ChangeActor.user("alice", null)));
+
+    assertFalse(thrown.getMessage().contains("board secrets"));
+    assertFalse(thrown.getMessage().contains("margin"));
+  }
+
+  @Test
+  void aDocumentRootPatchIsRefusedBeforeAnyMemberCheck() {
+    final MetricGroup original = group("kpis").withMetrics(List.of(member("margin")));
+    final Authorizer authorizer = mock(Authorizer.class);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC))
+          .thenReturn(mock(MetricRepository.class));
+
+      final IllegalArgumentException refused =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  repository.previewPatch(
+                      original,
+                      Json.createPatchBuilder().add("", Json.createObjectBuilder().build()).build(),
+                      ChangeActor.user("alice", null)));
+
+      // A 403 here would tell the caller the group has a member it may not view.
+      assertTrue(refused.getMessage().contains("document root"), refused.getMessage());
+      verify(authorizer, never()).authorizeActor(any(), any(), any());
     }
   }
 
