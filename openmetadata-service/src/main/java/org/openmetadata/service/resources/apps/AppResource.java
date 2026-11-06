@@ -80,6 +80,7 @@ import org.openmetadata.service.apps.AppTrigger;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.NativeApplication;
+import org.openmetadata.service.apps.bundles.rdf.RdfInitialIndexRun;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -179,6 +180,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         } else {
           scheduleAppIfNeeded(app);
         }
+        RdfInitialIndexRun.enqueueIfNeverRun(app, Entity.getCollectionDAO(), searchRepository);
       } catch (AppException ex) {
         LOG.warn(
             "We could not install the application {}. Error: {}",

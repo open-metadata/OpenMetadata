@@ -15,8 +15,8 @@ import {
   IconComponentType,
 } from '@openmetadata/ui-core-components';
 import {
+  Alert,
   AlertCircle,
-  AlertTriangle,
   Announcement02,
   InfoCircle,
   SlashCircle01,
@@ -150,7 +150,7 @@ export const ANNOUNCEMENT_TYPE_CONFIG: Record<
   },
   [AnnouncementType.Warning]: {
     color: 'warning',
-    icon: AlertTriangle,
+    icon: Alert,
     labelKey: 'label.warning',
   },
   [AnnouncementType.Deprecation]: {

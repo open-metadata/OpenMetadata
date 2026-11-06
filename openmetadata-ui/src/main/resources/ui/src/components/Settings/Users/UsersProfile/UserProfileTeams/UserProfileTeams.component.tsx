@@ -19,12 +19,14 @@ import {
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import {
+  CloseCircleFilled,
+  Edit01,
+  Save,
+  Teams,
+} from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
-import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
-import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
@@ -97,7 +99,7 @@ const UserProfileTeams = ({
       data-testid="user-profile-teams">
       <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
         <div className="tw:m-0.5 tw:flex tw:size-4 tw:items-center tw:justify-center">
-          <IconTeamsGrey height={18} width={18} />
+          <Teams size={18} />
         </div>
 
         <div className="d-flex justify-between w-full">
@@ -126,7 +128,7 @@ const UserProfileTeams = ({
                   direction="col"
                   gap={3}>
                   <Box align="center" gap={2}>
-                    <IconTeamsGrey height={16} />
+                    <Teams size={16} />
                     <Typography size="text-sm" weight="semibold">
                       {t('label.team-plural')}
                     </Typography>
@@ -151,7 +153,7 @@ const UserProfileTeams = ({
                     <ButtonUtility
                       color="primary"
                       data-testid="teams-edit-close-btn"
-                      icon={ClosePopoverIcon}
+                      icon={CloseCircleFilled}
                       size="sm"
                       tooltip={t('label.cancel')}
                       onClick={handleCloseEditTeam}
@@ -159,7 +161,7 @@ const UserProfileTeams = ({
                     <ButtonUtility
                       color="primary"
                       data-testid="teams-edit-save-btn"
-                      icon={SavePopoverIcon}
+                      icon={Save}
                       isLoading={isLoading}
                       size="sm"
                       tooltip={t('label.save')}

@@ -367,10 +367,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../../assets/svg/upload-cloud.svg', () => ({
-  ReactComponent: () => <div data-testid="cloud-upload-icon">CloudUpload</div>,
-}));
-
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, string>) => {

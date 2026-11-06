@@ -46,10 +46,14 @@ import {
   updateModuleSelection,
 } from '../../../OntologyExplorer/OntologyLibrary.utils';
 import OntologyLibraryDetail from '../../../OntologyExplorer/OntologyLibraryDetail';
+import { useOntologyIdentitySource } from '../OntologyCreateForm/useOntologyIdentitySource';
 import {
   nativeLibraryOntologyRequest,
   resolveNativeLibraryTarget,
 } from './OntologyNativeLibraryDetail.utils';
+import OntologyNativePackReview, {
+  useNativePackReview,
+} from './OntologyNativePackReview';
 
 export interface NativeLibraryCompletion {
   ontology: Ontology;
@@ -87,6 +91,8 @@ const OntologyNativeLibraryDetail = ({
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const currentUserId = useApplicationStore((state) => state.currentUser?.id);
+  const { refreshIdentityOf, isReady: isIdentityReady } =
+    useOntologyIdentitySource(canCreate);
   const [targetId, setTargetId] = useState('new');
   const [target, setTarget] = useState<Ontology>();
   const [selectedModuleIds, setSelectedModuleIds] = useState(() =>
@@ -201,12 +207,20 @@ const OntologyNativeLibraryDetail = ({
       });
   }, [canEditTarget, isPermissionLoading, pack.id, phase, t, apply]);
 
+  const review = useNativePackReview(
+    targetId === 'new' ? undefined : targetId,
+    pack.id,
+    selectedModuleIds
+  );
   const isInstallDisabled = () => {
     if (isBusy || !selectedModuleIds.length) {
       return true;
     }
+    if (targetId !== 'new' && !review.isSuccess) {
+      return true;
+    }
     if (targetId === 'new' && !target) {
-      return !canCreate || !currentUserId;
+      return !canCreate || !currentUserId || !isIdentityReady;
     }
 
     return !canEditTarget;
@@ -231,6 +245,15 @@ const OntologyNativeLibraryDetail = ({
     onCreated(current.target);
   };
 
+  const newOntologyRequest = async () => {
+    if (targetId !== 'new' || !currentUserId) {
+      return undefined;
+    }
+    const nameOf = await refreshIdentityOf();
+
+    return nativeLibraryOntologyRequest(pack, currentUserId, nameOf(pack.name));
+  };
+
   const install = async () => {
     if (preparing.current || isBusy) {
       return;
@@ -245,13 +268,14 @@ const OntologyNativeLibraryDetail = ({
       if (isInstallDisabled()) {
         return;
       }
+      const request = await newOntologyRequest();
+      if (attempt.current) {
+        return;
+      }
       attempt.current = {
         moduleIds: [...selectedModuleIds],
         target,
-        request:
-          targetId === 'new' && currentUserId
-            ? nativeLibraryOntologyRequest(pack, currentUserId)
-            : undefined,
+        request,
       };
     }
     const current = attempt.current;
@@ -385,6 +409,7 @@ const OntologyNativeLibraryDetail = ({
                 </Card>
               ))}
             </Box>
+            {targetId !== 'new' && <OntologyNativePackReview review={review} />}
             {renderInstallActions()}
             {error && <Alert variant="error">{error}</Alert>}
             {apply.status.kind === 'blocked' && (

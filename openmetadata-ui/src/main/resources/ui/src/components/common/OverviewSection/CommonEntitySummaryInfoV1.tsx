@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { Button, Typography } from '@openmetadata/ui-core-components';
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import { isNil } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPath } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
-import { ICON_DIMENSION } from '../../../constants/constants';
 import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import {
@@ -83,10 +82,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
             color="link-color"
             href={url}
             iconTrailing={
-              <IconExternalLink
-                data-testid="external-link-icon"
-                {...ICON_DIMENSION}
-              />
+              <LinkExternal01 data-testid="external-link-icon" size={14} />
             }
             rel="noopener noreferrer"
             size="xs"

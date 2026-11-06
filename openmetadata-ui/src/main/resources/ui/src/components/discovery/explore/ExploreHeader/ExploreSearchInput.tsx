@@ -18,13 +18,12 @@ import {
   Input,
   SelectPopover,
 } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { Search, XCircle } from '@openmetadata/ui-core-components/icons';
 import { isAppleDevice } from '@react-aria/utils';
 import classNames from 'classnames';
 import type { FormEvent, ReactNode, RefObject } from 'react';
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconCloseCircleOutlined } from '../../../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic-suggestions-blue.svg';
 import type { SearchIndex } from '../../../../enums/search.enum';
@@ -215,6 +214,7 @@ export const ExploreSearchInput = ({
           )}
           <Input
             data-input-wrapper
+            autoComplete="off"
             className={INPUT_FIELD_CONTAINER_CLASS}
             data-testid="explore-search-input"
             fontSize="xs"
@@ -238,7 +238,7 @@ export const ExploreSearchInput = ({
           {searchValue && (
             <ButtonUtility
               data-testid="explore-clear-search-button"
-              icon={IconCloseCircleOutlined}
+              icon={XCircle}
               size="xs"
               tooltip={t('label.clear')}
               onClick={onClearSearch}

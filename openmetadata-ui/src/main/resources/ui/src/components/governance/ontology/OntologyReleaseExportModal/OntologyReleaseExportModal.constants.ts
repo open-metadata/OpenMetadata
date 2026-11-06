@@ -51,10 +51,4 @@ export const resolveExportFormat = (
 ): OntologyReleaseExportFormat =>
   card === 'skos' && skosXl ? 'skos-xl' : card;
 
-/** OWL and JSON-LD preview as Turtle, because the graph is the same and Turtle is readable. */
-export const resolvePreviewFormat = (
-  format: OntologyReleaseExportFormat
-): OntologyReleaseExportFormat =>
-  format === 'rdfxml' || format === 'jsonld' ? 'turtle' : format;
-
 export const ONTOLOGY_RELEASE_PREVIEW_LIMIT = 1800;

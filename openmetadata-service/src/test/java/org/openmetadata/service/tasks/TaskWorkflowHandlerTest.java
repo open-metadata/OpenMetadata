@@ -811,7 +811,10 @@ class TaskWorkflowHandlerTest {
             .withName("customer_events")
             .withColumns(List.of(profile));
 
-    Task task = new Task().withId(UUID.randomUUID());
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withAbout(new EntityReference().withId(table.getId()).withType(Entity.TABLE));
     Map<String, String> payload =
         Map.of(
             "suggestionType", "Description",
@@ -849,7 +852,10 @@ class TaskWorkflowHandlerTest {
             .withFullyQualifiedName("svc.db.schema.orders")
             .withColumns(List.of(customerId));
 
-    Task task = new Task().withId(UUID.randomUUID());
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withAbout(new EntityReference().withId(table.getId()).withType(Entity.TABLE));
     Map<String, String> payload =
         Map.of(
             "suggestionType", "Tag",

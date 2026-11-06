@@ -1,0 +1,85 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import type { AxiosError } from 'axios';
+import type { ComponentType } from 'react';
+import type { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
+import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import type { ResourceEntity } from '../../enums/permissions.enum';
+import type { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
+import type { AlertType } from '../../generated/events/eventSubscription';
+import type { AlertSelection } from '../../hooks/useAlertSelection';
+import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
+import type {
+  AddAlertPageLoadingState,
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from '../../utils/AlertsClassBase.interface';
+
+export interface UseAlertFormDataOptions {
+  afterSaveAction?: (fqn: string) => Promise<void> | void;
+  /** Defaults to Observability; says which kind of alert the server is asked about. */
+  alertType?: AlertType;
+  fqn?: string;
+  onCancel?: () => void;
+  /** The chosen alert sources; the server says what they support. */
+  sources?: string[];
+  /** The filters and triggers chosen so far, so the server can warn about sources they never match. */
+  input?: ModifiedCreateEventSubscription['input'];
+}
+
+export interface UseObservabilityAlertResourcesReturn {
+  /** The server has not answered its first question yet. */
+  loading: boolean;
+  selection: AlertSelection;
+  shouldShowActionsSection: boolean;
+  shouldShowFiltersSection: boolean;
+}
+
+export interface UseObservabilityAlertTemplatesReturn {
+  loading: boolean;
+  templateResourcePermission: OperationPermission;
+  templates: NotificationTemplate[];
+}
+
+export interface UseObservabilityAlertTemplatesOptions {
+  extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
+  getResourcePermission: (
+    resourceEntity: ResourceEntity
+  ) => Promise<OperationPermission>;
+}
+
+export interface UseAlertFormDataReturn {
+  alert?: ModifiedEventSubscription;
+  /** Set when loading the alert to edit failed. */
+  alertError?: AxiosError;
+  breadcrumb: {
+    name: string;
+    url: string;
+  }[];
+  extraFormButtons: Record<string, ComponentType<AddAlertFormWidgetProps>>;
+  extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
+  fetchAlert: () => Promise<void>;
+  handleCancel: () => void;
+  handleSave: (data: ModifiedCreateEventSubscription) => Promise<void>;
+  inlineAlertDetails?: InlineAlertProps;
+  isEditMode: boolean;
+  isLoading: boolean;
+  loadingState: AddAlertPageLoadingState;
+  saving: boolean;
+  selection: AlertSelection;
+  shouldShowActionsSection: boolean;
+  shouldShowFiltersSection: boolean;
+  templateResourcePermission: OperationPermission;
+  templates: NotificationTemplate[];
+}

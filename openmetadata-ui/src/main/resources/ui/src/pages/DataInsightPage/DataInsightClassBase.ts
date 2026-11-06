@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as AppAnalyticsIcon } from '../../assets/svg/app-analytics.svg';
-import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-asset.svg';
-import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
+import {
+  AppAnalytics,
+  Assets,
+  Kpi,
+} from '@openmetadata/ui-core-components/icons';
 import { ManageMenuItem as ItemType } from '../../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import AppAnalyticsTab from '../../components/DataInsight/AppAnalyticsTab/AppAnalyticsTab.component';
 import DataAssetsTab from '../../components/DataInsight/DataAssetsTab/DataAssetsTab.component';
@@ -40,17 +42,17 @@ class DataInsightClassBase {
       {
         key: DataInsightTabs.DATA_ASSETS,
         label: i18n.t('label.data-asset-plural'),
-        icon: DataAssetsIcon,
+        icon: Assets,
       },
       {
         key: DataInsightTabs.APP_ANALYTICS,
         label: i18n.t('label.app-analytic-plural'),
-        icon: AppAnalyticsIcon,
+        icon: AppAnalytics,
       },
       {
         key: DataInsightTabs.KPIS,
         label: i18n.t('label.kpi-uppercase-plural'),
-        icon: KPIIcon,
+        icon: Kpi,
       },
     ];
   }
