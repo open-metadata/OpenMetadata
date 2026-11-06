@@ -21,13 +21,12 @@
 #
 # Behaviour:
 #
-#   * Same-repo PR (pull_request via a same-repo branch, or
-#     pull_request_target whose head_repo == base_repo): the workflow
+#   * Same-repo PR (head_repo == base_repo): the workflow
 #     regenerates, commits the refreshed file to the PR branch, posts
 #     a comment explaining what happened, and passes. Push retriggers
 #     PR CI so subsequent checks run against the fresh map.
 #
-#   * Fork PR (pull_request_target with head_repo != base_repo):
+#   * Fork PR (head_repo != base_repo):
 #     no-op. The bot cannot push into the fork, and asking every
 #     external contributor to install Python and regenerate the map
 #     locally is friction disproportionate to the coverage risk (a
@@ -51,8 +50,8 @@
 name: Playwright impact-map drift
 
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened, labeled, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/**/*.spec.ts'
       - 'openmetadata-ui/src/main/resources/ui/src/**/*.ts'
@@ -68,19 +67,18 @@ on:
 
 concurrency:
   group: playwright-impact-map-drift-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  cancel-in-progress: true
 
 jobs:
   impact-map-drift:
     name: Playwright impact-map drift
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Gate on the same `safe to test` label as typescript-type-generation
-    # for fork PRs, so an untrusted fork cannot execute the generator
-    # against base-repo secrets before a maintainer has looked at the diff.
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !github.event.pull_request.draft }}
     permissions:
-      contents: write
+      # The auto-commit pushes with COLLATE_PAT, so GITHUB_TOKEN only needs to read
+      # the repo and comment on the PR.
+      contents: read
       pull-requests: write
 
     steps:
@@ -104,6 +102,7 @@ jobs:
           FULL_REPO: ${{ steps.pr-details.outputs.full_repo }}
           HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
         run: |
           if [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
             if [ "$FULL_REPO" != "$BASE_REPO" ]; then
@@ -111,8 +110,9 @@ jobs:
             else
               echo "is_fork=false" >> $GITHUB_OUTPUT
             fi
-          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
-            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ]; then
+          elif [ "$EVENT_NAME" == "pull_request" ]; then
+            # Dependabot runs get no secrets either, so they are handled like a fork.
+            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ] || [ "$ACTOR" == "dependabot[bot]" ]; then
               echo "is_fork=true" >> $GITHUB_OUTPUT
             else
               echo "is_fork=false" >> $GITHUB_OUTPUT
@@ -143,9 +143,9 @@ jobs:
           PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
           GITHUB_SHA_VAL: ${{ github.sha }}
         run: |
-          if [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
+          if [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request" ]; then
             echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
+          elif [ "$EVENT_NAME" == "pull_request" ]; then
             echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
           elif [ "$IS_FORK" == "true" ] && [ -n "$PR_DETAILS_HEAD_SHA" ]; then
             echo "ref=$PR_DETAILS_HEAD_SHA" >> $GITHUB_OUTPUT
@@ -162,7 +162,6 @@ jobs:
           repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
           ref: ${{ steps.checkout-ref.outputs.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Setup Python
@@ -249,7 +248,7 @@ jobs:
           git push --force-with-lease origin "HEAD:${HEAD_REF}"
 
       - name: Comment on same-repo PR after auto-commit
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request' || github.event.inputs.pr_number != '')
         uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}

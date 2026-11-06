@@ -241,14 +241,11 @@ jobs:
 
       # SECURITY: this job runs `require('./.github/scripts/render_playwright_summary.cjs')`
       # via `actions/github-script` with GITHUB_TOKEN in scope, so whichever tree we
-      # check out here becomes trusted code executing with token access. For fork PRs
-      # (pull_request_target) we MUST NOT check out the fork's head — a malicious fork
-      # could otherwise edit render_playwright_summary.cjs to exfiltrate the token or
-      # rewrite the check result. Use the base branch's SHA on pull_request_target so
-      # only reviewed-and-merged versions of these scripts ever run. Everything else
-      # keeps github.sha (PR merge commit / dispatch ref). Merge groups use the
-      # inline gate and alert above; they check out only to merge the HTML
-      # report so queue failures and retry passes keep their traces.
+      # check out here becomes trusted code executing with token access. It never runs
+      # on PR events, so github.sha is always a merge-group commit (approved PRs) or a
+      # scheduled / dispatched ref. Merge groups use the inline gate and alert above;
+      # they check out only to merge the HTML report so queue failures and retry passes
+      # keep their traces.
       - name: Checkout
         id: checkout
         # always(): a failed merge-group gate must not skip the trace report.
@@ -256,7 +253,6 @@ jobs:
         continue-on-error: true
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha || github.sha }}
           persist-credentials: false
 
       - name: Download blob reports
@@ -332,7 +328,7 @@ jobs:
         if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
-          EXPECTED_HEAD_SHA: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          EXPECTED_HEAD_SHA: ${{ github.sha }}
         run: node .github/scripts/normalize_playwright_artifacts.cjs results "$EXPECTED_HEAD_SHA"
 
       - name: Diagnose downloaded results layout
