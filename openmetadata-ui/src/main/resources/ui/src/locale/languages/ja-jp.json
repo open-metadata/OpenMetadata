@@ -5759,7 +5759,7 @@
     "ontology-class-draft-notice": "下書き。このクラスは作業用オントロジーの一部となり、公開前にレビューが必要です。",
     "ontology-class-lease-holder": "この下書きは {{holder}} によってロックされています。編集ロックが解放されたら再試行してください。",
     "ontology-class-refresh-failed": "クラスを作成しました。選択するにはモデルを再読み込みしてください。",
-    "ontology-column-binding-partial": "{{saved}} 件を保存しました。未保存: {{tables}}。その書き込みの後にバインディングを更新できなかったため、保存を中止しました。もう一度保存して残りをバインドしてください。",
+    "ontology-column-binding-partial": "{{saved}} を保存しました。未保存: {{tables}}。その書き込みの後にバインディングを更新できなかったため、保存を中止しました。もう一度保存して残りをバインドしてください。",
     "ontology-column-extra-bindings_one": "他 {{count}} 件のバインディング（変更なし）",
     "ontology-column-extra-bindings_other": "他 {{count}} 件のバインディング（変更なし）",
     "ontology-column-list-truncated": "先頭の {{count}} カラムのみ表示しています。他のカラムのバインディングは保持されます。テーブル自体のページからバインドしてください。",

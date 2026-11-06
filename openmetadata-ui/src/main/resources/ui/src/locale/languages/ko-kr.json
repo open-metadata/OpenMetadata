@@ -5759,7 +5759,7 @@
     "ontology-class-draft-notice": "초안입니다. 이 클래스는 작업 온톨로지의 일부가 되며 게시 전에 검토해야 합니다.",
     "ontology-class-lease-holder": "이 초안은 {{holder}}님이 잠갔습니다. 편집 잠금이 해제되면 다시 시도하세요.",
     "ontology-class-refresh-failed": "클래스를 만들었습니다. 선택하려면 모델을 다시 불러오세요.",
-    "ontology-column-binding-partial": "{{saved}}개를 저장했습니다. 저장되지 않음: {{tables}}. 해당 쓰기 이후 바인딩을 새로 고칠 수 없어 저장이 중단되었습니다. 나머지를 바인딩하려면 다시 저장하세요.",
+    "ontology-column-binding-partial": "{{saved}}을(를) 저장했습니다. 저장되지 않음: {{tables}}. 해당 쓰기 이후 바인딩을 새로 고칠 수 없어 저장이 중단되었습니다. 나머지를 바인딩하려면 다시 저장하세요.",
     "ontology-column-extra-bindings_one": "바인딩 +{{count}}개 더 있음, 그대로 유지됨",
     "ontology-column-extra-bindings_other": "바인딩 +{{count}}개 더 있음, 그대로 유지됨",
     "ontology-column-list-truncated": "처음 {{count}}개 열만 표시됩니다. 다른 열의 바인딩은 유지됩니다. 해당 테이블 자체 페이지에서 바인딩하세요.",
