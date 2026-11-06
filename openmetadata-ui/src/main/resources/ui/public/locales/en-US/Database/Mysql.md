@@ -7,7 +7,7 @@ To extract metadata the user used in the connection needs to have access to the 
 
 ```SQL
 -- Create user. If <hostName> is omitted, defaults to '%'
--- More details https://dev.mysql.com/doc/refman/8.0/en/create-user.html
+-- More details https://dev.mysql.com/doc/refman/8.4/en/create-user.html
 CREATE USER '<username>'[@'<hostName>'] IDENTIFIED BY '<password>';
 
 -- Grant metadata access on a database, without access to its data
@@ -19,10 +19,10 @@ GRANT SELECT, SHOW VIEW ON world.* TO '<username>';
 
 The user needs `SHOW VIEW` to ingest view definitions. When the user has no `SELECT` on a view, `REFERENCES` lets the connector read the view's columns. Without `SELECT` or `REFERENCES`, the connector ingests views without columns.
 
-To ingest stored procedures and functions with their code, also run `GRANT SHOW_ROUTINE ON *.* TO '<username>';` (MySQL 8.0.20 and up). With only `EXECUTE`, the connector ingests them without their code.
+To ingest stored procedures and functions with their code, also run `GRANT SHOW_ROUTINE ON *.* TO '<username>';` (MySQL 8.4 and up). With only `EXECUTE`, the connector ingests them without their code.
 
 $$note
-OpenMetadata supports MySQL version `8.0.0` and up. 
+OpenMetadata supports MySQL version `8.4.0` and up. OpenMetadata no longer supports MySQL 8.0, which reached end of life in April 2026. 
 $$
 
 ### Lineage & Usage 

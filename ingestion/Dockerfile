@@ -1,5 +1,5 @@
 ARG BASE_IMAGE=apache/airflow:3.3.2-python3.12
-FROM mysql:8.3 AS mysql
+FROM mysql:8.4 AS mysql
 
 FROM ${BASE_IMAGE}
 
