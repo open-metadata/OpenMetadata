@@ -15,11 +15,13 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -28,6 +30,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -43,6 +46,7 @@ import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -55,7 +59,10 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.seeding.SeedDataGate;
+import org.openmetadata.service.util.RestUtil.DeleteResponse;
 
 @Slf4j
 @Path("/v1/dataQuality/testDefinitions")
@@ -492,6 +499,37 @@ public class TestDefinitionResource
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/{id}/unused")
+  @Operation(
+      operationId = "deleteUnusedTestDefinition",
+      summary = "Hard-delete an unused, unchanged test definition",
+      description =
+          "Requires If-Match for the definition version. Rejects definitions with test cases, including soft-deleted cases.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Definition permanently deleted"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Definition still has test cases or is protected"),
+        @ApiResponse(responseCode = "412", description = "Definition changed since it was read")
+      })
+  public Response deleteUnusedDefinition(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @NotBlank @HeaderParam(HttpHeaders.IF_MATCH) String ifMatch) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.DELETE),
+        getResourceContextById(id, ResourceContextInterface.Operation.DELETE));
+    DeleteResponse<TestDefinition> response =
+        repository.deleteUnusedDefinition(
+            securityContext.getUserPrincipal().getName(), id, ifMatch);
+    limits.invalidateCache(entityType);
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
   }
 
   @DELETE
