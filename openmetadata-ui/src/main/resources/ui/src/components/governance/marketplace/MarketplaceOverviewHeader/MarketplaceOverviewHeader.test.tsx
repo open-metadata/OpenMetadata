@@ -59,12 +59,6 @@ jest.mock(
   })
 );
 
-jest.mock(
-  'assets/svg/ask-collate-nav-bar/marketplace-default.svg',
-  () => ({ ReactComponent: () => <svg data-testid="marketplace-icon" /> }),
-  { virtual: true }
-);
-
 jest.mock('../AddNewMenu/AddNewMenu', () => ({
   __esModule: true,
   AddNewMenu: () => <div data-testid="add-new-menu" />,

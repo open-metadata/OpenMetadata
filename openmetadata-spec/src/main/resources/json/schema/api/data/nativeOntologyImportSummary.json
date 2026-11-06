@@ -72,6 +72,14 @@
     },
     "counts": {
       "$ref": "#/definitions/counts"
+    },
+    "items": {
+      "description": "Every parsed definition in the order the source lists them, each with the status applying it would give. On a preview against a target each NEW or UPDATE item names its change set operation; a preview against a new ontology has no operations yet.",
+      "type": "array",
+      "items": {
+        "$ref": "nativeOntologyImportItem.json"
+      },
+      "default": []
     }
   },
   "required": ["detectedFormat", "counts"],

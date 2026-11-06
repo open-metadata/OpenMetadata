@@ -1,7 +1,7 @@
 # Icon-only actions are a tertiary ButtonUtility, and editing has one icon
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`) · v4 2026-10-29 (compact table-cell actions are `xs`; activity-feed footer actions are `sm`) · v5 2026-11-02 (a disabled `ButtonUtility` is natively disabled; `Tooltip` wraps it) · v6 2026-11-02 (the page-header learning bulb is `xs`)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`) · v4 2026-10-29 (compact table-cell actions are `xs`; activity-feed footer actions are `sm`) · v5 2026-11-02 (a disabled `ButtonUtility` is natively disabled; `Tooltip` wraps it) · v6 2026-11-02 (the page-header learning bulb is `xs`) · v7 2026-11-05 (tree-row hover actions are `xs`)
 - **Deciders:** Rohit Jain
 - **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx` (tertiary default, ref, disabled tooltip); `reviewer`
 - **Related:** ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec, open-metadata/OpenMetadata#35348
@@ -86,3 +86,9 @@ onward (the announcement pagers) do so themselves.
 - The PageHeader learning bulb, an icon-only action beside a 16px page heading, is `xs`, so its
   12px glyph matches the heading's cap height. Its wrapper sets `line-height: 0` so the text strut
   does not lift it off the title's centre. Other `LearningIcon` placements stay `sm`.
+
+## Amendment: tree-row hover actions (v7, 2026-11-05)
+- Hover actions inside a `Tree` row, such as the Context Center article hierarchy's delete, are
+  `xs`. The tree row is 32px (20px text plus `py-1.5`). An `lg` button (32px) raised every row to
+  44px, while the 20px `xs` box fits the row and its 12px glyph sits beside the row's 14px page
+  icon. The v2 `lg` clause still covers list rows outside a tree.

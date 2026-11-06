@@ -12,11 +12,10 @@
  */
 
 import { Avatar } from '@openmetadata/ui-core-components';
-import { AiAgent } from '@openmetadata/ui-core-components/icons';
+import { AiAgent, Teams } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { parseInt } from 'lodash';
 import { ComponentProps, CSSProperties, useMemo, type ReactNode } from 'react';
-import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { User } from '../../../generated/entity/teams/user';
@@ -212,7 +211,7 @@ const ProfilePicture = ({
         className={classNames('tw:text-fg-secondary', className)}
         contrastBorder={false}
         data-testid="profile-avatar"
-        placeholderIcon={IconTeams}
+        placeholderIcon={Teams}
         size={avatarSize}
         style={{ backgroundColor: 'transparent' }}
       />

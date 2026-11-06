@@ -13,7 +13,7 @@
 
 import { Button, Grid } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   CodeSquare02,
   HeartRounded,
   Star04,
@@ -127,7 +127,7 @@ const UserAssetStats: React.FC<{
       <Grid.Item span={6}>
         <StatCard
           cardVariant={cardVariant}
-          icon={<AlertTriangle data-icon />}
+          icon={<Alert data-icon />}
           label={t('label.open-incidents')}
           loading={isLoading}
           subtitle={

@@ -870,7 +870,7 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 
 ## Legacy LESS aliases (33)
 
-Existing LESS palette names retain their light fallbacks; app.less supplies dark-mode overrides. Prefer semantic tokens for new work.
+Existing LESS palette names retain their light fallbacks; tokens.css supplies dark-mode overrides. Prefer semantic tokens for new work.
 
 | Token | Value |
 | --- | --- |

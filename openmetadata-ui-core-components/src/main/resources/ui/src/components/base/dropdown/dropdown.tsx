@@ -118,14 +118,14 @@ const DropdownItem = ({
               aria-hidden="true"
               className={cx(
                 'tw:shrink-0',
-                isLarge ? 'tw:size-6' : 'tw:size-4 tw:stroke-[2.25px]',
+                isLarge ? 'tw:size-6' : 'tw:size-5',
                 state.isDisabled
                   ? 'tw:text-fg-disabled'
                   : state.isSelected
                   ? 'tw:text-fg-brand-secondary_alt'
                   : isLarge
                   ? 'tw:text-fg-tertiary'
-                  : 'tw:text-fg-quaternary'
+                  : 'tw:text-utility-gray-500 tw:group-hover:text-utility-gray-600'
               )}
             />
           )}
