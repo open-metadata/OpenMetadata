@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "عرض {{shown}} من أصل {{total}} نتيجة.",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "تحدد الأنطولوجيا المفاهيم في مؤسستك وكيفية ارتباطها وأصول البيانات التي تمثلها.",
     "ontology-first-run-import": "OWL أو Turtle أو JSON-LD أو CSV. تعرض التجربة الجافة الأعداد قبل كتابة أي شيء.",
     "ontology-first-run-library": "ابدأ من نموذج قياسي. اختر الوحدات ثم ثبّت.",

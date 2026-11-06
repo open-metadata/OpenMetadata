@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "顯示 {{total}} 項結果中的 {{shown}} 項。",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "本體定義了組織中的概念、它們之間的關係，以及代表這些概念的資料資產。",
     "ontology-first-run-import": "OWL、Turtle、JSON-LD 或 CSV。試執行會在寫入任何內容之前顯示數量。",
     "ontology-first-run-library": "從標準模型開始。選擇模組，然後安裝。",

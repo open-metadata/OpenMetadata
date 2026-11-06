@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "{{total}} bulgudan {{shown}} tanesi gösteriliyor.",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "Bir ontoloji, kuruluşunuzdaki kavramları, bunların birbiriyle ilişkisini ve onları temsil eden veri varlıklarını tanımlar.",
     "ontology-first-run-import": "OWL, Turtle, JSON-LD veya CSV. Deneme çalıştırması, herhangi bir şey yazılmadan önce sayıları gösterir.",
     "ontology-first-run-library": "Standart bir modelden başlayın. Modülleri seçin, sonra yükleyin.",

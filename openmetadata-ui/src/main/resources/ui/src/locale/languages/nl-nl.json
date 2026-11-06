@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "{{shown}} van {{total}} bevindingen worden weergegeven.",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "Een ontologie definieert de concepten in uw organisatie, hoe ze samenhangen en welke data-assets ze vertegenwoordigen.",
     "ontology-first-run-import": "OWL, Turtle, JSON-LD of CSV. Een proefrun toont de aantallen voordat er iets wordt geschreven.",
     "ontology-first-run-library": "Begin met een standaardmodel. Kies modules en installeer ze.",

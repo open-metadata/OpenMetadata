@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "מוצגים {{shown}} מתוך {{total}} ממצאים.",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "אונטולוגיה מגדירה את המושגים בארגון שלכם, את הקשרים ביניהם ואת נכסי הנתונים שמייצגים אותם.",
     "ontology-first-run-import": "OWL‏, Turtle‏, JSON-LD או CSV. הרצת ניסיון מציגה את הספירות לפני שמשהו נכתב.",
     "ontology-first-run-library": "התחילו ממודל סטנדרטי. בחרו מודולים ואז התקינו.",

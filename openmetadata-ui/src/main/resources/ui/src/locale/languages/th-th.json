@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "แสดงผลการตรวจสอบ {{shown}} จาก {{total}} รายการ",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "ออนโทโลยีกำหนดแนวคิดในองค์กรของคุณ ความสัมพันธ์ระหว่างแนวคิด และทรัพย์สินข้อมูลที่แทนแนวคิดเหล่านั้น",
     "ontology-first-run-import": "OWL, Turtle, JSON-LD หรือ CSV การทดลองรันจะแสดงจำนวนก่อนที่จะเขียนข้อมูลใดๆ",
     "ontology-first-run-library": "เริ่มจากโมเดลมาตรฐาน เลือกโมดูล แล้วติดตั้ง",

@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "{{total}}件中{{shown}}件の検出結果を表示しています。",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "オントロジーは、組織内の概念、それらの関係、概念を表すデータアセットを定義します。",
     "ontology-first-run-import": "OWL、Turtle、JSON-LD、CSV に対応しています。ドライランで、書き込み前に件数を確認できます。",
     "ontology-first-run-library": "標準モデルから始めます。モジュールを選んでインストールします。",

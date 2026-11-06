@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "نمایش {{shown}} مورد از {{total}} یافته.",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "هستی‌شناسی مفاهیم سازمان شما، نحوه ارتباط آن‌ها و دارایی‌های داده‌ای که آن‌ها را نمایندگی می‌کنند تعریف می‌کند.",
     "ontology-first-run-import": "OWL، Turtle، JSON-LD یا CSV. اجرای آزمایشی پیش از نوشتن هر چیزی تعداد‌ها را نشان می‌دهد.",
     "ontology-first-run-library": "از یک مدل استاندارد شروع کنید. ماژول‌ها را انتخاب و سپس نصب کنید.",

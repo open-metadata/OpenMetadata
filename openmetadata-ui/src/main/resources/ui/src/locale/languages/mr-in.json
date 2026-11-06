@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "{{total}} पैकी {{shown}} निष्कर्ष दर्शवले आहेत.",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "ऑन्टोलॉजी तुमच्या संस्थेतील संकल्पना, त्या एकमेकांशी कशा संबंधित आहेत आणि कोणते डेटा ॲसेट्स त्यांचे प्रतिनिधित्व करतात ते परिभाषित करते.",
     "ontology-first-run-import": "OWL, Turtle, JSON-LD किंवा CSV. ड्राय रन काहीही लिहिण्यापूर्वी संख्या दाखवतो.",
     "ontology-first-run-library": "मानक मॉडेलपासून सुरुवात करा. मॉड्यूल निवडा, मग स्थापित करा.",

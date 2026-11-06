@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "전체 {{total}}개 중 {{shown}}개의 결과를 표시합니다.",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "온톨로지는 조직의 개념, 개념 간의 관계, 그리고 개념을 나타내는 데이터 자산을 정의합니다.",
     "ontology-first-run-import": "OWL, Turtle, JSON-LD 또는 CSV. 드라이 런으로 기록하기 전에 개수를 확인할 수 있습니다.",
     "ontology-first-run-library": "표준 모델로 시작하세요. 모듈을 선택한 다음 설치하세요.",

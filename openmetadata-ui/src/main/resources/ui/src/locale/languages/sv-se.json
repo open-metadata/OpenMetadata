@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "Visar {{shown}} av {{total}} resultat.",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "En ontologi definierar begreppen i din organisation, hur de hänger ihop och vilka datatillgångar som representerar dem.",
     "ontology-first-run-import": "OWL, Turtle, JSON-LD eller CSV. En provkörning visar antalen innan något skrivs.",
     "ontology-first-run-library": "Utgå från en standardmodell. Välj moduler och installera sedan.",

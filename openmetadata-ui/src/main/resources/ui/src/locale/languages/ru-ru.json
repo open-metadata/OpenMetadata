@@ -5828,6 +5828,7 @@
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
     "ontology-find-no-match": "No concept matches this search.",
     "ontology-findings-truncated": "Показано {{shown}} из {{total}} результатов.",
+    "ontology-finish-open-concept-first": "Finish or close the open concept first",
     "ontology-first-run-description": "Онтология определяет понятия вашей организации, их взаимосвязи и объекты данных, которые их представляют.",
     "ontology-first-run-import": "OWL, Turtle, JSON-LD или CSV. Пробный запуск показывает количество элементов до записи.",
     "ontology-first-run-library": "Начните со стандартной модели. Выберите модули, затем установите.",
