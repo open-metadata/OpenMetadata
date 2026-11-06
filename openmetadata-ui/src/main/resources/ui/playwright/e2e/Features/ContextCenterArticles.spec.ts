@@ -1182,6 +1182,21 @@ test.describe('Context Center Articles', () => {
       ).toBeVisible();
       const approve = card.getByTestId('approve-extracted-memories-btn');
       await expect(approve).toHaveText(/\b1 pending\b/);
+      const nextApprovalPreview = () =>
+        waitForResponseWithStatus(
+          page,
+          (response) => {
+            const url = new URL(response.url());
+
+            return (
+              response.request().method() === 'GET' &&
+              url.pathname === `${MEMORIES_API}/extractedApproval` &&
+              url.searchParams.get('sourceId') === article.id
+            );
+          },
+          200
+        ).then((response) => response.json());
+      const refreshedApproval = nextApprovalPreview();
       const approved = waitForResponseWithStatus(
         page,
         (response) =>
@@ -1198,21 +1213,14 @@ test.describe('Context Center Articles', () => {
         needsDecision: [],
       });
       expect(await getMemoryStatus(apiContext, memory.id)).toBe('Approved');
-      const reloadedApproval = waitForResponseWithStatus(
-        page,
-        (response) => {
-          const url = new URL(response.url());
-
-          return (
-            response.request().method() === 'GET' &&
-            url.pathname === `${MEMORIES_API}/extractedApproval` &&
-            url.searchParams.get('sourceId') === article.id
-          );
-        },
-        200
-      );
+      // Finish the mutation's refresh before a reload can discard its response body.
+      expect(await refreshedApproval).toMatchObject({
+        approved: 0,
+        approvable: [],
+      });
+      const reloadedApproval = nextApprovalPreview();
       await page.reload();
-      expect(await (await reloadedApproval).json()).toMatchObject({
+      expect(await reloadedApproval).toMatchObject({
         approved: 0,
         approvable: [],
       });
