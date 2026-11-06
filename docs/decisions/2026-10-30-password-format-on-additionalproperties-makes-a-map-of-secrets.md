@@ -1,7 +1,7 @@
 # A schema property whose additionalProperties declare format: password is a map of secrets
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial); v2 2026-11-04 (removed-entry cleanup); v3 2026-11-05 (durable ownership)
+- **Revisions:** v1 2026-10-30 (initial); v2 2026-11-04 (removed-entry cleanup); v3 2026-11-05 (durable ownership); v4 2026-11-06 (known Kafka/Redpanda keys declared per key)
 - **Deciders:** backend security
 - **Guard:** `PasswordEntityMaskerTest`, `SecretsManagerLifecycleTest`, `KafkaConnectionMapSecretsTest`
 - **Related:** ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged, #33477 (secrets inside arrays)
@@ -34,10 +34,10 @@ never reached an external secrets manager, and were returned in clear to any aut
   fetches secrets. String-valued maps generate as `dict[str, CustomSecretStr]` and unwrap through
   `get_secret_value()` (dbt); untyped maps stay `dict[str, Any]` and the connector resolves
   references before use (`messaging/kafka/connection.py`).
-- The mask is a **blanket**: harmless settings in the map (`security.protocol`, `group.id`) show
-  as `*********` too, because JSON Schema cannot mark individual keys of a free-form map. This is
-  the accepted cost of declaring the map at all; the alternative (typed fields for every possible
-  key) does not exist for maps like `dbtHttpHeaders`.
+- The mask is a **blanket** over the keys the schema does not name: harmless settings in the map
+  (`security.protocol`, `group.id`) show as `*********` too. JSON Schema can only mark a key it
+  can name in advance (see v4); for the rest, masking every string is the accepted cost of
+  declaring the map at all, and maps like `dbtHttpHeaders` have no fixed key set to name.
 
 ## Consequences
 
@@ -94,3 +94,26 @@ The mutex deliberately serializes low-volume service/pipeline configuration writ
 cleanup can delay another configuration save. There is no background cleanup retry worker: a vault
 failure requires another write/delete in the same namespace or an explicit retry. Credentials whose
 ownership was already lost before these changes cannot be reconstructed safely from a path prefix.
+
+## Amendment (v4, 2026-11-06)
+
+Where a map's vocabulary is known, its secret keys are declared in the schema as `properties` with
+`format: password`, next to the `additionalProperties: {format: password}` fallback. This applies
+to Kafka and Redpanda: `consumerConfig` declares the librdkafka credentials (`sasl.password`,
+`sasl.oauthbearer.client.secret`, `sasl.oauthbearer.config`, the OAUTHBEARER assertion key and
+passphrase, `ssl.key.password`, `ssl.key.pem`, `ssl.keystore.password`,
+`ssl.truststore.password`) and `schemaRegistryConfig` declares `basic.auth.user.info`,
+`bearer.auth.token` and `bearer.auth.client.secret`.
+
+- A declared key generates a typed password field under its dotted JSON name, so it is encrypted,
+  masked, stored and deleted as any scalar secret (secret id `<map id>/<field name>`, e.g.
+  `.../consumerconfig/sasloauthbearerclientsecret`), and the retarget guard accepts a typed value
+  there as a rotated secret. `PasswordAnnotator` finds the field behind an accessor by the
+  accessor's name when the property name is not a Java identifier.
+- The fallback stays: a key nobody listed is still a secret of the map. Dropping it would put an
+  unlisted credential (a newer librdkafka setting, a plugin's) back in clear, which is the leak
+  this record closes. Rotating such an entry still requires re-entering the connection's secrets.
+- Clients read both configs as one flat dict: the generated Python models hold declared keys as
+  fields and the rest as extras, and `kafka/connection.py` dumps them by alias before resolving
+  `secret:` references.
+- `dbtHttpHeaders` and CustomLLM `headers` take arbitrary header names and keep the blanket only.

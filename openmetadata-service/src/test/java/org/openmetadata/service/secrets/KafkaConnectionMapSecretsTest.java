@@ -3,6 +3,8 @@ package org.openmetadata.service.secrets;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +57,7 @@ public class KafkaConnectionMapSecretsTest {
                 Map.of(
                     "sasl.oauthbearer.client.secret", "oauth-client-secret",
                     "ssl.key.password", "client-key-passphrase",
+                    "custom.plugin.secret", "plugin-secret",
                     "session.timeout.ms", 6000),
             "schemaRegistryConfig", Map.of("basic.auth.user.info", "registry:registry-password"));
 
@@ -74,33 +77,34 @@ public class KafkaConnectionMapSecretsTest {
     System.out.println("STORED " + JsonUtils.pojoToJson(stored));
     System.out.println("RETURNED " + JsonUtils.pojoToJson(returned));
 
-    Map<String, Object> storedConsumerConfig = stored.getConsumerConfig().getAdditionalProperties();
-    assertTrue(
-        Fernet.isTokenized((String) storedConsumerConfig.get("sasl.oauthbearer.client.secret")),
-        "consumerConfig entries must be encrypted at rest");
-    assertTrue(
-        Fernet.isTokenized((String) storedConsumerConfig.get("ssl.key.password")),
-        "consumerConfig entries must be encrypted at rest");
-    assertEquals(6000, storedConsumerConfig.get("session.timeout.ms"));
-    assertTrue(
-        Fernet.isTokenized(
-            (String)
-                stored
-                    .getSchemaRegistryConfig()
-                    .getAdditionalProperties()
-                    .get("basic.auth.user.info")),
-        "schemaRegistryConfig entries must be encrypted at rest");
+    // Assert on the JSON a client sees, so a key declared in the schema and a key that only lives
+    // in
+    // the map's additionalProperties are held to the same contract.
+    JsonNode storedJson = JsonUtils.valueToTree(stored);
+    for (String secret :
+        List.of(
+            "/consumerConfig/sasl.oauthbearer.client.secret",
+            "/consumerConfig/ssl.key.password",
+            "/consumerConfig/custom.plugin.secret",
+            "/schemaRegistryConfig/basic.auth.user.info")) {
+      assertTrue(
+          Fernet.isTokenized(storedJson.at(secret).asText()),
+          secret + " must be encrypted at rest");
+    }
+    assertEquals(6000, storedJson.at("/consumerConfig/session.timeout.ms").asInt());
 
-    Map<String, Object> returnedConsumerConfig =
-        returned.getConsumerConfig().getAdditionalProperties();
-    assertEquals(
-        PasswordEntityMasker.PASSWORD_MASK,
-        returnedConsumerConfig.get("sasl.oauthbearer.client.secret"));
-    assertEquals(
-        PasswordEntityMasker.PASSWORD_MASK, returnedConsumerConfig.get("ssl.key.password"));
-    assertEquals(6000, returnedConsumerConfig.get("session.timeout.ms"));
-    assertEquals(
-        PasswordEntityMasker.PASSWORD_MASK,
-        returned.getSchemaRegistryConfig().getAdditionalProperties().get("basic.auth.user.info"));
+    JsonNode returnedJson = JsonUtils.valueToTree(returned);
+    for (String secret :
+        List.of(
+            "/consumerConfig/sasl.oauthbearer.client.secret",
+            "/consumerConfig/ssl.key.password",
+            "/consumerConfig/custom.plugin.secret",
+            "/schemaRegistryConfig/basic.auth.user.info")) {
+      assertEquals(
+          PasswordEntityMasker.PASSWORD_MASK,
+          returnedJson.at(secret).asText(),
+          secret + " must be masked");
+    }
+    assertEquals(6000, returnedJson.at("/consumerConfig/session.timeout.ms").asInt());
   }
 }

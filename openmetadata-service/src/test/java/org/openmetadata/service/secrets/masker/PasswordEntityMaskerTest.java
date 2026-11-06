@@ -40,6 +40,8 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.service.exception.EntityMaskException;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
+  private static final String CUSTOM_SECRET_KEY = "custom.plugin.secret";
+  private static final String CUSTOM_SECRET = "plugin-secret";
   private static final String TOKEN = "openmetadata-token";
   private static final String ALPHA_KEY = "alpha-api-key";
   private static final String BETA_KEY = "beta-api-key";
@@ -374,9 +376,10 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   /**
-   * Kafka's {@code consumerConfig} and {@code schemaRegistryConfig} are declared as maps of
-   * secrets ({@code additionalProperties} with {@code format: password}): their string entries
-   * must be masked on read and restored on write, while non-string settings keep their value.
+   * Kafka's {@code consumerConfig} and {@code schemaRegistryConfig} declare their known secret keys
+   * as password fields and treat every other string entry as a secret of the map ({@code
+   * additionalProperties} with {@code format: password}). Both must be masked on read and restored
+   * on write, while non-string settings keep their value.
    */
   @Test
   void testKafkaMapSecretsAreMaskedAndRestored() {
@@ -385,21 +388,19 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
             .withBootstrapServers("broker:9092")
             .withConsumerConfig(
                 new ConsumerConfig()
-                    .withAdditionalProperty("sasl.oauthbearer.client.secret", OAUTH_CLIENT_SECRET)
+                    .withSaslOauthbearerClientSecret(OAUTH_CLIENT_SECRET)
+                    .withAdditionalProperty(CUSTOM_SECRET_KEY, CUSTOM_SECRET)
                     .withAdditionalProperty("session.timeout.ms", 6000))
             .withSchemaRegistryConfig(
-                new SchemaRegistryConfig()
-                    .withAdditionalProperty("basic.auth.user.info", REGISTRY_USER_INFO));
+                new SchemaRegistryConfig().withBasicAuthUserInfo(REGISTRY_USER_INFO));
 
     KafkaConnection masked =
         (KafkaConnection)
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(original, "Kafka", ServiceType.MESSAGING);
-    assertEquals(
-        getMaskedPassword(), consumerConfigEntry(masked, "sasl.oauthbearer.client.secret"));
-    assertEquals(
-        getMaskedPassword(),
-        masked.getSchemaRegistryConfig().getAdditionalProperties().get("basic.auth.user.info"));
+    assertEquals(getMaskedPassword(), masked.getConsumerConfig().getSaslOauthbearerClientSecret());
+    assertEquals(getMaskedPassword(), consumerConfigEntry(masked, CUSTOM_SECRET_KEY));
+    assertEquals(getMaskedPassword(), masked.getSchemaRegistryConfig().getBasicAuthUserInfo());
     assertEquals(6000, consumerConfigEntry(masked, "session.timeout.ms"));
 
     KafkaConnection restored =
@@ -407,10 +408,9 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(masked, original, "Kafka", ServiceType.MESSAGING);
     assertEquals(
-        OAUTH_CLIENT_SECRET, consumerConfigEntry(restored, "sasl.oauthbearer.client.secret"));
-    assertEquals(
-        REGISTRY_USER_INFO,
-        restored.getSchemaRegistryConfig().getAdditionalProperties().get("basic.auth.user.info"));
+        OAUTH_CLIENT_SECRET, restored.getConsumerConfig().getSaslOauthbearerClientSecret());
+    assertEquals(CUSTOM_SECRET, consumerConfigEntry(restored, CUSTOM_SECRET_KEY));
+    assertEquals(REGISTRY_USER_INFO, restored.getSchemaRegistryConfig().getBasicAuthUserInfo());
   }
 
   @Test
@@ -419,23 +419,27 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
         new RedpandaConnection()
             .withBootstrapServers("broker:9092")
             .withConsumerConfig(
-                new ConsumerConfig__1().withAdditionalProperty("ssl.key.password", KEY_PASSPHRASE));
+                new ConsumerConfig__1()
+                    .withSslKeyPassword(KEY_PASSPHRASE)
+                    .withAdditionalProperty(CUSTOM_SECRET_KEY, CUSTOM_SECRET));
 
     RedpandaConnection masked =
         (RedpandaConnection)
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(original, "Redpanda", ServiceType.MESSAGING);
+    assertEquals(getMaskedPassword(), masked.getConsumerConfig().getSslKeyPassword());
     assertEquals(
         getMaskedPassword(),
-        masked.getConsumerConfig().getAdditionalProperties().get("ssl.key.password"));
+        masked.getConsumerConfig().getAdditionalProperties().get(CUSTOM_SECRET_KEY));
 
     RedpandaConnection restored =
         (RedpandaConnection)
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(masked, original, "Redpanda", ServiceType.MESSAGING);
+    assertEquals(KEY_PASSPHRASE, restored.getConsumerConfig().getSslKeyPassword());
     assertEquals(
-        KEY_PASSPHRASE,
-        restored.getConsumerConfig().getAdditionalProperties().get("ssl.key.password"));
+        CUSTOM_SECRET,
+        restored.getConsumerConfig().getAdditionalProperties().get(CUSTOM_SECRET_KEY));
   }
 
   /**

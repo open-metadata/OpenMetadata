@@ -13,11 +13,10 @@
 Source connection handler
 """
 
-from copy import deepcopy
-
 from confluent_kafka import Consumer, KafkaException
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -90,6 +89,15 @@ def _resolve_secret_value(value: str) -> str:
     return resolved if resolved is not None else value
 
 
+def client_config(config: BaseModel | None) -> dict:
+    """consumerConfig/schemaRegistryConfig as the flat dict librdkafka takes: declared keys
+    (`sasl.password`) under their dotted names next to the free-form entries, with secrets left
+    as stored - `secret:` references are resolved separately."""
+    if config is None:
+        return {}
+    return config.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+
 def _resolve_secret_values(config: dict) -> dict:
     """consumerConfig/schemaRegistryConfig entries are encrypted per entry on the server.
     With an external secrets manager the API hands the client `secret:` references, which
@@ -126,8 +134,8 @@ def get_connection(connection: KafkaConnectionConfig | RedpandaConnection) -> Ka
     """
     Create connection
     """
-    consumer_config = _resolve_secret_values(deepcopy(connection.consumerConfig) or {})
-    schema_registry_config = _resolve_secret_values(deepcopy(connection.schemaRegistryConfig) or {})
+    consumer_config = _resolve_secret_values(client_config(connection.consumerConfig))
+    schema_registry_config = _resolve_secret_values(client_config(connection.schemaRegistryConfig))
 
     if connection.saslUsername or connection.saslPassword or connection.saslMechanism:
         if connection.saslUsername:
@@ -137,7 +145,7 @@ def get_connection(connection: KafkaConnectionConfig | RedpandaConnection) -> Ka
         if connection.saslMechanism:
             consumer_config["sasl.mechanism"] = connection.saslMechanism.value
 
-        if connection.consumerConfig.get("security.protocol") is None and connection.securityProtocol:
+        if consumer_config.get("security.protocol") is None and connection.securityProtocol:
             consumer_config["security.protocol"] = connection.securityProtocol.value
 
     if connection.basicAuthUserInfo:

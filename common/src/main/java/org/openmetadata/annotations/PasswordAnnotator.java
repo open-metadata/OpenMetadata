@@ -97,8 +97,14 @@ public class PasswordAnnotator extends AbstractAnnotator {
           new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       insensitiveFieldsMap.putAll(outerClass.fields());
 
-      if (insensitiveFieldsMap.containsKey(propertyName)
-          && insensitiveFieldsMap.get(propertyName).annotations().stream()
+      // A property name that is not a Java identifier ("sasl.password") gets a camel-cased field
+      // ("saslPassword"), so fall back to the field the accessor's own name points at.
+      JFieldVar field =
+          insensitiveFieldsMap.getOrDefault(
+              propertyName,
+              insensitiveFieldsMap.get(jMethod.name().replaceFirst("^(get|set|is)", "")));
+      if (field != null
+          && field.annotations().stream()
               .anyMatch(
                   annotation ->
                       PasswordField.class.getName().equals(getAnnotationClassName(annotation)))) {

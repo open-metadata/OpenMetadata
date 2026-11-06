@@ -429,12 +429,11 @@ class ConnectionSecretsGuardTest {
   }
 
   /**
-   * Rotating one secret inside the map is indistinguishable from retargeting a setting: both are
-   * typed values at a masked map entry. The guard fails closed and asks for every secret again -
-   * the same rule the unmasked maps produced before they were declared secret.
+   * A key the schema declares as a password ({@code sasl.oauthbearer.client.secret}) is a secret
+   * field like {@code saslPassword}: typing a new value rotates it and keeps the others masked.
    */
   @Test
-  void rotatingOneSecretInsideTheConfigMapRequiresReenteringTheOthers() {
+  void rotatingADeclaredSecretInsideTheConfigMapKeepsTheOthersMasked() {
     Map<String, Object> stored = storedKafka(IDP_URL);
     Map<String, Object> rotated =
         Map.of(
@@ -450,6 +449,32 @@ class ConnectionSecretsGuardTest {
                 PASSWORD_MASK,
                 "sasl.oauthbearer.client.secret",
                 "rotated-secret"));
+
+    assertDoesNotThrow(() -> guardKafka(rotated, stored));
+  }
+
+  /**
+   * An entry the schema does not declare is masked with the rest of the map, so a typed value
+   * there may be a rotated secret or a retargeted setting. The guard fails closed and asks for
+   * every secret again - the same rule the unmasked maps produced before they were declared secret.
+   */
+  @Test
+  void rotatingAnUndeclaredMapEntryRequiresReenteringTheOthers() {
+    Map<String, Object> stored = storedKafka(IDP_URL);
+    Map<String, Object> rotated =
+        Map.of(
+            "type",
+            "Kafka",
+            "bootstrapServers",
+            "broker:9092",
+            "saslPassword",
+            PASSWORD_MASK,
+            "consumerConfig",
+            Map.of(
+                "sasl.oauthbearer.token.endpoint.url",
+                "rotated-value",
+                "sasl.oauthbearer.client.secret",
+                PASSWORD_MASK));
 
     assertThrows(BadRequestException.class, () -> guardKafka(rotated, stored));
   }
