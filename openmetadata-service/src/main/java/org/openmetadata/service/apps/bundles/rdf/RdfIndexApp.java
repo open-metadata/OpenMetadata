@@ -172,14 +172,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
     RdfRepository repository = rdfOrNull();
     if (repository == null || !repository.isEnabled()) {
-      LOG.error(
-          "RDF Repository is not {}. Please enable RDF in configuration.",
-          repository == null ? "initialized" : "enabled");
-      updateJobStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(
-          new IndexingError()
-              .withErrorSource(IndexingError.ErrorSource.JOB)
-              .withMessage("RDF Repository is not enabled"));
+      // RDF is optional, so a server without it completes the run with nothing indexed, as
+      // RdfInferenceApp does. Set directly: no rebuild ran, so no rebuild metrics are recorded.
+      LOG.info("RDF is not configured on this server, skipping RDF indexing");
+      jobData.setStatus(EventPublisherJob.Status.COMPLETED);
       sendUpdates(jobExecutionContext, true);
       return;
     }

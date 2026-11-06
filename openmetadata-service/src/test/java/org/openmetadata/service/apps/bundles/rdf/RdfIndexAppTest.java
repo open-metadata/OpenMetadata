@@ -148,8 +148,8 @@ class RdfIndexAppTest {
   class RdfNotInitializedTests {
 
     @Test
-    @DisplayName("run fails cleanly when RdfRepository was never initialized")
-    void runFailsWhenRepositoryNotInitialized() throws Exception {
+    @DisplayName("run completes with nothing indexed when RdfRepository was never initialized")
+    void runCompletesWhenRepositoryNotInitialized() throws Exception {
       rdfRepositoryMockedStatic.when(RdfRepository::getInstanceOrNull).thenReturn(null);
       rdfRepositoryMockedStatic
           .when(RdfRepository::getInstance)
@@ -173,11 +173,11 @@ class RdfIndexAppTest {
 
         assertDoesNotThrow(() -> testApp.execute(context));
 
-        assertEquals(EventPublisherJob.Status.FAILED, testApp.getJobData().getStatus());
-        assertNotNull(testApp.getJobData().getFailure());
-        assertEquals(
-            "RDF Repository is not enabled", testApp.getJobData().getFailure().getMessage());
-        assertTrue(testApp.pushedUpdate, "failed run must push a final status update");
+        assertEquals(EventPublisherJob.Status.COMPLETED, testApp.getJobData().getStatus());
+        assertNull(testApp.getJobData().getFailure());
+        assertTrue(testApp.pushedUpdate, "skipped run must push a final status update");
+        assertEquals(AppRunRecord.Status.COMPLETED, testApp.pushedRecord.getStatus());
+        assertNull(testApp.pushedRecord.getFailureContext());
       } finally {
         rdfRepositoryMockedStatic
             .when(RdfRepository::getInstanceOrNull)
