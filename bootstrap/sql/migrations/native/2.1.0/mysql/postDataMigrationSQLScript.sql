@@ -88,9 +88,11 @@ WHERE fromEntity = 'glossaryTerm'
   AND toEntity = 'glossaryTerm'
   AND relation = 15;
 
+-- relationType takes the database character set, which can be utf8mb3 or latin1, where
+-- COLLATE utf8mb4_bin is invalid. Convert it to utf8mb4 before comparing.
 UPDATE entity_relationship relationship
 JOIN relationship_type_entity relationship_type
-  ON relationship_type.name COLLATE utf8mb4_bin = relationship.relationType COLLATE utf8mb4_bin
+  ON relationship_type.name COLLATE utf8mb4_bin = CONVERT(relationship.relationType USING utf8mb4) COLLATE utf8mb4_bin
 SET relationship.relationshipTypeId = relationship_type.id,
     relationship.json = JSON_SET(
       COALESCE(relationship.json, JSON_OBJECT()),
