@@ -14,19 +14,35 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.UncheckedIOException;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.query.QueryDeniedException;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.api.configuration.rdf.SparqlFederationConfig;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
@@ -140,6 +156,62 @@ class OntologySparqlQueryServiceTest {
   }
 
   @Test
+  void rejectsAServiceHiddenInsideAProjectedExistsWithoutContactingIt() {
+    try (RecordingSparqlEndpoint endpoint = RecordingSparqlEndpoint.start()) {
+      final SparqlQuery request =
+          request(
+              "SELECT (EXISTS { SERVICE <%s> { ?s ?p ?o } } AS ?reachable) WHERE { }"
+                  .formatted(endpoint.uri()));
+
+      assertThrows(
+          SparqlFederationGuard.FederationDisallowedException.class,
+          () -> service(modelWithStatement()).query(GLOSSARY_ID, request));
+      assertEquals(0, endpoint.requestCount());
+    }
+  }
+
+  /**
+   * The ontology model is self-contained, so execution refuses SERVICE outright: a SERVICE the
+   * federation guard lets through, by allowlist or by a syntax position it does not inspect, must
+   * still never make the server send a request.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "SELECT * WHERE { SERVICE <%s> { ?s ?p ?o } }",
+        "SELECT (EXISTS { SERVICE <%s> { ?s ?p ?o } } AS ?reachable) WHERE { }",
+        "SELECT * WHERE { ?s ?p ?o BIND(EXISTS { SERVICE <%s> { ?a ?b ?c } } AS ?reachable) }"
+      })
+  void refusesToCallAServiceEndpointEvenWhenTheGuardAllowsIt(final String template) {
+    try (RecordingSparqlEndpoint endpoint = RecordingSparqlEndpoint.start()) {
+      final OntologySparqlQueryService service = serviceAllowing(endpoint, modelWithStatement());
+      final SparqlQuery request = request(template.formatted(endpoint.uri()));
+
+      assertThrows(QueryDeniedException.class, () -> service.query(GLOSSARY_ID, request));
+      assertEquals(0, endpoint.requestCount());
+    }
+  }
+
+  /** Jena turns a failed EXISTS inside a filter into "no match" rather than an error. */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "ASK { FILTER EXISTS { SERVICE <%s> { ?s ?p ?o } } }",
+        "ASK { ?s ?p ?o EXISTS { SERVICE <%s> { ?a ?b ?c } } }"
+      })
+  void aRefusedServiceInsideAFilterNeverMatches(final String template) {
+    try (RecordingSparqlEndpoint endpoint = RecordingSparqlEndpoint.start()) {
+      final OntologySparqlQueryService service = serviceAllowing(endpoint, modelWithStatement());
+
+      final OntologySparqlQueryService.QueryResult result =
+          service.query(GLOSSARY_ID, request(template.formatted(endpoint.uri())));
+
+      assertFalse(JsonUtils.readTree(result.body()).path("boolean").asBoolean(), result.body());
+      assertEquals(0, endpoint.requestCount());
+    }
+  }
+
+  @Test
   void rejectsFormatsThatDoNotMatchTheQueryShape() {
     final OntologySparqlQueryService service = service(modelWithStatement());
 
@@ -239,6 +311,18 @@ class OntologySparqlQueryServiceTest {
         (glossaryId, includeRelations) -> model, new SparqlFederationGuard(null));
   }
 
+  private static OntologySparqlQueryService serviceAllowing(
+      final RecordingSparqlEndpoint endpoint, final Model model) {
+    final RdfConfiguration rdfConfiguration =
+        new RdfConfiguration()
+            .withFederation(
+                new SparqlFederationConfig()
+                    .withEnabled(true)
+                    .withAllowedEndpoints(List.of(URI.create(endpoint.uri()))));
+    return new OntologySparqlQueryService(
+        (glossaryId, includeRelations) -> model, new SparqlFederationGuard(rdfConfiguration));
+  }
+
   private static Model modelWithStatement() {
     final Model model = ModelFactory.createDefaultModel();
     model.add(
@@ -250,5 +334,60 @@ class OntologySparqlQueryServiceTest {
 
   private static SparqlQuery request(final String query) {
     return new SparqlQuery().withQuery(query);
+  }
+
+  /**
+   * A SPARQL endpoint on the loopback interface that answers every request with one result row and
+   * counts the requests it receives, standing in for an internal host only the server can reach.
+   */
+  private static final class RecordingSparqlEndpoint implements AutoCloseable {
+    private static final byte[] ONE_ROW =
+        """
+        {"head":{"vars":["s","p","o"]},"results":{"bindings":[{\
+        "s":{"type":"uri","value":"urn:s"},\
+        "p":{"type":"uri","value":"urn:p"},\
+        "o":{"type":"uri","value":"urn:o"}}]}}"""
+            .getBytes(StandardCharsets.UTF_8);
+
+    private final HttpServer server;
+    private final AtomicInteger requests = new AtomicInteger();
+
+    private RecordingSparqlEndpoint(final HttpServer server) {
+      this.server = server;
+    }
+
+    static RecordingSparqlEndpoint start() {
+      try {
+        final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        final RecordingSparqlEndpoint endpoint = new RecordingSparqlEndpoint(server);
+        server.createContext("/", endpoint::answer);
+        server.start();
+        return endpoint;
+      } catch (IOException exception) {
+        throw new UncheckedIOException("Cannot start the recording SPARQL endpoint", exception);
+      }
+    }
+
+    private void answer(final HttpExchange exchange) throws IOException {
+      requests.incrementAndGet();
+      exchange.getResponseHeaders().add("Content-Type", "application/sparql-results+json");
+      exchange.sendResponseHeaders(200, ONE_ROW.length);
+      try (OutputStream body = exchange.getResponseBody()) {
+        body.write(ONE_ROW);
+      }
+    }
+
+    String uri() {
+      return "http://127.0.0.1:" + server.getAddress().getPort() + "/sparql";
+    }
+
+    int requestCount() {
+      return requests.get();
+    }
+
+    @Override
+    public void close() {
+      server.stop(0);
+    }
   }
 }

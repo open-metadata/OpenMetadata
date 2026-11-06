@@ -5334,6 +5334,7 @@
     "members-users-description": "Visualize e faça a gestão dos utilizadores comuns da sua organização. Para administradores, aceda à página de Administradores.",
     "memory-conflict-review-message": "Revisão de conflito de memória para",
     "memory-no-longer-exists": "Esta memória já não existe.",
+    "memory-supporting-query-deleted": "A consulta de suporte \"{{query}}\" foi eliminada; verifique se esta memória continua válida sem ela",
     "mentioned-you-on-the-lowercase": "mencionou você no",
     "metadata-agents-description": "Extraia metadados, utilização, linhagem e criação de perfis da origem.",
     "metadata-agents-table-description": "Os agentes de metadados são usados para extrair metadados dos serviços de origem.",

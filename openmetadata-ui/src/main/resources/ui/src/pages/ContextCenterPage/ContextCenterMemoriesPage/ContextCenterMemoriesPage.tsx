@@ -18,6 +18,7 @@ import {
   Input,
   PageLayout,
   PaginationCardMinimal,
+  selectedTriggerClassName,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -161,6 +162,12 @@ const searchOutsideReview = (
 const isEmptyOnceLoaded = (isLoading: boolean, count: number) =>
   !isLoading && count === 0;
 
+const isStatusFilterChanged = (selectedStatuses: ContextMemoryStatus[]) =>
+  selectedStatuses.length !== DEFAULT_MEMORY_LIST_STATUSES.length ||
+  DEFAULT_MEMORY_LIST_STATUSES.some(
+    (status) => !selectedStatuses.includes(status)
+  );
+
 const getMemoriesViewFlags = ({
   selectedAsset,
   selectedAuthor,
@@ -185,10 +192,7 @@ const getMemoriesViewFlags = ({
   const hasActiveFilters = Boolean(
     selectedAsset ||
       selectedAuthor ||
-      selectedStatuses.length !== DEFAULT_MEMORY_LIST_STATUSES.length ||
-      DEFAULT_MEMORY_LIST_STATUSES.some(
-        (status) => !selectedStatuses.includes(status)
-      )
+      isStatusFilterChanged(selectedStatuses)
   );
   const isMemoriesSearching = Boolean(debouncedSearch.trim());
   const isMemoriesFilteredOnly = Boolean(
@@ -223,6 +227,7 @@ interface ContextCenterMemoriesModalsProps {
   memoryToView?: ContextMemory;
   memoryToDelete?: ContextMemory;
   onModalClose: () => void;
+  onModalNavigate: () => void;
   onModalSuccess: () => void;
   onViewModalClose: () => void;
   onEditMemory: (memory: ContextMemory) => void;
@@ -243,6 +248,7 @@ const ContextCenterMemoriesModals = ({
   memoryToView,
   memoryToDelete,
   onModalClose,
+  onModalNavigate,
   onModalSuccess,
   onViewModalClose,
   onEditMemory,
@@ -265,6 +271,7 @@ const ContextCenterMemoriesModals = ({
         onClose={onModalClose}
         onCreated={onModalSuccess}
         onDeleted={onModalSuccess}
+        onNavigate={onModalNavigate}
         onUpdated={onModalSuccess}
       />
 
@@ -282,6 +289,7 @@ const ContextCenterMemoriesModals = ({
           onCreated={onViewModalClose}
           onDeleted={onModalSuccess}
           onEditMemory={onEditMemory}
+          onNavigate={onModalNavigate}
           onUpdated={onModalSuccess}
         />
       )}
@@ -756,11 +764,16 @@ const ContextCenterMemoriesPage: FC = () => {
     void fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
-  const handleModalClose = useCallback(() => {
+  // Following a link out of a memory keeps ?memory in history, so Back reopens it.
+  const handleModalNavigate = useCallback(() => {
     setIsCreateModalOpen(false);
     setMemoryToEdit(undefined);
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
+  }, []);
+
+  const handleModalClose = useCallback(() => {
+    handleModalNavigate();
     if (memoryName !== null) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
@@ -769,7 +782,7 @@ const ContextCenterMemoriesPage: FC = () => {
         return next;
       });
     }
-  }, [memoryName, setSearchParams]);
+  }, [handleModalNavigate, memoryName, setSearchParams]);
 
   useEffect(() => {
     if (!memoryName) {
@@ -997,6 +1010,11 @@ const ContextCenterMemoriesPage: FC = () => {
                   gap={2}>
                   <Dropdown.Root>
                     <Button
+                      className={
+                        isStatusFilterChanged(selectedStatuses)
+                          ? selectedTriggerClassName(true)
+                          : undefined
+                      }
                       color="secondary"
                       data-testid="memory-status-filter"
                       iconLeading={
@@ -1275,6 +1293,7 @@ const ContextCenterMemoriesPage: FC = () => {
         onConfirmDelete={handleConfirmDelete}
         onEditMemory={handleEditMemory}
         onModalClose={handleModalClose}
+        onModalNavigate={handleModalNavigate}
         onModalSuccess={handleModalSuccess}
         onViewModalClose={handleModalClose}
       />
