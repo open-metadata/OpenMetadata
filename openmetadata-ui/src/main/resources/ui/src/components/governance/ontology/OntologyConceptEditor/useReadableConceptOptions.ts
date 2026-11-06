@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { listOntologyConcepts } from '../../../../rest/ontologyAPI';
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
@@ -62,4 +62,25 @@ export const useReadableConceptOptions = (
   }, [enabled]);
 
   return options;
+};
+
+/**
+ * Targets for a mapping row: the concepts the caller already holds first, then
+ * every other readable concept, so a mapping can point into another ontology
+ * by label. Anything not listed is still accepted as a pasted absolute IRI.
+ */
+export const useMappingTargetOptions = (
+  local: ReadonlyArray<OntologyIriOption> | undefined,
+  enabled: boolean
+): OntologyIriOption[] => {
+  const readable = useReadableConceptOptions(enabled);
+
+  return useMemo(() => {
+    const held = new Set((local ?? []).map((option) => option.iri));
+
+    return [
+      ...(local ?? []),
+      ...readable.filter((option) => !held.has(option.iri)),
+    ];
+  }, [local, readable]);
 };
