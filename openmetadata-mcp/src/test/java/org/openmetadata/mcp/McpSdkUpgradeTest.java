@@ -1,10 +1,13 @@
 package org.openmetadata.mcp;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.modelcontextprotocol.common.McpTransportContext;
+import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
@@ -201,7 +204,8 @@ public class McpSdkUpgradeTest {
         .hasSize(2)
         .allSatisfy(
             tool -> {
-              Object schema = tool.inputSchema().properties().get("ignorePersonaScope");
+              Object schema =
+                  ((Map<?, ?>) tool.inputSchema().get("properties")).get("ignorePersonaScope");
               assertThat(schema).isInstanceOf(Map.class);
               Map<?, ?> property = (Map<?, ?>) schema;
               assertThat(property.get("type")).isEqualTo("boolean");
@@ -209,6 +213,32 @@ public class McpSdkUpgradeTest {
               assertThat(property.get("description").toString())
                   .contains("after the scoped search returns no results");
             });
+  }
+
+  /**
+   * SDK 2.x checks every tool's inputSchema against JSON Schema 2020-12 when the server registers
+   * it, and one bad schema stops the MCP server from starting. Catch that here instead.
+   */
+  @Test
+  void toolSchemasPassTheSdkStartupSchemaCheck() {
+    var validator = McpJsonDefaults.getSchemaValidator();
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    assertThatThrownBy(() -> validator.assertConforms("broken", Map.of("type", 5)))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThat(tools)
+        .isNotEmpty()
+        .allSatisfy(
+            tool ->
+                assertThatCode(() -> validator.assertConforms(tool.name(), tool.inputSchema()))
+                    .doesNotThrowAnyException());
+  }
+
+  @Test
+  void toolSchemasKeepTheShapeSdk1Sent() {
+    assertThat(McpUtils.getToolProperties("json/data/mcp/tools.json"))
+        .allSatisfy(
+            tool -> assertThat(tool.inputSchema()).doesNotContainKeys("description", "examples"));
   }
 
   @Test

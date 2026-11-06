@@ -1,12 +1,12 @@
 package org.openmetadata.mcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.modelcontextprotocol.json.McpJsonMapper;
-import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -14,8 +14,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 @Slf4j
 public class McpUtils {
 
-  private static final McpJsonMapper JSON_MAPPER =
-      new JacksonMcpJsonMapper(JsonUtils.getObjectMapper());
+  // The inputSchema keys SDK 1.x sent to clients. tools.json parameters also carry a top-level
+  // description and examples that were never sent; SDK 2.x would pass them through and add ~4 KB
+  // to every tools/list.
+  private static final Set<String> INPUT_SCHEMA_KEYS =
+      Set.of("type", "properties", "required", "additionalProperties", "$defs", "definitions");
 
   @SuppressWarnings("unchecked")
   public static List<Map<String, Object>> loadDefinitionsFromJson(String json) {
@@ -79,13 +82,10 @@ public class McpUtils {
     String name = (String) toolDef.get("name");
     String title = (String) toolDef.get("title");
     String description = (String) toolDef.get("description");
-    Map<String, Object> schema = JsonUtils.getMap(toolDef.get("parameters"));
+    Map<String, Object> schema = new LinkedHashMap<>(JsonUtils.getMap(toolDef.get("parameters")));
+    schema.keySet().retainAll(INPUT_SCHEMA_KEYS);
     McpSchema.Tool.Builder builder =
-        McpSchema.Tool.builder()
-            .name(name)
-            .title(title)
-            .description(description)
-            .inputSchema(JSON_MAPPER, JsonUtils.pojoToJson(schema));
+        McpSchema.Tool.builder(name, schema).title(title).description(description);
     McpSchema.ToolAnnotations annotations = buildToolAnnotations(toolDef, title);
     if (annotations != null) {
       builder.annotations(annotations);
