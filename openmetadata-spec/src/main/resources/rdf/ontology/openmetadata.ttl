@@ -4114,6 +4114,10 @@ om:ontologyIri a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "ontologyIri" .
 
+om:approvalBasis a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "approvalBasis" .
+
 om:releaseRevision a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "releaseRevision" .

@@ -61,8 +61,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  Building01: () => <svg data-testid="building-icon" />,
-  GlossaryTerm: () => <svg data-testid="glossary-term-icon" />,
+  IntakeForms: () => <svg data-testid="intake-forms-icon" />,
+  KnowledgePanels: () => <svg data-testid="knowledge-panels-icon" />,
 }));
 
 import GovernanceLanding from './GovernanceLanding';

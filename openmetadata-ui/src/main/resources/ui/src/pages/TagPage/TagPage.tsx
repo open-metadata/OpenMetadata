@@ -20,8 +20,10 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import {
+  Brush01,
   Edit01,
-  Tag as TagIcon,
+  Tag01,
+  TagOff,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -32,8 +34,6 @@ import { cloneDeep, isEmpty } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
-import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
   ActivityFeedLayoutType,
@@ -544,7 +544,7 @@ const TagPage = () => {
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.tag-lowercase'),
                 })}
-                icon={StyleIcon}
+                icon={Brush01}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -568,7 +568,7 @@ const TagPage = () => {
                     ? t('message.enable-tag-description')
                     : t('message.disable-tag-description')
                 }
-                icon={IconDisableTag}
+                icon={TagOff}
                 id="enable-disable-tag"
                 name={
                   tagItem?.disabled ? t('label.enable') : t('label.disable')
@@ -776,7 +776,7 @@ const TagPage = () => {
           tagItem?.style?.iconURL ? (
             <Icon iconValue={tagItem.style.iconURL} size={20} />
           ) : (
-            TagIcon
+            Tag01
           )
         }
         size="md"
@@ -915,6 +915,7 @@ const TagPage = () => {
         secondaryActions={haveAssetEditPermission ? manageDropdown : null}
         tabs={aiHeaderTabs}
         title={getEntityName(tagItem)}
+        variant="flat"
         onTabChange={activeTabHandler}
       />
     </div>

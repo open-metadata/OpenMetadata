@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -42,10 +43,13 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -54,19 +58,23 @@ import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.api.data.MetricHierarchyItem;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -884,6 +892,72 @@ class MetricRepositoryTest {
                       metric,
                       Json.createPatchBuilder().replace("/description", "updated").build()));
     }
+  }
+
+  @Test
+  void asyncBulkPutRefusesACreateIntoAGroupTheImpersonatedAuthorCannotEdit() throws Exception {
+    final EntityReference group =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.METRIC_GROUP)
+            .withFullyQualifiedName("finance");
+    final Metric created =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("revenue")
+            .withFullyQualifiedName("revenue")
+            .withMetricGroup(group);
+    final Authorizer authorizer = mock(Authorizer.class);
+    final AtomicReference<String> checkedAs = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              checkedAs.set(ImpersonationContext.getImpersonatedBy());
+              throw new AuthorizationException("denied");
+            })
+        .when(authorizer)
+        .authorizeActor(
+            any(), any(), argThat(resource -> Entity.METRIC_GROUP.equals(resource.getResource())));
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      // Set statically, not mocked: the job runs on a pool thread a static mock does not reach.
+      Entity.setAuthorizer(authorizer);
+      Entity.registerEntity(
+          MetricGroup.class, Entity.METRIC_GROUP, mock(MetricGroupRepository.class));
+      withNoApprovalRules();
+      ImpersonationContext.setImpersonatedBy("ingestion-bot");
+
+      final BulkOperationResult result =
+          fixture
+              .repository()
+              .submitAsyncBulkOperation(
+                  null, List.of(created), "alice", new HashMap<>(), false, new ArrayList<>(), 1)
+              .get(30, TimeUnit.SECONDS);
+
+      // The refused create fails alone, before anything is stored, and isImpersonated() on the
+      // job thread still sees the request's impersonation.
+      assertEquals(0, result.getNumberOfRowsPassed());
+      assertEquals(
+          403,
+          result.getFailedRequest().getFirst().getStatus(),
+          result.getFailedRequest().getFirst().getMessage());
+      assertEquals("ingestion-bot", checkedAs.get());
+      verify(fixture.metricDAO(), never()).insertMany(anyList());
+    } finally {
+      ImpersonationContext.clear();
+      GovernanceApprovalRegistry.invalidate();
+    }
+  }
+
+  // A bulk PUT reads the approval rules even with nothing to update.
+  @SuppressWarnings("unchecked")
+  private static void withNoApprovalRules() {
+    final GovernanceDAOs.ChangeRequestDAO changeRequests =
+        mock(GovernanceDAOs.ChangeRequestDAO.class);
+    when(Entity.getCollectionDAO().changeRequestDAO()).thenReturn(changeRequests);
+    when(changeRequests.workflowDefinitionEpoch()).thenReturn("none");
+    final EntityRepository<WorkflowDefinition> workflows = mock(EntityRepository.class);
+    when(workflows.listAll(any(), any())).thenReturn(List.of());
+    Entity.registerEntity(WorkflowDefinition.class, Entity.WORKFLOW_DEFINITION, workflows);
+    GovernanceApprovalRegistry.invalidate();
   }
 
   @Test

@@ -1280,12 +1280,19 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     repository.get(null, id, repository.getFields("id"));
     List<MetricAssetDirection> linkedAssets = repository.getAssetsWithDirection(id);
     Set<UUID> visibleAssets = new HashSet<>();
+    Set<UUID> testVisibleAssets = new HashSet<>();
     for (MetricAssetDirection linked : linkedAssets) {
-      if (canViewAsset(securityContext, linked.getAsset())) {
-        visibleAssets.add(linked.getAsset().getId());
+      EntityReference asset = linked.getAsset();
+      if (canViewAsset(securityContext, asset)) {
+        visibleAssets.add(asset.getId());
+        // Data quality endpoints gate a table's tests behind VIEW_TESTS; VIEW_BASIC is not enough.
+        if (Entity.TABLE.equals(asset.getType())
+            && canAccessEntity(securityContext, asset, MetadataOperation.VIEW_TESTS)) {
+          testVisibleAssets.add(asset.getId());
+        }
       }
     }
-    return repository.getObservability(id, linkedAssets, visibleAssets);
+    return repository.getObservability(id, linkedAssets, visibleAssets, testVisibleAssets);
   }
 
   private boolean canViewAsset(SecurityContext securityContext, EntityReference asset) {

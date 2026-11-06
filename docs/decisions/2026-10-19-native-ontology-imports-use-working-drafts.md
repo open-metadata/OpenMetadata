@@ -1,7 +1,7 @@
 # Native ontology imports use working drafts
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT
 - **Related:** Ontology Studio publication and release contracts
@@ -61,3 +61,14 @@ Import into a new ontology has no endpoint. The client uses the library installa
 Applying a stamped library draft recomputes the selected bundled import against the locked working revision before any definition or installation write. The complete, nonempty active plan must match that import. Comparison ignores only independently generated operation IDs and new definition IDs. Target IDs, base versions, payloads, attribution, operation multiplicity, and ordered property chains remain significant. Empty, altered, or partially undone stamped plans return 412. Restoring the unchanged full plan restores eligibility. Ordinary unstamped drafts retain their existing behavior.
 
 Preparation runs within the bounded snapshot read. Application runs after that read returns, under the same outer transaction and ontology lock, so definition writes do not consume the snapshot's read deadline. Valid partial reinstalls retain the existing same-version module union. No-op previews still create no draft, and an already applied draft remains a client recovery read rather than another application.
+
+## Amendment
+
+A library install or an import into a new ontology no longer creates the target with a
+`urn:openmetadata:ontology:<uuid>` identity by default. The client names it the way the Studio
+create dialog does: a readable name from the pack name or the file's label, and a
+`<baseUri>/onto/<prefix>` IRI with the namespace `<iri>#`
+(ADR:2026-10-30-studio-created-ontologies-take-onto-iris, v2). The `urn:openmetadata:ontology:<uuid>`
+identity and its UUID-suffixed name remain the fallback when the RDF base URI or the ontology list
+is unavailable. Source definition IRIs stay unchanged, and the retry and recovery rules above still
+apply to the request the client froze for that attempt.

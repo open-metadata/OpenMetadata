@@ -27,11 +27,26 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  AppRdfInferenceMaterialization,
+  Assignees as AssigneesIcon,
+  Column,
+  Database01,
+  Edit01,
+  IconProps,
+  Key01,
+  Plus,
+  SuccessfulTests,
+  Ticket,
+  TotalOccurrences,
+  User01,
+  Version,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, last, orderBy, startCase } from 'lodash';
 import React, {
+  FC,
   lazy,
   useCallback,
   useEffect,
@@ -41,20 +56,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import icAssignees, {
-  ReactComponent as AssigneesIcon,
-} from '../../../../assets/svg/ic-assignees.svg';
-import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
-import icUserProfile, {
-  ReactComponent as UserIcon,
-} from '../../../../assets/svg/ic-user-profile.svg';
-import icAccessLevel from '../../../../assets/svg/ic_access-level.svg';
-import icAccessType from '../../../../assets/svg/ic_access-type.svg';
-import icColumnRequested from '../../../../assets/svg/ic_column-requested.svg';
-import icDuration from '../../../../assets/svg/ic_duration.svg';
-import icReasonAccess from '../../../../assets/svg/ic_reason-access.svg';
-import icTicket from '../../../../assets/svg/ic_ticket.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -141,6 +142,7 @@ import {
 import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import {
   getTaskResolveBody,
+  getTaskStatusIconClassName,
   isOntologyReviewTask,
 } from '../../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -257,13 +259,13 @@ const TaskPayloadSchemaFields = withSuspenseFallback(
   )
 );
 
-const DAR_FIELD_ICONS: Record<string, string> = {
-  accessType: icAccessType,
-  columns: icColumnRequested,
-  duration: icDuration,
-  reason: icReasonAccess,
-  requestedAccess: icAccessLevel,
-  ticketId: icTicket,
+const DAR_FIELD_ICONS: Record<string, FC<IconProps>> = {
+  accessType: Database01,
+  columns: Column,
+  duration: Version,
+  reason: AppRdfInferenceMaterialization,
+  requestedAccess: Key01,
+  ticketId: Ticket,
 };
 
 const DAR_FIELD_FORMATTERS: Record<string, (value: unknown) => string> = {
@@ -652,7 +654,7 @@ export const TaskTabNew = ({
 
     return [
       {
-        iconSrc: icUserProfile,
+        Icon: User01,
         label: t('label.created-by'),
         value: (
           <Link
@@ -666,7 +668,7 @@ export const TaskTabNew = ({
         ),
       },
       {
-        iconSrc: icAssignees,
+        Icon: AssigneesIcon,
         label: t('label.assignee-plural'),
         value: <ClampedAssignees assignees={task.assignees ?? []} />,
       },
@@ -1577,7 +1579,7 @@ export const TaskTabNew = ({
           <Grid className="tw:w-full tw:items-center" colGap="2" rowGap="4">
             <Grid.Item span={8}>
               <Box align="center" className="text-grey-muted" gap={2}>
-                <UserIcon height={16} />
+                <User01 className="tw:text-utility-gray-500" size={16} />
                 <Typography className="incident-manager-details-label">
                   {t('label.created-by')}
                 </Typography>
@@ -1611,7 +1613,10 @@ export const TaskTabNew = ({
               <>
                 <Grid.Item span={8}>
                   <Box align="center" className="text-grey-muted" gap={2}>
-                    <AssigneesIcon height={16} />
+                    <AssigneesIcon
+                      className="tw:text-utility-gray-500"
+                      size={16}
+                    />
                     <Typography className="incident-manager-details-label @grey-8">
                       {t('label.assignee-plural')}
                     </Typography>
@@ -2128,7 +2133,7 @@ export const TaskTabNew = ({
     );
   };
 
-  const TaskStatusIcon = isTaskClosed ? TaskCloseIcon : TaskOpenIcon;
+  const TaskStatusIcon = isTaskClosed ? SuccessfulTests : TotalOccurrences;
 
   return (
     <Box
@@ -2137,7 +2142,13 @@ export const TaskTabNew = ({
       direction="col"
       gap={5}>
       <Box align="start" className="task-feed-message-container">
-        <TaskStatusIcon className="m-r-xs" height={14} width={14} />
+        <TaskStatusIcon
+          className={classNames(
+            'm-r-xs',
+            getTaskStatusIconClassName(!isTaskClosed)
+          )}
+          size={14}
+        />
 
         {taskLinkTitleElement}
       </Box>

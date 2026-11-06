@@ -270,12 +270,9 @@ describe('GlossaryHeader component', () => {
     }
   );
 
-  it.each([
-    [true, true],
-    [false, false],
-  ])(
-    'should render the gradient header background only in AI mode (AI mode: %s)',
-    (isAiMode, hasGradient) => {
+  it.each([true, false])(
+    'should render a flat header without the gradient background (AI mode: %s)',
+    (isAiMode) => {
       mockIsAiMode.mockReturnValue(isAiMode);
 
       render(
@@ -286,11 +283,9 @@ describe('GlossaryHeader component', () => {
         />
       );
 
-      expect(
-        screen
-          .getByTestId('glossary-header')
-          .className.includes('linear-gradient')
-      ).toBe(hasGradient);
+      expect(screen.getByTestId('glossary-header').className).not.toContain(
+        'linear-gradient'
+      );
 
       mockIsAiMode.mockReturnValue(false);
     }
