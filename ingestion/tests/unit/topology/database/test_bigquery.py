@@ -912,7 +912,8 @@ class TestBigqueryRegionAwareQueries:
 
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
-        assert self.bq_source._table_ddl_cache["my_table"] == "CREATE TABLE my_table (id INT64)"
+        ddl_key = f"{MOCK_DB_NAME}.{MOCK_DATABASE_SCHEMA.name.root}.my_table"
+        assert self.bq_source._table_ddl_cache.get(ddl_key) == "CREATE TABLE my_table (id INT64)"
         query_str = str(mock_conn.execute.call_args[0][0])
         assert "region-EU" in query_str
 
@@ -927,7 +928,8 @@ class TestBigqueryRegionAwareQueries:
 
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
-        assert self.bq_source._table_ddl_cache["my_table"] == "CREATE TABLE my_table (id INT64)"
+        ddl_key = f"{MOCK_DB_NAME}.{MOCK_DATABASE_SCHEMA.name.root}.my_table"
+        assert self.bq_source._table_ddl_cache.get(ddl_key) == "CREATE TABLE my_table (id INT64)"
         query_str = str(mock_conn.execute.call_args[0][0])
         assert "region-" not in query_str
         assert MOCK_DATABASE_SCHEMA.name.root in query_str
@@ -939,7 +941,7 @@ class TestBigqueryRegionAwareQueries:
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
         self.bq_source.client.get_dataset.assert_not_called()
-        assert self.bq_source._table_ddl_cache == {}
+        assert len(self.bq_source._table_ddl_cache) == 0
 
     def test_prefetch_table_ddls_falls_back_when_location_unavailable(self):
         """When client.get_dataset raises, falls back to dataset-scoped query and populates cache."""
@@ -953,7 +955,8 @@ class TestBigqueryRegionAwareQueries:
 
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
-        assert self.bq_source._table_ddl_cache["my_table"] == "CREATE TABLE my_table (id INT64)"
+        ddl_key = f"{MOCK_DB_NAME}.{MOCK_DATABASE_SCHEMA.name.root}.my_table"
+        assert self.bq_source._table_ddl_cache.get(ddl_key) == "CREATE TABLE my_table (id INT64)"
         query_str = str(mock_conn.execute.call_args[0][0])
         assert "region-" not in query_str
 
@@ -970,7 +973,7 @@ class TestBigqueryRegionAwareQueries:
 
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
-        assert self.bq_source._table_ddl_cache == {}
+        assert len(self.bq_source._table_ddl_cache) == 0
 
     def test_prefetch_table_ddls_cache_empty_when_query_fails(self):
         """When SQL execution raises, cache stays empty and no exception propagates."""
@@ -984,7 +987,7 @@ class TestBigqueryRegionAwareQueries:
 
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
-        assert self.bq_source._table_ddl_cache == {}
+        assert len(self.bq_source._table_ddl_cache) == 0
 
     # --- get_life_cycle_query ---
 
@@ -1175,6 +1178,143 @@ class TestBigqueryPerSchemaCaching:
         table_obj = self.bq_source.get_table_obj(table_name="events")
 
         assert table_obj.description == "events"
+
+    # --- DDL cache (project.dataset.table keying) ---
+
+    @staticmethod
+    def _ddl_row(table_name, ddl):
+        row = Mock()
+        row.table_name = table_name
+        row.ddl = ddl
+        return row
+
+    def _make_ddl_engine(self, schema_to_rows):
+        """Engine mock that returns per-schema DDL rows based on the schema in the query string."""
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+
+        def execute(statement, *args, **kwargs):
+            query_str = str(statement)
+            for schema, rows in schema_to_rows.items():
+                if f"'{schema}'" in query_str:
+                    result = MagicMock()
+                    result.all.return_value = rows
+                    return result
+            result = MagicMock()
+            result.all.return_value = []
+            return result
+
+        mock_conn.execute.side_effect = execute
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        return mock_engine
+
+    def test_ddl_cache_is_scoped_per_schema(self):
+        """Same-named tables in different schemas must get their own DDL."""
+        self.bq_source.engine = self._make_ddl_engine(
+            {
+                "clean_mac": [self._ddl_row("orders", "CREATE TABLE orders (id INT64) MAC")],
+                "clean_recon": [self._ddl_row("orders", "CREATE TABLE orders (id INT64) RECON")],
+            }
+        )
+
+        for schema in ("clean_mac", "clean_recon"):
+            self.bq_source.context.get().__dict__["database_schema"] = schema
+            self.bq_source._prefetch_table_ddls(schema)
+
+        for schema, expected_ddl in [
+            ("clean_mac", "CREATE TABLE orders (id INT64) MAC"),
+            ("clean_recon", "CREATE TABLE orders (id INT64) RECON"),
+        ]:
+            self.bq_source.context.get().__dict__["database_schema"] = schema
+            ddl = self.bq_source.get_schema_definition(TableType.Regular, "orders", schema, None)
+            assert ddl == expected_ddl
+
+    def test_prefetch_does_not_clear_other_schemas_ddls(self):
+        """Prefetching a second schema must not clear the first schema's DDLs from the shared cache."""
+        self.bq_source.engine = self._make_ddl_engine(
+            {
+                "clean_mac": [self._ddl_row("orders", "CREATE TABLE orders (id INT64) MAC")],
+                "clean_recon": [self._ddl_row("orders", "CREATE TABLE orders (id INT64) RECON")],
+            }
+        )
+
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        self.bq_source._prefetch_table_ddls("clean_mac")
+
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_recon"
+        self.bq_source._prefetch_table_ddls("clean_recon")
+
+        # clean_mac's DDL must still be in the cache after clean_recon's prefetch
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        ddl = self.bq_source.get_schema_definition(TableType.Regular, "orders", "clean_mac", None)
+        assert ddl == "CREATE TABLE orders (id INT64) MAC"
+
+    def test_interleaved_schemas_keep_their_own_ddls(self):
+        """
+        The schema node is multi-threaded, so two schemas can be in flight at once.
+        Interleaving their prefetches must not let one schema's DDL serve the other,
+        nor silently drop it.
+        """
+        self.bq_source.engine = self._make_ddl_engine(
+            {
+                "clean_mac": [
+                    self._ddl_row("orders", "CREATE TABLE orders (id INT64) MAC"),
+                    self._ddl_row("events", "CREATE TABLE events (id INT64) MAC"),
+                ],
+                "clean_recon": [
+                    self._ddl_row("orders", "CREATE TABLE orders (id INT64) RECON"),
+                ],
+            }
+        )
+
+        # Thread A prefetches clean_mac
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        self.bq_source._prefetch_table_ddls("clean_mac")
+
+        # Thread B prefetches clean_recon (previously would clear the shared cache)
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_recon"
+        self.bq_source._prefetch_table_ddls("clean_recon")
+
+        # Thread A reads its tables — must get clean_mac's DDLs, not None or clean_recon's
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        assert self.bq_source.get_schema_definition(TableType.Regular, "orders", "clean_mac", None) == (
+            "CREATE TABLE orders (id INT64) MAC"
+        )
+        assert self.bq_source.get_schema_definition(TableType.Regular, "events", "clean_mac", None) == (
+            "CREATE TABLE events (id INT64) MAC"
+        )
+
+        # Thread B reads its table — must get clean_recon's DDL
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_recon"
+        assert self.bq_source.get_schema_definition(TableType.Regular, "orders", "clean_recon", None) == (
+            "CREATE TABLE orders (id INT64) RECON"
+        )
+
+    def test_get_schema_definition_returns_none_for_uncached_table(self):
+        """A table not in the cache returns None, not another schema's DDL."""
+        self.bq_source.engine = self._make_ddl_engine(
+            {"clean_mac": [self._ddl_row("orders", "CREATE TABLE orders (id INT64) MAC")]}
+        )
+
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        self.bq_source._prefetch_table_ddls("clean_mac")
+
+        ddl = self.bq_source.get_schema_definition(TableType.Regular, "nonexistent", "clean_mac", None)
+        assert ddl is None
+
+    def test_ddl_cache_survives_entry_evicted_before_read(self):
+        """
+        LRUCache locks each operation separately, so a concurrent put that triggers
+        eviction can drop the key after the lookup but before the read. Reading a
+        DDL must return None rather than raising KeyError at the caller.
+        """
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        self.bq_source._table_ddl_cache = _EvictedOnReadCache(capacity=8)
+        self.bq_source._table_ddl_cache.put(f"{MOCK_DB_NAME}.clean_mac.orders", "CREATE TABLE orders (id INT64)")
+
+        ddl = self.bq_source.get_schema_definition(TableType.Regular, "orders", "clean_mac", None)
+        assert ddl is None
 
 
 class TestBigqueryDeltaLakeDetection:
