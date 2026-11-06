@@ -19,7 +19,7 @@ describe('PaginationDot', () => {
   it('draws compact 6px dots at the sm size', () => {
     render(<PaginationDot page={1} size="sm" total={3} />);
 
-    const dot = screen.getByLabelText('Page 2');
+    const dot = screen.getByLabelText('label.page 2');
 
     expect(dot).toHaveClass('tw:h-1.5', 'tw:w-1.5');
     expect(dot.parentElement).toHaveClass('tw:gap-2');
@@ -28,7 +28,10 @@ describe('PaginationDot', () => {
   it('keeps the 8px md dots as the default', () => {
     render(<PaginationDot page={1} total={3} />);
 
-    expect(screen.getByLabelText('Page 2')).toHaveClass('tw:h-2', 'tw:w-2');
+    expect(screen.getByLabelText('label.page 2')).toHaveClass(
+      'tw:h-2',
+      'tw:w-2'
+    );
   });
 
   it('marks the current page and reports the one picked', () => {
@@ -37,12 +40,12 @@ describe('PaginationDot', () => {
       <PaginationDot page={2} size="sm" total={3} onPageChange={onPageChange} />
     );
 
-    expect(screen.getByLabelText('Page 2')).toHaveAttribute(
+    expect(screen.getByLabelText('label.page 2')).toHaveAttribute(
       'aria-current',
       'page'
     );
 
-    fireEvent.click(screen.getByLabelText('Page 3'));
+    fireEvent.click(screen.getByLabelText('label.page 3'));
 
     expect(onPageChange).toHaveBeenCalledWith(3);
   });

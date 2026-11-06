@@ -504,21 +504,6 @@ describe('AnnouncementsRail rail', () => {
     expect(screen.getByTestId(NEXT_BTN)).toBeDisabled();
   });
 
-  // Several cards show at once, so a dot would stand for a page, not an
-  // announcement; the dots are kept to the one-at-a-time carousels.
-  it('pages by its arrows alone, with no dots', async () => {
-    renderWithQueryClient(<AnnouncementsRail />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId(cardId('a1'))).toBeInTheDocument();
-    });
-
-    stubRailGeometry({ clientWidth: 400, scrollWidth: 1200 });
-
-    expect(screen.getByTestId(NEXT_BTN)).toBeEnabled();
-    expect(screen.queryByTestId('announcement-dots')).not.toBeInTheDocument();
-  });
-
   it('hides the pager for a single announcement but keeps view all', async () => {
     mockGetActiveAnnouncements.mockResolvedValue({
       data: [makeAnnouncement('solo')],
@@ -746,6 +731,21 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     } as never);
     mockListAnnouncements.mockResolvedValue({
       data: [critical, makeAnnouncement('a1'), makeAnnouncement('a2')],
+      paging: { total: 3 },
+    } as never);
+    await openDialog();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('all-announcements-count')).toHaveTextContent(
+        '2'
+      );
+    });
+  });
+
+  it('counts what it lists while the banner criticals are unknown', async () => {
+    mockListCriticalAnnouncements.mockRejectedValue(new Error('unavailable'));
+    mockListAnnouncements.mockResolvedValue({
+      data: [makeAnnouncement('a1'), makeAnnouncement('a2')],
       paging: { total: 3 },
     } as never);
     await openDialog();

@@ -351,15 +351,17 @@ describe('CriticalAnnouncements', () => {
 
     await screen.findByText('Title first');
     const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 1200 });
-    const dots = screen.getByTestId('critical-announcement-dots');
+    // Core renders each dot as a list item; their labels come from core's
+    // own i18n, which these tests do not load.
+    const dots = () =>
+      within(screen.getByTestId('critical-announcement-dots')).getAllByRole(
+        'listitem'
+      );
 
-    expect(within(dots).getAllByLabelText(/^Page \d$/)).toHaveLength(3);
-    expect(within(dots).getByLabelText('Page 1')).toHaveAttribute(
-      'aria-current',
-      'page'
-    );
+    expect(dots()).toHaveLength(3);
+    expect(dots()[0]).toHaveAttribute('aria-current', 'page');
 
-    fireEvent.click(within(dots).getByLabelText('Page 3'));
+    fireEvent.click(dots()[2]);
 
     expect(rail.scrollTo).toHaveBeenCalledWith({
       behavior: 'smooth',
@@ -368,10 +370,7 @@ describe('CriticalAnnouncements', () => {
 
     scrollRailTo(rail, 800);
 
-    expect(within(dots).getByLabelText('Page 3')).toHaveAttribute(
-      'aria-current',
-      'page'
-    );
+    expect(dots()[2]).toHaveAttribute('aria-current', 'page');
   });
 
   it('hands focus to previous when next is disabled under it', async () => {

@@ -109,15 +109,15 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
 
   // The badge counts the whole list, not just the pages loaded: the server's
   // total, less the banner's criticals and what the user dismissed among the
-  // ones already here.
+  // ones already here. Until the criticals are known (or if their request
+  // failed), the total would count ones this list never shows, so it falls
+  // back to what is listed.
   const total = data?.pages[0]?.paging?.total;
   const count =
-    total === undefined
+    total === undefined || criticals === undefined
       ? announcements.length
       : Math.max(
-          total -
-            (criticals?.length ?? 0) -
-            (loaded.length - announcements.length),
+          total - criticals.length - (loaded.length - announcements.length),
           0
         );
 
