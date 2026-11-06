@@ -23,12 +23,12 @@ import {
 import {
   Edit01,
   FileShield02,
+  NoFilterFunnel,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterOffIcon } from '../../../assets/svg/ic-filter-off.svg';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
@@ -315,7 +315,7 @@ const TestDefinitionTable = ({
                     )}
                     icon={
                       hasActiveFilters ? (
-                        <FilterOffIcon />
+                        <NoFilterFunnel />
                       ) : (
                         <FileShield02 className="tw:text-fg-brand-primary" />
                       )

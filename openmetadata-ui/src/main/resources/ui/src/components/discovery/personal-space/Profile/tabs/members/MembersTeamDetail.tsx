@@ -55,6 +55,7 @@ import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { Include } from '../../../../../../generated/type/include';
 import { Paging } from '../../../../../../generated/type/paging';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { usePageSizeState } from '../../../../../../hooks/paging/usePageSizeState';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
@@ -73,7 +74,11 @@ import {
   patchTeamDetail,
   restoreTeam,
 } from '../../../../../../rest/teamsAPI';
-import { getUsers, updateUserDetail } from '../../../../../../rest/userAPI';
+import {
+  getUserById,
+  getUsers,
+  updateUserDetail,
+} from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import type { TabContribution } from '../../../../../../utils/ExtensionPointTypes';
@@ -163,7 +168,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const { getContributions } = useApplicationsProvider();
   const { permissions: globalPermissions } = usePermissionProvider();
   const { showModal } = useEntityExportModalProvider();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, updateCurrentUser } = useApplicationStore();
+  const { isAdminUser = false } = useAuth();
   const closePersonalSpace = usePersonalSpaceStore((state) => state.close);
   const { goTo, state: hashState, updateParams } = useSettingsHash();
 
@@ -773,44 +779,54 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     void handlePatchTeam({ ...team, isJoinable: !team.isJoinable });
   }, [team, handlePatchTeam]);
 
-  const handleJoinTeam = useCallback(async () => {
-    if (!team || !currentUser) {
-      return;
-    }
-    const currentTeams = currentUser.teams ?? [];
-    const updatedUser = {
-      ...currentUser,
-      teams: [
-        ...currentTeams,
-        { id: team.id, type: EntityType.TEAM } as EntityReference,
-      ],
-    };
-    try {
-      const patch = compare(currentUser, updatedUser);
-      await updateUserDetail(currentUser.id, patch);
-      showSuccessToast(
-        t('server.join-team-success', { team: getEntityName(team) })
-      );
-      void fetchTeam();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [team, currentUser, t, fetchTeam]);
+  const updateOwnTeams = useCallback(
+    async (
+      changeTeams: (teams: EntityReference[]) => EntityReference[],
+      successKey: string
+    ) => {
+      if (!team || !currentUser) {
+        return;
+      }
+      try {
+        const updatedUser = await getUserById(currentUser.id, {
+          fields: TabSpecificField.TEAMS,
+        }).then((user) =>
+          updateUserDetail(
+            user.id,
+            compare(user, { ...user, teams: changeTeams(user.teams ?? []) })
+          )
+        );
+        updateCurrentUser(updatedUser);
+        showSuccessToast(t(successKey, { team: getEntityName(team) }));
+        void fetchTeam();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [team, currentUser, updateCurrentUser, t, fetchTeam]
+  );
 
-  const handleLeaveTeam = useCallback(async () => {
-    if (!team || !currentUser) {
-      return;
-    }
-    try {
-      await deleteUserFromTeam(team.id, currentUser.id);
-      showSuccessToast(
-        t('server.leave-team-success', { team: getEntityName(team) })
-      );
-      void fetchTeam();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [team, currentUser, t, fetchTeam]);
+  const handleJoinTeam = useCallback(
+    () =>
+      team &&
+      updateOwnTeams(
+        (teams) => [
+          ...teams,
+          { id: team.id, type: EntityType.TEAM } as EntityReference,
+        ],
+        'server.join-team-success'
+      ),
+    [team, updateOwnTeams]
+  );
+
+  const handleLeaveTeam = useCallback(
+    () =>
+      updateOwnTeams(
+        (teams) => teams.filter(({ id }) => id !== team?.id),
+        'server.leave-team-success'
+      ),
+    [team, updateOwnTeams]
+  );
 
   const handleTeamExport = useCallback(() => {
     if (!team?.name) {
@@ -1262,6 +1278,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     isGroupType,
     isOrgType,
     isCurrentUserMember,
+    isAdminUser,
     onEditNameValueChange: setEditNameValue,
     onStartEditName: (value) => {
       setEditNameValue(value);

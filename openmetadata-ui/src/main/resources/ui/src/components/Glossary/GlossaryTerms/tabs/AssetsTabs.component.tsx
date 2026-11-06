@@ -21,7 +21,11 @@ import {
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { FilterLines, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  AssetRegistry,
+  FilterLines,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isObject } from 'lodash';
@@ -36,7 +40,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-icons/empty-asset.svg';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
@@ -933,7 +936,7 @@ const AssetsTabs = forwardRef(
                 entity: getEntityTypeString(type),
               })
             }
-            icon={<EmptyAssetIcon className="tw:text-utility-brand-600" />}
+            icon={<AssetRegistry className="tw:text-utility-brand-600" />}
             title={t('label.no-assets-linked-yet')}
           />
         );

@@ -22,7 +22,9 @@ import {
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import ontologyExplorerClassBase from '../../../../utils/OntologyExplorerClassBase';
 import { OntologyConceptLiveDataExtensionProps } from '../../../../utils/OntologyExplorerClassBase.interface';
-import OntologyConceptLiveData from './OntologyConceptLiveData';
+import OntologyConceptLiveData, {
+  LiveDataBindingState,
+} from './OntologyConceptLiveData';
 
 jest.mock('../../../../rest/ontologyAPI');
 
@@ -75,12 +77,17 @@ const HOP_SQL = [
   'LIMIT 50',
 ].join('\n');
 
-const renderLiveData = () =>
+const renderLiveData = (
+  bindingState: LiveDataBindingState = 'bound',
+  onRetryBindings: () => void = jest.fn()
+) =>
   renderWithQueryClient(
     <OntologyConceptLiveData
+      bindingState={bindingState}
       concept={transfer}
       model={model}
       relations={relations}
+      onRetryBindings={onRetryBindings}
     />
   );
 
@@ -111,6 +118,43 @@ describe('OntologyConceptLiveData', () => {
       expect.any(AbortSignal)
     );
     expect(screen.queryByTestId('live-data-extension')).not.toBeInTheDocument();
+  });
+
+  it('asks for a binding instead of querying a concept with no bound table', async () => {
+    renderLiveData('unbound');
+
+    expect(
+      await screen.findByText('message.ontology-live-data-needs-binding')
+    ).toBeVisible();
+    expect(mockGenerate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('ontology-live-data-sql')).toBeNull();
+  });
+
+  it('shows generating, not a missing binding, while the bindings read is loading', () => {
+    renderLiveData('loading');
+
+    expect(screen.getByText('label.generating')).toBeVisible();
+    expect(
+      screen.queryByText('message.ontology-live-data-needs-binding')
+    ).toBeNull();
+    expect(mockGenerate).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed bindings read with a Retry that re-runs the read', () => {
+    const onRetry = jest.fn();
+    renderLiveData('failed', onRetry);
+
+    expect(
+      screen.getByText('message.ontology-live-data-bindings-unavailable')
+    ).toBeVisible();
+    expect(
+      screen.queryByText('message.ontology-live-data-needs-binding')
+    ).toBeNull();
+    expect(mockGenerate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('ontology-live-data-retry-bindings'));
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
   it('titles the section with an h3 heading', async () => {
@@ -220,9 +264,11 @@ describe('OntologyConceptLiveData', () => {
     const inverseRelations = getModelRelations(inverseModel);
     const { unmount } = renderWithQueryClient(
       <OntologyConceptLiveData
+        bindingState="bound"
         concept={transfer}
         model={inverseModel}
         relations={inverseRelations}
+        onRetryBindings={jest.fn()}
       />
     );
 
@@ -237,9 +283,11 @@ describe('OntologyConceptLiveData', () => {
     unmount();
     renderWithQueryClient(
       <OntologyConceptLiveData
+        bindingState="bound"
         concept={customer}
         model={inverseModel}
         relations={inverseRelations}
+        onRetryBindings={jest.fn()}
       />
     );
     fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
@@ -254,9 +302,11 @@ describe('OntologyConceptLiveData', () => {
   it('sends the direction of each chip it follows', async () => {
     renderWithQueryClient(
       <OntologyConceptLiveData
+        bindingState="bound"
         concept={customer}
         model={model}
         relations={relations}
+        onRetryBindings={jest.fn()}
       />
     );
     await screen.findByTestId('ontology-live-data-sql');
@@ -301,9 +351,11 @@ describe('OntologyConceptLiveData', () => {
     };
     renderWithQueryClient(
       <OntologyConceptLiveData
+        bindingState="bound"
         concept={transfer}
         model={relatedModel}
         relations={getModelRelations(relatedModel)}
+        onRetryBindings={jest.fn()}
       />
     );
 
@@ -355,9 +407,11 @@ describe('OntologyConceptLiveData', () => {
   it('says when the concept has no object-property relation to follow', async () => {
     renderWithQueryClient(
       <OntologyConceptLiveData
+        bindingState="bound"
         concept={transfer}
         model={model}
         relations={[]}
+        onRetryBindings={jest.fn()}
       />
     );
 

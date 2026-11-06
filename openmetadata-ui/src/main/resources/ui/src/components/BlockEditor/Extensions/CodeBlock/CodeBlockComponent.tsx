@@ -28,7 +28,7 @@ const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
 
   return (
     <NodeViewWrapper as="pre" className="relative code-block">
-      <NodeViewContent as="code" />
+      <NodeViewContent<'code'> as="code" />
       <span className="code-copy-button" data-copied={hasCopied}>
         <Tooltip
           isOpen={hasCopied || isTooltipOpen}

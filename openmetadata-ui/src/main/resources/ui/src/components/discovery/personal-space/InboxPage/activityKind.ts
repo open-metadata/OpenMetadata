@@ -13,7 +13,6 @@
 
 import {
   ActivityAssetCreated,
-  ActivityAssetDeleted,
   ActivityAssetRestored,
   ActivityAssetSoftDeleted,
   ActivityAssetUpdated,
@@ -32,6 +31,7 @@ import {
   File02,
   Globe01,
   Tag01,
+  Trash01,
   UserCheck01,
 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
@@ -94,7 +94,7 @@ export const ACTIVITY_EVENT_BADGE: Record<ActivityEventType, ActivityBadge> = {
     badgeClassName: 'tw:bg-utility-green-700',
   },
   [ActivityEventType.EntityDeleted]: {
-    icon: ActivityAssetDeleted,
+    icon: Trash01,
     badgeClassName: 'tw:bg-utility-success-700',
   },
   [ActivityEventType.EntitySoftDeleted]: {

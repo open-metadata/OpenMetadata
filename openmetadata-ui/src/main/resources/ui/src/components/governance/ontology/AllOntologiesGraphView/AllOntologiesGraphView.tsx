@@ -159,6 +159,14 @@ const AllOntologiesGraphView = ({
   const model = models.find((candidate) =>
     candidate.concepts.some((concept) => concept.id === selectedConceptId)
   );
+  const dataConcepts = useMemo(
+    () =>
+      (model?.concepts ?? []).map((concept) => ({
+        id: concept.id,
+        name: getEntityName(concept),
+      })),
+    [model?.concepts]
+  );
   const selected = model?.concepts.find(
     (concept) => concept.id === selectedConceptId
   );
@@ -234,6 +242,7 @@ const AllOntologiesGraphView = ({
       if (model) {
         return (
           <OntologyNativeDataMode
+            concepts={dataConcepts}
             key={model.ontology.id}
             ontologyId={model.ontology.id}
             selectedConceptId={selectedConceptId}
@@ -280,6 +289,7 @@ const AllOntologiesGraphView = ({
       return createPortal(
         <Input
           aria-label={t('label.find-concept')}
+          autoComplete="off"
           icon={Search}
           inputDataTestId="ontology-graph-search"
           placeholder={t('label.find-concept')}
@@ -300,6 +310,7 @@ const AllOntologiesGraphView = ({
         }>
         <Input
           aria-label={t('label.find-concept')}
+          autoComplete="off"
           className="tw:w-54"
           icon={Search}
           inputDataTestId="ontology-graph-search"

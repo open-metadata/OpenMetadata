@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -21,7 +22,9 @@ import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.MlModelService;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.MlHyperParameter;
@@ -210,6 +213,38 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     assertNotNull(mlModel);
     assertNotNull(mlModel.getMlFeatures());
     assertEquals(2, mlModel.getMlFeatures().size());
+  }
+
+  @Test
+  void patch_featureWithADotInItsName_recordsItsChangeUnderTheQuotedName(TestNamespace ns) {
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_dotted_feature"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("XGBoost");
+    request.setMlFeatures(List.of(dottedFeature("Original")));
+    MlModel mlModel = createEntity(request);
+
+    mlModel.setMlFeatures(List.of(dottedFeature("Updated")));
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
+
+    assertTrue(
+        changedFieldNames(updated.getChangeDescription())
+            .contains("mlFeatures.\"user.age\".description"));
+  }
+
+  private static MlFeature dottedFeature(String description) {
+    return new MlFeature()
+        .withName("user.age")
+        .withDataType(MlFeatureDataType.Numerical)
+        .withDescription(description);
+  }
+
+  private static List<String> changedFieldNames(ChangeDescription change) {
+    return Stream.of(change.getFieldsAdded(), change.getFieldsUpdated(), change.getFieldsDeleted())
+        .flatMap(List::stream)
+        .map(FieldChange::getName)
+        .toList();
   }
 
   @Test

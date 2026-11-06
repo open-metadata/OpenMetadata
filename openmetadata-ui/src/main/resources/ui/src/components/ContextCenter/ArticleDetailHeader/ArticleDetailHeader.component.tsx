@@ -28,10 +28,22 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Conversation,
   Copy01,
+  DotsVertical,
   Edit01,
+  ExpandPanel,
+  Globe01,
+  Star01,
+  StarFilled,
+  ThumbsDown,
+  ThumbsDownFilled,
+  ThumbsUp,
+  ThumbsUpFilled,
   Trash01,
   UploadCloud01,
+  User01,
+  UserEdit,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -39,18 +51,6 @@ import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
-import { ReactComponent as FollowActiveIcon } from '../../../assets/svg/action-icons/follow-active.svg';
-import { ReactComponent as FollowIcon } from '../../../assets/svg/action-icons/follow.svg';
-import { ReactComponent as ChatIcon } from '../../../assets/svg/action-icons/message-chat.svg';
-import { ReactComponent as ThumbsDownActiveIcon } from '../../../assets/svg/action-icons/thumbs-down-active.svg';
-import { ReactComponent as ThumbsDownIcon } from '../../../assets/svg/action-icons/thumbs-down.svg';
-import { ReactComponent as ThumbsUpActiveIcon } from '../../../assets/svg/action-icons/thumbs-up-active.svg';
-import { ReactComponent as ThumbsUpIcon } from '../../../assets/svg/action-icons/thumbs-up.svg';
-import { ReactComponent as EditorIcon } from '../../../assets/svg/common/editor.svg';
-import { ReactComponent as GlobeIcon } from '../../../assets/svg/common/globe.svg';
-import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
-import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
@@ -334,11 +334,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       <Box align="center" gap={1}>
         <Tooltip title={t('label.domain')}>
           <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
-            <GlobeIcon
-              className="tw:shrink-0 tw:text-quaternary"
-              height={16}
-              width={16}
-            />
+            <Globe01 className="tw:shrink-0 tw:text-quaternary" size={16} />
           </TooltipTrigger>
         </Tooltip>
         <Typography
@@ -391,11 +387,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         <Box align="center" gap={1}>
           <Tooltip title={t('label.owner-plural')}>
             <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
-              <UserIcon
-                className="tw:shrink-0 tw:text-quaternary"
-                height={16}
-                width={16}
-              />
+              <User01 className="tw:shrink-0 tw:text-quaternary" size={16} />
             </TooltipTrigger>
           </Tooltip>
 
@@ -435,10 +427,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             <Box align="center" gap={1}>
               <Tooltip title={t('label.editor')}>
                 <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
-                  <EditorIcon
+                  <UserEdit
                     className="tw:shrink-0 tw:text-quaternary"
-                    height={16}
-                    width={16}
+                    size={16}
                   />
                 </TooltipTrigger>
               </Tooltip>
@@ -483,9 +474,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           })}
           data-testid="upvote-btn"
           icon={
-            voteStatus === QueryVoteType.votedUp
-              ? ThumbsUpActiveIcon
-              : ThumbsUpIcon
+            voteStatus === QueryVoteType.votedUp ? ThumbsUpFilled : ThumbsUp
           }
           isDisabled={knowledgePage?.deleted || voteLoading !== null}
           size="lg"
@@ -501,8 +490,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           data-testid="downvote-btn"
           icon={
             voteStatus === QueryVoteType.votedDown
-              ? ThumbsDownActiveIcon
-              : ThumbsDownIcon
+              ? ThumbsDownFilled
+              : ThumbsDown
           }
           isDisabled={knowledgePage?.deleted || voteLoading !== null}
           size="lg"
@@ -512,7 +501,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
         <ButtonUtility
           data-testid="conversation"
-          icon={ChatIcon}
+          icon={Conversation}
           size="lg"
           tooltip={t('label.conversation')}
           onClick={handleOpenConversation}
@@ -537,10 +526,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       <>
         <ButtonUtility
           className={classNames({
-            'tw:*:data-icon:text-utility-brand-600': isFollowing,
+            'tw:*:data-icon:text-utility-yellow-400': isFollowing,
           })}
           data-testid="follow-btn"
-          icon={isFollowing ? FollowActiveIcon : FollowIcon}
+          icon={isFollowing ? StarFilled : Star01}
           isDisabled={isFollowLoading || knowledgePage?.deleted}
           size="lg"
           tooltip={isFollowing ? t('label.un-follow') : t('label.follow')}
@@ -554,7 +543,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           <Dropdown.Root>
             <ButtonUtility
               data-testid="manage-button"
-              icon={DotsVerticalIcon}
+              icon={DotsVertical}
               size="lg"
               tooltip={t('label.manage-entity', {
                 entity: t('label.article'),
@@ -640,9 +629,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             color="tertiary"
             data-testid="right-panel-toggle-btn"
             iconLeading={
-              <SidebarCollapsible
+              <ExpandPanel
                 data-icon
                 className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
+                size={24}
               />
             }
             size="sm"

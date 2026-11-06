@@ -17,12 +17,14 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  LineageDownstream,
+  LineageUpstream,
+} from '@openmetadata/ui-core-components/icons';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/lineage-downstream-icon.svg';
-import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-upstream-icon.svg';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
@@ -255,14 +257,14 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                         placement="top"
                         title={t('label.upstream')}
                         triggerClassName="tw:inline-flex">
-                        <UpstreamIcon height={18} width={18} />
+                        <LineageUpstream size={18} />
                       </Tooltip>
                     ) : (
                       <Tooltip
                         placement="top"
                         title={t('label.downstream')}
                         triggerClassName="tw:inline-flex">
-                        <DownstreamIcon height={18} width={18} />
+                        <LineageDownstream size={18} />
                       </Tooltip>
                     )}
                   </div>
