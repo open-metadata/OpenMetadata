@@ -12,6 +12,7 @@
  */
 
 import { Tabs } from '@openmetadata/ui-core-components';
+import { Code01, Suggestions } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import {
   ComponentType,
@@ -23,8 +24,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
-import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
 import { DISABLED } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -155,9 +154,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   const subTabItems = useMemo(() => {
     return Object.values(ServiceAgentSubTabs).map((tabName) => {
       const Icon =
-        tabName === ServiceAgentSubTabs.COLLATE_AI
-          ? CollateAI
-          : MetadataAgentIcon;
+        tabName === ServiceAgentSubTabs.COLLATE_AI ? Suggestions : Code01;
       const label =
         tabName === ServiceAgentSubTabs.COLLATE_AI
           ? t('label.collate-ai')

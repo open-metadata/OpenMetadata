@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Column as ColumnIcon,
   ConstraintKey,
   Edit01,
   XClose,
@@ -39,7 +40,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
@@ -823,8 +823,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             {index < breadcrumbPath.length - 1 && (
               <ChevronRight
                 className="tw:text-utility-gray-400 tw:shrink-0"
-                height={16}
-                width={16}
+                size={16}
               />
             )}
           </div>
@@ -929,7 +928,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               className="tw:flex tw:items-center tw:min-w-0 tw:overflow-hidden tw:pr-4"
               style={{ flex: 1 }}>
               <div className="tw:mr-2 tw:flex tw:shrink-0 tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
-                <ColumnIcon className="tw:h-5 tw:w-5 tw:text-secondary" />
+                <ColumnIcon className="tw:text-secondary" size={20} />
               </div>
               <div className="tw:flex tw:flex-col tw:min-w-0 tw:overflow-hidden">
                 <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">

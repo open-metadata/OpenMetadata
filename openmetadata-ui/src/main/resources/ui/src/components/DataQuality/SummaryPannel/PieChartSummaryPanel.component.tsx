@@ -14,10 +14,12 @@ import { Grid } from '@openmetadata/ui-core-components';
 import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
+import {
+  All,
+  DataHealthScore,
+  EntityReferenceType,
+} from '@openmetadata/ui-core-components/icons';
 import { ReactNode } from 'react';
-import { ReactComponent as AllTestsIcon } from '../../../assets/svg/all-activity-v2.svg';
-import { ReactComponent as DataAssetsCoverageIcon } from '../../../assets/svg/ic-data-assets-coverage.svg';
-import { ReactComponent as HealthCheckIcon } from '../../../assets/svg/ic-green-heart-border.svg';
 import {
   SummaryPanelProps,
   TestSummaryCardKey,
@@ -41,15 +43,15 @@ const CARD_ICONS: Record<
   { icon: ReactNode; className: string }
 > = {
   [TestSummaryCardKey.TotalTests]: {
-    icon: <AllTestsIcon />,
+    icon: <All />,
     className: 'all-tests-icon',
   },
   [TestSummaryCardKey.Healthy]: {
-    icon: <HealthCheckIcon />,
+    icon: <DataHealthScore />,
     className: 'health-check-icon',
   },
   [TestSummaryCardKey.Coverage]: {
-    icon: <DataAssetsCoverageIcon />,
+    icon: <EntityReferenceType />,
     className: 'data-assets-coverage-icon',
   },
 };

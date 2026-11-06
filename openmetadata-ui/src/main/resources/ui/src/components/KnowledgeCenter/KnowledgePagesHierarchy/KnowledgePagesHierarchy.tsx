@@ -23,7 +23,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  File06 as Articles,
+  Article,
+  File06,
+  ListCollapse,
+  ListExpand,
+  QuickLink,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -46,10 +50,6 @@ import {
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as CollapseAllIcon } from '../../../assets/svg/collapse-new.svg';
-import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
-import { ReactComponent as ExpandAllIcon } from '../../../assets/svg/expand-new.svg';
-import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
@@ -729,18 +729,16 @@ const KnowledgePagesHierarchy = forwardRef<
             className="tw:min-w-0 tw:flex-1 tw:cursor-pointer"
             gap={2}>
             {isQuickLink ? (
-              <QuickLinkIcon
+              <QuickLink
                 className="tw:shrink-0 tw:text-quaternary"
                 data-testid="quick-link-icon"
-                height={14}
-                width={14}
+                size={14}
               />
             ) : (
-              <FileIcon
+              <Article
                 className="tw:shrink-0 tw:text-quaternary"
                 data-testid="page-icon"
-                height={14}
-                width={14}
+                size={14}
               />
             )}
             <Typography
@@ -872,7 +870,7 @@ const KnowledgePagesHierarchy = forwardRef<
     const renderExpandCollapseButton = () =>
       isUserExpandedAll ? (
         <ButtonUtility
-          icon={CollapseAllIcon}
+          icon={ListCollapse}
           size="lg"
           tooltip={t('label.collapse-all')}
           onClick={() => {
@@ -882,7 +880,7 @@ const KnowledgePagesHierarchy = forwardRef<
         />
       ) : (
         <ButtonUtility
-          icon={ExpandAllIcon}
+          icon={ListExpand}
           isDisabled={isExpandingAll}
           size="lg"
           tooltip={t('label.expand-all')}
@@ -908,7 +906,7 @@ const KnowledgePagesHierarchy = forwardRef<
           <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
             <NoDataPlaceholder
               description={t('message.no-articles-listed')}
-              icon={<Articles />}
+              icon={<File06 />}
               title={t('label.no-entity', {
                 entity: t('label.article-plural'),
               })}
@@ -1009,11 +1007,7 @@ const KnowledgePagesHierarchy = forwardRef<
             justify="between">
             <Box align="center" gap={3}>
               <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
-                <FileIcon
-                  className="tw:text-fg-quaternary"
-                  height={20}
-                  width={20}
-                />
+                <Article className="tw:text-fg-quaternary" size={20} />
               </div>
               <div>
                 <Typography size="text-md" weight="medium">
