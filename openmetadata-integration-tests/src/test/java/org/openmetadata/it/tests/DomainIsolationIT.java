@@ -522,6 +522,50 @@ public class DomainIsolationIT {
   }
 
   @Test
+  void test_domainDeleteAndRecreate_formerMemberDenied(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      String domainName = p + "_dr";
+      Domain oldDomain = createDomain(admin, domainName, cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table oldTable = createTable(admin, p + "_t_old", schema, oldDomain, cleanup);
+      Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
+      String email = p + "_former@test.openmetadata.org";
+      User user =
+          admin
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(p + "_former")
+                      .withEmail(email)
+                      .withDomains(List.of(oldDomain.getFullyQualifiedName()))
+                      .withRoles(List.of(domainOnlyRole.getId())));
+      cleanup.push(() -> admin.users().delete(user.getId()));
+      OpenMetadataClient client = SdkClients.createClient(email, email, new String[] {});
+
+      // Caches the member's context holding the old domain's FQN
+      assertEquals(
+          oldTable.getId().toString(),
+          client.tables().get(oldTable.getId().toString()).getId().toString());
+
+      admin
+          .domains()
+          .delete(oldDomain.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+      Domain newDomain = createDomain(admin, domainName, cleanup);
+      Table newTable = createTable(admin, p + "_t_new", schema, newDomain, cleanup);
+
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.tables().get(newTable.getId().toString()),
+          "A member of the deleted domain must not reach the same-named new domain's assets");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
   void test_lineage_userWithoutRoleSeesFullChain(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();

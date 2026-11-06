@@ -1,9 +1,10 @@
 # Without Redis, a cached user authorization context expires after 2 minutes instead of 15
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-11-06 (a domain delete drops user contexts too)
 - **Deciders:** Sonika Shah
-- **Guard:** `SubjectCacheTest.testUserContextExpiresSoonerUnlessRedisPubSubIsRunning`
+- **Guard:** `SubjectCacheTest.testUserContextExpiresSoonerUnlessRedisPubSubIsRunning`,
+  `DomainIsolationIT.test_domainDeleteAndRecreate_formerMemberDenied`
 - **Related:** #35033, #35228, #35229, #35213
 
 ## Context
@@ -20,8 +21,10 @@ thread and a fixed query load for changes that are rare admin actions.
 - When `CacheBundle.getCacheInvalidationPubSub()` is null or not running, user contexts expire after
   **2 minutes**, the TTL compiled policies already use. With working Redis pub/sub they keep 15.
 - The choice is made once, in `SubjectCache.initCaches`, after the cache bundle has started.
-- A domain rename drops every user context locally and publishes
-  `CacheInvalidationPubSub.TYPE_USER_CONTEXTS`; peers without Redis converge through the 2-minute TTL.
+- A domain rename or delete drops every user context locally, now and again after commit, and
+  publishes `CacheInvalidationPubSub.TYPE_USER_CONTEXTS`; peers without Redis converge through the
+  2-minute TTL. Cached domains are matched by FQN, so after a delete a same-named new domain would
+  otherwise match a former member's cached context.
 
 ## Consequences
 
