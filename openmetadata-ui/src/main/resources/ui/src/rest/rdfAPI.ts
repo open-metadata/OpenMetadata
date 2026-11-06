@@ -243,12 +243,18 @@ export const runGlossarySparqlQuery = (
 ): Promise<SparqlPlaygroundResult> =>
   executeSparqlQuery(`/glossaries/${glossaryId}/sparql`, params);
 
+/** `release` reads the active release; `draft` reads the working copy and needs edit rights. */
+export type OntologySparqlScope = 'release' | 'draft';
+
 export const runOntologySparqlQuery = (
   ontologyId: string,
-  params: SparqlPlaygroundParams
+  params: SparqlPlaygroundParams,
+  options: { scope?: OntologySparqlScope } = {}
 ): Promise<SparqlPlaygroundResult> =>
   executeSparqlQuery(
-    `/ontologies/${encodeURIComponent(ontologyId)}/sparql`,
+    `/ontologies/${encodeURIComponent(ontologyId)}/sparql${
+      options.scope === 'draft' ? '?scope=draft' : ''
+    }`,
     params
   );
 

@@ -39,8 +39,8 @@ import classNames from 'classnames';
 import { DateTime } from 'luxon';
 import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../constants/constants';
 import {
-  SYSTEM_ANNOUNCEMENT_PAGE_SIZES,
   SYSTEM_ANNOUNCEMENT_STATUS_LABEL_KEYS,
   SYSTEM_ANNOUNCEMENT_STATUS_ORDER,
 } from '../../../../../constants/platform/systemAnnouncements.constants';
@@ -149,13 +149,7 @@ const RowActions = ({
 
   return (
     <Dropdown.Root>
-      {/* Core draws the focus outline while the button is pressed, and the
-          menu trigger stays pressed for as long as the menu is open. Only a
-          keyboard focus keeps the ring. */}
       <Dropdown.DotsButton
-        className={({ isFocusVisible, isPressed }) =>
-          isPressed && !isFocusVisible ? 'tw:outline-0' : ''
-        }
         data-testid={`announcement-actions-${announcement.name}`}
         ref={actionsButtonRef}
       />
@@ -411,6 +405,7 @@ const SystemAnnouncementsTable = ({
             aria-label={t('label.search-for-type', {
               type: t('label.announcement-plural'),
             })}
+            autoComplete="off"
             className="tw:max-w-xs"
             data-testid="announcement-search"
             icon={Search}
@@ -504,11 +499,11 @@ const SystemAnnouncementsTable = ({
             </Table.Body>
           </Table>
         </div>
-        {total > pageSize && (
+        {total > 0 && (
           <PaginationCardWithControls
             page={page}
             pageSize={pageSize}
-            pageSizeOptions={SYSTEM_ANNOUNCEMENT_PAGE_SIZES}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={pageCount}
             onPageChange={goToPage}
             onPageSizeChange={setPageSize}

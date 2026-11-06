@@ -14,6 +14,8 @@
 import { expect, mergeTests } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { test as isolatedUserTest } from '../../support/fixtures/isolatedUser';
+import { TeamClass } from '../../support/team/TeamClass';
+import { deleteFixtureEntity } from '../../utils/apiResponse';
 import {
   chooseSelectOption,
   createNewPage,
@@ -270,16 +272,18 @@ test.describe(
         await expect(dialog.getByTestId('memory-title-input')).toBeVisible();
         await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Delete' })
+          dialog.getByRole('button', { name: 'Delete' })
         ).not.toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Edit' })
+          dialog
+            .getByRole('button', { name: 'Edit' })
+            .filter({ hasText: 'Edit' })
         ).not.toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Cancel' })
+          dialog.getByRole('button', { name: 'Cancel' })
         ).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Create Memory' })
+          dialog.getByRole('button', { name: 'Create Memory' })
         ).toBeVisible();
       });
 
@@ -529,6 +533,89 @@ test.describe(
     // ─── 4. Memory Row Card — Visible Metadata ──────────────────────────────
 
     test.describe('Memory Row Card Metadata', () => {
+      test('the panel links a team owner to its team rather than a user', async ({
+        page,
+      }) => {
+        const { apiContext, afterAction } = await getApiContext(page);
+        const team = new TeamClass();
+        let memoryId: string | undefined;
+        const title = `Team-owned memory ${uuid()}`;
+
+        try {
+          await team.create(apiContext);
+          const memory = await createMemoryViaApi(apiContext, {
+            name: `cc_memory_team_panel_${uuid()}`,
+            title,
+            question: 'Who owns this policy?',
+            answer: 'The operations team.',
+            owners: [{ id: team.responseData.id, type: 'team' }],
+            shareConfig: { visibility: 'Entity' },
+          });
+          memoryId = memory.id;
+
+          await navigateToMemories(page);
+          const row = await searchAndGetMemoryRow(page, title, memory.id);
+          await row.click();
+
+          const ownerLink = getMemoryDialog(page).getByTestId(
+            team.responseData.name
+          );
+          await expect(ownerLink).toHaveText(team.responseData.displayName);
+          await expect(ownerLink).toHaveAttribute(
+            'href',
+            new RegExp(
+              `(?:/teams/|#members/teams?/)${encodeURIComponent(
+                team.responseData.name
+              )}$`
+            )
+          );
+        } finally {
+          if (memoryId) {
+            await deleteFixtureEntity(
+              apiContext,
+              `${MEMORIES_API}/${memoryId}?hardDelete=true`
+            );
+          }
+          if (team.responseData.id) {
+            await team.delete(apiContext);
+          }
+          await afterAction();
+        }
+      });
+
+      test('list and panel distinguish the owner from the last updater', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = await searchAndGetMemoryRow(
+          page,
+          secondAuthorMemoryTitle,
+          secondAuthorMemoryId
+        );
+
+        await expect(row.getByTestId('memory-owner')).toHaveText(
+          dataConsumerUser.displayName || dataConsumerUser.name
+        );
+        await expect(row.getByTestId('memory-updated-by')).toContainText(
+          'Updated by admin'
+        );
+        await row.click();
+
+        const dialog = getMemoryDialog(page);
+        const metadata = dialog.getByTestId('memory-metadata-section');
+
+        await expect(dialog.getByText('Owner', { exact: true })).toBeVisible();
+        await expect(dialog.getByTestId(dataConsumerUser.name)).toBeVisible();
+        await expect(
+          metadata.getByText('Updated by', { exact: true })
+        ).toBeVisible();
+        await expect(metadata.getByTestId('admin')).toContainText('admin');
+        await expect(
+          dialog.getByText('Created By', { exact: true })
+        ).not.toBeVisible();
+      });
+
       test('row shows the creator display name', async ({
         page,
         isolatedUserPage,
@@ -642,11 +729,15 @@ test.describe(
         await expect(dialog).toBeVisible();
         await expect(dialog.getByText(SHARED_MEMORY_TITLE)).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Delete' })
+          dialog.getByRole('button', { name: 'Delete' })
         ).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Cancel' })
+          dialog
+            .getByRole('button', { name: 'Edit' })
+            .filter({ hasText: 'Edit' })
+        ).toBeVisible();
+        await expect(
+          dialog.getByRole('button', { name: 'Cancel' })
         ).toBeVisible();
         await expect(page).toHaveURL(new RegExp(`memory=${sharedMemoryName}`));
 
@@ -1145,16 +1236,18 @@ test.describe(
         await expect(dialog).toBeVisible();
         await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Delete' })
+          dialog.getByRole('button', { name: 'Delete' })
         ).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Edit' })
+          dialog
+            .getByRole('button', { name: 'Edit' })
+            .filter({ hasText: 'Edit' })
         ).not.toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Cancel' })
+          dialog.getByRole('button', { name: 'Cancel' })
         ).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Save Changes' })
+          dialog.getByRole('button', { name: 'Save Changes' })
         ).toBeVisible();
       });
 

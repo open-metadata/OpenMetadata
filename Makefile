@@ -323,12 +323,12 @@ update_openapi_version:  ## To update the OpenAPI version in OpenMetadataApplica
 #make update_openapi_version RELEASE_VERSION=2.2.2
 
 .PHONY: update_pyproject_version
-update_pyproject_version:  ## To update the pyproject.toml files
+update_pyproject_version: python_tools  ## To update the pyproject.toml files
 	file_paths="ingestion/pyproject.toml \
 				openmetadata-airflow-apis/pyproject.toml"; \
 	echo "Updating pyproject.toml versions to $(RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py update_pyproject_version -f $$file_path -v $(RELEASE_VERSION) ; \
+	    "$(NOX_BOOTSTRAP)/bin/python" scripts/update_version.py update_pyproject_version -f $$file_path -v $(RELEASE_VERSION) || exit $$?; \
 	done
 # Commented section for independent usage of the module update_pyproject_version independently to update github actions
 #make update_pyproject_version RELEASE_VERSION=2.2.2

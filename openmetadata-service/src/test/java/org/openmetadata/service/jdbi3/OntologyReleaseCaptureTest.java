@@ -260,7 +260,7 @@ class OntologyReleaseCaptureTest {
   @EnumSource(
       value = ConnectionType.class,
       names = {"MYSQL", "POSTGRES"})
-  void captureIncludesAllPagesAndReusesContentDigests(ConnectionType dialect) {
+  void captureIncludesAllPagesAndRepeatCaptureReturnsTheSameRelease(ConnectionType dialect) {
     withCapture(
         dialect,
         fixture -> {
@@ -275,9 +275,8 @@ class OntologyReleaseCaptureTest {
                   .listMembers(first.getId(), MemberKind.CONCEPT, 200, null)
                   .getData()
                   .size());
-          assertEquals(first.getContentDigest(), second.getContentDigest());
-          assertEquals(first.getSourceWorkingRevision(), second.getSourceWorkingRevision());
-          assertEquals(2L, second.getReleaseRevision());
+          assertEquals(first.getId(), second.getId());
+          assertEquals(1, fixture.rowCount("ontology_release_entity"));
           String exported =
               new OntologyReleaseExporter(fixture.releases)
                   .export(

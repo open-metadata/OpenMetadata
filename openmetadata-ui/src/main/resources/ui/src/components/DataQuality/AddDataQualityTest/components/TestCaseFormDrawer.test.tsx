@@ -166,6 +166,7 @@ const mockContextPipelineTableUnresolved: TestCaseFormContext = {
 };
 
 let emitContextFn: ((ctx: TestCaseFormContext) => void) | undefined;
+let lastForm: TestCaseFormBodyProps['form'] | undefined;
 let emitActiveFieldFn: ((fieldId: string) => void) | undefined;
 
 let lastFormBodyProps:
@@ -185,6 +186,7 @@ jest.mock('./TestCaseFormBody', () =>
         showOnlyParameter,
       }: TestCaseFormBodyProps) => {
         emitContextFn = onContextChange;
+        lastForm = form;
         emitActiveFieldFn = onActiveFieldChange;
         lastFormBodyProps = { isEditMode, showOnlyParameter };
 
@@ -501,6 +503,35 @@ describe('TestCaseFormDrawer', () => {
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled();
     });
+  });
+
+  it('should create the test case without a pipeline when create pipeline is switched off', async () => {
+    const onFormSubmit = jest.fn();
+    mockCreateTestCase.mockResolvedValue({
+      name: 'transformed-test-case',
+      id: 'created-id',
+      testSuite: { id: 'suite-id', name: 'test-suite' },
+    });
+    renderDrawer({ onFormSubmit });
+
+    await screen.findByTestId('test-case-form-body');
+
+    await act(async () => {
+      emitContextFn?.(mockContextWithPipeline);
+      lastForm?.setValue('createPipeline', false);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('create-btn'));
+    });
+
+    await waitFor(() => {
+      expect(onFormSubmit).toHaveBeenCalled();
+    });
+
+    expect(mockCreateTestCase).toHaveBeenCalled();
+    expect(mockAddIngestionPipeline).not.toHaveBeenCalled();
+    expect(mockDeployIngestionPipelineById).not.toHaveBeenCalled();
   });
 
   it('should create the pipeline against the selected table FQN when the table entity has not resolved', async () => {

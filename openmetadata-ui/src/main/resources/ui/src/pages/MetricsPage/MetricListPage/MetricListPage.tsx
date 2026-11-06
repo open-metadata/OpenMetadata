@@ -17,6 +17,7 @@ import {
   Button,
   ButtonGroup,
   ButtonGroupItem,
+  ButtonUtility,
   Card,
   Checkbox,
   Dialog,
@@ -37,7 +38,7 @@ import {
   ChevronRight,
   CursorClick01,
   Download01,
-  Edit03,
+  Edit01,
   FileCheck03,
   Grid01,
   Package,
@@ -96,6 +97,8 @@ import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { usePageForSize } from '../../../hooks/paging/usePageForSize';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
@@ -130,6 +133,7 @@ import {
   VisibleMetricTableRow,
 } from '../../../utils/MetricEntityUtils/MetricHierarchyUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
+import { getViewPageSizeOptions } from '../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
@@ -163,7 +167,6 @@ const METRIC_TABLE_PREFERENCE_KEY = 'metricList';
 const METRIC_STATIC_COLUMNS = ['name'];
 const METRIC_VIEW_STORAGE_KEY = 'metricsList.viewMode.v1';
 const METRIC_SEARCH_DEBOUNCE_MS = 500;
-const METRIC_PAGE_SIZE = 20;
 const METRIC_LISTING_QUERY_KEY = 'metric-listing';
 
 const DEFAULT_VISIBLE_METRIC_COLUMNS: MetricColumnId[] = [
@@ -278,7 +281,6 @@ const MetricListPage = () => {
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<EntityStatus>();
-  const [page, setPage] = useState(1);
   const [selectedMetricIds, setSelectedMetricIds] = useState<string[]>([]);
   const {
     preferences: { selectedEntityTableColumns },
@@ -286,6 +288,10 @@ const MetricListPage = () => {
   // Owned by TableV2's Customize menu; card view only reads it.
   const visibleColumns = getVisibleMetricColumns(selectedEntityTableColumns);
   const [viewMode, setViewMode] = useState<MetricViewMode>(getInitialViewMode);
+  const { savedPageSize: metricPageSize } = useSavedPageSize(
+    getViewPageSizeOptions(viewMode)
+  );
+  const [page, setPage] = usePageForSize(metricPageSize);
   const [isExporting, setIsExporting] = useState(false);
   const [isMetricActionsOpen, setIsMetricActionsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -330,14 +336,14 @@ const MetricListPage = () => {
         search: debouncedSearch,
         status: statusFilter,
         page,
-        size: METRIC_PAGE_SIZE,
+        size: metricPageSize,
       },
     ],
     queryFn: () =>
       searchQuery({
         query: debouncedSearch,
         pageNumber: page,
-        pageSize: METRIC_PAGE_SIZE,
+        pageSize: metricPageSize,
         searchIndex: SearchIndex.METRIC,
         trackTotalHits: true,
         queryFilter: statusFilter
@@ -370,7 +376,7 @@ const MetricListPage = () => {
   } = useMetricHierarchy({
     enabled: [hasViewPermission, isTreeMode].every(Boolean),
     page,
-    pageSize: METRIC_PAGE_SIZE,
+    pageSize: metricPageSize,
     query: debouncedSearch,
   });
 
@@ -433,7 +439,7 @@ const MetricListPage = () => {
     });
   }, [selectableMetricIds]);
 
-  const hierarchyExpansionScope = `${page}:${debouncedSearch}`;
+  const hierarchyExpansionScope = `${page}:${metricPageSize}:${debouncedSearch}`;
 
   useEffect(() => {
     const hasExpandableGroup = topLevelNodes.some(({ groupId }) => groupId);
@@ -476,7 +482,7 @@ const MetricListPage = () => {
   const totalMetrics = isTreeMode
     ? treePaging.total
     : searchResponse?.hits.total.value ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalMetrics / METRIC_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(totalMetrics / metricPageSize));
   const listingError =
     permissionError ?? (isTreeMode ? treeError : searchError);
   const listingErrorMessage = permissionError
@@ -546,10 +552,14 @@ const MetricListPage = () => {
     [setCurrentPage]
   );
 
-  const handleViewModeChange = useCallback((nextMode: MetricViewMode) => {
-    setViewMode(nextMode);
-    localStorage.setItem(METRIC_VIEW_STORAGE_KEY, nextMode);
-  }, []);
+  const handleViewModeChange = useCallback(
+    (nextMode: MetricViewMode) => {
+      setViewMode(nextMode);
+      setCurrentPage(1);
+      localStorage.setItem(METRIC_VIEW_STORAGE_KEY, nextMode);
+    },
+    [setCurrentPage]
+  );
 
   const handleImport = useCallback(() => {
     setIsMetricActionsOpen(false);
@@ -762,23 +772,22 @@ const MetricListPage = () => {
     if (!hasMetricChildren(metric)) {
       // Keep names aligned with the header unless some row has a toggle.
       return hasExpandableRows ? (
-        <Box aria-hidden="true" className="tw:size-6 tw:shrink-0" />
+        <Box aria-hidden="true" className="tw:size-5 tw:shrink-0" />
       ) : null;
     }
 
     return (
-      <Button
+      <ButtonUtility
         aria-expanded={isExpanded}
         aria-label={
           isExpanded ? t('label.collapse-all') : t('label.expand-all')
         }
         className="tw:shrink-0"
-        color="tertiary"
         data-testid={`expand-${metric.id}`}
-        iconLeading={isExpanded ? ChevronDown : ChevronRight}
+        icon={isExpanded ? ChevronDown : ChevronRight}
         isLoading={loadingParentIds.includes(metric.id)}
         size="xs"
-        onPress={() => toggleExpand(!isExpanded, metric)}
+        onClick={() => toggleExpand(!isExpanded, metric)}
       />
     );
   };
@@ -875,16 +884,12 @@ const MetricListPage = () => {
         ].join(' ')}
         color="tertiary"
         data-testid={`metric-group-${row.group.name}`}
+        iconLeading={isCollapsed ? ChevronRight : ChevronDown}
         isLoading={loadingGroupIds.includes(row.group.id)}
         size="sm"
         onPress={() => toggleGroup(row.id)}>
-        {isCollapsed ? (
-          <ChevronRight aria-hidden="true" className="tw:size-4 tw:shrink-0" />
-        ) : (
-          <ChevronDown aria-hidden="true" className="tw:size-4 tw:shrink-0" />
-        )}
         <span className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:bg-utility-purple-50 tw:text-utility-purple-700">
-          <Package aria-hidden="true" className="tw:size-4" />
+          <Package aria-hidden="true" size={20} />
         </span>
         <Box align="baseline" className="tw:min-w-0 tw:flex-1" gap={2}>
           <Typography
@@ -1192,7 +1197,7 @@ const MetricListPage = () => {
   );
 
   const renderPagination = () =>
-    totalMetrics > METRIC_PAGE_SIZE ? (
+    totalMetrics > 0 ? (
       <Box
         aria-label={t('label.page')}
         className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
@@ -1341,7 +1346,6 @@ const MetricListPage = () => {
           onOpenChange={setIsMetricActionsOpen}>
           <Dropdown.DotsButton
             aria-label={t('label.action-plural')}
-            className="tw:flex tw:size-9 tw:items-center tw:justify-center"
             data-testid="metric-actions"
           />
           <Dropdown.Popover>
@@ -1375,6 +1379,7 @@ const MetricListPage = () => {
     if (selectedMetricIds.length === 0) {
       return (
         <Input
+          autoComplete="off"
           className="tw:w-full tw:sm:max-w-84"
           data-testid="metric-search"
           icon={Search}
@@ -1402,10 +1407,10 @@ const MetricListPage = () => {
         </Button>
         {permissionFlags.canEditAll && (
           <Button
-            className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
+            className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-utility-brand-600!"
             color="link-color"
             data-testid="bulk-edit-metric"
-            iconLeading={Edit03}
+            iconLeading={Edit01}
             onPress={handleBulkEdit}>
             {t('label.bulk-edit-count', {
               count: selectedMetricIds.length,
@@ -1468,7 +1473,7 @@ const MetricListPage = () => {
             className="tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
             color="link-color"
             data-testid="bulk-edit-metric"
-            iconLeading={Edit03}
+            iconLeading={Edit01}
             onPress={handleBulkEdit}>
             {t('label.bulk-edit-all')}
           </Button>
@@ -1592,8 +1597,7 @@ const MetricListPage = () => {
         // TableV2 stays mounted so the toolbar's search input keeps focus.
         className={isEmptyList ? 'tw:h-full tw:[&_thead]:hidden' : undefined}
         columns={metricTableColumns}
-        // The empty-state row is not a data row, so it gets no hover fill.
-        containerClassName="tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:[&_th]:whitespace-nowrap tw:[&_tbody[data-empty]_tr:hover_td]:bg-transparent"
+        containerClassName="tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:[&_th]:whitespace-nowrap"
         data-testid="metric-list-table"
         dataSource={isPlaceholder ? [] : visibleRows}
         defaultVisibleColumns={DEFAULT_VISIBLE_METRIC_COLUMNS}

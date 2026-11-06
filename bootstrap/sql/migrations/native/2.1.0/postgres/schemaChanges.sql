@@ -547,6 +547,28 @@ WHERE json->>'name' = 'DataConsumerPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-CreateContextMemory-Rule'))
   AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('EditDescription')));
 
+-- DomainOnlyAccessPolicy: deny changes to policies, roles, bots and apps, and to teams and users that
+-- are in no domain.
+UPDATE policy_entity
+SET json = jsonb_set(json, '{rules}', (json->'rules') || '[
+    {"name": "DomainAccessDenyAdministrationRule",
+     "description": "Deny changing policies, roles, bots and apps, which control access, whatever their domain",
+     "effect": "deny", "resources": ["app", "bot", "policy", "role"],
+     "operations": ["Create", "Delete", "Deploy", "EditAll"]}
+  ]'::jsonb)
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT (json->'rules' @> '[{"name": "DomainAccessDenyAdministrationRule"}]'::jsonb);
+
+UPDATE policy_entity
+SET json = jsonb_set(json, '{rules}', (json->'rules') || '[
+    {"name": "DomainAccessDenyTeamAndUserRule",
+     "description": "Deny changing teams and users that are in no domain, and bot users",
+     "effect": "deny", "resources": ["team", "user"],
+     "operations": ["Create", "Delete", "EditAll"], "condition": "noDomain() || isBotUser()"}
+  ]'::jsonb)
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT (json->'rules' @> '[{"name": "DomainAccessDenyTeamAndUserRule"}]'::jsonb);
+
 -- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
 -- the result polls, the credentials) that can reach different servers, so its state lives here
 -- rather than in one server's memory. pending_state holds the candidate configuration with its
@@ -815,7 +837,6 @@ CREATE TABLE IF NOT EXISTS ontology_release_member (
   PRIMARY KEY (releaseId, memberKind, memberId)
 );
 
-
 CREATE TABLE IF NOT EXISTS ontology_release_event (
   id VARCHAR(36) NOT NULL,
   ontologyId VARCHAR(36) NOT NULL,
@@ -900,3 +921,4 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
   PRIMARY KEY (conceptId, assetId)
 );
 CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
+

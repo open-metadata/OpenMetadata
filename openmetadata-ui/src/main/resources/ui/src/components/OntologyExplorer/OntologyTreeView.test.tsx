@@ -138,6 +138,14 @@ describe('OntologyTreeView', () => {
     expect(screen.getByText('Order')).toBeVisible();
   });
 
+  it('opens another row while a row is already selected', () => {
+    const { onSelect } = renderTree({ selectedNodeId: 'root' });
+
+    fireEvent.click(screen.getByTestId('ontology-tree-term-child'));
+
+    expect(onSelect).toHaveBeenCalledWith(CHILD);
+  });
+
   it('opens a row and connects an unconnected term', () => {
     const { onConnect, onSelect } = renderTree();
 
@@ -277,6 +285,22 @@ describe('native OntologyTreeView', () => {
     fireEvent.click(screen.getByTestId('ontology-tree-expand-all'));
 
     expect(screen.getAllByTestId('ontology-tree-term-leaf')).toHaveLength(2);
+  });
+
+  it('opens a second concept after the first one is selected', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    const onSelect = jest.fn();
+    render(
+      <OntologyTreeView
+        source={{ kind: 'native', index }}
+        onSelect={onSelect}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-tree-term-a'));
+    fireEvent.click(screen.getByTestId('ontology-tree-term-b'));
+
+    expect(onSelect.mock.calls.map(([node]) => node.id)).toEqual(['a', 'b']);
   });
 
   it('keeps the clicked placement while the selected prop lags behind a router transition', () => {

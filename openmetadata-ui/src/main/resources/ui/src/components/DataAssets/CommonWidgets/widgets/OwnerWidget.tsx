@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Owner } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,10 +20,6 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../../utils/EntityVersionUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { CommonWidgetComponent, GenericEntity } from '../CommonWidgets.types';
@@ -67,16 +64,18 @@ export const OwnerWidget: CommonWidgetComponent = () => {
             owner={owners}
             onUpdate={handleOwnerUpdate}>
             {isEmpty(owners) ? (
-              <WidgetPlusButton
+              <ButtonUtility
                 data-testid="add-owner"
-                title={t('label.add-entity', {
+                icon={Plus}
+                tooltip={t('label.add-entity', {
                   entity: t('label.owner-plural'),
                 })}
               />
             ) : (
-              <WidgetEditButton
+              <ButtonUtility
                 data-testid="edit-owner"
-                title={t('label.edit-entity', {
+                icon={Edit01}
+                tooltip={t('label.edit-entity', {
                   entity: t('label.owner-plural'),
                 })}
               />

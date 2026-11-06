@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as ClassificationActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/classification-active.svg';
-import { ReactComponent as ClassificationIcon } from '../../../assets/svg/ask-collate-nav-bar/classification-default.svg';
-import { ReactComponent as GlossaryActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/glossary-active.svg';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/ask-collate-nav-bar/glossary-default.svg';
-import { ReactComponent as GovernIcon } from '../../../assets/svg/ask-collate-nav-bar/governanace-default.svg';
-import { ReactComponent as GovernActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/governance-active.svg';
-import { ReactComponent as MetricsActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/metrics-active.svg';
-import { ReactComponent as MetricsIcon } from '../../../assets/svg/ask-collate-nav-bar/metrics-default.svg';
-import { ReactComponent as WorkflowsActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/workflows-active.svg';
-import { ReactComponent as WorkflowsIcon } from '../../../assets/svg/ask-collate-nav-bar/workflows-default.svg';
+import {
+  Bank02,
+  Classification,
+  ClassificationFilled,
+  Glossary,
+  GlossaryFilled,
+  GovernanceFilled,
+  Metric,
+  MetricFilled,
+  Workflow,
+  WorkflowsFilled,
+} from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../constants/constants';
 import { OntologyStudioIcon } from '../../../utils/IconUtils';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
@@ -36,8 +38,8 @@ export const governModule: AppModule = {
   id: 'govern',
   navOrder: 65,
   labelKey: 'label.governance',
-  icon: GovernIcon,
-  activeIcon: GovernActiveIcon,
+  icon: Bank02,
+  activeIcon: GovernanceFilled,
   prefix: ROUTES.GLOSSARY,
   additionalPrefixes: [
     ROUTES.TAGS,
@@ -56,8 +58,8 @@ export const governModule: AppModule = {
         items: [
           {
             key: 'glossary',
-            icon: GlossaryIcon,
-            activeIcon: GlossaryActiveIcon,
+            icon: Glossary,
+            activeIcon: GlossaryFilled,
             labelKey: 'label.glossary',
             path: ROUTES.GLOSSARY,
           },
@@ -69,22 +71,22 @@ export const governModule: AppModule = {
           },
           {
             key: 'tags',
-            icon: ClassificationIcon,
-            activeIcon: ClassificationActiveIcon,
+            icon: Classification,
+            activeIcon: ClassificationFilled,
             labelKey: 'label.classification',
             path: ROUTES.TAGS,
           },
           {
             key: 'metrics',
-            icon: MetricsIcon,
-            activeIcon: MetricsActiveIcon,
+            icon: Metric,
+            activeIcon: MetricFilled,
             labelKey: 'label.metric-plural',
             path: ROUTES.METRICS,
           },
           {
             key: 'workflows',
-            icon: WorkflowsIcon,
-            activeIcon: WorkflowsActiveIcon,
+            icon: Workflow,
+            activeIcon: WorkflowsFilled,
             labelKey: 'label.workflow-plural',
             path: ROUTES.WORKFLOWS,
           },

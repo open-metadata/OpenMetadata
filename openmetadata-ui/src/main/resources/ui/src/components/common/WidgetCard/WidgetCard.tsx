@@ -91,12 +91,12 @@ const WidgetCard = ({
               {!isExpandDisabled && (
                 <ButtonUtility
                   className={classNames(
-                    'tw:p-0.5 tw:transition-transform tw:duration-200 tw:mt-0.5',
+                    'tw:transition-transform tw:duration-200 tw:mt-0.5',
                     { 'tw:rotate-180': !isExpanded }
                   )}
-                  color="tertiary"
                   data-testid="expand-collapse-icon"
-                  icon={<ChevronUp size={16} />}
+                  icon={ChevronUp}
+                  size="lg"
                   tooltip={t(isExpanded ? 'label.collapse' : 'label.expand')}
                   onClick={handleExpandClick}
                 />
@@ -104,12 +104,12 @@ const WidgetCard = ({
             </div>
           }
           title={
-            <div className="tw:flex tw:items-center tw:gap-2">
+            <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
               {titleIcon}
               {title && (
                 <Typography
                   as="span"
-                  className="tw:whitespace-nowrap tw:text-quaternary"
+                  className="tw:truncate tw:text-quaternary"
                   size="text-sm"
                   weight="semibold">
                   {title}
@@ -119,10 +119,8 @@ const WidgetCard = ({
                 <Tooltip title={helperText}>
                   <ButtonUtility
                     aria-label={t('label.info')}
-                    className="tw:p-1"
-                    color="tertiary"
                     icon={Info}
-                    size="xs"
+                    size="sm"
                   />
                 </Tooltip>
               )}
