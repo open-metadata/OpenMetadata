@@ -1330,15 +1330,25 @@ public class AppsResourceIT {
     }
   }
 
-  @ParameterizedTest(name = "existingAgent={0}, derivedApp={1}")
-  @CsvSource({"false,false", "true,false", "false,true", "true,true"})
+  @ParameterizedTest(name = "existingAgent={0}, derivedApp={1}, ownsService={2}")
+  @CsvSource({
+    "false,false,false", "true,false,false", "false,true,false", "true,true,false",
+    "false,false,true", "true,false,true", "false,true,true", "true,true,true"
+  })
   void test_autopilotTriggerRequiresTriggerOnEffectiveService(
-      boolean existingAgent, boolean derivedApp, TestNamespace ns) {
+      boolean existingAgent, boolean derivedApp, boolean ownsService, TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
     DatabaseService allowedService = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseService otherService = DatabaseServiceTestFactory.createPostgres(ns);
     User caller =
-        createAutoPilotTriggerCaller(ns, allowedService.getName(), MetadataOperation.TRIGGER, true);
+        ownsService
+            ? createAutoPilotTriggerCaller(ns)
+            : createAutoPilotTriggerCaller(
+                ns, allowedService.getName(), MetadataOperation.TRIGGER, true);
+    if (ownsService) {
+      allowedService.setOwners(List.of(caller.getEntityReference()));
+      admin.databaseServices().update(allowedService.getId().toString(), allowedService);
+    }
     OpenMetadataClient client =
         SdkClients.createClient(caller.getEmail(), caller.getEmail(), new String[] {});
 
@@ -1407,18 +1417,20 @@ public class AppsResourceIT {
           ForbiddenException.class,
           () -> client.getHttpClient().executeForString(HttpMethod.POST, triggerPath, Map.of()));
 
-      assertThrows(
-          ForbiddenException.class,
-          () ->
-              client
-                  .getHttpClient()
-                  .executeForString(
-                      HttpMethod.PATCH,
-                      "/v1/services/databaseServices/" + allowedService.getId(),
-                      "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Updated description\"}]",
-                      RequestOptions.builder()
-                          .header("Content-Type", "application/json-patch+json")
-                          .build()));
+      if (!ownsService) {
+        assertThrows(
+            ForbiddenException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH,
+                        "/v1/services/databaseServices/" + allowedService.getId(),
+                        "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Updated description\"}]",
+                        RequestOptions.builder()
+                            .header("Content-Type", "application/json-patch+json")
+                            .build()));
+      }
       client
           .getHttpClient()
           .executeForString(HttpMethod.POST, triggerPath, Map.of("entityLink", allowedLink));
