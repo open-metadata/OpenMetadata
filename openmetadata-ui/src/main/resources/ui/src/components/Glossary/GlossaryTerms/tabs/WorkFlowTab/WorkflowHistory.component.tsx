@@ -43,7 +43,6 @@ import {
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
@@ -231,16 +230,20 @@ const WorkflowHistory = memo(
       if (isEmpty(workflowHistory)) {
         return (
           <WorkflowHistoryContainer
-            className="workflow-history-widget"
+            data-testid="workflow-history-empty"
             isWidget={isWidget}>
-            <div className="tw:relative tw:min-h-24">
-              <NoDataPlaceholder
-                title={t('label.no-entity-available', {
-                  entity: workflowHistoryLabel,
-                })}
-                width="100%"
-              />
-            </div>
+            <Box direction="col" gap={1}>
+              <Typography
+                as="span"
+                className="tw:text-quaternary"
+                size="text-sm"
+                weight="semibold">
+                {workflowHistoryLabel}
+              </Typography>
+              <Typography as="span" className="tw:text-tertiary" size="text-xs">
+                {t('label.no-entity-found', { entity: workflowHistoryLabel })}
+              </Typography>
+            </Box>
           </WorkflowHistoryContainer>
         );
       }
