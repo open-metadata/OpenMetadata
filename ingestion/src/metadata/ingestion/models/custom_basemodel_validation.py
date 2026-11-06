@@ -69,6 +69,7 @@ def _initialize_transformable_entities():
     from metadata.generated.schema.entity.data.table import (
         ColumnName,
         ColumnProfile,
+        DataModel,
         Table,
         TableData,
     )
@@ -80,7 +81,7 @@ def _initialize_transformable_entities():
         {
             # Fetch models - decode reserved keywords back to original characters
             Table: {
-                "fields": {"name", "columns", "children", "tableConstraints"},
+                "fields": {"name", "columns", "children", "tableConstraints", "dataModel"},
                 "direction": TransformDirection.DECODE,
             },
             DashboardDataModel: {
@@ -98,6 +99,9 @@ def _initialize_transformable_entities():
             },
             TableData: {"fields": {"columns"}, "direction": TransformDirection.ENCODE},
             ColumnName: {"fields": {"root"}, "direction": TransformDirection.ENCODE},
+            # Sent standalone via PUT /tables/{id}/dataModel, so it must be encoded; when it
+            # comes back nested in a fetched Table, the Table DECODE reverts it
+            DataModel: {"fields": {"columns"}, "direction": TransformDirection.ENCODE},
             CreateTableRequest: {
                 "fields": {"name", "columns", "children", "tableConstraints"},
                 "direction": TransformDirection.ENCODE,
@@ -183,6 +187,12 @@ def transform_all_names(obj, transformer):
             for constraint in table_constraints:
                 if hasattr(constraint, "columns"):
                     constraint.columns = [transformer(col) for col in constraint.columns]
+
+    # Transform table data model columns
+    if hasattr(obj, "dataModel"):
+        data_model = getattr(obj, "dataModel")  # noqa: B009
+        if data_model is not None:
+            transform_all_names(data_model, transformer)
 
     if transformer == replace_separators and type(name) == str:  # noqa: E721
         obj.name = transformer(name)
