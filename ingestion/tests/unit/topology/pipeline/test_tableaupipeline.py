@@ -689,13 +689,15 @@ class TestExceptionPaths:
         assert results[0].left is not None
         assert "network flap" in results[0].left.error
 
-    def test_yield_pipeline_status_skips_run_without_timestamps(self, source, mock_conn):
+    def test_yield_pipeline_status_skips_run_without_timestamps(self, source, mock_conn, caplog):
         mock_conn.get_flow_runs.return_value = [
-            TableauRunItem(id="r", status="Success", started_at=None, completed_at=None)
+            TableauRunItem(id="run-no-times", status="Success", started_at=None, completed_at=None)
         ]
-        results = list(source.yield_pipeline_status(PIPELINE_DETAILS))
+        with caplog.at_level(logging.WARNING):
+            results = list(source.yield_pipeline_status(PIPELINE_DETAILS))
         # All runs skipped — no statuses, but no errors either
         assert results == []
+        assert "run-no-times" in caplog.text
 
 
 class TestCloseLifecycle:
@@ -719,3 +721,20 @@ class TestCloseLifecycle:
         source.close()
 
         source.metadata.compute_percentile.assert_called_once()
+
+
+class TestDroppedItemsAreReported:
+    """What Tableau returns but the connector cannot ingest is named."""
+
+    def test_an_input_or_output_with_no_id_or_name_is_reported(self, source, mock_conn, caplog):
+        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
+            upstream_tables=[TableauLineageTable(id="Tabl-1", name="orders"), TableauLineageTable()],
+            output_steps=[TableauFlowOutputStep(id="Out-1", name="Cleaned"), TableauFlowOutputStep()],
+        )
+
+        with caplog.at_level(logging.WARNING):
+            tasks = source._build_tasks(PIPELINE_DETAILS)
+
+        assert len(tasks) == 3
+        assert "Skipping input None of flow" in caplog.text
+        assert "an output step of flow" in caplog.text

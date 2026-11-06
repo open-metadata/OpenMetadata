@@ -919,6 +919,28 @@ class TestExtractRefreshes:
             assert client.get_extract_refresh_runs("ds-1") == []
         assert "did not say which data source or workbook" in caplog.text
 
+    def test_some_jobs_that_do_not_name_their_target_are_reported(self, tableau, caplog):
+        """A job Tableau does not tie to a data source or workbook is skipped; say
+        so even when other jobs are matched."""
+        self._two_targets(tableau)
+        tableau.jobs = [
+            _background_job_xml("j1", "2025-03-01T06:00:00Z"),
+            _background_job_xml("j2", "2025-03-01T05:00:00Z"),
+        ]
+        tableau.job_details = {
+            "j1": _job_detail_xml("j1", "datasource", "ds-1"),
+            "j2": (
+                f'<tsResponse {NS}><job id="j2" type="RefreshExtract" finishCode="0">'
+                "<extractRefreshJob><notes>refreshed</notes></extractRefreshJob></job></tsResponse>"
+            ),
+        }
+        client = _client()
+        list(client.get_pipelines())
+
+        with caplog.at_level(logging.WARNING):
+            assert [run.id for run in client.get_extract_refresh_runs("ds-1")] == ["j1"]
+        assert "1 of 2 Tableau refresh jobs" in caplog.text
+
     def test_a_forbidden_job_lookup_ends_the_scan(self, tableau, caplog):
         self._two_targets(tableau)
         tableau.jobs = [_background_job_xml(f"j{i}", f"2025-03-0{i}T06:00:00Z") for i in (1, 2)]
