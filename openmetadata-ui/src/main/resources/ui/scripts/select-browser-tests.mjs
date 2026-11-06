@@ -19,7 +19,7 @@
  * The impact map ({ testFile: [source files it executed] }) comes from main's
  * full run with BROWSER_IMPACT_DIR set (src/test/browser/impact.ts). The static
  * import graph is too entangled to select from on its own (lazy imports tie
- * ~1,000 modules into one cycle; openmetadata-collate#7947), so it is used only
+ * ~1,000 modules into one cycle), so it is used only
  * for what coverage cannot see: test helpers, the direct imports of executed
  * files (constants, styles, assets) and stylesheets nothing imports.
  * Anything this cannot reason about runs the whole suite.

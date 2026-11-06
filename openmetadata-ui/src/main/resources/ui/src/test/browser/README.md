@@ -63,4 +63,4 @@ node scripts/select-browser-tests.mjs --map impact-map.json --base origin/main
 ```
 
 The static import graph alone cannot do this here: lazy imports tie about
-1,000 modules into one cycle (openmetadata-collate#7947).
+1,000 modules into one import cycle.
