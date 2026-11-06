@@ -7,6 +7,14 @@ description: Meta-skill loaded at session start. Directs Claude to check for app
 
 This skill is loaded automatically at session start. It ensures you follow the right workflow for every task.
 
+## Completion boundary
+
+Follow AGENTS.md's task completion policy. Select verification once for the requested outcome;
+these skills share evidence, not independent test runs. Implementation, push and PR creation use
+focused checks; merge readiness includes the full impacted plan. Report broader pending coverage
+and finish at the requested outcome. CI monitoring and workflow dispatch need that task scope.
+Load only applicable instructions, batch independent reads, and return compact command summaries.
+
 ## Before Starting Any Task
 
 **Check which skills apply to your task and use them.** This is not optional — if a skill applies, you must follow it.

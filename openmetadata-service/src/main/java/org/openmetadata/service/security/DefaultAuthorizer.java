@@ -20,6 +20,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmi
 import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -331,11 +332,28 @@ public class DefaultAuthorizer implements Authorizer {
     return loggedInUser;
   }
 
+  // Reviewers vote on an assigned review through the task; changing ontology content, capturing a
+  // release and activating one need the matching edit right whether or not the user is listed.
+  private static final Set<String> EDIT_RIGHT_REQUIRED_RESOURCES =
+      Set.of(
+          Entity.ONTOLOGY,
+          Entity.ONTOLOGY_CONCEPT,
+          Entity.ONTOLOGY_PROPERTY,
+          Entity.ONTOLOGY_RELEASE,
+          Entity.ONTOLOGY_AXIOM,
+          Entity.ONTOLOGY_CHANGE_SET);
+
+  private boolean requiresEditRight(String resource) {
+    return resource != null && EDIT_RIGHT_REQUIRED_RESOURCES.contains(resource);
+  }
+
   private boolean isReviewer(
       ResourceContextInterface resourceContext, SubjectContext subjectContext) {
     // On CREATE the entity is caller-supplied and not yet persisted, so its fields (e.g. reviewers)
     // cannot be trusted to grant authorization. Only evaluate against already persisted entities.
-    if (resourceContext instanceof CreateResourceContext || resourceContext.getEntity() == null) {
+    if (resourceContext instanceof CreateResourceContext
+        || requiresEditRight(resourceContext.getResource())
+        || resourceContext.getEntity() == null) {
       return false;
     }
     // Match a user reviewer by id, never by name: a reviewer can be a team, and a user whose name

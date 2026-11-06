@@ -296,6 +296,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.UpdatedDomainsResourceContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityETag;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -5423,8 +5424,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       validatedDomains = getValidatedDomains(updated.getDomains());
     }
     updated.setDomains(validatedDomains);
+    String patchedName = updated.getName();
     try (var ignored = phase("patchRestoreAttributes")) {
       restorePatchAttributes(original, updated);
+    }
+    if (!Objects.equals(patchedName, updated.getName())) {
+      // A rejected rename: prepareInternal derived child FQNs (e.g. columns) from the patched name.
+      // Derive them again from the restored name; the entity keeps its stored FQN.
+      setFullyQualifiedName(updated);
+      updated.setFullyQualifiedName(original.getFullyQualifiedName());
     }
     return updated;
   }
@@ -13183,8 +13191,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               stored.getFullyQualifiedName(), updated.getFullyQualifiedName());
         }
 
-        String columnPrefix =
-            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        String columnPrefix = EntityFieldPath.childKey(fieldName, updated.getName());
         updateColumnDescription(columnPrefix, stored, updated);
         updateColumnDisplayName(columnPrefix, stored, updated);
         updateColumnDataLength(columnPrefix, stored, updated);

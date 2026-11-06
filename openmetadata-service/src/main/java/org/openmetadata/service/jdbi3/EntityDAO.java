@@ -1008,8 +1008,20 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @BindUUID("id") UUID id);
 
-  @SqlUpdate("DELETE FROM <table> WHERE id IN (<ids>)")
-  int deleteByIds(@Define("table") String table, @BindList("ids") List<String> ids);
+  // MySQL plans a full scan when its statistics are stale, as right after a bulk load, and under
+  // REPEATABLE READ that scan next-key locks the rows of a concurrent bulk delete, which holds them
+  // from its own earlier statements while this one holds theirs. The hint pins the primary-key
+  // range so only the rows being deleted are locked. PostgreSQL reads the hint as a comment, and
+  // JDBI does not expand <table> inside a comment, so the hint is defined whole.
+  @SqlUpdate("DELETE <primaryKeyHint> FROM <table> WHERE id IN (<ids>)")
+  int deleteByIds(
+      @Define("table") String table,
+      @Define("primaryKeyHint") String primaryKeyHint,
+      @BindList("ids") List<String> ids);
+
+  private String primaryKeyHint() {
+    return "/*+ INDEX(" + getTableName() + " PRIMARY) */";
+  }
 
   default int deleteByIds(List<UUID> ids) {
     if (ids == null || ids.isEmpty()) {
@@ -1018,12 +1030,12 @@ public interface EntityDAO<T extends EntityInterface<?>> {
     List<String> stringIds = ids.stream().map(UUID::toString).toList();
     int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
     if (stringIds.size() <= maxChunkSize) {
-      return deleteByIds(getTableName(), stringIds);
+      return deleteByIds(getTableName(), primaryKeyHint(), stringIds);
     }
     int deleted = 0;
     for (int i = 0; i < stringIds.size(); i += maxChunkSize) {
       List<String> chunk = stringIds.subList(i, Math.min(i + maxChunkSize, stringIds.size()));
-      deleted += deleteByIds(getTableName(), chunk);
+      deleted += deleteByIds(getTableName(), primaryKeyHint(), chunk);
     }
     return deleted;
   }

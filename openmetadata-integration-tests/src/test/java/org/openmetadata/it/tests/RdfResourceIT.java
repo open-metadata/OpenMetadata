@@ -21,6 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -455,20 +457,60 @@ public class RdfResourceIT {
     assertTrue(response.body().contains("not available"), response.body());
   }
 
+  /**
+   * EXISTS carries a whole graph pattern inside an expression, and Fuseki evaluates a SERVICE in it
+   * like any other SERVICE. The federation policy has to refuse it before the query is forwarded,
+   * or Fuseki sends the request — here to its own ping endpoint, which it can always reach.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "SELECT (EXISTS { SERVICE <%s> { ?s ?p ?o } } AS ?reachable) WHERE { }",
+        "SELECT * WHERE { ?s ?p ?o FILTER EXISTS { SERVICE <%s> { ?a ?b ?c } } } LIMIT 1",
+        "SELECT * WHERE { ?s ?p ?o NOT EXISTS { SERVICE <%s> { ?a ?b ?c } } } LIMIT 1",
+        "SELECT ?s WHERE { ?s ?p ?o } ORDER BY (EXISTS { SERVICE <%s> { ?a ?b ?c } }) LIMIT 2"
+      })
+  void testSparqlEndpointRefusesServiceHiddenInsideExists(String template) throws Exception {
+    HttpResponse<String> response =
+        postSparql(
+            template.formatted(FusekiTestImage.SELF_PING_URL), "json", SparqlQuery.Inference.NONE);
+
+    assertEquals(403, response.statusCode(), response.body());
+    assertTrue(response.body().contains(FusekiTestImage.SELF_PING_URL), response.body());
+  }
+
+  @Test
+  void testSparqlUpdateEndpointRefusesServiceHiddenInsideExists() throws Exception {
+    String update =
+        "INSERT { GRAPH <urn:om:it:federation> { <urn:om:it:probe> <urn:om:it:reached> ?x } } "
+            + "WHERE { BIND(EXISTS { SERVICE <"
+            + FusekiTestImage.SELF_PING_URL
+            + "> { ?s ?p ?o } } AS ?x) }";
+
+    HttpResponse<String> response =
+        postAsAdmin("/v1/rdf/sparql/update", new SparqlQuery().withQuery(update));
+
+    assertEquals(403, response.statusCode(), response.body());
+    assertTrue(response.body().contains(FusekiTestImage.SELF_PING_URL), response.body());
+  }
+
   private static HttpResponse<String> postSparql(
       String query, String format, SparqlQuery.Inference inference) throws Exception {
-    String requestBody =
-        JsonUtils.pojoToJson(
-            new SparqlQuery()
-                .withQuery(query)
-                .withFormat(SparqlQuery.Format.fromValue(format))
-                .withInference(inference));
+    return postAsAdmin(
+        "/v1/rdf/sparql",
+        new SparqlQuery()
+            .withQuery(query)
+            .withFormat(SparqlQuery.Format.fromValue(format))
+            .withInference(inference));
+  }
+
+  private static HttpResponse<String> postAsAdmin(String path, SparqlQuery body) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
-            .uri(URI.create(SdkClients.getServerUrl() + "/v1/rdf/sparql"))
+            .uri(URI.create(SdkClients.getServerUrl() + path))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(body)))
             .build();
     return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }

@@ -36,12 +36,15 @@ export type OntologyEditLeaseState =
 
 interface UseOntologyEditLeaseOptions {
   isActive: boolean;
+  /** The guarded operation finished and the server dropped the lease with it, so a release would only 404. */
+  isConsumed?: boolean;
   resourceId?: string;
   resourceType: string;
 }
 
 export const useOntologyEditLease = ({
   isActive,
+  isConsumed = false,
   resourceId,
   resourceType,
 }: UseOntologyEditLeaseOptions) => {
@@ -53,6 +56,8 @@ export const useOntologyEditLease = ({
   const [retryCount, setRetryCount] = useState(0);
   const stateRef = useRef(state);
   stateRef.current = state;
+  const consumed = useRef(isConsumed);
+  consumed.current = isConsumed;
 
   useEffect(() => {
     const leaseSessionId = sessionId.current;
@@ -162,7 +167,7 @@ export const useOntologyEditLease = ({
     return () => {
       isCurrent = false;
       window.clearTimeout(heartbeat);
-      if (lock.current && resourceId) {
+      if (lock.current && resourceId && !consumed.current) {
         void release();
       }
       lock.current = undefined;

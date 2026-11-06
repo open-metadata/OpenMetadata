@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -425,6 +426,7 @@ class MetricGroupRepositoryTest {
       restoreDispatch.verify(dispatcher).onEntitySoftDeletedOrRestored(group, false, null);
       restoreDispatch.verify(dispatcher).onEntityUpdated(member, null);
       verify(dispatcher, never()).onEntityUpdated(group.getEntityReference(), null);
+      assertNull(group.getMetrics());
       cache.verify(
           () ->
               EntityRepository.invalidateCacheForEntity(
@@ -475,6 +477,25 @@ class MetricGroupRepositoryTest {
       updater.runDeferredReactOperations();
 
       verify(dispatcher).onEntityUpdated(updated.getEntityReference(), null);
+    }
+  }
+
+  @Test
+  void updatedGroupLeavesTheRepositoryWithoutItsMembers() {
+    MetricGroup original = group("tagged_group").withDeleted(false);
+    MetricGroup updated = JsonUtils.deepCopy(original, MetricGroup.class);
+    updated.setMetrics(List.of(metric("member").getEntityReference()));
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<RdfUpdater> rdf = mockStatic(RdfUpdater.class)) {
+      lifecycle
+          .when(EntityLifecycleEventDispatcher::getInstance)
+          .thenReturn(mock(EntityLifecycleEventDispatcher.class));
+
+      repository.postUpdate(original, updated);
+
+      assertNull(updated.getMetrics());
     }
   }
 

@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   Database01,
   ShieldTick,
 } from '@openmetadata/ui-core-components/icons';
@@ -92,7 +92,7 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
           : fqn}
       </Link>
       <Box align="center" className="tw:text-tertiary" gap={1}>
-        <Database01 className="tw:size-3 tw:shrink-0 tw:text-fg-quaternary" />
+        <Database01 className="tw:shrink-0 tw:text-fg-quaternary" size={12} />
         <Typography as="span" data-testid="incident-table" size="text-xs">
           {getPartialNameFromTableFQN(fqn, [FqnPart.Table])}
         </Typography>
@@ -105,7 +105,10 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
           className="tw:text-error-primary"
           data-testid="incident-failure-summary"
           gap={1}>
-          <AlertTriangle className="tw:mt-0.5 tw:size-3.5 tw:shrink-0 tw:text-fg-error-primary" />
+          <Alert
+            className="tw:mt-0.5 tw:shrink-0 tw:text-fg-error-primary"
+            size={14}
+          />
           <Typography as="span" size="text-xs">
             {incident.failureSummary}
           </Typography>

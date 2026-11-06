@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -99,6 +100,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.mcp.McpToolRegistry;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheMetrics;
@@ -1594,6 +1596,30 @@ public class SystemResource {
       return Response.ok(mcpSettings.getConfigValue()).build();
     }
     return Response.status(Response.Status.NOT_FOUND).entity("MCP configuration not found").build();
+  }
+
+  @GET
+  @Path("/mcp/tools")
+  @Operation(
+      operationId = "listMCPTools",
+      summary = "List the MCP server's tools",
+      description =
+          "Names of the tools this MCP server registered at startup, including tools a "
+              + "distribution adds and before read-only mode or disabled tools are applied. "
+              + "The settings form offers these as the tools an admin can disable.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Tool names",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string")))),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public List<String> listMCPTools(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return McpToolRegistry.getToolNames();
   }
 
   @PUT

@@ -45,6 +45,7 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../../rest/mcpConfigAPI', () => ({
   getMcpConfig: jest.fn(),
+  getMcpTools: jest.fn().mockResolvedValue(['search_metadata']),
   updateMcpConfig: jest.fn(),
 }));
 
@@ -263,7 +264,13 @@ describe('McpApplicationConfiguration', () => {
   it.each([
     [
       'every field the form shows',
-      ['/baseUrl', '/allowedOrigins', '/maxResponseChars', '/readOnly'],
+      [
+        '/baseUrl',
+        '/allowedOrigins',
+        '/maxResponseChars',
+        '/readOnly',
+        '/disabledTools',
+      ],
     ],
     ['the whole setting', ['/']],
   ])(
@@ -328,6 +335,7 @@ describe('McpApplication form schema', () => {
     'allowedOrigins',
     'maxResponseChars',
     'readOnly',
+    'disabledTools',
   ];
   // Shape of a real stored mcpConfiguration row, including the fields no code reads.
   const storedConfig = {
@@ -339,6 +347,7 @@ describe('McpApplication form schema', () => {
     allowedOrigins: ['http://localhost:3000', 'https://app.example.com'],
     maxResponseChars: 100000,
     readOnly: true,
+    disabledTools: ['create_test_case'],
     connectTimeout: 30000,
     originHeaderUri: 'http://localhost',
     mcpServerVersion: '1.0.0',

@@ -20,6 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Announcement02,
+  Brush01,
   ChevronDown,
   Collapse,
   Edit01,
@@ -34,7 +35,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
@@ -869,7 +869,7 @@ const DomainDetails = ({
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.domain'),
                 })}
-                icon={StyleIcon}
+                icon={Brush01}
                 id="edit-style-button"
                 name={t('label.style')}
               />

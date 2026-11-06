@@ -6360,6 +6360,89 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         "Version should not change when referredColumns order changes but content is the same");
   }
 
+  /**
+   * A multi-column foreign key keeps each local column paired with the column it references
+   * through an update, even when the two lists do not sort in the same order: here alt_type
+   * references type, and alt_type sorts before country while type sorts after it.
+   */
+  @Test
+  void put_multiColumnForeignKeyKeepsColumnPairing(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable parentRequest =
+        new CreateTable()
+            .withName(ns.prefix("fk_pairing_parent"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("country").withDataType(ColumnDataType.INT),
+                    new Column().withName("type").withDataType(ColumnDataType.INT)));
+    Table parent = client.tables().create(parentRequest);
+    String parentCountryFqn = parent.getColumns().get(0).getFullyQualifiedName();
+    String parentTypeFqn = parent.getColumns().get(1).getFullyQualifiedName();
+
+    CreateTable childRequest =
+        new CreateTable()
+            .withName(ns.prefix("fk_pairing_child"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("alt_type").withDataType(ColumnDataType.INT),
+                    new Column().withName("country").withDataType(ColumnDataType.INT)))
+            .withTableConstraints(
+                List.of(
+                    new TableConstraint()
+                        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                        .withColumns(List.of("alt_type", "country"))
+                        .withReferredColumns(List.of(parentTypeFqn, parentCountryFqn))));
+    Table child = client.tables().create(childRequest);
+
+    Table childToUpdate =
+        client.tables().getByName(child.getFullyQualifiedName(), "tableConstraints,columns");
+    childToUpdate.setDescription("Forces the update to be persisted");
+    client.tables().update(child.getId().toString(), childToUpdate);
+
+    TableConstraint storedAfterUpdate =
+        client
+            .tables()
+            .getByName(child.getFullyQualifiedName(), "tableConstraints")
+            .getTableConstraints()
+            .getFirst();
+    assertEquals(List.of("alt_type", "country"), storedAfterUpdate.getColumns());
+    assertEquals(
+        List.of(parentTypeFqn, parentCountryFqn),
+        storedAfterUpdate.getReferredColumns(),
+        "alt_type must still reference type and country must still reference country");
+
+    Table reingested =
+        client.tables().getByName(child.getFullyQualifiedName(), "tableConstraints,columns");
+    Double versionBeforeReingest = reingested.getVersion();
+    reingested.setTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("country", "alt_type"))
+                .withReferredColumns(List.of(parentCountryFqn, parentTypeFqn))));
+    Table afterReingest = client.tables().update(child.getId().toString(), reingested);
+
+    assertEquals(
+        versionBeforeReingest,
+        afterReingest.getVersion(),
+        "Reordering the column pairs consistently is not a change");
+    TableConstraint storedAfterReingest =
+        client
+            .tables()
+            .getByName(child.getFullyQualifiedName(), "tableConstraints")
+            .getTableConstraints()
+            .getFirst();
+    assertEquals(List.of("alt_type", "country"), storedAfterReingest.getColumns());
+    assertEquals(
+        List.of(parentTypeFqn, parentCountryFqn), storedAfterReingest.getReferredColumns());
+  }
+
   // ===================================================================
   // PHASE 3: List Operations Support
   // ===================================================================
@@ -8043,6 +8126,43 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table stored =
         SdkClients.adminClient().tables().get(table.getId().toString(), "tablePartition");
     assertNull(stored.getTablePartition());
+  }
+
+  /**
+   * Regression test for #33623.
+   *
+   * <p>Table does not set {@code renameAllowed}, so a PATCH that changes {@code name} must be a
+   * no-op: the table's own name must not change AND every child column's {@code fullyQualifiedName}
+   * must still be prefixed with the <em>original</em> table FQN, not the rejected name.
+   */
+  @Test
+  void test_patchTable_rejectedRenameDoesNotCorruptColumnFQNs(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable request = createMinimalRequest(ns);
+    Table created = createEntity(request);
+
+    String originalFqn = created.getFullyQualifiedName();
+    String originalName = created.getName();
+
+    Table patch = client.tables().get(created.getId().toString());
+    patch.setName(originalName + "_rejected_rename");
+
+    Table updated = patchEntity(created.getId().toString(), patch);
+
+    assertEquals(
+        originalName, updated.getName(), "Table name must not change when rename is rejected");
+    assertEquals(originalFqn, updated.getFullyQualifiedName(), "Table FQN must not change");
+
+    for (Column col : updated.getColumns()) {
+      assertTrue(
+          col.getFullyQualifiedName().startsWith(originalFqn + "."),
+          "Column FQN '"
+              + col.getFullyQualifiedName()
+              + "' must be prefixed with the original table FQN '"
+              + originalFqn
+              + "'");
+    }
   }
 
   private Table createAsIngestionBot(
