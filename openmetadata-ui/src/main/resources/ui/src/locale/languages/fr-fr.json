@@ -5334,6 +5334,7 @@
     "members-users-description": "Consultez et gérez les utilisateurs standard de votre organisation. Pour les administrateurs, consultez la page Administrateurs.",
     "memory-conflict-review-message": "Revue de conflit de souvenir pour",
     "memory-no-longer-exists": "Ce souvenir n’existe plus.",
+    "memory-supporting-query-deleted": "La requête justificative « {{query}} » a été supprimée ; vérifiez si cette mémoire reste valable sans elle",
     "mentioned-you-on-the-lowercase": "vous a mentionné dans",
     "metadata-agents-description": "Extrayez les métadonnées, l'utilisation, le lignage et le profilage depuis la source.",
     "metadata-agents-table-description": "Les agents de métadonnées sont utilisés pour extraire les métadonnées des services sources.",

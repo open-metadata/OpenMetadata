@@ -5334,6 +5334,7 @@
     "members-users-description": "查看和管理组织中的普通用户。对于管理员用户，请访问\"管理员\"页面。",
     "memory-conflict-review-message": "记忆冲突审查",
     "memory-no-longer-exists": "这条记忆已不存在。",
+    "memory-supporting-query-deleted": "支撑查询“{{query}}”已被删除；请确认没有该查询时此记忆是否仍然成立",
     "mentioned-you-on-the-lowercase": "在以下地方提到了您",
     "metadata-agents-description": "从数据源提取元数据、使用情况、血缘和剖析信息。",
     "metadata-agents-table-description": "元数据代理用于从源服务中提取元数据。",

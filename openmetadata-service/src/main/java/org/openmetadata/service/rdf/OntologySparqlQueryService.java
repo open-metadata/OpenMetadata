@@ -28,6 +28,7 @@ import org.apache.jena.query.ResultSetFormatter;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.reasoner.ReasonerRegistry;
+import org.apache.jena.sparql.exec.http.Service;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
@@ -118,10 +119,16 @@ public final class OntologySparqlQueryService {
     }
   }
 
+  /**
+   * The query runs inside this server against a self-contained model, so it never needs SERVICE.
+   * Refusing it in the execution context means no syntax position the validator does not inspect
+   * can make the server send a request on the caller's behalf.
+   */
   private static QueryResult execute(final Model model, final ValidatedQuery validated) {
     final QueryExecution execution =
         QueryExecution.model(model)
             .query(validated.query())
+            .set(Service.httpServiceAllowed, false)
             .timeout(validated.timeoutMillis(), TimeUnit.MILLISECONDS)
             .build();
     try (execution) {

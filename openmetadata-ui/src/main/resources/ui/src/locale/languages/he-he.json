@@ -5334,6 +5334,7 @@
     "members-users-description": "הציגו ונהלו את המשתמשים הרגילים בארגון שלכם. עבור מנהלי מערכת, עברו לעמוד המנהלים.",
     "memory-conflict-review-message": "בדיקת התנגשות זיכרון עבור",
     "memory-no-longer-exists": "הזיכרון הזה כבר לא קיים.",
+    "memory-supporting-query-deleted": "שאילתת התמיכה \"{{query}}\" נמחקה; יש לבדוק אם הזיכרון הזה עדיין תקף בלעדיה",
     "mentioned-you-on-the-lowercase": "ציין אותך ב",
     "metadata-agents-description": "חלץ מטא-נתונים, שימוש, שושלת ופרופיל מהמקור.",
     "metadata-agents-table-description": "סוכני מטא-דאטה משמשים לחילוץ מטא-דאטה משירותי המקור.",

@@ -5334,6 +5334,7 @@
     "members-users-description": "檢視和管理組織中的一般使用者。若為管理員使用者，請前往「管理員」頁面。",
     "memory-conflict-review-message": "記憶衝突審查",
     "memory-no-longer-exists": "這則記憶已不存在。",
+    "memory-supporting-query-deleted": "支撐查詢「{{query}}」已被刪除；請確認沒有該查詢時此記憶是否仍然成立",
     "mentioned-you-on-the-lowercase": "在...上提到了您",
     "metadata-agents-description": "從來源擷取中繼資料、使用情況、譜系與剖析資訊。",
     "metadata-agents-table-description": "元資料代理程式用於從來源服務中擷取元資料。",

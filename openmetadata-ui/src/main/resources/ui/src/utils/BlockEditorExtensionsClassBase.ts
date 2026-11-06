@@ -46,7 +46,10 @@ import renderItems from '../components/BlockEditor/Extensions/slash-command/rend
 import slashCommand from '../components/BlockEditor/Extensions/slash-command/slashCommand';
 import TextHighlightView from '../components/BlockEditor/Extensions/text-highlight-view';
 import { TrailingNode } from '../components/BlockEditor/Extensions/trailing-node';
-import { DROP_CURSOR_COLOR } from '../constants/BlockEditor.constants';
+import {
+  DROP_CURSOR_COLOR,
+  LINK_EXTENSION_OPTIONS,
+} from '../constants/BlockEditor.constants';
 
 /**
  * Base class for BlockEditor extensions configuration
@@ -109,19 +112,7 @@ export class BlockEditorExtensionsClassBase {
           return 'Type "/" for commands...';
         },
       }),
-      LinkExtension.configure({
-        autolink: false,
-        // Open links on click only in read-only previews. While editing, a
-        // click should surface the link popup (edit/open/unlink) instead of
-        // navigating away.
-        openOnClick: 'whenNotEditable',
-        linkOnPaste: true,
-        HTMLAttributes: {
-          rel: 'noopener noreferrer nofollow',
-          target: '_blank',
-        },
-        validate: (href) => /^https?:\/\//.test(href),
-      }),
+      LinkExtension.configure(LINK_EXTENSION_OPTIONS),
       slashCommand.configure({
         slashSuggestion: {
           items: getSuggestionItems,

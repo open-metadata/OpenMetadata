@@ -5334,6 +5334,7 @@
     "members-users-description": "Bekijk en beheer de gewone gebruikers in uw organisatie. Ga voor beheerders naar de pagina Beheerders.",
     "memory-conflict-review-message": "Herinneringsconflictbeoordeling voor",
     "memory-no-longer-exists": "Deze herinnering bestaat niet meer.",
+    "memory-supporting-query-deleted": "De onderbouwende query \"{{query}}\" is verwijderd; controleer of dit geheugen zonder deze query nog klopt",
     "mentioned-you-on-the-lowercase": "noemde je op de",
     "metadata-agents-description": "Haal metadata, gebruik, herkomst en profilering uit de bron.",
     "metadata-agents-table-description": "Metadata Agents worden gebruikt om metadata te extraheren uit de bronservices.",

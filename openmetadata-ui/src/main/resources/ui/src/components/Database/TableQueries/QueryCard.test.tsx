@@ -116,6 +116,20 @@ describe('Test QueryCard Component', () => {
     expect(expandButton).toBeInTheDocument();
   });
 
+  it('names the query when it has a display name', async () => {
+    render(
+      <QueryCard
+        {...mockProps}
+        query={{ ...mockQueryData, displayName: 'Monthly ATM fee revenue' }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(await screen.findByTestId('query-display-name')).toHaveTextContent(
+      'Monthly ATM fee revenue'
+    );
+  });
+
   it('Copy button should work', async () => {
     render(<QueryCard {...mockProps} />, {
       wrapper: MemoryRouter,

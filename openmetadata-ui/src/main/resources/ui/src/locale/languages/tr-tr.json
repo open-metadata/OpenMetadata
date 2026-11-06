@@ -5334,6 +5334,7 @@
     "members-users-description": "Kuruluşunuzdaki normal kullanıcıları görüntüleyin ve yönetin. Yönetici kullanıcılar için lütfen Yöneticiler sayfasını ziyaret edin.",
     "memory-conflict-review-message": "için anı çakışması incelemesi",
     "memory-no-longer-exists": "Bu anı artık mevcut değil.",
+    "memory-supporting-query-deleted": "Destekleyen sorgu \"{{query}}\" silindi; bu belleğin onsuz hâlâ geçerli olup olmadığını gözden geçirin",
     "mentioned-you-on-the-lowercase": "sizi şurada bahsetti:",
     "metadata-agents-description": "Kaynaktan meta veri, kullanım, veri kökeni ve profil çıkarın.",
     "metadata-agents-table-description": "Metadata Agent'ları, kaynak servislerden metadata çıkarmak için kullanılır.",

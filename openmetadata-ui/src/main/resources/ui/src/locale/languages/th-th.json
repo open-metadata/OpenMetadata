@@ -5334,6 +5334,7 @@
     "members-users-description": "ดูและจัดการผู้ใช้ทั่วไปในองค์กรของคุณ สำหรับผู้ดูแลระบบ โปรดไปที่หน้าผู้ดูแลระบบ",
     "memory-conflict-review-message": "การตรวจสอบความขัดแย้งของความทรงจำสำหรับ",
     "memory-no-longer-exists": "ความทรงจำนี้ไม่มีอยู่แล้ว",
+    "memory-supporting-query-deleted": "การสอบถามที่สนับสนุน \"{{query}}\" ถูกลบแล้ว โปรดตรวจสอบว่าหน่วยความจำนี้ยังใช้ได้หรือไม่หากไม่มีการสอบถามนี้",
     "mentioned-you-on-the-lowercase": "กล่าวถึงคุณบน",
     "metadata-agents-description": "แยกเมทาดาทา การใช้งาน สายข้อมูล และการทำโปรไฟล์จากแหล่งที่มา",
     "metadata-agents-table-description": "Metadata Agents ใช้สำหรับดึงข้อมูลจากบริการต้นทาง",

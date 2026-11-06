@@ -5334,6 +5334,7 @@
     "members-users-description": "کاربران عادی سازمان خود را مشاهده و مدیریت کنید. برای کاربران مدیر، لطفاً به صفحه مدیران مراجعه کنید.",
     "memory-conflict-review-message": "بررسی تعارض خاطره برای",
     "memory-no-longer-exists": "این خاطره دیگر وجود ندارد.",
+    "memory-supporting-query-deleted": "پرس و جوی پشتیبان «{{query}}» حذف شد؛ بررسی کنید که آیا این خاطره بدون آن همچنان معتبر است",
     "mentioned-you-on-the-lowercase": "شما را ذکر کرد در",
     "metadata-agents-description": "استخراج فراداده، استفاده، تبارشناسی و پروفایل‌سازی از منبع.",
     "metadata-agents-table-description": "عوامل متادیتا برای استخراج متادیتا از سرویس‌های منبع استفاده می‌شوند.",

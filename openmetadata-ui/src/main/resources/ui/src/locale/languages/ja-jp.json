@@ -5334,6 +5334,7 @@
     "members-users-description": "組織内の一般ユーザーを表示・管理します。管理者ユーザーについては、管理者ページをご覧ください。",
     "memory-conflict-review-message": "メモリの競合レビュー：",
     "memory-no-longer-exists": "このメモリは存在しません。",
+    "memory-supporting-query-deleted": "根拠となるクエリ「{{query}}」が削除されました。このメモリがそのクエリなしでも成り立つか確認してください",
     "mentioned-you-on-the-lowercase": "であなたについて言及しました",
     "metadata-agents-description": "ソースからメタデータ、使用状況、リネージ、プロファイリングを抽出します。",
     "metadata-agents-table-description": "メタデータエージェントは、ソースサービスからメタデータを抽出するために使用されます。",

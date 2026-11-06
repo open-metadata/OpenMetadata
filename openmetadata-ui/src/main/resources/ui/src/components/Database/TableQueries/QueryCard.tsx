@@ -174,10 +174,22 @@ const QueryCard: FC<QueryCardProp> = ({
       className="layout-space layout-space-horizontal font-normal p-y-xs"
       gap={2}
       itemClassName="layout-space-item">
+      {query?.displayName && (
+        <>
+          <Typography data-testid="query-display-name" size="text-sm">
+            {query.displayName}
+          </Typography>
+          <Typography className="tw:text-quaternary" size="text-sm">
+            {PIPE_SYMBOL}
+          </Typography>
+        </>
+      )}
       <Typography className="text-sm">{queryDate}</Typography>
       {duration && (
         <>
-          <Typography className="text-gray-400">{PIPE_SYMBOL}</Typography>
+          <Typography className="tw:text-quaternary" size="text-sm">
+            {PIPE_SYMBOL}
+          </Typography>
           <Typography className="text-sm" data-testid="query-run-duration">
             {duration}
           </Typography>
