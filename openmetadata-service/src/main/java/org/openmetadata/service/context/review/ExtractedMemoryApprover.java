@@ -33,6 +33,7 @@ import org.openmetadata.service.context.center.MemoryReviewHolds;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
 import org.openmetadata.service.security.AuthorizationException;
 
@@ -67,8 +68,8 @@ public final class ExtractedMemoryApprover {
   }
 
   /** What approving {@code source}'s extracted memories would do, as read now; writes nothing. */
-  public ExtractedMemoryApproval preview(EntityReference source) {
-    Plan plan = plan(extractedFrom(source));
+  public ExtractedMemoryApproval preview(EntityReference source, String user, boolean isAdmin) {
+    Plan plan = visiblePlan(source, user, isAdmin);
     return new ExtractedMemoryApproval()
         .withApproved(plan.approvable().size())
         .withFailed(0)
@@ -81,15 +82,18 @@ public final class ExtractedMemoryApprover {
    * a shown pill that changed or is no longer approvable fails, and one never shown is untouched.
    */
   public ExtractedMemoryApproval approve(
-      EntityReference source, List<ComparedMemory> shown, String user) {
-    Plan plan = plan(extractedFrom(source));
+      EntityReference source, List<ComparedMemory> shown, String user, boolean isAdmin) {
+    Plan plan = visiblePlan(source, user, isAdmin);
     Map<UUID, ContextMemory> approvable =
         plan.approvable().stream().collect(Collectors.toMap(ContextMemory::getId, pill -> pill));
     int approved = 0;
     for (ComparedMemory read : shown) {
       // Taken once: a pill listed twice is no longer approvable the second time.
       ContextMemory pill = approvable.remove(read.getId());
-      if (isAsRead(pill, read) && approveOne(pill, user)) {
+      // The guarded PATCH also rejects a sharing change after this visibility check.
+      if (isAsRead(pill, read)
+          && ContextMemoryVisibility.isVisibleToUser(pill, user, isAdmin)
+          && approveOne(pill, user)) {
         approved++;
       }
     }
@@ -97,6 +101,13 @@ public final class ExtractedMemoryApprover {
         .withApproved(approved)
         .withFailed(shown.size() - approved)
         .withNeedsDecision(plan.needsDecisionReferences());
+  }
+
+  private Plan visiblePlan(EntityReference source, String user, boolean isAdmin) {
+    Plan plan = plan(extractedFrom(source));
+    return new Plan(
+        ContextMemoryVisibility.filterByVisibility(plan.approvable(), user, isAdmin),
+        ContextMemoryVisibility.filterByVisibility(plan.needsDecision(), user, isAdmin));
   }
 
   static Plan plan(List<ContextMemory> memories) {

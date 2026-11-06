@@ -46,6 +46,13 @@ a non-admin's manual memory under review, and in OSS for the values extraction h
   are still approvable and unchanged since: a listed memory that changed, or that approval would no
   longer take, fails, and a memory the list does not name, one extracted after the preview included,
   is never touched.
+  The UI intersects the preview's eligible IDs with the displayed list and sends the content
+  timestamps from that list. A preview read later cannot approve a newer, unseen claim, a memory
+  beyond the displayed page, or anything while the list is loading or failed to load.
+- Document ownership does not override a memory's own visibility. Preview counts, IDs and decision
+  references include only memories the caller may read, and approval checks visibility before
+  each guarded write. Hidden memories still participate in conflict detection, so hiding a value
+  does not allow a conflicting value to bypass review.
 - Approval writes each memory it takes as a review decision does: as the person, impersonated by
   `governance-bot` and guarded on the version read, so a distribution that requires review accepts
   an owner's decision. A memory refused, changed or released meanwhile is not approved and is

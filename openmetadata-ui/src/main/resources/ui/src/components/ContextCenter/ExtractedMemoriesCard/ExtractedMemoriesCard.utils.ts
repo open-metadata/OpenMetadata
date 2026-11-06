@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { ExtractedMemoryApproval } from '../../../generated/api/context/extractedMemoryApproval';
-import { EntityReference } from '../../../generated/entity/context/contextMemory';
+import {
+  ContextMemory,
+  EntityReference,
+} from '../../../generated/entity/context/contextMemory';
 import { User } from '../../../generated/entity/teams/user';
 import { hasEditAccess } from '../../../utils/EntityPermissionUtils';
 
@@ -27,6 +30,31 @@ export const canApproveExtractedMemories = (
   (Boolean(currentUser.isAdmin) ||
     sourceOwners === undefined ||
     hasEditAccess(sourceOwners, currentUser));
+
+/** The preview selects eligible IDs; the displayed list supplies the versions the person saw. */
+export const getDisplayedMemoryApproval = (
+  approval: ExtractedMemoryApproval | undefined,
+  memories: ContextMemory[]
+): ExtractedMemoryApproval | undefined => {
+  if (!approval) {
+    return undefined;
+  }
+
+  const displayed = new Map(memories.map((memory) => [memory.id, memory]));
+  const approvable = (approval.approvable ?? []).flatMap(({ id }) => {
+    const memory = displayed.get(id);
+    const contentUpdatedAt = memory?.lastContentUpdatedAt ?? memory?.updatedAt;
+
+    return contentUpdatedAt === undefined ? [] : [{ id, contentUpdatedAt }];
+  });
+
+  return {
+    ...approval,
+    approved: approvable.length,
+    approvable,
+    needsDecision: approval.needsDecision.filter(({ id }) => displayed.has(id)),
+  };
+};
 
 /** The pending memories the approval action names, or 0 when it would approve none of them. */
 export const getApprovalPendingCount = (

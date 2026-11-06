@@ -390,7 +390,8 @@ class ContextMemoryRepositoryTest {
           .approve(
               file,
               List.of(new ComparedMemory().withId(pill.getId()).withContentUpdatedAt(101L)),
-              user);
+              user,
+              false);
     }
     ArgumentCaptor<String> impersonatedBy = ArgumentCaptor.forClass(String.class);
     verify(writes)

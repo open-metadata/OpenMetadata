@@ -20,7 +20,7 @@ import {
 import { Check } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CONTEXT_FILE_ENTITY_TYPE } from '../../../constants/ContextCenter.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -48,6 +48,7 @@ import CreateMemoryModal from '../CreateMemoryModal/CreateMemoryModal.component'
 import {
   canApproveExtractedMemories,
   getApprovalPendingCount,
+  getDisplayedMemoryApproval,
 } from './ExtractedMemoriesCard.utils';
 
 interface ExtractedMemoriesCardProps {
@@ -79,7 +80,12 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
 
   const canApprove = canApproveExtractedMemories(currentUser, sourceOwners);
   const isApproving = approvingSourceId === sourceId;
-  const pendingCount = getApprovalPendingCount(approval);
+  const displayedApproval = useMemo(
+    () =>
+      isLoading ? undefined : getDisplayedMemoryApproval(approval, memories),
+    [approval, isLoading, memories]
+  );
+  const pendingCount = getApprovalPendingCount(displayedApproval);
 
   const fetchMemories = useCallback(
     async (isCancelled?: () => boolean) => {
@@ -145,10 +151,9 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
   const handleApproveExtracted = useCallback(async () => {
     setApprovingSourceId(sourceId);
     try {
-      // Only what the preview showed is approved, so one extracted since stays pending.
       const result = await approveExtractedMemories({
         source: { id: sourceId, type: sourceType },
-        approvable: approval?.approvable ?? [],
+        approvable: displayedApproval?.approvable ?? [],
       });
       const failedCount = result.failed ?? 0;
       if (result.approved > 0) {
@@ -177,7 +182,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
       );
       setRefreshCount((count) => count + 1);
     }
-  }, [approval, sourceId, sourceType, t]);
+  }, [displayedApproval, sourceId, sourceType, t]);
 
   const canDeleteMemory =
     (memoryToView?.owners?.some((o) => o.name === currentUser?.name) ??

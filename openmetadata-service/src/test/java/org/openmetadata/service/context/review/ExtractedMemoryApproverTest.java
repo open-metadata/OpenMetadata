@@ -37,6 +37,8 @@ import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -58,6 +60,7 @@ class ExtractedMemoryApproverTest {
         .withAnswer("An answer")
         .withEntityStatus(status)
         .withSourceType(sourceType)
+        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY))
         .withVersion(0.1)
         .withUpdatedAt(1L);
   }
@@ -304,7 +307,7 @@ class ExtractedMemoryApproverTest {
     when(listing.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE)).thenReturn(pills);
     try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entities.when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(writes);
-      return new ExtractedMemoryApprover(listing).approve(file, shown, "alice");
+      return new ExtractedMemoryApprover(listing).approve(file, shown, "alice", false);
     }
   }
 
@@ -319,11 +322,42 @@ class ExtractedMemoryApproverTest {
     when(repository.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE))
         .thenReturn(List.of(window, fifteen, twenty));
 
-    ExtractedMemoryApproval preview = new ExtractedMemoryApprover(repository).preview(file);
+    ExtractedMemoryApproval preview =
+        new ExtractedMemoryApprover(repository).preview(file, "alice", false);
 
     assertEquals(1, preview.getApproved());
     assertEquals(0, preview.getFailed());
     assertEquals(asRead(window), preview.getApprovable());
     assertEquals(List.of(fifteen.getId(), twenty.getId()), refIds(preview.getNeedsDecision()));
+  }
+
+  @Test
+  void hiddenMemoriesAreNeitherReturnedNorApprovedButStillHoldConflictingValues() {
+    EntityReference file =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    ContextMemory hidden =
+        extracted("Who signs off refunds?", ContextMemoryStatus.UNPROCESSED)
+            .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    ContextMemory decided =
+        extracted("What is the refund window?", ContextMemoryStatus.APPROVED)
+            .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    ContextMemory visible =
+        extracted("What is the refund window?", ContextMemoryStatus.UNPROCESSED)
+            .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
+    ContextMemoryRepository repository = mock(ContextMemoryRepository.class);
+    when(repository.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE))
+        .thenReturn(List.of(hidden, decided, visible));
+    ExtractedMemoryApprover approver = new ExtractedMemoryApprover(repository);
+
+    ExtractedMemoryApproval preview = approver.preview(file, "alice", false);
+
+    assertEquals(0, preview.getApproved());
+    assertEquals(List.of(), preview.getApprovable());
+    assertEquals(List.of(visible.getId()), refIds(preview.getNeedsDecision()));
+    ExtractedMemoryApproval refused = approver.approve(file, asRead(hidden), "alice", false);
+    assertEquals(0, refused.getApproved());
+    assertEquals(1, refused.getFailed());
+    assertEquals(List.of(visible.getId()), refIds(refused.getNeedsDecision()));
+    assertEquals(1, approver.preview(file, "admin", true).getApproved());
   }
 }

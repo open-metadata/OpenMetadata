@@ -50,6 +50,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -136,6 +137,49 @@ public class ContextMemoryExtractedApprovalIT {
     assertEquals(1, preview.getApproved());
     assertEquals(1, result.getApproved());
     assertEquals(ContextMemoryStatus.APPROVED, status(window));
+  }
+
+  @Test
+  void aDocumentsOwnerCannotPreviewOrApproveALinkedMemoryMadePrivate(TestNamespace ns)
+      throws Exception {
+    EntityReference file = file(ns, "private-memory", shared().USER1_REF);
+    ContextMemory memory =
+        stored(ns, file, "Who signs off refunds?", "Finance", pending(), shared().USER2_REF);
+    ExtractedMemoryApproval seen = preview(SdkClients.user1Client(), file);
+    assertEquals(Set.of(memory.getId()), comparedIds(seen.getApprovable()));
+
+    ContextMemory privateMemory =
+        RestClient.admin()
+            .patch(
+                "v1/contextCenter/memories",
+                memory.getId(),
+                JsonUtils.pojoToJson(memory),
+                JsonUtils.deepCopy(memory, ContextMemory.class)
+                    .withShareConfig(
+                        new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)),
+                ContextMemory.class);
+    assertEquals(ContextMemorySourceType.FILE_EXTRACTION, privateMemory.getSourceType());
+    assertEquals(
+        403,
+        statusOf(
+            () ->
+                SdkClients.user1Client()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.GET,
+                        "/v1/contextCenter/memories/" + memory.getId(),
+                        null,
+                        ContextMemory.class)));
+
+    ExtractedMemoryApproval hidden = preview(SdkClients.user1Client(), file);
+    assertEquals(0, hidden.getApproved());
+    assertEquals(List.of(), hidden.getApprovable());
+    assertEquals(List.of(), hidden.getNeedsDecision());
+    ExtractedMemoryApproval refused = approve(SdkClients.user1Client(), file, seen.getApprovable());
+    assertEquals(0, refused.getApproved());
+    assertEquals(1, refused.getFailed());
+    assertEquals(List.of(), refused.getNeedsDecision());
+    assertEquals(ContextMemoryStatus.UNPROCESSED, status(memory));
   }
 
   @Test

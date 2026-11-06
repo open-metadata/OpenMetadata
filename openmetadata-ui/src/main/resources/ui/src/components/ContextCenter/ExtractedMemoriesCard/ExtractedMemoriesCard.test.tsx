@@ -188,9 +188,15 @@ const memories = [
     name: 'pill-1',
     title: 'VAT policy',
     question: 'What is the VAT rate?',
+    lastContentUpdatedAt: 1767225600000,
     owners: [{ id: 'u1', type: 'user', name: 'alice' }],
   },
-  { id: 'm2', name: 'pill-2', title: 'Refund window' },
+  {
+    id: 'm2',
+    name: 'pill-2',
+    title: 'Refund window',
+    updatedAt: 1767225600001,
+  },
 ];
 
 describe('ExtractedMemoriesCard', () => {
@@ -318,8 +324,8 @@ describe('ExtractedMemoriesCard — approving the document’s memories', () => 
 
   beforeEach(() => {
     mockGetListContextMemories.mockResolvedValue({
-      data: memories,
-      paging: { total: 2 },
+      data: [...memories, contested],
+      paging: { total: 3 },
     });
     useEnUsTranslations();
   });
@@ -453,6 +459,93 @@ describe('ExtractedMemoriesCard — approving the document’s memories', () => 
     );
     expect(mockGetExtractedMemoryApproval).toHaveBeenCalledTimes(2);
     expect(mockGetListContextMemories).toHaveBeenCalledTimes(2);
+  });
+
+  it('approves only the displayed memories as they were displayed, even when the preview read newer claims', async () => {
+    mockCurrentUser = { ...ALICE, isAdmin: true };
+    mockGetListContextMemories.mockResolvedValue({
+      data: [{ ...memories[0], lastContentUpdatedAt: 10, updatedAt: 20 }],
+      paging: { total: 2 },
+    });
+    mockGetExtractedMemoryApproval.mockResolvedValue(preview(2, []));
+    (approveExtractedMemories as jest.Mock).mockResolvedValue({
+      approved: 0,
+      needsDecision: [],
+      failed: 1,
+    });
+    renderCard();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Approve extracted memories (1 pending)',
+      })
+    );
+
+    await waitFor(() =>
+      expect(approveExtractedMemories).toHaveBeenCalledWith({
+        source: { id: 'page-1', type: 'page' },
+        approvable: [{ id: 'm1', contentUpdatedAt: 10 }],
+      })
+    );
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'Memories not approved: 1. They stay pending.'
+    );
+  });
+
+  it('waits for the displayed list before offering approval and uses the audit time for a legacy claim', async () => {
+    mockCurrentUser = { ...ALICE, isAdmin: true };
+    let finishList: (() => void) | undefined;
+    mockGetListContextMemories.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishList = () =>
+            resolve({
+              data: [
+                {
+                  ...memories[0],
+                  lastContentUpdatedAt: undefined,
+                  updatedAt: 30,
+                },
+              ],
+              paging: { total: 1 },
+            });
+        })
+    );
+    mockGetExtractedMemoryApproval.mockResolvedValue(preview(1, []));
+    (approveExtractedMemories as jest.Mock).mockResolvedValue({
+      approved: 1,
+      needsDecision: [],
+      failed: 0,
+    });
+    renderCard();
+    await act(async () => undefined);
+
+    expect(approveButton()).not.toBeInTheDocument();
+
+    await act(async () => finishList?.());
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Approve extracted memories (1 pending)',
+      })
+    );
+
+    await waitFor(() =>
+      expect(approveExtractedMemories).toHaveBeenCalledWith({
+        source: { id: 'page-1', type: 'page' },
+        approvable: [{ id: 'm1', contentUpdatedAt: 30 }],
+      })
+    );
+  });
+
+  it('offers no approval when the displayed list failed to load', async () => {
+    mockCurrentUser = { ...ALICE, isAdmin: true };
+    mockGetListContextMemories.mockRejectedValue(new Error('list unavailable'));
+    mockGetExtractedMemoryApproval.mockResolvedValue(preview(2, []));
+    renderCard();
+    await act(async () => undefined);
+
+    expect(approveButton()).not.toBeInTheDocument();
   });
 
   it('keeps the preview of a document no longer shown off the one shown now', async () => {

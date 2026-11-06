@@ -994,7 +994,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     EntityReference source =
         requireDecidesExtractedMemories(
             securityContext, new EntityReference().withId(sourceId).withType(sourceType));
-    return extractedMemoryApprover.preview(source);
+    return extractedMemoryApprover.preview(
+        source,
+        securityContext.getUserPrincipal().getName(),
+        ContextMemoryVisibility.isAdmin(securityContext));
   }
 
   @PUT
@@ -1029,7 +1032,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Context SecurityContext securityContext, @Valid @NotNull ApproveExtractedMemories request) {
     EntityReference source = requireDecidesExtractedMemories(securityContext, request.getSource());
     return extractedMemoryApprover.approve(
-        source, request.getApprovable(), securityContext.getUserPrincipal().getName());
+        source,
+        request.getApprovable(),
+        securityContext.getUserPrincipal().getName(),
+        ContextMemoryVisibility.isAdmin(securityContext));
   }
 
   /**
