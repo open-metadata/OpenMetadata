@@ -19,14 +19,16 @@ public class SearchPrompt implements McpPrompt {
       }
     }
     String entityType = (String) params.get("entityType");
-    return new McpSchema.GetPromptResult(
-        "Message can be used to get search results",
-        List.of(
-            new McpSchema.PromptMessage(
-                McpSchema.Role.ASSISTANT,
-                new McpSchema.TextContent(
-                    String.format(
-                        "Search for `%s` in OpenMetadata where entity type is `%s` and with a limit of `%s` . Summarise the information for all the results properly and also make sure to provide clickable links using the href field from the results.",
-                        query, entityType, limit)))));
+    return McpSchema.GetPromptResult.builder(
+            List.of(
+                new McpSchema.PromptMessage(
+                    McpSchema.Role.ASSISTANT,
+                    McpSchema.TextContent.builder(
+                            String.format(
+                                "Search for `%s` in OpenMetadata where entity type is `%s` and with a limit of `%s` . Summarise the information for all the results properly and also make sure to provide clickable links using the href field from the results.",
+                                query, entityType, limit))
+                        .build())))
+        .description("Message can be used to get search results")
+        .build();
   }
 }

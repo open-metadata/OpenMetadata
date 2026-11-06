@@ -4,11 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.server.McpStatelessServerFeatures;
+import io.modelcontextprotocol.server.McpStatelessServerHandler;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpStatelessServerTransport;
@@ -16,6 +19,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
@@ -67,10 +72,8 @@ public class McpSdkUpgradeTest {
         """;
 
     McpSchema.Tool tool =
-        McpSchema.Tool.builder()
-            .name("test_tool")
+        McpSchema.Tool.builder("test_tool", jsonMapper, schemaJson)
             .description("A test tool")
-            .inputSchema(jsonMapper, schemaJson)
             .build();
 
     assertThat(tool).isNotNull();
@@ -90,7 +93,7 @@ public class McpSdkUpgradeTest {
   void testMcpSchemaPromptCreation() {
     // Verify Prompt can still be created (no breaking changes here)
     McpSchema.Prompt prompt =
-        new McpSchema.Prompt("test_prompt", "A test prompt description", null);
+        McpSchema.Prompt.builder("test_prompt").description("A test prompt description").build();
 
     assertThat(prompt).isNotNull();
     assertThat(prompt.name()).isEqualTo("test_prompt");
@@ -252,6 +255,91 @@ public class McpSdkUpgradeTest {
   }
 
   @Test
+  void looseArgumentsStillReachTheTool() {
+    McpStatelessServerTransport transport = mock(McpStatelessServerTransport.class);
+    McpStatelessSyncServer server =
+        McpServer.buildServer(
+            transport, new McpServer().buildServerCapabilities(), MCPConfiguration::new);
+    McpSchema.Tool searchMetadata =
+        McpUtils.getToolProperties("json/data/mcp/tools.json").stream()
+            .filter(tool -> "search_metadata".equals(tool.name()))
+            .findFirst()
+            .orElseThrow();
+    server.addTool(
+        new McpStatelessServerFeatures.SyncToolSpecification(
+            searchMetadata,
+            (context, request) ->
+                McpSchema.CallToolResult.builder()
+                    .content(List.of(McpSchema.TextContent.builder("ran").build()))
+                    .isError(false)
+                    .build()));
+    ArgumentCaptor<McpStatelessServerHandler> handler =
+        ArgumentCaptor.forClass(McpStatelessServerHandler.class);
+    verify(transport).setMcpHandler(handler.capture());
+
+    McpSchema.JSONRPCResponse response =
+        handler
+            .getValue()
+            .handleRequest(
+                McpTransportContext.EMPTY,
+                new McpSchema.JSONRPCRequest(
+                    McpSchema.METHOD_TOOLS_CALL,
+                    1,
+                    Map.of(
+                        "name",
+                        "search_metadata",
+                        "arguments",
+                        Map.of(
+                            "size",
+                            "5",
+                            "includeDeleted",
+                            "true",
+                            "queryFilter",
+                            Map.of("term", Map.of("entityType", "table"))))))
+            .block();
+
+    assertThat(((McpSchema.CallToolResult) response.result()).isError()).isFalse();
+  }
+
+  @Test
+  void initializeReportsTheServerNameAndVersionFromTheMcpSettings() {
+    McpStatelessServerTransport transport = mock(McpStatelessServerTransport.class);
+    when(transport.protocolVersions()).thenReturn(List.of("2025-11-25"));
+    MCPConfiguration configured =
+        new MCPConfiguration().withMcpServerName("acme-mcp").withMcpServerVersion("9.9.9");
+    McpServer.buildServer(transport, new McpServer().buildServerCapabilities(), () -> configured);
+    ArgumentCaptor<McpStatelessServerHandler> handler =
+        ArgumentCaptor.forClass(McpStatelessServerHandler.class);
+    verify(transport).setMcpHandler(handler.capture());
+
+    McpSchema.JSONRPCResponse response =
+        handler
+            .getValue()
+            .handleRequest(
+                McpTransportContext.EMPTY,
+                new McpSchema.JSONRPCRequest(
+                    McpSchema.METHOD_INITIALIZE,
+                    1,
+                    Map.of(
+                        "protocolVersion",
+                        "2025-11-25",
+                        "capabilities",
+                        Map.of(),
+                        "clientInfo",
+                        Map.of("name", "test", "version", "1"))))
+            .block();
+
+    McpSchema.Implementation serverInfo =
+        ((McpSchema.InitializeResult) response.result()).serverInfo();
+    assertThat(serverInfo.name()).isEqualTo("acme-mcp");
+    assertThat(serverInfo.version()).isEqualTo("9.9.9");
+    MCPConfiguration blank =
+        new MCPConfiguration().withMcpServerName(" ").withMcpServerVersion(null);
+    assertThat(McpServer.serverInfo(blank).name()).isEqualTo("openmetadata-mcp-server");
+    assertThat(McpServer.serverInfo(blank).version()).isEqualTo("1.0.0");
+  }
+
+  @Test
   void aToolWithAnInvalidSchemaIsSkippedAndTheRestStillRegister() {
     McpStatelessSyncServer server =
         io.modelcontextprotocol.server.McpServer.sync(mock(McpStatelessServerTransport.class))
@@ -361,6 +449,9 @@ public class McpSdkUpgradeTest {
 
     assertThat(capabilities.tools()).isNotNull();
     assertThat(capabilities.prompts()).isNotNull();
+    // A stateless server cannot send list_changed notifications, so it must not promise them.
+    assertThat(capabilities.tools().listChanged()).isFalse();
+    assertThat(capabilities.prompts().listChanged()).isFalse();
     assertThat(capabilities.logging()).isNull();
     assertThat(capabilities.resources()).isNull();
     assertThat(capabilities.completions()).isNull();

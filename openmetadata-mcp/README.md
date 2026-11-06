@@ -29,8 +29,8 @@ This module implements a complete OAuth 2.0 Authorization Code Flow with PKCE fo
 - **Rate Limiting** - Registration (10/hour per IP) and token (30/minute per IP) endpoint protection
 - **Thread-Safe Concurrent Processing** - ThreadLocal storage for request isolation
 - **Audit Logging** - OAuth operations logged via SLF4J (oauth_audit_log table available for future use)
-- **Read-only Mode** - Turn on Read-only Mode in the MCP Server app settings to expose only tools annotated `readOnlyHint`, for every user including admins. Writes are blocked at once; the tool list changes, and turning it off applies, after a restart. Through the API, send the full configuration: `PUT /api/v1/system/mcp/config` replaces every field.
-- **Disabled Tools** - Pick tools under Disabled Tools in the MCP Server app settings to turn them off for every user including admins. Calls are refused at once; the tool list changes, and enabling a tool again applies, after a restart. `GET /api/v1/system/mcp/tools` lists the tool names the server registered.
+- **Read-only Mode** - Turn on Read-only Mode in the MCP Server app settings to expose only tools annotated `readOnlyHint`, for every user including admins. A change applies at once to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again. Through the API, send the full configuration: `PUT /api/v1/system/mcp/config` replaces every field.
+- **Disabled Tools** - Pick tools under Disabled Tools in the MCP Server app settings to turn them off for every user including admins. A change applies at once to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again. `GET /api/v1/system/mcp/tools` lists the tool names the server registered.
 
 ### Database-Driven Configuration
 - **Runtime Configuration** - Update MCP settings without server restart via REST API

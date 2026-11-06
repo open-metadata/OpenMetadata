@@ -5,8 +5,10 @@ import io.dropwizard.jetty.MutableServletContextHandler;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
+import io.modelcontextprotocol.server.McpSyncListFilter;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.modelcontextprotocol.spec.McpStatelessServerTransport;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -86,10 +88,12 @@ public class McpServer implements McpServerProvider {
     this.limits = limits;
     this.environment = environment;
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
-    List<McpSchema.Tool> registered = getTools();
-    McpToolRegistry.setToolNames(registered.stream().map(McpSchema.Tool::name).toList());
-    List<McpSchema.Tool> tools =
-        exposedTools(registered, SecurityConfigurationManager.getCurrentMcpConfig());
+    List<McpSchema.Tool> tools = getTools();
+    McpToolRegistry.setToolNames(tools.stream().map(McpSchema.Tool::name).toList());
+    logToolGating(tools, SecurityConfigurationManager.getCurrentMcpConfig());
+    SecurityConfigurationManager.getInstance()
+        .addConfigurationChangeListener(
+            (authConfig, authzConfig, mcpConfig) -> logToolGating(tools, mcpConfig));
     List<McpSchema.Prompt> prompts = getPrompts();
     addStatelessTransport(contextHandler, tools, prompts);
   }
@@ -101,10 +105,11 @@ public class McpServer implements McpServerProvider {
    * the call comes back as MethodNotFound. So: no logging, because there is no logging/setLevel
    * handler (VSCode used to call it), and no resources, because no resources are registered here.
    * The resources flag would also advertise resources/subscribe, which protocol 2026-07-28 has
-   * replaced with subscriptions/listen.
+   * replaced with subscriptions/listen. listChanged is false: a stateless server cannot send
+   * notifications/tools/list_changed, so a client sees a changed list when it lists again.
    */
   protected McpSchema.ServerCapabilities buildServerCapabilities() {
-    return McpSchema.ServerCapabilities.builder().tools(true).prompts(true).build();
+    return McpSchema.ServerCapabilities.builder().tools(false).prompts(false).build();
   }
 
   /**
@@ -148,35 +153,56 @@ public class McpServer implements McpServerProvider {
   }
 
   /**
-   * Read-only mode, for every caller including admins, whom no policy can deny. It filters here,
-   * after a subclass has added its own tools in {@link #getTools()}, so those are covered too.
-   * Tools are registered once at startup, so {@link #executeTool} checks again on every call:
-   * turning the mode on blocks writes before the restart that drops them from tools/list. See
-   * ADR:2026-11-04-mcp-read-only-mode-hides-write-tools. Disabled tools follow the same two steps,
-   * see ADR:2026-11-05-mcp-admins-can-disable-single-tools.
+   * Read-only mode and disabled tools, for every caller including admins, whom no policy can deny.
+   * Every tool is registered at startup, after a subclass has added its own in {@link #getTools()};
+   * this filter hides the refused ones on each tools/list from the setting as it is now, and {@link
+   * #executeTool} refuses them on each call. See ADR:2026-11-04-mcp-read-only-mode-hides-write-tools
+   * and ADR:2026-11-05-mcp-admins-can-disable-single-tools.
    */
-  static List<McpSchema.Tool> exposedTools(List<McpSchema.Tool> tools, MCPConfiguration config) {
-    List<McpSchema.Tool> exposed = tools;
-    if (isReadOnlyMode(config)) {
-      exposed = tools.stream().filter(McpServer::isAvailableInReadOnlyMode).toList();
-      LOG.info(
-          "[MCP] Read-only mode; withholding {} write tool(s) from tools/list",
-          tools.size() - exposed.size());
-    }
-    return withoutDisabledTools(exposed, tools, config);
+  static McpSyncListFilter<McpSchema.Tool> toolFilter(Supplier<MCPConfiguration> config) {
+    return (context, tool) -> refusalReason(tool, config.get()).isEmpty();
   }
 
-  private static List<McpSchema.Tool> withoutDisabledTools(
-      List<McpSchema.Tool> exposed, List<McpSchema.Tool> registered, MCPConfiguration config) {
-    Set<String> disabled = disabledTools(config);
-    warnAboutUnknownTools(registered, disabled);
-    List<McpSchema.Tool> enabled =
-        exposed.stream().filter(tool -> !disabled.contains(tool.name())).toList();
-    if (enabled.size() < exposed.size()) {
+  static McpStatelessSyncServer buildServer(
+      McpStatelessServerTransport transport,
+      McpSchema.ServerCapabilities capabilities,
+      Supplier<MCPConfiguration> mcpConfig) {
+    return io.modelcontextprotocol.server.McpServer.sync(transport)
+        .serverInfo(serverInfo(mcpConfig.get()))
+        .capabilities(capabilities)
+        // SDK 2.x checks tools/call arguments against the tool schema by default. Kept off: the
+        // tools accept looser shapes on purpose, see
+        // ADR:2026-11-06-mcp-tool-arguments-are-coerced-by-tools-not-validated-by-the-sdk.
+        .validateToolInputs(false)
+        .addToolFilter(toolFilter(mcpConfig))
+        .build();
+  }
+
+  // The name and version clients see in initialize come from the MCP settings, read at startup. A
+  // blank value falls back to the schema default: the SDK refuses a server without them.
+  static McpSchema.Implementation serverInfo(MCPConfiguration config) {
+    MCPConfiguration defaults = new MCPConfiguration();
+    MCPConfiguration current = config == null ? defaults : config;
+    return McpSchema.Implementation.builder(
+            textOr(current.getMcpServerName(), defaults.getMcpServerName()),
+            textOr(current.getMcpServerVersion(), defaults.getMcpServerVersion()))
+        .build();
+  }
+
+  private static String textOr(String value, String fallback) {
+    return value == null || value.isBlank() ? fallback : value;
+  }
+
+  // tools/list follows the setting live, so say what it hides each time the setting loads.
+  private static void logToolGating(List<McpSchema.Tool> tools, MCPConfiguration config) {
+    long hidden = tools.stream().filter(tool -> refusalReason(tool, config).isPresent()).count();
+    if (hidden > 0) {
       LOG.info(
-          "[MCP] Withholding {} disabled tool(s) from tools/list", exposed.size() - enabled.size());
+          "[MCP] Read-only mode and disabled tools hide {} of {} tool(s) from tools/list",
+          hidden,
+          tools.size());
     }
-    return enabled;
+    warnAboutUnknownTools(tools, disabledTools(config));
   }
 
   // Not an error: the name may be a tool of another distribution or one renamed on upgrade.
@@ -268,14 +294,10 @@ public class McpServer implements McpServerProvider {
               allowedOrigins);
       statelessOauthTransport.setContextPath(contextHandler.getContextPath());
       McpStatelessSyncServer server =
-          io.modelcontextprotocol.server.McpServer.sync(statelessOauthTransport)
-              .serverInfo("openmetadata-mcp-stateless", "1.1.0")
-              .capabilities(serverCapabilities)
-              // SDK 2.x checks tools/call arguments against the tool schema by default. Kept off
-              // so this upgrade does not change what clients get back; the tools parse their own
-              // arguments today. Turning it on is tracked in #37248.
-              .validateToolInputs(false)
-              .build();
+          buildServer(
+              statelessOauthTransport,
+              serverCapabilities,
+              SecurityConfigurationManager::getCurrentMcpConfig);
       addToolsToServer(server, tools);
       addPromptsToServer(server, prompts);
 
@@ -358,8 +380,9 @@ public class McpServer implements McpServerProvider {
       LOG.info("Registered /mcp/callback servlet (runtime SSO dispatch)");
     } catch (Exception ex) {
       LOG.error(
-          "MCP server initialization failed — MCP OAuth will be non-functional. "
-              + "Check the configuration and restart.",
+          "[MCP] Initialization failed partway: the /mcp endpoint, or the OAuth routes registered "
+              + "after it, are missing, so MCP clients may not connect. Check the configuration "
+              + "and restart.",
           ex);
     }
   }
