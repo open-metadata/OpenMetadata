@@ -60,6 +60,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -184,6 +185,15 @@ public class ColumnResource {
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = Column.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description =
+                "An approval workflow holds the update: nothing is published, and the "
+                    + "X-OpenMetadata-Pending-Change header names the change request",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Column.class))),
         @ApiResponse(responseCode = "400", description = "Bad request"),
         @ApiResponse(responseCode = "404", description = "Column not found")
       })
@@ -234,11 +244,16 @@ public class ColumnResource {
 
     ChangeSource changeSource =
         changeSourceParam == null ? null : ChangeSource.fromValue(changeSourceParam);
-    FieldInterface updatedChild =
-        repository.updateChildByFQN(
+    ColumnRepository.ChildUpdate update =
+        repository.submitChildUpdateByFQN(
             uriInfo, securityContext, fqn, entityType, updateColumn, changeSource);
 
-    return Response.ok(updatedChild).build();
+    // A held update answers like a held entity PATCH: 202 and the change request that holds it.
+    return update.pendingChangeRequestId() == null
+        ? Response.ok(update.child()).build()
+        : Response.accepted(update.child())
+            .header(RestUtil.PENDING_CHANGE_HEADER, update.pendingChangeRequestId().toString())
+            .build();
   }
 
   @GET

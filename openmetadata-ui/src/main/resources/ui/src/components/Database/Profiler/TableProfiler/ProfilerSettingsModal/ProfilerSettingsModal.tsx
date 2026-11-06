@@ -215,10 +215,21 @@ const ProfilerSettingsModal = ({
     }
   };
 
-  const required = (label: string) =>
-    enablePartition
+  const required = (label: string, isEnabled = enablePartition) =>
+    isEnabled
       ? { required: t('message.field-text-is-required', { fieldText: label }) }
       : undefined;
+
+  // The PUT replaces the stored config whole, so a newly shown sample field
+  // left empty would drop profileSampleConfig and wipe the stored sampling.
+  const seedProfileSamplePercentage = () => {
+    if (form.getValues('profileSamplePercentage') == null) {
+      form.setValue(
+        'profileSamplePercentage',
+        DEFAULT_VALUES.profileSamplePercentage
+      );
+    }
+  };
   const selectField = ({
     name,
     label,
@@ -317,12 +328,13 @@ const ProfilerSettingsModal = ({
     testId: string,
     placeholder: string,
     min?: number,
-    partition = false
+    partition = false,
+    isRequired = false
   ) => (
     <FormField
       control={form.control}
       name={name}
-      rules={partition ? required(label) : undefined}>
+      rules={required(label, partition ? enablePartition : isRequired)}>
       {({ field, fieldState }) => (
         <NumberInput
           {...field}
@@ -330,6 +342,7 @@ const ProfilerSettingsModal = ({
           inputDataTestId={testId}
           isDisabled={partition && !enablePartition}
           isInvalid={fieldState.invalid}
+          isRequired={isRequired}
           label={label}
           minValue={min}
           placeholder={placeholder}
@@ -368,6 +381,7 @@ const ProfilerSettingsModal = ({
               placeholder: t('label.please-select-entity', {
                 entity: t('label.profile-sample-type', { type: '' }),
               }),
+              onChange: seedProfileSamplePercentage,
             })}
             {sampleType === ProfileSampleType.Percentage && (
               <FormField control={form.control} name="profileSamplePercentage">
@@ -396,7 +410,9 @@ const ProfilerSettingsModal = ({
                 t('label.please-enter-value', {
                   name: t('label.row-count-lowercase'),
                 }),
-                MIN_PROFILE_SAMPLE
+                MIN_PROFILE_SAMPLE,
+                false,
+                true
               )}
             {numberField(
               'sampleDataCount',

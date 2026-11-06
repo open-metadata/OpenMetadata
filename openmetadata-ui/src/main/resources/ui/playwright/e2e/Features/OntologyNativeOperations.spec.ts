@@ -138,8 +138,13 @@ test.describe(
           const editor = inspector.getByTestId(
             'ontology-column-binding-editor'
           );
+          const columnSelect = editor.getByRole('button', {
+            name: /profile › customer_id/,
+          });
+          // The editor pre-selects the column whose name matches the property.
+          await expect(columnSelect).toBeVisible();
           await selectOptionWithRetry(
-            editor.getByRole('button', { name: 'Select Column', exact: true }),
+            columnSelect,
             page.getByRole('option', { name: /profile › customer_id/ })
           );
           const saved = page.waitForResponse(
@@ -500,7 +505,10 @@ test.describe(
           await submitted,
           'Retry real review task submission'
         );
-        await expect(page).toHaveURL(new RegExp(`/tasks/${task.id}$`));
+        await expect(
+          page.getByTestId('ontology-publication-notice-requested')
+        ).toBeVisible();
+        await expect(page).toHaveURL(/\/governance\/ontology/);
         const history = await okJson<{ data: OntologyRelease[] }>(
           await api.get(`/api/v1/ontologies/${ontology.id}/releases`),
           'Read owner release history'

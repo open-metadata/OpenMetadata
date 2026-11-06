@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -119,6 +120,7 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PolicyDeniedException;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -310,6 +312,9 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   /** Implement this method to a CSV record and turn it into an entity */
   protected abstract void createEntity(CSVPrinter resultsPrinter, List<CSVRecord> csvRecords)
       throws IOException;
+
+  /** Additional entity-specific checks before the shared row-target check and preparation. */
+  protected void authorizeRow(T original, T entity) {}
 
   public final String exportCsv(T entity) throws IOException {
     CsvFile csvFile = new CsvFile().withHeaders(csvHeaders);
@@ -1008,13 +1013,18 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     try {
       return restoreFormulas(CSVFormat.DEFAULT.parse(in).getRecords());
     } catch (IOException e) {
-      documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
+      documentParserFailure(e);
+    } catch (UncheckedIOException e) {
+      // Commons CSV wraps lexer errors met while iterating records (e.g. a stray character after
+      // a closing quote) in UncheckedIOException.
+      documentParserFailure(e.getCause());
     }
     return null;
   }
 
+  // Returns null on a parser failure, like parse(String), so importCsv(records) aborts cleanly.
   public List<CSVRecord> parse(String csv, boolean recursive) {
-    List<CSVRecord> records = new ArrayList<>();
+    List<CSVRecord> records = null;
     Reader in = new StringReader(csv);
 
     try {
@@ -1048,10 +1058,17 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       records = convertToCSVRecords(fixedRows, headers);
 
     } catch (IOException e) {
-      documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
+      documentParserFailure(e);
+    } catch (UncheckedIOException e) {
+      documentParserFailure(e.getCause());
     }
 
     return records;
+  }
+
+  private void documentParserFailure(IOException exception) {
+    documentFailure(
+        failed(CsvParseErrorMessage.describe(exception.getMessage()), CsvErrorType.PARSER_FAILURE));
   }
 
   // CSVRecord is immutable, so records with escaped formula cells are re-printed and re-parsed.
@@ -1173,6 +1190,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       repository.setFullyQualifiedName(entity);
       // In case of updating entity, prepareInternal as update=True
       T original = repository.findMatchForImport(entity);
+      authorizeRow(original, entity);
       boolean isUpdate = original != null;
       authorizeRow(entityType, original, entity);
 
@@ -1273,6 +1291,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       repository.setFullyQualifiedName(entity);
       // In case of updating entity, prepareInternal as update=True
       T original = (T) repository.findMatchForImport(entity);
+      authorizeRow(original, (T) entity);
       boolean isUpdate = original != null;
       authorizeRow(type, original, entity);
 
@@ -1524,6 +1543,11 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     }
   }
 
+  /** Only successful preceding rows can supply an unpersisted authorization destination. */
+  protected final EntityInterface<?> getCreatedEntity(String fqn) {
+    return createdByImport.get(createdKey(fqn));
+  }
+
   // Column rows are written as one PATCH of their table, so they are checked as that PATCH. A table
   // this import created was authorized with its columns; another type with the same FQN was not.
   private void authorizeColumnPatch(TableUpdateContext context, Supplier<JsonPatch> patch) {
@@ -1535,8 +1559,12 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     }
   }
 
-  private void authorize(OperationContext operation, ResourceContextInterface resource) {
-    importAuthorizer().authorizeActor(ChangeActor.recorded(importedBy, null), operation, resource);
+  protected final void authorize(OperationContext operation, ResourceContextInterface resource) {
+    importAuthorizer()
+        .authorizeActor(
+            ChangeActor.recorded(importedBy, ImpersonationContext.getImpersonatedBy()),
+            operation,
+            resource);
   }
 
   private Authorizer importAuthorizer() {
@@ -1812,6 +1840,14 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
 
     pendingEntityOperations.clear();
     pendingEntityFQNs.clear();
+  }
+
+  /** Entities of a type that earlier rows of this batch queued but have not written yet. */
+  protected final List<EntityInterface<?>> queuedEntities(String entityType) {
+    return pendingEntityOperations.stream()
+        .filter(op -> entityType.equals(op.entityType))
+        .<EntityInterface<?>>map(op -> op.entity)
+        .toList();
   }
 
   protected boolean hasPendingEntity(String entityType, String fqn) {
@@ -2629,7 +2665,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   }
 
   public String failed(String exception, CsvErrorType errorType) {
-    return String.format("#%s: Failed to parse the CSV filed - reason %s", errorType, exception);
+    return String.format("#%s: Failed to parse the CSV file: %s", errorType, exception);
   }
 
   public static String invalidHeader(String expected, String actual) {

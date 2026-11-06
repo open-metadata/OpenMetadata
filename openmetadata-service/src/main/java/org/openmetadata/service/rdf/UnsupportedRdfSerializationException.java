@@ -26,4 +26,11 @@ public class UnsupportedRdfSerializationException extends IllegalArgumentExcepti
         "Result contains RDF 1.2 triple terms, which '%s' cannot represent. Request 'turtle' or 'ntriples' instead."
             .formatted(format.externalName()));
   }
+
+  public UnsupportedRdfSerializationException(
+      final RdfSerializationFormat format, final String reason) {
+    super(
+        "'%s' cannot write this graph: %s. Request 'turtle' or 'ntriples' instead."
+            .formatted(format.externalName(), reason));
+  }
 }

@@ -16,11 +16,11 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { LayoutLeft } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
-import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
@@ -110,7 +110,7 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
             <Card className="reflex-card tw:p-1">
               <ButtonUtility
                 data-testid="sidebar-toggle"
-                icon={SidebarCollapsedIcon}
+                icon={LayoutLeft}
                 size="lg"
                 tooltip={t('label.expand')}
                 tooltipPlacement="right"

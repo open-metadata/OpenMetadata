@@ -49,7 +49,7 @@ public class LengthHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("length")
         .withDescription("Get length of array or string")
-        .withCursorOffset(10)
+        .withCursorOffset(9)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()

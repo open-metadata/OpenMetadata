@@ -144,6 +144,50 @@ class RdfIndexAppTest {
   }
 
   @Nested
+  @DisplayName("RDF not initialized tests")
+  class RdfNotInitializedTests {
+
+    @Test
+    @DisplayName("run completes with nothing indexed when RdfRepository was never initialized")
+    void runCompletesWhenRepositoryNotInitialized() throws Exception {
+      rdfRepositoryMockedStatic.when(RdfRepository::getInstanceOrNull).thenReturn(null);
+      rdfRepositoryMockedStatic
+          .when(RdfRepository::getInstance)
+          .thenThrow(new IllegalStateException("RdfRepository not initialized"));
+      try {
+        TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+        testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+        EventPublisherJob jobConfig =
+            new EventPublisherJob()
+                .withEntities(Set.of("table"))
+                .withStatus(EventPublisherJob.Status.STARTED);
+        var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+        jobDataField.setAccessible(true);
+        jobDataField.set(testApp, jobConfig);
+
+        JobExecutionContext context = mock(JobExecutionContext.class);
+        JobDetail jobDetail = mock(JobDetail.class);
+        lenient().when(context.getJobDetail()).thenReturn(jobDetail);
+        lenient().when(jobDetail.getJobDataMap()).thenReturn(new JobDataMap());
+        lenient().when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+
+        assertDoesNotThrow(() -> testApp.execute(context));
+
+        assertEquals(EventPublisherJob.Status.COMPLETED, testApp.getJobData().getStatus());
+        assertNull(testApp.getJobData().getFailure());
+        assertTrue(testApp.pushedUpdate, "skipped run must push a final status update");
+        assertEquals(AppRunRecord.Status.COMPLETED, testApp.pushedRecord.getStatus());
+        assertNull(testApp.pushedRecord.getFailureContext());
+      } finally {
+        rdfRepositoryMockedStatic
+            .when(RdfRepository::getInstanceOrNull)
+            .thenReturn(mockRdfRepository);
+        rdfRepositoryMockedStatic.when(RdfRepository::getInstance).thenReturn(mockRdfRepository);
+      }
+    }
+  }
+
+  @Nested
   @DisplayName("Search-reindex admission tests")
   class AdmissionTests {
 

@@ -67,7 +67,7 @@ const MOCK_TASK: Task = {
   ],
   payload: {
     field: 'tags',
-    fieldPath: 'columns::shop_id::tags',
+    fieldPath: 'columns.shop_id.tags',
     currentValue: '[]',
     suggestedValue:
       '[{"tagFQN":"PersonalData.SpecialCategory","source":"Classification","name":"SpecialCategory"}]',
@@ -211,9 +211,7 @@ describe('TaskFeedCardFromTask', () => {
       });
     });
 
-    expect(EntityLink.getTableColumnName).toHaveBeenCalledWith(
-      '<#E::table::sample_data.ecommerce_db.shopify."dim.shop"::columns::shop_id::tags>'
-    );
+    expect(screen.getByText(/shop_id/)).toBeInTheDocument();
   });
 
   it('renders the creator, timestamp, and tag task content', async () => {

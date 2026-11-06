@@ -29,6 +29,7 @@ const McpConfigForm: FC<McpConfigFormProps> = ({
   const { t } = useTranslation();
   const {
     formConfig,
+    formSchema,
     formUiSchema,
     isEveryFieldManaged,
     isFetching,
@@ -37,7 +38,7 @@ const McpConfigForm: FC<McpConfigFormProps> = ({
     fetchMcpConfig,
     refetchSources,
     saveMcpConfig,
-  } = useMcpConfiguration();
+  } = useMcpConfiguration(jsonSchema);
 
   if (isFetching) {
     return <Skeleton height={240} variant="rounded" width="100%" />;
@@ -54,7 +55,7 @@ const McpConfigForm: FC<McpConfigFormProps> = ({
         appData={{ ...appData, appConfiguration: formConfig }}
         isReadOnly={isEveryFieldManaged}
         isSaving={isSaving}
-        jsonSchema={jsonSchema}
+        jsonSchema={formSchema}
         showHint={showHint}
         submitLabel={t('label.save')}
         uiSchema={formUiSchema}

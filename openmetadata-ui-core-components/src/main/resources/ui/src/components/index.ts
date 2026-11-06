@@ -147,6 +147,12 @@ export * from './application/file-upload/file-upload';
 export * from './application/filter-bar/filter-bar';
 export * from './application/filter-select/filter-select';
 export * from './application/filter-select/filter-select.types';
+// Active-filter look for toolbar triggers built on Dropdown rather than FilterSelect
+// (ADR:2026-11-06-filter-triggers-turn-brand-only-when-filtering).
+export {
+  selectedTriggerClassName,
+  TriggerCountBadge,
+} from './application/filter-select/filter-select.shared';
 export * from './application/date-picker/calendar';
 export * from './application/date-picker/cell';
 export * from './application/date-picker/date-input';

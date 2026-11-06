@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import {
+  ConnectionPlug,
+  Connections,
+} from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
-import { ReactComponent as ConnectionsActiveIcon } from '../../assets/svg/ask-collate-nav-bar/connections-active.svg';
-import { ReactComponent as ConnectorsIcon } from '../../assets/svg/ask-collate-nav-bar/connections-default.svg';
 import { ROUTES } from '../../constants/constants';
 import { ExtensionPointRegistry } from '../../utils/ExtensionPointRegistry';
 import {
@@ -327,8 +329,8 @@ export const connectionsModule: AppModule & {
   id: 'connections',
   navOrder: 20,
   labelKey: 'label.connection-plural',
-  icon: ConnectorsIcon,
-  activeIcon: ConnectionsActiveIcon,
+  icon: Connections,
+  activeIcon: ConnectionPlug,
   prefix: CONNECTIONS_ROUTES.CONNECTIONS,
   defaultPath: CONNECTIONS_ROUTES.CONNECTIONS,
   routes: BASE_ROUTES,

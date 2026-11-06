@@ -13,7 +13,11 @@
 import { compare } from 'fast-json-patch';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { ROUTES } from '../../../constants/constants';
-import { MEMORY_TYPE_OPTIONS } from '../../../constants/ContextCenter.constants';
+import {
+  CONTEXT_FILE_ENTITY_TYPE,
+  MEMORY_TYPE_OPTIONS,
+} from '../../../constants/ContextCenter.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   ContextMemory,
   EntityReference,
@@ -25,7 +29,11 @@ import {
   createContextMemory,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getQueryPath } from '../../../utils/RouterUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import {
   MemoryFormState,
@@ -35,6 +43,54 @@ import {
 } from './CreateMemoryModal.interface';
 
 const MEMORY_LABEL_KEY = 'label.memory';
+
+/**
+ * The table a linked Query opens on: the memory's only linked table. With none or several, which
+ * table the query belongs to is unknown.
+ */
+export const getQueryTableFqn = (
+  assets: DataAssetOption[]
+): string | undefined => {
+  const tables = assets.filter(
+    (asset) => asset.reference?.type === EntityType.TABLE
+  );
+
+  return tables.length === 1
+    ? tables[0].reference.fullyQualifiedName
+    : undefined;
+};
+
+/**
+ * Where a linked asset opens, or undefined when it has nowhere to open. A Query has no page of its
+ * own: it opens full screen on `tableFqn` (see getQueryTableFqn), and stays unlinked without one. A
+ * document opens in Context Center. A type with no route of its own stays unlinked rather than
+ * opening as a table.
+ */
+export const getLinkedAssetPath = (
+  reference?: EntityReference,
+  tableFqn?: string
+): string | undefined => {
+  if (!reference?.type || !reference.fullyQualifiedName) {
+    return undefined;
+  }
+  if (reference.type === EntityType.QUERY) {
+    return tableFqn && reference.id
+      ? getQueryPath(tableFqn, reference.id)
+      : undefined;
+  }
+  if (reference.type === CONTEXT_FILE_ENTITY_TYPE) {
+    return reference.id
+      ? contextCenterClassBase.getDocumentPath(reference.id)
+      : undefined;
+  }
+
+  return entityUtilClassBase.hasEntityLink(reference.type)
+    ? entityUtilClassBase.getEntityLink(
+        reference.type,
+        reference.fullyQualifiedName
+      )
+    : undefined;
+};
 
 export const getAssetKey = (asset: DataAssetOption): string =>
   asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');
@@ -202,13 +258,20 @@ export const getPrimaryAndRelatedEntities = (
 };
 
 export const memoryEntityToAssetOption = (
-  ref: EntityReference
-): DataAssetOption => ({
-  label: ref.displayName ?? ref.name ?? '',
-  value: ref.fullyQualifiedName ?? ref.id,
-  displayName: ref.displayName ?? ref.name ?? '',
-  reference: ref,
-});
+  ref: EntityReference,
+  t: (key: string) => string
+): DataAssetOption => {
+  const name = getEntityName(ref);
+
+  return {
+    label:
+      name ||
+      (ref.type === EntityType.QUERY ? t('message.no-permission-to-view') : ''),
+    value: ref.fullyQualifiedName ?? ref.id,
+    displayName: name,
+    reference: ref,
+  };
+};
 
 // Derives the RHF form values, tags, and linked-asset options from the memory
 // being edited, so the edit modal opens pre-populated.
@@ -231,9 +294,11 @@ export const buildMemoryFormState = (
 
   const assets: DataAssetOption[] = [
     ...(memoryToEdit.primaryEntity
-      ? [memoryEntityToAssetOption(memoryToEdit.primaryEntity)]
+      ? [memoryEntityToAssetOption(memoryToEdit.primaryEntity, t)]
       : []),
-    ...(memoryToEdit.relatedEntities ?? []).map(memoryEntityToAssetOption),
+    ...(memoryToEdit.relatedEntities ?? []).map((ref) =>
+      memoryEntityToAssetOption(ref, t)
+    ),
   ];
 
   return { formValues, tags: memoryToEdit.tags ?? [], assets };

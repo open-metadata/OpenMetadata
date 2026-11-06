@@ -19,11 +19,11 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
+import { getMessageFromArgumentName } from '../../../utils/Alerts/AlertsUtilPure';
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { getMessageFromArgumentName } from '../../../utils/Alerts/AlertsUtilPure';
+} from '../../../utils/AlertsClassBase.interface';
 import {
   AlertAiFormValidationErrors,
   RuleSectionField,

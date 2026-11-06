@@ -86,14 +86,6 @@ jest.mock('../../../../assets/svg/tick.svg', () => ({
   ReactComponent: () => <div data-testid="tick-icon-svg">TickIcon</div>,
 }));
 
-jest.mock('../../../assets/svg/classification.svg', () => ({
-  ReactComponent: ({ className }: { className?: string }) => (
-    <div className={className} data-testid="classification-icon-svg">
-      ClassificationIcon
-    </div>
-  ),
-}));
-
 jest.mock('../ClassificationTagPicker/ClassificationTagPicker', () => ({
   __esModule: true,
   default: jest

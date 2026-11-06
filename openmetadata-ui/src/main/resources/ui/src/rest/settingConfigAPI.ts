@@ -29,6 +29,8 @@ import {
 } from '../generated/system/settingsSourceResponse';
 import axiosClient from './axiosClient';
 
+const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
+
 export type RelationCategory = 'hierarchical' | 'associative' | 'equivalence';
 export { RelationCardinality };
 
@@ -70,6 +72,29 @@ export const updateSettingsConfig = async (payload: Settings) => {
 };
 
 /**
+ * Patches one Data Asset Rule, found by name, with operations relative to that rule
+ * (`/enabled`, not `/entitySemantics/2/enabled`). Unlike {@link updateSettingsConfig}, which
+ * replaces the whole rule list and can drop rules another writer added, this sends only the change.
+ */
+export const patchEntityRule = async (
+  ruleName: string,
+  operations: Operation[]
+) => {
+  const response = await axiosClient.patch<
+    Operation[],
+    AxiosResponse<Settings>
+  >(
+    `/system/settings/entityRulesSettings/rules/${encodeURIComponent(
+      ruleName
+    )}`,
+    operations,
+    { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
+  );
+
+  return response.data;
+};
+
+/**
  * Changes only the fields named by the patch, so a write cannot overwrite fields of the setting
  * that this client never read (unlike {@link updateSettingsConfig}, which replaces the setting).
  */
@@ -81,7 +106,7 @@ export const patchSettingsConfig = async (
     Operation[],
     AxiosResponse<Settings>
   >(`/system/settings/${configType}`, patches, {
-    headers: { 'Content-Type': 'application/json-patch+json' },
+    headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE },
   });
 
   return response.data;
@@ -185,7 +210,7 @@ export const patchAppConfiguration = async (
     ops,
     {
       headers: {
-        'Content-Type': 'application/json-patch+json',
+        'Content-Type': JSON_PATCH_CONTENT_TYPE,
       },
     }
   );
