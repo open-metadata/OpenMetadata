@@ -84,7 +84,7 @@ export const getChartDetailPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.DETAILS}
-          name={get(labelMap, EntityTabs.LINEAGE, t('label.detail-plural'))}
+          name={get(labelMap, EntityTabs.DETAILS, t('label.detail-plural'))}
         />
       ),
       key: EntityTabs.DETAILS,
@@ -98,7 +98,7 @@ export const getChartDetailPageTabs = ({
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={get(
             labelMap,
-            EntityTabs.LINEAGE,
+            EntityTabs.ACTIVITY_FEED,
             t('label.activity-feed-and-task-plural')
           )}
         />
