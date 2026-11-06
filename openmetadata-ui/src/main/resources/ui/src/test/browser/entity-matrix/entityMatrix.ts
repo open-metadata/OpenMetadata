@@ -429,13 +429,13 @@ export const header = () => page.getByTestId('data-assets-header');
 export const usersPanel = () => page.getByTestId('owner-select-users-panel');
 
 /**
- * Clicks `trigger` and waits for the picker's `ready` element; clicks again
- * only if it still has not shown after a grace period. A panel or header that
- * re-renders under the click drops it, so the picker never opens (the
+ * Clicks `trigger` and waits for its `ready` element (a picker, a selected
+ * tab); clicks again only if it still has not shown after a grace period. A
+ * panel or header that re-renders under the click drops it, so nothing opens (the
  * Playwright helpers re-click for the same reason). Re-clicking sooner would
  * close a picker that is merely slow to open.
  */
-const openPicker = async (trigger: Locator, ready: Locator) => {
+export const openPicker = async (trigger: Locator, ready: Locator) => {
   // Plain polling, not expect.element in a try/catch: a failed browser
   // assertion fails the test even when the error is caught.
   for (let attempt = 1; attempt <= 4; attempt++) {
@@ -453,7 +453,7 @@ const openPicker = async (trigger: Locator, ready: Locator) => {
     }
   }
 
-  throw new Error('The picker did not open after 4 clicks on its trigger');
+  throw new Error('Nothing opened after 4 clicks on the trigger');
 };
 
 export const openOwnerPicker = async (tab: 'Users' | 'Teams') => {

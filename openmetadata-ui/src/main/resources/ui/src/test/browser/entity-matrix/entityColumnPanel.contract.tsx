@@ -54,6 +54,7 @@ import {
   EntityPage,
   mountEntityPage,
   openChildrenTab,
+  openPicker,
   PageConfig,
   pickGlossaryTerm,
   pickTag,
@@ -63,6 +64,13 @@ import {
 } from './entityMatrix';
 
 export const panel = () => page.getByCSS('.column-detail-panel');
+
+/** The panel re-renders while it loads, which can drop a tab click. */
+const openQualityTab = () =>
+  openPicker(
+    panel().getByTestId('data-quality-tab'),
+    panel().getByCSS('[data-testid="data-quality-tab"][aria-selected="true"]')
+  );
 
 const nested = (parent: Column, name: string, dataType: DataType): Column => ({
   name,
@@ -313,10 +321,7 @@ export const describeColumnPanelFlows = (label: EntityLabel) => {
         .toHaveTextContent(DESCRIPTION);
 
       if (label === 'Table') {
-        const quality = panel().getByTestId('data-quality-tab');
-        await userEvent.click(quality);
-
-        await expect.element(quality).toHaveAttribute('aria-selected', 'true');
+        await openQualityTab();
 
         await userEvent.click(overview);
 
@@ -538,7 +543,7 @@ export const describeColumnPanelFlows = (label: EntityLabel) => {
             .map((name) => name.textContent);
 
         await openPanel(rowOf(ID), 'column-name');
-        await userEvent.click(panel().getByTestId('data-quality-tab'));
+        await openQualityTab();
 
         await expect.element(card('success')).toHaveTextContent('1Passed');
         await expect.element(card('failed')).toHaveTextContent('1Failed');
@@ -554,7 +559,7 @@ export const describeColumnPanelFlows = (label: EntityLabel) => {
 
       test('data quality tab: incidents', async () => {
         await openPanel(rowOf(ID), 'column-name');
-        await userEvent.click(panel().getByTestId('data-quality-tab'));
+        await openQualityTab();
         await userEvent.click(
           panel()
             .getByCSS('.data-quality-tabs')
