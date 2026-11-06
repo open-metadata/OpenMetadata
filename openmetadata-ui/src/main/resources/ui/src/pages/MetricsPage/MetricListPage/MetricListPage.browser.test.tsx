@@ -20,8 +20,8 @@ import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import {
-    Kind,
-    MetricHierarchyItem
+  Kind,
+  MetricHierarchyItem,
 } from '../../../generated/api/data/metricHierarchyItem';
 import { many, named } from '../../../test/browser/fixtures/entities';
 import { worker } from '../../../test/browser/msw';
