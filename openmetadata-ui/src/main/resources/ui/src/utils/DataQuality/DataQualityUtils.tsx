@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { Typography } from '@openmetadata/ui-core-components';
+import { Column, Table } from '@openmetadata/ui-core-components/icons';
 import { t } from 'i18next';
-import { ReactComponent as ColumnIcon } from '../../assets/svg/entity/column.svg';
-import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-test.svg';
 import type { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 
@@ -24,7 +23,7 @@ export const TEST_LEVEL_OPTIONS: SelectionOption[] = [
     description: t('label.test-applied-on-entity', {
       entity: t('label.table-lowercase'),
     }),
-    icon: <TableIcon />,
+    icon: <Table />,
   },
   {
     value: TestCaseType.column,
@@ -32,7 +31,7 @@ export const TEST_LEVEL_OPTIONS: SelectionOption[] = [
     description: t('label.test-applied-on-entity', {
       entity: t('label.column-lowercase'),
     }),
-    icon: <ColumnIcon />,
+    icon: <Column size={24} />,
   },
 ];
 

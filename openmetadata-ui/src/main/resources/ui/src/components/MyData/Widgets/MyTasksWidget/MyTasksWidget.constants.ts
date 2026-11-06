@@ -12,7 +12,7 @@
  */
 
 import {
-  AlertTriangle,
+  Alert,
   CheckCircle,
   ClipboardCheck,
   IconProps,
@@ -35,7 +35,7 @@ export interface MyTaskKindStyle {
 
 export const MY_TASK_KIND_STYLES: Record<MyTaskBucket, MyTaskKindStyle> = {
   [MyTaskBucket.INCIDENTS]: {
-    icon: AlertTriangle,
+    icon: Alert,
     labelKey: 'label.incident',
     tile: 'tw:bg-utility-error-50 tw:text-utility-error-600',
   },

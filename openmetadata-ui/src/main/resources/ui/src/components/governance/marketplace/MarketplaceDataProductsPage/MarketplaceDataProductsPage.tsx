@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
+import { DataProduct } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DataProductsIcon } from '../../../../assets/svg/data-products-default.svg';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { createListPageHeaderRenderer } from '../../../common/ListPageHeader/ListPageHeader';
 import DataProductListPage from '../../../DataProduct/DataProductListPage';
 
 const renderDataProductsListHeader = createListPageHeaderRenderer({
   addLabelKey: 'label.add-data-product',
-  icon: DataProductsIcon,
+  icon: DataProduct,
   subtitleKey: 'message.data-product-description',
   titleKey: 'label.data-product-plural',
 });

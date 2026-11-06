@@ -16,9 +16,9 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ArrowNarrowRight } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { Link } from 'react-router-dom';
-import { ReactComponent as RightArrowIcon } from '../../../../assets/svg/line-arrow-right.svg';
 import { DataStatisticWidgetProps } from '../../DataQuality.interface';
 import './data-statistic-widget.less';
 
@@ -50,7 +50,7 @@ const DataStatisticWidget = ({
         <Button
           className="data-statistic-widget-default-button"
           color="link-color"
-          iconTrailing={RightArrowIcon}>
+          iconTrailing={ArrowNarrowRight}>
           {linkLabel}
         </Button>
       </Link>
