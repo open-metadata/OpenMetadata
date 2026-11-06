@@ -116,6 +116,7 @@ const AnnouncementForm = ({
               <Heading
                 className="tw:m-0 tw:text-sm tw:font-medium tw:text-primary"
                 data-testid="announcement-form-title"
+                level={2}
                 slot="title">
                 {title}
               </Heading>

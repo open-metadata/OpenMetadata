@@ -22,6 +22,7 @@ import {
   deleteAnnouncement,
   listAnnouncements,
 } from '../../rest/announcementsAPI';
+import { HOME_ANNOUNCEMENTS_QUERY_KEY } from '../../rest/queries/criticalAnnouncementsQuery';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   useDeleteSystemAnnouncement,
@@ -231,7 +232,7 @@ describe('system announcement mutations', () => {
     'marks the Home announcement queries stale after %s',
     async (_, action) => {
       const client = new QueryClient();
-      const homeKey = ['landingPage', 'announcements', 'active'];
+      const homeKey = [...HOME_ANNOUNCEMENTS_QUERY_KEY, 'active'];
       client.setQueryData(homeKey, []);
       if (action === 'save') {
         (createAnnouncement as jest.Mock).mockResolvedValueOnce({ id: 'a1' });

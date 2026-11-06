@@ -28,14 +28,16 @@ import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../../rest/announcementsAPI';
-import { getCriticalAnnouncementsQueryOptions } from '../../../rest/queries/criticalAnnouncementsQuery';
+import {
+  getCriticalAnnouncementsQueryOptions,
+  HOME_ANNOUNCEMENTS_QUERY_KEY,
+} from '../../../rest/queries/criticalAnnouncementsQuery';
 import { isCriticalSystemAnnouncement } from '../../../utils/AnnouncementsUtils';
 import AnnouncementCard from './AnnouncementCard';
 import { compareAnnouncements } from './announcementLifecycle';
 
 const ALL_ANNOUNCEMENTS_QUERY_KEY = [
-  'landingPage',
-  'announcements',
+  ...HOME_ANNOUNCEMENTS_QUERY_KEY,
   'all',
   'active',
 ] as const;

@@ -22,6 +22,7 @@ import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../../rest/announcementsAPI';
+import { HOME_ANNOUNCEMENTS_QUERY_KEY } from '../../../rest/queries/criticalAnnouncementsQuery';
 import { isCriticalSystemAnnouncement } from '../../../utils/AnnouncementsUtils';
 import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
@@ -31,8 +32,7 @@ import RailSectionHeader from './RailSectionHeader';
 import { useDismissedAnnouncements } from './useDismissedAnnouncements';
 
 export const ACTIVE_ANNOUNCEMENTS_QUERY_KEY = [
-  'landingPage',
-  'announcements',
+  ...HOME_ANNOUNCEMENTS_QUERY_KEY,
   'active',
 ] as const;
 const ACTIVE_ANNOUNCEMENTS_TTL_MS = 60_000;

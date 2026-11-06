@@ -157,11 +157,8 @@ const CriticalAnnouncements = ({
         <div
           className="tw:mt-3 tw:flex tw:justify-center"
           data-testid="critical-announcement-dots">
-          {/* One dot per announcement: as wide as the total, the siblings never
-          collapse into the core pager's ellipsis, which draws no gap here. */}
           <PaginationDot
             page={position + 1}
-            siblingCount={count}
             size="sm"
             total={count}
             onPageChange={(page) => goToPage(page - 1)}

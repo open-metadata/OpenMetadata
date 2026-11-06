@@ -358,7 +358,6 @@ const PaginationItem = ({
   ariaLabel,
   asChild = false,
 }: PaginationItemProps) => {
-  const { t } = useCoreTranslation();
   const context = useContext(PaginationContext);
   if (!context) {
     throw new Error(
@@ -367,7 +366,6 @@ const PaginationItem = ({
   }
 
   const { onPageChange } = context;
-  const itemLabel = ariaLabel || `${t('label.page')} ${value}`;
 
   const isSelected = isCurrent;
 
@@ -387,7 +385,7 @@ const PaginationItem = ({
           onClick: handleClick,
           value,
           'aria-current': isCurrent ? 'page' : undefined,
-          'aria-label': itemLabel,
+          'aria-label': ariaLabel || `Page ${value}`,
         })}
       </>
     );
@@ -398,7 +396,7 @@ const PaginationItem = ({
     return cloneElement(children, {
       onClick: handleClick,
       'aria-current': isCurrent ? 'page' : undefined,
-      'aria-label': itemLabel,
+      'aria-label': ariaLabel || `Page ${value}`,
       style: {
         ...(children.props as HTMLAttributes<HTMLElement>).style,
         ...style,
@@ -416,7 +414,7 @@ const PaginationItem = ({
   return (
     <button
       aria-current={isCurrent ? 'page' : undefined}
-      aria-label={itemLabel}
+      aria-label={ariaLabel || `Page ${value}`}
       className={computedClassName}
       role="listitem"
       style={style}

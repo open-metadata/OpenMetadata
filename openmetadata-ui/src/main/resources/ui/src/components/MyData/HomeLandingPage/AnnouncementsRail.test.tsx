@@ -731,13 +731,15 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     } as never);
     mockListAnnouncements.mockResolvedValue({
       data: [critical, makeAnnouncement('a1'), makeAnnouncement('a2')],
-      paging: { total: 3 },
+      paging: { after: 'cursor-2', total: 5 },
     } as never);
     await openDialog();
 
+    // 5 on the server, less the banner's one critical. Two are listed, so the
+    // fallback count could not produce this.
     await waitFor(() => {
       expect(screen.getByTestId('all-announcements-count')).toHaveTextContent(
-        '2'
+        '4'
       );
     });
   });
