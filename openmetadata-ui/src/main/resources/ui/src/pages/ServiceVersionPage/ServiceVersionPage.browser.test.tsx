@@ -14,8 +14,8 @@ import { http, HttpResponse } from 'msw';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { many, named } from '../../test/browser/fixtures/entities';
 import {
-    DASHBOARD_SERVICE,
-    serveEntities
+  DASHBOARD_SERVICE,
+  serveEntities,
 } from '../../test/browser/fixtures/hierarchy';
 import { worker } from '../../test/browser/msw';
 import { describePaginatedList } from '../../test/browser/paginationContract';
