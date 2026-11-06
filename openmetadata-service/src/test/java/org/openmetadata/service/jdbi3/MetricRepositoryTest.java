@@ -907,6 +907,32 @@ class MetricRepositoryTest {
   }
 
   @Test
+  void aPatchToChildrenIsRefusedForTheAdminAccountToo() {
+    final Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("revenue")
+            .withFullyQualifiedName("revenue");
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      // REST and MCP record admin as a system actor; the refusal is about the patch, not the
+      // caller.
+      final IllegalArgumentException refused =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  fixture
+                      .repository()
+                      .previewPatch(
+                          metric,
+                          Json.createPatchBuilder()
+                              .add("/children", Json.createArrayBuilder().build())
+                              .build(),
+                          ChangeActor.recorded("admin", null)));
+      assertTrue(refused.getMessage().contains("children"), refused.getMessage());
+    }
+  }
+
+  @Test
   void metricPatchRejectsReadingARelationIntoAnotherFieldOrATest() {
     final Metric metric = new Metric().withId(UUID.randomUUID()).withName("revenue");
     final ChangeActor actor = ChangeActor.user("alice", null);

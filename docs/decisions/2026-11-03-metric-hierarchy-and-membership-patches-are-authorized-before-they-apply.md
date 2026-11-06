@@ -5,7 +5,7 @@
 - **Deciders:** karanh37, Vishnu Jain (v2)
 - **Guard:** `MetricResourceTest#hierarchyPatchIsAuthorizedOnTheMetricBeforeItIsSimulated`;
   `MetricRepositoryTest#metricPatchRejectsReadingARelationIntoAnotherFieldOrATest`,
-  `#aPatchMayNotSetAssetsChildrenOrChildrenCount`;
+  `#aPatchMayNotSetAssetsChildrenOrChildrenCount`, `#aPatchToChildrenIsRefusedForTheAdminAccountToo`;
   `MetricGroupResourceTest#patchIsAuthorizedOnTheGroupBeforeItIsSimulated`;
   `MetricGroupRepositoryTest#patchAddressingMembersRequiresViewOnEveryMember`,
   `#unapplicablePatchErrorDoesNotQuoteTheGroup`;
@@ -54,8 +54,10 @@ v4), and these checks move to where the write applies the patch.
 
 - `EntityRepository.authorizePatch(original, patch, actor)` runs before a user's patch is applied,
   on the entity as stored with the patch fields: PATCH through REST and MCP `patch_entity`, bulk
-  edits, and the patch preview. A system write and the publishing of an approved change skip it,
-  as they skip `authorizeWrite`.
+  edits, and the patch preview. The publishing of an approved change skips it, as it skips
+  `authorizeWrite`. Every other write runs it, so a refusal of the patch itself holds for every
+  account, `admin` included, which REST and MCP record as a system actor; only the member view
+  check skips a system actor, as `authorizeWrite` does.
 - `MetricRepository` refuses there the relation reads and tests above, and a patch to `assets`,
   `children` or `childrenCount`. It no longer refuses the document root itself: every type refuses
   that with a 400 (ADR:2026-11-03-input-parsing-is-bounded).

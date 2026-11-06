@@ -211,11 +211,11 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
   }
 
   // Before the patch is applied: one that reads or tests members needs view access to each, since
-  // responses hide the members the caller may not view.
+  // responses hide the members the caller may not view. A system write is not a caller.
   @Override
   protected void authorizePatch(
       final MetricGroup original, final JsonPatch patch, final ChangeActor actor) {
-    if (addressesMembers(patch)) {
+    if (!actor.system() && addressesMembers(patch)) {
       authorizeMemberView(original, actor);
     }
     try {

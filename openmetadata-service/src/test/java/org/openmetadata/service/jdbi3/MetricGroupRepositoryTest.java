@@ -700,9 +700,13 @@ class MetricGroupRepositoryTest {
                   original,
                   Json.createPatchBuilder().copy("/description", "/metrics/0/description").build(),
                   actor));
-      // A patch that names no member reads none.
+      // A patch that names no member reads none, and a system write is not a caller.
       repository.authorizePatch(
           original, Json.createPatchBuilder().add("/description", "x").build(), actor);
+      repository.authorizePatch(
+          original,
+          Json.createPatchBuilder().copy("/displayName", "/metrics/0/name").build(),
+          ChangeActor.system("admin", null));
       verify(authorizer, times(1)).authorizeActor(any(), any(), any());
     }
     assertTrue(
