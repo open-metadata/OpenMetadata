@@ -15,13 +15,13 @@ import {
   Button,
   Checkbox,
   Divider,
-  EmptyPlaceholder,
   GridList,
   GridListItem,
   ListLayout,
   Typography,
   Virtualizer,
 } from '@openmetadata/ui-core-components';
+import { NoFilterFunnel } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
@@ -36,7 +36,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as FilterOffIcon } from '../../../assets/svg/ic-filter-off.svg';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import {
@@ -69,6 +68,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { isNearScrollBottom } from '../../../utils/ScrollUtils';
 import { replacePlus } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
@@ -722,11 +722,10 @@ export const AddTestCaseList = ({
     if (!isLoading && isEmpty(source)) {
       return (
         <Box className="tw:relative tw:min-h-80 tw:w-full">
-          <EmptyPlaceholder
+          <NoFilteredResultsPlaceholder
             description={t('message.try-adjusting-filter')}
-            icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+            icon={<NoFilterFunnel />}
             title={t('label.no-result-found')}
-            variant="blank"
           />
         </Box>
       );
@@ -914,7 +913,7 @@ export const AddTestCaseList = ({
 
   const actions = showButton ? (
     <>
-      <Button boxed color="link-color" data-testid="cancel" onPress={onCancel}>
+      <Button color="secondary" data-testid="cancel" onPress={onCancel}>
         {cancelText ?? t('label.cancel')}
       </Button>
       <Button

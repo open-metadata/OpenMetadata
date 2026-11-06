@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
   PaginationCardWithControls,
   Popover,
   PopoverTrigger,
@@ -26,7 +25,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -35,11 +34,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -53,15 +48,16 @@ import { EntityReference } from '../../../../../../generated/entity/type';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getRoles } from '../../../../../../rest/rolesAPIV1';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import {
   checkPermission,
   LIST_CAP,
   userPermissions,
 } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { AccessControlView } from './AccessControl.types';
 
@@ -80,27 +76,22 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   const { t } = useTranslation();
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<Role>();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [cursorCache, setCursorCache] = useState<Map<number, Paging>>(
     new Map()
   );
   const fetchRequestIdRef = useRef(0);
 
-  const showPagination = useMemo(
-    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(roles);
 
   const { permissions } = usePermissionProvider();
 
@@ -180,22 +171,6 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     fetchRoles(undefined, 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setHashPage, pageSize]);
-
-  const handleRoleDelete = useCallback(async () => {
-    setIsDeleting(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(selectedRole).toString(),
-      selectedRole?.id ?? '',
-      EntityType.ROLE
-    );
-
-    if (isSuccess) {
-      handleAfterDeleteAction();
-    }
-
-    setSelectedRole(undefined);
-    setIsDeleting(false);
-  }, [selectedRole, handleAfterDeleteAction]);
 
   const handleRoleClick = (role: Role) => {
     onNavigate({
@@ -283,6 +258,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };
@@ -307,7 +283,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     if (!viewPolicyPermission) {
       return (
         <Typography
-          className="tw:truncate tw:block"
+          className="tw:truncate tw:block tw:text-left"
           key={key}
           size="text-sm"
           tooltip={t(NO_PERMISSION_TO_VIEW)}>
@@ -318,10 +294,12 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
     return (
       <Button
-        className="tw:truncate tw:block"
+        className="tw:truncate tw:block tw:text-left"
         color="link-color"
         key={key}
         size="sm"
+        tooltip={getEntityName(policy)}
+        tooltipPlacement="top"
         onPress={() =>
           onNavigate({
             type: 'policies-detail',
@@ -355,7 +333,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
               size="xs">
               {t('label.plus-count-more', { count: listLength - LIST_CAP })}
             </Button>
-            <Popover className="tw:max-h-80! tw:overflow-scroll">
+            <Popover className="tw:overflow-y-auto" maxHeight={320}>
               <Box className="tw:p-3" direction="col" gap={1}>
                 {policies.slice(LIST_CAP).map(renderPolicyItem)}
               </Box>
@@ -397,20 +375,26 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
       case 'actions':
         return (
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`delete-action-${getEntityName(role)}`}
-            icon={Trash01}
-            isDisabled={!deleteRolePermission}
-            size="xs"
-            tooltip={
-              deleteRolePermission
-                ? t('label.delete-entity', { entity: t('label.role') })
-                : t(NO_PERMISSION_FOR_ACTION)
-            }
-            tooltipPlacement="left"
-            onPress={() => setSelectedRole(role)}
-          />
+          <DeleteEntityPopover
+            afterDeleteAction={handleAfterDeleteAction}
+            allowSoftDelete={false}
+            data-testid="delete-role-popover"
+            entityId={role.id}
+            entityName={getEntityName(role)}
+            entityType={EntityType.ROLE}>
+            <ButtonUtility
+              data-testid={`delete-action-${getEntityName(role)}`}
+              icon={Trash01}
+              isDisabled={!deleteRolePermission}
+              size="lg"
+              tooltip={
+                deleteRolePermission
+                  ? t('label.delete-entity', { entity: t('label.role') })
+                  : t(NO_PERMISSION_FOR_ACTION)
+              }
+              tooltipPlacement="left"
+            />
+          </DeleteEntityPopover>
         );
 
       default:
@@ -431,7 +415,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
           align="center"
           className="tw:min-h-32 tw:relative"
           justify="center">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             title={t('label.no-entity-found', {
               entity: t('label.role-plural'),
             })}
@@ -449,7 +433,10 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
       data-testid="roles-list-container"
       direction="col"
       gap={4}>
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
         <div className="tw:overflow-y-auto">
           <Table
             aria-label={t('label.role-plural')}
@@ -490,30 +477,13 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}
           />
         )}
       </TableCard.Root>
-
-      {selectedRole && (
-        <DeleteModal
-          entityTitle={getEntityName(selectedRole).toString()}
-          isDeleting={isDeleting}
-          message={t('message.permanently-delete-common-message', {
-            entity: getEntityName(selectedRole).toString().toLowerCase(),
-          })}
-          open={!isUndefined(selectedRole)}
-          onCancel={() => setSelectedRole(undefined)}
-          onDelete={handleRoleDelete}
-        />
-      )}
     </Box>
   );
 };

@@ -55,9 +55,7 @@ const NavButton: React.FC<NavButtonProps> = ({ item, isActive, onSelect }) => {
       onClick={handleClick}>
       <Icon className="tw:size-4.5 tw:shrink-0" />
       <Typography
-        className={classNames({
-          'tw:text-text-secondary': !isActive,
-        })}
+        className={isActive ? 'tw:text-primary' : 'tw:text-text-secondary'}
         size="text-sm"
         weight="medium">
         {t(item.label)}

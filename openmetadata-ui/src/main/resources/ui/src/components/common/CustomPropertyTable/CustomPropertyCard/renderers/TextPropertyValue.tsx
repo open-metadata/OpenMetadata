@@ -18,6 +18,7 @@ import {
   EMAIL_REG_EX,
   TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
 } from '../../../../../constants/regex.constants';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import {
   CustomPropertyRenderer,
   PropertyEditProps,
@@ -27,6 +28,7 @@ import { getPropertyTypeMeta } from '../CustomPropertyCard.utils';
 import { PropertyValueChip } from '../PropertyValueChip';
 import { TextFieldConfig } from './TextPropertyValue.interface';
 
+const INTEGER_REGEX = /^-?\d+$/;
 const EMAIL_MIN_LENGTH = 6;
 const EMAIL_MAX_LENGTH = 127;
 
@@ -37,7 +39,18 @@ const DEFAULT_TEXT_CONFIG: TextFieldConfig = {
 };
 
 const TEXT_FIELD_CONFIG: Record<string, TextFieldConfig> = {
-  integer: { ...DEFAULT_TEXT_CONFIG, inputType: 'number' },
+  integer: {
+    ...DEFAULT_TEXT_CONFIG,
+    inputType: 'number',
+    // Past the safe range a JS number silently rounds to a neighbouring integer.
+    validate: (value, t) =>
+      INTEGER_REGEX.test(value) && Number.isSafeInteger(Number(value))
+        ? undefined
+        : t('message.integer-value-out-of-range', {
+            min: Number.MIN_SAFE_INTEGER,
+            max: Number.MAX_SAFE_INTEGER,
+          }),
+  },
   number: { ...DEFAULT_TEXT_CONFIG, inputType: 'number' },
   email: {
     testId: 'email-input',
@@ -88,6 +101,7 @@ const TextPropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const config = getTextFieldConfig(property.propertyType.name);
@@ -95,6 +109,8 @@ const TextPropertyEdit = ({
     isNil(value) ? '' : String(value)
   );
   const [error, setError] = useState<string>();
+
+  useReportDirty(inputValue.trim(), onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

@@ -55,6 +55,12 @@ jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Alert: ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <div {...props}>{children}</div>
+  ),
   Box: ({
     children,
     ...props
@@ -116,6 +122,14 @@ describe('BotAddForm', () => {
     expect(screen.getByTestId('cancel-btn')).toBeInTheDocument();
   });
 
+  it('should center the half-width form body in the panel', () => {
+    renderForm();
+
+    const body = screen.getByTestId('email').parentElement;
+
+    expect(body).toHaveClass('tw:max-w-[50%]', 'tw:mx-auto');
+  });
+
   it('should navigate to the list on cancel', () => {
     renderForm();
 
@@ -128,6 +142,9 @@ describe('BotAddForm', () => {
     renderForm();
 
     expect(screen.getByTestId('allow-impersonation')).toBeInTheDocument();
+    expect(screen.getByTestId('impersonation-warning')).toHaveTextContent(
+      'message.allow-impersonation-help'
+    );
   });
 
   it('should hide the impersonation field for non-admins', () => {
@@ -135,6 +152,9 @@ describe('BotAddForm', () => {
     renderForm();
 
     expect(screen.queryByTestId('allow-impersonation')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('impersonation-warning')
+    ).not.toBeInTheDocument();
   });
 
   it('should create the bot user then the bot entity and navigate on submit', async () => {

@@ -88,7 +88,8 @@ public final class OntologyPatternResource {
       @Context final SecurityContext securityContext,
       @Valid final InstantiateOntologyPattern request) {
     final Glossary glossary =
-        glossaryRepository.get(null, request.getGlossaryId(), glossaryRepository.getFields(""));
+        glossaryRepository.get(
+            null, request.getGlossaryId(), ResourceContext.authorizationFields(glossaryRepository));
     authorizeEdit(securityContext, glossary);
     return service.instantiate(uriInfo, glossary, request, requireUser(securityContext));
   }
@@ -96,7 +97,7 @@ public final class OntologyPatternResource {
   private void authorizeEdit(final SecurityContext securityContext, final Glossary glossary) {
     authorizer.authorize(
         securityContext,
-        new OperationContext(Entity.GLOSSARY, MetadataOperation.EDIT_GLOSSARY_TERMS),
+        new OperationContext(Entity.GLOSSARY, MetadataOperation.EDIT_ALL),
         new ResourceContext<>(Entity.GLOSSARY, glossary, glossaryRepository));
   }
 

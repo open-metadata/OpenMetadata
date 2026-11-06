@@ -19,13 +19,20 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useLayoutEffect, useRef } from 'react';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import PortOverlay from './PortOverlay.component';
 import {
   OntologyEditNodeClickDetail,
   ONTOLOGY_EDIT_CANCEL_EVENT,
   ONTOLOGY_EDIT_NODE_CLICK_EVENT,
+  ONTOLOGY_EDIT_PORT_DOWN_EVENT,
 } from './PortOverlay.interface';
 import { RelationshipTypePickerProps } from './RelationshipTypePicker.interface';
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 jest.mock(
   './RelationshipTypePicker.component',
@@ -217,11 +224,187 @@ describe('PortOverlay', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('cancels source selection when the source port is clicked again', () => {
+    const persist = jest.fn();
+    render(<Harness onCreateRelation={persist} />);
+    dispatchNodeClick({
+      clientX: 600,
+      clientY: 180,
+      isPort: true,
+      nodeId: 'source',
+    });
+
+    expect(screen.getByTestId('ontology-connection-line')).toHaveClass(
+      'tw:motion-safe:animate-pulse'
+    );
+
+    dispatchNodeClick({
+      clientX: 600,
+      clientY: 180,
+      isPort: true,
+      nodeId: 'source',
+    });
+
+    expect(
+      screen.queryByTestId('ontology-connection-line')
+    ).not.toBeInTheDocument();
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it('offers the picker when the source body is clicked so a self-loop can be checked', () => {
+    const persist = jest.fn();
+    render(<Harness onCreateRelation={persist} />);
+    dispatchNodeClick({
+      clientX: 600,
+      clientY: 180,
+      isPort: true,
+      nodeId: 'source',
+    });
+    dispatchNodeClick({
+      clientX: 600,
+      clientY: 180,
+      isPort: false,
+      nodeId: 'source',
+    });
+
+    expect(screen.getByTestId('relationship-type-picker')).toBeInTheDocument();
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  describe('dragging from the handle', () => {
+    const startDrag = () => {
+      const container = screen.getByTestId('graph-container');
+      container.dataset.nodePositions = JSON.stringify({
+        source: { x: 600, y: 180 },
+        target: { x: 780, y: 180 },
+      });
+      container.dataset.graphZoom = '1';
+      act(() => {
+        container.dispatchEvent(
+          new CustomEvent(ONTOLOGY_EDIT_PORT_DOWN_EVENT, {
+            detail: { clientX: 600, clientY: 180, nodeId: 'source' },
+          })
+        );
+      });
+    };
+    const move = (clientX: number, clientY: number) =>
+      act(() => {
+        window.dispatchEvent(
+          new MouseEvent('pointermove', { clientX, clientY })
+        );
+      });
+    const release = (clientX: number, clientY: number) =>
+      act(() => {
+        window.dispatchEvent(new MouseEvent('pointerup', { clientX, clientY }));
+      });
+
+    it('opens the type picker when released over another node', () => {
+      render(<Harness onCreateRelation={jest.fn()} />);
+      startDrag();
+      move(700, 180);
+
+      expect(
+        screen.getByTestId('ontology-connection-line')
+      ).toBeInTheDocument();
+
+      release(780, 180);
+
+      expect(screen.getByTestId('relationship-type-picker')).toHaveTextContent(
+        'Remittance Settlement'
+      );
+    });
+
+    it('cancels when released over empty canvas', () => {
+      render(<Harness onCreateRelation={jest.fn()} />);
+      startDrag();
+      move(700, 300);
+      release(700, 300);
+
+      expect(
+        screen.queryByTestId('relationship-type-picker')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('ontology-connection-line')
+      ).not.toBeInTheDocument();
+    });
+
+    it('treats a press that barely moves as a click and starts nothing', () => {
+      render(<Harness onCreateRelation={jest.fn()} />);
+      startDrag();
+      move(602, 181);
+      release(602, 181);
+
+      expect(
+        screen.queryByTestId('ontology-connection-line')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('relationship-type-picker')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('closes the pending picker without persisting', () => {
+    const persist = jest.fn();
+    render(<Harness onCreateRelation={persist} />);
+    dispatchNodeClick({
+      clientX: 600,
+      clientY: 180,
+      isPort: true,
+      nodeId: 'source',
+    });
+    dispatchNodeClick({
+      clientX: 780,
+      clientY: 180,
+      isPort: false,
+      nodeId: 'target',
+    });
+    fireEvent.click(screen.getByTestId('relationship-type-picker-cancel'));
+
+    expect(
+      screen.queryByTestId('ontology-connection-line')
+    ).not.toBeInTheDocument();
+    expect(persist).not.toHaveBeenCalled();
+  });
+
   it('does not render edit controls outside edit mode', () => {
     render(<Harness isEditMode={false} onCreateRelation={jest.fn()} />);
 
     expect(
       screen.queryByTestId('ontology-port-overlay')
     ).not.toBeInTheDocument();
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+    });
+
+    it('shows the connect pill and cancels the connection from its close button', () => {
+      render(<Harness onCreateRelation={jest.fn()} />);
+
+      dispatchNodeClick({
+        clientX: 600,
+        clientY: 180,
+        isPort: true,
+        nodeId: 'source',
+      });
+
+      expect(
+        screen.getByTestId('ontology-connect-instruction')
+      ).toHaveTextContent('label.esc');
+
+      fireEvent.click(screen.getByTestId('ontology-connect-cancel'));
+
+      expect(
+        screen.queryByTestId('ontology-connect-instruction')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('ontology-connection-line')
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -46,7 +46,17 @@ public final class TestLoginCandidates {
   public static SecurityConfiguration withLiveSecretsRestored(
       SecurityConfiguration candidate, SecurityConfiguration live) {
     SecurityConfiguration copy = JsonUtils.deepCopy(candidate, SecurityConfiguration.class);
-    AuthenticationConfiguration candidateAuth = copy.getAuthenticationConfiguration();
+    restoreLiveSecretsInPlace(copy, live);
+    return copy;
+  }
+
+  /**
+   * Restores masked secrets on the candidate itself, where that is safe. A JSON round trip would
+   * re-apply schema defaults to fields the caller set to null, so writes use this one.
+   */
+  public static void restoreLiveSecretsInPlace(
+      SecurityConfiguration candidate, SecurityConfiguration live) {
+    AuthenticationConfiguration candidateAuth = candidate.getAuthenticationConfiguration();
     AuthenticationConfiguration liveAuth =
         live == null ? null : live.getAuthenticationConfiguration();
     if (candidateAuth != null && liveAuth != null) {
@@ -57,7 +67,6 @@ public final class TestLoginCandidates {
       restoreLdapPassword(candidateAuth.getLdapConfiguration(), liveAuth.getLdapConfiguration());
       restoreSamlSecrets(candidateAuth.getSamlConfiguration(), liveAuth.getSamlConfiguration());
     }
-    return copy;
   }
 
   /** Same trust store file in the same format: the password only ever opens that file. */

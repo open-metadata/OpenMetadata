@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -212,6 +212,16 @@ describe('DataProductsDetailsPage — Request Data Access delegation', () => {
     setMockPermissions(ENTITY_PERMISSIONS);
     getDataProductClassBase().getRequestDataAccessButton.mockReturnValue(null);
     getDataProductClassBase().getRequestDataAccessBanner.mockReturnValue(null);
+  });
+
+  it('ends the breadcrumb with the data product itself', () => {
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    const crumbs = within(screen.getAllByTestId('breadcrumb')[0]).getAllByRole(
+      'listitem'
+    );
+
+    expect(crumbs[crumbs.length - 1]).toHaveTextContent('Test Data Product');
   });
 
   it('delegates the DAR button to dataProductClassBase', () => {
@@ -450,7 +460,7 @@ describe('DataProductsDetailsPage — contract latest-result button', () => {
     setMockPermissions(ENTITY_PERMISSIONS);
   });
 
-  it('renders the aborted state as an orange badge linking to the contract tab', async () => {
+  it('renders the aborted state as an orange button linking to the contract tab', async () => {
     (getContractByEntityId as jest.Mock).mockResolvedValueOnce({
       latestResult: { status: ContractExecutionStatus.Aborted },
     });
@@ -461,8 +471,8 @@ describe('DataProductsDetailsPage — contract latest-result button', () => {
 
     expect(badge.tagName).toBe('A');
     expect(badge).toHaveClass(
-      'tw:bg-utility-orange-50',
-      'tw:text-utility-orange-700'
+      'tw:bg-utility-orange-50!',
+      'tw:text-utility-orange-700!'
     );
     expect(badge).toHaveAttribute(
       'href',

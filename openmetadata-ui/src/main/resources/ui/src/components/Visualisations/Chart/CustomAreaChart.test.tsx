@@ -110,4 +110,20 @@ describe('CustomAreaChart', () => {
 
     expect(screen.getByText('4')).toBeInTheDocument();
   });
+
+  it('skips the sparkline with fewer than two points but keeps its height', () => {
+    render(
+      <CustomAreaChart
+        ariaLabel="Time"
+        data={[{ timestamp: 1, count: 0 }]}
+        height={60}
+        name="single"
+      />
+    );
+
+    expect(screen.queryByTestId('core-area-chart')).not.toBeInTheDocument();
+    expect(document.getElementById('single-area-chart')).toHaveStyle({
+      height: '60px',
+    });
+  });
 });

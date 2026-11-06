@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
+import { Node } from 'reactflow';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getAggregationOptions } from '../../../utils/ExploreUtils';
@@ -172,13 +173,60 @@ describe('AddLineagePopover', () => {
     );
   });
 
-  it('asks for a column when opened from a column and submits the column', async () => {
+  it('picks a column edit target among the canvas nodes and submits the column', async () => {
     (getTableDetailsByFQN as jest.Mock).mockResolvedValue({
       columns: [{ name: 'id', fullyQualifiedName: 's.d.sc.orders.id' }],
     });
-    open(LineageDirection.Downstream, 's.d.sc.self.id');
-    await pickType();
-    fireEvent.click(screen.getByTestId('pick-orders'));
+    const canvasNode = (node: Record<string, unknown>) =>
+      ({ id: node.id, position: { x: 0, y: 0 }, data: { node } } as Node);
+    render(
+      <AddLineagePopover
+        {...baseProps}
+        canvasNodes={[
+          canvasNode({
+            id: 'self',
+            name: 'self',
+            fullyQualifiedName: 's.d.sc.self',
+            entityType: 'table',
+          }),
+          canvasNode({
+            id: 'b',
+            name: 'orders',
+            fullyQualifiedName: 's.d.sc.orders',
+            entityType: 'table',
+          }),
+          canvasNode({
+            id: 'p',
+            name: 'etl',
+            fullyQualifiedName: 's.etl',
+            entityType: 'pipeline',
+          }),
+        ]}
+        excludeEntityId="self"
+        request={{
+          nodeId: 'n1',
+          direction: LineageDirection.Downstream,
+          columnFqn: 's.d.sc.self.id',
+          triggerRef,
+        }}
+      />
+    );
+
+    // The catalog-wide type and asset search is not offered for a column.
+    expect(
+      screen.queryByTestId('add-lineage-type-select')
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      within(screen.getByTestId('add-lineage-canvas-asset-select')).getByRole(
+        'button'
+      )
+    );
+
+    // Only column-carrying nodes other than the current one are listed.
+    expect(screen.getAllByRole('option')).toHaveLength(1);
+
+    await user.click(screen.getByRole('option', { name: /orders/ }));
 
     expect(screen.getByTestId('add-lineage-submit')).toBeDisabled();
 

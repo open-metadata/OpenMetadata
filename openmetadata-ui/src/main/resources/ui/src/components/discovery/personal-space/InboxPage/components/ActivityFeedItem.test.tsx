@@ -24,6 +24,7 @@ const mockRefetchReplies = jest.fn();
 let mockReplies: { id: string; author?: { name: string } }[] = [];
 // Whether a thread's replies were read before (cached) even while closed.
 let mockRepliesCached = false;
+let mockRepliesPending = false;
 const mockRepliesEnabled = jest.fn();
 
 jest.mock('../useActivityReplies', () => ({
@@ -34,7 +35,7 @@ jest.mock('../useActivityReplies', () => ({
     enabled: boolean
   ) => {
     mockRepliesEnabled(enabled);
-    const hasLoaded = enabled || mockRepliesCached;
+    const hasLoaded = !mockRepliesPending && (enabled || mockRepliesCached);
 
     return {
       threadId: ids.conversationId ?? ids.activityId,
@@ -120,7 +121,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('utils/ToastUtils', () => ({
-  showErrorToast: mockShowErrorToast,
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
 jest.mock('components/ActivityFeed/Reactions/Reactions', () => ({
@@ -252,7 +253,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ...Object.fromEntries(
     [
       'ActivityAssetCreated',
-      'ActivityAssetDeleted',
+      'Trash01',
       'ActivityAssetRestored',
       'ActivityAssetSoftDeleted',
       'ActivityAssetUpdated',
@@ -266,18 +267,23 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
       'ActivityPipelineStatusChanged',
       'ActivityTagsUpdated',
       'ActivityTestCaseStatusChanged',
-      'ActivityTierChanged',
+      'AppCacheWarmup',
     ].map((name) => [name, () => <span data-testid={name} />])
   ),
   ChevronDown: () => <span />,
+  ChevronRight: () => <span />,
   ChevronUp: () => <span />,
-  Edit05: () => <span />,
+  Column: () => <span />,
+  Edit01: () => <span />,
   File02: () => <span />,
   Globe01: () => <span />,
   MessageDotsCircle: () => <span />,
   Tag01: () => <span />,
   ThumbsUp: (props: SVGProps<SVGSVGElement>) => (
     <svg data-testid="thumbs-up-icon" {...props} />
+  ),
+  ThumbsUpFilled: (props: SVGProps<SVGSVGElement>) => (
+    <svg data-testid="thumbs-up-filled-icon" {...props} />
   ),
   UserCheck01: () => <span />,
 }));
@@ -317,6 +323,7 @@ describe('ActivityFeedItem', () => {
     jest.clearAllMocks();
     mockReplies = [];
     mockRepliesCached = false;
+    mockRepliesPending = false;
   });
 
   describe('kind badge', () => {
@@ -418,11 +425,65 @@ describe('ActivityFeedItem', () => {
       />
     );
 
-    expect(screen.getByText('dim_address.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
     expect(screen.getByRole('link', { name: 'email' })).toHaveAttribute(
       'href',
       '/table/svc.db.sch.dim.email'
     );
+  });
+
+  it('names and links the column a conversation was started on', () => {
+    render(
+      <ActivityFeedItem
+        feed={{
+          ...baseFeed,
+          about: '<#E::table::svc.db.sch.dim::columns::email::description>',
+          entityRef: {
+            ...baseFeed.entityRef,
+            fullyQualifiedName: 'svc.db.sch.dim',
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
+    expect(screen.getByRole('link', { name: 'email' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim.email'
+    );
+  });
+
+  it('links a non-column field change to the entity without an ANTLR error', () => {
+    // `entityStatus` is not in the EntityLink grammar: parsing it made ANTLR
+    // log a syntax error on every render.
+    const errorSpy = jest.spyOn(console, 'error');
+
+    render(
+      <ActivityFeedItem
+        activity={
+          {
+            ...baseActivity,
+            about: '<#E::table::svc.db.sch.dim::entityStatus>',
+          } as ActivityEvent
+        }
+      />
+    );
+
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('no viable alternative')
+    );
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
+
+    errorSpy.mockRestore();
   });
 
   it('flags a card that mentions the viewer, and only then', () => {
@@ -714,7 +775,7 @@ describe('ActivityFeedItem', () => {
 
   // The Button sizes and tints its icon by `data-icon`, so the filled thumb
   // must keep it, or a liked card's icon grows from 16px to 20px.
-  it('fills the thumb once liked and keeps the icon the Button styles', () => {
+  it('shows the filled thumb once liked and keeps the icon the Button styles', () => {
     const liked = {
       ...baseActivity,
       reactions: [{ reactionType: 'thumbsUp', user: { id: 'u1' } }],
@@ -722,10 +783,10 @@ describe('ActivityFeedItem', () => {
 
     render(<ActivityFeedItem activity={liked} />);
 
-    const icon = screen.getByTestId('thumbs-up-icon');
+    const icon = screen.getByTestId('thumbs-up-filled-icon');
 
     expect(icon).toHaveAttribute('data-icon', 'leading');
-    expect(icon).toHaveAttribute('fill', 'currentColor');
+    expect(screen.queryByTestId('thumbs-up-icon')).not.toBeInTheDocument();
   });
 
   // Others' likes are counted; only the viewer's own reads "Liked".
@@ -814,13 +875,31 @@ describe('ActivityFeedItem', () => {
 
     // One button for the thread, whatever it reads: never Reply beside a count
     // or beside "Hide replies".
-    it('keeps one thread button from Reply to Hide replies and back', () => {
+    it('keeps Hide replies on an open activity thread whose replies are still loading', () => {
+      mockRepliesPending = true;
+      render(<ActivityFeedItem activity={baseActivity} />);
+
+      fireEvent.click(screen.getByTestId('activity-reply'));
+
+      expect(screen.getByTestId('activity-reply')).toHaveTextContent(
+        'label.hide-reply-plural'
+      );
+    });
+
+    it('keeps one thread button that reads Reply while the thread has no replies', () => {
       render(<ActivityFeedItem activity={baseActivity} />);
 
       fireEvent.click(screen.getByTestId('activity-reply'));
 
       expect(screen.getAllByTestId('activity-reply')).toHaveLength(1);
+      expect(screen.getByTestId('activity-reply')).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
       expect(screen.getByTestId('activity-reply')).toHaveTextContent(
+        'label.reply'
+      );
+      expect(screen.getByTestId('activity-reply')).not.toHaveTextContent(
         'label.hide-reply-plural'
       );
 

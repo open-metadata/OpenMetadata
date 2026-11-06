@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
   PaginationCardWithControls,
   Popover,
   PopoverTrigger,
@@ -26,7 +25,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -35,11 +34,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -55,15 +50,16 @@ import { EntityReference } from '../../../../../../generated/entity/type';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getPolicies } from '../../../../../../rest/rolesAPIV1';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import {
   checkPermission,
   LIST_CAP,
   userPermissions,
 } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { AccessControlView } from './AccessControl.types';
 
@@ -82,27 +78,22 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   const { t } = useTranslation();
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
 
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [cursorCache, setCursorCache] = useState<Map<number, Paging>>(
     new Map()
   );
   const fetchRequestIdRef = useRef(0);
 
-  const showPagination = useMemo(
-    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(policies);
 
   const { permissions } = usePermissionProvider();
 
@@ -181,22 +172,6 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
     fetchPolicies(undefined, 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setHashPage, pageSize]);
-
-  const handlePolicyDelete = useCallback(async () => {
-    setIsDeleting(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(selectedPolicy),
-      selectedPolicy?.id ?? '',
-      EntityType.POLICY
-    );
-
-    if (isSuccess) {
-      handleAfterDeleteAction();
-    }
-
-    setSelectedPolicy(undefined);
-    setIsDeleting(false);
-  }, [selectedPolicy, handleAfterDeleteAction]);
 
   const handlePolicyClick = (policy: Policy) => {
     onNavigate({
@@ -283,6 +258,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };
@@ -314,10 +290,12 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
     return (
       <Button
-        className="tw:truncate tw:block"
+        className="tw:truncate tw:block tw:text-left"
         color="link-color"
         key={key}
         size="sm"
+        tooltip={getEntityName(role)}
+        tooltipPlacement="top"
         onPress={() =>
           onNavigate({
             type: 'roles-detail',
@@ -351,7 +329,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
               size="xs">
               {t('label.plus-count-more', { count: listLength - LIST_CAP })}
             </Button>
-            <Popover className="tw:max-h-80! tw:overflow-scroll">
+            <Popover className="tw:overflow-y-auto" maxHeight={320}>
               <Box className="tw:p-3" direction="col" gap={1}>
                 {roles.slice(LIST_CAP).map(renderRoleItem)}
               </Box>
@@ -393,20 +371,26 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
       case 'actions':
         return (
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`delete-action-${getEntityName(policy)}`}
-            icon={Trash01}
-            isDisabled={!deletePolicyPermission}
-            size="xs"
-            tooltip={
-              deletePolicyPermission
-                ? t('label.delete-entity', { entity: t('label.policy') })
-                : t(NO_PERMISSION_FOR_ACTION)
-            }
-            tooltipPlacement="left"
-            onPress={() => setSelectedPolicy(policy)}
-          />
+          <DeleteEntityPopover
+            afterDeleteAction={handleAfterDeleteAction}
+            allowSoftDelete={false}
+            data-testid="delete-policy-popover"
+            entityId={policy.id}
+            entityName={getEntityName(policy)}
+            entityType={EntityType.POLICY}>
+            <ButtonUtility
+              data-testid={`delete-action-${getEntityName(policy)}`}
+              icon={Trash01}
+              isDisabled={!deletePolicyPermission}
+              size="lg"
+              tooltip={
+                deletePolicyPermission
+                  ? t('label.delete-entity', { entity: t('label.policy') })
+                  : t(NO_PERMISSION_FOR_ACTION)
+              }
+              tooltipPlacement="left"
+            />
+          </DeleteEntityPopover>
         );
 
       default:
@@ -427,7 +411,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
           align="center"
           className="tw:min-h-32 tw:relative"
           justify="center">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             title={t('label.no-entity-found', {
               entity: t('label.policy-plural'),
             })}
@@ -445,7 +429,10 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
       data-testid="policies-list-container"
       direction="col"
       gap={4}>
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
         <div className="tw:overflow-y-auto">
           <Table
             aria-label={t('label.policy-plural')}
@@ -486,30 +473,13 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}
           />
         )}
       </TableCard.Root>
-
-      {selectedPolicy && deletePolicyPermission && (
-        <DeleteModal
-          entityTitle={getEntityName(selectedPolicy)}
-          isDeleting={isDeleting}
-          message={t('message.permanently-delete-common-message', {
-            entity: getEntityName(selectedPolicy)?.toLowerCase?.() ?? '',
-          })}
-          open={!isUndefined(selectedPolicy)}
-          onCancel={() => setSelectedPolicy(undefined)}
-          onDelete={handlePolicyDelete}
-        />
-      )}
     </Box>
   );
 };

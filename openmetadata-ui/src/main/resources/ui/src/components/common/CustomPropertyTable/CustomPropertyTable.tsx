@@ -14,12 +14,11 @@
 import { SkeletonParagraph } from '@openmetadata/ui-core-components';
 import { GridDotsOuter } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { castArray, isEmpty, isUndefined, startCase } from 'lodash';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/type';
@@ -34,7 +33,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { resolveWidgetKey } from '../../DataAssets/CommonWidgets/CommonWidgets.utils';
 import CreatePlaceholder from '../EmptyPlaceholder/CreatePlaceholder';
-import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../EmptyPlaceholder/PermissionPlaceholder';
 import { CustomPropertiesRightPanel } from './CustomPropertiesWidget/CustomPropertiesRightPanel';
 import {
   parsePropertyLayout,
@@ -132,11 +131,14 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       const newValues = getChangedEntityNewValue(extensionDiff);
 
       if (extensionDiff.added) {
-        const addedFields = JSON.parse(newValues ?? [])[0];
-        if (addedFields) {
+        // The server lists each added property as its own one-key object.
+        const addedFields: Record<string, unknown>[] = castArray(
+          JSON.parse(newValues ?? '[]')
+        );
+        if (!isEmpty(addedFields)) {
           return {
             extensionObject: entityDetails?.extension,
-            addedKeysList: Object.keys(addedFields),
+            addedKeysList: addedFields.flatMap(Object.keys),
           };
         }
       }
@@ -211,13 +213,14 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   if (!hasPermission) {
     return (
       <div className="items-center d-block align-items-center text-center">
-        <ErrorPlaceHolder
-          className="border-none p-lg"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.custom-property-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.custom-property-plural'),
+            })}
+          />
+        </div>
       </div>
     );
   }
@@ -229,7 +232,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="h-full tw:relative tw:min-h-90">
+      <div className="border-default border-radius-sm h-full tw:relative tw:min-h-90 tw:bg-surface">
         <CreatePlaceholder
           actions={[
             {
@@ -259,8 +262,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
     return (
       <CustomPropertiesRightPanel
+        addedKeys={extensionObject.addedKeysList}
         extension={extensionObject.extensionObject}
         hasEditPermissions={hasEditAccess}
+        isVersionView={isVersionView}
         properties={dataSource}
         viewAllPath={viewAllPath}
         widgetSettings={widgetSettings}

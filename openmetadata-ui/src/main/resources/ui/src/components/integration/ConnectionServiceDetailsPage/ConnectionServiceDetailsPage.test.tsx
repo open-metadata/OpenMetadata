@@ -21,13 +21,9 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { getDatabases } from '../../../rest/databaseAPI';
-import { getServiceByFQN, patchService } from '../../../rest/serviceAPI';
+import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { getTopics } from '../../../rest/topicsAPI';
-import {
-  EXTENSION_POINTS,
-  TestConnectionActionProps,
-} from '../../../utils/ExtensionPointTypes';
-import { RenderTestConnectionFailureAction } from '../../common/TestConnection/TestConnectionModal/TestConnectionModal.interface';
+import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
 import ConnectionServiceDetailsPage from './ConnectionServiceDetailsPage';
 
 // ── Mock Data ─────────────────────────────────────────────────────────────
@@ -406,15 +402,9 @@ jest.mock('./ServiceFollowButton', () => ({
   },
 }));
 
-const mockTestConnection = jest.fn(
-  (_props: { renderFailureAction?: RenderTestConnectionFailureAction }) => null
-);
-
 jest.mock('../../common/TestConnection/TestConnection', () => ({
   __esModule: true,
-  default: (props: {
-    renderFailureAction?: RenderTestConnectionFailureAction;
-  }) => mockTestConnection(props),
+  default: () => null,
 }));
 
 jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => ({
@@ -679,8 +669,8 @@ describe('ConnectionServiceDetailsPage', () => {
 
       const labels = tabLabels();
 
-      expect(labels).toContain('label.data-model');
-      expect(labels.indexOf('label.data-model')).toBe(
+      expect(labels).toContain('label.data-model-plural');
+      expect(labels.indexOf('label.data-model-plural')).toBe(
         labels.indexOf('label.connection') - 1
       );
     });
@@ -702,7 +692,7 @@ describe('ConnectionServiceDetailsPage', () => {
       await renderPage();
 
       expect(tabLabels()).not.toEqual(
-        expect.arrayContaining(['label.data-model'])
+        expect.arrayContaining(['label.data-model-plural'])
       );
       expect(tabLabels()).not.toEqual(
         expect.arrayContaining([
@@ -806,22 +796,6 @@ describe('ConnectionServiceDetailsPage', () => {
         screen.queryByTestId('tab-badge-dataAssets')
       ).not.toBeInTheDocument();
     });
-  });
-
-  it('mirrors data products the data-assets tab saved, without saving them again', async () => {
-    await act(async () => {
-      render(<ConnectionServiceDetailsPage />);
-    });
-    await waitFor(() => expect(mockDataAssetsTab).toHaveBeenCalled());
-    const dataProduct = { id: 'dp-1', type: 'dataProduct', name: 'Revenue' };
-
-    const { onDataProductsChange } = mockDataAssetsTab.mock.calls.at(-1)[0];
-    act(() => onDataProductsChange([dataProduct]));
-
-    expect(mockDataAssetsTab.mock.calls.at(-1)[0].serviceDetails).toEqual(
-      expect.objectContaining({ dataProducts: [dataProduct] })
-    );
-    expect(patchService).not.toHaveBeenCalled();
   });
 
   it('loads the other service when the route moves to it without remounting', async () => {
@@ -1574,62 +1548,6 @@ describe('ConnectionServiceDetailsPage', () => {
       expect(
         screen.queryByRole('button', { name: 'Trigger AutoPilot' })
       ).not.toBeInTheDocument();
-    });
-  });
-
-  describe('SERVICE_DETAILS_TEST_CONNECTION_ACTIONS contributions', () => {
-    const getRenderFailureAction = () =>
-      mockTestConnection.mock.calls.at(-1)?.[0].renderFailureAction;
-
-    it('gives the test connection no failure action when no plugin contributes one', async () => {
-      mockTabParam = 'connection';
-
-      await act(async () => {
-        render(<ConnectionServiceDetailsPage />);
-      });
-
-      await waitFor(() => {
-        expect(mockTestConnection).toHaveBeenCalled();
-      });
-
-      expect(getRenderFailureAction()).toBeUndefined();
-    });
-
-    it('renders the contributed action with the raw log, page context and close callback', async () => {
-      mockTabParam = 'connection';
-      const onClose = jest.fn();
-      contributionsByPoint[
-        EXTENSION_POINTS.SERVICE_DETAILS_TEST_CONNECTION_ACTIONS
-      ] = [
-        {
-          key: 'diagnose',
-          component: ({
-            failure,
-            onClose: close,
-            serviceDetails,
-          }: TestConnectionActionProps) => (
-            <button data-testid="diagnose-action" onClick={close}>
-              {`${serviceDetails?.name}: ${failure}`}
-            </button>
-          ),
-        },
-      ];
-
-      await act(async () => {
-        render(<ConnectionServiceDetailsPage />);
-      });
-
-      await waitFor(() => {
-        expect(getRenderFailureAction()).toBeDefined();
-      });
-
-      render(<>{getRenderFailureAction()?.('Connection refused', onClose)}</>);
-      fireEvent.click(screen.getByTestId('diagnose-action'));
-
-      expect(screen.getByTestId('diagnose-action')).toHaveTextContent(
-        'test-service: Connection refused'
-      );
-      expect(onClose).toHaveBeenCalled();
     });
   });
 

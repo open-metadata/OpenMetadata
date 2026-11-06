@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 import { Box, Card, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import Qs from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
-import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
@@ -35,11 +34,10 @@ import TabFilters from './TabFilters/TabFilters';
 
 const DataObservabilityTab = (props: TableProfilerProps) => {
   const { t } = useTranslation();
-  const { isTourOpen } = useTourProvider();
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { fqn: tableFqn } = useFqn();
-  const { subTab: activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
+  const { subTab: activeTab = profilerClassBase.getDefaultTabKey() } =
     useParams<{ subTab: ProfilerTabPath }>();
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({
     [ProfilerTabPath.INCIDENTS]: 0,
@@ -202,7 +200,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                     activeColumnFqn: undefined,
                   }),
                 }}>
-                <DropDownIcon className="transform-90" height={16} width={16} />
+                <ChevronDown className="transform-90" size={16} />
                 <Typography weight="semibold">
                   {t(PAGE_HEADERS.COLUMN_PROFILE.header)}
                 </Typography>

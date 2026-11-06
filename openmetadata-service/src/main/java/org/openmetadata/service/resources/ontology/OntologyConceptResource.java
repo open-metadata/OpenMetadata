@@ -35,21 +35,34 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
+import org.openmetadata.schema.api.data.OntologyConceptDeleteImpact;
+import org.openmetadata.schema.api.data.OntologyConceptQuery;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.data.UpdateOntologyConceptBinding;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.OntologyAssetConceptLinks;
+import org.openmetadata.schema.type.OntologyConceptBindingsResponse;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.jdbi3.OntologyConceptRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.OntologyConceptBindingService;
+import org.openmetadata.service.ontology.OntologyConceptBindingService.Access;
+import org.openmetadata.service.ontology.OntologyConceptQueryService;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Path("/v1/ontologyConcepts")
 @Tag(
@@ -62,9 +75,17 @@ public class OntologyConceptResource
     extends EntityResource<OntologyConcept, OntologyConceptRepository> {
   public static final String COLLECTION_PATH = "/v1/ontologyConcepts/";
   private final OntologyConceptMapper mapper = new OntologyConceptMapper();
+  private final OntologyConceptBindingService bindings;
+  private final OntologyConceptQueryService queries;
 
   public OntologyConceptResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY_CONCEPT, authorizer, limits);
+    addViewOperation("lifecycleStatus", MetadataOperation.VIEW_BASIC);
+    final var store =
+        new OntologyConceptBindingStore(
+            Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables());
+    bindings = new OntologyConceptBindingService(store, authorizer, Entity::getEntityRepository);
+    queries = new OntologyConceptQueryService(store, authorizer, Entity::getEntityRepository);
   }
 
   public static class OntologyConceptList extends ResultList<OntologyConcept> {}
@@ -80,16 +101,29 @@ public class OntologyConceptResource
       @QueryParam("before") final String before,
       @QueryParam("after") final String after,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
-    final ListFilter filter = ontologyFilter(include, ontology);
-    return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    final UUID ontologyId = ontologyIdOf(ontology);
+    OntologyResourceAccess.requireDraftListRead(authorizer, securityContext, ontologyId);
+    final ListFilter filter = ontologyFilter(include, ontologyId);
+    final ResultList<OntologyConcept> page =
+        listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    OntologyResourceAccess.requireDraftRowsRead(
+        authorizer,
+        securityContext,
+        ontologyId,
+        OntologyResourceAccess.ontologyIdsOf(page.getData()));
+    return page;
   }
 
-  private static ListFilter ontologyFilter(final Include include, final String ontology) {
+  private static UUID ontologyIdOf(final String ontology) {
+    return ontology == null
+        ? null
+        : Entity.getEntityReferenceByName(Entity.ONTOLOGY, ontology, Include.NON_DELETED).getId();
+  }
+
+  private static ListFilter ontologyFilter(final Include include, final UUID ontologyId) {
     final ListFilter filter = new ListFilter(include);
-    if (ontology != null) {
-      final EntityReference reference =
-          Entity.getEntityReferenceByName(Entity.ONTOLOGY, ontology, Include.NON_DELETED);
-      filter.addQueryParam("ontologyId", reference.getId().toString());
+    if (ontologyId != null) {
+      filter.addQueryParam("ontologyId", ontologyId.toString());
     }
     return filter;
   }
@@ -104,6 +138,102 @@ public class OntologyConceptResource
       @QueryParam("fields") final String fields,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
     return getInternal(uriInfo, securityContext, id, fields, include, null);
+  }
+
+  @GET
+  @Path("/{id}/bindings")
+  @Operation(
+      operationId = "getOntologyConceptBindings",
+      summary = "Get one page of the catalog bindings of a concept the caller may view")
+  public OntologyConceptBindingsResponse getBindings(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @QueryParam("limit") @DefaultValue("100") @Min(1) @Max(100) final int limit,
+      @QueryParam("after") final String after) {
+    return bindings.get(new Access(uriInfo, securityContext), id, limit, after);
+  }
+
+  @GET
+  @Path("/boundTo/{assetType}/{assetId}")
+  @Operation(
+      operationId = "getOntologyConceptsBoundToAsset",
+      summary = "Get the concepts one catalog asset is bound to, with the columns bound to each")
+  public OntologyAssetConceptLinks getConceptsBoundToAsset(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("assetType") final String assetType,
+      @PathParam("assetId") final UUID assetId) {
+    return bindings.linksForAsset(new Access(uriInfo, securityContext), assetType, assetId);
+  }
+
+  @GET
+  @Path("/{id}/deleteImpact")
+  @Operation(
+      operationId = "getOntologyConceptDeleteImpact",
+      summary =
+          "List the children, relationships, rules and blockers that deleting a concept touches")
+  public OntologyConceptDeleteImpact getDeleteImpact(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id) {
+    final OntologyConcept concept =
+        getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    final OntologyConceptDeleteImpact impact = repository.deleteImpact(concept);
+    Stream.of(impact.getRelationships(), impact.getRules(), impact.getBlockers())
+        .flatMap(List::stream)
+        .forEach(
+            source ->
+                authorizer.authorize(
+                    securityContext,
+                    new OperationContext(source.getType(), MetadataOperation.VIEW_ALL),
+                    new ResourceContext<>(source.getType(), source.getId(), null)));
+    return impact;
+  }
+
+  @PUT
+  @Path("/{id}/bindings")
+  @Operation(
+      operationId = "updateOntologyConceptBinding",
+      summary = "Replace one concept catalog association")
+  public OntologyConceptBindingsResponse updateBinding(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @Valid final UpdateOntologyConceptBinding request) {
+    return bindings.put(new Access(uriInfo, securityContext), id, request);
+  }
+
+  @DELETE
+  @Path("/{id}/bindings/{assetType}/{assetId}")
+  @Operation(
+      operationId = "deleteOntologyConceptBinding",
+      summary = "Remove one concept catalog association")
+  public OntologyConceptBindingsResponse deleteBinding(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("assetType") final String assetType,
+      @PathParam("assetId") final UUID assetId,
+      @QueryParam("expectedRevision") @Min(0) final Long expectedRevision) {
+    return bindings.remove(
+        new Access(uriInfo, securityContext), id, assetType, assetId, expectedRevision);
+  }
+
+  @POST
+  @Path("/{id}/query")
+  @Operation(
+      operationId = "generateOntologyConceptQuery",
+      summary = "Generate SQL over the concept's bound tables, joined along search-around hops",
+      description =
+          "Reads bindings and table metadata the caller may view and returns a SELECT with LIMIT 50."
+              + " Nothing runs and nothing is stored.")
+  public OntologyConceptQuery generateQuery(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @Valid final OntologyConceptQuery request) {
+    return queries.generate(new Access(uriInfo, securityContext), id, request);
   }
 
   @GET
@@ -149,6 +279,8 @@ public class OntologyConceptResource
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       final JsonPatch patch) {
+    OntologyResourceAccess.requireEditForContentPatch(
+        authorizer, securityContext, Entity.ONTOLOGY_CONCEPT, id, patch);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 

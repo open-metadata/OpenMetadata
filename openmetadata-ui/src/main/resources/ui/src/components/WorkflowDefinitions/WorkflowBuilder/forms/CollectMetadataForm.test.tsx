@@ -182,4 +182,80 @@ describe('CollectMetadataForm', () => {
       })
     );
   });
+
+  const revisionNode = (revision: string): Node => ({
+    ...node,
+    id: `Revision_${revision}`,
+    data: {
+      displayName: 'Revision step',
+      config: {
+        stage: 'In Review',
+        targetStage: 'Approved',
+        fields: [],
+        taskAssignees: 'owners',
+        candidates: [],
+        revision,
+      },
+    },
+  });
+
+  it('describes a revision request and asks who gets it', () => {
+    const onSave = jest.fn();
+    renderForm(onSave, revisionNode('request'));
+
+    expect(screen.getByTestId('collect-metadata-revision')).toHaveTextContent(
+      'message.collect-metadata-revision-request-hint'
+    );
+    expect(
+      screen.getByTestId('collect-metadata-assignees')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('message.collect-metadata-revision-assignees-hint')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('save-node-configuration-button'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      'Revision_request',
+      expect.objectContaining({
+        config: expect.objectContaining({ revision: 'request' }),
+      })
+    );
+  });
+
+  it('describes a resubmit step without asking anyone', () => {
+    renderForm(jest.fn(), revisionNode('resubmit'));
+
+    expect(screen.getByTestId('collect-metadata-revision')).toHaveTextContent(
+      'message.collect-metadata-revision-resubmit-hint'
+    );
+    expect(
+      screen.queryByTestId('collect-metadata-assignees')
+    ).not.toBeInTheDocument();
+  });
+
+  it('neither offers nor requires specific users on a resubmit step', () => {
+    const onSave = jest.fn();
+    const resubmit = revisionNode('resubmit');
+    renderForm(onSave, {
+      ...resubmit,
+      data: {
+        ...resubmit.data,
+        config: { ...resubmit.data.config, taskAssignees: 'candidates' },
+      },
+    });
+
+    expect(
+      screen.queryByTestId('collect-metadata-candidates-trigger')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('save-node-configuration-button'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      'Revision_resubmit',
+      expect.objectContaining({
+        config: expect.objectContaining({ candidates: [] }),
+      })
+    );
+  });
 });

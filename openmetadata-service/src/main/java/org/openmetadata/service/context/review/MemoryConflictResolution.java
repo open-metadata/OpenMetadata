@@ -39,7 +39,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -188,32 +187,12 @@ public final class MemoryConflictResolution {
    */
   private static void writeTogether(
       ContextMemory reviewed, List<MemoryChange> changes, String user) {
-    boolean committed = false;
-    try {
-      memoryRepository()
-          .executeInTransaction(
-              () -> {
-                whileDeciding(
-                    reviewed.getId(), () -> changes.forEach(change -> write(change, user)));
-                return changes.size();
-              });
-      committed = true;
-    } finally {
-      if (!committed) {
-        changes.forEach(MemoryConflictResolution::evictUncommitted);
-      }
-    }
-  }
-
-  /**
-   * A later write reads the memories an earlier one wrote, and the Redis entity cache keeps what a
-   * read loads, the uncommitted row included. A rollback drops the cache evictions the transaction
-   * deferred, so a refused decision evicts every memory it wrote once the rollback is done.
-   */
-  private static void evictUncommitted(MemoryChange change) {
-    ContextMemory memory = change.before();
-    EntityRepository.invalidateCacheForEntity(
-        Entity.CONTEXT_MEMORY, memory.getId(), memory.getFullyQualifiedName());
+    memoryRepository()
+        .executeInTransaction(
+            () -> {
+              whileDeciding(reviewed.getId(), () -> changes.forEach(change -> write(change, user)));
+              return changes.size();
+            });
   }
 
   /**

@@ -18,22 +18,23 @@ import {
   SimpleModal,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  MinusCircle,
+  Plus,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExportIcon } from '../../../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../../../assets/svg/ic-import.svg';
-import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remove.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { ExportTypes } from '../../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../../constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import {
   EntityAction,
   EntityType,
@@ -56,15 +57,17 @@ import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferen
 import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
+import CreatePlaceholder from '../../../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { ManageButtonItemLabel } from '../../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../../../common/Table/Table.interface';
 import Table from '../../../../common/Table/TableV2';
 import { UserSelectableList } from '../../../../common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { TEAM_TAB_EMPTY_STATE_CLASS } from '../TeamDetailsV1.constants';
 import { UserTabProps } from './UserTab.interface';
 
 export const UserTab = ({
@@ -127,8 +130,8 @@ export const UserTab = ({
   const editUserPermission = useMemo(() => can(Operation.EditUsers), [can]);
 
   // The one site that must ignore deleted-gating (Task 8 Batch 3 review round, Finding 3):
-  // the ASSIGN ErrorPlaceHolder's `permission` prop hard-branches
-  // (`if (!permission) return <PermissionErrorPlaceholder />`), replacing the whole
+  // the assign placeholder's `permission` prop hard-branches
+  // (CreatePlaceholder renders PermissionPlaceholder when it is false), replacing the whole
   // assign-users UI (including the Add button, which is separately disabled via its own
   // `disabled={!editUserPermission || isTeamDeleted}`) with a misleading "no access" message
   // for a deleted team's admin. Old code read the raw, ungated `permission.EditAll ||
@@ -275,23 +278,19 @@ export const UserTab = ({
             className="layout-space layout-space-horizontal w-full justify-center remove-icon"
             gap={2}
             itemClassName="layout-space-item">
-            <Tooltip
-              arrow
-              placement="left"
-              title={
+            <ButtonUtility
+              data-testid="remove-user-btn"
+              icon={MinusCircle}
+              isDisabled={!editUserPermission}
+              size="lg"
+              tooltip={
                 editUserPermission
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
-              }>
-              <ButtonUtility
-                color="tertiary"
-                data-testid="remove-user-btn"
-                icon={IconRemove}
-                isDisabled={!editUserPermission}
-                size="sm"
-                onClick={() => handleRemoveClick(record.id)}
-              />
-            </Tooltip>
+              }
+              tooltipPlacement="left"
+              onClick={() => handleRemoveClick(record.id)}
+            />
           </Box>
         ),
       },
@@ -334,7 +333,7 @@ export const UserTab = ({
             description={t('message.export-entity-help', {
               entity: t('label.user-lowercase'),
             })}
-            icon={ExportIcon}
+            icon={Download01}
             id="export"
             name={t('label.export')}
           />
@@ -353,7 +352,7 @@ export const UserTab = ({
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={ImportIcon}
+            icon={Upload01}
             id="import-button"
             name={t('label.import')}
           />
@@ -386,55 +385,59 @@ export const UserTab = ({
 
   const renderEmptyState = () =>
     isGroupType ? (
-      <ErrorPlaceHolder
-        button={
-          <Box
-            inline
-            align="center"
-            className="layout-space layout-space-horizontal"
-            gap={2}
-            itemClassName="layout-space-item">
-            <UserSelectableList
-              hasPermission
-              includeBot
-              selectedUsers={currentTeam?.users ?? []}
-              onUpdate={onAddUser}>
-              <Tooltip arrow placement="top right" title={addUserButtonTitle}>
-                <Button
-                  color="secondary"
-                  data-testid="add-new-user"
-                  iconLeading={Plus}
-                  isDisabled={!editUserPermission || isTeamDeleted}
-                  size="sm">
-                  {t('label.add')}
-                </Button>
-              </Tooltip>
-            </UserSelectableList>
-            {!isTeamDeleted && (
-              <ManageButton
-                canDelete={false}
-                displayName={getEntityName(currentTeam)}
-                entityName={currentTeam.name}
-                entityType={EntityType.USER}
-                extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
-              />
-            )}
-          </Box>
-        }
-        className="mt-0-important border-none"
-        heading={t('label.user')}
-        permission={ungatedFlags.can(Operation.EditUsers)}
-        permissionValue={t('label.edit-entity', {
-          entity: t('label.user'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
-      />
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
+        <CreatePlaceholder
+          data-testid={`assign-error-placeholder-${t('label.user')}`}
+          footer={
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <UserSelectableList
+                hasPermission
+                includeBot
+                selectedUsers={currentTeam?.users ?? []}
+                onUpdate={onAddUser}>
+                <Tooltip arrow placement="top right" title={addUserButtonTitle}>
+                  <Button
+                    color="primary"
+                    data-testid="add-new-user"
+                    iconLeading={Plus}
+                    isDisabled={!editUserPermission || isTeamDeleted}
+                    size="sm">
+                    {t('label.add')}
+                  </Button>
+                </Tooltip>
+              </UserSelectableList>
+              {!isTeamDeleted && (
+                <ManageButton
+                  canDelete={false}
+                  displayName={getEntityName(currentTeam)}
+                  entityName={currentTeam.name}
+                  entityType={EntityType.USER}
+                  extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
+                />
+              )}
+            </Box>
+          }
+          heading={t('label.user')}
+          permission={ungatedFlags.can(Operation.EditUsers)}
+          permissionValue={t('label.edit-entity', {
+            entity: t('label.user'),
+          })}
+        />
+      </div>
     ) : (
-      <ErrorPlaceHolder
-        placeholderText={t('message.no-user-part-of-team', {
-          team: getEntityName(currentTeam),
-        })}
-      />
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={t('message.no-user-part-of-team', {
+            team: getEntityName(currentTeam),
+          })}
+        />
+      </div>
     );
 
   const renderExtraTableFilters = () =>
@@ -491,7 +494,11 @@ export const UserTab = ({
         extraTableFilters={renderExtraTableFilters()}
         loading={isLoading}
         locale={{
-          emptyText: <FilterTablePlaceHolder />,
+          emptyText: (
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+            </div>
+          ),
         }}
         pagination={false}
         rowKey="name"

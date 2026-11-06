@@ -106,6 +106,8 @@ import org.openmetadata.service.util.email.EmailUtil;
 public class BasicAuthenticator implements AuthenticatorHandler {
   // No of cycles to perform hashing, increasing too much slows the algorithm
   private static final int HASHING_COST = 12;
+  static final String EMAIL_CONFIRMATION_PENDING =
+      "Confirm your email address with the link sent to it, then sign in.";
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
 
@@ -136,7 +138,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       String emailDomain = tokens[1];
       Set<String> allowedDomains = allowedRegistrationDomains();
       if (!allowedDomains.contains("all")
-          && allowedDomains.stream().noneMatch(emailDomain::equalsIgnoreCase)) {
+          && allowedDomains.stream()
+              .noneMatch(domain -> SecurityUtil.sameIdentifier(domain, emailDomain))) {
         LOG.error("Email with this Domain not allowed: {}", newRegistrationRequestEmail);
         throw new BadRequestException(
             "Email with the given domain is not allowed. Contact Administrator");
@@ -275,6 +278,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // delete the user's all password reset token as well , since already updated
     tokenRepository.deleteTokenByUserAndType(storedUser.getId(), PASSWORD_RESET.toString());
+    userRepository.endSignIns(storedUser);
 
     // Update user about Password Change
     try {
@@ -328,6 +332,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
     PutResponse<User> response =
         userRepository.createOrUpdate(uriInfo, storedUser, storedUser.getName());
+    userRepository.endSignIns(storedUser);
 
     // in case admin updates , send email to user
     if (request.getRequestType() == USER && getSmtpSettings().getEnableSmtpServer()) {
@@ -441,13 +446,14 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
       throw new AuthenticationException("Refresh token expired. Please login again.");
     }
-    // TODO: currently allow single login from a place, later multiple login can be added
-    // just delete the existing token
-    tokenRepository.deleteToken(requestRefreshToken);
-    // we use rotating refresh token , generate new token
+    // A refresh token is used once: it is replaced by the new one in one statement, so a token
+    // deleted while this request ran, by a concurrent refresh or by a password change ending the
+    // user's sign-ins, leaves nothing to replace and no new token is issued
+    // (ADR:2026-11-03-a-password-change-ends-the-users-sign-ins).
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
-    // save Refresh Token in Database
-    tokenRepository.insertToken(newRefreshToken);
+    if (!tokenRepository.replaceToken(requestRefreshToken, newRefreshToken)) {
+      throw new AuthenticationException("Refresh token is no longer valid. Please login again.");
+    }
     return newRefreshToken;
   }
 
@@ -492,6 +498,21 @@ public class BasicAuthenticator implements AuthenticatorHandler {
               AuditLogRepository.AUTH_EVENT_LOGIN, storedUser.getName(), storedUser.getId());
     }
     return getJwtResponse(storedUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
+  }
+
+  /**
+   * A self-registered account signs in once its address is confirmed: the registration domain
+   * allow-list holds only as long as registering proves the registrant owns the address. Accounts
+   * an admin created, and ones registered while no mail server was set up, have no confirmation
+   * pending and sign in as before. Checked after the password, so it reveals nothing to a guesser.
+   */
+  void requireConfirmedRegistration(User storedUser) {
+    if (!Boolean.TRUE.equals(storedUser.getIsEmailVerified())
+        && !tokenRepository
+            .findByUserIdAndType(storedUser.getId(), EMAIL_VERIFICATION.toString())
+            .isEmpty()) {
+      throw new AuthenticationException(EMAIL_CONFIRMATION_PENDING);
+    }
   }
 
   /**
@@ -574,6 +595,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
     LoginAttemptCache.getInstance().recordSuccessfulLogin(failedLoginKey(omUser));
+    requireConfirmedRegistration(omUser);
   }
 
   /**

@@ -542,14 +542,13 @@ const CreateUser = ({
                         : ([] as EntityReference[]).concat(domains)
                     )
                   }>
-                  <Button
-                    aria-label={t('label.add-entity', {
-                      entity: t('label.domain'),
-                    })}
+                  <ButtonUtility
                     color="primary"
                     data-testid="add-domain"
-                    iconLeading={Plus}
-                    size="xs"
+                    icon={Plus}
+                    tooltip={t('label.add-entity', {
+                      entity: t('label.domain'),
+                    })}
                   />
                 </DomainSelectableList>
               </Box>
@@ -570,8 +569,8 @@ const CreateUser = ({
       {!isUndefined(inlineAlertDetails) && (
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}
-      <Box gap={1} justify="end">
-        <Button color="link-color" data-testid="cancel-user" onClick={onCancel}>
+      <Box gap={3} justify="end">
+        <Button color="secondary" data-testid="cancel-user" onClick={onCancel}>
           {t('label.cancel')}
         </Button>
         <Button

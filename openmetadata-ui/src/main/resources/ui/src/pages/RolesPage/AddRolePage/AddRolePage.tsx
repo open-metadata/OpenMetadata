@@ -234,7 +234,7 @@ const AddRolePage = () => {
                   gap={2}
                   itemClassName="layout-space-item">
                   <Button
-                    color="link-color"
+                    color="secondary"
                     data-testid="cancel-btn"
                     onClick={handleCancel}>
                     {t('label.cancel')}

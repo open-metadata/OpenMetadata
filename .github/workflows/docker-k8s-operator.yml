@@ -46,7 +46,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mvn -DskipTests clean package -pl openmetadata-k8s-operator -am
+          mvn -DskipTests clean install -pl openmetadata-k8s-operator -am
 
       - name: Run K8s Operator Tests
         run: |

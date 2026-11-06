@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import { Connections } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { FC } from 'react';
-import { ReactComponent as ConnectionsIcon } from '../../../assets/svg/ask-collate-nav-bar/connections-default.svg';
 import { SERVICE_CATEGORY_TITLE_KEYS } from '../../../constants/ServiceType.constant';
 import { CONNECTIONS_ROUTES } from '../connections.constants';
 import {
@@ -36,7 +36,8 @@ const findCategoryConfig = (serviceCategory?: string) =>
       category.key === (serviceCategory as ConnectionsServiceCategory)
   );
 
-const getCategoryListPath = (category: ConnectionsServiceCategory) =>
+/** A category's tab on the Connections listing. */
+export const getCategoryListPath = (category: ConnectionsServiceCategory) =>
   `${CONNECTIONS_ROUTE}?${CATEGORY_PARAM}=${category}`;
 
 export const getConnectionsRootBreadcrumb = (
@@ -44,7 +45,7 @@ export const getConnectionsRootBreadcrumb = (
 ): Omit<BreadcrumbItemType, 'id'> => ({
   label: null,
   ariaLabel: t('label.connection-plural'),
-  icon: ConnectionsIcon as FC<{ className?: string }>,
+  icon: Connections as FC<{ className?: string }>,
   href: CONNECTIONS_ROUTE,
 });
 

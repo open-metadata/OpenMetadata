@@ -52,14 +52,9 @@ const TestWrapper = ({ children }: { children: ReactNode }) => (
   </QueryClientProvider>
 );
 
-jest.mock(
-  '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>ErrorPlaceHolderIngestion</div>);
-  }
-);
+jest.mock('../../../common/AirflowSetupGuide/AirflowSetupGuide', () => {
+  return jest.fn().mockImplementation(() => <div>AirflowSetupGuide</div>);
+});
 
 jest.mock('./AddIngestionButton.component', () => {
   return jest.fn().mockImplementation(() => <div>AddIngestionButton</div>);
@@ -194,7 +189,7 @@ describe('Ingestion', () => {
 
     expect(screen.getByTestId('metadata-agent-group')).toBeInTheDocument();
     expect(screen.getByText('AirflowMessageBanner')).toBeInTheDocument();
-    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
+    expect(screen.queryByText('AirflowSetupGuide')).toBeNull();
   });
 
   it('should keep listing the agents when the pipeline service is unavailable', async () => {
@@ -218,7 +213,7 @@ describe('Ingestion', () => {
 
     expect(screen.getByTestId('metadata-agent-group')).toBeInTheDocument();
     expect(screen.getByText('AirflowMessageBanner')).toBeInTheDocument();
-    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
+    expect(screen.queryByText('AirflowSetupGuide')).toBeNull();
   });
 
   it('should list the agents while the status call is still in flight', async () => {
@@ -243,7 +238,7 @@ describe('Ingestion', () => {
 
     expect(screen.getByTestId('metadata-agent-group')).toBeInTheDocument();
     expect(screen.queryByTestId('agent-group-skeleton')).toBeNull();
-    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
+    expect(screen.queryByText('AirflowSetupGuide')).toBeNull();
   });
 
   it('should replace the add-agent control with a placeholder while the status call is in flight', async () => {

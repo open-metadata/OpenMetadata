@@ -11,13 +11,28 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
+import {
+  APIRequestContext,
+  Browser,
+  expect,
+  Locator,
+  Page,
+  TestInfo,
+} from '@playwright/test';
+import { Ontology } from '../../src/generated/entity/data/ontology';
+import { OntologyConcept } from '../../src/generated/entity/data/ontologyConcept';
 import { ACTION_TIMEOUT } from '../constant/common';
-import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
-import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
-import { sidebarClick } from '../utils/sidebar';
+import { UserClass } from '../support/user/UserClass';
+import { deleteFixtureEntity, okJson } from './apiResponse';
+import {
+  getAuthContext,
+  getToken,
+  redirectToHomePage,
+  scrollIntoViewAndSettle,
+  uuid,
+} from './common';
 import { waitForResponseWithStatus } from './waitHelpers';
 
 export interface GraphTermRef {
@@ -27,40 +42,58 @@ export interface GraphTermRef {
 
 export const DANGLING_GRAPH_NODE_ID = '00000000-0000-0000-0000-000000000000';
 
-export async function applyGlossaryFilter(page: Page, glossaryId: string) {
-  const studioGlossaryMenu = page.getByTestId('ontology-glossary-menu-trigger');
-  if (await studioGlossaryMenu.isVisible()) {
-    if ((await studioGlossaryMenu.getAttribute('aria-expanded')) !== 'true') {
-      await studioGlossaryMenu.click();
-    }
-    const glossaryOption = page.getByTestId(glossaryId);
-    await glossaryOption.scrollIntoViewIfNeeded();
-    await glossaryOption.click();
-    await expect(studioGlossaryMenu).toHaveAttribute('aria-expanded', 'false');
-    await expect(studioGlossaryMenu).toHaveAttribute(
-      'data-selected-glossary-id',
-      glossaryId
-    );
+/** The scope menu lists 20 ontologies at a time, so a fixture on a shared backend is found by searching for it. */
+export async function findOntologyInScopeMenu(
+  page: Page,
+  ontology: Pick<Ontology, 'id' | 'name'>
+) {
+  await page.getByTestId('ontology-scope-search').fill(ontology.name);
 
-    return;
-  }
+  return page.getByTestId(`ontology-scope-${ontology.id}`);
+}
 
-  await page.getByTestId('search-dropdown-glossaryIds').click();
-  await page.getByTestId(glossaryId).click();
-  const termsResponse = waitForResponseWithStatus(
-    page,
-    (response) =>
-      response.request().method() === 'GET' &&
-      response.url().includes('/api/v1/glossaryTerms'),
-    200,
-    { timeout: ACTION_TIMEOUT }
+/** The query picker lists 20 ontologies at a time; Show more reveals the rest until the fixture's row is on screen. */
+export async function findOntologyInQueryPicker(
+  page: Page,
+  ontology: Pick<Ontology, 'id'>
+) {
+  const option = page.getByTestId(
+    `ontology-query-picker-option-${ontology.id}`
   );
-  await page.getByTestId('update-btn').click();
-  await termsResponse;
+  const showMore = page.getByTestId('ontology-query-picker-show-more');
+  await expect(page.getByTestId('ontology-query-picker')).toBeVisible();
+  await expect
+    .poll(
+      async () => {
+        if ((await option.count()) === 0 && (await showMore.count()) > 0) {
+          await showMore.click();
+        }
+
+        return option.count();
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(1);
+
+  return option;
+}
+
+export async function applyGlossaryFilter(page: Page, glossaryId: string) {
+  const scopeMenu = page.getByTestId('ontology-scope-menu-trigger');
+  if ((await scopeMenu.getAttribute('aria-expanded')) !== 'true') {
+    await scopeMenu.click();
+  }
+  const glossaryOption = page.getByTestId(glossaryId);
+  await glossaryOption.scrollIntoViewIfNeeded();
+  await glossaryOption.click();
+  await expect(scopeMenu).toHaveAttribute('aria-expanded', 'false');
+  await expect(scopeMenu).toHaveAttribute(
+    'data-scope-key',
+    `glossary:${glossaryId}`
+  );
 }
 
 export async function navigateToOntologyStudio(page: Page) {
-  await redirectToHomePage(page);
   const glossaryResponse = waitForResponseWithStatus(
     page,
     (response) =>
@@ -70,9 +103,13 @@ export async function navigateToOntologyStudio(page: Page) {
     { timeout: ACTION_TIMEOUT }
   );
 
-  await sidebarClick(page, SidebarItem.ONTOLOGY_EXPLORER);
+  await page.goto('/governance/ontology?scope=glossary:all');
   await glossaryResponse;
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+  await expect(page.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+    'data-scope-key',
+    'glossary:all'
+  );
 }
 
 export async function waitForGraphLoaded(page: Page) {
@@ -142,6 +179,104 @@ export async function readNodePositions(
           { x: number; y: number }
         >
     );
+}
+
+export type GraphPoints = Record<string, { x: number; y: number }>;
+
+/**
+ * Client-space points the studio graph publishes for specs: node centres,
+ * edge midpoints and the Edit-mode connect handles.
+ */
+/** The studio's own graph, never the SPARQL results graph that query mode mounts beside it. */
+const STUDIO_GRAPH_CONTAINER =
+  '.ontology-g6-container:not([data-testid="ontology-sparql-result-graph"] *)';
+
+export async function readGraphPoints(
+  page: Page,
+  kind: 'node' | 'edge' | 'port'
+): Promise<GraphPoints> {
+  return page
+    .locator(STUDIO_GRAPH_CONTAINER)
+    .evaluate((el: HTMLElement, key) => {
+      const raw = {
+        node: el.dataset.nodePositions,
+        edge: el.dataset.edgePositions,
+        port: el.dataset.portPositions,
+      }[key];
+
+      return JSON.parse(raw ?? '{}') as Record<
+        string,
+        { x: number; y: number }
+      >;
+    }, kind);
+}
+
+/** Waits until the graph publishes a point for every id, then returns them. */
+export async function waitForGraphPoints(
+  page: Page,
+  kind: 'node' | 'edge' | 'port',
+  ids: string[]
+): Promise<GraphPoints> {
+  let points: GraphPoints = {};
+  await expect
+    .poll(async () => {
+      points = await readGraphPoints(page, kind);
+
+      return ids.every(
+        (id) => Number.isFinite(points[id]?.x) && Number.isFinite(points[id]?.y)
+      );
+    })
+    .toBe(true);
+
+  return points;
+}
+
+/** A canvas point at least `clearance` px from every node, inside the graph area. */
+export async function findEmptyCanvasPoint(
+  page: Page,
+  clearance = 160
+): Promise<{ x: number; y: number }> {
+  // The graph re-fits when a side panel opens or closes, so measure only once
+  // two reads agree.
+  let previous = '';
+  let positions = await readNodePositions(page);
+  await expect
+    .poll(
+      async () => {
+        positions = await readNodePositions(page);
+        const current = JSON.stringify(positions);
+        const settled = current === previous;
+        previous = current;
+
+        return settled;
+      },
+      { intervals: [300], timeout: 6000 }
+    )
+    .toBe(true);
+  // Measured after the settle: the panel that just closed resizes the canvas.
+  const box = await page.locator(STUDIO_GRAPH_CONTAINER).boundingBox();
+  if (!box) {
+    throw new Error('The graph canvas is not rendered');
+  }
+  const nodes = Object.values(positions);
+  const candidates = [];
+  for (let x = box.x + 120; x < box.x + box.width - 120; x += 40) {
+    for (let y = box.y + 120; y < box.y + box.height - 120; y += 40) {
+      candidates.push({ x, y });
+    }
+  }
+  const distance = (point: { x: number; y: number }) =>
+    Math.min(
+      ...nodes.map((node) => Math.hypot(node.x - point.x, node.y - point.y))
+    );
+  const best = candidates.sort((a, b) => distance(b) - distance(a))[0];
+  if (!best || distance(best) < clearance) {
+    throw new Error(
+      'No empty canvas point is at least ' + clearance + 'px from a node'
+    );
+  }
+
+  return best;
 }
 
 export async function clickFirstGraphNode(page: Page): Promise<void> {
@@ -622,4 +757,172 @@ export async function waitForNodeAbsent(
     termId,
     { timeout: 20000 }
   );
+}
+
+export const STUDIO_PATH = '/governance/ontology';
+
+export type OntologyRoleName =
+  | 'OntologyAuthor'
+  | 'OntologyReviewer'
+  | 'DataSteward'
+  | 'DataConsumer';
+
+/** A signed-up user holding exactly the named roles, on top of the DataConsumer default the signup grants. */
+export async function createUserWithRoles(
+  api: APIRequestContext,
+  roles: OntologyRoleName[]
+): Promise<UserClass> {
+  const user = new UserClass();
+  await user.create(api);
+  for (const roleName of roles.filter((name) => name !== 'DataConsumer')) {
+    const role = await okJson<{ id: string }>(
+      await api.get(`/api/v1/roles/name/${roleName}`),
+      `Read the ${roleName} role`
+    );
+    await okJson(
+      await api.patch(`/api/v1/users/${user.responseData.id}`, {
+        data: [
+          {
+            op: 'add',
+            path: '/roles/-',
+            value: { id: role.id, type: 'role' },
+          },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      }),
+      `Assign ${roleName}`
+    );
+  }
+
+  return user;
+}
+
+/** A signed-in page for the user, in its own browser context so two roles can act in one test. */
+export async function openPageAs(
+  browser: Browser,
+  user: UserClass
+): Promise<Page> {
+  const page = await browser.newPage();
+  await user.signIn(page);
+
+  return page;
+}
+
+export interface FlowOntologyOptions {
+  prefix: string;
+  ownerIds?: string[];
+  reviewerIds?: string[];
+  concepts?: string[];
+}
+
+export async function createFlowConcept(
+  api: APIRequestContext,
+  ontology: Ontology,
+  label: string
+): Promise<OntologyConcept> {
+  return okJson<OntologyConcept>(
+    await api.post('/api/v1/ontologyConcepts', {
+      data: {
+        name: label,
+        ontology: ontology.fullyQualifiedName,
+        conceptType: 'OWL_CLASS',
+        description: `${label} definition`,
+      },
+    }),
+    `Create the ${label} concept`
+  );
+}
+
+/** An ontology with a name unique to the run, because hard delete archives one that has releases and archived names stay taken. */
+export async function createFlowOntology(
+  api: APIRequestContext,
+  {
+    prefix,
+    ownerIds = [],
+    reviewerIds = [],
+    concepts = [],
+  }: FlowOntologyOptions
+): Promise<{ ontology: Ontology; concepts: OntologyConcept[] }> {
+  const name = `${prefix}_${uuid()}`;
+  const ontology = await okJson<Ontology>(
+    await api.post('/api/v1/ontologies', {
+      data: {
+        name,
+        iri: `https://example.org/${name}`,
+        namespace: `https://example.org/${name}/`,
+        owners: ownerIds.map((id) => ({ id, type: 'user' })),
+        reviewers: reviewerIds.map((id) => ({ id, type: 'user' })),
+      },
+    }),
+    'Create the flow ontology'
+  );
+  const created: OntologyConcept[] = [];
+  for (const label of concepts) {
+    created.push(await createFlowConcept(api, ontology, label));
+  }
+
+  return { ontology, concepts: created };
+}
+
+export async function removeFlowOntologies(
+  api: APIRequestContext,
+  ontologies: Array<Ontology | undefined>
+): Promise<void> {
+  for (const ontology of ontologies) {
+    if (ontology) {
+      await deleteFixtureEntity(
+        api,
+        `/api/v1/ontologies/${ontology.id}?recursive=true&hardDelete=true`
+      );
+    }
+  }
+}
+
+export async function openOntologyInStudio(
+  page: Page,
+  ontologyId: string,
+  query = ''
+): Promise<void> {
+  await page.goto(`${STUDIO_PATH}?ontology=${ontologyId}${query}`);
+  await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+}
+
+/** Attaches a full-page screenshot to the report under the P1 name, such as `p1-create`. */
+export async function attachStudioShot(
+  page: Page,
+  testInfo: TestInfo,
+  name: string
+): Promise<void> {
+  const path = testInfo.outputPath(`${name}.png`);
+  await page.screenshot({ path, fullPage: true });
+  await testInfo.attach(name, { path, contentType: 'image/png' });
+}
+
+/**
+ * Picks an ontology from a core Select the way a user does in a long list. Past
+ * 100 items the list is virtualized and only the rows in view are in the DOM,
+ * so typing the name lets react-aria's type-to-select focus and scroll to the
+ * row. The trigger is settled in view first because a scroll of its container
+ * after the popover opens closes the popover. A picker that is replaced by the
+ * next step once a row is chosen passes `replacedOnPick` instead of showing the
+ * name in its trigger.
+ */
+export async function selectOntologyOption(
+  page: Page,
+  trigger: Locator,
+  name: string,
+  { replacedOnPick = false }: { replacedOnPick?: boolean } = {}
+) {
+  await scrollIntoViewAndSettle(trigger);
+  await trigger.click();
+  const listbox = page.locator('[role="listbox"]:focus-within');
+  await expect(listbox).toHaveCount(1);
+  await page.keyboard.type(name, { delay: 20 });
+  await listbox.getByRole('option', { name, exact: true }).click();
+  await expect(listbox).toHaveCount(0);
+  if (replacedOnPick) {
+    await expect(trigger).toHaveCount(0);
+  } else {
+    await expect(trigger).toContainText(name);
+  }
 }

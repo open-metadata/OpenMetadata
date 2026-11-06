@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { Box, PageLayout } from '@openmetadata/ui-core-components';
 import {
-  Box,
-  EmptyPlaceholder,
-  PageLayout,
-} from '@openmetadata/ui-core-components';
-import { Stars01 } from '@openmetadata/ui-core-components/icons';
+  Documents,
+  Stars01,
+  UploadCloud01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
@@ -32,11 +32,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useSearchParams } from 'react-router-dom';
-import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
@@ -56,6 +55,7 @@ import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { BulkOperationResult } from '../../../generated/type/bulkOperationResult';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { queryClient } from '../../../queryClient';
 import {
   bulkDeleteDriveFiles,
@@ -156,7 +156,7 @@ const ContextCenterDocumentsEmptyState: FC<
 
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           hasCreatePermission
             ? [
@@ -173,7 +173,7 @@ const ContextCenterDocumentsEmptyState: FC<
         features={[
           {
             key: 'upload',
-            icon: <UploadIcon className="tw:text-fg-brand-primary" />,
+            icon: <UploadCloud01 className="tw:text-fg-brand-primary" />,
             title: t('label.upload-files'),
             description: t(
               'message.context-center-documents-empty-feature-upload'
@@ -181,7 +181,7 @@ const ContextCenterDocumentsEmptyState: FC<
           },
           {
             key: 'organize',
-            icon: <FolderIcon className="tw:text-fg-warning-primary" />,
+            icon: <Documents className="tw:text-fg-warning-primary" />,
             title: t('label.organize-with-folders'),
             description: t(
               'message.context-center-documents-empty-feature-organize'
@@ -197,7 +197,6 @@ const ContextCenterDocumentsEmptyState: FC<
           },
         ]}
         title={t('label.your-files-ready-for-ai-retrieval')}
-        variant="features"
       />
     </div>
   );
@@ -249,6 +248,7 @@ const ContextCenterDeleteFileModal: FC<ContextCenterDeleteFileModalProps> = ({
 
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { getResourcePermission } = usePermissionProvider();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -881,7 +881,9 @@ const ContextCenterDocumentsPage: FC = () => {
 
   return (
     <Box
-      className={`tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-documents-page"
       direction="col">
       <DocumentTitle title={t('label.document-plural')} />

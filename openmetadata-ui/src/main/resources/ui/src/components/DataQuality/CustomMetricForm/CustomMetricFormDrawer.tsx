@@ -10,19 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid } from '@openmetadata/ui-core-components';
+import { Box, Grid } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { omit } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import {
+  FORM_DRAWER_WIDTH_WITHOUT_HINT,
+  FORM_DRAWER_WIDTH_WITH_HINT,
+} from '../../../constants/common/formHint.constants';
 import { CustomMetric, Table } from '../../../generated/entity/data/table';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { putCustomMetric } from '../../../rest/customMetricAPI';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { ShowHintToggle } from '../../common/atoms/drawer/ShowHintToggle';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import SingleColumnProfile from '../../Database/Profiler/TableProfiler/SingleColumnProfile';
 import TableProfilerChart from '../../Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart';
@@ -50,6 +55,7 @@ const CustomMetricFormDrawer = ({
   const location = useCustomLocation();
   const navigate = useNavigate();
   const isEditMode = Boolean(metric);
+  const [showHint, setShowHint] = useState(true);
   const form = useForm<CustomMetric>({
     defaultValues: { name: '', expression: '' },
   });
@@ -184,14 +190,23 @@ const CustomMetricFormDrawer = ({
             entity: isColumnMetric ? t('label.column') : t('label.table'),
           }),
       hookForm: form,
-      width: '80vw',
+      // pr-10 clears the header's absolutely positioned close button.
+      headerActions: (
+        <Box className="tw:pr-10">
+          <ShowHintToggle isSelected={showHint} onChange={setShowHint} />
+        </Box>
+      ),
+      // Without the hint, narrow the drawer instead of stretching the form.
+      width: showHint
+        ? FORM_DRAWER_WIDTH_WITH_HINT
+        : FORM_DRAWER_WIDTH_WITHOUT_HINT,
       // Columns scroll on their own: drop Content's padding, gap and stacking.
       body: { className: 'tw:flex-row tw:gap-0 tw:px-0 tw:md:px-0' },
       form: (
         <Grid className="tw:size-full tw:min-h-0">
           <Grid.Item
             className="drawer-form-content tw:min-h-0 tw:overflow-y-auto tw:px-4 tw:py-6 tw:md:px-6"
-            span={14}>
+            span={showHint ? 14 : 24}>
             <CustomMetricForm
               form={form}
               isColumnMetric={isColumnMetric}
@@ -200,12 +215,14 @@ const CustomMetricFormDrawer = ({
               onFinish={submit}
             />
           </Grid.Item>
-          <Grid.Item
-            className="tw:min-h-0 tw:overflow-y-auto tw:border-l tw:border-secondary tw:bg-secondary tw:p-6"
-            data-testid="custom-metric-profile-preview"
-            span={10}>
-            {profilePreview}
-          </Grid.Item>
+          {showHint && (
+            <Grid.Item
+              className="tw:min-h-0 tw:overflow-y-auto tw:border-l tw:border-secondary tw:bg-secondary tw:p-6"
+              data-testid="custom-metric-profile-preview"
+              span={10}>
+              {profilePreview}
+            </Grid.Item>
+          )}
         </Grid>
       ),
       submitLabel: isEditMode ? t('label.save') : t('label.create'),

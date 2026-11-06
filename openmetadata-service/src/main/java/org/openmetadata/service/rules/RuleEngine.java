@@ -1,11 +1,13 @@
 package org.openmetadata.service.rules;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.github.jamsesso.jsonlogic.JsonLogic;
 import io.github.jamsesso.jsonlogic.JsonLogicException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.Getter;
@@ -41,8 +43,7 @@ public class RuleEngine {
 
   public Object apply(String rule, Map<String, Object> context) {
     try {
-      rule = unescapeFilter(rule);
-      return jsonLogicThreadLocal.get().apply(rule, context);
+      return jsonLogicThreadLocal.get().apply(normalizeRule(rule), context);
     } catch (Exception e) {
       // Return false, falls back to triggering workflow
       return false;
@@ -54,6 +55,18 @@ public class RuleEngine {
    */
   public void evaluate(EntityInterface<?> facts) {
     evaluate(facts, null, true, false);
+  }
+
+  /**
+   * Whether an entity's rules can only be judged once it inherits: it has data products but no
+   * domain of its own, so the domain the data products are checked against may come from its
+   * parent. A create or PUT builds the entity before the parent is attached, so these are checked
+   * by the repository after it is ({@code EntityRepository#evaluateRulesDeferredUntilInherited}).
+   */
+  public static boolean dependsOnInheritedDomains(EntityInterface<?> entity) {
+    return !nullOrEmpty(entity.getDataProducts())
+        && listOrEmpty(entity.getDomains()).stream()
+            .allMatch(domain -> Boolean.TRUE.equals(domain.getInherited()));
   }
 
   public void evaluate(EntityInterface<?> facts, boolean enforcePlatform, boolean enforceContract) {
@@ -167,6 +180,16 @@ public class RuleEngine {
     return getEnabledEntitySemantics().stream().anyMatch(rule -> ruleName.equals(rule.getName()));
   }
 
+  /**
+   * Whether any enabled platform rule is built on the given JSON Logic operation (e.g. {@code
+   * validateDataProductDomainMatch}). Matches on the rule's logic rather than its name, which admins
+   * can edit.
+   */
+  public boolean isOperationEnabled(String operation) {
+    return getEnabledEntitySemantics().stream()
+        .anyMatch(rule -> JsonUtils.readTree(rule.getRule()).has(operation));
+  }
+
   private List<SemanticsRule> getEnabledEntitySemantics() {
     try {
       if (Entity.getSystemRepository() == null) {
@@ -188,11 +211,11 @@ public class RuleEngine {
   private void validateRule(Object facts, SemanticsRule rule) throws RuleValidationException {
     try {
       JsonLogic jsonLogic = jsonLogicThreadLocal.get();
-      Object rawResult = jsonLogic.apply(rule.getRule(), JsonUtils.getMap(facts));
+      Object rawResult = jsonLogic.apply(normalizeRule(rule.getRule()), JsonUtils.getMap(facts));
       if (!(rawResult instanceof Boolean result) || !result) {
         throw new RuleValidationException(rule, "Entity does not satisfy the rule");
       }
-    } catch (JsonLogicException e) {
+    } catch (JsonLogicException | JsonProcessingException e) {
       throw new RuleValidationException(rule, e.getMessage(), e);
     }
   }
@@ -207,11 +230,29 @@ public class RuleEngine {
     }
   }
 
-  private static String unescapeFilter(String filterLogic) throws JsonProcessingException {
+  private static String normalizeRule(String filterLogic) throws JsonProcessingException {
     Object ruleObj = JsonUtils.getObjectMapper().readValue(filterLogic, Object.class);
     if (ruleObj instanceof String) {
       ruleObj = JsonUtils.getObjectMapper().readValue((String) ruleObj, Object.class);
     }
-    return JsonUtils.getObjectMapper().writeValueAsString(ruleObj);
+    return JsonUtils.getObjectMapper().writeValueAsString(rewriteLegacyTierVar(ruleObj));
+  }
+
+  // Before #36609 the UI Tier field saved rules against {"var":"tier"}, but a serialized entity
+  // carries its tier only as a Tier.* entry in `tags`. Rewriting at evaluation time fixes every
+  // already-stored rule (workflows, triggers, data asset rules) without a migration or redeploy.
+  private static Object rewriteLegacyTierVar(Object node) {
+    if (node instanceof List<?> list) {
+      return list.stream().map(RuleEngine::rewriteLegacyTierVar).toList();
+    }
+    if (node instanceof Map<?, ?> map) {
+      if (map.size() == 1 && "tier".equals(map.get("var"))) {
+        return Map.of("var", "tags");
+      }
+      Map<Object, Object> rewritten = new LinkedHashMap<>();
+      map.forEach((key, value) -> rewritten.put(key, rewriteLegacyTierVar(value)));
+      return rewritten;
+    }
+    return node;
   }
 }

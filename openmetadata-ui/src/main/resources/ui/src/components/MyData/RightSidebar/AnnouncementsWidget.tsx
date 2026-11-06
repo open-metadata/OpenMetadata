@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 import { Alert, Box, Typography } from '@openmetadata/ui-core-components';
+import { Announcement02 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
-import { ReactComponent as AnnouncementsEmptyIcon } from '../../../assets/svg/announcment-no-data-placeholder.svg';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import './announcements-widget.less';
 
@@ -49,20 +48,20 @@ function AnnouncementsWidget({
     if (isEmpty(announcements)) {
       return (
         <div className="flex-center h-full">
-          <ErrorPlaceHolder
-            icon={
-              <AnnouncementsEmptyIcon
-                height={SIZE.X_SMALL}
-                width={SIZE.X_SMALL}
-              />
-            }
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography as="p">
-              {t('message.no-entity-data-available', {
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder
+              data-testid="no-data-placeholder"
+              icon={
+                <Announcement02
+                  className="tw:text-utility-gray-500"
+                  size={Number(SIZE.X_SMALL)}
+                />
+              }
+              title={t('message.no-entity-data-available', {
                 entity: t('label.announcement-lowercase'),
               })}
-            </Typography>
-          </ErrorPlaceHolder>
+            />
+          </div>
         </div>
       );
     }
@@ -80,7 +79,7 @@ function AnnouncementsWidget({
               showIcon={false}
               title={
                 <Box align="center" className="announcement-alert-heading">
-                  <AnnouncementIcon width={20} />
+                  <Announcement02 size={20} />
                   <span className="text-sm p-l-xss">
                     {t('label.announcement')}
                   </span>
