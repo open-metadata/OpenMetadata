@@ -17,12 +17,12 @@ import {
   Database01,
   Grid01,
   LayersThree01,
+  PlatformLineage,
   Shield01,
+  Sparkle,
   Zap,
 } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
-import { ReactComponent as LineageIcon } from '../../../assets/svg/agents/lineage.svg';
-import { ReactComponent as SparkleIcon } from '../../../assets/svg/agents/sparkle.svg';
 import { convertSecondsToHumanReadableFormat } from '../../../utils/date-time/DateTimeUtils';
 import {
   Agent,
@@ -154,8 +154,8 @@ export const AGENT_TYPE_ICON: Record<string, SvgComponent> = {
   Metadata: Database01,
   Usage: Zap,
   Profiler: Grid01,
-  Lineage: LineageIcon,
-  'Auto Classification': SparkleIcon,
+  Lineage: PlatformLineage,
+  'Auto Classification': Sparkle,
   dbt: Code01,
   Tier: LayersThree01,
   Documentation: BookClosed,

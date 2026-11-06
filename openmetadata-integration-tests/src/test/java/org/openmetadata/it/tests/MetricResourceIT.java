@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,6 +37,7 @@ import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.ShortStackFactory;
+import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -989,6 +991,53 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   // ===================================================================
   // HIERARCHY
   // ===================================================================
+
+  @Test
+  void patchCannotCopyAHiddenRelationIntoAReadableField(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String hiddenDescription = "Hidden parent description " + ns.uniqueShortId();
+    Metric hiddenParent =
+        createEntity(
+            createRequest(ns.prefix("copy_hidden_parent"), ns)
+                .withDescription(hiddenDescription)
+                .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN))));
+    Metric child = createChild(ns, "copy_visible_child", hiddenParent);
+
+    withRestrictedEditor(
+        ns,
+        new Rule()
+            .withName("DenyViewingRestrictedMetrics")
+            .withResources(List.of("metric", "metricGroup"))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC))
+            .withCondition("matchAnyTag('" + RESTRICTED_TAG_FQN + "')")
+            .withEffect(Rule.Effect.DENY),
+        editor -> {
+          assertNull(editor.metrics().get(child.getId().toString(), "parent").getParent());
+          for (String from : List.of("/parent/description", "/parent/name")) {
+            JsonNode copy =
+                JSON.createArrayNode()
+                    .add(
+                        JSON.createObjectNode()
+                            .put("op", "copy")
+                            .put("from", from)
+                            .put("path", "/description"));
+            try {
+              editor.metrics().patch(child.getId(), copy);
+            } catch (RuntimeException refused) {
+              // asserted below
+            }
+            String description =
+                editor.metrics().get(child.getId().toString(), "parent").getDescription();
+            assertFalse(
+                description.contains(hiddenDescription)
+                    || description.equals(hiddenParent.getName()),
+                "copy from " + from + " exposed the hidden parent: " + description);
+            assertApiStatus(400, () -> editor.metrics().patch(child.getId(), copy));
+          }
+        });
+    assertEquals(
+        "Child metric", admin.metrics().get(child.getId().toString(), "").getDescription());
+  }
 
   private Metric createChild(TestNamespace ns, String name, Metric parent) {
     return createEntity(
@@ -2614,6 +2663,127 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         .get("data")
         .forEach(link -> linkedIds.add(link.get("asset").get("id").asText()));
     assertEquals(Set.of(firstSource.getId().toString(), laterSource.getId().toString()), linkedIds);
+  }
+
+  @Test
+  void put_reingestingRelatedMetricsIsANoOp(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.ingestionBotClient();
+    String referencedName = ns.prefix("reingested_referenced_metric");
+    String referencingName = ns.prefix("reingested_referencing_metric");
+    Metric referenced = createEntity(createRequest(referencedName, ns));
+    Metric referencing =
+        createEntity(
+            createRequest(referencingName, ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+
+    for (int run = 0; run < 2; run++) {
+      client
+          .getHttpClient()
+          .execute(HttpMethod.PUT, "/v1/metrics", createRequest(referencedName, ns), Metric.class);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/metrics",
+              createRequest(referencingName, ns)
+                  .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())),
+              Metric.class);
+    }
+
+    Metric fetchedReferenced = getEntityWithFields(referenced.getId().toString(), "relatedMetrics");
+    Metric fetchedReferencing =
+        getEntityWithFields(referencing.getId().toString(), "relatedMetrics");
+    assertEquals(referenced.getVersion(), fetchedReferenced.getVersion());
+    assertEquals(referencing.getVersion(), fetchedReferencing.getVersion());
+    assertEquals(
+        List.of(referencing.getId()),
+        fetchedReferenced.getRelatedMetrics().stream().map(EntityReference::getId).toList());
+    assertEquals(
+        List.of(referenced.getId()),
+        fetchedReferencing.getRelatedMetrics().stream().map(EntityReference::getId).toList());
+  }
+
+  @Test
+  void put_byUserReplacesRelatedMetrics(TestNamespace ns) {
+    String referencedName = ns.prefix("user_put_referenced_metric");
+    Metric referenced = createEntity(createRequest(referencedName, ns));
+    Metric referencing =
+        createEntity(
+            createRequest(ns.prefix("user_put_referencing_metric"), ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/metrics", createRequest(referencedName, ns), Metric.class);
+
+    assertNoRelatedMetrics(referenced);
+    assertNoRelatedMetrics(referencing);
+  }
+
+  @Test
+  void put_byBotNeverRemovesRelatedMetric(TestNamespace ns) throws Exception {
+    String referencedName = ns.prefix("bot_put_referenced_metric");
+    String referencingName = ns.prefix("bot_put_referencing_metric");
+    Metric referenced = createEntity(createRequest(referencedName, ns));
+    Metric referencing =
+        createEntity(
+            createRequest(referencingName, ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+    String botToken = BulkApi.botToken();
+
+    BulkOperationResult dropped =
+        BulkApi.upsert("metrics", List.of(createRequest(referencingName, ns)), false, botToken);
+    BulkOperationResult forceSynced =
+        BulkApi.upsert(
+            "metrics",
+            List.of(
+                createRequest(referencedName, ns),
+                createRequest(referencingName, ns)
+                    .withRelatedMetrics(List.of(referenced.getFullyQualifiedName()))),
+            true,
+            botToken);
+
+    assertEquals(0, dropped.getNumberOfRowsFailed());
+    assertEquals(0, forceSynced.getNumberOfRowsFailed());
+    assertEquals(
+        List.of(referenced.getId()),
+        getEntityWithFields(referencing.getId().toString(), "relatedMetrics")
+            .getRelatedMetrics()
+            .stream()
+            .map(EntityReference::getId)
+            .toList());
+    assertEquals(
+        List.of(referencing.getId()),
+        getEntityWithFields(referenced.getId().toString(), "relatedMetrics")
+            .getRelatedMetrics()
+            .stream()
+            .map(EntityReference::getId)
+            .toList());
+  }
+
+  @Test
+  void patch_removesRelatedMetricFromBothSides(TestNamespace ns) {
+    Metric referenced = createEntity(createRequest(ns.prefix("patch_referenced_metric"), ns));
+    Metric referencing =
+        createEntity(
+            createRequest(ns.prefix("patch_referencing_metric"), ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+
+    Metric toPatch = getEntityWithFields(referencing.getId().toString(), "relatedMetrics");
+    toPatch.setRelatedMetrics(List.of());
+    patchEntity(referencing.getId().toString(), toPatch);
+
+    assertNoRelatedMetrics(referencing);
+    assertNoRelatedMetrics(referenced);
+  }
+
+  private void assertNoRelatedMetrics(Metric metric) {
+    assertTrue(
+        listOrEmpty(
+                getEntityWithFields(metric.getId().toString(), "relatedMetrics")
+                    .getRelatedMetrics())
+            .isEmpty(),
+        metric.getName() + " should have no related metrics");
   }
 
   @Test

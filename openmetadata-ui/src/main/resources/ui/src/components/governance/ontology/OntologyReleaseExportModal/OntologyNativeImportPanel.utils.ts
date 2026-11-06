@@ -15,7 +15,10 @@ import { CreateOntology } from '../../../../generated/api/data/createOntology';
 import { CreateOntologyChangeSet } from '../../../../generated/api/data/createOntologyChangeSet';
 import {
   Format,
+  Kind,
+  NativeOntologyImportItem,
   NativeOntologyImportSummary,
+  Status,
 } from '../../../../generated/api/data/nativeOntologyImportSummary';
 import type { Ontology } from '../../../../generated/entity/data/ontology';
 import {
@@ -25,6 +28,7 @@ import {
 } from '../../../../rest/ontologyAPI';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { getOwnersOrCurrentUser } from '../../../Glossary/AddGlossary/AddGlossary.utils';
+import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
 
 export const NATIVE_IMPORT_MAX_BYTES = 10 * 1024 * 1024;
 export const NATIVE_IMPORT_DETECT_WINDOW = 65_536;
@@ -66,6 +70,8 @@ export type NativeImportParse =
       kind: 'ready';
       summary: NativeOntologyImportSummary;
       changeSet?: CreateOntologyChangeSet;
+      /** Ids of the items the user keeps ticked; only NEW and UPDATE items can be. */
+      selection: ReadonlySet<string>;
     }
   | { kind: 'failed'; message: string };
 
@@ -91,6 +97,11 @@ export type NativeImportAction =
       changeSet?: CreateOntologyChangeSet;
     }
   | { type: 'parseFailed'; parseId: number; message: string }
+  | {
+      type: 'selectionChanged';
+      parseId: number;
+      selection: ReadonlySet<string>;
+    }
   | { type: 'targetChanged'; token: number; target: NativeImportTarget };
 
 export const INITIAL_NATIVE_IMPORT_STATE: NativeImportState = {
@@ -143,6 +154,107 @@ const reduceFile = (
   };
 };
 
+/** NEW and UPDATE carry an operation; the rest only explain why nothing will change. */
+export const isSelectableItem = (item: NativeOntologyImportItem) =>
+  item.status === Status.New || item.status === Status.Update;
+
+export const importItemsOf = (
+  summary: NativeOntologyImportSummary
+): readonly NativeOntologyImportItem[] => summary.items ?? [];
+
+export const itemsOfKind = (
+  items: readonly NativeOntologyImportItem[],
+  kind: Kind
+) => items.filter((item) => item.kind === kind);
+
+export const initialSelection = (
+  summary: NativeOntologyImportSummary
+): ReadonlySet<string> =>
+  new Set(
+    importItemsOf(summary)
+      .filter(isSelectableItem)
+      .map(({ id }) => id)
+  );
+
+/** The NEW concepts of the same import that an item states a fact about. */
+const requiredConcepts = (
+  items: readonly NativeOntologyImportItem[],
+  item: NativeOntologyImportItem
+) =>
+  (item.dependsOnIris ?? []).flatMap((iri) =>
+    items.filter(
+      (candidate) =>
+        candidate.kind === Kind.Concept &&
+        candidate.status === Status.New &&
+        candidate.iri === iri
+    )
+  );
+
+/** The unticked concept that blocks ticking this item, if any. */
+export const unmetRequirement = (
+  items: readonly NativeOntologyImportItem[],
+  selection: ReadonlySet<string>,
+  item: NativeOntologyImportItem
+) =>
+  requiredConcepts(items, item).find((concept) => !selection.has(concept.id));
+
+export interface UntickedDependents {
+  readonly name: string;
+  readonly relationships: number;
+  readonly rules: number;
+  readonly properties: number;
+}
+
+/**
+ * Unticks `ids`, and with each concept the relationships, rules and properties
+ * that state a fact about it or name it in their domain or range, because applying one without the concept is refused.
+ * Ticking the concept again leaves them unticked.
+ */
+export const untickWithDependents = (
+  items: readonly NativeOntologyImportItem[],
+  selection: ReadonlySet<string>,
+  ids: readonly string[]
+): {
+  readonly selection: ReadonlySet<string>;
+  readonly notices: readonly UntickedDependents[];
+} => {
+  const next = new Set(selection);
+  const removed = new Set(ids);
+  removed.forEach((id) => next.delete(id));
+  const notices = items
+    .filter(
+      (item) =>
+        removed.has(item.id) &&
+        selection.has(item.id) &&
+        item.kind === Kind.Concept &&
+        item.iri
+    )
+    .flatMap((concept) => {
+      const dependents = items.filter(
+        (item) =>
+          next.has(item.id) && item.dependsOnIris?.includes(concept.iri ?? '')
+      );
+      dependents.forEach(({ id }) => next.delete(id));
+
+      return dependents.length === 0
+        ? []
+        : [
+            {
+              name: concept.label,
+              relationships: dependents.filter(
+                ({ kind }) => kind === Kind.Relationship
+              ).length,
+              rules: dependents.filter(({ kind }) => kind === Kind.Rule).length,
+              properties: dependents.filter(
+                ({ kind }) => kind === Kind.Property
+              ).length,
+            },
+          ];
+    });
+
+  return { selection: next, notices };
+};
+
 const reduceParse = (
   state: NativeImportState,
   action: Exclude<NativeImportAction, FileAction>
@@ -167,7 +279,15 @@ const reduceParse = (
               kind: 'ready',
               summary: action.summary,
               changeSet: action.changeSet,
+              selection: initialSelection(action.summary),
             },
+          }
+        : state;
+    case 'selectionChanged':
+      return action.parseId === state.parseId && state.parse.kind === 'ready'
+        ? {
+            ...state,
+            parse: { ...state.parse, selection: action.selection },
           }
         : state;
     default:
@@ -199,6 +319,51 @@ export const nativeImportReducer = (
 ): NativeImportState =>
   isFileAction(action) ? reduceFile(state, action) : reduceParse(state, action);
 
+export const NATIVE_IMPORT_ITEM_GROUPS = [
+  { kind: Kind.Concept, labelKey: 'label.concept-plural' },
+  { kind: Kind.Property, labelKey: 'label.property-plural' },
+  { kind: Kind.Relationship, labelKey: 'label.relationship-plural' },
+  { kind: Kind.Rule, labelKey: 'label.rule-plural' },
+] as const satisfies readonly { kind: Kind; labelKey: string }[];
+
+export const NATIVE_IMPORT_STATUS_LABEL_KEYS: Record<Status, string> = {
+  [Status.AlreadyExists]: 'label.already-exists',
+  [Status.Duplicate]: 'label.duplicate',
+  [Status.New]: 'label.new',
+  [Status.Skipped]: 'label.skipped',
+  [Status.Update]: 'label.update',
+};
+
+/**
+ * Keeps the operations of the chosen items. The preview names each operation
+ * on its item, so an unticked item drops exactly its own operation.
+ */
+export const selectChanges = <T extends { operations?: { id?: string }[] }>(
+  changeSet: T,
+  summary: NativeOntologyImportSummary,
+  selection: ReadonlySet<string>
+): T => {
+  const items = importItemsOf(summary);
+  if (items.length === 0) {
+    return changeSet;
+  }
+  const kept = new Set(
+    items
+      .filter((item) => selection.has(item.id) && item.operationId)
+      .map((item) => item.operationId)
+  );
+  const operations = (changeSet.operations ?? []).filter(
+    (operation) => operation.id !== undefined && kept.has(operation.id)
+  );
+
+  return { ...changeSet, operations, undoCursor: operations.length };
+};
+
+export const selectedCount = (
+  summary: NativeOntologyImportSummary,
+  selection: ReadonlySet<string>
+) => importItemsOf(summary).filter(({ id }) => selection.has(id)).length;
+
 export const hasImportableChanges = (summary: NativeOntologyImportSummary) => {
   const { counts } = summary;
 
@@ -211,6 +376,23 @@ export const hasImportableChanges = (summary: NativeOntologyImportSummary) => {
     0
   );
 };
+
+/** Undefined when the preview has no item list, so the Import button keeps its plain label. */
+export const itemImportCount = (
+  summary: NativeOntologyImportSummary,
+  selection: ReadonlySet<string>
+) =>
+  importItemsOf(summary).length > 0
+    ? selectedCount(summary, selection)
+    : undefined;
+
+export const hasSelectedChanges = (
+  summary: NativeOntologyImportSummary,
+  selection: ReadonlySet<string>
+) =>
+  importItemsOf(summary).length > 0
+    ? selectedCount(summary, selection) > 0
+    : hasImportableChanges(summary);
 
 /** The one message the panel shows, in the order the steps can fail. */
 export const nativeImportErrorMessage = (
@@ -256,10 +438,15 @@ const slugOf = (text: string) =>
 export const nativeImportOntologyRequest = (
   label: string | undefined,
   fileName: string,
-  userId: string
+  userId: string,
+  identityOf?: (title: string) => GeneratedOntologyIdentity | undefined
 ): CreateOntology => {
-  const id = generateUUID();
   const title = label?.trim() || fileStem(fileName);
+  const identity = identityOf?.(title);
+  if (identity) {
+    return { ...identity, owners: getOwnersOrCurrentUser([], userId) };
+  }
+  const id = generateUUID();
 
   return {
     name: `${slugOf(title) || 'ontology'}-${id}`,
@@ -342,12 +529,16 @@ export const parseNativeImportFile = async (
   }
 };
 
+export const selectionOf = (parse: NativeImportParse): ReadonlySet<string> =>
+  parse.kind === 'ready' ? parse.selection : new Set();
+
 /** Which of Parse and Import the user may press right now. */
 export const nativeImportActionFlags = (
   state: NativeImportState,
   context: {
     canUseTarget: boolean;
     isBusy: boolean;
+    isIdentityReady: boolean;
     isLockedOrBusy: boolean;
   }
 ) => {
@@ -362,8 +553,11 @@ export const nativeImportActionFlags = (
       context.canUseTarget &&
       !context.isLockedOrBusy,
     canImport:
-      Boolean(summary && hasImportableChanges(summary)) &&
+      Boolean(
+        summary && hasSelectedChanges(summary, selectionOf(state.parse))
+      ) &&
       context.canUseTarget &&
+      context.isIdentityReady &&
       !context.isBusy,
   };
 };
@@ -376,3 +570,22 @@ export const readySummaryOf = (state: NativeImportState) =>
 
 export const pick = <T>(condition: boolean, whenTrue: T, whenFalse: T) =>
   condition ? whenTrue : whenFalse;
+
+export const isNewImportTarget = (
+  state: NativeImportState,
+  ontology?: Ontology
+) => state.target === 'new' || !ontology;
+
+export const importBusyOf = (
+  state: NativeImportState,
+  isInstalling: boolean
+) => {
+  const isParsing = state.parse.kind === 'pending';
+
+  return { isParsing, isBusy: isParsing || isInstalling };
+};
+
+export const isFileChoiceDisabled = (
+  isLockedOrBusy: boolean,
+  canUseTarget: boolean
+) => isLockedOrBusy || !canUseTarget;

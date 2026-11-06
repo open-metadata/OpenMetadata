@@ -27,6 +27,7 @@ import {
   ChevronRight,
   FilePlus02,
   FilterFunnel01,
+  Memories,
   Plus,
   Search,
   Share05,
@@ -37,8 +38,6 @@ import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { ReactComponent as FunnelIcon } from '../../../assets/svg/action-icons/funnel.svg';
-import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
@@ -224,6 +223,7 @@ interface ContextCenterMemoriesModalsProps {
   memoryToView?: ContextMemory;
   memoryToDelete?: ContextMemory;
   onModalClose: () => void;
+  onModalNavigate: () => void;
   onModalSuccess: () => void;
   onViewModalClose: () => void;
   onEditMemory: (memory: ContextMemory) => void;
@@ -244,6 +244,7 @@ const ContextCenterMemoriesModals = ({
   memoryToView,
   memoryToDelete,
   onModalClose,
+  onModalNavigate,
   onModalSuccess,
   onViewModalClose,
   onEditMemory,
@@ -266,6 +267,7 @@ const ContextCenterMemoriesModals = ({
         onClose={onModalClose}
         onCreated={onModalSuccess}
         onDeleted={onModalSuccess}
+        onNavigate={onModalNavigate}
         onUpdated={onModalSuccess}
       />
 
@@ -283,6 +285,7 @@ const ContextCenterMemoriesModals = ({
           onCreated={onViewModalClose}
           onDeleted={onModalSuccess}
           onEditMemory={onEditMemory}
+          onNavigate={onModalNavigate}
           onUpdated={onModalSuccess}
         />
       )}
@@ -757,11 +760,16 @@ const ContextCenterMemoriesPage: FC = () => {
     void fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
-  const handleModalClose = useCallback(() => {
+  // Following a link out of a memory keeps ?memory in history, so Back reopens it.
+  const handleModalNavigate = useCallback(() => {
     setIsCreateModalOpen(false);
     setMemoryToEdit(undefined);
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
+  }, []);
+
+  const handleModalClose = useCallback(() => {
+    handleModalNavigate();
     if (memoryName !== null) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
@@ -770,7 +778,7 @@ const ContextCenterMemoriesPage: FC = () => {
         return next;
       });
     }
-  }, [memoryName, setSearchParams]);
+  }, [handleModalNavigate, memoryName, setSearchParams]);
 
   useEffect(() => {
     if (!memoryName) {
@@ -910,7 +918,7 @@ const ContextCenterMemoriesPage: FC = () => {
                 features={[
                   {
                     key: 'write',
-                    icon: <MemoryIcon className="tw:text-fg-brand-primary" />,
+                    icon: <Memories className="tw:text-fg-brand-primary" />,
                     title: t('label.write-the-fact'),
                     description: t(
                       'message.context-center-memories-empty-feature-write'
@@ -1085,6 +1093,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         <Input
                           // eslint-disable-next-line jsx-a11y/no-autofocus -- focus search on dropdown open
                           autoFocus
+                          autoComplete="off"
                           className="tw:w-full"
                           icon={Search}
                           placeholder={t('label.search-entity', {
@@ -1187,7 +1196,7 @@ const ContextCenterMemoriesPage: FC = () => {
                   <Dropdown.Root>
                     <Button
                       color="secondary"
-                      iconLeading={FunnelIcon}
+                      iconLeading={FilterFunnel01}
                       iconTrailing={ChevronDown}
                       size="md">
                       {t('label.sort')}: {getSortLabel(SORT_OPTIONS, sortBy)}
@@ -1275,6 +1284,7 @@ const ContextCenterMemoriesPage: FC = () => {
         onConfirmDelete={handleConfirmDelete}
         onEditMemory={handleEditMemory}
         onModalClose={handleModalClose}
+        onModalNavigate={handleModalNavigate}
         onModalSuccess={handleModalSuccess}
         onViewModalClose={handleModalClose}
       />

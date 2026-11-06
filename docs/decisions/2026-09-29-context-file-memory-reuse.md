@@ -1,7 +1,7 @@
 # File extraction reuses an existing memory before it creates a duplicate
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-09-29 (initial)
+- **Revisions:** v1 2026-09-29 (initial) · v2 2026-11-03 (deduplication keeps conflicting numbers)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `FileContextProcessingEngineTest`, `ContextMemoryExtractorTest`,
   `ContextMemoryReconcilerTest`, `SemanticMemoryDuplicateFinderTest`
@@ -106,3 +106,10 @@ finder have focused tests alongside reconciliation tests.
   the queried alias expose `embedding` without the expected `knn_vector` mapping. The new code
   uses regular memory search as a fallback when deployed there.
 - Decide whether existing duplicate memories need a separate backfill or consolidation job.
+
+## Amendment
+
+v2 (2026-11-03): extraction no longer deduplicates by question alone. It keeps every answer whose
+numbers conflict with each kept answer to the same question, and re-extraction matches exact
+question and answer before similarity, never pairing conflicting numbers. See
+ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values.

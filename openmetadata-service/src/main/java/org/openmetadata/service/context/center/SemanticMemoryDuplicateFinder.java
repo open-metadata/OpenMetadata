@@ -5,12 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
-import java.util.regex.MatchResult;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
@@ -36,7 +32,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   private static final int CANDIDATE_LIMIT = 5;
   private static final int KNN_LIMIT = 20;
-  private static final Pattern NUMBERS = Pattern.compile("\\d+(?:\\.\\d+)?");
   private static final String EQUIVALENCE_PROMPT =
       "The input is JSON data containing one proposed memory and candidate memories. "
           + "Choose a candidate only if its question and answer express the same factual claim "
@@ -204,17 +199,11 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
         && repository.hasOrgWideAnchor(candidate);
   }
 
+  /** The rule re-extraction uses: only a replaced number, by value, makes a different fact. */
   private boolean hasConflictingNumbers(ContextMemory candidate, ContextMemory derived) {
-    Set<String> candidateNumbers = numbers(candidate);
-    Set<String> derivedNumbers = numbers(derived);
-    return !candidateNumbers.isEmpty()
-        && !derivedNumbers.isEmpty()
-        && !candidateNumbers.equals(derivedNumbers);
-  }
-
-  private Set<String> numbers(ContextMemory memory) {
-    String text = memory.getQuestion() + " " + memory.getAnswer();
-    return NUMBERS.matcher(text).results().map(MatchResult::group).collect(Collectors.toSet());
+    return MemoryTextSimilarity.hasConflictingNumbers(
+        candidate.getQuestion() + " " + candidate.getAnswer(),
+        derived.getQuestion() + " " + derived.getAnswer());
   }
 
   private boolean sameFactText(ContextMemory candidate, ContextMemory derived) {

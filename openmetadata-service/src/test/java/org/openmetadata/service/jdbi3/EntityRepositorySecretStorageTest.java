@@ -297,6 +297,23 @@ class EntityRepositorySecretStorageTest {
   }
 
   @Test
+  void sameNamedPipelinesOfDifferentServicesKeepTheirOwnVaultEntries() {
+    InMemorySecretsManager vault =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig("namesake-storage-test", "", List.of(), null)) {};
+    SecretsManagerFactory.setSecretsManager(vault);
+
+    vault.encryptIngestionPipeline(pipeline("first-service-secret"));
+    vault.encryptIngestionPipeline(pipeline("second-service-secret"));
+
+    assertTrue(
+        vault
+            .getSecretsMap()
+            .values()
+            .containsAll(List.of("first-service-secret", "second-service-secret")));
+  }
+
+  @Test
   void botStorageEncryptsAuthenticationCredentials() {
     assertEncrypted(
         new UserRepository().serializeForStorage(bot()),

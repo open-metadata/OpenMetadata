@@ -42,6 +42,18 @@ jest.mock('../../rest/axiosClient', () => ({
   put: jest.fn(),
   delete: jest.fn(),
 }));
+let mockIdentityReady = true;
+const mockFreshIdentity = jest.fn();
+jest.mock(
+  '../governance/ontology/OntologyCreateForm/useOntologyIdentitySource',
+  () => ({
+    useOntologyIdentitySource: () => ({
+      isReady: mockIdentityReady,
+      identityOf: () => undefined,
+      refreshIdentityOf: async () => mockFreshIdentity,
+    }),
+  })
+);
 jest.mock('../../hooks/useAppMode', () => ({
   ...jest.requireActual('../../hooks/useAppMode'),
   useIsAiMode: jest.fn().mockReturnValue(false),
@@ -185,7 +197,12 @@ const openInstalledPack = async () => {
 const chooseExisting = async () => {
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: /label.install-to/ }));
-  await user.click(await screen.findByRole('option', { name: 'Sales' }));
+  const option = await screen.findByRole('option', { name: 'Sales' });
+  // The pack review starts from the click's re-render and resolves after user-event
+  // returns; only a click held inside act() delivers that result to the tree.
+  await act(async () => {
+    await user.click(option);
+  });
 };
 const creates = () => post.mock.calls.filter(([url]) => url === '/ontologies');
 const drafts = () =>
@@ -252,6 +269,7 @@ describe('OntologyLibrary native installation', () => {
     jest.clearAllMocks();
     (useIsAiMode as jest.Mock).mockReturnValue(false);
     permit(true);
+    mockFreshIdentity.mockReset();
     created = { ...target, id: 'created-id' };
     catalogueInstallations = [];
     get.mockImplementation(async (url) => {
@@ -362,6 +380,42 @@ describe('OntologyLibrary native installation', () => {
     ).toBe(false);
   });
 
+  it('names the new ontology from the ontology list read when Install is pressed', async () => {
+    mockFreshIdentity.mockReturnValue({
+      name: 'fhir-reference-2',
+      displayName: 'FHIR Reference (2)',
+      iri: 'urn:test:fhir-reference-2',
+      namespace: 'urn:test:fhir-reference-2:',
+    });
+    renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+    await openPack();
+
+    await install();
+
+    expect(await openInstalledPack()).toBeVisible();
+    expect(creates()[0][1]).toEqual(
+      expect.objectContaining({
+        name: 'fhir-reference-2',
+        displayName: 'FHIR Reference (2)',
+        iri: 'urn:test:fhir-reference-2',
+      })
+    );
+  });
+
+  it('keeps Install disabled for a new ontology until its name and IRI source has loaded', async () => {
+    mockIdentityReady = false;
+    try {
+      renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+      await openPack();
+
+      expect(
+        await screen.findByTestId('ontology-library-native-install')
+      ).toBeDisabled();
+    } finally {
+      mockIdentityReady = true;
+    }
+  });
+
   it('installs and opens the graph from the AI-mode pack detail', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     const native = nativeProps();
@@ -413,6 +467,40 @@ describe('OntologyLibrary native installation', () => {
       '/ontologies/created-id/library/fhir/preview',
       { moduleIds: ['core', 'clinical'] }
     );
+  });
+
+  it('keeps the modules the user selected when the target changes to an existing ontology', async () => {
+    renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+    await openPack();
+
+    expect(screen.getByTestId('ontology-pack-concept-count')).toHaveTextContent(
+      '2'
+    );
+
+    await chooseExisting();
+
+    expect(screen.getByTestId('ontology-pack-concept-count')).toHaveTextContent(
+      '2'
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-module-clinical'));
+
+    expect(screen.getByTestId('ontology-pack-concept-count')).toHaveTextContent(
+      '5'
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /label.install-to/ }));
+    await user.click(
+      await screen.findByRole('option', { name: /label.new-ontology-for-pack/ })
+    );
+
+    expect(screen.getByTestId('ontology-pack-concept-count')).toHaveTextContent(
+      '5'
+    );
+    expect(
+      screen.getByTestId('ontology-pack-relationship-count')
+    ).toHaveTextContent('3');
   });
 
   it('installs into an explicitly chosen owner and completes no-op without a draft', async () => {
@@ -487,7 +575,9 @@ describe('OntologyLibrary native installation', () => {
       expect(
         screen.getByTestId('ontology-library-native-install')
       ).toBeDisabled();
-      expect(post).not.toHaveBeenCalled();
+      expect(
+        post.mock.calls.filter(([url]) => !String(url).endsWith('/review'))
+      ).toHaveLength(0);
     }
   );
 
@@ -499,9 +589,11 @@ describe('OntologyLibrary native installation', () => {
     await install();
 
     expect(creates()).toHaveLength(1);
-    expect(post.mock.calls.some(([url]) => url.includes('/library/'))).toBe(
-      false
-    );
+    expect(
+      post.mock.calls.some(
+        ([url]) => url.includes('/library/') && !url.endsWith('/review')
+      )
+    ).toBe(false);
     expect(screen.getByTestId('ontology-library-close')).toBeDisabled();
     expect(screen.getByTestId('ontology-library-back')).toBeDisabled();
 
@@ -611,7 +703,7 @@ describe('OntologyLibrary native installation', () => {
   it('keeps the created target on preview failure and retries its selected modules', async () => {
     let failPreview = true;
     post.mockImplementation(async (url, data) => {
-      if (url.includes('/library/') && failPreview) {
+      if (url.endsWith('/preview') && failPreview) {
         failPreview = false;
 
         throw new Error('preview failed');
