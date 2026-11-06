@@ -1095,3 +1095,39 @@ def test_a_dataset_keyed_in_dependencies_is_read(sigma_over_http, routes):
     routes["GET", "/v2/files/49HFLTr6xytgrPly3PFsNC"] = sigma_file("49HFLTr6xytgrPly3PFsNC", "PETS", "dataset")
 
     assert [node.name for node in source.client.get_lineage_details("wb-1", "el-wb-1") or []] == ["PETS"]
+
+
+def sigma_connection(connection_id: str, connection_type: str) -> dict:
+    return {
+        "organizationId": "org-1",
+        "connectionId": connection_id,
+        "isSample": False,
+        "isAuditLog": False,
+        "lastActiveAt": "2026-01-02T00:00:00Z",
+        "name": f"Warehouse {connection_id}",
+        "type": connection_type,
+        "useOauth": False,
+        "createdBy": "member-1",
+        "updatedBy": "member-1",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-02T00:00:00Z",
+    }
+
+
+def test_connection_types_come_from_one_listing_of_every_page(sigma_over_http, routes):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/connections"] = {"entries": [sigma_connection("conn-sf", "snowflake")], "nextPage": "2"}
+    routes["GET", "/v2/connections", "2"] = {"entries": [sigma_connection("conn-bq", "bigQuery")], "nextPage": None}
+
+    types = [source.client.get_connection_type(connection) for connection in ("conn-sf", "conn-bq", "conn-other")]
+
+    assert types == ["snowflake", "bigQuery", None]
+    assert calls["GET", "/v2/connections"] == 2
+
+
+def test_a_failed_connection_listing_leaves_types_unknown_without_relisting(sigma_over_http, routes):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/connections"] = 500
+
+    assert [source.client.get_connection_type("conn-sf") for _ in range(2)] == [None, None]
+    assert calls["GET", "/v2/connections"] == 1

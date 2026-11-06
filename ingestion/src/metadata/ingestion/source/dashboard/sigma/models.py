@@ -122,6 +122,16 @@ class NodeDetails(BaseModel):
         return None
 
 
+class Connection(BaseModel):
+    connectionId: str  # noqa: N815
+    type: str
+
+
+class ConnectionsResponse(BaseModel):
+    entries: list[Connection] = []
+    nextPage: str | None = None  # noqa: N815
+
+
 class WorkbookQuery(BaseModel):
     elementId: str  # noqa: N815
     name: str | None = None

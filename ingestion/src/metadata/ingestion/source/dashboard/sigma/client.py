@@ -24,6 +24,7 @@ from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.sigma.models import (
     AuthToken,
+    ConnectionsResponse,
     EdgeSource,
     EdgeSourceResponse,
     Elements,
@@ -91,6 +92,7 @@ class SigmaApiClient:
         # source must not delete what this run did not see.
         self.workbooks_incomplete = False
         self.elements_incomplete = False
+        self._connection_types: LRUCache[str, str] | None = None
 
     def get_auth_token(self) -> tuple[str, int]:
         """
@@ -142,6 +144,27 @@ class SigmaApiClient:
             logger.error(f"Error fetching Dashboard details for for workbook {workbook_id}: {exc}")
             self.workbooks_incomplete = True
         return None
+
+    def get_connection_type(self, connection_id: str) -> str | None:
+        """
+        The type of a Sigma connection, such as "snowflake" or "bigQuery". The connections are listed once per
+        run; after a failed listing the types not yet read stay unknown, rather than relisting per lookup.
+        """
+        if self._connection_types is None:
+            self._connection_types = LRUCache(maxsize=512)
+            try:
+                data = None
+                while True:
+                    result = ConnectionsResponse.model_validate(self.client.get("/connections", data=data))
+                    for connection in result.entries:
+                        self._connection_types[connection.connectionId] = connection.type
+                    if not result.nextPage:
+                        break
+                    data = {"page": result.nextPage}
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Failed to list Sigma connections: {exc}")
+        return self._connection_types.get(connection_id)
 
     def get_owner_detail(self, owner_id: str) -> OwnerDetails | None:
         """
