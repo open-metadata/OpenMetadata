@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -973,13 +974,18 @@ public abstract class EntityCsv<T extends EntityInterface> {
     try {
       return CSVFormat.DEFAULT.parse(in).stream().toList();
     } catch (IOException e) {
-      documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
+      documentParserFailure(e);
+    } catch (UncheckedIOException e) {
+      // Commons CSV wraps lexer errors met while iterating records (e.g. a stray character after
+      // a closing quote) in UncheckedIOException.
+      documentParserFailure(e.getCause());
     }
     return null;
   }
 
+  // Returns null on a parser failure, like parse(String), so importCsv(records) aborts cleanly.
   public List<CSVRecord> parse(String csv, boolean recursive) {
-    List<CSVRecord> records = new ArrayList<>();
+    List<CSVRecord> records = null;
     Reader in = new StringReader(csv);
 
     try {
@@ -1014,10 +1020,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
       records = convertToCSVRecords(fixedRows, headers);
 
     } catch (IOException e) {
-      documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
+      documentParserFailure(e);
+    } catch (UncheckedIOException e) {
+      documentParserFailure(e.getCause());
     }
 
     return records;
+  }
+
+  private void documentParserFailure(IOException exception) {
+    documentFailure(
+        failed(CsvParseErrorMessage.describe(exception.getMessage()), CsvErrorType.PARSER_FAILURE));
   }
 
   private List<CSVRecord> convertToCSVRecords(List<List<String>> fixedRows, List<String> headers)
@@ -2243,7 +2256,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   public String failed(String exception, CsvErrorType errorType) {
-    return String.format("#%s: Failed to parse the CSV filed - reason %s", errorType, exception);
+    return String.format("#%s: Failed to parse the CSV file: %s", errorType, exception);
   }
 
   public static String invalidHeader(String expected, String actual) {
