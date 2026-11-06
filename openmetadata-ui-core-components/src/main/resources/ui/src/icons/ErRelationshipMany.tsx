@@ -29,13 +29,13 @@ export const ErRelationshipMany: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M17.393 2.887v14.21M2.607 10h14.21M4.92 2.652l12.306 7.105M4.92 17.348l12.306-7.105"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

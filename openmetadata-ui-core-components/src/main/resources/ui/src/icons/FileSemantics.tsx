@@ -29,29 +29,15 @@ export const FileSemantics: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <rect
-      height={16}
-      rx={2}
-      stroke="currentColor"
-      strokeWidth={1.3}
-      width={13}
-      x={3.5}
-      y={2}
-    />
-    <circle
-      cx={10}
-      cy={12.992}
-      r={3.219}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <rect height={16} rx={2} stroke="currentColor" width={13} x={3.5} y={2} />
+    <circle cx={10} cy={12.992} r={3.219} stroke="currentColor" />
     <path
       d="M10.008 10.16v3.055h3.054M6.463 4.742h7.075M7.834 6.715h4.33"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

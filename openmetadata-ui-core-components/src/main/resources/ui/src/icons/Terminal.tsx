@@ -29,14 +29,11 @@ export const Terminal: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="m3.333 14.167 5-5-5-5M10 15.834h6.667"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="m3.333 14.167 5-5-5-5M10 15.834h6.667" stroke="currentColor" />
   </svg>
 );
 Terminal.displayName = 'Terminal';

@@ -26,6 +26,7 @@ export const AppDataRetentionColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -40,21 +41,18 @@ export const AppDataRetentionColored: FC<Props> = ({
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M18.274 22.501a3.9 3.9 0 1 0 0-7.802 3.9 3.9 0 0 0 0 7.802"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M18.275 16.648v1.654c0 .108 0 .162.017.21q.021.063.07.111c.034.036.082.06.179.109l1.035.517"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient

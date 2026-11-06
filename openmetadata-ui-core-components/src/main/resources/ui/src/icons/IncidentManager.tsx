@@ -29,25 +29,23 @@ export const IncidentManager: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M8.689 12.044H5.311m6.4 2.845h-6.4m10.49-2.489v1.76c0 1.344 0 2.016-.262 2.53a2.4 2.4 0 0 1-1.05 1.048C13.977 18 13.305 18 11.96 18H6.84c-1.344 0-2.016 0-2.53-.262a2.4 2.4 0 0 1-1.048-1.048C3 16.176 3 15.504 3 14.16V5.84c0-1.344 0-2.016.262-2.53A2.4 2.4 0 0 1 4.31 2.262C4.824 2 5.496 2 6.84 2h.96"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M12.954 10.889a4.444 4.444 0 1 0 0-8.889 4.444 4.444 0 0 0 0 8.889"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       className="tw:stroke-bg-primary"
       d="M12.955 3.777v2.311m0 2.312h.008"
       stroke="#fff"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,18 +29,17 @@ export const AppQueryRunner: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M12.4 3.602H7.6c-2.64 0-3.96 0-4.78.82S2 6.562 2 9.202v1.6c0 2.64 0 3.96.82 4.78s2.14.82 4.78.82h4.8c2.64 0 3.96 0 4.78-.82s.82-2.14.82-4.78v-1.6c0-2.64 0-3.96-.82-4.78s-2.14-.82-4.78-.82m-10 3.203h15.2M10 13.203h3.2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="m6 10 .981.846c.413.355.619.533.619.754s-.206.399-.619.754L6 13.2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

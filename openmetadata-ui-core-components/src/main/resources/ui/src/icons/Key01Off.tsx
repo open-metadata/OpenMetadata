@@ -29,13 +29,13 @@ export const Key01Off: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M14.909 7.623a4.076 4.076 0 0 0-8.153 0m-.877 2.915L2 14.418v2.038h2.038v-1.36h1.359v-1.358h1.359l2.398-2.399a4.1 4.1 0 0 0 1.678.36 4.06 4.06 0 0 0 2.85-1.161m-1.491-4.272-.68.679M2 8.11h16"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

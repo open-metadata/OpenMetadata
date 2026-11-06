@@ -29,30 +29,27 @@ export const DataQualityFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.2}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M14.716 4.727c0 1.505-2.846 2.724-6.358 2.724S2 6.231 2 4.727m6.358 7.4C4.847 12.127 2 10.907 2 9.402"
       stroke="currentColor"
-      strokeWidth={1.2}
     />
     <path
       d="M9.561 17.389q-.586.051-1.203.052C4.847 17.441 2 16.125 2 14.501V4.94C2 3.317 4.847 2 8.358 2c3.512 0 6.358 1.317 6.358 2.941v3.71"
       stroke="currentColor"
-      strokeWidth={1.2}
     />
     <path
       d="M16.832 10.684h-6.096a.61.61 0 0 0-.609.61v1.63c0 1.85.95 3.532 2.457 4.5a2.23 2.23 0 0 0 2.4 0 5.35 5.35 0 0 0 2.457-4.5v-1.63a.61.61 0 0 0-.61-.61Z"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.2}
     />
     <path
       className="tw:stroke-bg-primary"
       d="m12.615 13.72.869.827 2.027-1.93"
       stroke="#fff"
-      strokeWidth={1.2}
     />
   </svg>
 );

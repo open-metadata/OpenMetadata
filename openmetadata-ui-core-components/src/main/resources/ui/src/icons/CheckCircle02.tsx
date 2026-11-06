@@ -29,13 +29,13 @@ export const CheckCircle02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M18 9.269v.736a8 8 0 1 1-4.744-7.312M18 3.6l-8 8.008-2.4-2.4"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

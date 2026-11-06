@@ -29,13 +29,13 @@ export const TimeoutButton: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2 10a8 8 0 1 0 1.23-4.264m-.97-3.735.154 1.825c.11 1.315.165 1.973.594 2.342.428.37 1.06.305 2.324.175l1.818-.186"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M13.093 10.23a.4.4 0 0 1 0 .692l-4.339 2.505a.4.4 0 0 1-.6-.346V8.07a.4.4 0 0 1 .6-.347z"

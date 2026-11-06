@@ -29,6 +29,7 @@ export const DragIndicator: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,7 +37,6 @@ export const DragIndicator: FC<Props> = ({
       height={9.199}
       rx={3}
       stroke="currentColor"
-      strokeWidth={1.3}
       width={16}
       x={2}
       y={5.398}
@@ -44,7 +44,6 @@ export const DragIndicator: FC<Props> = ({
     <path
       d="M5.959 8.016v3.965m4.248-3.965v3.965m3.834-3.965v3.965"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

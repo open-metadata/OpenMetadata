@@ -29,13 +29,13 @@ export const LogOut01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M13.333 14.167 17.5 10m0 0-4.167-4.167M17.5 10h-10m0-7.5h-1c-1.4 0-2.1 0-2.635.273a2.5 2.5 0 0 0-1.092 1.093C2.5 4.4 2.5 5.1 2.5 6.5v7c0 1.4 0 2.1.273 2.635a2.5 2.5 0 0 0 1.093 1.093C4.4 17.5 5.1 17.5 6.5 17.5h1"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

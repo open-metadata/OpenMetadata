@@ -29,13 +29,13 @@ export const StreamingLoader: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2.8 4.4 10 2l7.2 2.4L10 6.8zm0 4.8L10 6.8l7.2 2.4-7.2 2.4zm0 4.802 7.2-2.4 7.2 2.4-7.2 2.4z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

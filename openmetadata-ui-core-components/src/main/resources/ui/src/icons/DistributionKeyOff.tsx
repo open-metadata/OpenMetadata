@@ -29,10 +29,11 @@ export const DistributionKeyOff: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g clipPath="url(#a)" stroke="currentColor" strokeWidth={1.3}>
+    <g clipPath="url(#a)" stroke="currentColor">
       <path d="M3.756 15.418V3.801m2.494 9.901-2.493 2.493-2.494-2.493m7.153-9.429h10.319M1.264 9.96h17.472m-10.32 1.935h4.045M8.416 8.086h7.27m-7.27 7.621h2.814" />
     </g>
     <defs>

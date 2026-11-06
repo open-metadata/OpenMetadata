@@ -29,10 +29,11 @@ export const ArchiveFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g clipPath="url(#a)" strokeWidth={1.3}>
+    <g clipPath="url(#a)">
       <path
         d="M16.8 13.068V8.979c0-1.08-.875-1.956-1.955-1.956h-2.051c-.428 0-.845.141-1.185.4l-.642.49a1.925 1.925 0 0 1-2.333 0l-.642-.49c-.34-.259-.757-.4-1.185-.4H4.534c-1.08 0-1.956.876-1.956 1.956v4.089c0 1.08.876 1.955 1.956 1.955h10.31c1.08 0 1.956-.875 1.956-1.955"
         fill="currentColor"

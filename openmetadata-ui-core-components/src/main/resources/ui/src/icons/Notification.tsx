@@ -29,6 +29,7 @@ export const Notification: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,13 +37,11 @@ export const Notification: FC<Props> = ({
       d="M8.973 3.5a4.716 4.716 0 0 0-4.718 4.717v1.488c0 .482-.198 1.204-.446 1.615l-.9 1.502c-.552.928-.17 1.962.85 2.302a16.53 16.53 0 0 0 10.434 0 1.572 1.572 0 0 0 .85-2.302l-.9-1.502"
       stroke="currentColor"
       strokeMiterlimit={10}
-      strokeWidth={1.3}
     />
     <path
       d="M11.315 15.406a2.367 2.367 0 0 1-2.359 2.359c-.644 0-1.24-.27-1.664-.694a2.36 2.36 0 0 1-.694-1.665"
       stroke="currentColor"
       strokeMiterlimit={10}
-      strokeWidth={1.3}
     />
     <path
       className="tw:fill-utility-error-500 tw:stroke-utility-error-500"

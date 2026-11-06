@@ -29,13 +29,13 @@ export const Search: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m17.5 17.5-2.917-2.917m2.083-5a7.083 7.083 0 1 1-14.167 0 7.083 7.083 0 0 1 14.167 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

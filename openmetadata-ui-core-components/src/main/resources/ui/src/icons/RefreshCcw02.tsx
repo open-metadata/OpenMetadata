@@ -29,13 +29,13 @@ export const RefreshCcw02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M1.667 8.333s.101-.708 3.03-3.637a7.5 7.5 0 0 1 12.616 3.637m-15.646 0v-5m0 5h5m11.667 3.333s-.101.708-3.03 3.637a7.5 7.5 0 0 1-12.617-3.636m15.646 0v5m0-5h-5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

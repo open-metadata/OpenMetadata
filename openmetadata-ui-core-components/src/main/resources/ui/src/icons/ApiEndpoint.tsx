@@ -29,13 +29,13 @@ export const ApiEndpoint: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M5.6 15.598a3.6 3.6 0 0 1-.703-7.13c.146-.03.22-.044.264-.07a.26.26 0 0 0 .097-.094c.029-.043.046-.113.08-.253a4.802 4.802 0 0 1 9.324 0c.034.14.051.21.08.253a.26.26 0 0 0 .097.093c.045.027.118.041.264.07a3.601 3.601 0 0 1-.703 7.131z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path d="M13.451 13.38V9.508h.83v3.872z" fill="currentColor" />
     <path

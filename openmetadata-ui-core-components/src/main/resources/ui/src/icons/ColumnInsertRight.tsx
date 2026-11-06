@@ -29,13 +29,13 @@ export const ColumnInsertRight: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M15.9 5.733V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11.866a2 2 0 0 0 2 2h9.9a2 2 0 0 0 2-2v-.42M8.924 2.004l.026 15.424m9.68-6.858h-5.46m2.736 2.735V7.844"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -26,6 +26,7 @@ export const AppRdfInferenceMaterializationColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -40,14 +41,12 @@ export const AppRdfInferenceMaterializationColored: FC<Props> = ({
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M18.277 9.5h-4.55c0 .92 0 1.379.285 1.664.286.286.745.286 1.665.286h.65c.919 0 1.378 0 1.664-.286.286-.285.286-.745.286-1.664M13.4 17.948H16m-2.6-2.6h5.2"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient

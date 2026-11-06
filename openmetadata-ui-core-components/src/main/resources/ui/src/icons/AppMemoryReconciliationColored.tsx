@@ -26,6 +26,7 @@ export const AppMemoryReconciliationColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -40,28 +41,24 @@ export const AppMemoryReconciliationColored: FC<Props> = ({
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M16.649 14.05a2.6 2.6 0 0 1-2.6 2.6m2.601-.654h4.875m-1.3-5.686v.163m.325 0a.325.325 0 1 1-.65 0 .325.325 0 0 1 .65 0"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M20.225 10.473v.325c0 1.225 0 1.838-.38 2.219-.381.38-.994.38-2.22.38h-.975m3.575 8.126v-.325c0-1.226 0-1.839-.38-2.22-.381-.38-.994-.38-2.22-.38h-.975"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M20.225 21.687v-.163m.325 0a.325.325 0 1 0-.65 0 .325.325 0 0 0 .65 0m.974-5.69v.163m.325 0a.325.325 0 1 1-.65 0 .325.325 0 0 1 .65 0"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient

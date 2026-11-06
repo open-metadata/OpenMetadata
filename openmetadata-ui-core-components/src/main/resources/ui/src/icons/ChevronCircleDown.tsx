@@ -29,18 +29,14 @@ export const ChevronCircleDown: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M18 10a8 8 0 1 0-16 0 8 8 0 0 0 16 0Z"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M18 10a8 8 0 1 0-16 0 8 8 0 0 0 16 0Z" stroke="currentColor" />
     <path
       d="M13.2 8.8s-2.356 2.4-3.2 2.4c-.842 0-3.2-2.4-3.2-2.4"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,13 +29,13 @@ export const Zap: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m10.833 1.667-7.422 8.906c-.29.348-.436.523-.438.67a.42.42 0 0 0 .154.331c.115.093.342.093.796.093H10l-.833 6.667 7.423-8.907c.29-.348.436-.523.438-.67a.42.42 0 0 0-.154-.331c-.115-.092-.342-.092-.796-.092H10z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

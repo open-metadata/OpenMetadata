@@ -29,13 +29,13 @@ export const Menu03: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M4.668 10H13M4.669 4.168H18M2 2.69v14.62m2.669-1.478H18"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

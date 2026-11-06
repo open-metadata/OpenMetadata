@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const DateTimeType: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,24 +29,19 @@ export const DateTimeType: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M12.707 2v3.11M6.488 2v3.11m3.109 12.436H8.82c-2.932 0-4.397 0-5.308-.911-.91-.91-.91-2.376-.91-5.308V9.773c0-2.931 0-4.397.91-5.308s2.376-.91 5.308-.91h1.554c2.932 0 4.397 0 5.308.91.91.911.91 2.377.91 5.308v.389M2.602 8.219h13.99"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M14.272 18.002a3.124 3.124 0 1 0 0-6.248 3.124 3.124 0 0 0 0 6.248"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path
-      d="M14.273 13.313v1.561l1.042.521"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M14.273 13.313v1.561l1.042.521" stroke="currentColor" />
   </svg>
 );
 DateTimeType.displayName = 'DateTimeType';

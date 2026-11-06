@@ -29,15 +29,15 @@ export const Persona: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M14.436 16.059c0-.774 0-1.161-.095-1.476a2.22 2.22 0 0 0-1.48-1.479c-.314-.095-.7-.095-1.475-.095H8.614c-.774 0-1.16 0-1.475.095a2.22 2.22 0 0 0-1.479 1.48c-.096.314-.096.7-.096 1.475m6.931-7.486a2.495 2.495 0 1 1-4.99 0 2.495 2.495 0 0 1 4.99 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <circle cx={10} cy={10} r={8} stroke="currentColor" strokeWidth={1.3} />
+    <circle cx={10} cy={10} r={8} stroke="currentColor" />
   </svg>
 );
 Persona.displayName = 'Persona';

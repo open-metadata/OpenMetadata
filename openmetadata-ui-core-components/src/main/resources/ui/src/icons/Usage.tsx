@@ -29,10 +29,11 @@ export const Usage: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g clipPath="url(#a)" stroke="currentColor" strokeWidth={1.3}>
+    <g clipPath="url(#a)" stroke="currentColor">
       <path d="M9.21 2.953a7.2 7.2 0 0 0 0 14.4c.425.023 1.308.011 1.444-.21" />
       <path d="M9.422 6.677V1.363a8.789 8.789 0 0 1 2.063 17.277L9.74 13.282" />
       <circle cx={9.209} cy={10.152} r={3.141} />

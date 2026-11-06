@@ -29,18 +29,17 @@ export const SearchSettings: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m14 14.89 3.111 3.112m-1.776-7.114a5.333 5.333 0 1 0-10.667 0 5.333 5.333 0 0 0 10.667 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M16.903 7.333c.435-.18.781-.526.962-.962C18 6.045 18 5.495 18 4.667c0-.829 0-1.243-.135-1.57a1.78 1.78 0 0 0-.962-.962C16.576 2 16.162 2 15.333 2H4.667c-.829 0-1.243 0-1.57.135-.435.18-.781.527-.962.962C2 3.424 2 3.838 2 4.667c0 .828 0 1.378.135 1.704.18.436.527.782.962.962"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

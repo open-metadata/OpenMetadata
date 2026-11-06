@@ -29,13 +29,13 @@ export const DecimalType: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2.936 2h4.512v5.936H2.936zm0 9.582h4.512v5.936H2.936zm9.617 0h4.512v5.936h-4.512zm3.734-6.613h-5.335m3.619-2.492 2.493 2.493-2.493 2.493"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <circle cx={9.999} cy={17.271} fill="currentColor" r={0.728} />
   </svg>

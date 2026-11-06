@@ -29,28 +29,25 @@ export const Webhook: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M3.833 10.89a3.556 3.556 0 1 0 5.278 3.111h5.333"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="m10 6 2.717 4.891a3.556 3.556 0 1 1-.495 5.884"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M10 6.891a.889.889 0 1 0 0-1.778m0 1.778a.889.889 0 0 1 0-1.778m0 1.778V5.113m-4.445 9.778a.889.889 0 0 0 0-1.778m0 1.778a.889.889 0 0 1 0-1.778m0 1.778v-1.778m8.889 1.778a.889.889 0 0 0 0-1.778m0 1.778a.889.889 0 1 1 0-1.778m0 1.778v-1.778"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M13.555 6a3.556 3.556 0 1 0-5.283 3.11L5.555 14"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

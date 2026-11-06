@@ -29,19 +29,15 @@ export const FolderCheck02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10.732 6H15.8A2.2 2.2 0 0 1 18 8.2v6.6a2.2 2.2 0 0 1-2.2 2.2H4.2A2.2 2.2 0 0 1 2 14.8V5.2A2.2 2.2 0 0 1 4.2 3h3.53a2.2 2.2 0 0 1 1.905 1.1zm0 0H4.5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path
-      d="m8 11.286.747.854a1 1 0 0 0 1.506 0L13 9"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="m8 11.286.747.854a1 1 0 0 0 1.506 0L13 9" stroke="currentColor" />
   </svg>
 );
 FolderCheck02.displayName = 'FolderCheck02';

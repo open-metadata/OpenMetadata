@@ -29,13 +29,13 @@ export const AutoClassification: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M17.75 6.5a4.75 4.75 0 1 1-9.5 0 4.75 4.75 0 0 1 9.5 0Zm-4.8-1.75v3.5m-1.7 5.5v4.5m-4.5-15.5h-4.5m14 15.5h-5m-9-8v-7.5m14 11v4.5m-9.5-8h-4.5m12.5-3.8h-3.5m-9 7.3h5.5v4.5h-5.5z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,13 +29,13 @@ export const LayoutColumns: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.67}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M5.417 3.75h1.667a1.667 1.667 0 0 1 1.667 1.667v9.167a1.667 1.667 0 0 1-1.667 1.667H5.417a1.667 1.667 0 0 1-1.667-1.667V5.417A1.667 1.667 0 0 1 5.417 3.75m7.5 0h1.667a1.667 1.667 0 0 1 1.667 1.667v9.167a1.667 1.667 0 0 1-1.667 1.667h-1.667a1.667 1.667 0 0 1-1.667-1.667V5.417a1.667 1.667 0 0 1 1.667-1.667"
       stroke="currentColor"
-      strokeWidth={1.67}
     />
   </svg>
 );

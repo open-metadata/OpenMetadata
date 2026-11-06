@@ -29,19 +29,15 @@ export const FrameworkFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="m2 14 8 4 8-4M2 10l8 4 8-4"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="m2 14 8 4 8-4M2 10l8 4 8-4" stroke="currentColor" />
     <path
       d="M10.223 2.111a.5.5 0 0 0-.447 0L2.894 5.552a.5.5 0 0 0 0 .895l6.882 3.44a.5.5 0 0 0 .447 0L13.999 8l3.106-1.553a.5.5 0 0 0 0-.895z"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

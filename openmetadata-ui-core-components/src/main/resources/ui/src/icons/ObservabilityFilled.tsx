@@ -29,28 +29,23 @@ export const ObservabilityFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.5}
     viewBox="0 0 21 21"
     width={size}
     {...props}>
     <g clipPath="url(#a)">
-      <path
-        d="M17.649 2.75a7 7 0 1 0-.126 10.12"
-        stroke="currentColor"
-        strokeWidth={1.5}
-      />
+      <path d="M17.649 2.75a7 7 0 1 0-.126 10.12" stroke="currentColor" />
       <path
         d="M14.75 4.75c-1.413 0-3.026.854-4.223 1.65-.992.66-.992 2.04 0 2.7 1.197.796 2.81 1.65 4.224 1.65s3.027-.854 4.224-1.65c.991-.66.991-2.04 0-2.7-1.197-.796-2.81-1.65-4.224-1.65Z"
         stroke="currentColor"
-        strokeWidth={1.5}
       />
       <path d="M14.75 8.75a1 1 0 1 0 0-2 1 1 0 0 0 0 2" fill="currentColor" />
       <path
         d="M7.75 15.244 5.256 12.75l-3.99 3.99a1.763 1.763 0 0 0 2.494 2.494z"
         fill="currentColor"
         stroke="currentColor"
-        strokeWidth={1.5}
       />
-      <path d="m6.75 13.75 1-1" stroke="currentColor" strokeWidth={1.5} />
+      <path d="m6.75 13.75 1-1" stroke="currentColor" />
     </g>
     <defs>
       <clipPath id="a">

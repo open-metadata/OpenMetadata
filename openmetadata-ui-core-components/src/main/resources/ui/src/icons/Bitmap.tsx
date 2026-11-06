@@ -29,23 +29,21 @@ export const Bitmap: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M7.296 6.745a1.206 1.206 0 1 1-2.411 0 1.206 1.206 0 0 1 2.411 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="m17.343 9.158.001 1.206c0 3.6 0 5.4-1.118 6.518-1.118 1.119-2.919 1.119-6.519 1.119s-5.4 0-6.518-1.119C2.07 15.764 2.07 13.964 2.07 10.364s0-5.4 1.119-6.519 2.918-1.118 6.518-1.118l1.206.001"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M4.08 17.598c3.515-4.2 7.456-9.74 13.262-5.995m.585-6.667L14.941 2l-2.935 2.986M14.97 2.02v5.932"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

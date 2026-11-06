@@ -29,41 +29,17 @@ export const ManageCharts: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <circle
-      cx={4.422}
-      cy={12.129}
-      r={1.086}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <circle
-      cx={8.153}
-      cy={6.301}
-      r={1.086}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <circle
-      cx={11.975}
-      cy={10.125}
-      r={1.086}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <circle
-      cx={15.737}
-      cy={4.422}
-      r={1.086}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <circle cx={4.422} cy={12.129} r={1.086} stroke="currentColor" />
+    <circle cx={8.153} cy={6.301} r={1.086} stroke="currentColor" />
+    <circle cx={11.975} cy={10.125} r={1.086} stroke="currentColor" />
+    <circle cx={15.737} cy={4.422} r={1.086} stroke="currentColor" />
     <path
       d="m5.113 11.021 2.25-3.391m4.04 1.572-2.22-2.22m3.422 2.22 2.257-3.909M2 16.66h16m-2.219.003V9.14m-3.806 7.52v-2.805m-3.823 2.806v-5.919m-3.73 5.918v-1.402"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -26,6 +26,7 @@ export const AppCollateAiQualityAgentColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -40,21 +41,18 @@ export const AppCollateAiQualityAgentColored: FC<Props> = ({
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M21.454 16.86h-4.7a.47.47 0 0 0-.47.47v1.257a4.12 4.12 0 0 0 2.82 3.913 4.12 4.12 0 0 0 2.82-3.913v-1.258a.47.47 0 0 0-.47-.47"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="m18.203 19.202.67.638 1.563-1.488"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient

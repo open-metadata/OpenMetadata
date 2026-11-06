@@ -29,18 +29,14 @@ export const WorkflowUndo: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M2.5 6.664h10a5 5 0 0 1 0 10H9.167"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M2.5 6.664h10a5 5 0 0 1 0 10H9.167" stroke="currentColor" />
     <path
       d="m5.833 3.336-.961.73C3.29 5.268 2.5 5.868 2.5 6.67s.79 1.402 2.372 2.603l.961.73"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

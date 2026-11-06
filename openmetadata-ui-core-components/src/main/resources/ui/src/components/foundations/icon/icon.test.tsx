@@ -59,9 +59,13 @@ describe('Icon', () => {
     it('should apply custom strokeWidth to icon component', () => {
       const { container } = render(<Icon iconValue="Cube01" strokeWidth={2} />);
       const svg = container.querySelector('svg');
+      const path = container.querySelector('path');
 
       expect(svg).toBeInTheDocument();
       expect(svg).toHaveStyle({ strokeWidth: 2 });
+      // The path must not carry its own stroke-width presentation attribute,
+      // which would override the inherited value from the root.
+      expect(path).not.toHaveAttribute('stroke-width');
     });
 
     it('should apply custom className to icon component', () => {

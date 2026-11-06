@@ -29,13 +29,13 @@ export const StickyNote: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2.104 17V3a1 1 0 0 1 1-1h13.792a1 1 0 0 1 1 1v8.67a1 1 0 0 1-.134.5l-3.077 5.33a1 1 0 0 1-.866.5H3.104a1 1 0 0 1-1-1"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

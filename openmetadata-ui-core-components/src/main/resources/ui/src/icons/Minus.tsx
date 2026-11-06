@@ -29,10 +29,11 @@ export const Minus: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.8}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M16 10H4" stroke="currentColor" strokeWidth={1.8} />
+    <path d="M16 10H4" stroke="currentColor" />
   </svg>
 );
 Minus.displayName = 'Minus';

@@ -29,13 +29,13 @@ export const SwitchHorizontal01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M17.113 14.444H2.89M6.446 18l-3.555-3.556 3.555-3.555M2.891 5.556h14.222M13.557 9.11l3.556-3.555L13.557 2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

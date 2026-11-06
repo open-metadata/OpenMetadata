@@ -29,6 +29,7 @@ export const ExclamationCircleFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,12 +37,10 @@ export const ExclamationCircleFilled: FC<Props> = ({
       d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M10 6.8V10m.1 3H10m.2 0a.2.2 0 1 1-.4 0 .2.2 0 0 1 .4 0"
       stroke="#fff"
-      strokeWidth={1.3}
     />
   </svg>
 );

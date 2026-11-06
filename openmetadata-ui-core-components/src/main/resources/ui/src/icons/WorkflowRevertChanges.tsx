@@ -29,18 +29,14 @@ export const WorkflowRevertChanges: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M10 17.5A7.5 7.5 0 1 0 3.505 6.25"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M10 17.5A7.5 7.5 0 1 0 3.505 6.25" stroke="currentColor" />
     <path
       d="M2.5 2.5v1.065c0 1.827 0 2.74.59 3.24.589.499 1.49.348 3.291.048L7.5 6.667"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

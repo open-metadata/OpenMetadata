@@ -29,6 +29,7 @@ export const ChevronCollapseVertical: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,7 +37,6 @@ export const ChevronCollapseVertical: FC<Props> = ({
       d="M10 12.2a.27.27 0 0 0-.193.08L7.08 15.03a.276.276 0 0 0 0 .388.27.27 0 0 0 .386 0L10 12.863l2.534 2.555a.27.27 0 0 0 .386 0 .276.276 0 0 0 0-.389l-2.727-2.75A.27.27 0 0 0 10 12.2Zm0-4.4a.27.27 0 0 1-.193-.08L7.08 4.97a.276.276 0 0 1 0-.39.27.27 0 0 1 .386 0L10 7.137l2.534-2.555a.27.27 0 0 1 .386 0 .276.276 0 0 1 0 .388l-2.727 2.75A.27.27 0 0 1 10 7.8Z"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

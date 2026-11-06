@@ -29,19 +29,15 @@ export const McpService: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M16.363 2.61a1.636 1.636 0 1 0 0 3.272 1.636 1.636 0 0 0 0-3.273M3.636 2.61a1.636 1.636 0 1 0 0 3.272 1.636 1.636 0 0 0 0-3.273m11.545 2.723-1.685 1.42m-8.68-1.416 1.606 1.288m9.941 10.766a1.636 1.636 0 1 1 0-3.273 1.636 1.636 0 0 1 0 3.273m-12.727 0a1.636 1.636 0 1 1 0-3.273 1.636 1.636 0 0 1 0 3.273m11.545-2.724-1.685-1.42m-8.68 1.417 1.606-1.288M7.638 6.34h4.509a1.4 1.4 0 0 1 1.4 1.4v4.508a1.4 1.4 0 0 1-1.4 1.4H7.638a1.4 1.4 0 0 1-1.4-1.4V7.74a1.4 1.4 0 0 1 1.4-1.4"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path
-      d="m8.86 10.179.51.581 1.752-1.295"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="m8.86 10.179.51.581 1.752-1.295" stroke="currentColor" />
   </svg>
 );
 McpService.displayName = 'McpService';

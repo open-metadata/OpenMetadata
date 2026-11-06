@@ -29,10 +29,11 @@ export const Plus: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.8}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M10 4v12m6-6H4" stroke="currentColor" strokeWidth={1.8} />
+    <path d="M10 4v12m6-6H4" stroke="currentColor" />
   </svg>
 );
 Plus.displayName = 'Plus';

@@ -29,6 +29,7 @@ export const TotalSize: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,7 +37,6 @@ export const TotalSize: FC<Props> = ({
       height={16}
       rx={2}
       stroke="currentColor"
-      strokeWidth={1.3}
       width={13.265}
       x={3.367}
       y={2}
@@ -44,7 +44,6 @@ export const TotalSize: FC<Props> = ({
     <path
       d="M6.326 6.309h7.346M6.326 10h7.346m-7.346 3.695h7.346"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

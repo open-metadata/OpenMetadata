@@ -29,18 +29,17 @@ export const LineageDownstream: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M5.2 2h9.6A3.2 3.2 0 0 1 18 5.2v9.6a3.2 3.2 0 0 1-3.2 3.2H5.2A3.2 3.2 0 0 1 2 14.8V5.2A3.2 3.2 0 0 1 5.2 2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="m15 12.5-3.934-3.934c-.198-.198-.297-.297-.412-.334a.5.5 0 0 0-.309 0c-.114.037-.213.136-.41.334l-1.37 1.368c-.197.198-.296.297-.41.334a.5.5 0 0 1-.31 0c-.114-.037-.213-.136-.41-.334L5 7.5M15 9v3.5h-3.5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

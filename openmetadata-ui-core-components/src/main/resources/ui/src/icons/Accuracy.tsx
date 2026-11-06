@@ -29,19 +29,12 @@ export const Accuracy: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M12.505 2.4a8 8 0 1 0 5.129 5.2"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <path
-      d="M14 10a4 4 0 1 1-4-4m6-2-6 6m6-6V2m0 2h2"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M12.505 2.4a8 8 0 1 0 5.129 5.2" stroke="currentColor" />
+    <path d="M14 10a4 4 0 1 1-4-4m6-2-6 6m6-6V2m0 2h2" stroke="currentColor" />
   </svg>
 );
 Accuracy.displayName = 'Accuracy';

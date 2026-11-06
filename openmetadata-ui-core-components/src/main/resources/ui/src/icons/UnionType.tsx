@@ -29,13 +29,13 @@ export const UnionType: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10.985 2H3.02a1 1 0 0 0-1 1v7.966a1 1 0 0 0 1 1h3.994a1 1 0 0 1 1 1V17a1 1 0 0 0 1 1h7.966a1 1 0 0 0 1-1V9.034a1 1 0 0 0-1-1h-3.995a1 1 0 0 1-1-1V3a1 1 0 0 0-1-1"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

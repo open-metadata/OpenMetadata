@@ -29,13 +29,13 @@ export const TrendDown01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m18 14-6.295-6.295c-.317-.317-.475-.475-.658-.534a.8.8 0 0 0-.494 0c-.183.059-.341.217-.658.534l-2.19 2.19c-.317.317-.475.475-.658.535a.8.8 0 0 1-.494 0c-.183-.06-.341-.218-.658-.535L2 6m16 2.4V14h-5.6"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

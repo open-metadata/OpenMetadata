@@ -29,6 +29,7 @@ export const MetadataCompletenessFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -39,13 +40,11 @@ export const MetadataCompletenessFilled: FC<Props> = ({
     <path
       d="M10 2.5 3.335 5v5c0 3.667 2.833 7.083 6.667 7.5 3.833-.417 6.666-3.833 6.666-7.5V5z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       className="tw:stroke-bg-primary"
       d="m7.223 10.276 1.944 1.944 3.611-3.61"
       stroke="#fff"
-      strokeWidth={1.3}
     />
   </svg>
 );

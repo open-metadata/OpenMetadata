@@ -29,6 +29,7 @@ export const Copy07: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -37,7 +38,6 @@ export const Copy07: FC<Props> = ({
       rx={2.5}
       stroke="currentColor"
       strokeDasharray="2.6 2.6"
-      strokeWidth={1.3}
       width={11.608}
       x={2.004}
       y={6.391}
@@ -45,13 +45,8 @@ export const Copy07: FC<Props> = ({
     <path
       d="M4.668 5.991V4.5a2.5 2.5 0 0 1 2.5-2.5h8.333A2.5 2.5 0 0 1 18 4.5v8.333a2.5 2.5 0 0 1-2.5 2.5h-1.497"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path
-      d="M7.336 2.001h7.666a3 3 0 0 1 3 3v7.667"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M7.336 2.001h7.666a3 3 0 0 1 3 3v7.667" stroke="currentColor" />
   </svg>
 );
 Copy07.displayName = 'Copy07';

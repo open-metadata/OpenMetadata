@@ -29,13 +29,13 @@ export const SlashCircle02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2 10a8 8 0 1 1 16 0 8 8 0 0 1-16 0Zm5.092 3.272 6.182-6.182"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

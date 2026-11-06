@@ -29,13 +29,13 @@ export const TrendUp02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m5.832 14.165 8.333-8.333m0 8.333V5.832H5.832"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const DateType: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,18 +29,17 @@ export const DateType: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10 14.702v.1m.2 0a.2.2 0 1 1-.4 0 .2.2 0 0 1 .4 0m-.2-3.304v.1m.2 0a.2.2 0 1 1-.4 0 .2.2 0 0 1 .4 0m-4 3.104v.1m.2 0a.2.2 0 1 1-.4 0 .2.2 0 0 1 .4 0m-.2-3.304v.1m.2 0a.2.2 0 1 1-.4 0 .2.2 0 0 1 .4 0m7.402-.1v.1m.2 0a.2.2 0 1 1-.4 0 .2.2 0 0 1 .4 0M13.2 2v3.2M6.8 2v3.2m-4 3.198h14.401"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M10.801 3.602h-1.6c-3.017 0-4.526 0-5.463.937s-.937 2.446-.937 5.463v1.6c0 3.017 0 4.525.937 5.463s2.446.937 5.463.937h1.6c3.017 0 4.526 0 5.463-.937s.937-2.446.937-5.463v-1.6c0-3.017 0-4.526-.937-5.463s-2.446-.937-5.463-.937"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

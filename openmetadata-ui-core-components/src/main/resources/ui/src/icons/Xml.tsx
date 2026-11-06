@@ -29,22 +29,14 @@ export const Xml: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <rect
-      height={14}
-      rx={3}
-      stroke="currentColor"
-      strokeWidth={1.3}
-      width={16}
-      x={2}
-      y={3}
-    />
+    <rect height={14} rx={3} stroke="currentColor" width={16} x={2} y={3} />
     <path
       d="M6.63 7.98 4.612 10l2.02 2.019m6.729-4.039 2.02 2.02-2.02 2.019m-2.018-4.71L8.65 12.693"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

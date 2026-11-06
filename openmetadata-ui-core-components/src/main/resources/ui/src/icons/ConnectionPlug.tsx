@@ -29,25 +29,20 @@ export const ConnectionPlug: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M6 16.93A8 8 0 0 1 2 10a8 8 0 1 1 16 0c0 3.384-2.1 6.277-5.069 7.446C11.39 18.053 10 16.656 10 15v-.51"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M5.928 10.435c0-1.108.898-2.005 2.005-2.005h4.009c1.107 0 2.005.897 2.005 2.005a4.01 4.01 0 1 1-8.019 0Z"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path
-      d="M7.934 8.431V5.926m4.007 2.505V5.926"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M7.934 8.431V5.926m4.007 2.505V5.926" stroke="currentColor" />
   </svg>
 );
 ConnectionPlug.displayName = 'ConnectionPlug';

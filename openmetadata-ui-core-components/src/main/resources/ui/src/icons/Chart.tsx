@@ -29,18 +29,17 @@ export const Chart: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M18 18H8.222c-2.933 0-4.4 0-5.31-.911C2 16.177 2 14.71 2 11.778V2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M18 6.431c-.558-.706-1.315-1.26-2.48-1.26-4.924 0-2.156 7.556-7.447 7.556-1.173 0-1.926-.557-2.501-1.26"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

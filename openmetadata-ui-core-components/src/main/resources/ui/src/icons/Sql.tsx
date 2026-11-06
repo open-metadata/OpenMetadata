@@ -29,22 +29,14 @@ export const Sql: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <rect
-      height={16}
-      rx={8}
-      stroke="currentColor"
-      strokeWidth={1.3}
-      width={16}
-      x={2}
-      y={2}
-    />
+    <rect height={16} rx={8} stroke="currentColor" width={16} x={2} y={2} />
     <path
       d="M10.133 11.377h3.997M5.867 12.41 8.365 10 5.867 7.59"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

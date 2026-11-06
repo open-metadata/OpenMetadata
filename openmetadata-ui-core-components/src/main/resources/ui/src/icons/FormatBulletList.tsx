@@ -29,16 +29,13 @@ export const FormatBulletList: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <circle cx={3.34} cy={7.152} fill="currentColor" r={1.34} />
     <circle cx={3.34} cy={12.847} fill="currentColor" r={1.34} />
-    <path
-      d="M8.303 7.152H18m-9.697 5.692H18"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M8.303 7.152H18m-9.697 5.692H18" stroke="currentColor" />
   </svg>
 );
 FormatBulletList.displayName = 'FormatBulletList';

@@ -26,6 +26,7 @@ export const AppDataInsightsReportColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -40,21 +41,18 @@ export const AppDataInsightsReportColored: FC<Props> = ({
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M21.697 16.343v-.684c0-2.903 0-4.355-.901-5.257-.902-.902-2.354-.902-5.257-.902s-4.354 0-5.256.902-.902 2.354-.902 5.257 0 4.355.902 5.257 2.353.902 5.256.902h.684"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="m22.619 22.502-.93-.929m.31-1.548a1.857 1.857 0 1 1-3.714 0 1.857 1.857 0 0 1 3.715 0"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient

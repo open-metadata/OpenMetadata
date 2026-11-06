@@ -29,6 +29,7 @@ export const BooleanType: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 21 20"
     width={size}
     {...props}>
@@ -36,7 +37,6 @@ export const BooleanType: FC<Props> = ({
       height={10.02}
       rx={2}
       stroke="currentColor"
-      strokeWidth={1.3}
       width={10.02}
       x={2.5}
       y={2.48}
@@ -44,13 +44,8 @@ export const BooleanType: FC<Props> = ({
     <path
       d="M8.48 12.609v2.911a2 2 0 0 0 2 2h6.02a2 2 0 0 0 2-2V9.5a2 2 0 0 0-2-2h-3.825M9.076 5.918 7.51 7.485m0 0L5.934 9.061m1.575-1.576 1.576 1.576M7.51 7.485 5.942 5.918"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path
-      d="m11.91 13.733 1.093 1.093 3.088-3.088"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="m11.91 13.733 1.093 1.093 3.088-3.088" stroke="currentColor" />
   </svg>
 );
 BooleanType.displayName = 'BooleanType';

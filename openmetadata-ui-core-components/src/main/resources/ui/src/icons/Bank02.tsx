@@ -29,13 +29,13 @@ export const Bank02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2.668 17.09h14.5M2 8.367c0-.547.277-1.057.736-1.355l5.521-3.586a3.2 3.2 0 0 1 3.486 0l5.521 3.586a1.616 1.616 0 0 1-.88 2.971H3.616A1.616 1.616 0 0 1 2 8.367Zm6.4 2.196v6.4m3.2-6.4v6.4m4-6.4v6.4m-11.2-6.4v6.4"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

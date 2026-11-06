@@ -29,18 +29,17 @@ export const Location: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M11.202 17.529A1.76 1.76 0 0 1 10 18a1.76 1.76 0 0 1-1.203-.471c-2.955-2.784-6.916-7.01-4.985-11.526C4.856 3.563 7.363 2 10 2s5.144 1.562 6.188 4.003c1.93 4.51-2.022 8.752-4.985 11.526Z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M12.604 8.698a2.605 2.605 0 1 1-5.21 0 2.605 2.605 0 0 1 5.21 0Z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

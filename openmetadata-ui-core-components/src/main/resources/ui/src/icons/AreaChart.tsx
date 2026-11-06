@@ -29,19 +29,18 @@ export const AreaChart: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M18 18H8.222c-2.933 0-4.4 0-5.31-.911C2 16.177 2 14.71 2 11.778V2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M5.246 12.268v2.077h11.375V6.227l-4.248 4.625-2.926-2.596z"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

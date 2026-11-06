@@ -29,18 +29,17 @@ export const ApiService: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M7.872 7.617 6 10l1.872 2.383m4.256-4.766L14 10l-1.872 2.383"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M15.333 3.777H4.667A2.667 2.667 0 0 0 2 6.444v7.111a2.667 2.667 0 0 0 2.667 2.667h10.666A2.667 2.667 0 0 0 18 13.555V6.444a2.667 2.667 0 0 0-2.667-2.667"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

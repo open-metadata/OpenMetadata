@@ -29,13 +29,13 @@ export const FaceSmile: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M6.667 11.667s1.25 1.667 3.333 1.667 3.333-1.667 3.333-1.667M12.5 7.5h.008M7.5 7.5h.008M18.333 10c0 4.603-3.731 8.333-8.333 8.333S1.667 14.603 1.667 10 5.398 1.667 10 1.667 18.333 5.398 18.333 10m-5.417-2.5a.417.417 0 1 1-.833 0 .417.417 0 0 1 .833 0m-5 0a.417.417 0 1 1-.833 0 .417.417 0 0 1 .833 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

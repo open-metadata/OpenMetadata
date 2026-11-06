@@ -29,13 +29,13 @@ export const AppRdfGraphIndexing: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M17.201 16a2 2 0 1 1-4 0 2 2 0 0 1 4 0m0-8a2 2 0 1 1-4 0 2 2 0 0 1 4 0M6.8 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0m0-8a2 2 0 1 1-4 0 2 2 0 0 1 4 0m0 0 6 4-5.6 4 6 4"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

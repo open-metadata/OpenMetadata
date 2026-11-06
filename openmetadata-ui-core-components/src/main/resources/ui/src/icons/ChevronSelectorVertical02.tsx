@@ -29,13 +29,13 @@ export const ChevronSelectorVertical02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.67}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M7.083 5.417 10 2.5l2.917 2.917m-5.834 9.166L10 17.5l2.917-2.917"
       stroke="currentColor"
-      strokeWidth={1.67}
     />
   </svg>
 );

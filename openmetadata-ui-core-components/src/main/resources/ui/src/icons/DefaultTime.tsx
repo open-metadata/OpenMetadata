@@ -29,18 +29,17 @@ export const DefaultTime: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M18 10a8 8 0 1 0-10.505 7.6m.105-6 1.51-1.006A2 2 0 0 0 10 8.93V5.734"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M10.799 13.203h1.6a.8.8 0 0 1 .8.8v.8a.8.8 0 0 1-.8.8h-.8a.8.8 0 0 0-.8.8v.8a.8.8 0 0 0 .8.8h1.6m4.799-4.8v2.4m0 0h-1.6a.8.8 0 0 1-.8-.8v-1.6m2.4 2.4v2.4"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

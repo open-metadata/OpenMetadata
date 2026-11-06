@@ -29,13 +29,13 @@ export const CalendarPlus02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M17.2 9.6V7.44c0-1.344 0-2.016-.26-2.53a2.4 2.4 0 0 0-1.05-1.048c-.513-.262-1.185-.262-2.53-.262H6.64c-1.343 0-2.015 0-2.529.262A2.4 2.4 0 0 0 3.062 4.91c-.261.514-.261 1.186-.261 2.53v6.72c0 1.344 0 2.016.261 2.53a2.4 2.4 0 0 0 1.05 1.048C4.624 18 5.296 18 6.64 18h3.76m6.8-9.6H2.8M13.2 2v3.2M6.8 2v3.2m8 12v-4.8m-2.4 2.4h4.8"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

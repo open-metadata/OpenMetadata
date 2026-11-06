@@ -29,13 +29,13 @@ export const DataQualityAlarm: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M16 17.5V13a6 6 0 0 0-12 0v4.5m-1.5 0h15M10 2.5v2.25m6.75.75-1.125 1.125M3.25 5.5l1.125 1.125M10 10v3m0 2.166h.008"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

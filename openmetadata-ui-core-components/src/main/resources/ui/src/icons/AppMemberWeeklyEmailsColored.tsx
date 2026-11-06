@@ -26,6 +26,7 @@ export const AppMemberWeeklyEmailsColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -40,21 +41,18 @@ export const AppMemberWeeklyEmailsColored: FC<Props> = ({
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="m16.934 18.3 1.685.956c.62.352.883.352 1.505 0l1.685-.955"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M16.425 20.25c.019.904.028 1.357.362 1.692s.799.346 1.728.37c.573.014 1.14.014 1.713 0 .93-.024 1.394-.035 1.728-.37s.343-.788.363-1.693a20 20 0 0 0 0-.87c-.02-.906-.03-1.358-.363-1.693-.334-.335-.799-.347-1.728-.37a34 34 0 0 0-1.713 0c-.929.023-1.394.035-1.728.37s-.343.787-.362 1.692a20 20 0 0 0 0 .871"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient

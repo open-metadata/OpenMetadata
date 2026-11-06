@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import * as React from 'react';
-import type { FC, SVGProps } from 'react';
-
+import type { SVGProps, FC } from 'react';
 interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
@@ -27,6 +26,7 @@ export const SectionLineDashed: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={0.8}
     viewBox="0 0 19 40"
     width={size}
     {...props}>
@@ -34,7 +34,6 @@ export const SectionLineDashed: FC<Props> = ({
       d="M18.52.776H.938v38H18.52"
       stroke="currentColor"
       strokeDasharray="1.6 1.6"
-      strokeWidth={0.8}
     />
   </svg>
 );

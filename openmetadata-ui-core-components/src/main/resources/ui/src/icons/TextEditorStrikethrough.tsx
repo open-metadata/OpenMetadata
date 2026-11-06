@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const TextEditorStrikethrough: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,13 +29,13 @@ export const TextEditorStrikethrough: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M9.197 10h1.605c1.773 0 3.21 1.455 3.21 3.25s-1.437 3.25-3.21 3.25H9.197c-1.772 0-3.21-1.455-3.21-3.25m8.025-6.5c0-1.795-1.437-3.25-3.21-3.25H9.197c-1.772 0-3.21 1.455-3.21 3.25q.002.422.102.813M3.5 10h13"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

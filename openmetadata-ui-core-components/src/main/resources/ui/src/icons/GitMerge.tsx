@@ -29,13 +29,13 @@ export const GitMerge: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M12.5 15a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0m0 0A7.5 7.5 0 0 1 5 7.5m0 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5m0 0v10"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

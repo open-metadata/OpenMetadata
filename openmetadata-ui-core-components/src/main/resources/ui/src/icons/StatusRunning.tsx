@@ -29,6 +29,7 @@ export const StatusRunning: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,13 +37,8 @@ export const StatusRunning: FC<Props> = ({
       d="M17.5 10a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"
       stroke="currentColor"
       strokeOpacity={0.3}
-      strokeWidth={1.3}
     />
-    <path
-      d="M10 2.5a7.5 7.5 0 0 1 7.5 7.5"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M10 2.5a7.5 7.5 0 0 1 7.5 7.5" stroke="currentColor" />
   </svg>
 );
 StatusRunning.displayName = 'StatusRunning';

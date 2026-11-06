@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const AnnouncementColored: FC<Props> = ({
-  size = 24,
+  size = 20,
   color: _color = 'currentColor',
   ...props
 }) => (
@@ -26,6 +26,7 @@ export const AnnouncementColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={2}
     viewBox="0 0 89 89"
     width={size}
     {...props}>
@@ -38,7 +39,6 @@ export const AnnouncementColored: FC<Props> = ({
       stroke="#175CD3"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={2}
     />
   </svg>
 );

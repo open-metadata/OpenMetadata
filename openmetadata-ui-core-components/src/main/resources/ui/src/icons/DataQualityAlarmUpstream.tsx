@@ -26,6 +26,7 @@ export const DataQualityAlarmUpstream: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -33,14 +34,12 @@ export const DataQualityAlarmUpstream: FC<Props> = ({
       d="M3.387 14.625v-3.787a5.05 5.05 0 0 1 9.494-2.397m-10.756 6.18h5.544M8.438 2v1.893m5.677.634-.947.947m-10.41-.947.947.947"
       stroke="currentColor"
       strokeLinecap="round"
-      strokeWidth={1.3}
     />
     <path
       d="M8.438 8.313v2.524m0 1.823h.006"
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.3}
     />
     <path
       d="M14.118 18a3.758 3.758 0 1 0 0-7.516 3.758 3.758 0 0 0 0 7.517"
@@ -48,7 +47,6 @@ export const DataQualityAlarmUpstream: FC<Props> = ({
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.3}
     />
     <path
       d="M14.116 12.742v3.007m-1.28-1.726 1.28-1.28 1.28 1.28"

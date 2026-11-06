@@ -29,18 +29,14 @@ export const WorkflowRedo: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M17.5 6.664h-10a5 5 0 0 0 0 10h3.333"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M17.5 6.664h-10a5 5 0 0 0 0 10h3.333" stroke="currentColor" />
     <path
       d="m14.167 3.336.961.73C16.71 5.268 17.5 5.868 17.5 6.67s-.79 1.402-2.372 2.603l-.961.73"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

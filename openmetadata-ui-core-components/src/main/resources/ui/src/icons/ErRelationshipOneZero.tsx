@@ -29,21 +29,12 @@ export const ErRelationshipOneZero: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <circle
-      cx={13.07}
-      cy={10.086}
-      r={4.93}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <path
-      d="M7.184 4.809v10.38M2 10.004h5.185"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <circle cx={13.07} cy={10.086} r={4.93} stroke="currentColor" />
+    <path d="M7.184 4.809v10.38M2 10.004h5.185" stroke="currentColor" />
   </svg>
 );
 ErRelationshipOneZero.displayName = 'ErRelationshipOneZero';

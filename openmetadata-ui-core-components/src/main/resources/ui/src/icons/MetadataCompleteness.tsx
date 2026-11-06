@@ -29,19 +29,15 @@ export const MetadataCompleteness: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10 2 2.889 4.667V10c0 3.911 3.022 7.556 7.11 8 4.09-.444 7.112-4.089 7.112-8V4.667z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path
-      d="m7.5 9.875 1.75 1.75 3.25-3.25"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="m7.5 9.875 1.75 1.75 3.25-3.25" stroke="currentColor" />
   </svg>
 );
 MetadataCompleteness.displayName = 'MetadataCompleteness';

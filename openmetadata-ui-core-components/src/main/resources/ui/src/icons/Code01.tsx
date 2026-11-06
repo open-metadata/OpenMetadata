@@ -29,14 +29,11 @@ export const Code01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="m13.333 15 5-5-5-5M6.667 5l-5 5 5 5"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="m13.333 15 5-5-5-5M6.667 5l-5 5 5 5" stroke="currentColor" />
   </svg>
 );
 Code01.displayName = 'Code01';

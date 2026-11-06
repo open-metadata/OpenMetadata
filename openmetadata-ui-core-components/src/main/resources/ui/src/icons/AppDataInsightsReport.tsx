@@ -29,23 +29,21 @@ export const AppDataInsightsReport: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m5.309 11.242 2.31-2.31a.827.827 0 0 1 1.17 0l1.31 1.312a.827.827 0 0 0 1.17 0l2.31-2.31"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M16.887 10.415v-.827c0-3.509 0-5.263-1.09-6.353s-2.844-1.09-6.353-1.09-5.264 0-6.354 1.09S2 6.079 2 9.588s0 5.264 1.09 6.354 2.845 1.09 6.354 1.09h.827"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="m18 17.855-1.123-1.122m.374-1.871a2.245 2.245 0 1 1-4.49 0 2.245 2.245 0 0 1 4.49 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

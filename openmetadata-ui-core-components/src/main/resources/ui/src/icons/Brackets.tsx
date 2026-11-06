@@ -29,13 +29,13 @@ export const Brackets: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M15.475 16.667a1.905 1.905 0 0 0 1.906-1.905v-3.809l.952-.953-.952-.952v-3.81a1.904 1.904 0 0 0-1.906-1.905m-10.951 0a1.904 1.904 0 0 0-1.905 1.905v3.809L1.667 10l.953.953v3.809a1.904 1.904 0 0 0 1.904 1.905"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,13 +29,13 @@ export const NotNullOff: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M3.121 16.871 16.867 3.125M15.83 8.534a6.016 6.016 0 0 0-11.578-.328m11.577 3.257a6.016 6.016 0 0 1-11.669 0M2 8.867h16"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

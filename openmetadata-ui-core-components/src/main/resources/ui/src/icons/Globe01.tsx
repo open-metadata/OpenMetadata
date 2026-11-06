@@ -29,13 +29,13 @@ export const Globe01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M1.667 10h16.667M1.667 10A8.333 8.333 0 0 0 10 18.333M1.667 10A8.333 8.333 0 0 1 10 1.667M18.333 10A8.333 8.333 0 0 1 10 18.333M18.333 10A8.333 8.333 0 0 0 10 1.667m0 0A12.75 12.75 0 0 1 13.333 10 12.75 12.75 0 0 1 10 18.333m0-16.667a12.75 12.75 0 0 0-3.333 8.333A12.75 12.75 0 0 0 10 18.332"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

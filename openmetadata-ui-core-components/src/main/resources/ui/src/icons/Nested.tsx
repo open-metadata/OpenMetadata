@@ -29,14 +29,11 @@ export const Nested: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M2.8 2v8a8 8 0 0 0 8 8h6.4"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M2.8 2v8a8 8 0 0 0 8 8h6.4" stroke="currentColor" />
   </svg>
 );
 Nested.displayName = 'Nested';

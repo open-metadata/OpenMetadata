@@ -29,11 +29,12 @@ export const DoubleType: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <g clipPath="url(#a)">
-      <circle cx={10} cy={10} r={8} stroke="currentColor" strokeWidth={1.3} />
+      <circle cx={10} cy={10} r={8} stroke="currentColor" />
       <path
         d="M10.81 6.667v6.667a.667.667 0 1 1-1.333 0V8.277l-.491.491a.666.666 0 1 1-.943-.943l1.63-1.629a.667.667 0 0 1 1.138.471"
         fill="currentColor"

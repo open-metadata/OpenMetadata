@@ -29,6 +29,7 @@ export const Fail: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -37,15 +38,10 @@ export const Fail: FC<Props> = ({
       d="M18 10a8 8 0 1 0-16 0 8 8 0 0 0 16 0"
       fill="#fff"
     />
-    <path
-      d="M10 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16Z"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M10 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16Z" stroke="currentColor" />
     <path
       d="M11.2 8.8 10 10m0 0-1.2 1.2M10 10 8.8 8.8M10 10l1.2 1.2M14 10a4 4 0 1 1-8 0 4 4 0 0 1 8 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

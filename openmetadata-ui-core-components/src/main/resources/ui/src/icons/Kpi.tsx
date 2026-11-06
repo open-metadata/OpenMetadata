@@ -29,13 +29,13 @@ export const Kpi: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10.002 13.2a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2m6.398 3.202c1.005-1.338 1.6-3 1.6-4.8 0-1.138-.238-2.22-.666-3.2m-13.735 8a8 8 0 0 1 9.6-12.134M11.203 10.4l4.4-4.4"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,13 +29,13 @@ export const ArrayType: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M6.552 2.64H3v14.717h3.552M13.448 2.64H17v14.717h-3.552"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <circle cx={7.551} cy={10.084} fill="currentColor" r={0.752} />
     <circle cx={9.84} cy={10.084} fill="currentColor" r={0.752} />

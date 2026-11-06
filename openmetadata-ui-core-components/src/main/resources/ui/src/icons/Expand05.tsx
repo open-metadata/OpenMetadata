@@ -29,13 +29,13 @@ export const Expand05: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m12.5 7.5 5-5m0 0h-5m5 0v5m-10 0-5-5m0 0v5m0-5h5m0 10-5 5m0 0h5m-5 0v-5m10 0 5 5m0 0v-5m0 5h-5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

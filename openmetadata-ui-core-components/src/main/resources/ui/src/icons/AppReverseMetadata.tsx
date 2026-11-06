@@ -29,13 +29,13 @@ export const AppReverseMetadata: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M8.4 5.2a3.2 3.2 0 1 0-6.4 0 3.2 3.2 0 0 0 6.4 0m0 9.602a3.2 3.2 0 1 0-6.4 0 3.2 3.2 0 0 0 6.4 0M18 5.2a3.2 3.2 0 1 0-6.4 0 3.2 3.2 0 0 0 6.4 0m0 9.602a3.2 3.2 0 1 0-6.4 0 3.2 3.2 0 0 0 6.4 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

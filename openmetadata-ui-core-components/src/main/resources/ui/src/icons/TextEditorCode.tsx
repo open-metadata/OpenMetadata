@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const TextEditorCode: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,13 +29,13 @@ export const TextEditorCode: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m12.25 4-4.5 12M5.5 13s-3-2.21-3-3 3-3 3-3m9 0s3 2.21 3 3-3 3-3 3"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

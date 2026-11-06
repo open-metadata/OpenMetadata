@@ -29,13 +29,13 @@ export const ArrowCircleBrokenUp: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M5.833 17.218A8.33 8.33 0 0 1 1.667 10a8.333 8.333 0 0 1 16.666 0 8.33 8.33 0 0 1-4.167 7.218M13.333 10 10 6.667m0 0L6.667 10M10 6.667v11.667"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,22 +29,14 @@ export const SummaryChart: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <rect
-      height={15}
-      rx={3}
-      stroke="currentColor"
-      strokeWidth={1.3}
-      width={15}
-      x={2.5}
-      y={2.5}
-    />
+    <rect height={15} rx={3} stroke="currentColor" width={15} x={2.5} y={2.5} />
     <path
       d="M8.129 6.484v3.544h3.544m.199 3.491c-.04-.24-.017-4.556 0-7.035"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

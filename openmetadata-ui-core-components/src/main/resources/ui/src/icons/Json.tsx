@@ -29,13 +29,13 @@ export const Json: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M14.8 17.2c.986 0 1.786-.92 1.786-2.056 0-1.799-.08-2.994 1.153-4.416a1.14 1.14 0 0 0 0-1.454c-1.233-1.422-1.153-2.618-1.153-4.416 0-1.136-.8-2.057-1.785-2.057M5.2 17.2c-.986 0-1.785-.92-1.785-2.056 0-1.799.08-2.994-1.154-4.416a1.14 1.14 0 0 1 0-1.454c1.207-1.391 1.154-2.601 1.154-4.416 0-1.136.8-2.057 1.785-2.057"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <circle cx={6.788} cy={10.448} fill="currentColor" r={1.104} />
     <circle cx={10.243} cy={10.448} fill="currentColor" r={1.104} />

@@ -29,18 +29,17 @@ export const Book: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M16.4 18H5.2a1.6 1.6 0 0 1-1.6-1.6m0 0a1.6 1.6 0 0 1 1.6-1.6h9.6a1.6 1.6 0 0 0 1.6-1.6V2a1.6 1.6 0 0 1-1.6 1.6H8.4c-2.263 0-3.395 0-4.097.703S3.6 6.137 3.6 8.4z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M15.2 14.8s-.8.611-.8 1.6.8 1.6.8 1.6M7.6 3.602v3.2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

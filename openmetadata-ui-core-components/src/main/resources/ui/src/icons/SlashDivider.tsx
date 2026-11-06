@@ -29,14 +29,11 @@ export const SlashDivider: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="m5.833 18.333 8.334-16.666"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="m5.833 18.333 8.334-16.666" stroke="currentColor" />
   </svg>
 );
 SlashDivider.displayName = 'SlashDivider';

@@ -29,18 +29,17 @@ export const AlertCircle: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0m-8-3.2V10"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M10.1 13H10m.2 0a.2.2 0 1 1-.4 0 .2.2 0 0 1 .4 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,10 +29,11 @@ export const TableRelationshipManyToMany: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g clipPath="url(#a)" stroke="currentColor" strokeWidth={1.3}>
+    <g clipPath="url(#a)" stroke="currentColor">
       <path d="m2.285 13.214 3.857-3.215-3.857-3.214M10 10H1m5.143-3.215v6.429m11.572 0-3.858-3.215 3.858-3.214M10 10h9m-5.143-3.215v6.429" />
       <path d="m17.715 13.214-3.858-3.215 3.858-3.214M10 10h9m-5.143-3.215v6.429" />
     </g>

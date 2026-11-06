@@ -29,13 +29,13 @@ export const Bold01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M5 10h6.667a3.333 3.333 0 0 0 0-6.667H5zm0 0h7.5a3.333 3.333 0 0 1 0 6.667H5z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,13 +29,13 @@ export const ChevronDownDouble: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M5.833 10.833 10 15l4.167-4.167M5.833 5 10 9.167 14.167 5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );
