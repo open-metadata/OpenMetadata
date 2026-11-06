@@ -168,7 +168,7 @@ public class McpServer implements McpServerProvider {
       McpSchema.ServerCapabilities capabilities,
       Supplier<MCPConfiguration> mcpConfig) {
     return io.modelcontextprotocol.server.McpServer.sync(transport)
-        .serverInfo("openmetadata-mcp-stateless", "1.1.0")
+        .serverInfo(serverInfo(mcpConfig.get()))
         .capabilities(capabilities)
         // SDK 2.x checks tools/call arguments against the tool schema by default. Kept off: the
         // tools accept looser shapes on purpose, see
@@ -176,6 +176,21 @@ public class McpServer implements McpServerProvider {
         .validateToolInputs(false)
         .addToolFilter(toolFilter(mcpConfig))
         .build();
+  }
+
+  // The name and version clients see in initialize come from the MCP settings, read at startup. A
+  // blank value falls back to the schema default: the SDK refuses a server without them.
+  static McpSchema.Implementation serverInfo(MCPConfiguration config) {
+    MCPConfiguration defaults = new MCPConfiguration();
+    MCPConfiguration current = config == null ? defaults : config;
+    return McpSchema.Implementation.builder(
+            textOr(current.getMcpServerName(), defaults.getMcpServerName()),
+            textOr(current.getMcpServerVersion(), defaults.getMcpServerVersion()))
+        .build();
+  }
+
+  private static String textOr(String value, String fallback) {
+    return value == null || value.isBlank() ? fallback : value;
   }
 
   // tools/list follows the setting live, so say what it hides each time the setting loads.

@@ -301,6 +301,44 @@ public class McpSdkUpgradeTest {
   }
 
   @Test
+  void initializeReportsTheServerNameAndVersionFromTheMcpSettings() {
+    McpStatelessServerTransport transport = mock(McpStatelessServerTransport.class);
+    when(transport.protocolVersions()).thenReturn(List.of("2025-11-25"));
+    MCPConfiguration configured =
+        new MCPConfiguration().withMcpServerName("acme-mcp").withMcpServerVersion("9.9.9");
+    McpServer.buildServer(transport, new McpServer().buildServerCapabilities(), () -> configured);
+    ArgumentCaptor<McpStatelessServerHandler> handler =
+        ArgumentCaptor.forClass(McpStatelessServerHandler.class);
+    verify(transport).setMcpHandler(handler.capture());
+
+    McpSchema.JSONRPCResponse response =
+        handler
+            .getValue()
+            .handleRequest(
+                McpTransportContext.EMPTY,
+                new McpSchema.JSONRPCRequest(
+                    McpSchema.METHOD_INITIALIZE,
+                    1,
+                    Map.of(
+                        "protocolVersion",
+                        "2025-11-25",
+                        "capabilities",
+                        Map.of(),
+                        "clientInfo",
+                        Map.of("name", "test", "version", "1"))))
+            .block();
+
+    McpSchema.Implementation serverInfo =
+        ((McpSchema.InitializeResult) response.result()).serverInfo();
+    assertThat(serverInfo.name()).isEqualTo("acme-mcp");
+    assertThat(serverInfo.version()).isEqualTo("9.9.9");
+    MCPConfiguration blank =
+        new MCPConfiguration().withMcpServerName(" ").withMcpServerVersion(null);
+    assertThat(McpServer.serverInfo(blank).name()).isEqualTo("openmetadata-mcp-server");
+    assertThat(McpServer.serverInfo(blank).version()).isEqualTo("1.0.0");
+  }
+
+  @Test
   void aToolWithAnInvalidSchemaIsSkippedAndTheRestStillRegister() {
     McpStatelessSyncServer server =
         io.modelcontextprotocol.server.McpServer.sync(mock(McpStatelessServerTransport.class))
