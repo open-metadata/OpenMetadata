@@ -67,6 +67,12 @@ export const defaultHandlers = [
   http.get('/api/v1/dataContracts/entity', () =>
     HttpResponse.json({ code: 404, message: 'No contract' }, { status: 404 })
   ),
+  // Domain colours and cover images for domain and data-product chips: none set.
+  http.get('/api/v1/domains/styles', () => HttpResponse.json({ data: [] })),
+  // Ontology concepts bound to the asset a page shows: none.
+  http.get('/api/v1/ontologyConcepts/boundTo/*', () =>
+    HttpResponse.json({ links: [] })
+  ),
   // App shell: installed apps, pipeline service health, agents.
   http.get('/api/v1/apps/installed', () => HttpResponse.json([])),
   http.get('/api/v1/services/ingestionPipelines/status', () =>

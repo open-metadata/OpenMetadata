@@ -18,9 +18,10 @@
 import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import {
-  Kind,
-  MetricHierarchyItem,
+    Kind,
+    MetricHierarchyItem
 } from '../../../generated/api/data/metricHierarchyItem';
 import { many, named } from '../../../test/browser/fixtures/entities';
 import { worker } from '../../../test/browser/msw';
@@ -38,7 +39,7 @@ const serveHierarchy = () => {
       const url = new URL(request.url);
       calls.push(url);
       const offset = Number(url.searchParams.get('offset') ?? 0);
-      const limit = Number(url.searchParams.get('limit') ?? 20);
+      const limit = Number(url.searchParams.get('limit') ?? PAGE_SIZE_BASE);
 
       return HttpResponse.json({
         data: items.slice(offset, offset + limit),
@@ -53,14 +54,14 @@ const serveHierarchy = () => {
 };
 
 describe('Metrics pagination', () => {
-  test('pages the hierarchy by offset, 20 at a time', async () => {
+  test(`pages the hierarchy by offset, ${PAGE_SIZE_BASE} at a time`, async () => {
     const calls = serveHierarchy();
     await renderApp('/metrics');
 
     await expect
       .element(page.getByText('PW metric 01'), { timeout: 60_000 })
       .toBeVisible();
-    expect(calls[0].searchParams.get('limit')).toBe('20');
+    expect(calls[0].searchParams.get('limit')).toBe(`${PAGE_SIZE_BASE}`);
     expect(calls[0].searchParams.get('offset')).toBe('0');
     await expect
       .element(page.getByTestId('metric-page-previous'))
@@ -69,12 +70,14 @@ describe('Metrics pagination', () => {
 
     await userEvent.click(page.getByTestId('metric-page-next'));
 
-    await expect.element(page.getByText('PW metric 21')).toBeVisible();
+    await expect
+      .element(page.getByText(`PW metric ${PAGE_SIZE_BASE + 1}`))
+      .toBeVisible();
 
     const last = calls[calls.length - 1];
 
-    expect(last.searchParams.get('limit')).toBe('20');
-    expect(last.searchParams.get('offset')).toBe('20');
+    expect(last.searchParams.get('limit')).toBe(`${PAGE_SIZE_BASE}`);
+    expect(last.searchParams.get('offset')).toBe(`${PAGE_SIZE_BASE}`);
     await expect
       .element(page.getByTestId('metric-page-previous'))
       .toBeEnabled();
