@@ -61,7 +61,9 @@ from metadata.generated.schema.type.basic import (
     SqlQuery,
     Timestamp,
 )
-from metadata.generated.schema.type.entityLineage import ColumnLineage
+from metadata.generated.schema.type.entityLineage import ColumnLineage, EntitiesEdge
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.usageRequest import UsageRequest
@@ -365,6 +367,8 @@ class HexSource(DashboardServiceSource):
         lineage, and from the ones only the warehouse query history names, without it.
         Table -> dashboard edges only when data models are off for the project.
         """
+        if self._data_models_on(dashboard_details):
+            self._remove_table_dashboard_edges(dashboard_details)
         cells = self._get_cell_lineage(dashboard_details) or []
         history_tables = self._history_only_tables(dashboard_details, cells)
         if not history_tables and not any(cell.tables for cell in cells):
@@ -402,11 +406,40 @@ class HexSource(DashboardServiceSource):
             if table and table.id and model_str(table.id) not in resolved_by_cells
         ]
 
-    def _lineage_target(self, project: Project) -> Dashboard | DashboardDataModel | None:
+    def _data_models_on(self, project: Project) -> bool:
         # A filtered-out data model left from an earlier run is deleted by this one
-        if self.source_config.includeDataModels and not filter_by_datamodel(
+        return bool(self.source_config.includeDataModels) and not filter_by_datamodel(
             self.source_config.dataModelFilterPattern, project.title
-        ):
+        )
+
+    def _remove_table_dashboard_edges(self, project: Project) -> None:
+        """
+        Before #37077 the connector linked tables straight to the dashboard, including every
+        same-named table a lower-cased query-history name matched. With data models on it no
+        longer writes such an edge, so any table -> dashboard edge it owns is stale.
+        """
+        try:
+            lineage = self.metadata.get_lineage_by_name(
+                entity=Dashboard, fqn=self._build_fqn(Dashboard, project), up_depth=1, down_depth=0
+            )
+            if not lineage:
+                return
+            tables = {model_str(node["id"]) for node in lineage.get("nodes") or [] if node.get("type") == "table"}
+            dashboard = EntityReference(id=lineage["entity"]["id"], type="dashboard")
+            for edge in lineage.get("upstreamEdges") or []:
+                source = (edge.get("lineageDetails") or {}).get("source")
+                if model_str(edge["fromEntity"]) in tables and source == LineageSource.DashboardLineage.value:
+                    self.metadata.delete_lineage_edge(
+                        EntitiesEdge(
+                            fromEntity=EntityReference(id=edge["fromEntity"], type="table"), toEntity=dashboard
+                        )
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not remove table -> dashboard lineage of Hex project %s: %s", project.id, exc)
+
+    def _lineage_target(self, project: Project) -> Dashboard | DashboardDataModel | None:
+        if self._data_models_on(project):
             return self.metadata.get_by_name(
                 entity=DashboardDataModel, fqn=self._build_fqn(DashboardDataModel, project)
             )

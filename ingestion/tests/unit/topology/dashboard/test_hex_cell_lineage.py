@@ -284,6 +284,27 @@ class FakeOpenMetadata:
         self.entities: dict[str, object] = {}
         self.searches: list[str] = []
         self.search_error: Exception | None = None
+        self.dashboard_upstream: list[tuple[EntityReference, str]] = []
+
+    def get_lineage_by_name(self, entity, fqn, up_depth=1, down_depth=1):
+        dashboard = self.entities.get(fqn)
+        if entity is not Dashboard or not isinstance(dashboard, Dashboard):
+            return None
+        dashboard_id = str(dashboard.id.root)
+        return {
+            "entity": {"id": dashboard_id, "type": "dashboard"},
+            "nodes": [{"id": str(ref.id.root), "type": ref.type} for ref, _ in self.dashboard_upstream],
+            "upstreamEdges": [
+                {"fromEntity": str(ref.id.root), "toEntity": dashboard_id, "lineageDetails": {"source": source}}
+                for ref, source in self.dashboard_upstream
+            ],
+            "downstreamEdges": [],
+        }
+
+    def delete_lineage_edge(self, edge):
+        self.dashboard_upstream = [
+            (ref, source) for ref, source in self.dashboard_upstream if ref.id.root != edge.fromEntity.id.root
+        ]
 
     def es_search_from_fqn(self, entity_type, fqn_search_string, raise_on_error=False):
         """The server's FQN wildcard search is case-insensitive"""
@@ -452,6 +473,31 @@ class TestHexCellLineage:
         assert {edge.toEntity.type for edge in edges} == {"dashboard"}
         assert len(edges) == 2
         assert all(edge.lineageDetails.columnsLineage is None for edge in edges)
+
+    def test_table_to_dashboard_edges_left_by_earlier_runs_are_removed(self, make_source):
+        source = make_source([REVENUE_CELL])
+        stale = EntityReference(id=uuid.uuid4(), type="table")
+        manual = EntityReference(id=uuid.uuid4(), type="table")
+        data_model = EntityReference(id=uuid.uuid4(), type="dashboardDataModel")
+        source.metadata.dashboard_upstream = [
+            (stale, "DashboardLineage"),
+            (manual, "Manual"),
+            (data_model, "DashboardLineage"),
+        ]
+
+        _, edges = run(source)
+
+        assert source.metadata.dashboard_upstream == [(manual, "Manual"), (data_model, "DashboardLineage")]
+        assert {edge.toEntity.type for edge in edges} == {"dashboardDataModel"}
+
+    def test_without_data_models_table_to_dashboard_edges_are_kept(self, make_source):
+        source = make_source([REVENUE_CELL], include_data_models=False)
+        table = EntityReference(id=uuid.uuid4(), type="table")
+        source.metadata.dashboard_upstream = [(table, "DashboardLineage")]
+
+        run(source)
+
+        assert source.metadata.dashboard_upstream == [(table, "DashboardLineage")]
 
     def test_each_prefix_only_draws_the_tables_found_under_it(self, make_source):
         prefixes = ["snowflake_prod.prod.sales", "postgres_prod"]
