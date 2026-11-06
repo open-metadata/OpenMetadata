@@ -84,16 +84,52 @@ class ExtractedMemoryApproverTest {
     assertEquals(List.of(), plan.needsDecision());
   }
 
-  /** The extractor keeps two pills for one question only when their values conflict. */
+  /** Different values of one question need a person to choose. */
   @Test
   void twoPendingValuesOfOneQuestionBothNeedADecision() {
-    ContextMemory fifteen = extracted("Commission rate?", ContextMemoryStatus.UNPROCESSED);
-    ContextMemory twenty = extracted("  commission RATE? ", ContextMemoryStatus.UNPROCESSED);
+    ContextMemory fifteen =
+        extracted("Commission rate?", ContextMemoryStatus.UNPROCESSED).withAnswer("15%");
+    ContextMemory twenty =
+        extracted("  commission RATE? ", ContextMemoryStatus.UNPROCESSED).withAnswer("20%");
 
     ExtractedMemoryApprover.Plan plan = ExtractedMemoryApprover.plan(List.of(fifteen, twenty));
 
     assertEquals(List.of(), plan.approvable());
     assertEquals(ids(List.of(fifteen, twenty)), ids(plan.needsDecision()));
+  }
+
+  /** First extraction can keep question variants even when their answers agree. */
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"UNPROCESSED", "APPROVED"})
+  void theSameExtractedAnswerToAQuestionVariantDoesNotNeedADecision(ContextMemoryStatus stated) {
+    ContextMemory pending =
+        extracted("What's the refund window?", ContextMemoryStatus.UNPROCESSED)
+            .withAnswer("30 days");
+    ContextMemory equivalent =
+        extracted("What is the refund window?", stated).withAnswer(" 30 DAYS ");
+    List<ContextMemory> approvable =
+        stated == ContextMemoryStatus.UNPROCESSED ? List.of(pending, equivalent) : List.of(pending);
+
+    ExtractedMemoryApprover.Plan plan = ExtractedMemoryApprover.plan(List.of(pending, equivalent));
+
+    assertEquals(ids(approvable), ids(plan.approvable()));
+    assertEquals(List.of(), plan.needsDecision());
+  }
+
+  @Test
+  void anUnansweredClaimStillHoldsADifferentAnswer() {
+    ContextMemory unanswered =
+        extracted("What's the refund window?", ContextMemoryStatus.UNPROCESSED).withAnswer(null);
+    ContextMemory answered =
+        extracted("What is the refund window?", ContextMemoryStatus.UNPROCESSED)
+            .withAnswer("30 days");
+
+    ExtractedMemoryApprover.Plan plan = ExtractedMemoryApprover.plan(List.of(unanswered, answered));
+
+    assertEquals(List.of(), plan.approvable());
+    assertEquals(ids(List.of(unanswered, answered)), ids(plan.needsDecision()));
   }
 
   /** "What's" asks what "What is" asks: two values of the refund window both need a decision. */
@@ -316,8 +352,10 @@ class ExtractedMemoryApproverTest {
     EntityReference file =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
     ContextMemory window = extracted("What is the refund window?", ContextMemoryStatus.UNPROCESSED);
-    ContextMemory fifteen = extracted("Commission rate?", ContextMemoryStatus.UNPROCESSED);
-    ContextMemory twenty = extracted("Commission rate?", ContextMemoryStatus.UNPROCESSED);
+    ContextMemory fifteen =
+        extracted("Commission rate?", ContextMemoryStatus.UNPROCESSED).withAnswer("15%");
+    ContextMemory twenty =
+        extracted("Commission rate?", ContextMemoryStatus.UNPROCESSED).withAnswer("20%");
     ContextMemoryRepository repository = mock(ContextMemoryRepository.class);
     when(repository.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE))
         .thenReturn(List.of(window, fifteen, twenty));
@@ -340,9 +378,11 @@ class ExtractedMemoryApproverTest {
             .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
     ContextMemory decided =
         extracted("What is the refund window?", ContextMemoryStatus.APPROVED)
+            .withAnswer("30 days")
             .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
     ContextMemory visible =
         extracted("What is the refund window?", ContextMemoryStatus.UNPROCESSED)
+            .withAnswer("45 days")
             .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
     ContextMemoryRepository repository = mock(ContextMemoryRepository.class);
     when(repository.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE))

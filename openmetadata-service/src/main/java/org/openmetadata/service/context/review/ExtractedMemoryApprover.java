@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -41,8 +42,9 @@ import org.openmetadata.service.security.AuthorizationException;
  * Approves a document's Unprocessed extracted memories for a person who decides them, written as a
  * review decision is (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).
  * Only the pills the person was shown are approved, and only as they were read. A pill asking the
- * question of another Unprocessed, Draft or Approved pill of the document is a second value, and one
- * re-extraction would hold beside a decided pill may be that decision reworded: both stay pending.
+ * question of another Unprocessed, Draft or Approved pill with a different answer is a second value,
+ * and one re-extraction would hold beside a decided pill may be that decision reworded: both stay
+ * pending.
  */
 @Slf4j
 public final class ExtractedMemoryApprover {
@@ -132,7 +134,9 @@ public final class ExtractedMemoryApprover {
 
   private static boolean isAnotherValueOf(ContextMemory other, ContextMemory memory) {
     return STATING.contains(other.getEntityStatus())
-        && MemoryReviewHolds.sameQuestion(other, memory);
+        && MemoryReviewHolds.sameQuestion(other, memory)
+        && !StringUtils.stripToEmpty(other.getAnswer())
+            .equalsIgnoreCase(StringUtils.stripToEmpty(memory.getAnswer()));
   }
 
   /** Only an Unprocessed pill extraction made: a Draft awaits its conflict review. */

@@ -58,11 +58,12 @@ a non-admin's manual memory under review, and in OSS for the values extraction h
   an owner's decision. A memory refused, changed or released meanwhile is not approved and is
   counted as failed; the others are still approved.
 - A memory asking the question another `Unprocessed`, `Draft` or `Approved` memory of the same
-  document asks is a second value of that question, as extraction keeps two pills for one question
-  only when their values conflict. Questions are compared pair by pair as re-extraction compares a
-  correction's own question (`MemoryReviewHolds.sameQuestion`): case, punctuation and filler words
-  aside, so "What's the refund window?" asks what "What is the refund window?" asks, and "UK" is not
-  "US". So is one that re-extraction would hold for review beside a decided pill, by the predicate
+  document asks needs a decision when their answers differ. Extraction can keep variants of one
+  question with the same answer; those do not conflict, comparing answers without surrounding
+  whitespace or case. Questions are compared pair by pair as re-extraction compares a correction's
+  own question (`MemoryReviewHolds.sameQuestion`): case, punctuation and filler words aside, so
+  "What's the refund window?" asks what "What is the refund window?" asks, and "UK" is not "US".
+  So does one that re-extraction would hold for review beside a decided pill, by the predicate
   both share (`MemoryReviewHolds.holds`): a value agreeing with a Rejected or Superseded pill, or
   beside a correction a changed number whose question alone clears the bar, may be a value a
   reviewer rejected or a person replaced, reworded. Approval leaves such memories pending and
