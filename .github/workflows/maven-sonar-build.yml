@@ -13,8 +13,8 @@ name: Maven SonarCloud CI
 
 on:
   workflow_dispatch:
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "openmetadata-service/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
@@ -33,30 +33,12 @@ permissions:
 
 concurrency:
   group: maven-sonar-build-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: true
 jobs:
   maven-sonarcloud-ci:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !github.event.pull_request.draft }}
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
-
       - name: Checkout
         uses: actions/checkout@v5
         with:

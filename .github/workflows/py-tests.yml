@@ -13,8 +13,8 @@ name: py-tests
 on:
   merge_group:
   workflow_dispatch:
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: true
 
 env:
   # matrix can't use 'env'. When updating it, update it for both jobs.
@@ -35,12 +35,11 @@ env:
     -Dsonar.pullrequest.provider=github
 
 jobs:
-  # Authorize pull request code once before the matrix fans out, then detect
-  # whether relevant paths changed.
+  # Detect whether relevant paths changed before the matrix fans out.
   changes:
-    name: Authorize & Detect Changes
+    name: Detect Changes
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !github.event.pull_request.draft }}
     outputs:
       python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
     steps:
@@ -53,7 +52,7 @@ jobs:
           persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
         with:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
@@ -64,24 +63,6 @@ jobs:
               - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java'
-
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
-        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
 
   py-unit-tests:
     name: Unit Tests & Static Checks
@@ -333,9 +314,9 @@ jobs:
 
   # Set "py-tests / py-tests-status" as the sole required check for this workflow.
   py-tests-status:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'py-tests-status (ignored label)' || 'py-tests-status' }}
+    name: py-tests-status
     needs: [changes, py-unit-tests, py-integration-tests]
-    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify all expected Python jobs completed
@@ -423,10 +404,10 @@ jobs:
         run: rm pom.xml
         shell: bash
 
-        # we have to pass these args values since we are working with the 'pull_request_target' trigger
+      # Fork and Dependabot PRs get no secrets, so the PR analysis runs for the other same-repo PRs only.
       - name: Push Results in PR to Sonar
         id: push-to-sonar
-        if: ${{ github.event_name == 'pull_request_target'}}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         continue-on-error: true
         uses: SonarSource/sonarqube-scan-action@v7
         env:
