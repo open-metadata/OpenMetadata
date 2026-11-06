@@ -6628,7 +6628,7 @@
     "upload-not-configured": "Upload-Funktion ist nicht konfiguriert. Bitte wenden Sie sich an Ihren Administrator.",
     "upload-ontology-file": "Klicken Sie oder ziehen Sie eine RDF/OWL-Datei zum Hochladen",
     "upload-saml-metadata-xml-description": "Wir füllen die SAML-Konfigurationsfelder nach dem Parsen automatisch aus",
-    "upstream-depth-tooltip": "Zeigen Sie bis zu 3 Knoten der Upstream-Lineage an, um die Quelle (Elternebenen) zu identifizieren.",
+    "upstream-depth-tooltip": "Zeigen Sie bis zu 3 Knoten der Upstream-Lineage an, um die Quelle (übergeordnete Ebenen) zu identifizieren.",
     "url-must-start-with-http-or-https": "URL muss mit http:// oder https:// beginnen",
     "url-must-use-http-or-https": "URL muss das http- oder https-Protokoll verwenden",
     "usage-ingestion-description": "Die Nutzungserfassung kann nach Einrichtung einer Metadaten-Erfassung konfiguriert und bereitgestellt werden. Der Nutzungserfassungsworkflow erhält die Abfrageprotokolle und Details zur Tabellenerstellung aus der zugrunde liegenden Datenbank und gibt sie an {{brandName}} weiter. Metadaten und Nutzung können nur eine Pipeline für einen Datenbankdienst haben. Legen Sie die Dauer des Abfrageprotokolls (in Tagen), den Speicherort der Staging-Datei und das Ergebnislimit fest, um zu beginnen.",
