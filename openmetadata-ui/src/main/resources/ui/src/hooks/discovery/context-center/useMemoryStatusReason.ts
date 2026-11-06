@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { RETIRED_QUERY_REASON } from '../../../constants/ContextCenter.constants';
 import {
@@ -19,6 +19,7 @@ import {
 } from '../../../generated/entity/context/contextMemory';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { getContextMemoryVersions } from '../../../rest/contextMemoryAPI';
+import { CONTEXT_CENTER_RETIRED_QUERY_NAME_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 
 /** The id of the deleted Query a status reason names, when the reason is that hold's. */
@@ -33,6 +34,8 @@ export const getRetiredQueryId = (reason = ''): string | undefined => {
     ? reason.slice(prefix.length, reason.length - suffix.length)
     : undefined;
 };
+
+const RETIRED_QUERY_NAME_STALE_TIME = 5 * 60 * 1000;
 
 const relatedEntitiesOf = (version: unknown): EntityReference[] => {
   try {
@@ -74,27 +77,23 @@ export const useMemoryStatusReason = (
   const reason = memory?.statusReason;
   const memoryId = memory?.id;
   const queryId = getRetiredQueryId(reason);
-  const [queryName, setQueryName] = useState<string>();
-
-  useEffect(() => {
-    setQueryName(undefined);
-    if (!memoryId || !queryId) {
-      return;
-    }
-    let isCurrent = true;
-    getContextMemoryVersions(memoryId)
-      .then((history) => {
-        if (isCurrent) {
-          setQueryName(findCitedQueryName(history, queryId));
-        }
-      })
-      // A viewer who may not read the history keeps the id.
-      .catch(() => undefined);
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [memoryId, queryId]);
+  // One cached lookup per memory and Query, shared by its list card and its panel.
+  const { data: queryName } = useQuery({
+    queryKey: [
+      ...CONTEXT_CENTER_RETIRED_QUERY_NAME_QUERY_KEY,
+      memoryId,
+      queryId,
+    ],
+    queryFn: async () =>
+      findCitedQueryName(
+        await getContextMemoryVersions(memoryId ?? ''),
+        queryId ?? ''
+      ) ?? null,
+    enabled: Boolean(memoryId && queryId),
+    staleTime: RETIRED_QUERY_NAME_STALE_TIME,
+    // A viewer who may not read the history keeps the id.
+    retry: false,
+  });
 
   return queryId
     ? t('message.memory-supporting-query-deleted', {

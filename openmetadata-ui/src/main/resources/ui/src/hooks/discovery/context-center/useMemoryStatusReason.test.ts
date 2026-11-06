@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
+import { createElement, ReactNode } from 'react';
 import {
   ContextMemory,
   ContextMemoryStatus,
@@ -75,6 +77,19 @@ describe('getRetiredQueryId', () => {
   });
 });
 
+const newQueryClient = () =>
+  new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+
+const renderReason = (
+  memory: ContextMemory,
+  queryClient: QueryClient = newQueryClient()
+) => {
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client: queryClient }, children);
+
+  return renderHook(() => useMemoryStatusReason(memory), { wrapper });
+};
+
 describe('useMemoryStatusReason', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -90,11 +105,31 @@ describe('useMemoryStatusReason', () => {
       })
     );
 
-    const { result } = renderHook(() => useMemoryStatusReason(heldMemory));
+    const { result } = renderReason(heldMemory);
 
     await waitFor(() => expect(result.current).toBe(SHOWN_NAMED));
 
     expect(getContextMemoryVersions).toHaveBeenCalledWith('memory-id');
+  });
+
+  // A held card and its panel, or a remount, share one lookup instead of each reading the history.
+  it("reads a memory's history once for every view of it", async () => {
+    (getContextMemoryVersions as jest.Mock).mockResolvedValue(
+      historyCiting({
+        id: QUERY_ID,
+        type: 'query',
+        displayName: 'Monthly expenses',
+      })
+    );
+    const queryClient = newQueryClient();
+
+    const card = renderReason(heldMemory, queryClient);
+    const panel = renderReason(heldMemory, queryClient);
+
+    await waitFor(() => expect(card.result.current).toBe(SHOWN_NAMED));
+    await waitFor(() => expect(panel.result.current).toBe(SHOWN_NAMED));
+
+    expect(getContextMemoryVersions).toHaveBeenCalledTimes(1);
   });
 
   // The server keeps only the id and type of a Query the caller may not view.
@@ -103,7 +138,7 @@ describe('useMemoryStatusReason', () => {
       historyCiting({ id: QUERY_ID, type: 'query' })
     );
 
-    const { result } = renderHook(() => useMemoryStatusReason(heldMemory));
+    const { result } = renderReason(heldMemory);
 
     await waitFor(() => expect(getContextMemoryVersions).toHaveBeenCalled());
 
@@ -122,7 +157,7 @@ describe('useMemoryStatusReason', () => {
   ])('keeps the id when %s', async (_, versions) => {
     (getContextMemoryVersions as jest.Mock).mockImplementation(versions);
 
-    const { result } = renderHook(() => useMemoryStatusReason(heldMemory));
+    const { result } = renderReason(heldMemory);
 
     await waitFor(() => expect(getContextMemoryVersions).toHaveBeenCalled());
 
@@ -130,12 +165,10 @@ describe('useMemoryStatusReason', () => {
   });
 
   it('reads no history for any other reason', () => {
-    const { result } = renderHook(() =>
-      useMemoryStatusReason({
-        ...heldMemory,
-        statusReason: 'Conflicts with an approved memory',
-      })
-    );
+    const { result } = renderReason({
+      ...heldMemory,
+      statusReason: 'Conflicts with an approved memory',
+    });
 
     expect(result.current).toBe('Conflicts with an approved memory');
     expect(getContextMemoryVersions).not.toHaveBeenCalled();

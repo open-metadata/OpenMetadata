@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import React from 'react';
 import {
   Control,
@@ -357,20 +358,20 @@ describe('CreateMemoryModal', () => {
   });
 
   const renderViewOnly = (memory: ContextMemory) =>
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
       </MemoryRouter>
     );
 
   it('renders the content input', () => {
-    render(<CreateMemoryModal {...defaultProps} />);
+    renderWithQueryClient(<CreateMemoryModal {...defaultProps} />);
 
     expect(screen.getByTestId('memory-content-input')).toBeInTheDocument();
   });
 
   it('renders title and type inputs', () => {
-    render(<CreateMemoryModal {...defaultProps} />);
+    renderWithQueryClient(<CreateMemoryModal {...defaultProps} />);
 
     expect(screen.getByTestId('memory-title-input')).toBeInTheDocument();
     expect(screen.getByTestId('memory-type-select')).toBeInTheDocument();
@@ -507,7 +508,7 @@ describe('CreateMemoryModal', () => {
       ],
     } as ContextMemory;
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
       </MemoryRouter>
@@ -576,7 +577,7 @@ describe('CreateMemoryModal', () => {
     memory: ContextMemory,
     props: Partial<CreateMemoryModalProps> = {}
   ) =>
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal
           {...defaultProps}
@@ -707,7 +708,7 @@ describe('CreateMemoryModal', () => {
       },
     } as ContextMemory;
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
       </MemoryRouter>
@@ -742,7 +743,7 @@ describe('CreateMemoryModal', () => {
       ],
     } as ContextMemory;
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal {...defaultProps} canEdit memoryToEdit={memory} />
       </MemoryRouter>
@@ -774,7 +775,7 @@ describe('CreateMemoryModal', () => {
       ],
     } as ContextMemory;
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
       </MemoryRouter>
@@ -790,7 +791,7 @@ describe('CreateMemoryModal', () => {
   ])(
     'shows why a %s memory was replaced and links to its successor',
     (status, label) => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <CreateMemoryModal
             {...defaultProps}
@@ -822,7 +823,7 @@ describe('CreateMemoryModal', () => {
   );
 
   it('keeps the other Context Center parameters when opening the successor', () => {
-    render(
+    renderWithQueryClient(
       <MemoryRouter
         initialEntries={['/context-center/memories?memory=old-memory&tab=all']}>
         <CreateMemoryModal
@@ -849,7 +850,7 @@ describe('CreateMemoryModal', () => {
   });
 
   it('does not offer successor navigation while the memory is being edited', () => {
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CreateMemoryModal
           {...defaultProps}

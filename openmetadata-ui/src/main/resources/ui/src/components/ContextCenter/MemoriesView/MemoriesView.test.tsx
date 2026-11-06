@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import {
   ContextMemory,
@@ -177,7 +178,7 @@ describe('MemoriesView', () => {
     ['alice', 'Alice Smith'],
     ['MemoryReconciliationApplicationBot', 'Memory Reconciliation Agent'],
   ])('shows the display name of author %s', async (name, displayName) => {
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[{ ...mockMemories[0], updatedBy: name }]}
         isLoading={false}
@@ -193,7 +194,7 @@ describe('MemoriesView', () => {
    * loads only the owner, so the card must load the bot's profile itself.
    */
   it('names the owner first and whoever changed the memory last second', async () => {
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -234,7 +235,7 @@ describe('MemoriesView', () => {
       response: { status: 403 },
     });
 
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -267,7 +268,7 @@ describe('MemoriesView', () => {
   });
 
   it('shows a team owner with a team avatar', () => {
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -293,7 +294,7 @@ describe('MemoriesView', () => {
   });
 
   it('shows no updated-by when the owner changed the memory last', () => {
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -324,7 +325,9 @@ describe('MemoriesView', () => {
       })
     );
 
-    render(<MemoriesView data={[mockMemories[0]]} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView data={[mockMemories[0]]} isLoading={false} />
+    );
 
     expect(screen.getByText('alice')).toBeInTheDocument();
 
@@ -346,7 +349,9 @@ describe('MemoriesView', () => {
         email: '',
       }));
 
-      render(<MemoriesView data={[mockMemories[0]]} isLoading={false} />);
+      renderWithQueryClient(
+        <MemoriesView data={[mockMemories[0]]} isLoading={false} />
+      );
 
       await waitFor(() =>
         expect(
@@ -371,7 +376,7 @@ describe('MemoriesView', () => {
       ],
     });
 
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -393,20 +398,26 @@ describe('MemoriesView', () => {
   });
 
   it('renders the memories view container', () => {
-    render(<MemoriesView data={mockMemories} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView data={mockMemories} isLoading={false} />
+    );
 
     expect(screen.getByTestId('memory-row-mem-1')).toBeInTheDocument();
   });
 
   it('renders a row for each memory when data is provided', () => {
-    render(<MemoriesView data={mockMemories} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView data={mockMemories} isLoading={false} />
+    );
 
     expect(screen.getByTestId('memory-row-mem-1')).toBeInTheDocument();
     expect(screen.getByTestId('memory-row-mem-2')).toBeInTheDocument();
   });
 
   it('renders title when provided, falling back to name', () => {
-    render(<MemoriesView data={mockMemories} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView data={mockMemories} isLoading={false} />
+    );
 
     expect(screen.getByText('My First Memory')).toBeInTheDocument();
     // mem-2 has no title, falls back to name
@@ -414,7 +425,9 @@ describe('MemoriesView', () => {
   });
 
   it('renders the answer text', () => {
-    render(<MemoriesView data={[mockMemories[0]]} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView data={[mockMemories[0]]} isLoading={false} />
+    );
 
     expect(
       screen.getByText('A unified metadata platform.')
@@ -427,7 +440,7 @@ describe('MemoriesView', () => {
     [ContextMemoryStatus.Superseded, 'label.superseded'],
     [ContextMemoryStatus.Invalidated, 'label.invalidated'],
   ])('shows the %s memory status and its reason', (status, label) => {
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -447,7 +460,9 @@ describe('MemoriesView', () => {
   });
 
   it('renders filter empty placeholder when filtered and data is empty', () => {
-    render(<MemoriesView isFiltered data={[]} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView isFiltered data={[]} isLoading={false} />
+    );
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     expect(
@@ -456,21 +471,23 @@ describe('MemoriesView', () => {
   });
 
   it('renders search empty placeholder when searching and data is empty', () => {
-    render(<MemoriesView isSearching data={[]} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView isSearching data={[]} isLoading={false} />
+    );
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     expect(screen.getByText('label.no-matching-results')).toBeInTheDocument();
   });
 
   it('renders skeletons when isLoading is true', () => {
-    render(<MemoriesView isLoading data={[]} />);
+    renderWithQueryClient(<MemoriesView isLoading data={[]} />);
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
   });
 
   it('shows the votes and corrections of a memory whose outcomes are counted', () => {
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -499,7 +516,7 @@ describe('MemoriesView', () => {
   });
 
   it('names each vote count for screen readers, not just its icon and number', () => {
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -527,7 +544,7 @@ describe('MemoriesView', () => {
   });
 
   it('shows no vote or correction count that is zero', () => {
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -552,7 +569,7 @@ describe('MemoriesView', () => {
   });
 
   it('shows the legacy usage of a memory whose outcomes are not counted yet', () => {
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[{ ...mockMemories[0], usageCount: 5 }]}
         isLoading={false}
@@ -566,7 +583,7 @@ describe('MemoriesView', () => {
 
   it('shows the legacy usage of a search-listed memory never counted', () => {
     // A search hit carries the indexed usage and, until a recount, no outcomes.
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -586,7 +603,7 @@ describe('MemoriesView', () => {
   });
 
   it('shows the legacy usage when no recount stamped the outcomes', () => {
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -610,7 +627,9 @@ describe('MemoriesView', () => {
   });
 
   it('shows no usage for a memory never cited', () => {
-    render(<MemoriesView data={[mockMemories[1]]} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView data={[mockMemories[1]]} isLoading={false} />
+    );
 
     expect(screen.queryByTestId('memory-usage-info')).not.toBeInTheDocument();
   });
