@@ -106,6 +106,10 @@ class SigmaSource(DashboardServiceSource):
         """
         return dashboard.name
 
+    def get_project_name(self, dashboard_details: WorkbookDetails) -> str | None:
+        """The workspace: Sigma's path starts with it and continues with the folders"""
+        return dashboard_details.path.split("/")[0] if dashboard_details.path else None
+
     def get_dashboard_details(self, dashboard: Workbook) -> WorkbookDetails | None:
         """
         get dashboard details
@@ -151,6 +155,7 @@ class SigmaSource(DashboardServiceSource):
                 else None,
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(dashboard_details.url),
+                project=self.get_project_name(dashboard_details=dashboard_details),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)

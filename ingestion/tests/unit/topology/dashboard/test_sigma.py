@@ -797,3 +797,20 @@ def sigma_over_http(routes):
     source.client.token_client._session.request = request
     source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
     return source, calls
+
+
+def ingested_projects(source) -> dict[str, str | None]:
+    """The project of each dashboard the run sends, with workbooks read and filtered as the topology does"""
+    source.source_config.includeOwners = False
+    return {
+        dashboard.name.root: dashboard.project
+        for details in source.get_dashboard()
+        for dashboard in [next(source.yield_dashboard(details)).right]
+    }
+
+
+def test_dashboard_project_is_the_workbook_workspace(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-3"] = {**SIGMA_WORKBOOKS[2], "path": "My Documents"}
+
+    assert ingested_projects(source) == {"wb-1": "Shared", "wb-2": "Shared", "wb-3": "My Documents"}
