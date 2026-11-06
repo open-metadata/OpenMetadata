@@ -9,7 +9,9 @@ import static org.mockito.Mockito.when;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.modelcontextprotocol.spec.McpStatelessServerTransport;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
@@ -235,10 +237,32 @@ public class McpSdkUpgradeTest {
   }
 
   @Test
-  void toolSchemasKeepTheShapeSdk1Sent() {
-    assertThat(McpUtils.getToolProperties("json/data/mcp/tools.json"))
+  void toolSchemasLeaveOutOnlyTheDocOnlyKeys() {
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    assertThat(tools)
         .allSatisfy(
             tool -> assertThat(tool.inputSchema()).doesNotContainKeys("description", "examples"));
+    assertThat(tools)
+        .filteredOn(tool -> "semantic_search".equals(tool.name()))
+        .singleElement()
+        .satisfies(
+            tool -> assertThat(tool.inputSchema()).containsEntry("required", List.of("query")));
+  }
+
+  @Test
+  void aToolWithAnInvalidSchemaIsSkippedAndTheRestStillRegister() {
+    McpStatelessSyncServer server =
+        io.modelcontextprotocol.server.McpServer.sync(mock(McpStatelessServerTransport.class))
+            .serverInfo("test", "1")
+            .capabilities(McpSchema.ServerCapabilities.builder().tools(true).build())
+            .build();
+    McpSchema.Tool broken = McpSchema.Tool.builder("broken", Map.of("type", 5)).build();
+    McpSchema.Tool valid = McpSchema.Tool.builder("valid", Map.of("type", "object")).build();
+
+    new McpServer().addToolsToServer(server, List.of(broken, valid));
+
+    assertThat(server.listTools()).extracting(McpSchema.Tool::name).containsExactly("valid");
   }
 
   @Test
