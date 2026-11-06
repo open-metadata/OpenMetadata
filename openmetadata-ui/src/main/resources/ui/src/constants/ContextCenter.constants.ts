@@ -24,8 +24,9 @@ export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const CONTEXT_FILE_ENTITY_TYPE = 'contextFile';
 
 /**
- * The status reason a memory gets when a Query it cites is deleted, as MemoryEvidenceHolds writes
- * it: the Query's id sits between the two parts.
+ * The status reason the server stores when a Query a memory cites is deleted (MemoryEvidenceHolds),
+ * with the Query's id between the two parts. Only matched to recognise that hold, so it stays in
+ * English; the UI shows `message.memory-supporting-query-deleted` instead.
  */
 export const RETIRED_QUERY_REASON = {
   prefix: 'Supporting query ',

@@ -22,9 +22,12 @@ import MemoriesView from './MemoriesView.component';
 jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
   useTranslation: () => ({
-    // Echoes the count, so a test can tell which count a label shows.
-    t: (key: string, options?: { count?: number }) =>
-      options?.count === undefined ? key : `${key}:${options.count}`,
+    // Echoes the count or the Query, so a test can tell what a label shows.
+    t: (key: string, options?: { count?: number; query?: string }) => {
+      const shown = options?.count ?? options?.query;
+
+      return shown === undefined ? key : `${key}:${shown}`;
+    },
     i18n: { language: 'en-US' },
   }),
 }));
@@ -225,7 +228,7 @@ describe('MemoriesView', () => {
 
     expect(
       await screen.findByText(
-        'label.reason: Supporting query "Monthly expenses" was deleted; review whether this memory still holds without it'
+        'label.reason: message.memory-supporting-query-deleted:Monthly expenses'
       )
     ).toBeInTheDocument();
   });

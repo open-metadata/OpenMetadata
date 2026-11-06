@@ -29,6 +29,20 @@ import { getContextMemoryVersions } from '../../../rest/contextMemoryAPI';
 import CreateMemoryModal from './CreateMemoryModal.component';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
 
+jest.mock('react-i18next', () => {
+  // One object across renders, like the global mock; echoes the Query a translated reason names.
+  const translation = {
+    t: (key: string, options?: { query?: string }) =>
+      options?.query === undefined ? key : `${key}:${options.query}`,
+    i18n: { language: 'en-US', dir: () => 'ltr' },
+  };
+
+  return {
+    ...jest.requireActual('react-i18next'),
+    useTranslation: () => translation,
+  };
+});
+
 jest.mock('react-markdown', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -528,7 +542,7 @@ describe('CreateMemoryModal', () => {
 
     expect(
       await screen.findByText(
-        'Supporting query "Monthly expenses" was deleted; review whether this memory still holds without it'
+        'message.memory-supporting-query-deleted:Monthly expenses'
       )
     ).toBeInTheDocument();
   });

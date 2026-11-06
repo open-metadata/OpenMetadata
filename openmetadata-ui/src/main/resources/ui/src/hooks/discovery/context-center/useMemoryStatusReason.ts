@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RETIRED_QUERY_REASON } from '../../../constants/ContextCenter.constants';
 import {
   ContextMemory,
@@ -60,14 +61,16 @@ export const findCitedQueryName = (
     .find(Boolean);
 
 /**
- * A memory's status reason as its viewer reads it. A hold for a deleted Query stores the Query's id
- * only; the reason names the Query instead when the memory's history shows this viewer its name
+ * A memory's status reason as its viewer reads it. A hold for a deleted Query stores an English
+ * reason with the Query's id; it is shown translated, naming the Query when the memory's history
+ * shows this viewer its name
  * (ADR:2026-10-15-a-memory-cites-its-supporting-queries-and-their-retirement-holds-it-for-review).
  * Pass no memory to skip the lookup.
  */
 export const useMemoryStatusReason = (
   memory?: ContextMemory
 ): string | undefined => {
+  const { t } = useTranslation();
   const reason = memory?.statusReason;
   const memoryId = memory?.id;
   const queryId = getRetiredQueryId(reason);
@@ -93,7 +96,9 @@ export const useMemoryStatusReason = (
     };
   }, [memoryId, queryId]);
 
-  return queryName
-    ? `${RETIRED_QUERY_REASON.prefix}"${queryName}"${RETIRED_QUERY_REASON.suffix}`
+  return queryId
+    ? t('message.memory-supporting-query-deleted', {
+        query: queryName ?? queryId,
+      })
     : reason;
 };

@@ -21,14 +21,28 @@ import {
   useMemoryStatusReason,
 } from './useMemoryStatusReason';
 
+jest.mock('react-i18next', () => {
+  // One object across renders, like the global mock; echoes the Query a translated reason names.
+  const translation = {
+    t: (key: string, options?: { query?: string }) =>
+      options?.query === undefined ? key : `${key}:${options.query}`,
+    i18n: { language: 'en-US', dir: () => 'ltr' },
+  };
+
+  return {
+    ...jest.requireActual('react-i18next'),
+    useTranslation: () => translation,
+  };
+});
+
 jest.mock('../../../rest/contextMemoryAPI', () => ({
   getContextMemoryVersions: jest.fn(),
 }));
 
 const QUERY_ID = '6f1c2a5e-0b8e-4c55-9d43-2f0e6c1b7a10';
 const HELD_REASON = `Supporting query ${QUERY_ID} was deleted; review whether this memory still holds without it`;
-const NAMED_REASON =
-  'Supporting query "Monthly expenses" was deleted; review whether this memory still holds without it';
+const SHOWN_NAMED = 'message.memory-supporting-query-deleted:Monthly expenses';
+const SHOWN_WITH_ID = `message.memory-supporting-query-deleted:${QUERY_ID}`;
 
 const heldMemory: ContextMemory = {
   id: 'memory-id',
@@ -78,13 +92,13 @@ describe('useMemoryStatusReason', () => {
 
     const { result } = renderHook(() => useMemoryStatusReason(heldMemory));
 
-    await waitFor(() => expect(result.current).toBe(NAMED_REASON));
+    await waitFor(() => expect(result.current).toBe(SHOWN_NAMED));
 
     expect(getContextMemoryVersions).toHaveBeenCalledWith('memory-id');
   });
 
   // The server keeps only the id and type of a Query the caller may not view.
-  it('keeps the id for a viewer the Query is hidden from', async () => {
+  it('shows the id, translated, for a viewer the Query is hidden from', async () => {
     (getContextMemoryVersions as jest.Mock).mockResolvedValue(
       historyCiting({ id: QUERY_ID, type: 'query' })
     );
@@ -93,7 +107,7 @@ describe('useMemoryStatusReason', () => {
 
     await waitFor(() => expect(getContextMemoryVersions).toHaveBeenCalled());
 
-    expect(result.current).toBe(HELD_REASON);
+    expect(result.current).toBe(SHOWN_WITH_ID);
   });
 
   it.each([
@@ -112,7 +126,7 @@ describe('useMemoryStatusReason', () => {
 
     await waitFor(() => expect(getContextMemoryVersions).toHaveBeenCalled());
 
-    expect(result.current).toBe(HELD_REASON);
+    expect(result.current).toBe(SHOWN_WITH_ID);
   });
 
   it('reads no history for any other reason', () => {

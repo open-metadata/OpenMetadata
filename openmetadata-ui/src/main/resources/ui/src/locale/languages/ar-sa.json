@@ -5334,6 +5334,7 @@
     "members-users-description": "اعرض وأدر المستخدمين العاديين في مؤسستك. لمستخدمي الإدارة، يرجى زيارة صفحة المسؤولين.",
     "memory-conflict-review-message": "مراجعة تعارض الذاكرة لـ",
     "memory-no-longer-exists": "لم تعد هذه الذاكرة موجودة.",
+    "memory-supporting-query-deleted": "تم حذف الاستعلام الداعم \"{{query}}\"؛ راجع ما إذا كانت هذه الذاكرة لا تزال صحيحة بدونه",
     "mentioned-you-on-the-lowercase": "أشار إليك في الـ",
     "metadata-agents-description": "استخرج البيانات الوصفية والاستخدام والمسار والتحليل من المصدر.",
     "metadata-agents-table-description": "تُستخدم وكلاء البيانات الوصفية لاستخراج البيانات الوصفية من الخدمات المصدر.",
