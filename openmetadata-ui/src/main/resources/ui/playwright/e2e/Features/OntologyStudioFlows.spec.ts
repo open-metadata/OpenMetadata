@@ -319,8 +319,15 @@ test.describe(
           await page.getByTestId('ontology-add-concept').click();
           await addConceptFromDrawer(page, 'From Toolbar');
 
-          const empty = await findEmptyCanvasPoint(page);
-          await page.mouse.dblclick(empty.x, empty.y);
+          // The graph re-renders after the first concept lands; a double-click in that window is
+          // dropped, so re-measure and retry until the drawer opens.
+          await expect(async () => {
+            const empty = await findEmptyCanvasPoint(page);
+            await page.mouse.dblclick(empty.x, empty.y);
+            await expect(
+              page.getByTestId('ontology-new-class-panel')
+            ).toBeVisible({ timeout: 3000 });
+          }).toPass({ timeout: 20000 });
           await addConceptFromDrawer(page, 'From Canvas');
 
           await page.getByTestId('submode-tab-definitions').click();
