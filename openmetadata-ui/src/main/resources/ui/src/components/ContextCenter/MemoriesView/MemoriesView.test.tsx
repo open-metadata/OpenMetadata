@@ -36,10 +36,6 @@ jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
   jest.fn(() => <button aria-label="Copy link" data-testid="copy-link-btn" />)
 );
 
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: jest.fn(() => <svg />),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
@@ -110,6 +106,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
   ThumbsDown: jest.fn(() => <svg />),
   ThumbsUp: jest.fn(() => <svg />),
 }));

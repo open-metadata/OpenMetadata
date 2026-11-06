@@ -25,8 +25,63 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
+import org.openmetadata.service.ontology.OntologyReleaseRoles;
 
 class OntologyReleaseDAOTest {
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void roleCandidatesStayBoundedAndRetainAnOlderOpenReview(ConnectionType dialect) {
+    withStorage(
+        dialect,
+        storage -> {
+          final OntologyRelease olderReview =
+              storage.release(1).withSealedAt(2L).withEntityStatus(EntityStatus.IN_REVIEW);
+          final OntologyRelease newestReview =
+              storage.release(2).withSealedAt(2L).withEntityStatus(EntityStatus.IN_REVIEW);
+          final OntologyRelease active =
+              storage.release(3).withSealedAt(2L).withEntityStatus(EntityStatus.APPROVED);
+          final OntologyRelease approved =
+              storage.release(4).withSealedAt(2L).withEntityStatus(EntityStatus.APPROVED);
+          storage.insert(olderReview);
+          storage.insert(newestReview);
+          storage.insert(active);
+          storage.insert(approved);
+          assertEquals(1, storage.states().activate(storage.ontologyId(), active.getId(), 0));
+          for (int revision = 5; revision <= 64; revision++) {
+            storage.insert(storage.release(revision).withSealedAt(2L));
+          }
+          storage.insert(storage.release(65).withEntityStatus(EntityStatus.IN_REVIEW));
+          storage.insert(
+              storage
+                  .release(66)
+                  .withSealedAt(2L)
+                  .withDeleted(true)
+                  .withEntityStatus(EntityStatus.IN_REVIEW));
+          final List<String> ids = List.of(storage.ontologyId().toString());
+          assertEquals(4, storage.releases().listRoleCandidates(ids).size());
+          final OntologyReleaseRoles roles = new OntologyReleaseRoles(storage.dao());
+          final var initial = roles.read(List.of(storage.ontologyId())).get(storage.ontologyId());
+          assertEquals(64L, initial.latest().getReleaseRevision());
+          assertEquals(approved.getId(), initial.latestApproved().getId());
+          assertEquals(active.getId(), initial.active().getId());
+          assertEquals(newestReview.getId(), initial.inReview().getId());
+          storage.releases().update(newestReview.withEntityStatus(EntityStatus.REJECTED));
+          assertEquals(
+              olderReview.getId(),
+              roles
+                  .read(List.of(storage.ontologyId()))
+                  .get(storage.ontologyId())
+                  .inReview()
+                  .getId());
+          storage.releases().update(olderReview.withEntityStatus(EntityStatus.REJECTED));
+          assertNull(
+              roles.read(List.of(storage.ontologyId())).get(storage.ontologyId()).inReview());
+          assertEquals(3, storage.releases().listRoleCandidates(ids).size());
+        });
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ConnectionType.class,

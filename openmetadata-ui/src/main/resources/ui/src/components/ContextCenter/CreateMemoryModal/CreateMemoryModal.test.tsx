@@ -40,7 +40,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Lock01: jest.fn(() => null),
   Plus: jest.fn(() => null),
   Share07: jest.fn(() => null),
-  X: jest.fn(() => null),
+  XClose: jest.fn(() => null),
 }));
 
 jest.mock(
@@ -88,22 +88,6 @@ jest.mock(
   '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList',
   () => jest.fn(() => <div data-testid="data-asset-select-list" />)
 );
-
-jest.mock('antd', () => ({
-  ConfigProvider: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  )),
-  Form: Object.assign(
-    jest.fn(({ children }: { children: React.ReactNode }) => (
-      <form>{children}</form>
-    )),
-    {
-      Item: jest.fn(({ children }: { children: React.ReactNode }) => (
-        <>{children}</>
-      )),
-    }
-  ),
-}));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Alert: jest.fn(({ title }: { title: string }) => (

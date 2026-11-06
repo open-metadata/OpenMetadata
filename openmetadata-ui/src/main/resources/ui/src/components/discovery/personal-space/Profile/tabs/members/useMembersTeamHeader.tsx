@@ -27,16 +27,15 @@ import {
   Trash01,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
+import type { TFunction } from 'i18next';
 import { ReactNode, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Team } from '../../../../../../generated/entity/teams/team';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import type { UseMembersTeamHeaderParams } from './MembersTeamDetail.types';
 
-type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
-
 const buildTitleSuffix = (
-  t: TranslateFn,
+  t: TFunction,
   team: Team,
   canEdit: boolean,
   isEditingName: boolean,
@@ -60,10 +59,8 @@ const buildTitleSuffix = (
           aria-label={t('label.edit-entity', {
             entity: t('label.display-name'),
           })}
-          color="tertiary"
           data-testid="edit-display-name"
           icon={Edit01}
-          size="xs"
           onClick={() => onStartEditName(getEntityName(team))}
         />
       )}
@@ -72,7 +69,7 @@ const buildTitleSuffix = (
 };
 
 const buildTitleInput = (
-  t: TranslateFn,
+  t: TFunction,
   isEditingName: boolean,
   editNameValue: string,
   onEditNameValueChange: (value: string) => void,
@@ -95,23 +92,23 @@ const buildTitleInput = (
         }}
       />
       <Button
-        color="primary"
-        data-testid="save-display-name"
-        size="xs"
-        onPress={onSaveDisplayName}>
-        {t('label.save')}
-      </Button>
-      <Button
         color="tertiary"
         data-testid="cancel-display-name"
         size="xs"
         onPress={onCancelEditName}>
         {t('label.cancel')}
       </Button>
+      <Button
+        color="primary"
+        data-testid="save-display-name"
+        size="xs"
+        onPress={onSaveDisplayName}>
+        {t('label.save')}
+      </Button>
     </Box>
   ) : undefined;
 
-const getJoinableLabel = (t: TranslateFn, team: Team): string =>
+const getJoinableLabel = (t: TFunction, team: Team): string =>
   team.isJoinable ? t('label.make-private') : t('label.make-public');
 
 interface TeamMenuItems {
@@ -153,7 +150,7 @@ const getTeamMenuItems = (
 
 // Renders only the items getTeamMenuItems allows, in menu order.
 const buildTeamActionsMenu = (
-  t: TranslateFn,
+  t: TFunction,
   items: TeamMenuItems,
   team: Team,
   params: UseMembersTeamHeaderParams
@@ -218,22 +215,22 @@ const buildTeamActionsMenu = (
   );
 };
 
-// A member can always leave; joining is only offered on joinable teams (admins
-// hold canEditAll, so they can still join a private team).
+// Only admins join or leave a team that is not joinable, as the server enforces.
 const canJoinOrLeave = (
   team: Team,
-  { canEditAll, isCurrentUserMember, isGroupType }: UseMembersTeamHeaderParams
+  { isAdminUser, isGroupType }: UseMembersTeamHeaderParams
 ): boolean =>
   Boolean(isGroupType) &&
   !team.deleted &&
-  Boolean(isCurrentUserMember || team.isJoinable || canEditAll);
+  Boolean(team.isJoinable || isAdminUser);
 
 const buildHeaderActions = (
-  t: TranslateFn,
+  t: TFunction,
   team: Team,
   params: UseMembersTeamHeaderParams
 ): ReactNode => {
-  const { isCurrentUserMember, onJoinTeam, onLeaveTeam } = params;
+  const { isCurrentUserMember, menuTriggerRef, onJoinTeam, onLeaveTeam } =
+    params;
   const showJoinLeave = canJoinOrLeave(team, params);
   const menuItems = getTeamMenuItems(team, params);
   const hasMenu = Object.values(menuItems).some(Boolean);
@@ -253,7 +250,7 @@ const buildHeaderActions = (
       )}
       {hasMenu && (
         <Dropdown.Root>
-          <Dropdown.DotsButton />
+          <Dropdown.DotsButton ref={menuTriggerRef} />
           <Dropdown.Popover className="tw:w-min">
             {buildTeamActionsMenu(t, menuItems, team, params)}
           </Dropdown.Popover>
@@ -341,5 +338,6 @@ export const useMembersTeamHeader = (
     params.isGroupType,
     params.isOrgType,
     params.isCurrentUserMember,
+    params.isAdminUser,
   ]);
 };

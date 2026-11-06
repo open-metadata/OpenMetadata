@@ -16,22 +16,22 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  Button,
+  ButtonUtility,
   Divider,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  AlertCircle,
+  CheckCircle02,
   ChevronRight,
+  Copy01,
   InfoCircle,
+  XCircle,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AttentionIcon } from '../../../../assets/svg/attention.svg';
-import { ReactComponent as FailIcon } from '../../../../assets/svg/fail-badge.svg';
-import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
-import { ReactComponent as SuccessIcon } from '../../../../assets/svg/success-badge.svg';
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { useClipboard } from '../../../../hooks/useClipBoard';
@@ -94,11 +94,10 @@ const ConnectionStepStatusBadge = ({
         <Typography className="success-status">
           {`${t('label.success')}`}
         </Typography>
-        <SuccessIcon
+        <CheckCircle02
+          className="tw:text-utility-green-500"
           data-testid="success-badge"
-          fill="currentColor"
-          height={20}
-          width={20}
+          size={20}
         />
       </Box>
     );
@@ -110,11 +109,10 @@ const ConnectionStepStatusBadge = ({
         <Typography className="failure-status">
           {`${t('label.failed')}`}
         </Typography>
-        <FailIcon
+        <XCircle
+          className="tw:text-utility-error-600"
           data-testid="fail-badge"
-          fill="currentColor"
-          height={20}
-          width={20}
+          size={20}
         />
       </Box>
     );
@@ -126,11 +124,10 @@ const ConnectionStepStatusBadge = ({
         <Typography className="warning-status">
           {`${t('label.attention')}`}
         </Typography>
-        <AttentionIcon
+        <AlertCircle
+          className="tw:text-utility-orange-300"
           data-testid="warning-badge"
-          fill="currentColor"
-          height={20}
-          width={20}
+          size={20}
         />
       </Box>
     );
@@ -188,7 +185,7 @@ const ConnectionStepCard = ({
               placement="bottom"
               title={testConnectionStep.description}
               triggerClassName="tw:flex">
-              <InfoCircle className="tw:size-3.5" />
+              <InfoCircle size={14} />
             </Tooltip>
           </Box>
           <ConnectionStepStatusBadge
@@ -219,17 +216,17 @@ const ConnectionStepCard = ({
                     showChevron={false}>
                     <ChevronRight
                       aria-hidden="true"
-                      className="tw:size-3 tw:shrink-0 tw:transition-transform tw:group-data-expanded/item:rotate-90"
+                      className="tw:shrink-0 tw:transition-transform tw:group-data-expanded/item:rotate-90"
+                      size={12}
                     />
                     {t('label.show-log-plural')}
                   </AccordionHeader>
-                  <Button
-                    aria-label={t('message.copy-to-clipboard')}
-                    color="secondary"
+                  <ButtonUtility
                     data-testid="query-entity-copy-button"
-                    iconLeading={<CopyIcon height={16} width={16} />}
+                    icon={Copy01}
+                    size="lg"
                     tooltip={t('message.copy-to-clipboard')}
-                    onPress={() => onCopyToClipBoard()}
+                    onClick={() => onCopyToClipBoard()}
                   />
                 </Box>
                 <AccordionPanel className="tw:border-t-0 tw:pt-1 tw:pr-4 tw:pb-0 tw:pl-6">

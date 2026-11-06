@@ -222,7 +222,7 @@ base_requirements = {
     # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
     # Raise the ceiling once a snowflake-sqlalchemy release supports 2.1.
     "sqlalchemy>=2.0.0,<2.1",
-    "collate-sqllineage==2.1.8",
+    "collate-sqllineage==2.1.9",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
@@ -251,6 +251,8 @@ plugins: dict[str, set[str]] = {
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
         "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
         "tornado>=6.5.9",  # CVE-2026-49853/49854/49855, GHSA-pw6j-qg29-8w7f; CVE-2026-103261/103262/103263 query/curl DoS and symlink traversal
+        # GHSA-pcg2-g6cj-q92c / GHSA-r4j5-9xpp-3985 / GHSA-pw9p-v7r6-gx4p: 6.6 needs Python 3.11, no 6.5.x backport
+        'tornado>=6.6; python_version >= "3.11"',
         "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
         "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
         "python-multipart>=0.0.31",  # CVE-2026-53537/53538/53539 param smuggling + querystring DoS + CVE-2026-53540 negative Content-Length OOM
@@ -320,7 +322,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["thrift"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL>=26.0.0",  # CVE-2026-27459 DTLS cookie callback BoF
-        "pyasn1>=0.6.3",  # CVE-2026-30922 DoS via unbounded recursion
+        "pyasn1>=0.6.5",  # CVE-2026-30922, GHSA-2qm8-x737-gmw5 / -9m75-vc3g-4x39 / -fm9c-5rcf-2q5p / -mm57-4v3p-rchx
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
@@ -517,7 +519,7 @@ dev = {
 
 # Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
-    "pytest==7.0.1",
+    "pytest==9.0.3",
     "pytest-cov",
     "pytest-order",
     "pytest-rerunfailures",
@@ -546,7 +548,7 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "pytest==7.0.1",
+    "pytest==9.0.3",
     "pytest-cov",
     "pytest-xdist~=3.5",
     "pytest-order",

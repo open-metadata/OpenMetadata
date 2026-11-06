@@ -13,6 +13,7 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -21,6 +22,7 @@ import {
   ExclamationCircleFilled,
   LinkExternal01,
   Star01,
+  StarFilled,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -45,6 +47,11 @@ const FOLLOW_BUTTON_CLASS_NAME = classNames(
   'tw:bg-utility-brand-50 tw:text-sm tw:font-medium tw:text-utility-brand-700',
   'tw:hover:bg-utility-brand-50 tw:hover:text-utility-brand-700 tw:*:data-text:px-0'
 );
+
+const getFollowIconClassName = (isFollowing?: boolean) =>
+  isFollowing
+    ? 'tw:*:data-icon:text-utility-yellow-400 tw:hover:*:data-icon:text-utility-yellow-400'
+    : 'tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-600';
 
 const getFollowLabelKey = (isFollowing?: boolean) =>
   `label.${isFollowing ? 'un-follow' : 'follow'}`;
@@ -187,12 +194,13 @@ const EntityHeaderTitle = ({
         })}>
         <Button
           showTextWhileLoading
-          className={FOLLOW_BUTTON_CLASS_NAME}
+          className={classNames(
+            FOLLOW_BUTTON_CLASS_NAME,
+            getFollowIconClassName(isFollowing)
+          )}
           color="tertiary"
           data-testid="entity-follow-button"
-          iconLeading={
-            <Star01 className="tw:text-utility-brand-600" size={14} />
-          }
+          iconLeading={isFollowing ? StarFilled : Star01}
           isDisabled={deleted}
           isLoading={isFollowingLoading}
           size="sm"
@@ -214,7 +222,7 @@ const EntityHeaderTitle = ({
       {icon && <div className="flex-center">{icon}</div>}
       <div
         className={classNames(
-          'd-flex flex-col gap-1 w-min-0 entity-header-container tw:relative tw:max-w-full',
+          'd-flex flex-col w-min-0 entity-header-container tw:relative tw:max-w-full',
           {
             'w-max-full-200': deleted || badge,
           }
@@ -248,24 +256,17 @@ const EntityHeaderTitle = ({
             <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
           )}
 
-          <Tooltip
-            placement="top right"
-            title={
-              copyTooltip ??
+          <ButtonUtility
+            data-testid="entity-header-copy-button"
+            icon={Copy01}
+            size="lg"
+            tooltip={
+              copyTooltip ||
               t('label.copy-item', { item: t('label.url-uppercase') })
-            }>
-            <Button
-              aria-label={t('label.copy-item', {
-                item: t('label.url-uppercase'),
-              })}
-              color="tertiary"
-              data-testid="entity-header-copy-button"
-              iconLeading={Copy01}
-              size="xs"
-              type="button"
-              onClick={handleShareButtonClick}
-            />
-          </Tooltip>
+            }
+            tooltipPlacement="top right"
+            onClick={handleShareButtonClick}
+          />
           {(isEmpty(displayName) || !showName) && suffix}
           {renderFollowButton()}
         </div>

@@ -5,7 +5,7 @@
 - **Deciders:** Ram Narayan Balaji
 - **Guard:** `openmetadata-ui/src/main/resources/ui/src/utils/queryBuilder/jsonLogicNegation.test.ts`;
   `playwright/e2e/Features/Workflows/WorkflowCheckConditionNegation.spec.ts`;
-  `MigrationUtilTest` (v207), `NegatedListRuleMigrationIT`
+  `MigrationUtilTest` (v208), `NegatedListRuleMigrationIT`
 - **Related:** customer report on workflow tag rules (Collate issue 7854)
 
 ## Context
@@ -32,8 +32,8 @@ a NOT badge, never dropped.
 
 ## Consequences
 Anything that writes rules (API clients, seed data, Collate) should use the stored shapes above.
-Rules stored before this record are rewritten once, by the 2.0.7 data migration
-(`migration/utils/v207/MigrationUtil.java`): workflow check conditions and event trigger
+Rules stored before this record are rewritten once, by the 2.0.8 data migration
+(`migration/utils/v208/MigrationUtil.java`): workflow check conditions and event trigger
 filters (stored through the repository so each changed workflow is redeployed), data contract
 semantics and the entity rules settings. From the upgrade on, a rule runs as its row reads; a rule
 someone relied on in its old per-element meaning changes behaviour then, which the release notes

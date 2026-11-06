@@ -12,6 +12,7 @@
  */
 
 import { chunk, sumBy } from 'lodash';
+import { INCIDENT_STATUS_MENU_OPTIONS } from '../../../../constants/TestSuite.constant';
 import {
   CreateTestCaseResolutionStatus,
   TestCaseFailureReasonType,
@@ -53,17 +54,19 @@ const isUnchanged = (
 };
 
 /**
- * The incident workflow only moves forward, and an assigned incident has no
- * `ack` edge: acknowledging it is a change it cannot take.
+ * A status the workflow has no edge for from the incident's stage, such as
+ * acknowledging an assigned incident, is a change it cannot take. The edges
+ * are the ones the inline status menu offers; the create and record enums
+ * match member for member.
  */
 const cannotTake = (
   incident: TestCaseResolutionStatus,
   change: BulkIncidentChange
 ) =>
   change.kind === 'status' &&
-  change.status === CreateStatusTypes.ACK &&
-  incident.testCaseResolutionStatusType ===
-    TestCaseResolutionStatusTypes.Assigned;
+  !INCIDENT_STATUS_MENU_OPTIONS[incident.testCaseResolutionStatusType].includes(
+    change.status as unknown as TestCaseResolutionStatusTypes
+  );
 
 const toEntry = (
   incident: TestCaseResolutionStatus,

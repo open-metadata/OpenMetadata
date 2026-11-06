@@ -139,6 +139,7 @@ const CustomPropertiesSection = ({
       gap={3}>
       <Input
         aria-label={searchLabel}
+        autoComplete="off"
         icon={Search}
         inputDataTestId="searchbar"
         placeholder={searchLabel}

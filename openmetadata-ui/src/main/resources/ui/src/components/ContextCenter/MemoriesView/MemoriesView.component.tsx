@@ -18,20 +18,21 @@ import {
   Dot,
   Dropdown,
   Skeleton,
-  Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ThumbsDown, ThumbsUp } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  DotsVertical,
+  Edit01,
+  NoFilterFunnel,
+  NoSearch,
+  ThumbsDown,
+  ThumbsUp,
+  Time,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
-import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
-import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
-import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
-import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import { MEMORY_STATUS_LABEL_KEYS } from '../../../constants/ContextCenter.constants';
@@ -60,10 +61,9 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
   return (
     <Dropdown.Root>
       <ButtonUtility
-        color="tertiary"
         data-testid="manage-button"
-        icon={<DotsVerticalIcon height={20} width={20} />}
-        size="sm"
+        icon={DotsVertical}
+        size="lg"
         tooltip={t('label.manage-entity', { entity: t('label.memory') })}
       />
       <Dropdown.Popover className="tw:w-36">
@@ -75,11 +75,10 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
           }}>
           <Dropdown.Item data-testid="delete-btn" id="delete">
             <Box align="center" gap={2}>
-              <TrashIcon
+              <Trash01
                 aria-hidden="true"
                 className="tw:shrink-0 tw:text-error-primary"
-                height={20}
-                width={20}
+                size={20}
               />
               <Typography
                 ellipsis
@@ -218,7 +217,7 @@ const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
       className="tw:mt-1 tw:text-quaternary"
       data-testid="memory-usage-info"
       gap={1}>
-      <ClockIcon height={16} width={16} />
+      <Time size={16} />
       <Typography className="tw:whitespace-nowrap" size="text-xs">
         {count === undefined ? '' : t('label.cited-n-times', { count })}
         {lastAt ? ` · ${t('label.last')} ${getShortRelativeTime(lastAt)}` : ''}
@@ -282,20 +281,16 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
   return (
     <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
       <CopyLinkButton url={memoryUrl}>
-        <CopyIcon aria-hidden="true" height={20} width={20} />
+        <Copy01 data-icon aria-hidden="true" />
       </CopyLinkButton>
       {canActOnMemory && canEdit && onEditMemory && (
-        <Tooltip title={t('label.edit')}>
-          <TooltipTrigger>
-            <ButtonUtility
-              color="tertiary"
-              data-testid="edit-memory-btn"
-              icon={<EditIcon height={20} width={20} />}
-              size="sm"
-              onClick={() => onEditMemory(memory)}
-            />
-          </TooltipTrigger>
-        </Tooltip>
+        <ButtonUtility
+          data-testid="edit-memory-btn"
+          icon={Edit01}
+          size="lg"
+          tooltip={t('label.edit')}
+          onClick={() => onEditMemory(memory)}
+        />
       )}
       {canActOnMemory && canDelete && (
         <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
@@ -521,13 +516,13 @@ const MemoriesView: FC<MemoriesViewProps> = ({
       ? {
           Component: NoSearchResultsPlaceholder,
           description: t('message.check-spelling-or-try-different-term'),
-          icon: <NoSearchResultIcon />,
+          icon: <NoSearch />,
           title: t('label.no-matching-results'),
         }
       : {
           Component: NoFilteredResultsPlaceholder,
           description: t('message.no-results-for-filters-description'),
-          icon: <NoFilterResultsIcon />,
+          icon: <NoFilterFunnel />,
           title: t('label.no-results-for-filters'),
         };
     const EmptyStatePlaceholder = emptyState.Component;

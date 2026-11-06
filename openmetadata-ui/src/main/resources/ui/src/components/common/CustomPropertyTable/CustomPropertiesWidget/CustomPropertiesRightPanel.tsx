@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ButtonUtility,
-  Input,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { ButtonUtility, Input } from '@openmetadata/ui-core-components';
 import {
   ArrowUpRight,
   Search,
@@ -23,6 +19,7 @@ import {
 import classNames from 'classnames';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import NoSearchResultsPlaceholder from '../../EmptyPlaceholder/NoSearchResultsPlaceholder';
 import WidgetCard from '../../WidgetCard/WidgetCard';
 import { CustomPropertyCard } from '../CustomPropertyCard/CustomPropertyCard';
 import { matchesPropertySearch } from '../CustomPropertyCard/CustomPropertyCard.utils';
@@ -155,6 +152,7 @@ export const CustomPropertiesRightPanel = ({
     <div className="tw:w-full" ref={searchWrapperRef}>
       <Input
         aria-label={searchLabel}
+        autoComplete="off"
         className="tw:w-full"
         icon={Search}
         inputDataTestId="custom-properties-widget-search"
@@ -162,8 +160,7 @@ export const CustomPropertiesRightPanel = ({
         size="sm"
         trailingSlot={
           <ButtonUtility
-            className="tw:mr-2 tw:p-1"
-            color="tertiary"
+            className="tw:mr-2"
             data-testid="custom-properties-widget-search-close"
             icon={XClose}
             size="xs"
@@ -188,22 +185,18 @@ export const CustomPropertiesRightPanel = ({
         <>
           {viewAllPath && (
             <ButtonUtility
-              className="tw:p-1"
-              color="tertiary"
               data-testid="custom-properties-widget-view-all"
               href={viewAllPath}
               icon={ArrowUpRight}
-              size="xs"
+              size="sm"
               tooltip={t('label.view-all')}
             />
           )}
           <span className="tw:flex" ref={searchButtonWrapperRef}>
             <ButtonUtility
-              className="tw:p-1"
-              color="tertiary"
               data-testid="custom-properties-widget-search-button"
               icon={Search}
-              size="xs"
+              size="sm"
               tooltip={searchLabel}
               onClick={() => setIsSearchOpen(true)}
             />
@@ -220,16 +213,16 @@ export const CustomPropertiesRightPanel = ({
           {visibleItems.map((item) => renderItem(item, false))}
         </ul>
       ) : (
-        <Typography
-          as="p"
-          className="tw:px-4 tw:py-6 tw:text-center tw:text-tertiary"
-          data-testid="no-matching-custom-properties"
-          size="text-sm">
-          {t('message.no-entity-found-for-name', {
-            entity: t('label.property-plural'),
-            name: searchText,
-          })}
-        </Typography>
+        <div className="tw:relative tw:mx-4 tw:min-h-60">
+          <NoSearchResultsPlaceholder
+            data-testid="no-matching-custom-properties"
+            description={t('message.check-spelling-or-try-shorter-term')}
+            title={t('message.no-entity-found-for-name', {
+              entity: t('label.property-plural'),
+              name: searchText,
+            })}
+          />
+        </div>
       )}
     </WidgetCard>
   );
