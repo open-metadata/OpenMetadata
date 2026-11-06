@@ -222,7 +222,8 @@ public class McpSdkUpgradeTest {
 
   /**
    * SDK 2.x checks every tool's inputSchema against JSON Schema 2020-12 when the server registers
-   * it, and one bad schema stops the MCP server from starting. Catch that here instead.
+   * it, and McpServer.registerTool drops a tool whose schema fails, so it silently goes missing
+   * from tools/list. Catch that here instead.
    */
   @Test
   void toolSchemasPassTheSdkStartupSchemaCheck() {
