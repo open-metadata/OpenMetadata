@@ -10223,7 +10223,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void authorizeUserPatch(
       final T original, final JsonPatch patch, final ChangeActor actor) {
-    if (!actor.system()) {
+    // preparePatched refuses a document-root patch with a 400, which must come before any check.
+    if (!actor.system() && !replacesWholeDocument(patch)) {
       authorizePatch(original, patch, actor);
     }
   }

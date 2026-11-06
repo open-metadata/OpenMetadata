@@ -734,6 +734,31 @@ class MetricGroupRepositoryTest {
     assertFalse(thrown.getMessage().contains("margin"));
   }
 
+  @Test
+  void aDocumentRootPatchIsRefusedBeforeAnyMemberCheck() {
+    final MetricGroup original = group("kpis").withMetrics(List.of(member("margin")));
+    final Authorizer authorizer = mock(Authorizer.class);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC))
+          .thenReturn(mock(MetricRepository.class));
+
+      final IllegalArgumentException refused =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  repository.previewPatch(
+                      original,
+                      Json.createPatchBuilder().add("", Json.createObjectBuilder().build()).build(),
+                      ChangeActor.user("alice", null)));
+
+      // A 403 here would tell the caller the group has a member it may not view.
+      assertTrue(refused.getMessage().contains("document root"), refused.getMessage());
+      verify(authorizer, never()).authorizeActor(any(), any(), any());
+    }
+  }
+
   private MetricGroup group(String name) {
     return new MetricGroup().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(name);
   }

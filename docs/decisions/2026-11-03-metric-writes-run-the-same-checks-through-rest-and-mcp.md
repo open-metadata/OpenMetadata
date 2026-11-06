@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (CSV row and hierarchy authorization) · v3 2026-11-05 (checks run in the write path) · v4 2026-11-05 (endpoint and MCP calls removed)
 - **Deciders:** Vishnu Jain
-- **Guard:** `McpMetricAuthorizationIT`, `MetricResourceIT#hierarchyWritesRequireEditPermissionOnParentAndGroupDestinations`, `MetricResourceIT#bulkPutRefusesOnlyTheMetricMovedIntoAGroupTheCallerCannotEdit`, `MetricCsvAuthorizationIT`, `MetricRepositoryTest#admitRefusesMovingAMetricIntoAGroupTheAuthorCannotEdit`, `MetricRepositoryTest#aPatchMayNotSetAssetsChildrenOrChildrenCount`, `MetricRepositoryTest#asyncBulkPutRefusesACreateIntoAGroupTheImpersonatedAuthorCannotEdit`
+- **Guard:** `McpMetricAuthorizationIT`, `MetricResourceIT#hierarchyWritesRequireEditPermissionOnParentAndGroupDestinations`, `MetricResourceIT#bulkPutRefusesOnlyTheMetricMovedIntoAGroupTheCallerCannotEdit`, `MetricCsvAuthorizationIT`, `MetricRepositoryTest#admitRefusesMovingAMetricIntoAGroupTheAuthorCannotEdit`, `MetricRepositoryTest#aPatchMayNotSetAssetsChildrenOrChildrenCount`, `MetricRepositoryTest#asyncBulkPutRefusesACreateIntoAGroupTheImpersonatedAuthorCannotEdit`, `MetricGroupRepositoryTest#aDocumentRootPatchIsRefusedBeforeAnyMemberCheck`
 - **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials
 
 ## Context
