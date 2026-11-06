@@ -1023,3 +1023,75 @@ def test_a_table_outside_the_prefix_database_is_not_linked(sigma_over_http, rout
     source, _ = sigma_over_http
 
     assert lineage_sources(source, routes, ["wh_a.SALES"], [warehouse_table("wh_a", "ORDERS")], sql) == []
+
+
+def sigma_file(file_id: str, name: str, file_type: str) -> dict:
+    return {
+        **sigma_routes()["GET", "/v2/files/T1"],
+        "id": file_id,
+        "urlId": file_id,
+        "name": name,
+        "type": file_type,
+    }
+
+
+# Sigma's documented example response for the element lineage endpoint (list-lineage): the element's table
+# is a `dependencies` entry, and every edge starts at a `dependencies` key.
+DOCUMENTED_ELEMENT_LINEAGE = {
+    "dependencies": {
+        "2MLjb1f67ldr3FMNI2L6Pf": {"name": "STATIONS", "nodeId": "2MLjb1f67ldr3FMNI2L6Pf", "type": "table"},
+        "4ZJD7G8AR03qf2oySPwoc3": {
+            "elementId": "3fqWi0z9SWwxuilnuq8w34",
+            "name": "Train Stations",
+            "nodeId": "4ZJD7G8AR03qf2oySPwoc3",
+            "type": "sheet",
+        },
+        "Ttd4meevWGks3ZYdVWt8X": {
+            "elementId": "5AbJJlOiPPtgpL3cCk7GqA",
+            "name": "Sum of Dock Count by City",
+            "nodeId": "Ttd4meevWGks3ZYdVWt8X",
+            "type": "sheet",
+        },
+    },
+    "edges": [
+        {"source": "4ZJD7G8AR03qf2oySPwoc3", "target": "Ttd4meevWGks3ZYdVWt8X", "type": "source"},
+        {"source": "2MLjb1f67ldr3FMNI2L6Pf", "target": "4ZJD7G8AR03qf2oySPwoc3", "type": "source"},
+    ],
+}
+
+
+def test_fallback_links_the_table_keyed_in_dependencies(sigma_over_http, routes):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] = DOCUMENTED_ELEMENT_LINEAGE
+    routes["GET", "/v2/files/2MLjb1f67ldr3FMNI2L6Pf"] = sigma_file("2MLjb1f67ldr3FMNI2L6Pf", "STATIONS", "table")
+
+    linked = lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "STATIONS")], None)
+
+    assert linked == ["wh_a.ANALYTICS.PUBLIC.STATIONS"]
+    # The table is read once; the two sheets are not
+    assert calls["GET", "/v2/files/2MLjb1f67ldr3FMNI2L6Pf"] == 1
+    assert not [path for _, path in calls if path.endswith(("/4ZJD7G8AR03qf2oySPwoc3", "/Ttd4meevWGks3ZYdVWt8X"))]
+
+
+def test_a_dataset_keyed_in_dependencies_is_read(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    # DataHub's mocked element lineage for this endpoint: a Sigma dataset keyed as `inode-<urlId>`
+    routes["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] = {
+        "dependencies": {
+            "qrL7BEq8LR": {
+                "nodeId": "qrL7BEq8LR",
+                "type": "sheet",
+                "name": "Count of Profile Id by Status",
+                "elementId": "el-wb-1",
+            },
+            "inode-49HFLTr6xytgrPly3PFsNC": {
+                "nodeId": "inode-49HFLTr6xytgrPly3PFsNC",
+                "type": "dataset",
+                "name": "PETS",
+            },
+        },
+        "edges": [{"source": "inode-49HFLTr6xytgrPly3PFsNC", "target": "qrL7BEq8LR", "type": "source"}],
+    }
+    routes["GET", "/v2/files/49HFLTr6xytgrPly3PFsNC"] = sigma_file("49HFLTr6xytgrPly3PFsNC", "PETS", "dataset")
+
+    assert [node.name for node in source.client.get_lineage_details("wb-1", "el-wb-1") or []] == ["PETS"]

@@ -24,6 +24,7 @@ from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.sigma.models import (
     AuthToken,
+    EdgeSource,
     EdgeSourceResponse,
     Elements,
     ElementsResponse,
@@ -250,25 +251,28 @@ class SigmaApiClient:
                 self.client.get(f"/workbooks/{workbook_id}/lineage/elements/{element_id}")
             )
 
-            for edge in edges_response.edges:
-                if not edge.node_id:
-                    continue
-
-                if edge.source in edges_response.dependencies:
-                    continue
-
+            node_ids = [
+                node_id
+                for edge in edges_response.edges or []
+                if (node_id := edge.node_id) and edge.source not in edges_response.dependencies
+            ]
+            # Sigma keys the element's upstream tables in `dependencies`, so their edges start at a key
+            node_ids += [
+                node_id
+                for node in edges_response.dependencies.values()
+                if node.type in ("table", "dataset") and (node_id := EdgeSource(source=node.nodeId).node_id)
+            ]
+            for node_id in node_ids:
                 try:
-                    if edge.node_id not in self._file_cache:
-                        self._file_cache[edge.node_id] = NodeDetails.model_validate(
-                            self.client.get(f"/files/{edge.node_id}")
-                        )
-                    node_details = self._file_cache[edge.node_id]
+                    if node_id not in self._file_cache:
+                        self._file_cache[node_id] = NodeDetails.model_validate(self.client.get(f"/files/{node_id}"))
+                    node_details = self._file_cache[node_id]
 
                     if node_details.node_type in ["table", "dataset"]:
                         source_nodes.append(node_details)
                 except Exception as node_exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to fetch node details for {edge.node_id}: {node_exc}")
+                    logger.warning(f"Failed to fetch node details for {node_id}: {node_exc}")
                     continue
 
             return source_nodes if source_nodes else None  # noqa: TRY300

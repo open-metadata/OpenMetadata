@@ -94,13 +94,13 @@ class EdgeSource(BaseModel):
 class Dependency(BaseModel):
     nodeId: str  # noqa: N815
     type: str
-    name: str | None
-    elementId: str | None  # noqa: N815
+    name: str | None = None
+    elementId: str | None = None  # noqa: N815
 
 
 class EdgeSourceResponse(BaseModel):
     edges: list[EdgeSource] | None = []
-    dependencies: dict | None = {}
+    dependencies: dict[str, Dependency] = {}
 
 
 class NodeDetails(BaseModel):
