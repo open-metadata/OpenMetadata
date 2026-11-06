@@ -453,8 +453,8 @@ def _nested_column_lineage(from_column: TableColumn, to_column: TableColumn) -> 
         return []
     edges = [
         ColumnLineage(
-            fromColumns=[from_column.fullyQualifiedName.root],
-            toColumn=to_column.fullyQualifiedName.root,
+            fromColumns=[from_column.fullyQualifiedName],
+            toColumn=to_column.fullyQualifiedName,
         )
     ]
     for from_child in from_column.children or []:
@@ -508,20 +508,18 @@ def _key_struct_field_parents(column_lineage_map: dict, lineage_parser: LineageP
     does read as a table keeps its key.
 
     The parser drops the qualifier of such a path, so it is resolved only when nothing else
-    in the query can own that name: one source table, no intermediate table, and no subquery
-    or CTE that could rename a column to it. Otherwise the path keeps its key and gets no
-    lineage rather than lineage from the wrong column. ADR:2026-11-06-sql-column-lineage-follows-nested-fields
+    in the query can own that name: one source, which is a table (a table-valued function or a
+    stage can read several), no intermediate table, and no subquery or CTE that could rename a
+    column to it. Otherwise the path keeps its key and gets no lineage rather than lineage from
+    the wrong column. ADR:2026-11-06-sql-column-lineage-follows-nested-fields
     """
-    if len(lineage_parser.source_tables) != 1 or lineage_parser.intermediate_tables or lineage_parser.has_subqueries:
+    source_tables = cast("list", lineage_parser.source_tables)
+    intermediate_tables = cast("list", lineage_parser.intermediate_tables)
+    target_tables = cast("list", lineage_parser.target_tables)
+    single_table_source = len(source_tables) == 1 and isinstance(source_tables[0], LineageTable)
+    if not single_table_source or intermediate_tables or lineage_parser.has_subqueries:
         return
-    read_tables = {
-        str(table)
-        for table in (
-            *lineage_parser.source_tables,
-            *lineage_parser.intermediate_tables,
-            *lineage_parser.target_tables,
-        )
-    }
+    read_tables = {str(table) for table in (*source_tables, *intermediate_tables, *target_tables)}
     default_prefix = f"{DEFAULT_SCHEMA_NAME}."
     for sources in column_lineage_map.values():
         for key in list(sources):

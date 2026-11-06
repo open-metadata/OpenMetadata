@@ -17,14 +17,17 @@ cover the parser output and the column resolution together.
 """
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from collate_sqllineage.core.models import DataFunction, Location
+from collate_sqllineage.core.models import Table as LineageTable
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.lineage.sql_lineage import STRUCT_FIELD_PARENT, _key_struct_field_parents, get_lineage_by_query
 
 SERVICE = "bq"
 SCHEMA_FQN = f"{SERVICE}.proj.ds"
@@ -290,3 +293,25 @@ def test_a_query_whose_subqueries_cannot_be_read_counts_as_having_them():
     assert unparsed.has_subqueries
     assert unreadable.has_subqueries
     assert not LineageParser("SELECT id FROM ds.users", Dialect.BIGQUERY).has_subqueries
+
+
+@pytest.mark.parametrize(
+    ("source", "resolved"),
+    [
+        (LineageTable("users"), True),
+        (DataFunction("read_users"), False),
+        (Location("users_stage"), False),
+    ],
+    ids=["table", "table-valued-function", "stage"],
+)
+def test_struct_path_resolves_only_when_its_one_source_is_a_table(source, resolved):
+    parser = SimpleNamespace(
+        source_tables=[source], intermediate_tables=[], target_tables=[LineageTable("v")], has_subqueries=False
+    )
+    column_lineage_map = {"<default>.v": {"<default>.customer": [("e", "email")]}}
+
+    _key_struct_field_parents(column_lineage_map, parser)
+
+    struct_key = f"{STRUCT_FIELD_PARENT}.customer"
+    assert (struct_key in column_lineage_map["<default>.v"]) is resolved
+    assert ("<default>.customer" in column_lineage_map["<default>.v"]) is not resolved

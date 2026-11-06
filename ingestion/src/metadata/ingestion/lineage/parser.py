@@ -179,7 +179,7 @@ class LineageParser:
         try:
             return any(isinstance(node, SubQuery) for node in self.parser._sql_holder.graph.nodes)
         except Exception as err:
-            logger.debug(f"[{self.query_hash}] Cannot inspect the query for subqueries: {err}")
+            logger.debug("[%s] Cannot inspect the query for subqueries: %s", self.query_hash, err)
             return True
 
     @cached_property
