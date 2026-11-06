@@ -1646,6 +1646,31 @@ describe('mappings are picked by label', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('adds a concept picked by label when Enter is pressed and no option is focused', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'Acc');
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: /Account/ }));
+    fireEvent.keyDown(picker, { key: 'Enter' });
+
+    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
+      'Exact match · https://example.org/ledger#Account'
+    );
+    expect(picker).toHaveValue('');
+  });
+
+  it('adds a concept whose label was typed in full when Enter is pressed', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'Account');
+    fireEvent.keyDown(picker, { key: 'Enter' });
+
+    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
+      'Exact match · https://example.org/ledger#Account'
+    );
+  });
+
   it('adds a pasted IRI when Enter is pressed and no option is focused', async () => {
     setup();
     const picker = await mappingPicker();

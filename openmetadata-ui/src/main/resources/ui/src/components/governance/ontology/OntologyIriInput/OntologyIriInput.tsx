@@ -28,7 +28,7 @@ interface OntologyIriInputProps {
   /** Options are still arriving; the list says so instead of looking empty. */
   isLoading?: boolean;
   onChange: (iri: string) => void;
-  /** Enter on a typed absolute IRI with no option focused, as a pasted IRI is committed. */
+  /** Enter with no option focused on an absolute IRI or a picked or resolved option. */
   onSubmit?: () => void;
   /** Enter or blur on text that is neither an option nor an absolute IRI, so a caller can show its error only now. */
   onInvalidCommit?: () => void;
@@ -97,7 +97,7 @@ const OntologyIriInput = ({
 
       return;
     }
-    if (!onSubmit || !isAbsoluteOntologyIri(text)) {
+    if (!onSubmit || !(selected || isAbsoluteOntologyIri(text))) {
       return;
     }
     event.preventDefault();

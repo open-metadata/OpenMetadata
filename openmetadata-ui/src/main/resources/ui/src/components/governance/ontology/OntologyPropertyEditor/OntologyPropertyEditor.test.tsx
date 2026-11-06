@@ -140,6 +140,32 @@ describe('OntologyPropertyEditor', () => {
     );
   });
 
+  it('adds a domain picked by concept label when Enter is pressed', async () => {
+    render(
+      <OntologyPropertyEditor
+        canEdit
+        concepts={[
+          { iri: 'urn:sales:customer', label: 'Customer' },
+          { iri: 'urn:sales:order', label: 'Order' },
+        ]}
+        ontology={ontology}
+        onSaved={jest.fn()}
+      />
+    );
+    const domain = within(screen.getByTestId('ontology-property-domain'));
+    const input = domain.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Cust' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: /Customer/ }));
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(
+      domain.getByRole('button', { name: 'label.remove Customer' })
+    ).toBeInTheDocument();
+    expect(input).toHaveValue('');
+  });
+
   it('rejects a pasted value that is not an IRI beside the field', () => {
     render(
       <OntologyPropertyEditor canEdit ontology={ontology} onSaved={jest.fn()} />
