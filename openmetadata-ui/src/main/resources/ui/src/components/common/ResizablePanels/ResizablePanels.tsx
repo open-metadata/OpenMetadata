@@ -47,7 +47,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     <>
       {pageTitle && <DocumentTitle title={pageTitle} />}
       <ReflexContainer
-        className={classNames(className, 'resizable-panels-layout bg-grey')}
+        className={classNames(className, 'resizable-panels-layout')}
         orientation={orientation}>
         <ReflexElement
           className={classNames(firstPanel.className, 'resizable-first-panel', {
