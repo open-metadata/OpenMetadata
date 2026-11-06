@@ -28,6 +28,7 @@ public class OntologyDraftQueryIT extends BaseOntologyApprovalIT {
   private static final SparqlQuery CLASSES =
       new SparqlQuery()
           .withQuery("SELECT ?class WHERE { ?class a <http://www.w3.org/2002/07/owl#Class> }");
+  private static final String EXTERNAL_ENDPOINT = "http://localhost:9999/";
 
   @Test
   void draftScopeSeesAConceptThatTheReleaseScopeDoesNot(TestNamespace ns) {
@@ -84,7 +85,7 @@ public class OntologyDraftQueryIT extends BaseOntologyApprovalIT {
     concept(ontology, "First");
     final SparqlQuery service =
         new SparqlQuery()
-            .withQuery("SELECT * WHERE { SERVICE <http://localhost:9999/> { ?s ?p ?o } }");
+            .withQuery("SELECT * WHERE { SERVICE <" + EXTERNAL_ENDPOINT + "> { ?s ?p ?o } }");
 
     assertEquals(
         403,
@@ -97,6 +98,30 @@ public class OntologyDraftQueryIT extends BaseOntologyApprovalIT {
         assertThrows(
                 OpenMetadataException.class,
                 () -> run(SdkClients.adminClient(), ontology, "working", CLASSES))
+            .getStatusCode());
+  }
+
+  /**
+   * EXISTS evaluates its whole graph pattern, SERVICE included, wherever the expression sits. The
+   * viewer is a user the other tests here do not query as, so concurrent tests cannot push it past
+   * the server's two concurrent SPARQL queries per user.
+   */
+  @Test
+  void aViewerIsRefusedAServiceClauseHiddenInsideAnExpression(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    concept(ontology, "First");
+    final SparqlQuery hidden =
+        new SparqlQuery()
+            .withQuery(
+                "SELECT (EXISTS { SERVICE <"
+                    + EXTERNAL_ENDPOINT
+                    + "> { ?s ?p ?o } } AS ?reachable) WHERE { }");
+
+    assertEquals(
+        403,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> run(SdkClients.user1Client(), ontology, null, hidden))
             .getStatusCode());
   }
 

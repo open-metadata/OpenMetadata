@@ -5434,8 +5434,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       validatedDomains = getValidatedDomains(updated.getDomains());
     }
     updated.setDomains(validatedDomains);
+    String patchedName = updated.getName();
     try (var ignored = phase("patchRestoreAttributes")) {
       restorePatchAttributes(original, updated);
+    }
+    if (!Objects.equals(patchedName, updated.getName())) {
+      // A rejected rename: prepareInternal derived child FQNs (e.g. columns) from the patched name.
+      // Derive them again from the restored name; the entity keeps its stored FQN.
+      setFullyQualifiedName(updated);
+      updated.setFullyQualifiedName(original.getFullyQualifiedName());
     }
     return updated;
   }

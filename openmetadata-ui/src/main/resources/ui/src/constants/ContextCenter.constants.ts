@@ -21,6 +21,17 @@ import {
 import { ExploreQuickFilterField } from '../interface/quickFilter.interface';
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
+export const CONTEXT_FILE_ENTITY_TYPE = 'contextFile';
+
+/**
+ * The status reason the server stores when a Query a memory cites is deleted (MemoryEvidenceHolds),
+ * with the Query's id between the two parts. Only matched to recognise that hold, so it stays in
+ * English; the UI shows `message.memory-supporting-query-deleted` instead.
+ */
+export const RETIRED_QUERY_REASON = {
+  prefix: 'Supporting query ',
+  suffix: ' was deleted; review whether this memory still holds without it',
+};
 
 // Quick-filter fields shown above the Context Center Articles list. Options are
 // fetched from the `page` search-index aggregations by ExploreQuickFilters.

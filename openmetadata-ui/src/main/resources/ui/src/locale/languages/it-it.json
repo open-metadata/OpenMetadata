@@ -5334,6 +5334,7 @@
     "members-users-description": "Visualizza e gestisci gli utenti standard della tua organizzazione. Per gli utenti admin, visita la pagina Admin.",
     "memory-conflict-review-message": "Revisione del conflitto di memoria per",
     "memory-no-longer-exists": "Questa memoria non esiste più.",
+    "memory-supporting-query-deleted": "La query di supporto \"{{query}}\" è stata eliminata; verifica se questa memoria è ancora valida senza di essa",
     "mentioned-you-on-the-lowercase": "ti ha menzionato in",
     "metadata-agents-description": "Estrai metadati, utilizzo, lineage e profilazione dalla sorgente.",
     "metadata-agents-table-description": "I Metadata Agent vengono usati per estrarre metadati dai servizi sorgente.",
