@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, PageHeader } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  FeaturedIcon,
+  PageHeader,
+} from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
   ChevronDown,
@@ -87,7 +92,7 @@ import { DEFAULT_GLOSSARY_TERM_ICON } from '../../common/IconPicker/IconPicker.c
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
-import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import ProposalCard from '../../governance/glossary/GlossaryReview/ProposalCard';
@@ -285,11 +290,6 @@ const buildManageButtonContent = ({
 
 const getGlossaryHeaderSuffix = (isGlossary: boolean): ReactNode =>
   !isGlossary && <LearningIcon pageId={LEARNING_PAGE_IDS.GLOSSARY_TERM} />;
-
-const getGlossaryTitleColor = (
-  isGlossary: boolean,
-  color?: string
-): string | undefined => (isGlossary ? undefined : color);
 
 interface GlossaryHeaderActionsProps {
   isVersionView?: boolean;
@@ -617,28 +617,27 @@ const GlossaryHeader = ({
     [selectedData.votes, currentUser]
   );
 
-  const icon = useMemo(() => {
-    if (isGlossary) {
-      return (
-        <GlossaryIcon className="align-middle tw:text-quaternary" size={36} />
-      );
-    }
-
-    return (
-      <EntityStyleIcon
-        className="align-middle"
-        fallback={
-          <GlossaryTermIcon
-            className="align-middle tw:text-quaternary"
-            size={36}
-          />
+  const icon = useMemo(
+    () => (
+      <FeaturedIcon
+        color="gray"
+        icon={
+          isGlossary ? (
+            GlossaryIcon
+          ) : (
+            <EntityStyleIcon
+              fallback={<GlossaryTermIcon size={20} />}
+              iconValue={selectedData.style?.iconURL}
+              size={20}
+            />
+          )
         }
-        iconValue={selectedData.style?.iconURL}
-        imageClassName="align-middle object-contain"
-        size={36}
+        size="md"
+        theme="surface"
       />
-    );
-  }, [selectedData, isGlossary]);
+    ),
+    [selectedData, isGlossary]
+  );
 
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? selectedData : undefined);
@@ -744,7 +743,7 @@ const GlossaryHeader = ({
   const statusBadge = useMemo(() => {
     const entityStatus = selectedData.entityStatus ?? EntityStatus.Approved;
 
-    return <EntityStatusBadge showDivider status={entityStatus} />;
+    return <EntityStatusBadge showDivider={false} status={entityStatus} />;
   }, [selectedData]);
 
   const createButtons = useMemo(() => {
@@ -901,17 +900,13 @@ const GlossaryHeader = ({
         className="glossary-header"
         data-testid="glossary-header"
         title={
-          <EntityHeaderTitle
-            badge={statusBadge}
-            color={getGlossaryTitleColor(isGlossary, selectedData.style?.color)}
+          <EntityPageTitle
+            actions={getGlossaryHeaderSuffix(isGlossary)}
+            badges={statusBadge}
             deleted={selectedData.deleted}
             displayName={selectedData.displayName}
-            displayNameClassName="text-xl"
             icon={icon}
             name={selectedData.name}
-            nameClassName="text-xl"
-            serviceName=""
-            suffix={getGlossaryHeaderSuffix(isGlossary)}
           />
         }
         variant={isAiMode ? 'gradient' : 'flat'}

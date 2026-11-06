@@ -73,6 +73,11 @@
       "description": "Current approval task, assigned by the existing workflow infrastructure. Clients cannot set this field.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
+    "approvalBasis": {
+      "description": "Why this release was approved. REVIEWED means the ontology's reviewers decided it; NO_REVIEWERS_CONFIGURED means the ontology had no reviewers when an author published it directly. Absent on releases approved before this field existed, which were all reviewed.",
+      "type": "string",
+      "enum": ["REVIEWED", "NO_REVIEWERS_CONFIGURED"]
+    },
     "releaseRevision": {
       "description": "Monotonic release number allocated under the owning ontology state lock.",
       "type": "integer",

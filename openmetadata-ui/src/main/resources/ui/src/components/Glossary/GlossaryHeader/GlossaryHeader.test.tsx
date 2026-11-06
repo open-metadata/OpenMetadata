@@ -114,10 +114,6 @@ jest.mock('../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 
-jest.mock('../../Entity/EntityHeaderTitle/EntityHeaderTitle.component', () =>
-  jest.fn().mockReturnValue(<div data-testid="entity-header">EntityHeader</div>)
-);
-
 jest.mock(
   '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component',
   () => {
@@ -232,7 +228,9 @@ describe('GlossaryHeader component', () => {
       />
     );
 
-    expect(screen.getByText('EntityHeader')).toBeInTheDocument();
+    expect(screen.getByTestId('entity-header-display-name')).toHaveTextContent(
+      'glossaryTest'
+    );
   });
 
   it.each([
