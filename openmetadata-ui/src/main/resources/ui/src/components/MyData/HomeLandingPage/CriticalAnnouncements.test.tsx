@@ -26,7 +26,7 @@ import {
 } from '../../../rest/announcementsAPI';
 import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import CriticalAnnouncements from './CriticalAnnouncements';
-import { CRITICAL_ANNOUNCEMENTS_PAGE_SIZE } from './CriticalAnnouncements.constants';
+import { CRITICAL_ANNOUNCEMENTS_PAGE_SIZE } from '../../../rest/queries/criticalAnnouncementsQuery';
 import {
   DismissedAnnouncementsScope,
   getDismissedAnnouncementsStorageKey,

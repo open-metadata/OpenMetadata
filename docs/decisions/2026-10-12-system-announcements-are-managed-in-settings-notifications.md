@@ -64,9 +64,10 @@ a permission-based `isProtected` here and an amendment to this record.
   top banner; every other type shows as a card in the announcements rail, which now reads
   without the `system` filter and leaves out only the system criticals (`isCriticalSystemAnnouncement`),
   so none appears twice on the page.
-- The "View all" dialog lists every live announcement — asset and system, criticals included — so
-  its badge keeps counting the server's `paging.total` exactly. The rail prunes its dismissals
-  against the unfiltered list for the same reason: the dialog shares them and does show criticals.
+- The "View all" dialog mirrors the rail: every live announcement but the system criticals, which
+  the banner alone owns, dismissals included (each surface keeps its own dismissal scope). Its
+  badge is the server's `paging.total` less the banner's live criticals, read from the banner's
+  own cached query (`rest/queries/criticalAnnouncementsQuery.ts`).
 - The carousels that show one announcement at a time — the critical banner and the entity-page
   banner — draw core `PaginationDot` (`size="sm"`) under them, one dot per announcement, and a dot
   jumps there. The rail shows several cards at once, so it pages by its arrows alone.

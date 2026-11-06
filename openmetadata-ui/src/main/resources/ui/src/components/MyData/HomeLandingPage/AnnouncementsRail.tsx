@@ -39,9 +39,9 @@ const ACTIVE_ANNOUNCEMENTS_TTL_MS = 60_000;
 const ACTIVE_ANNOUNCEMENTS_GC_TIME_MS =
   ACTIVE_ANNOUNCEMENTS_TTL_MS + 5 * 60 * 1000;
 
-// Asset and system announcements alike. The system criticals come back too but
-// are left out of the rail, not the request: the dismissals the rail prunes are
-// shared with the dialog, which does list them.
+// Asset and system announcements alike. The system criticals come back too and
+// are left out of the rail rather than the request: the API has no filter for
+// "every type but Critical", and the banner above shows those.
 const fetchActiveAnnouncements = async (): Promise<AnnouncementEntity[]> => {
   const response = await listAnnouncements({
     active: true,

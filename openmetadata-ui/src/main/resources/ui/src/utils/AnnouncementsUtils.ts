@@ -126,6 +126,12 @@ export const ANNOUNCEMENT_COLOR_LABEL_KEYS: Record<AnnouncementColor, string> =
     [AnnouncementColor.Orange]: 'label.color-orange',
   };
 
+/**
+ * The colour a Custom announcement takes until one is picked: the banner draws
+ * it and the form pre-selects it, so both read this one value.
+ */
+export const DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR = AnnouncementColor.Pink;
+
 export interface AnnouncementTypeConfig {
   color: BadgeColors;
   /** A Custom announcement's own name, shown in place of `labelKey`. */
@@ -159,7 +165,7 @@ export const ANNOUNCEMENT_TYPE_CONFIG: Record<
     labelKey: 'label.deprecation',
   },
   [AnnouncementType.Custom]: {
-    color: 'pink',
+    color: ANNOUNCEMENT_COLORS[DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR],
     icon: Announcement02,
     labelKey: 'label.custom',
   },
@@ -192,9 +198,6 @@ export const CUSTOM_ANNOUNCEMENT_COLORS: AnnouncementColor[] = [
   AnnouncementColor.Blue,
   AnnouncementColor.Error,
 ];
-
-/** The colour a Custom announcement starts with: the type's own default. */
-export const DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR = AnnouncementColor.Pink;
 
 /** Mirrors `customTypeName.maxLength` in the announcement schema. */
 export const CUSTOM_TYPE_NAME_MAX_LENGTH = 64;

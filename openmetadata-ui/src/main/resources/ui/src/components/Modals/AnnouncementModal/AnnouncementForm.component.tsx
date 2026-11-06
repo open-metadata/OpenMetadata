@@ -30,10 +30,7 @@ import { Heading } from 'react-aria-components';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
-import {
-  CUSTOM_TYPE_NAME_MAX_LENGTH,
-  DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR,
-} from '../../../utils/AnnouncementsUtils';
+import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
   AnnouncementDateField,
@@ -42,6 +39,7 @@ import {
 import {
   ANNOUNCEMENT_TITLE_MAX_LENGTH,
   ANNOUNCEMENT_TITLE_MIN_LENGTH,
+  applyAnnouncementTypeChange,
 } from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
 import {
@@ -87,19 +85,7 @@ const AnnouncementForm = ({
     onChange: (value: AnnouncementType) => void
   ) => {
     onChange(value);
-    // Leaving Custom drops its colour/name requirements, so their errors go too.
-    if (value !== AnnouncementType.Custom) {
-      form.clearErrors(['color', 'customTypeName']);
-
-      return;
-    }
-    // A Custom with no colour already renders in the default one, so the swatch
-    // starts selected on it instead of showing nothing picked.
-    if (!form.getValues('color')) {
-      form.setValue('color', DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR, {
-        shouldValidate: true,
-      });
-    }
+    applyAnnouncementTypeChange(form, value);
   };
 
   return (

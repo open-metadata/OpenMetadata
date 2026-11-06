@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Announcement02 } from '@openmetadata/ui-core-components/icons';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../components/common/Loader/Loader';
@@ -28,6 +28,8 @@ import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../../rest/announcementsAPI';
+import { getCriticalAnnouncementsQueryOptions } from '../../../rest/queries/criticalAnnouncementsQuery';
+import { isCriticalSystemAnnouncement } from '../../../utils/AnnouncementsUtils';
 import AnnouncementCard from './AnnouncementCard';
 import { compareAnnouncements } from './announcementLifecycle';
 
@@ -39,9 +41,10 @@ const ALL_ANNOUNCEMENTS_QUERY_KEY = [
 ] as const;
 const ALL_ANNOUNCEMENTS_TTL_MS = 60_000;
 
-// Every live announcement, asset and system alike — the full version of the
-// rail, which shows two at a time, and so the one list that also carries the
-// system criticals the banner shows. Expired and scheduled ones stay out: the section itself only appears
+// Every live announcement the rail lists, asset and system alike — the full
+// version of the rail, which shows two at a time. Like the rail it leaves out
+// the system criticals: the banner above owns those, dismissals included.
+// Expired and scheduled ones stay out: the section itself only appears
 // while something is live, so it is no place for them; each asset's
 // Announcements drawer lists those. Paged on the API's `after` cursor rather
 // than capped at one fetch, so a busy estate never silently loses the rest.
@@ -81,9 +84,18 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
       queryKey: ALL_ANNOUNCEMENTS_QUERY_KEY,
       staleTime: ALL_ANNOUNCEMENTS_TTL_MS,
     });
+  // The banner's own query, already cached by the time the dialog opens: the
+  // server's total counts these criticals, which the dialog does not list.
+  const { data: criticals } = useQuery({
+    ...getCriticalAnnouncementsQueryOptions(),
+    enabled: open,
+  });
 
   const loaded = useMemo<AnnouncementEntity[]>(
-    () => data?.pages.flatMap((page) => page.data ?? []) ?? [],
+    () =>
+      data?.pages
+        .flatMap((page) => page.data ?? [])
+        .filter((a) => !isCriticalSystemAnnouncement(a)) ?? [],
     [data]
   );
 
@@ -96,12 +108,18 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
   );
 
   // The badge counts the whole list, not just the pages loaded: the server's
-  // total, less what the user dismissed among the ones already here.
+  // total, less the banner's criticals and what the user dismissed among the
+  // ones already here.
   const total = data?.pages[0]?.paging?.total;
   const count =
     total === undefined
       ? announcements.length
-      : Math.max(total - (loaded.length - announcements.length), 0);
+      : Math.max(
+          total -
+            (criticals?.length ?? 0) -
+            (loaded.length - announcements.length),
+          0
+        );
 
   const renderBody = () => {
     if (isLoading) {

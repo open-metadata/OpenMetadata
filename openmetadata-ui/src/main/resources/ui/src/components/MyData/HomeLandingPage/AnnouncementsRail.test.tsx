@@ -179,10 +179,18 @@ const mockListAnnouncementsApi = listAnnouncements as jest.MockedFunction<
 // by page size: the dialog pages at ALL_ANNOUNCEMENTS_PAGE_SIZE, the rail does not.
 const mockGetActiveAnnouncements = jest.fn();
 const mockListAnnouncements = jest.fn();
-const routeListAnnouncements = (params?: ListAnnouncementsParams) =>
-  params?.limit === ALL_ANNOUNCEMENTS_PAGE_SIZE
+// The dialog also reads the banner's criticals, the one request asking for
+// system announcements alone.
+const mockListCriticalAnnouncements = jest.fn();
+const routeListAnnouncements = (params?: ListAnnouncementsParams) => {
+  if (params?.system) {
+    return mockListCriticalAnnouncements(params);
+  }
+
+  return params?.limit === ALL_ANNOUNCEMENTS_PAGE_SIZE
     ? mockListAnnouncements(params)
     : mockGetActiveAnnouncements(params);
+};
 
 const USER_ID = 'user-1';
 const ANNOUNCEMENT_ID = 'announcement-1';
@@ -656,6 +664,7 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     mockListAnnouncements.mockResolvedValue({
       data: [makeAnnouncement('a1'), makeAnnouncement('a2')],
     } as never);
+    mockListCriticalAnnouncements.mockResolvedValue({ data: [] } as never);
   });
 
   const openDialog = async () => {
@@ -707,7 +716,7 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     expect(within(list).getAllByLabelText(DISMISS_LABEL)).toHaveLength(2);
   });
 
-  it('lists system announcements too, the criticals among them', async () => {
+  it('lists system announcements too, leaving the criticals to the banner', async () => {
     mockListAnnouncements.mockResolvedValue({
       data: [
         makeAnnouncement('system-critical', {
@@ -721,10 +730,31 @@ describe('AnnouncementsRail all-announcements dialog', () => {
 
     const list = screen.getByTestId('all-announcements-list');
 
-    expect(list).toContainElement(
-      screen.getByTestId(cardId('system-critical'))
-    );
     expect(list).toContainElement(screen.getByTestId(cardId('system-notice')));
+    expect(
+      within(list).queryByTestId(cardId('system-critical'))
+    ).not.toBeInTheDocument();
+  });
+
+  it("leaves the banner's criticals out of the badge's server total", async () => {
+    const critical = makeAnnouncement('system-critical', {
+      entityLink: undefined,
+      type: AnnouncementType.Critical,
+    });
+    mockListCriticalAnnouncements.mockResolvedValue({
+      data: [critical],
+    } as never);
+    mockListAnnouncements.mockResolvedValue({
+      data: [critical, makeAnnouncement('a1'), makeAnnouncement('a2')],
+      paging: { total: 3 },
+    } as never);
+    await openDialog();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('all-announcements-count')).toHaveTextContent(
+        '2'
+      );
+    });
   });
 
   it('closes itself when an announcement in it is opened', async () => {
