@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Unit tests for MicroStrategy connection handling."""
 
+import socket
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -102,11 +103,29 @@ def test_get_token_wraps_a_failed_login():
     assert diagnosis.title == "Authentication failed"
 
 
+def test_a_server_error_at_login_is_diagnosed():
+    login_error = MicroStrategyApiError("Login failed with HTTP 500")
+    login_error.__cause__ = _http_error(500)
+
+    diagnosis = MICROSTRATEGY_ERRORS.classify(login_error)
+
+    assert diagnosis is not None
+    assert diagnosis.title == "MicroStrategy server error"
+
+
+def test_an_unresolvable_host_is_diagnosed():
+    error = requests.ConnectionError("Failed to resolve 'mstr.internal'")
+    error.__cause__ = socket.gaierror(-2, "Name or service not known")
+
+    assert MICROSTRATEGY_ERRORS.classify(error) is not None
+
+
 @pytest.mark.parametrize(
     ("error", "title"),
     [
         (_http_error(403), "Insufficient permissions"),
         (_http_error(404), "MicroStrategy Library API not found"),
+        (_http_error(500), "MicroStrategy server error"),
         (SSLError("certificate verify failed"), "TLS verification failed"),
     ],
 )

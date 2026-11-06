@@ -64,6 +64,12 @@ MICROSTRATEGY_ERRORS = ErrorPack(
         fix="Host Port must be the server root, such as https://host:port. The connector appends "
         "/MicroStrategyLibrary/api, so do not include that path.",
     ),
+    when(http_status(500, 502, 503, 504)).diagnose(
+        "MicroStrategy server error",
+        fix="The MicroStrategy server failed while handling the request (HTTP 5xx). This is a server-side problem, "
+        "not the credentials: check that the Library server can reach its Intelligence Server, and read the error "
+        "message in the logs and the MicroStrategy Library logs.",
+    ),
     when(Matchers.exception(SSLError)).diagnose(
         "TLS verification failed",
         fix="The server's certificate could not be verified. Provide the CA certificate under SSL Config with "
