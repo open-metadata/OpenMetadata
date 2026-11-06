@@ -51,3 +51,5 @@ no partition and disappeared from search when the new index was promoted, while 
 - A partition no longer stops at its count, so its success count can exceed `estimatedCount`.
 - Each batch costs two extra single-row keyset queries to find and confirm the boundary.
 - Time-series types still page by offset and are not covered.
+- A row renamed during the run into a range that was already read is not read again; it relies on
+  the live write path, as it did with offset ranges.

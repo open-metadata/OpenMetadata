@@ -199,6 +199,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EntityError;
@@ -3137,7 +3138,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   private String cursorOfStoredRow(String json, ListFilter filter) {
     try {
       return getCursorValue(JsonUtils.readValue(json, entityClass), filter);
-    } catch (Exception e) {
+    } catch (JsonParsingException e) {
       LOG.warn("Continuing past an unreadable {} row from its stored name and id", entityType, e);
       return storedKeyCursor(json);
     }

@@ -25,6 +25,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.EntityError;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
@@ -814,8 +815,7 @@ public class PartitionWorker {
   private static final class SinkBatchException extends SearchIndexException {
     private final transient String nextCursor;
 
-    SinkBatchException(
-        org.openmetadata.schema.system.IndexingError indexingError, String nextCursor) {
+    SinkBatchException(IndexingError indexingError, String nextCursor) {
       super(indexingError);
       this.nextCursor = nextCursor;
     }
