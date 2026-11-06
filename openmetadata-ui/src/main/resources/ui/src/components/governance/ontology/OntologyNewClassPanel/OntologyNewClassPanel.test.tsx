@@ -1589,6 +1589,87 @@ describe('mappings are picked by label', () => {
     expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
   });
 
+  it('adds a pasted IRI when Enter is pressed and no option is focused', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'https://schema.org/Payment');
+    fireEvent.keyDown(picker, { key: 'Enter' });
+
+    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
+      'Exact match · https://schema.org/Payment'
+    );
+    expect(picker).toHaveValue('');
+  });
+
+  it('does not add text that is not an absolute IRI when Enter is pressed', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'no such concept');
+    fireEvent.keyDown(picker, { key: 'Enter' });
+
+    expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
+  });
+
+  it('selects the focused option on Enter instead of adding the mapping', async () => {
+    setup();
+    const picker = await mappingPicker();
+    type(picker, 'Acc');
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    await screen.findByRole('option', { name: /Account/ });
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    fireEvent.keyDown(picker, { key: 'Enter' });
+
+    await waitFor(() => expect(picker).toHaveValue('Account'));
+
+    expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-add-mapping')).toBeEnabled();
+
+    addMapping();
+
+    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
+      'Exact match · https://example.org/ledger#Account'
+    );
+  });
+
+  it('shows a loading row, then the matches of concepts that arrive after typing', async () => {
+    let release: () => void = () => undefined;
+    const arrival = new Promise((resolve) => {
+      release = resolve;
+    });
+    const base = get.getMockImplementation();
+    get.mockImplementation(async (url: string, ...rest: unknown[]) => {
+      if (url === '/ontologyConcepts') {
+        await arrival;
+
+        return { data: { data: [ledgerAccount], paging: {} } };
+      }
+
+      return base?.(url, ...rest);
+    });
+    setup();
+    const picker = await screen.findByRole('combobox', {
+      name: /^label\.concept-iri/,
+    });
+    type(picker, 'Acc');
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+
+    expect(
+      await screen.findByRole('option', { name: 'label.loading' })
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.queryByRole('option', { name: /Account/ })
+    ).not.toBeInTheDocument();
+
+    await act(async () => release());
+
+    expect(
+      await screen.findByRole('option', { name: /Account/ })
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('option', { name: 'label.loading' })
+    ).not.toBeInTheDocument();
+  });
+
   it('refuses the same mapping twice', async () => {
     setup();
     const picker = await mappingPicker();

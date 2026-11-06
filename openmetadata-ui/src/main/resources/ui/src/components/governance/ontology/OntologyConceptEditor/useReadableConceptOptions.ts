@@ -32,8 +32,9 @@ const toOption = (concept: OntologyConcept): OntologyIriOption => ({
  */
 export const useReadableConceptOptions = (
   enabled: boolean
-): OntologyIriOption[] => {
+): { options: OntologyIriOption[]; isLoading: boolean } => {
   const [options, setOptions] = useState<OntologyIriOption[]>([]);
+  const [isSettled, setIsSettled] = useState(false);
 
   useEffect(() => {
     if (!enabled) {
@@ -56,12 +57,18 @@ export const useReadableConceptOptions = (
       }
       setOptions(loaded);
     };
-    load().catch(() => undefined);
+    load()
+      .catch(() => undefined)
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsSettled(true);
+        }
+      });
 
     return () => controller.abort();
   }, [enabled]);
 
-  return options;
+  return { options, isLoading: enabled && !isSettled };
 };
 
 /**
@@ -72,15 +79,18 @@ export const useReadableConceptOptions = (
 export const useMappingTargetOptions = (
   local: ReadonlyArray<OntologyIriOption> | undefined,
   enabled: boolean
-): OntologyIriOption[] => {
-  const readable = useReadableConceptOptions(enabled);
+): { options: OntologyIriOption[]; isLoading: boolean } => {
+  const { options: readable, isLoading } = useReadableConceptOptions(enabled);
 
   return useMemo(() => {
     const held = new Set((local ?? []).map((option) => option.iri));
 
-    return [
-      ...(local ?? []),
-      ...readable.filter((option) => !held.has(option.iri)),
-    ];
-  }, [local, readable]);
+    return {
+      options: [
+        ...(local ?? []),
+        ...readable.filter((option) => !held.has(option.iri)),
+      ],
+      isLoading,
+    };
+  }, [local, readable, isLoading]);
 };

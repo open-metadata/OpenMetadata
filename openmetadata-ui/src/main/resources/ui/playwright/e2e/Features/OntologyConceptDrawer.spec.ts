@@ -101,19 +101,28 @@ const pasteMappingIri = async (page: Page, iri: string) => {
   await input.press('Tab');
 };
 
+// React Aria closes an open list when the drawer scrolls. The field sits under
+// the drawer's sticky footer, so Playwright's own scroll-to-focus would land
+// after the list opened; centring the field first leaves nothing to scroll.
+const centerMappingField = async (page: Page) => {
+  const input = page.getByTestId('new-class-mapping-iri').getByRole('combobox');
+  await input.evaluate((element) =>
+    element.scrollIntoView({ block: 'center', behavior: 'instant' })
+  );
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(resolve))
+  );
+};
+
 const pickMappingByLabel = async (page: Page, label: string, iri: string) => {
   const input = page.getByTestId('new-class-mapping-iri').getByRole('combobox');
   const option = page
     .getByRole('option', { name: new RegExp(`^${label}`) })
     .filter({ hasText: iri });
   await expect(input).toBeVisible();
-  // Concepts of other ontologies load after the drawer opens; typing earlier
-  // finds only the open ontology's concepts, so type again until they arrive.
-  await expect(async () => {
-    await input.fill(label);
-    await input.press('ArrowDown');
-    await expect(option).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 30_000 });
+  await centerMappingField(page);
+  await input.fill(label);
+  await expect(option).toBeVisible();
   await option.click();
   await expect(input).toHaveValue(label);
 };
@@ -356,6 +365,54 @@ for (const mode of ['classic', 'ai'] as const) {
 
           await expect(mappings).toContainText(target.iri);
           await expect(mappings).toContainText('https://schema.org/Invoice');
+        } finally {
+          await removeOntology(api, elsewhere);
+        }
+      });
+
+      test('Enter adds a pasted IRI as a mapping, and Enter on a focused option picks it', async ({
+        isolatedUserPage: page,
+      }) => {
+        test.slow();
+        const elsewhere = await createOntology(api, 'concept_drawer_enter');
+        try {
+          const target = await createConcept(
+            api,
+            elsewhere,
+            `Enter${uuid().slice(0, 8)}`
+          );
+          await page.goto('/governance/ontology?ontology=' + owner.id);
+          await page.getByTestId('mode-tab-edit').click();
+          await page.getByTestId('ontology-add-concept').click();
+          const input = page
+            .getByTestId('new-class-mapping-iri')
+            .getByRole('combobox');
+
+          await centerMappingField(page);
+          await input.fill('https://schema.org/Invoice');
+          await input.press('Enter');
+
+          await expect(page.getByTestId('new-class-mapping')).toHaveText([
+            'Exact match · https://schema.org/Invoice',
+          ]);
+          await expect(input).toHaveValue('');
+
+          await centerMappingField(page);
+          await input.fill(target.name);
+          await expect(
+            page.getByRole('option', { name: new RegExp(`^${target.name}`) })
+          ).toBeVisible();
+          await input.press('ArrowDown');
+          await input.press('Enter');
+
+          await expect(input).toHaveValue(target.name);
+          await expect(page.getByTestId('new-class-mapping')).toHaveCount(1);
+
+          await page.getByTestId('new-class-add-mapping').click();
+          await expect(page.getByTestId('new-class-mapping')).toHaveText([
+            'Exact match · https://schema.org/Invoice',
+            `Exact match · ${target.iri}`,
+          ]);
         } finally {
           await removeOntology(api, elsewhere);
         }

@@ -654,7 +654,8 @@ const OntologyNewClassPanel = ({
       })),
     [model.concepts, ontology]
   );
-  const mappingTargets = useMappingTargetOptions(localMappingTargets, !locked);
+  const { options: mappingTargets, isLoading: mappingTargetsLoading } =
+    useMappingTargetOptions(localMappingTargets, !locked);
   const conceptOptions = model.concepts
     .filter((c) => c.conceptType !== OntologyConceptType.SkosConcept)
     .map((c) => ({
@@ -779,11 +780,13 @@ const OntologyNewClassPanel = ({
       <OntologyIriInput
         error={mappingRowInvalid ? t('message.invalid-concept-iri') : undefined}
         isDisabled={locked}
+        isLoading={mappingTargetsLoading}
         label={t('label.concept-iri')}
         options={mappingTargets}
         testId="new-class-mapping-iri"
         value={mappingIri}
         onChange={setMappingIri}
+        onSubmit={addMapping}
       />
       <Button
         color="secondary"
