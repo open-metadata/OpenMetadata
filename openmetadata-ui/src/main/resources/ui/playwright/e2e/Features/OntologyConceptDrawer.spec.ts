@@ -324,7 +324,11 @@ for (const mode of ['classic', 'ai'] as const) {
           await page.getByTestId('new-class-label').fill('Settlement');
 
           await pickMappingByLabel(page, target.name, target.iri);
-          await page.getByTestId('new-class-add-mapping').click();
+          await page
+            .getByTestId('new-class-mapping-iri')
+            .getByRole('combobox')
+            .press('Enter');
+          await expect(page.getByTestId('new-class-mapping')).toHaveCount(1);
           await pasteMappingIri(page, 'https://schema.org/Invoice');
           await page.getByTestId('new-class-add-mapping').click();
           await expect(page.getByTestId('new-class-mapping')).toHaveText([

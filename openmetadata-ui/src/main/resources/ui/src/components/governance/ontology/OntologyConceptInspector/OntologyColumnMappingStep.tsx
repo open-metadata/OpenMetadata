@@ -73,6 +73,7 @@ const fetchAllColumns = async (assetId: string) => {
   const columns = [];
   let total = 0;
   while (columns.length < MAX_COLUMNS) {
+    // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- offset and stop depend on prior page
     const page = await searchTableColumnsById(assetId, {
       limit: PAGE_SIZE,
       offset: columns.length,
@@ -180,54 +181,64 @@ const OntologyColumnMappingStep = ({
     !isSaving &&
     Boolean(bindings.editableSnapshot);
 
+  const [unsavedMessage, setUnsavedMessage] = useState<string>();
+  const planWrite = ({ asset, bound, options }: (typeof tables)[number]) => {
+    const checked = options.flatMap((option) => {
+      const row = stateOf(asset.id, option);
+
+      return row.checked && row.propertyId
+        ? [{ propertyId: row.propertyId, columnPath: option.path }]
+        : [];
+    });
+    if (checked.length === 0 && !bound?.columns.length) {
+      return undefined;
+    }
+    // Only the binding a row shows (a column's first resolved one) is the row's to
+    // rewrite; every other existing binding is written back untouched.
+    const shown = new Set(
+      options.flatMap((option) =>
+        (bound?.columns ?? [])
+          .filter(
+            (column) =>
+              column.state === State.Resolved &&
+              JSON.stringify(column.columnPath) === option.id
+          )
+          .slice(0, 1)
+      )
+    );
+    const keyOfBinding = ({ propertyId, columnPath }: BindingKey) =>
+      JSON.stringify([propertyId, columnPath]);
+    const written = new Set(checked.map(keyOfBinding));
+    const kept = (bound?.columns ?? [])
+      .filter((column) => !shown.has(column))
+      .map(({ propertyId, columnPath }) => ({ propertyId, columnPath }))
+      .filter((binding) => !written.has(keyOfBinding(binding)));
+
+    return {
+      assetId: asset.id,
+      assetType: AssetType.Table,
+      columns: [...checked, ...kept],
+    };
+  };
+
   const save = async () => {
     let snapshot: BindingSnapshot | undefined = bindings.editableSnapshot;
     if (!snapshot) {
       return;
     }
     setIsSaving(true);
+    setUnsavedMessage(undefined);
     try {
-      for (const { asset, bound, options, query } of tables) {
-        if (!query?.isSuccess) {
-          continue;
-        }
-        const checked = options.flatMap((option) => {
-          const row = stateOf(asset.id, option);
-
-          return row.checked && row.propertyId
-            ? [{ propertyId: row.propertyId, columnPath: option.path }]
-            : [];
-        });
-        // Only the binding a row shows (a column's first resolved one) is the row's to
-        // rewrite; every other existing binding is written back untouched.
-        const shown = new Set(
-          options.flatMap((option) =>
-            (bound?.columns ?? [])
-              .filter(
-                (column) =>
-                  column.state === State.Resolved &&
-                  JSON.stringify(column.columnPath) === option.id
-              )
-              .slice(0, 1)
-          )
-        );
-        const keyOfBinding = ({ propertyId, columnPath }: BindingKey) =>
-          JSON.stringify([propertyId, columnPath]);
-        const written = new Set(checked.map(keyOfBinding));
-        const kept = (bound?.columns ?? [])
-          .filter((column) => !shown.has(column))
-          .map(({ propertyId, columnPath }) => ({ propertyId, columnPath }))
-          .filter((binding) => !written.has(keyOfBinding(binding)));
-        if (checked.length === 0 && !bound?.columns.length) {
+      const writes = tables.map((table) =>
+        table.query?.isSuccess ? planWrite(table) : undefined
+      );
+      for (const [index, asset] of writes.entries()) {
+        if (!asset) {
           continue;
         }
         const result = await bindings.replaceAsset({
           expectedRevision: snapshot.revision,
-          asset: {
-            assetId: asset.id,
-            assetType: AssetType.Table,
-            columns: [...checked, ...kept],
-          },
+          asset,
         });
         if (result.kind !== 'confirmed') {
           showErrorToast(t(getOntologyBindingWriteMessage(result)));
@@ -235,8 +246,30 @@ const OntologyColumnMappingStep = ({
           return;
         }
         if (result.read.kind === 'unavailable') {
-          showSuccessToast(t(getOntologyBindingWriteMessage(result)));
-          onClose();
+          const unsaved = writes
+            .slice(index + 1)
+            .flatMap((later, offset) =>
+              later ? [getEntityName(tables[index + 1 + offset].asset)] : []
+            );
+          if (unsaved.length === 0) {
+            showSuccessToast(t(getOntologyBindingWriteMessage(result)));
+            onClose();
+
+            return;
+          }
+          setUnsavedMessage(
+            t('message.ontology-column-binding-partial', {
+              saved: tables
+                .slice(0, index + 1)
+                .filter((_, at) => writes[at])
+                .map(({ asset: written }) => getEntityName(written))
+                .join(', '),
+              tables: unsaved.join(', '),
+            })
+          );
+          // A confirmed write leaves the cached revision stale and blocked until it is
+          // re-read, so a second Save needs this read to succeed first.
+          await bindings.retryRead().catch(() => undefined);
 
           return;
         }
@@ -402,6 +435,7 @@ const OntologyColumnMappingStep = ({
           {t('label.ontology-skip-column-binding')}
         </Button>
       </Box>
+      {unsavedMessage ? <Alert variant="error">{unsavedMessage}</Alert> : null}
       {tables.map(renderTable)}
       <Box gap={2} justify="end">
         <Button color="secondary" size="sm" onPress={onClose}>

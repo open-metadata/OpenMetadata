@@ -18,6 +18,10 @@ import {
   State,
 } from '../../../../generated/type/ontologyConceptBindingsResponse';
 import APIClient from '../../../../rest/axiosClient';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyColumnMappingStep from './OntologyColumnMappingStep';
@@ -488,5 +492,173 @@ describe('when a table columns fail to load', () => {
     await screen.findByText('message.temporary-error-try-reloading');
 
     expect(screen.getByTestId('ontology-column-mapping-save')).toBeDisabled();
+  });
+});
+
+describe('when a write is saved but the bindings cannot be re-read', () => {
+  const second = { id: 'table-2', type: 'table', name: 'visits' };
+  const visits = { ...second, fullyQualifiedName: 'service.db.schema.visits' };
+  const snapshot: OntologyConceptBindingsResponse = {
+    revision: 9,
+    assets: [
+      {
+        assetId: 'table',
+        assetType: AssetType.Table,
+        asset: table,
+        columns: [],
+      },
+      {
+        assetId: 'table-2',
+        assetType: AssetType.Table,
+        asset: visits,
+        columns: [
+          {
+            propertyId: 'p-dob',
+            columnPath: ['visit_date'],
+            state: State.Resolved,
+          },
+        ],
+      },
+    ],
+  };
+  const visitColumns = {
+    data: [
+      {
+        name: 'visit_date',
+        dataType: DataType.Date,
+        fullyQualifiedName: 'service.db.schema.visits.visit_date',
+      },
+    ],
+    paging: { total: 1 },
+  };
+  let rereadsToFail = 1;
+  let written = false;
+
+  const renderAssets = (
+    assets: (typeof table)[],
+    view: OntologyConceptBindingsResponse,
+    onClose = jest.fn()
+  ) => {
+    http.get.mockImplementation(async (url) => {
+      if (url.includes('/table-2/columns/search')) {
+        return { data: visitColumns };
+      }
+      if (url.includes('/columns/search')) {
+        return { data: columnPage };
+      }
+      if (written && rereadsToFail-- > 0) {
+        throw new Error('offline');
+      }
+
+      return { data: { ...view, revision: written ? 10 : view.revision } };
+    });
+    http.put.mockImplementation(async () => {
+      written = true;
+
+      return { data: {} };
+    });
+    const rendered = renderWithQueryClient(<div />);
+    rendered.queryClient.setQueryData(
+      ['ontology-concept-bindings', 'concept'],
+      { kind: 'complete', ...view }
+    );
+    rendered.rerender(
+      <OntologyColumnMappingStep
+        assets={assets}
+        conceptId="concept"
+        conceptName="Patient"
+        properties={properties}
+        onClose={onClose}
+      />
+    );
+
+    return onClose;
+  };
+
+  beforeEach(() => {
+    rereadsToFail = 1;
+    written = false;
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  it('stops, names the table it did not save, and stays open with the rows kept', async () => {
+    const onClose = renderAssets([table, visits], snapshot);
+    await row('visit_date');
+    fireEvent.click(within(await row('patient_name')).getByRole('checkbox'));
+
+    fireEvent.click(screen.getByTestId('ontology-column-mapping-save'));
+
+    expect(await screen.findByText(/Not saved: visits\./)).toBeVisible();
+    expect(http.put).toHaveBeenCalledTimes(1);
+    expect(http.put.mock.calls[0][1]).toMatchObject({
+      asset: { assetId: 'table' },
+    });
+    expect(showSuccessToast).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(
+      within(await row('patient_name')).getByRole('checkbox')
+    ).not.toBeChecked();
+  });
+
+  it('writes the remaining table on the next Save, against the re-read revision', async () => {
+    const onClose = renderAssets([table, visits], snapshot);
+    await row('visit_date');
+    fireEvent.click(screen.getByTestId('ontology-column-mapping-save'));
+    await screen.findByText(/Not saved: visits\./);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-column-mapping-save')).toBeEnabled()
+    );
+    fireEvent.click(screen.getByTestId('ontology-column-mapping-save'));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+    expect(http.put.mock.calls.map(([, body]) => body)).toEqual([
+      expect.objectContaining({
+        expectedRevision: 9,
+        asset: expect.objectContaining({ assetId: 'table' }),
+      }),
+      expect.objectContaining({
+        expectedRevision: 10,
+        asset: expect.objectContaining({ assetId: 'table' }),
+      }),
+      expect.objectContaining({
+        expectedRevision: 10,
+        asset: expect.objectContaining({ assetId: 'table-2' }),
+      }),
+    ]);
+  });
+
+  it('keeps closing with the saved-but-stale message when no later table has anything to write', async () => {
+    const onClose = renderAssets([table, visits], {
+      ...snapshot,
+      assets: [snapshot.assets[0], { ...snapshot.assets[1], columns: [] }],
+    });
+    const visitDate = await row('visit_date');
+    if ((within(visitDate).getByRole('checkbox') as HTMLInputElement).checked) {
+      fireEvent.click(within(visitDate).getByRole('checkbox'));
+    }
+    fireEvent.click(screen.getByTestId('ontology-column-mapping-save'));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+    expect(http.put).toHaveBeenCalledTimes(1);
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'The change was saved, but the bindings could not refresh. Retry to load them before editing.'
+    );
+  });
+
+  it('closes with the saved-but-stale message when the only table was written', async () => {
+    const onClose = renderAssets([table], snapshot);
+    await row('patient_id');
+    fireEvent.click(screen.getByTestId('ontology-column-mapping-save'));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+    expect(http.put).toHaveBeenCalledTimes(1);
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'The change was saved, but the bindings could not refresh. Retry to load them before editing.'
+    );
   });
 });
