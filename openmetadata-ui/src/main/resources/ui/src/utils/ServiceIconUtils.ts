@@ -81,6 +81,7 @@ import qliksense from '../assets/img/service-icon-qlik-sense.webp';
 import quicksight from '../assets/img/service-icon-quicksight.webp';
 import redash from '../assets/img/service-icon-redash.webp';
 import sigma from '../assets/img/service-icon-sigma.svg';
+import ssrs from '../assets/img/service-icon-ssrs.svg';
 import superset from '../assets/img/service-icon-superset.webp';
 import tableau from '../assets/img/service-icon-tableau.webp';
 import rill from '../assets/svg/service-icon-rill.svg';
@@ -217,7 +218,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   microstrategy: microstrategy,
   grafana: grafana,
   rill: rill,
-  ssrs: mssql,
+  ssrs: ssrs,
   customdashboard: dashboarddefault,
 
   // Pipeline services
