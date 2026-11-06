@@ -154,4 +154,56 @@ describe('RuleQueryBuilderField', () => {
 
     expect(onChange.mock.calls.at(-1)?.[1]).toContain(CUSTOM_PROPERTY_FIELD);
   });
+
+  // A non-empty `queryFilter` that the reconstruction cannot parse should still
+  // mount the builder, but the editor needs to know so it can warn the user
+  // before the first builder edit overwrites the saved DSL.
+  it('reports rendered=true for a reconstructable queryFilter', async () => {
+    const onReconstructionStatusChange = jest.fn();
+    render(
+      <RuleQueryBuilderField
+        entityType={EntityType.TABLE}
+        queryFilter={JSON.stringify({
+          query: { bool: { must: [{ term: { name: 'x' } }] } },
+        })}
+        onChange={jest.fn()}
+        onReconstructionStatusChange={onReconstructionStatusChange}
+      />
+    );
+
+    await screen.findByTestId('query-builder-form-field');
+
+    expect(onReconstructionStatusChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('reports rendered=false for an unrenderable queryFilter', async () => {
+    const onReconstructionStatusChange = jest.fn();
+    render(
+      <RuleQueryBuilderField
+        entityType={EntityType.TABLE}
+        queryFilter={JSON.stringify({ query: { match: { unknown: 'x' } } })}
+        onChange={jest.fn()}
+        onReconstructionStatusChange={onReconstructionStatusChange}
+      />
+    );
+
+    await screen.findByTestId('query-builder-form-field');
+
+    expect(onReconstructionStatusChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('reports rendered=true when there is no queryFilter', async () => {
+    const onReconstructionStatusChange = jest.fn();
+    render(
+      <RuleQueryBuilderField
+        entityType={EntityType.TABLE}
+        onChange={jest.fn()}
+        onReconstructionStatusChange={onReconstructionStatusChange}
+      />
+    );
+
+    await screen.findByTestId('query-builder-form-field');
+
+    expect(onReconstructionStatusChange).toHaveBeenLastCalledWith(true);
+  });
 });

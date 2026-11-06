@@ -16,7 +16,7 @@ import {
   JsonTree,
 } from '@react-awesome-query-builder/ui';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { getAllCustomProperties } from '../../../../rest/metadataTypeAPI';
 import {
@@ -37,6 +37,7 @@ interface RuleQueryBuilderFieldProps {
   readonly?: boolean;
   onChange: (queryFilter: string, filterJsonTree?: string) => void;
   onValidityChange?: (isValid: boolean) => void;
+  onReconstructionStatusChange?: (rendered: boolean) => void;
 }
 
 export const RuleQueryBuilderField = ({
@@ -46,6 +47,7 @@ export const RuleQueryBuilderField = ({
   readonly,
   onChange,
   onValidityChange,
+  onReconstructionStatusChange,
 }: RuleQueryBuilderFieldProps) => {
   const [enrichedFields, setEnrichedFields] = useState<
     Config['fields'] | undefined
@@ -98,6 +100,15 @@ export const RuleQueryBuilderField = ({
     () => getRuleFilterTree(filterJsonTree, queryFilter),
     [filterJsonTree, queryFilter]
   );
+  // A non-empty `queryFilter` that yields no tree could not be rendered in the
+  // visual builder. Surfacing this lets the editor warn the user before the
+  // first builder edit overwrites the saved DSL with a seed-row state.
+  const isUnrendered = Boolean(queryFilter && !tree);
+  const onReconstructionStatusChangeRef = useRef(onReconstructionStatusChange);
+  onReconstructionStatusChangeRef.current = onReconstructionStatusChange;
+  useEffect(() => {
+    onReconstructionStatusChangeRef.current?.(!isUnrendered);
+  }, [isUnrendered]);
   const handleChange = useCallback(
     (value: string, updatedTree?: JsonTree) =>
       onChange(

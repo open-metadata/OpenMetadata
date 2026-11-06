@@ -140,6 +140,68 @@ describe('PersonaAIContextUtils', () => {
     expect(getRuleConditionCount(JSON.stringify(tree))).toBe(1);
   });
 
+  // The backend stores `queryFilter` as a free-form JSON object and embeds the
+  // DSL `query` node verbatim — it never requires `bool.must`. Rules created via
+  // the REST API (which never populates `filterJsonTree`) use `should`, `filter`,
+  // `must_not`, or bare `term` shapes. Each of these must reconstruct to a
+  // non-empty tree so the editor shows the saved conditions and the rule card
+  // shows a non-zero condition count.
+  it.each([
+    [
+      'bool.should (root OR)',
+      {
+        query: {
+          bool: {
+            should: [{ term: { deleted: false } }, { term: { name: 'x' } }],
+          },
+        },
+      },
+      2,
+    ],
+    [
+      'bool.filter',
+      { query: { bool: { filter: [{ term: { deleted: false } }] } } },
+      1,
+    ],
+    [
+      'bool.must_not',
+      { query: { bool: { must_not: [{ term: { deleted: true } }] } } },
+      1,
+    ],
+    [
+      'bare query.term',
+      { query: { term: { fullyQualifiedName: 'dim_customer' } } },
+      1,
+    ],
+    [
+      'bare term without query wrapper',
+      { term: { 'tier.tagFQN': 'Tier.Tier1' } },
+      1,
+    ],
+    [
+      'single must clause',
+      { query: { bool: { must: [{ term: { name: 'x' } }] } } },
+      1,
+    ],
+  ])(
+    'reconstructs a %s shape from queryFilter alone',
+    (_label, filter, expectedCount) => {
+      const tree = getRuleFilterTree(undefined, JSON.stringify(filter));
+
+      expect(tree).toBeDefined();
+      expect(getRuleConditionCount(JSON.stringify(tree))).toBe(expectedCount);
+    }
+  );
+
+  it('returns undefined when the queryFilter is empty', () => {
+    expect(getRuleFilterTree(undefined, '')).toBeUndefined();
+    expect(getRuleFilterTree(undefined, '{}')).toBeUndefined();
+  });
+
+  it('returns undefined when the queryFilter is not valid JSON', () => {
+    expect(getRuleFilterTree(undefined, '{invalid')).toBeUndefined();
+  });
+
   it('identifies knowledge rules', () => {
     expect(
       isKnowledgeContextRule({
