@@ -25,9 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
-import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -104,8 +104,18 @@ public class SubjectCache {
   }
 
   private static final int DEFAULT_MAX_ENTRIES = 10000;
-  private static final Duration POLICIES_TTL = Duration.ofMinutes(2);
+  static final Duration POLICIES_TTL = Duration.ofMinutes(2);
   private static final Duration USER_CONTEXT_TTL = Duration.ofMinutes(15);
+
+  // Bumped whenever the compiled policy caches are dropped wholesale, which is what a policy-rule
+  // or
+  // role-policy change does. Downstream caches keyed only by user/role/team ids — the search RBAC
+  // query cache — add this so a rule edit that leaves those ids unchanged still invalidates them.
+  private static final AtomicLong POLICY_GENERATION = new AtomicLong();
+
+  public static long policyGeneration() {
+    return POLICY_GENERATION.get();
+  }
 
   private static final RevocableLoadingCache<UserPoliciesContext> USER_POLICIES_CACHE =
       new RevocableLoadingCache<>(
@@ -270,6 +280,9 @@ public class SubjectCache {
     TeamHierarchyResolver.invalidateAll();
     USER_POLICIES_CACHE.invalidateAll();
     USER_CONTEXT_CACHE.invalidateAll();
+    // Bump last: a concurrent read that sees the new generation must do so only after the stale
+    // policies are gone, so it recomputes from fresh state rather than re-caching the old rules.
+    POLICY_GENERATION.incrementAndGet();
   }
 
   public static User getUserContext(String userName) {
@@ -388,11 +401,8 @@ public class SubjectCache {
   private static PolicyContext loadPolicyContext(
       String entityType, String entityName, String roleName, EntityReference policyRef) {
     Policy policy = Entity.getEntity(Entity.POLICY, policyRef.getId(), "rules", NON_DELETED);
-    List<CompiledRule> rules = new ArrayList<>();
-    for (Rule r : listOrEmpty(policy.getRules())) {
-      rules.add(new CompiledRule(r));
-    }
-    return new PolicyContext(entityType, entityName, roleName, policyRef.getName(), rules);
+    return new PolicyContext(
+        entityType, entityName, roleName, policyRef.getName(), CompiledRule.enforcedRules(policy));
   }
 
   public static List<PolicyContext> getTeamPoliciesForResource(

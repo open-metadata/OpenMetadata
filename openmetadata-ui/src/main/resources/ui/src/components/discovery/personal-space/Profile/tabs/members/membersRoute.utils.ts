@@ -35,9 +35,12 @@ const IMPORT_USER = 'import-user';
 // View-type discriminants reused across the route parser and the header maps;
 // consts (not repeated literals) keep no-duplicate-string happy.
 const SECTION = 'section';
+// `teams/<fqn>/tab/<key>[/<subPath>]` — a contributed team tab's own sub-page.
+const TAB = 'tab';
 
 export const TEAM_DETAIL = 'team-detail';
 export const TEAMS_ADD = 'teams-add';
+export const TEAM_TAB_SUBPAGE = 'team-tab-subpage';
 export const TEAMS_IMPORT = 'teams-import';
 export const USER_DETAIL = 'user-detail';
 export const TASKS_TAB: UserDetailTab = 'tasks';
@@ -50,6 +53,25 @@ export const TASKS_TAB: UserDetailTab = 'tasks';
 function parseTeamsSubPath(parts: string[]): MembersView {
   if (parts.length === 1) {
     return { type: 'teams' };
+  }
+
+  // `teams/<fqn>/tab/<key>[/<subPath>]` — everything after the key belongs to
+  // the contributed tab, so hand the remainder through untouched.
+  // `teams/<fqn>/tab/<key>/<teamId>[/<subPath>]`. The team id rides in the
+  // route because a contributed tab keys its API calls on the id, not the fqn,
+  // and a deep link has no team loaded to look it up from.
+  const tabAt = parts.indexOf(TAB, 1);
+  if (tabAt > 1 && parts.length > tabAt + 2) {
+    const fqn = safeDecodeURIComponent(parts.slice(1, tabAt).join('/'));
+    const [key, teamId, ...rest] = parts.slice(tabAt + 1);
+
+    return {
+      type: TEAM_TAB_SUBPAGE,
+      fqn,
+      teamId,
+      key,
+      subPath: rest.join('/') || undefined,
+    };
   }
 
   const last = parts[parts.length - 1];
@@ -161,6 +183,13 @@ function teamsViewToSubPath(view: MembersView): string {
       return `${TEAMS}/${encodeURIComponent(view.fqn)}/${
         view.importType === 'users' ? IMPORT_USER : IMPORT_TEAM
       }`;
+    case TEAM_TAB_SUBPAGE: {
+      const base = `${TEAMS}/${encodeURIComponent(view.fqn)}/${TAB}/${
+        view.key
+      }/${encodeURIComponent(view.teamId)}`;
+
+      return view.subPath ? `${base}/${view.subPath}` : base;
+    }
     default:
       return TEAMS;
   }

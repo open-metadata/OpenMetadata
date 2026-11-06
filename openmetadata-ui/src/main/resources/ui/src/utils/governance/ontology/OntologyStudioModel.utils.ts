@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { compare, Operation } from 'fast-json-patch';
 import type {
   OntologyEdge,
   OntologyGraphData,
@@ -20,7 +21,6 @@ import {
   CreateOntologyAxiom,
   ExpressionKind as CreateExpressionKind,
   Provenance,
-  RestrictionKind as CreateRestrictionKind,
 } from '../../../generated/api/data/createOntologyAxiom';
 import {
   CreateOntologyProperty,
@@ -416,11 +416,17 @@ export const getConceptPropertyRows = (
   concept: OntologyConcept
 ): OntologyConceptPropertyRow[] => {
   const dataProperties = model.properties.filter(
-    (property) => property.kind === Kind.Data && !property.deleted
+    (property) =>
+      (property.kind === Kind.Data || property.kind === Kind.Annotation) &&
+      !property.deleted
   );
+  const rowDatatype = (property: OntologyProperty) =>
+    property.kind === Kind.Annotation
+      ? 'annotation'
+      : getDatatypeLabel(property);
   const own = dataProperties
     .filter((property) => property.domain?.includes(concept.iri))
-    .map((property) => ({ datatype: getDatatypeLabel(property), property }));
+    .map((property) => ({ datatype: rowDatatype(property), property }));
   const listed = new Set(own.map((row) => row.property.id));
   const inherited = getConceptAncestors(relations, concept.id).flatMap(
     (ancestor) =>
@@ -433,7 +439,7 @@ export const getConceptPropertyRows = (
           listed.add(property.id);
 
           return {
-            datatype: getDatatypeLabel(property),
+            datatype: rowDatatype(property),
             inheritedFrom: ancestor,
             property,
           };
@@ -442,6 +448,20 @@ export const getConceptPropertyRows = (
 
   return [...own, ...inherited];
 };
+
+/** The properties a column can be bound to: data properties, own and inherited; annotations hold no data. */
+export const getBindableConceptProperties = (
+  model: OntologyStudioModel,
+  relations: OntologyModelRelation[],
+  concept: OntologyConcept
+) =>
+  getConceptPropertyRows(model, relations, concept)
+    .filter(({ property }) => property.kind !== Kind.Annotation)
+    .map(({ property }) => ({
+      id: property.id,
+      label: getPropertyLabel(property),
+      isIdentifier: property.isIdentifier,
+    }));
 
 /** Object properties the Studio can offer as relationship types between two concepts. */
 export const getObjectProperties = (
@@ -463,7 +483,7 @@ export const toPascalCase = (value: string): string =>
     .map((word) => word.charAt(0).toLocaleUpperCase() + word.slice(1))
     .join('');
 
-const toCamelCase = (value: string): string => {
+export const toCamelCase = (value: string): string => {
   const pascal = toPascalCase(value);
 
   return pascal.charAt(0).toLocaleLowerCase() + pascal.slice(1);
@@ -512,61 +532,42 @@ export const buildSubClassAxiomRequest = ({
   subjectIri: from.iri,
 });
 
-/** States that every instance of the source is related to some instance of the target. */
-export const buildRestrictionAxiomRequest = ({
-  model,
-  from,
-  to,
-  statement,
-  property,
-}: RelationAxiomInput & {
-  readonly property: OntologyProperty;
-}): CreateOntologyAxiom => ({
-  axiomType: CreateAxiomType.SubclassOf,
-  description: statement,
-  displayName: statement,
-  expressions: [
-    {
-      filler: { classIri: to.iri, kind: CreateExpressionKind.NamedClass },
-      kind: CreateExpressionKind.Restriction,
-      propertyIri: property.iri,
-      restrictionKind: CreateRestrictionKind.Some,
-    },
-  ],
-  name: getAvailableName(
-    `${toPascalCase(from.name)}${toPascalCase(property.name)}${toPascalCase(
-      to.name
-    )}`,
-    model.axioms.map((axiom) => axiom.name)
-  ),
-  ontology: model.ontology.fullyQualifiedName,
-  provenance: Provenance.Manual,
-  subjectIri: from.iri,
-});
-
-export const buildObjectPropertyRequest = (
-  model: OntologyStudioModel,
-  label: string,
-  from: OntologyConcept,
-  to: OntologyConcept
-): CreateOntologyProperty => ({
-  displayName: label.trim(),
-  domain: [from.iri],
-  kind: CreatePropertyKind.Object,
-  name: getAvailableName(
-    toCamelCase(label) || 'relatesTo',
-    model.properties.map((property) => property.name)
-  ),
-  ontology: model.ontology.fullyQualifiedName,
-  range: [to.iri],
-});
-
 export interface DataPropertyInput {
   readonly name: string;
   readonly datatype: StudioDatatype;
   readonly isIdentifier: boolean;
   readonly enumValues?: string[];
+  readonly kind?: 'data' | 'annotation';
+  /** Attach this declared property to the concept instead of declaring a new one. */
+  readonly reusePropertyIri?: string;
 }
+
+/**
+ * A property declared once is reused by adding the concept to its domain, so
+ * the ontology never holds two declarations of one property. Nothing to patch
+ * when the concept already belongs to the domain.
+ */
+export const buildReusePropertyPatch = (
+  property: OntologyProperty,
+  concept: OntologyConcept
+): Operation[] =>
+  (property.domain ?? []).includes(concept.iri)
+    ? []
+    : [
+        ...(property.version === undefined
+          ? []
+          : [
+              {
+                op: 'test' as const,
+                path: '/version',
+                value: property.version,
+              },
+            ]),
+        ...compare(
+          { domain: property.domain ?? [] },
+          { domain: [...(property.domain ?? []), concept.iri] }
+        ),
+      ];
 
 export const buildDataPropertyRequest = (
   model: OntologyStudioModel,
@@ -582,8 +583,11 @@ export const buildDataPropertyRequest = (
         }))
       : undefined,
   isIdentifier: input.isIdentifier || undefined,
-  kind: CreatePropertyKind.Data,
+  kind:
+    input.kind === 'annotation'
+      ? CreatePropertyKind.Annotation
+      : CreatePropertyKind.Data,
   name: input.name.trim(),
   ontology: model.ontology.fullyQualifiedName,
-  range: [getDatatypeIri(input.datatype)],
+  range: input.kind === 'annotation' ? [] : [getDatatypeIri(input.datatype)],
 });

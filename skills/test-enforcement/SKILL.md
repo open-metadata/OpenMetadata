@@ -15,6 +15,14 @@ Ensure every code change has comprehensive tests — 90% line coverage for servi
 - When reviewing a PR to check test completeness
 - When the `/tdd` skill was not used during implementation
 
+## Scope and evidence reuse
+
+Apply AGENTS.md's completion boundary. Check coverage and test gaps for changed behavior;
+do not treat each skill as a separate execution requirement. Reuse applicable results. For
+implementation, push or PR creation run focused checks and list broader coverage as outstanding;
+full impacted runs are required for merge-readiness tasks. An infrastructure blocker is a
+reported limitation, not permission to retry indefinitely or dispatch new workflows.
+
 ## Workflow
 
 ### Step 1: Identify Changed Files

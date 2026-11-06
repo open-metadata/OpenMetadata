@@ -4,12 +4,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
-import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
-import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +25,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.BoundedJsonPatch;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -54,7 +53,9 @@ public class PatchEntityTool implements McpTool {
   // patch would skip. Derived by auditing every @PATCH endpoint under openmetadata-service for a
   // body that is not a bare patchInternal() delegation - re-run that audit before adding an entry
   // here or dropping one. What each entry protects:
+  //   announcement         authorizeAdminOrBot on system announcements (no entityLink)
   //   app                  system-app guard, scheduler teardown/reinstall
+  //   contextFile          Private/Shared visibility, owner-only restriction of sharing
   //   document             requirePublic - private doc types are not editable
   //   eventsubscription    scheduler re-registration
   //   ingestionPipeline    secret decryptOrNullify on the response
@@ -64,11 +65,15 @@ public class PatchEntityTool implements McpTool {
   //   testCase             table-or-testCase authorization, sample cleanup
   //   testSuite            getAuthRequestsForUpdate authorization
   //   task                 restricted-field diff validation
+  //   team                 authorizeAdmin on defaultPersona
   //   user                 isAdmin / isBot / roles / teams authorization
   //   workflow             connection-secret decryptOrNullify
+  // metric and metricGroup are not listed: their extra checks run in the repository write.
   private static final Set<String> DEDICATED_PATCH_LIFECYCLES =
       Set.of(
+          Entity.ANNOUNCEMENT,
           Entity.APPLICATION,
+          Entity.CONTEXT_FILE,
           Entity.DOCUMENT,
           Entity.EVENT_SUBSCRIPTION,
           Entity.INGESTION_PIPELINE,
@@ -78,6 +83,7 @@ public class PatchEntityTool implements McpTool {
           Entity.TEST_CASE,
           Entity.TEST_SUITE,
           Entity.TASK,
+          Entity.TEAM,
           Entity.USER,
           Entity.WORKFLOW);
 
@@ -131,7 +137,9 @@ public class PatchEntityTool implements McpTool {
             null,
             ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.entity(), response.changeType(), userName);
-    return McpResponseUtils.compactPatch(response.entity(), response.changeType());
+    return McpResponseUtils.compactPatch(
+        CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
+        response.changeType());
   }
 
   private static void requireTarget(String entityType, String fqn) {
@@ -196,7 +204,16 @@ public class PatchEntityTool implements McpTool {
           "Parameter 'patch' is required: a JSONPatch document (RFC 6902) as a JSON array string,"
               + " e.g. [{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"...\"}].");
     }
-    JsonArray operations = readOperations(rawPatch);
+    // Bound the parse the same way the REST reader does, before anything is authorized.
+    JsonArray operations;
+    try {
+      operations = BoundedJsonPatch.readArray(rawPatch);
+    } catch (BoundedJsonPatch.PatchTooLargeException e) {
+      throw new IllegalArgumentException("Parameter 'patch' is too large: " + e.getMessage(), e);
+    } catch (BoundedJsonPatch.InvalidPatchException e) {
+      throw new IllegalArgumentException(
+          "Parameter 'patch' is not valid JSON: " + e.getMessage(), e);
+    }
     operations.forEach(PatchEntityTool::requireOperationShape);
     return Json.createPatch(operations);
   }
@@ -247,26 +264,6 @@ public class PatchEntityTool implements McpTool {
         "Parameter 'patch' is not a valid JSONPatch document: "
             + reason
             + ". Nothing was changed. See https://jsonpatch.com for the shape of each operation.");
-  }
-
-  /**
-   * Parses the document, reporting a syntax error as the caller's to fix.
-   *
-   * <p>The patch is an argument, so malformed JSON is a bad argument. Left to propagate, the
-   * dispatcher classifies an unrecognised exception as a server fault and tells the model its
-   * arguments were fine and not to retry - for a document the model wrote and could correct.
-   */
-  private static JsonArray readOperations(String rawPatch) {
-    try {
-      return Json.createReader(new StringReader(rawPatch)).readArray();
-    } catch (JsonException | IllegalStateException e) {
-      throw new IllegalArgumentException(
-          "Parameter 'patch' is not valid JSON: "
-              + e.getMessage()
-              + ". It must be a JSON array of operations, e.g. [{\"op\": \"add\", \"path\":"
-              + " \"/owners/-\", \"value\": {\"id\": \"<uuid>\", \"type\": \"user\"}}].",
-          e);
-    }
   }
 
   @Override

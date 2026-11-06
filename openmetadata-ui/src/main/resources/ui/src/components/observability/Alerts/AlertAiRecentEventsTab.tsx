@@ -22,6 +22,7 @@ import {
   Dropdown,
   PaginationCardWithControls,
   Skeleton,
+  TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -37,9 +38,7 @@ import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
 } from '../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../enums/Alerts.enum';
 import { Status, TypedEvent } from '../../../generated/events/api/typedEvent';
@@ -58,9 +57,9 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AlertEventDetailsToDisplay } from '../../Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import RichTextEditorPreviewNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 
-const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
 const SKELETON_ROWS = 5;
 
 const STATUS_BADGES: Record<
@@ -192,7 +191,7 @@ const AlertAiRecentEventsTab = ({
     pageSize,
     paging,
     showPagination,
-  } = usePaging(PAGE_SIZE_BASE, PAGE_SIZE_OPTIONS);
+  } = usePaging(undefined, LIST_PAGE_SIZE_OPTIONS);
   const { id } = alertDetails;
   const isFiltered = filter !== AlertRecentEventFilters.ALL;
 
@@ -258,11 +257,15 @@ const AlertAiRecentEventsTab = ({
     }
 
     if (isEmpty(events)) {
+      const EmptyStatePlaceholder = isFiltered
+        ? NoFilteredResultsPlaceholder
+        : NoDataPlaceholder;
+
       return (
         // Fills the rest of the viewport so the placeholder centres in the
         // free space below the header instead of hugging the filter row.
         <Box className="tw:relative tw:h-[calc(100vh_-_20rem)] tw:min-h-80 tw:w-full">
-          <NoDataPlaceholder
+          <EmptyStatePlaceholder
             description={t(
               isFiltered
                 ? 'message.no-data-available-for-selected-filter'
@@ -353,14 +356,18 @@ const AlertAiRecentEventsTab = ({
       </Box>
       {renderEvents()}
       {showPagination && !loading && (
-        <PaginationCardWithControls
-          page={currentPage}
-          pageSize={pageSize}
-          pageSizeOptions={PAGE_SIZE_OPTIONS}
-          total={computeTotalPages(pageSize, paging.total)}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-        />
+        // The pager is a card footer with no top edge; below the events list
+        // the card frame supplies the full outline.
+        <TableCard.Root>
+          <PaginationCardWithControls
+            page={currentPage}
+            pageSize={pageSize}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
+            total={computeTotalPages(pageSize, paging.total)}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </TableCard.Root>
       )}
     </Box>
   );

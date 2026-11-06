@@ -19,10 +19,10 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { FolderPlus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddFolderIcon } from '../../../assets/svg/action-icons/add-folder.svg';
 import { Folder } from '../../../generated/entity/data/folder';
 import { createFolder } from '../../../rest/assetAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -78,11 +78,7 @@ const CreateFolderModal: FC<CreateFolderModalProps> = ({
         <Dialog showCloseButton width={440} onClose={handleClose}>
           <Dialog.Content className="tw:flex tw:flex-col tw:gap-4 tw:pb-6">
             <div className="tw:bg-brand-primary tw:p-2 tw:mb-2 tw:w-max tw:leading-0 tw:rounded-xl">
-              <AddFolderIcon
-                className="tw:text-fg-brand-primary"
-                height={32}
-                width={32}
-              />
+              <FolderPlus className="tw:text-fg-brand-primary" size={32} />
             </div>
             <Typography className="tw:mb-3" size="text-md" weight="semibold">
               {t('label.create-new-folder')}

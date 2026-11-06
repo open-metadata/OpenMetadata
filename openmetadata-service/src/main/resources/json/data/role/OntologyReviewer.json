@@ -1,0 +1,13 @@
+{
+  "name": "OntologyReviewer",
+  "displayName": "Ontology Reviewer",
+  "description": "Users with the Ontology Reviewer role read ontologies and vote on the releases assigned to them for review. The role grants no write right.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies": [
+    {
+      "type": "policy",
+      "name": "OntologyReviewerPolicy"
+    }
+  ]
+}

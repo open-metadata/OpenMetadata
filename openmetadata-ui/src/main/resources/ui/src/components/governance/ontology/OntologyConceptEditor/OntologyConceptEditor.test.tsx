@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -24,20 +25,25 @@ import {
   OntologyConcept,
   OntologyConceptType,
 } from '../../../../generated/entity/data/ontologyConcept';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import OntologyConceptEditor from './OntologyConceptEditor';
 
 jest.mock('../../../../rest/axiosClient', () => ({
-  post: jest.fn(),
   patch: jest.fn(),
+  get: jest.fn(),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
-const post = APIClient.post as jest.MockedFunction<typeof APIClient.post>;
 const patch = APIClient.patch as jest.MockedFunction<typeof APIClient.patch>;
+const get = APIClient.get as jest.MockedFunction<typeof APIClient.get>;
 const ontology: Ontology = {
   id: 'ontology-id',
   name: 'Sales',
@@ -58,12 +64,23 @@ const concept: OntologyConcept = {
 };
 
 describe('OntologyConceptEditor', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    get.mockResolvedValue({ data: { data: [], paging: { total: 0 } } });
+  });
 
   it('saves the selected vocabulary kind as a schema enum', async () => {
-    post.mockResolvedValue({ data: concept });
+    patch.mockImplementation(async (_path, operations) => ({
+      data: applyPatch(structuredClone(concept), operations as Operation[])
+        .newDocument,
+    }));
     render(
-      <OntologyConceptEditor canEdit ontology={ontology} onSaved={jest.fn()} />
+      <OntologyConceptEditor
+        canEdit
+        concept={concept}
+        ontology={ontology}
+        onSaved={jest.fn()}
+      />
     );
 
     expect(
@@ -74,48 +91,16 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(
       await screen.findByRole('option', { name: 'SKOS_CONCEPT' })
     );
-    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
-      target: { value: 'Customer' },
-    });
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith(
-        '/ontologyConcepts',
-        expect.objectContaining({
-          conceptType: OntologyConceptType.SkosConcept,
-        })
+      expect(patch).toHaveBeenCalledWith(
+        '/ontologyConcepts/concept-id',
+        expect.arrayContaining([
+          { op: 'replace', path: '/conceptType', value: 'SKOS_CONCEPT' },
+        ]),
+        expect.anything()
       )
     );
-  });
-
-  it('creates an independent concept and leaves IRI minting to the server', async () => {
-    const saved = jest.fn();
-    post.mockResolvedValue({ data: concept });
-    render(
-      <OntologyConceptEditor canEdit ontology={ontology} onSaved={saved} />
-    );
-
-    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
-      target: { value: ' Customer ' },
-    });
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'label.description' }),
-      { target: { value: 'A customer' } }
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
-
-    await waitFor(() => expect(saved).toHaveBeenCalledWith(concept));
-
-    expect(post).toHaveBeenCalledWith('/ontologyConcepts', {
-      name: 'Customer',
-      ontology: 'Sales',
-      conceptType: OntologyConceptType.OwlClass,
-      displayName: undefined,
-      description: 'A customer',
-      iri: undefined,
-      synonyms: [],
-      conceptMappings: [],
-    });
   });
 
   it('updates editable fields with a version precondition and preserves unrelated metadata', async () => {
@@ -167,38 +152,105 @@ describe('OntologyConceptEditor', () => {
     );
   });
 
-  it('rejects a relative IRI before saving', async () => {
+  it('maps a concept by searching its label and keeps a pasted IRI', async () => {
+    patch.mockImplementation(async (_path, operations) => ({
+      data: applyPatch(structuredClone(concept), operations as Operation[])
+        .newDocument,
+    }));
     render(
-      <OntologyConceptEditor canEdit ontology={ontology} onSaved={jest.fn()} />
+      <OntologyConceptEditor
+        canEdit
+        concept={concept}
+        concepts={[
+          { iri: 'urn:sales:customer', label: 'Customer' },
+          { iri: 'urn:sales:order', label: 'Order' },
+        ]}
+        ontology={ontology}
+        onSaved={jest.fn()}
+      />
     );
-    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
-      target: { value: 'Customer' },
-    });
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'label.concept-iri' }),
-      { target: { value: 'relative/iri' } }
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
+    const input = within(
+      screen.getByTestId('ontology-concept-mapping')
+    ).getByRole('combobox', { name: /^label\.concept-iri/ });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Ord' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: /Order/ }));
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
 
-    expect(
-      await screen.findByText('message.invalid-concept-iri')
-    ).toBeInTheDocument();
-    expect(post).not.toHaveBeenCalled();
+    await waitFor(() => expect(patch).toHaveBeenCalled());
+
+    expect(JSON.stringify(patch.mock.calls[0][1])).toContain('urn:sales:order');
+  });
+
+  it('maps to a concept in another readable ontology, showing which ontology it is in', async () => {
+    get.mockResolvedValue({
+      data: {
+        data: [
+          {
+            ...concept,
+            id: 'other-id',
+            name: 'Account',
+            iri: 'urn:finance:account',
+            ontology: { id: 'finance-id', type: 'ontology', name: 'Finance' },
+          },
+        ],
+        paging: { total: 1 },
+      },
+    });
+    patch.mockImplementation(async (_path, operations) => ({
+      data: applyPatch(structuredClone(concept), operations as Operation[])
+        .newDocument,
+    }));
+    render(
+      <OntologyConceptEditor
+        canEdit
+        concept={concept}
+        concepts={[{ iri: 'urn:sales:order', label: 'Order' }]}
+        ontology={ontology}
+        onSaved={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
+    const input = within(
+      screen.getByTestId('ontology-concept-mapping')
+    ).getByRole('combobox', { name: /^label\.concept-iri/ });
+    await waitFor(() => expect(get).toHaveBeenCalled());
+    await act(async () => undefined);
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Acc' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    const option = await screen.findByRole('option', { name: /Account/ });
+
+    expect(option).toHaveTextContent('Finance · urn:finance:account');
+
+    fireEvent.click(option);
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    await waitFor(() => expect(patch).toHaveBeenCalled());
+
+    expect(JSON.stringify(patch.mock.calls[0][1])).toContain(
+      'urn:finance:account'
+    );
   });
 
   it('validates and saves external mappings with their scheme and source', async () => {
-    post.mockResolvedValue({ data: concept });
-    const saved = jest.fn();
+    patch.mockImplementation(async (_path, operations) => ({
+      data: applyPatch(structuredClone(concept), operations as Operation[])
+        .newDocument,
+    }));
     render(
-      <OntologyConceptEditor canEdit ontology={ontology} onSaved={saved} />
+      <OntologyConceptEditor
+        canEdit
+        concept={concept}
+        ontology={ontology}
+        onSaved={jest.fn()}
+      />
     );
-    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
-      target: { value: 'Customer' },
-    });
     fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
     fireEvent.change(
-      mapping.getByRole('textbox', { name: 'label.concept-iri' }),
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ }),
       {
         target: { value: 'relative/concept' },
       }
@@ -208,10 +260,10 @@ describe('OntologyConceptEditor', () => {
     expect(
       await mapping.findByText('message.invalid-concept-iri')
     ).toBeVisible();
-    expect(post).not.toHaveBeenCalled();
+    expect(patch).not.toHaveBeenCalled();
 
     fireEvent.change(
-      mapping.getByRole('textbox', { name: 'label.concept-iri' }),
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ }),
       {
         target: { value: ' https://example.org/Customer ' },
       }
@@ -232,18 +284,23 @@ describe('OntologyConceptEditor', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith(
-        '/ontologyConcepts',
-        expect.objectContaining({
-          conceptMappings: [
-            {
-              conceptIri: 'https://example.org/Customer',
-              mappingType: ConceptMappingType.ExactMatch,
-              schemeIri: 'https://example.org/vocabulary',
-              source: 'External vocabulary',
-            },
-          ],
-        })
+      expect(patch).toHaveBeenCalledWith(
+        '/ontologyConcepts/concept-id',
+        expect.arrayContaining([
+          {
+            op: 'add',
+            path: '/conceptMappings',
+            value: [
+              {
+                conceptIri: 'https://example.org/Customer',
+                mappingType: ConceptMappingType.ExactMatch,
+                schemeIri: 'https://example.org/vocabulary',
+                source: 'External vocabulary',
+              },
+            ],
+          },
+        ]),
+        expect.anything()
       )
     );
   });
@@ -332,7 +389,7 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
     fireEvent.change(
-      mapping.getByRole('textbox', { name: 'label.concept-iri' }),
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ }),
       {
         target: { value: 'urn:external:Customer' },
       }
@@ -348,7 +405,7 @@ describe('OntologyConceptEditor', () => {
 
     expect(saved).not.toHaveBeenCalled();
     expect(
-      mapping.getByRole('textbox', { name: 'label.concept-iri' })
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ })
     ).toHaveValue('urn:external:Customer');
     expect(
       mapping.getByRole('button', { name: /label\.mapping-type$/ })
@@ -412,7 +469,7 @@ describe('OntologyConceptEditor', () => {
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
 
     expect(
-      mapping.getByRole('textbox', { name: 'label.concept-iri' })
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ })
     ).toBeDisabled();
     expect(
       mapping.getByRole('textbox', { name: 'label.scheme-iri' })
@@ -426,5 +483,81 @@ describe('OntologyConceptEditor', () => {
     expect(
       mapping.getByRole('button', { name: 'label.remove' })
     ).toBeDisabled();
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => (useIsAiMode as jest.Mock).mockReturnValue(true));
+
+    afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
+
+    it('adds and removes a mapping and saves the concept', async () => {
+      patch.mockImplementation(async (_path, operations) => ({
+        data: applyPatch(structuredClone(concept), operations as Operation[])
+          .newDocument,
+      }));
+      const onSaved = jest.fn();
+      render(
+        <OntologyConceptEditor
+          canEdit
+          concept={concept}
+          ontology={ontology}
+          onSaved={onSaved}
+        />
+      );
+
+      expect(screen.getByTestId('concept-save-status')).toHaveTextContent(
+        'label.all-changes-saved'
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'label.add-mapping' })
+      );
+
+      expect(screen.getByTestId('ontology-concept-mapping')).toBeVisible();
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.remove' }));
+
+      expect(
+        screen.queryByTestId('ontology-concept-mapping')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'label.add-mapping' })
+      ).toHaveFocus();
+
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'label.display-name' }),
+        { target: { value: 'Customers' } }
+      );
+
+      expect(screen.getByTestId('concept-save-status')).toHaveTextContent(
+        'label.unsaved-changes'
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+      await waitFor(() =>
+        expect(onSaved).toHaveBeenCalledWith(
+          expect.objectContaining({ displayName: 'Customers' })
+        )
+      );
+    });
+
+    it('keeps every control disabled without edit permission', () => {
+      render(
+        <OntologyConceptEditor
+          canEdit={false}
+          concept={concept}
+          ontology={ontology}
+          onSaved={jest.fn()}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'label.add-mapping' })
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('textbox', { name: 'label.display-name' })
+      ).toBeDisabled();
+    });
   });
 });

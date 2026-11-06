@@ -69,6 +69,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
     </button>
   );
 
+  const ButtonUtility = ({
+    icon: _icon,
+    size,
+    tooltip,
+    ...props
+  }: Record<string, unknown>) => (
+    <button aria-label={tooltip as string} data-size={size} {...props} />
+  );
+
   const Tooltip = ({ children }: PropsWithChildren) => <>{children}</>;
 
   const Dropdown = {
@@ -80,6 +89,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Button,
+    ButtonUtility,
     Dropdown,
     Tooltip,
   };
@@ -184,10 +194,6 @@ jest.mock('../../../../../hooks/useFqn', () => ({
   useFqn: jest.fn(() => ({ fqn: 'test-table-fqn' })),
 }));
 
-jest.mock('../../../../../context/TourProvider/TourProvider', () => ({
-  useTourProvider: jest.fn(() => ({ isTourOpen: false })),
-}));
-
 jest.mock('../../TableProfiler/TableProfilerProvider', () => ({
   useTableProfiler: () => mockUseTableProfiler(),
 }));
@@ -255,8 +261,7 @@ jest.mock('../../../../../hoc/LimitWrapper', () => {
 
 const renderComponent = () => {
   return render(
-    <MemoryRouter
-      future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+    <MemoryRouter>
       <TabFilters />
     </MemoryRouter>
   );
@@ -596,15 +601,6 @@ describe('TabFilters', () => {
       expect(screen.getByTestId('profiler-add-table-test-btn')).toHaveAttribute(
         'data-size',
         'sm'
-      );
-    });
-
-    it('should render settings button with color="secondary"', () => {
-      renderComponent();
-
-      expect(screen.getByTestId('profiler-setting-btn')).toHaveAttribute(
-        'color',
-        'secondary'
       );
     });
 

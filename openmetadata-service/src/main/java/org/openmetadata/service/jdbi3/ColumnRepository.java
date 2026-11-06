@@ -65,6 +65,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.ColumnAggregator;
 import org.openmetadata.service.search.SearchClient;
@@ -74,11 +75,13 @@ import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OpenSearchColumnAggregator;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.ChildFieldResolver;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -94,6 +97,13 @@ public class ColumnRepository {
 
   /** Types that tolerate a constraint in the update payload; only table actually applies it. */
   private static final Set<String> CONSTRAINT_TOLERANT_TYPES = Set.of(TABLE, DASHBOARD_DATA_MODEL);
+
+  /**
+   * Bound on the column occurrences a single synchronous dryRun=false import applies. Larger jobs
+   * must go through /columns/import-async, which runs on the bounded background pool instead of a
+   * request thread.
+   */
+  static final int MAX_SYNC_IMPORT_COLUMN_UPDATES = 200;
 
   private final Authorizer authorizer;
   private final ColumnAggregator columnAggregator;
@@ -116,6 +126,9 @@ public class ColumnRepository {
     // Row-level filters (metadataStatus / hasConflicts / hasMissingMetadata) are applied inside the
     // aggregator over the fully-grouped columns, before pagination, so page counts and per-page
     // size stay correct (#26824). Nothing to post-process here.
+    if (securityContext != null) {
+      request.setSubjectContext(DefaultAuthorizer.getSubjectContext(securityContext));
+    }
     return columnAggregator.aggregateColumns(request);
   }
 
@@ -147,11 +160,13 @@ public class ColumnRepository {
     String entityType = spec.entityType();
     EntityRepository<? extends EntityInterface<?>> repository =
         Entity.getEntityRepository(entityType);
+    // Authorized on this copy, so it carries every attribute a condition reads.
     EntityInterface<?> parent =
         repository.getByName(
             null,
             parentFQN,
-            repository.getFields(spec.requiredFields() + ",owners"),
+            ResourceContext.authorizationFields(
+                repository, repository.getFields(spec.requiredFields() + ",owners")),
             include,
             false);
     authorizer.authorize(
@@ -195,6 +210,25 @@ public class ColumnRepository {
   }
 
   public FieldInterface updateChildByFQN(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String columnFQN,
+      String entityType,
+      UpdateColumn updateColumn,
+      ChangeSource changeSource) {
+    return submitChildUpdateByFQN(
+            uriInfo, securityContext, columnFQN, entityType, updateColumn, changeSource)
+        .child();
+  }
+
+  /**
+   * A child update and whether it was published: when an approval workflow holds it,
+   * {@code pendingChangeRequestId} names the change request and nothing was published.
+   */
+  public record ChildUpdate(FieldInterface child, UUID pendingChangeRequestId) {}
+
+  /** As {@link #updateChildByFQN}, also reporting whether the update was held for approval. */
+  public ChildUpdate submitChildUpdateByFQN(
       UriInfo uriInfo,
       SecurityContext securityContext,
       String columnFQN,
@@ -251,7 +285,7 @@ public class ColumnRepository {
     }
   }
 
-  private FieldInterface updateChildByFQN(
+  private ChildUpdate updateChildByFQN(
       UriInfo uriInfo,
       SecurityContext securityContext,
       String columnFQN,
@@ -293,10 +327,20 @@ public class ColumnRepository {
     // paths called before consolidation (EntityRepository delegates both to the same method with
     // changeSource null), so an unattributed write stays byte-identical on the wire.
     RestUtil.PatchResponse<? extends EntityInterface<?>> patchResponse =
-        repository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch, changeSource);
-    triggerParentChangeEvent(patchResponse.entity(), user);
+        repository.patch(
+            uriInfo,
+            parentEntityRef.getId(),
+            user,
+            jsonPatch,
+            changeSource,
+            ImpersonationContext.getImpersonatedBy());
+    UUID pendingChangeRequestId = patchResponse.pendingChangeRequestId();
+    // A held update published nothing; approving it records its own change.
+    if (pendingChangeRequestId == null) {
+      triggerParentChangeEvent(patchResponse.entity(), user);
+    }
 
-    return child;
+    return new ChildUpdate(child, pendingChangeRequestId);
   }
 
   @SuppressWarnings("unchecked")
@@ -426,6 +470,9 @@ public class ColumnRepository {
         Entity.getEntityRepository(entityType);
     ListFilter filter =
         buildSearchFilter(entityType, serviceName, databaseName, schemaName, domainId);
+    if (domainId == null) {
+      EntityUtil.addNavbarDomainFilter(securityContext, filter, entityType, () -> null);
+    }
 
     List<? extends EntityInterface<?>> parents =
         viewableParents(
@@ -703,20 +750,33 @@ public class ColumnRepository {
             request.getDomainId() != null ? request.getDomainId().toString() : null);
 
     List<ColumnUpdate> columnUpdates = new ArrayList<>();
-
-    // Convert search results to ColumnUpdate objects
     for (GroupedColumnsResponse group : searchResults) {
-      for (ColumnOccurrence occurrence : group.getOccurrences()) {
-        ColumnUpdate update = new ColumnUpdate();
-        update.setColumnFQN(occurrence.getColumnFQN());
-        update.setEntityType(occurrence.getEntityType());
-        update.setDisplayName(request.getDisplayName());
-        update.setDescription(request.getDescription());
-        update.setTags(request.getTags());
-        columnUpdates.add(update);
-      }
+      columnUpdates.addAll(
+          toColumnUpdates(
+              group.getOccurrences(),
+              request.getDisplayName(),
+              request.getDescription(),
+              request.getTags()));
     }
 
+    return columnUpdates;
+  }
+
+  private List<ColumnUpdate> toColumnUpdates(
+      List<ColumnOccurrence> occurrences,
+      String displayName,
+      String description,
+      List<TagLabel> tags) {
+    List<ColumnUpdate> columnUpdates = new ArrayList<>();
+    for (ColumnOccurrence occurrence : occurrences) {
+      ColumnUpdate update = new ColumnUpdate();
+      update.setColumnFQN(occurrence.getColumnFQN());
+      update.setEntityType(occurrence.getEntityType());
+      update.setDisplayName(displayName);
+      update.setDescription(description);
+      update.setTags(tags);
+      columnUpdates.add(update);
+    }
     return columnUpdates;
   }
 
@@ -887,12 +947,43 @@ public class ColumnRepository {
       String databaseName,
       String schemaName,
       String domainId) {
+    return importColumnsCSV(
+        uriInfo,
+        securityContext,
+        csv,
+        dryRun,
+        entityTypes,
+        serviceName,
+        databaseName,
+        schemaName,
+        domainId,
+        MAX_SYNC_IMPORT_COLUMN_UPDATES);
+  }
+
+  /**
+   * The synchronous endpoint caps the column updates one request may apply so a write import
+   * cannot hold its request thread for rows x occurrences; the async endpoint passes {@link
+   * Integer#MAX_VALUE} because the job already runs on the bounded background pool.
+   */
+  public CsvImportResult importColumnsCSV(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String csv,
+      boolean dryRun,
+      String entityTypes,
+      String serviceName,
+      String databaseName,
+      String schemaName,
+      String domainId,
+      int maxColumnUpdates) {
 
     CsvImportResult result = new CsvImportResult();
     result.setDryRun(dryRun);
     result.setNumberOfRowsProcessed(0);
     result.setNumberOfRowsPassed(0);
     result.setNumberOfRowsFailed(0);
+
+    CsvAsyncJobManager.validateImportPayload(csv);
 
     String[] lines = csv.split("\n");
     if (lines.length <= 1) {
@@ -901,71 +992,82 @@ public class ColumnRepository {
       return result;
     }
 
-    // Skip header row
+    // One catalog walk for the whole import; every row resolves against it with a map lookup.
+    Map<String, List<ColumnOccurrence>> occurrencesByName = new HashMap<>();
+    for (GroupedColumnsResponse group :
+        searchColumns(
+            securityContext, null, entityTypes, serviceName, databaseName, schemaName, domainId)) {
+      occurrencesByName.put(group.getColumnName(), group.getOccurrences());
+    }
+
+    // Resolve all write rows first: an over-limit import is refused before it has applied
+    // anything.
+    Map<List<String>, List<ColumnUpdate>> updatesByRow = new HashMap<>();
+    List<String[]> parsedRows = new ArrayList<>();
     for (int i = 1; i < lines.length; i++) {
       String line = lines[i].trim();
       if (line.isEmpty()) {
         continue;
       }
+      String[] fields = parseCsvLine(line);
+      parsedRows.add(fields);
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+      if (!dryRun) {
+        List<ColumnOccurrence> occurrences = occurrencesByName.get(fields[0]);
+        if (occurrences != null && !occurrences.isEmpty()) {
+          updatesByRow.computeIfAbsent(
+              importRowKey(fields),
+              key ->
+                  toColumnUpdates(
+                      occurrences,
+                      fields.length > 1 ? fields[1] : null,
+                      fields.length > 2 ? fields[2] : null,
+                      parseTags(
+                          fields.length > 3 ? fields[3] : null,
+                          fields.length > 4 ? fields[4] : null)));
+        }
+      }
+    }
 
+    int totalUpdates = updatesByRow.values().stream().mapToInt(List::size).sum();
+    if (totalUpdates > maxColumnUpdates) {
+      throw new IllegalArgumentException(
+          String.format(
+              "CSV import would update %d column occurrences; the maximum for a synchronous import is %d. "
+                  + "Use POST /api/v1/columns/import-async for larger jobs.",
+              totalUpdates, maxColumnUpdates));
+    }
+
+    Map<List<String>, BulkOperationResult> resultByRow = new HashMap<>();
+    for (String[] fields : parsedRows) {
       try {
-        result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
-
-        // Parse CSV row
-        String[] fields = parseCsvLine(line);
-        if (fields.length < 1) {
+        List<ColumnOccurrence> occurrences = occurrencesByName.get(fields[0]);
+        if (occurrences == null || occurrences.isEmpty()) {
           result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
           continue;
         }
 
-        String colName = fields[0];
-        String displayName = fields.length > 1 ? fields[1] : null;
-        String description = fields.length > 2 ? fields[2] : null;
-        String tagsStr = fields.length > 3 ? fields[3] : null;
-        String glossaryTermsStr = fields.length > 4 ? fields[4] : null;
-
-        // Build bulk update request for this column
-        List<TagLabel> tags = parseTags(tagsStr, glossaryTermsStr);
-
         if (dryRun) {
-          // Just validate - find matching columns
-          List<GroupedColumnsResponse> matches =
-              searchColumns(
-                  securityContext,
-                  colName,
-                  entityTypes,
-                  serviceName,
-                  databaseName,
-                  schemaName,
-                  domainId);
-          if (matches.isEmpty() || matches.get(0).getOccurrences().isEmpty()) {
-            result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-          } else {
-            result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-          }
+          result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+          continue;
+        }
+
+        BulkOperationResult updateResult =
+            resultByRow.computeIfAbsent(
+                importRowKey(fields),
+                key ->
+                    bulkUpdateColumns(
+                        uriInfo,
+                        securityContext,
+                        new BulkColumnUpdateRequest().withColumnUpdates(updatesByRow.get(key))));
+        if (updateResult.getNumberOfRowsPassed() > 0) {
+          result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
         } else {
-          // Actually apply the update
-          BulkColumnUpdateRequest updateRequest =
-              new BulkColumnUpdateRequest()
-                  .withColumnName(colName)
-                  .withDisplayName(displayName)
-                  .withDescription(description)
-                  .withTags(tags)
-                  .withEntityTypes(
-                      entityTypes != null ? Arrays.asList(entityTypes.split(",")) : null);
-
-          BulkOperationResult updateResult =
-              bulkUpdateColumns(uriInfo, securityContext, updateRequest);
-
-          if (updateResult.getNumberOfRowsPassed() > 0) {
-            result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-          } else {
-            result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-          }
+          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
         }
       } catch (Exception e) {
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-        LOG.error("Error processing CSV row {}: {}", i, line, e);
+        LOG.error("Error processing CSV row: {}", fields[0], e);
       }
     }
 
@@ -978,6 +1080,16 @@ public class ColumnRepository {
     }
 
     return result;
+  }
+
+  /** Deduplicates write rows: same column name and payload means one shared update pass. */
+  private List<String> importRowKey(String[] fields) {
+    return Arrays.asList(
+        fields[0],
+        fields.length > 1 ? fields[1] : null,
+        fields.length > 2 ? fields[2] : null,
+        JsonUtils.pojoToJson(
+            parseTags(fields.length > 3 ? fields[3] : null, fields.length > 4 ? fields[4] : null)));
   }
 
   private String quote(String value) {

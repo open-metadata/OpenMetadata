@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
+import { getContextFileById } from '../../../rest/assetAPI';
 import ContextCenterDocumentsPage from './ContextCenterDocumentsPage';
 
 // Resource-level permission (getResourcePermission(KNOWLEDGE_PAGE)) — no prior
@@ -81,13 +82,22 @@ jest.mock(
     __esModule: true,
     default: jest
       .fn()
-      .mockImplementation(({ canEdit, canDelete }) => (
+      .mockImplementation(({ canEdit, canDelete, previewFileId }) => (
         <div
           data-can-delete={String(Boolean(canDelete))}
           data-can-edit={String(Boolean(canEdit))}
+          data-preview-file-id={previewFileId ?? ''}
           data-testid="documents-view"
         />
       )),
+  })
+);
+
+jest.mock(
+  '../../../components/ContextCenter/DocumentsView/DocumentPreviewPanel.component',
+  () => ({
+    __esModule: true,
+    default: () => <div data-testid="document-preview-panel" />,
   })
 );
 
@@ -165,5 +175,95 @@ describe('ContextCenterDocumentsPage — permissions', () => {
       'data-can-edit',
       'false'
     );
+  });
+});
+
+const NavigateTo = ({ to }: { to: string }) => {
+  const navigate = useNavigate();
+
+  return (
+    <button data-testid="navigate" onClick={() => navigate(to)}>
+      {to}
+    </button>
+  );
+};
+
+const NavigateBack = () => {
+  const navigate = useNavigate();
+
+  return (
+    <button data-testid="navigate-back" onClick={() => navigate(-1)}>
+      Back
+    </button>
+  );
+};
+
+describe('ContextCenterDocumentsPage — previewed document', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({});
+  });
+
+  it('closes the preview when Back returns to the documents list', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          '/context-center/documents',
+          '/context-center/documents?document=file-1',
+        ]}>
+        <ContextCenterDocumentsPage />
+        <NavigateBack />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByTestId('document-preview-panel')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('navigate-back'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('document-preview-panel')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-preview-file-id',
+        ''
+      );
+    });
+  });
+
+  // A memory previewed from a document can link the copy it was reused from; the page stays mounted.
+  it('previews the document a link opens while another is previewed', async () => {
+    (getContextFileById as jest.Mock).mockResolvedValue({
+      id: 'file-2',
+      name: 'file-2.pdf',
+    });
+
+    render(
+      <MemoryRouter
+        initialEntries={['/context-center/documents?document=file-1']}>
+        <ContextCenterDocumentsPage />
+        <NavigateTo to="/context-center/documents?document=file-2" />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-preview-file-id',
+        'file-1'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('navigate'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-preview-file-id',
+        'file-2'
+      )
+    );
+
+    expect(getContextFileById).toHaveBeenCalledWith('file-2');
   });
 });

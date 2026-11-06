@@ -93,7 +93,7 @@ public class MathHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("math")
         .withDescription("Perform mathematical operations")
-        .withCursorOffset(8)
+        .withCursorOffset(7)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()

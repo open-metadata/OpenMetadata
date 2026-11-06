@@ -57,39 +57,51 @@ public class IndependentOntologyPublicationIT extends BaseOntologyApprovalIT {
         "urn:openmetadata:ontology-release:" + versioned.getId(),
         versioned.getVersionIri().toString());
     assertEquals(
-        "1.1.0",
+        "0.1.0",
         capture(ontology, request(ontology).withVersionBump(VersionBump.MINOR))
             .getSemanticVersion());
     assertEquals(
-        "1.1.1",
+        "0.0.1",
         capture(ontology, request(ontology).withVersionBump(VersionBump.PATCH))
             .getSemanticVersion());
   }
 
   @Test
-  void concurrentVersionedCapturesRequireAFreshLatestRevision(TestNamespace ns) throws Exception {
+  void theSuggestedVersionStaysOnTheActiveReleaseWhileDraftsAccumulate(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    final OntologyRelease first =
+        capture(ontology, request(ontology).withVersionBump(VersionBump.MAJOR));
+    assertEquals("1.0.0", first.getSemanticVersion());
+    declareClass(ontology, "Another", java.net.URI.create("https://example.org/model/Another"));
+    final OntologyRelease second =
+        capture(ontology, request(ontology).withVersionBump(VersionBump.MAJOR));
+    assertEquals("1.0.0", second.getSemanticVersion());
+    assertEquals(2L, second.getReleaseRevision());
+  }
+
+  @Test
+  void aSessionHoldingThePreCaptureFenceReceivesTheDraftTheOtherSessionSealed(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    final CaptureOntologyRelease stale = request(ontology).withVersionBump(VersionBump.MAJOR);
+    final OntologyRelease sealed = capture(ontology, stale);
+    assertEquals(sealed.getId(), capture(ontology, stale).getId());
+    assertEquals(1L, state(ontology).getLastReleaseRevision());
+  }
+
+  @Test
+  void concurrentVersionedCapturesReturnTheSameRelease(TestNamespace ns) throws Exception {
     final Ontology ontology = createOntology(ns);
     final CaptureOntologyRelease request = request(ontology).withVersionBump(VersionBump.MAJOR);
-    final Callable<Integer> capture =
-        () -> {
-          try {
-            capture(ontology, request);
-            return 201;
-          } catch (OpenMetadataException failure) {
-            return failure.getStatusCode();
-          }
-        };
+    final Callable<OntologyRelease> capture = () -> capture(ontology, request);
     try (var executor = Executors.newFixedThreadPool(2)) {
       final var first = executor.submit(capture);
       final var second = executor.submit(capture);
-      final List<Integer> statuses =
-          List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS));
-      assertTrue(statuses.contains(201));
-      assertTrue(statuses.contains(412));
+      assertEquals(
+          first.get(30, TimeUnit.SECONDS).getId(), second.get(30, TimeUnit.SECONDS).getId());
     }
     assertEquals(1L, state(ontology).getLastReleaseRevision());
     assertEquals(
-        "1.1.0",
+        "0.1.0",
         capture(ontology, request(ontology).withVersionBump(VersionBump.MINOR))
             .getSemanticVersion());
   }
@@ -118,11 +130,14 @@ public class IndependentOntologyPublicationIT extends BaseOntologyApprovalIT {
   void chronologicalPagingIsNumericOwnerScopedAndStableAcrossCaptures(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
     for (int index = 0; index < 12; index++) {
+      declareClass(
+          ontology, "Edit" + index, java.net.URI.create("https://example.org/model/E" + index));
       capture(ontology, request(ontology));
     }
     final JsonNode first = history(SdkClients.adminClient(), ontology, "?limit=5");
     assertEquals(12, first.path("paging").path("total").asInt());
     assertEquals(List.of(12L, 11L, 10L, 9L, 8L), revisions(first));
+    declareClass(ontology, "Edit12", java.net.URI.create("https://example.org/model/E12"));
     capture(ontology, request(ontology));
     final JsonNode second =
         history(

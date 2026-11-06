@@ -23,8 +23,9 @@ interface MockIconProps {
   fallback?: ReactNode;
 }
 
-jest.mock('../../../assets/svg/ic-certification.svg', () => ({
-  ReactComponent: () => <div data-testid="default-certification-icon" />,
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
+  Certification: () => <div data-testid="default-certification-icon" />,
 }));
 
 jest.mock('@openmetadata/ui-core-components/icon', () => ({

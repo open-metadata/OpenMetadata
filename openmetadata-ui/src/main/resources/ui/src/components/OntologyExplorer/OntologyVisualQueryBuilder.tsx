@@ -20,8 +20,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Play } from '@openmetadata/ui-core-components/icons';
-import { isAxiosError } from 'axios';
+import { Code01, Play } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -45,7 +44,15 @@ import { humanizeName } from '../../utils/governance/ontology/OntologyStudioMode
 import { showErrorToast } from '../../utils/ToastUtils';
 import { DEFAULT_RELATIONSHIP_TYPE } from './OntologyExplorer.constants';
 import { OntologyGraphData, OntologyNode } from './OntologyExplorer.interface';
+import {
+  describeQueryError,
+  QueryErrorDisplay,
+} from './OntologyQueryError.utils';
 import OntologyQueryResults from './OntologyQueryResults';
+import {
+  buildQueryScopeLabel,
+  OntologyQueryScope,
+} from './OntologyQueryScope.utils';
 import { getRelationshipColor } from './utils/relationshipTypeUtils';
 
 const ONTOLOGY_NAMESPACE = 'https://open-metadata.org/ontology/';
@@ -78,6 +85,7 @@ interface OntologyVisualQueryBuilderProps {
   graphData?: OntologyGraphData | null;
   relationTypes?: RelationshipType[];
   selectedGlossaryIds?: string[];
+  queryScope?: OntologyQueryScope;
   onEditAsSparql?: (query: string) => void;
 }
 
@@ -190,9 +198,13 @@ const OntologyVisualQueryBuilder = ({
   graphData,
   relationTypes: suppliedRelationTypes,
   selectedGlossaryIds,
+  queryScope,
   onEditAsSparql,
 }: OntologyVisualQueryBuilderProps) => {
   const { t } = useTranslation();
+  const scopeLabel = queryScope
+    ? buildQueryScopeLabel(queryScope, t)
+    : undefined;
   const { isAdminUser } = useAuth();
   const [relationTypes, setRelationTypes] = useState<RelationshipType[]>([]);
   const [terms, setTerms] = useState<VisualQueryTerm[]>([]);
@@ -204,7 +216,9 @@ const OntologyVisualQueryBuilder = ({
   const [isRunning, setIsRunning] = useState(false);
   const [findKind, setFindKind] = useState<VisualQueryFindKind>('concepts');
   const [result, setResult] = useState<SparqlPlaygroundResult>();
-  const [errorMessage, setErrorMessage] = useState<string>();
+  const [queryError, setQueryError] = useState<QueryErrorDisplay>();
+  const [isSparqlShown, setIsSparqlShown] = useState(false);
+  const [resultScopeLabel, setResultScopeLabel] = useState<string>();
   const selectedGlossaryId = selectedGlossaryIds?.[0];
   const native = useOntologyStudioModel(ontology);
   const nativeRelations = useMemo(
@@ -224,7 +238,10 @@ const OntologyVisualQueryBuilder = ({
     if (ontology) {
       setIsLoading(native.isLoading);
       if (native.isError) {
-        setErrorMessage(t('message.temporary-error-try-reloading'));
+        setQueryError({
+          title: t('message.query-error-failed-title'),
+          hint: t('message.temporary-error-try-reloading'),
+        });
       }
       if (native.model) {
         setTerms([...native.model.concepts]);
@@ -388,7 +405,7 @@ const OntologyVisualQueryBuilder = ({
   const handleRun = useCallback(async () => {
     setIsRunning(true);
     setResult(undefined);
-    setErrorMessage(undefined);
+    setQueryError(undefined);
     try {
       const queryParams = {
         query: generatedQuery,
@@ -401,7 +418,11 @@ const OntologyVisualQueryBuilder = ({
         );
       }
       if (ontology) {
-        setResult(await runOntologySparqlQuery(ontology.id, queryParams));
+        setResult(
+          await runOntologySparqlQuery(ontology.id, queryParams, {
+            scope: queryScope?.version === 'draft' ? 'draft' : 'release',
+          })
+        );
       } else if (selectedGlossaryId) {
         setResult(
           await runGlossarySparqlQuery(selectedGlossaryId, queryParams)
@@ -409,26 +430,27 @@ const OntologyVisualQueryBuilder = ({
       } else {
         setResult(await runSparqlQuery(queryParams));
       }
+      setResultScopeLabel(scopeLabel);
     } catch (error) {
-      let message: string;
-      if (isAxiosError(error)) {
-        message =
-          typeof error.response?.data === 'string'
-            ? error.response.data
-            : error.message;
-      } else {
-        message = (error as Error).message;
-      }
-      setErrorMessage(message);
-      showErrorToast(message);
+      setQueryError(
+        describeQueryError(error, { isAdmin: Boolean(isAdminUser), t })
+      );
     } finally {
       setIsRunning(false);
     }
-  }, [ontology, generatedQuery, isAdminUser, selectedGlossaryId, t]);
+  }, [
+    ontology,
+    generatedQuery,
+    isAdminUser,
+    queryScope?.version,
+    scopeLabel,
+    selectedGlossaryId,
+    t,
+  ]);
 
   const resetResult = () => {
     setResult(undefined);
-    setErrorMessage(undefined);
+    setQueryError(undefined);
   };
   const matchCount = result?.parsed?.results?.bindings?.length;
 
@@ -575,10 +597,20 @@ const OntologyVisualQueryBuilder = ({
   const renderQueryResults = () => (
     <>
       {renderRunActions()}
-      {errorMessage ? (
-        <Box className="tw:rounded-lg tw:border tw:border-utility-error-200 tw:bg-utility-error-50 tw:px-3 tw:py-2">
+      {queryError ? (
+        <Box
+          className="tw:rounded-lg tw:border tw:border-utility-error-200 tw:bg-utility-error-50 tw:px-3 tw:py-2"
+          data-testid="ontology-builder-error"
+          direction="col"
+          role="alert">
+          <Typography
+            className="tw:text-utility-error-700"
+            size="text-sm"
+            weight="semibold">
+            {queryError.title}
+          </Typography>
           <Typography className="tw:text-utility-error-700" size="text-sm">
-            {errorMessage}
+            {queryError.hint}
           </Typography>
         </Box>
       ) : null}
@@ -587,6 +619,7 @@ const OntologyVisualQueryBuilder = ({
           graphData={ontology ? native.graph : graphData ?? null}
           relationshipTypes={ontology ? [] : relationOptions}
           result={result}
+          scopeLabel={resultScopeLabel}
         />
       ) : null}
     </>
@@ -616,17 +649,31 @@ const OntologyVisualQueryBuilder = ({
 
         {renderQueryControls()}
         <Box direction="col" gap={2}>
-          <Typography
-            className="tw:tracking-wide tw:text-tertiary tw:uppercase"
-            size="text-xs"
-            weight="semibold">
-            {t('label.generated-sparql')}
-          </Typography>
-          <pre
-            className="tw:m-0 tw:overflow-auto tw:rounded-xl tw:bg-primary-solid tw:px-4 tw:py-3.5 tw:font-mono tw:text-xs tw:leading-5 tw:text-secondary_on-brand"
-            data-testid="ontology-generated-sparql">
-            {generatedQuery}
-          </pre>
+          <Box align="center" gap={3}>
+            <Button
+              color="link-color"
+              data-testid="ontology-builder-toggle-sparql"
+              iconLeading={Code01}
+              size="sm"
+              onClick={() => setIsSparqlShown((isShown) => !isShown)}>
+              {t(isSparqlShown ? 'label.hide-sparql' : 'label.show-sparql')}
+            </Button>
+          </Box>
+          {isSparqlShown ? (
+            <>
+              <Typography
+                className="tw:tracking-wide tw:text-tertiary tw:uppercase"
+                size="text-xs"
+                weight="semibold">
+                {t('label.generated-sparql')}
+              </Typography>
+              <pre
+                className="tw:m-0 tw:overflow-auto tw:rounded-xl tw:bg-primary-solid tw:px-4 tw:py-3.5 tw:font-mono tw:text-xs tw:leading-5 tw:text-secondary_on-brand"
+                data-testid="ontology-generated-sparql">
+                {generatedQuery}
+              </pre>
+            </>
+          ) : null}
         </Box>
 
         {renderQueryResults()}

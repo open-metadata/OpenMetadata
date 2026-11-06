@@ -149,6 +149,7 @@ const SelectServiceType = ({
 
       <div className="tw:mt-3.5">
         <Input
+          autoComplete="off"
           icon={Search}
           placeholder={t('label.search-for-a-connector')}
           size="md"
@@ -161,8 +162,8 @@ const SelectServiceType = ({
             <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
               <NoDataPlaceholder
                 data-testid="no-data-placeholder"
+                description={t('message.no-connectors-available-for-service')}
                 icon={<Database01 />}
-                title={t('message.no-connectors-available-for-service')}
               />
             </div>
           </div>
@@ -183,6 +184,7 @@ const SelectServiceType = ({
               // spans every category in the `all` view so the category has to be part of the key.
               key={`${connectorCategory}-${type}`}
               size="sm"
+              variant="tile"
               onClick={() => handleServiceTypeClick(type, connectorCategory)}>
               <div className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:w-full">
                 <div

@@ -33,6 +33,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, sumBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../constants/constants';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
@@ -51,7 +52,6 @@ import IncidentGroupDetail from './IncidentGroupDetail';
 import IncidentGroupDrawer from './IncidentGroupDrawer';
 import {
   CLEARED_INCIDENT_GROUP_FILTERS,
-  INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
   INCIDENT_TABLE_CARD_CLASS,
   INCIDENT_TABLE_PAGER_CLASS,
 } from './IncidentGroups.constants';
@@ -328,7 +328,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             }
           />
         )}
-        <TableCard.Root className={INCIDENT_TABLE_CARD_CLASS}>
+        <TableCard.Root className={INCIDENT_TABLE_CARD_CLASS} variant="muted">
           <IncidentGroupsTable
             groupBy={groupBy}
             groups={incidentGroups}
@@ -345,7 +345,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             className={INCIDENT_TABLE_PAGER_CLASS}
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={Math.max(
               1,
               computeTotalPages(

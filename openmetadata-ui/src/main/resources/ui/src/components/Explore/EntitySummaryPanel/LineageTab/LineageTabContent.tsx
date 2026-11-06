@@ -17,12 +17,14 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  LineageDownstream,
+  LineageUpstream,
+} from '@openmetadata/ui-core-components/icons';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/lineage-downstream-icon.svg';
-import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-upstream-icon.svg';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
@@ -189,7 +191,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
         onSelectionChange={(key) =>
           onFilterChange(key as LineageTabContentProps['filter'])
         }>
-        <Tabs.List size="sm" type="button-border">
+        <Tabs.List fullWidth size="sm" type="button-border">
           {(['upstream', 'downstream'] as const).map((direction) => (
             <Tabs.Item
               badge={direction === 'upstream' ? upstreamCount : downstreamCount}
@@ -238,7 +240,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   `${item.direction}-${item.path}`
                 }>
                 <div className="lineage-item-header">
-                  <div className="d-flex align-items-center gap-1">
+                  <div className="d-flex align-items-center gap-1 tw:min-w-0 tw:flex-1">
                     <div className="service-icon">
                       {getServiceLogo(
                         capitalize(item.entity.serviceType) ?? '',
@@ -249,20 +251,20 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                       {item.path && renderTruncatedPath(item.path)}
                     </div>
                   </div>
-                  <div className="lineage-item-direction">
+                  <div className="lineage-item-direction tw:shrink-0">
                     {item.direction === 'upstream' ? (
                       <Tooltip
                         placement="top"
                         title={t('label.upstream')}
                         triggerClassName="tw:inline-flex">
-                        <UpstreamIcon height={18} width={18} />
+                        <LineageUpstream size={18} />
                       </Tooltip>
                     ) : (
                       <Tooltip
                         placement="top"
                         title={t('label.downstream')}
                         triggerClassName="tw:inline-flex">
-                        <DownstreamIcon height={18} width={18} />
+                        <LineageDownstream size={18} />
                       </Tooltip>
                     )}
                   </div>

@@ -12,8 +12,10 @@
  */
 
 import { EntityStats } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
+import { App, ScheduleTimeline } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import {
+  getAppCronExpression,
   getAppRunFailureLogs,
   getEntityStatsData,
   hasAppRunStats,
@@ -124,5 +126,28 @@ describe('getAppRunFailureLogs', () => {
 
   it('returns an empty string when there is no failure context', () => {
     expect(getAppRunFailureLogs({} as AppRunRecord)).toBe('');
+  });
+});
+
+describe('getAppCronExpression', () => {
+  it('reads the cron from a schedule object', () => {
+    expect(
+      getAppCronExpression({
+        scheduleTimeline: ScheduleTimeline.Custom,
+        cronExpression: '30 0 * * 0',
+      })
+    ).toBe('30 0 * * 0');
+  });
+
+  it.each([
+    ['no schedule', undefined],
+    ['null', null],
+    ['a schedule without a cron', { scheduleTimeline: ScheduleTimeline.None }],
+    ['a non-object value', 'daily'],
+    ['an array', ['30 0 * * 0']],
+  ])('returns undefined for %s', (_, appSchedule) => {
+    expect(
+      getAppCronExpression(appSchedule as App['appSchedule'])
+    ).toBeUndefined();
   });
 });

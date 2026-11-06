@@ -41,6 +41,8 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.QueryCostRecordsAggregator;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.FieldValue;
@@ -57,15 +59,33 @@ import os.org.opensearch.client.opensearch.indices.GetMappingResponse;
 public class OpenSearchDataInsightAggregatorManager implements DataInsightAggregatorClient {
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
+  private final RBACConditionEvaluator rbacConditionEvaluator;
 
   public OpenSearchDataInsightAggregatorManager(OpenSearchClient client) {
+    this(client, null);
+  }
+
+  public OpenSearchDataInsightAggregatorManager(
+      OpenSearchClient client, RBACConditionEvaluator rbacConditionEvaluator) {
     this.client = client;
     this.isClientAvailable = client != null;
+    this.rbacConditionEvaluator = rbacConditionEvaluator;
   }
 
   @Override
   public DataInsightCustomChartResultList buildDIChart(
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
+      throws IOException {
+    return buildDIChart(diChart, start, end, live, null);
+  }
+
+  @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      boolean live,
+      SubjectContext caller)
       throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot build DI chart.");
@@ -80,6 +100,22 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
           new HashMap<>();
       SearchRequest searchRequest =
           aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder, live);
+      if (live) {
+        // A live chart aggregates the entity documents behind the search aliases.
+        SearchRequest unrestricted = searchRequest;
+        Query restricted =
+            OpenSearchRbacQueries.withAccessPolicies(
+                unrestricted.query(), caller, rbacConditionEvaluator);
+        if (restricted != unrestricted.query()) {
+          searchRequest =
+              SearchRequest.of(
+                  b ->
+                      b.index(unrestricted.index())
+                          .size(unrestricted.size())
+                          .aggregations(unrestricted.aggregations())
+                          .query(restricted));
+        }
+      }
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> searchResponse;
       try {

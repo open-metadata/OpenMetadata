@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Owner,
   Tooltip,
@@ -22,16 +23,20 @@ import {
 import {
   CheckCircleFilled,
   CloseCircleFilled,
+  Comment,
+  SuccessfulTests,
+  TotalOccurrences,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
 import { useCallback, useMemo } from 'react';
+import {
+  ButtonProps as AriaButtonProps,
+  PressEvent,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { EntityType } from '../../../enums/entity.enum';
@@ -51,7 +56,6 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
-import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getErrorText } from '../../../utils/StringUtils';
@@ -60,6 +64,7 @@ import {
   isRecognizerFeedbackTask,
   isTagsTaskType,
 } from '../../../utils/TaskActionUtils';
+import { getTaskFieldName } from '../../../utils/TaskFieldPathUtils';
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
@@ -68,6 +73,7 @@ import {
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
 import {
   getTaskResolveBody,
+  getTaskStatusIconClassName,
   isOntologyReviewTask,
 } from '../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -92,7 +98,7 @@ const getTaskRowGapClassName = (
 };
 
 const getTaskStatusIcon = (status?: TaskEntityStatus) =>
-  status === TaskEntityStatus.Open ? TaskOpenIcon : TaskCloseIcon;
+  status === TaskEntityStatus.Open ? TotalOccurrences : SuccessfulTests;
 
 const getReplyCountLabelKey = (commentsCount: number) =>
   commentsCount === 1 ? 'label.one-reply' : 'label.number-reply-plural';
@@ -172,11 +178,7 @@ const TaskFeedCardFromTask = ({
   );
 
   const taskColumnName = useMemo(() => {
-    const columnName = fieldPath
-      ? EntityLink.getTableColumnName(
-          `<#E::${entityType}::${entityFQN}::${fieldPath}>`
-        ) ?? ''
-      : '';
+    const columnName = getTaskFieldName(fieldPath);
 
     if (columnName) {
       return (
@@ -187,7 +189,7 @@ const TaskFeedCardFromTask = ({
     }
 
     return null;
-  }, [entityFQN, entityType, fieldPath, t]);
+  }, [fieldPath, t]);
 
   const handleTaskLinkClick = () => {
     navigate(getTaskDetailPathFromTask(task));
@@ -348,6 +350,16 @@ const TaskFeedCardFromTask = ({
     showTaskDrawer?.(task);
   }, [showTaskDrawer, task]);
 
+  // The press must keep bubbling so the card also selects the task, as the
+  // reply icon did before. ButtonUtility does not declare onPress, so it is
+  // passed as typed react-aria props.
+  const replyPressProps: Pick<AriaButtonProps, 'onPress'> = {
+    onPress: (event: PressEvent) => {
+      event.continuePropagation();
+      showReplies();
+    },
+  };
+
   const commentsCount = task.comments?.length ?? 0;
 
   // Kept as a closure so the footer's own branching (reply count, edit
@@ -361,7 +373,13 @@ const TaskFeedCardFromTask = ({
       wrap="wrap">
       <Box align="center" gap={4}>
         <Box align="center" gap={2} justify="center">
-          <ReplyIcon height={20} width={20} onClick={showReplies} />
+          <ButtonUtility
+            aria-label={t('label.reply')}
+            data-testid="task-reply-button"
+            icon={Comment}
+            size="sm"
+            {...replyPressProps}
+          />
           {commentsCount > 0 ? (
             <Button
               color="link-gray"
@@ -387,15 +405,10 @@ const TaskFeedCardFromTask = ({
         <Box gap={4}>
           {canQuickResolve() && (
             <Button
-              className="tw:gap-1.5 tw:text-success-primary tw:hover:text-success-primary"
+              className="tw:gap-1.5 tw:text-success-primary tw:hover:text-success-primary tw:*:data-icon:text-fg-success-primary"
               color="link-gray"
               data-testid="approve-button"
-              iconLeading={
-                <CheckCircleFilled
-                  className="tw:shrink-0 tw:text-fg-success-primary"
-                  size={14}
-                />
-              }
+              iconLeading={CheckCircleFilled}
               size="xs"
               onPress={onTaskResolve}>
               {t('label.approve')}
@@ -406,9 +419,7 @@ const TaskFeedCardFromTask = ({
               className="tw:gap-1.5"
               color="link-destructive"
               data-testid="reject-button"
-              iconLeading={
-                <CloseCircleFilled className="tw:shrink-0" size={14} />
-              }
+              iconLeading={CloseCircleFilled}
               size="xs"
               onPress={onTaskReject}>
               {t('label.reject')}
@@ -453,8 +464,14 @@ const TaskFeedCardFromTask = ({
         <Box align="start" className="tw:w-full tw:min-w-0" direction="col">
           <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center">
             <TaskStatusIcon
-              className="tw:mr-1 tw:size-3.5 tw:shrink-0"
+              className={classNames(
+                'tw:mr-1 tw:shrink-0',
+                getTaskStatusIconClassName(
+                  task.status === TaskEntityStatus.Open
+                )
+              )}
               data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
+              size={14}
             />
             <div className="tw:flex tw:min-w-0 tw:flex-1">
               {taskLinkTitleElement}

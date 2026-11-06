@@ -26,7 +26,7 @@ import {
   getOntologyReleaseMember,
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import OntologyReviewDefinition from './OntologyReviewDefinition';
+import OntologyReviewFieldChanges from './OntologyReviewFieldChanges';
 
 interface OntologyReviewReleaseProps {
   baseReleaseId?: string;
@@ -117,14 +117,15 @@ const OntologyReviewRelease = ({
       return <Typography role="status">{t('label.loading')}</Typography>;
     }
 
-    return members.map(
-      (member, index) =>
-        member.data && (
-          <Box direction="col" gap={2} key={snapshots[index].label}>
-            <Typography as="h4">{t(snapshots[index].label)}</Typography>
-            <OntologyReviewDefinition definition={member.data.payload} />
-          </Box>
-        )
+    const payloadOf = (label: string) =>
+      members[snapshots.findIndex((snapshot) => snapshot.label === label)]?.data
+        ?.payload;
+
+    return (
+      <OntologyReviewFieldChanges
+        after={payloadOf('label.after')}
+        before={payloadOf('label.before')}
+      />
     );
   };
 

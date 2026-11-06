@@ -25,7 +25,7 @@ import { UsePagingInterface } from '../../../../../hooks/paging/usePaging';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import {
   ColumnsType,
-  TableProps,
+  TableComponentProps,
 } from '../../../../common/Table/Table.interface';
 
 export interface IngestionListTableProps {
@@ -35,7 +35,10 @@ export interface IngestionListTableProps {
   deployIngestion?: (id: string, displayName: string) => Promise<void>;
   emptyPlaceholder?: ReactNode;
   enableActions?: boolean;
-  extraTableProps?: TableProps<IngestionPipeline>;
+  extraTableProps?: Omit<
+    TableComponentProps<IngestionPipeline>,
+    'pagination' | 'customPaginationProps'
+  >;
   handleEditClick?: (fqn: string) => void;
   handleEnableDisableIngestion?: (id: string) => Promise<void>;
   handleIngestionListUpdate?: (

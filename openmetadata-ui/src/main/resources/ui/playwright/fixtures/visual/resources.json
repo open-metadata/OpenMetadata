@@ -1,0 +1,5133 @@
+{
+  "roles": [
+    {
+      "id": "71bee8e7-a5a1-593a-87ed-437ff4875db9",
+      "name": "VisualAnalyst",
+      "fullyQualifiedName": "VisualAnalyst",
+      "displayName": "Analyst",
+      "type": "role",
+      "description": "Curated metadata for the analytics workspace.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "provider": "user",
+      "policies": [
+        {
+          "id": "9d8f0068-3ead-5b70-986e-1d4e38de311e",
+          "name": "VisualMetadataPolicy",
+          "fullyQualifiedName": "VisualMetadataPolicy",
+          "displayName": "Metadata policy",
+          "type": "policy"
+        }
+      ],
+      "teams": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "users": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user"
+        }
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "id": "9d8f0068-3ead-5b70-986e-1d4e38de311e",
+      "name": "VisualMetadataPolicy",
+      "fullyQualifiedName": "VisualMetadataPolicy",
+      "displayName": "Metadata policy",
+      "type": "policy",
+      "description": "Curated metadata for the analytics workspace.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "provider": "user",
+      "rules": [
+        {
+          "name": "ReadMetadata",
+          "description": "Read metadata in the analytics catalog.",
+          "resources": ["all"],
+          "operations": ["ViewAll"],
+          "effect": "allow"
+        }
+      ],
+      "roles": [
+        {
+          "id": "71bee8e7-a5a1-593a-87ed-437ff4875db9",
+          "name": "VisualAnalyst",
+          "fullyQualifiedName": "VisualAnalyst",
+          "displayName": "Analyst",
+          "type": "role"
+        }
+      ],
+      "teams": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "686536f5-3041-5367-9901-bff561dec93d",
+      "name": "visual_steward",
+      "fullyQualifiedName": "visual_steward",
+      "displayName": "Finance Steward",
+      "type": "user",
+      "description": "Curated metadata for the analytics workspace.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "provider": "user",
+      "email": "finance.steward@example.com",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "roles": [
+        {
+          "id": "71bee8e7-a5a1-593a-87ed-437ff4875db9",
+          "name": "VisualAnalyst",
+          "fullyQualifiedName": "VisualAnalyst",
+          "displayName": "Analyst",
+          "type": "role"
+        }
+      ],
+      "personas": [
+        {
+          "id": "a6fde953-d444-53db-a80c-e62a9b95e2b4",
+          "name": "VisualAnalystPersona",
+          "fullyQualifiedName": "VisualAnalystPersona",
+          "displayName": "Analyst persona",
+          "type": "persona"
+        }
+      ],
+      "owns": [],
+      "follows": [],
+      "isEmailVerified": true
+    },
+    {
+      "id": "24c90c2e-bea6-5eac-ab30-897df917c397",
+      "name": "visual_bot_user",
+      "fullyQualifiedName": "visual_bot_user",
+      "displayName": "Ingestion bot",
+      "type": "user",
+      "description": "Service account for metadata ingestion.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "deleted": false,
+      "isBot": true,
+      "isAdmin": false,
+      "email": "visual.bot@example.com",
+      "roles": [
+        {
+          "id": "71bee8e7-a5a1-593a-87ed-437ff4875db9",
+          "name": "VisualAnalyst",
+          "fullyQualifiedName": "VisualAnalyst",
+          "displayName": "Analyst",
+          "type": "role"
+        }
+      ],
+      "teams": [],
+      "authenticationMechanism": {
+        "authType": "JWT",
+        "config": {}
+      }
+    }
+  ],
+  "bots": [
+    {
+      "id": "ea71aa38-9226-5b43-a7d0-de65cb5772e5",
+      "name": "visual_ingestion_bot",
+      "fullyQualifiedName": "visual_ingestion_bot",
+      "displayName": "Ingestion bot",
+      "type": "bot",
+      "description": "Curated metadata for the analytics workspace.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "provider": "user",
+      "botUser": {
+        "id": "24c90c2e-bea6-5eac-ab30-897df917c397",
+        "name": "visual_bot_user",
+        "fullyQualifiedName": "visual_bot_user",
+        "displayName": "Ingestion bot",
+        "type": "user"
+      }
+    }
+  ],
+  "personas": [
+    {
+      "id": "a6fde953-d444-53db-a80c-e62a9b95e2b4",
+      "name": "VisualAnalystPersona",
+      "fullyQualifiedName": "VisualAnalystPersona",
+      "displayName": "Analyst persona",
+      "type": "persona",
+      "description": "Curated metadata for the analytics workspace.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "provider": "user",
+      "users": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user"
+        }
+      ],
+      "defaultPersona": false,
+      "owners": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user"
+        }
+      ]
+    }
+  ],
+  "governance/workflowDefinitions": [
+    {
+      "name": "visual_approval_workflow",
+      "fullyQualifiedName": "visual_approval_workflow",
+      "displayName": "Metadata approval",
+      "description": "When a Glossary Term is Created or Updated, this Workflow will be triggered for the Term to be Approved.",
+      "config": {
+        "storeStageStatus": true
+      },
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created", "Updated"],
+          "exclude": ["entityStatus"],
+          "include": [],
+          "filter": {}
+        },
+        "output": ["relatedEntity", "updatedBy"]
+      },
+      "nodes": [
+        {
+          "type": "startEvent",
+          "subType": "startEvent",
+          "name": "GlossaryTermCreated",
+          "displayName": "Glossary Term Created or Updated"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutoApprovedByReviewerEnd",
+          "displayName": "Auto-Approved by Reviewer"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "ApprovedEnd",
+          "displayName": "Glossary Term Status: Approved"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "ApprovedEndAfterApproval",
+          "displayName": "Glossary Term Status: Approved"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "RejectedEnd",
+          "displayName": "Glossary Term Status: Rejected"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "DraftEnd",
+          "displayName": "Glossary Term Status: Draft"
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckIfGlossaryTermUpdatedByIsReviewer",
+          "displayName": "Check if Glossary Term Updated By is Reviewer",
+          "config": {
+            "rules": "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToApprovedByReviewer",
+          "displayName": "Set Status to 'Approved' (By Reviewer)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckGlossaryTermHasReviewers",
+          "displayName": "Check if Glossary Term has Reviewers",
+          "config": {
+            "rules": "{\"and\":[{\"some\":[{\"var\":\"reviewers\"},{\"!=\":[{\"var\":\"fullyQualifiedName\"},null]}]}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckGlossaryTermIsReadyToBeReviewed",
+          "displayName": "Check if Glossary Term is Ready to be Reviewed",
+          "config": {
+            "rules": "{\"and\":[{\"!!\":[{\"var\":\"description\"}]}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToInReview",
+          "displayName": "Set Status to 'In Review'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "In Review"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToDraft",
+          "displayName": "Set Status to 'Draft'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Draft"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "name": "ApproveGlossaryTerm",
+          "displayName": "Create User Approval Task",
+          "config": {
+            "assignees": {
+              "addReviewers": true,
+              "addOwners": false,
+              "candidates": []
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1,
+            "stageId": "review",
+            "stageDisplayName": "Review",
+            "taskStatus": "Open",
+            "assigneeStrategy": "reviewers-and-assignees",
+            "transitionMetadata": [
+              {
+                "id": "approve",
+                "label": "Approve",
+                "targetStageId": "approved",
+                "targetTaskStatus": "Approved",
+                "resolutionType": "Approved",
+                "formRef": "approve",
+                "requiresComment": false
+              },
+              {
+                "id": "reject",
+                "label": "Reject",
+                "targetStageId": "rejected",
+                "targetTaskStatus": "Rejected",
+                "resolutionType": "Rejected",
+                "formRef": "reject",
+                "requiresComment": true
+              }
+            ]
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckIfGlossaryTermIsNew",
+          "displayName": "Check if Glossary Term is New",
+          "config": {
+            "rules": "{\"and\":[{\"==\":[{\"var\":\"version\"},0.1]}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToInReviewForUpdate",
+          "displayName": "Set Status to 'In Review' (Update)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "In Review"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          }
+        },
+        {
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "name": "ApprovalForUpdates",
+          "displayName": "Review Changes for Updates",
+          "config": {
+            "assignees": {
+              "addReviewers": true,
+              "addOwners": false,
+              "candidates": []
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1,
+            "stageId": "review",
+            "stageDisplayName": "Review",
+            "taskStatus": "Open",
+            "assigneeStrategy": "reviewers-and-assignees",
+            "transitionMetadata": [
+              {
+                "id": "approve",
+                "label": "Approve",
+                "targetStageId": "approved",
+                "targetTaskStatus": "Approved",
+                "resolutionType": "Approved",
+                "formRef": "approve",
+                "requiresComment": false
+              },
+              {
+                "id": "reject",
+                "label": "Reject",
+                "targetStageId": "rejected",
+                "targetTaskStatus": "Rejected",
+                "resolutionType": "Rejected",
+                "formRef": "reject",
+                "requiresComment": true
+              }
+            ]
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["updatedBy"]
+        },
+        {
+          "type": "automatedTask",
+          "subType": "rollbackEntityTask",
+          "name": "RollbackGlossaryTermChanges",
+          "displayName": "Rollback Glossary Term Changes",
+          "config": {},
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApprovalForUpdates"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToApprovedAfterReview",
+          "displayName": "Set Status to 'Approved' (After Review)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApprovalForUpdates"
+          }
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "RollbackEnd",
+          "displayName": "Changes Rolled Back"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "ApprovalEnd",
+          "displayName": "Approved After Unified Review"
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToApprovedAfterApproval",
+          "displayName": "Set Status to 'Approved'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveGlossaryTerm"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToApproved",
+          "displayName": "Set Status to 'Approved'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToRejected",
+          "displayName": "Set Status to 'Rejected'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Rejected"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveGlossaryTerm"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckIfGlossaryTermIsAutomationProposal",
+          "displayName": "Check if an Automation proposed the Glossary Term",
+          "config": {
+            "rules": "{\"and\":[{\"==\":[{\"var\":\"provider\"},\"automation\"]},{\"!=\":[{\"var\":\"entityStatus\"},\"Approved\"]}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckIfAutomationProposalUpdatedByIsReviewer",
+          "displayName": "Check if the Proposal is Updated By a Reviewer",
+          "config": {
+            "rules": "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalStatusToApprovedByReviewer",
+          "displayName": "Set Proposal Status to 'Approved' (By Reviewer)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          }
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutomationProposalApprovedByReviewerEnd",
+          "displayName": "Proposal Approved By Reviewer"
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckIfAutomationProposalIsNew",
+          "displayName": "Check if the Proposal is New",
+          "config": {
+            "rules": "{\"and\":[{\"==\":[{\"var\":\"version\"},0.1]}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalStatusToInReview",
+          "displayName": "Set Proposal Status to 'In Review'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "In Review"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "name": "ApproveAutomationProposal",
+          "displayName": "Approve the Automation's Proposal",
+          "config": {
+            "assignees": {
+              "addReviewers": true,
+              "addOwners": false,
+              "candidates": [],
+              "emptyAssigneeStrategy": "assignAdmins"
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1,
+            "stageId": "review",
+            "stageDisplayName": "Review",
+            "taskStatus": "Open",
+            "assigneeStrategy": "reviewers-and-assignees",
+            "transitionMetadata": [
+              {
+                "id": "approve",
+                "label": "Approve",
+                "targetStageId": "approved",
+                "targetTaskStatus": "Approved",
+                "resolutionType": "Approved",
+                "formRef": "approve",
+                "requiresComment": false
+              },
+              {
+                "id": "reject",
+                "label": "Reject",
+                "targetStageId": "rejected",
+                "targetTaskStatus": "Rejected",
+                "resolutionType": "Rejected",
+                "formRef": "reject",
+                "requiresComment": true
+              }
+            ]
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["updatedBy"]
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalStatusToApproved",
+          "displayName": "Set Proposal Status to 'Approved'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveAutomationProposal"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalStatusToRejected",
+          "displayName": "Set Proposal Status to 'Rejected'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Rejected"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveAutomationProposal"
+          }
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutomationProposalApprovedEnd",
+          "displayName": "Proposal Approved"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutomationProposalRejectedEnd",
+          "displayName": "Proposal Rejected"
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalUpdateStatusToInReview",
+          "displayName": "Set Proposal Status to 'In Review' (Update)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "In Review"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          }
+        },
+        {
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "name": "ApproveAutomationProposalUpdate",
+          "displayName": "Review Changes to the Automation's Proposal",
+          "config": {
+            "assignees": {
+              "addReviewers": true,
+              "addOwners": false,
+              "candidates": [],
+              "emptyAssigneeStrategy": "assignAdmins"
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1,
+            "stageId": "review",
+            "stageDisplayName": "Review",
+            "taskStatus": "Open",
+            "assigneeStrategy": "reviewers-and-assignees",
+            "transitionMetadata": [
+              {
+                "id": "approve",
+                "label": "Approve",
+                "targetStageId": "approved",
+                "targetTaskStatus": "Approved",
+                "resolutionType": "Approved",
+                "formRef": "approve",
+                "requiresComment": false
+              },
+              {
+                "id": "reject",
+                "label": "Reject",
+                "targetStageId": "rejected",
+                "targetTaskStatus": "Rejected",
+                "resolutionType": "Rejected",
+                "formRef": "reject",
+                "requiresComment": true
+              }
+            ]
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["updatedBy"]
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalUpdateStatusToApproved",
+          "displayName": "Set Proposal Status to 'Approved' (After Review)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveAutomationProposalUpdate"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "rollbackEntityTask",
+          "name": "RollbackAutomationProposalChanges",
+          "displayName": "Rollback Changes to the Proposal",
+          "config": {},
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveAutomationProposalUpdate"
+          }
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutomationProposalUpdateApprovedEnd",
+          "displayName": "Proposal Approved After Review"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutomationProposalUpdateRolledBackEnd",
+          "displayName": "Proposal Changes Rolled Back"
+        }
+      ],
+      "edges": [
+        {
+          "from": "GlossaryTermCreated",
+          "to": "CheckIfGlossaryTermIsAutomationProposal"
+        },
+        {
+          "from": "CheckIfGlossaryTermIsAutomationProposal",
+          "to": "CheckGlossaryTermHasReviewers",
+          "condition": "false"
+        },
+        {
+          "from": "CheckIfGlossaryTermIsAutomationProposal",
+          "to": "CheckIfAutomationProposalUpdatedByIsReviewer",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfAutomationProposalUpdatedByIsReviewer",
+          "to": "SetAutomationProposalStatusToApprovedByReviewer",
+          "condition": "true"
+        },
+        {
+          "from": "SetAutomationProposalStatusToApprovedByReviewer",
+          "to": "AutomationProposalApprovedByReviewerEnd"
+        },
+        {
+          "from": "CheckIfAutomationProposalUpdatedByIsReviewer",
+          "to": "CheckIfAutomationProposalIsNew",
+          "condition": "false"
+        },
+        {
+          "from": "CheckIfAutomationProposalIsNew",
+          "to": "SetAutomationProposalStatusToInReview",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfAutomationProposalIsNew",
+          "to": "SetAutomationProposalUpdateStatusToInReview",
+          "condition": "false"
+        },
+        {
+          "from": "SetAutomationProposalStatusToInReview",
+          "to": "ApproveAutomationProposal"
+        },
+        {
+          "from": "ApproveAutomationProposal",
+          "to": "SetAutomationProposalStatusToApproved",
+          "condition": "approve"
+        },
+        {
+          "from": "ApproveAutomationProposal",
+          "to": "SetAutomationProposalStatusToRejected",
+          "condition": "reject"
+        },
+        {
+          "from": "SetAutomationProposalStatusToApproved",
+          "to": "AutomationProposalApprovedEnd"
+        },
+        {
+          "from": "SetAutomationProposalStatusToRejected",
+          "to": "AutomationProposalRejectedEnd"
+        },
+        {
+          "from": "SetAutomationProposalUpdateStatusToInReview",
+          "to": "ApproveAutomationProposalUpdate"
+        },
+        {
+          "from": "ApproveAutomationProposalUpdate",
+          "to": "SetAutomationProposalUpdateStatusToApproved",
+          "condition": "approve"
+        },
+        {
+          "from": "ApproveAutomationProposalUpdate",
+          "to": "RollbackAutomationProposalChanges",
+          "condition": "reject"
+        },
+        {
+          "from": "SetAutomationProposalUpdateStatusToApproved",
+          "to": "AutomationProposalUpdateApprovedEnd"
+        },
+        {
+          "from": "RollbackAutomationProposalChanges",
+          "to": "AutomationProposalUpdateRolledBackEnd"
+        },
+        {
+          "from": "CheckGlossaryTermHasReviewers",
+          "to": "SetGlossaryTermStatusToApproved",
+          "condition": "false"
+        },
+        {
+          "from": "CheckGlossaryTermHasReviewers",
+          "to": "CheckIfGlossaryTermUpdatedByIsReviewer",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfGlossaryTermUpdatedByIsReviewer",
+          "to": "SetGlossaryTermStatusToApprovedByReviewer",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfGlossaryTermUpdatedByIsReviewer",
+          "to": "CheckGlossaryTermIsReadyToBeReviewed",
+          "condition": "false"
+        },
+        {
+          "from": "SetGlossaryTermStatusToApprovedByReviewer",
+          "to": "AutoApprovedByReviewerEnd"
+        },
+        {
+          "from": "CheckGlossaryTermIsReadyToBeReviewed",
+          "to": "SetGlossaryTermStatusToDraft",
+          "condition": "false"
+        },
+        {
+          "from": "SetGlossaryTermStatusToDraft",
+          "to": "DraftEnd"
+        },
+        {
+          "from": "CheckGlossaryTermIsReadyToBeReviewed",
+          "to": "CheckIfGlossaryTermIsNew",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfGlossaryTermIsNew",
+          "to": "SetGlossaryTermStatusToInReview",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfGlossaryTermIsNew",
+          "to": "SetGlossaryTermStatusToInReviewForUpdate",
+          "condition": "false"
+        },
+        {
+          "from": "SetGlossaryTermStatusToInReview",
+          "to": "ApproveGlossaryTerm"
+        },
+        {
+          "from": "SetGlossaryTermStatusToInReviewForUpdate",
+          "to": "ApprovalForUpdates"
+        },
+        {
+          "from": "ApprovalForUpdates",
+          "to": "SetGlossaryTermStatusToApprovedAfterReview",
+          "condition": "approve"
+        },
+        {
+          "from": "ApprovalForUpdates",
+          "to": "RollbackGlossaryTermChanges",
+          "condition": "reject"
+        },
+        {
+          "from": "RollbackGlossaryTermChanges",
+          "to": "RollbackEnd"
+        },
+        {
+          "from": "SetGlossaryTermStatusToApprovedAfterReview",
+          "to": "ApprovalEnd"
+        },
+        {
+          "from": "ApproveGlossaryTerm",
+          "to": "SetGlossaryTermStatusToApprovedAfterApproval",
+          "condition": "approve"
+        },
+        {
+          "from": "ApproveGlossaryTerm",
+          "to": "SetGlossaryTermStatusToRejected",
+          "condition": "reject"
+        },
+        {
+          "from": "SetGlossaryTermStatusToApprovedAfterApproval",
+          "to": "ApprovedEndAfterApproval"
+        },
+        {
+          "from": "SetGlossaryTermStatusToApproved",
+          "to": "ApprovedEnd"
+        },
+        {
+          "from": "SetGlossaryTermStatusToRejected",
+          "to": "RejectedEnd"
+        }
+      ],
+      "id": "4cf1f92c-2d00-5c68-9a8c-5b2f10e64670",
+      "version": 1.0,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false,
+      "provider": "system",
+      "enabled": true
+    },
+    {
+      "name": "visual_periodic_workflow",
+      "fullyQualifiedName": "visual_periodic_workflow",
+      "displayName": "Metadata review batch",
+      "description": "When a Glossary Term is Created or Updated, this Workflow will be triggered for the Term to be Approved.",
+      "config": {
+        "storeStageStatus": true
+      },
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "schedule": {
+            "scheduleType": "Custom",
+            "cronExpression": "0 0 * * *"
+          },
+          "entityTypes": ["glossaryTerm"],
+          "filters": {},
+          "batchSize": 500
+        },
+        "output": ["relatedEntity"]
+      },
+      "nodes": [
+        {
+          "type": "startEvent",
+          "subType": "startEvent",
+          "name": "GlossaryTermCreated",
+          "displayName": "Glossary Term Created or Updated"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutoApprovedByReviewerEnd",
+          "displayName": "Auto-Approved by Reviewer"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "ApprovedEnd",
+          "displayName": "Glossary Term Status: Approved"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "ApprovedEndAfterApproval",
+          "displayName": "Glossary Term Status: Approved"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "RejectedEnd",
+          "displayName": "Glossary Term Status: Rejected"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "DraftEnd",
+          "displayName": "Glossary Term Status: Draft"
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckIfGlossaryTermUpdatedByIsReviewer",
+          "displayName": "Check if Glossary Term Updated By is Reviewer",
+          "config": {
+            "rules": "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToApprovedByReviewer",
+          "displayName": "Set Status to 'Approved' (By Reviewer)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckGlossaryTermHasReviewers",
+          "displayName": "Check if Glossary Term has Reviewers",
+          "config": {
+            "rules": "{\"and\":[{\"some\":[{\"var\":\"reviewers\"},{\"!=\":[{\"var\":\"fullyQualifiedName\"},null]}]}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckGlossaryTermIsReadyToBeReviewed",
+          "displayName": "Check if Glossary Term is Ready to be Reviewed",
+          "config": {
+            "rules": "{\"and\":[{\"!!\":[{\"var\":\"description\"}]}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToInReview",
+          "displayName": "Set Status to 'In Review'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "In Review"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToDraft",
+          "displayName": "Set Status to 'Draft'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Draft"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "name": "ApproveGlossaryTerm",
+          "displayName": "Create User Approval Task",
+          "config": {
+            "assignees": {
+              "addReviewers": true,
+              "addOwners": false,
+              "candidates": []
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1,
+            "stageId": "review",
+            "stageDisplayName": "Review",
+            "taskStatus": "Open",
+            "assigneeStrategy": "reviewers-and-assignees",
+            "transitionMetadata": [
+              {
+                "id": "approve",
+                "label": "Approve",
+                "targetStageId": "approved",
+                "targetTaskStatus": "Approved",
+                "resolutionType": "Approved",
+                "formRef": "approve",
+                "requiresComment": false
+              },
+              {
+                "id": "reject",
+                "label": "Reject",
+                "targetStageId": "rejected",
+                "targetTaskStatus": "Rejected",
+                "resolutionType": "Rejected",
+                "formRef": "reject",
+                "requiresComment": true
+              }
+            ]
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckIfGlossaryTermIsNew",
+          "displayName": "Check if Glossary Term is New",
+          "config": {
+            "rules": "{\"and\":[{\"==\":[{\"var\":\"version\"},0.1]}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToInReviewForUpdate",
+          "displayName": "Set Status to 'In Review' (Update)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "In Review"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          }
+        },
+        {
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "name": "ApprovalForUpdates",
+          "displayName": "Review Changes for Updates",
+          "config": {
+            "assignees": {
+              "addReviewers": true,
+              "addOwners": false,
+              "candidates": []
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1,
+            "stageId": "review",
+            "stageDisplayName": "Review",
+            "taskStatus": "Open",
+            "assigneeStrategy": "reviewers-and-assignees",
+            "transitionMetadata": [
+              {
+                "id": "approve",
+                "label": "Approve",
+                "targetStageId": "approved",
+                "targetTaskStatus": "Approved",
+                "resolutionType": "Approved",
+                "formRef": "approve",
+                "requiresComment": false
+              },
+              {
+                "id": "reject",
+                "label": "Reject",
+                "targetStageId": "rejected",
+                "targetTaskStatus": "Rejected",
+                "resolutionType": "Rejected",
+                "formRef": "reject",
+                "requiresComment": true
+              }
+            ]
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["updatedBy"]
+        },
+        {
+          "type": "automatedTask",
+          "subType": "rollbackEntityTask",
+          "name": "RollbackGlossaryTermChanges",
+          "displayName": "Rollback Glossary Term Changes",
+          "config": {},
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApprovalForUpdates"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToApprovedAfterReview",
+          "displayName": "Set Status to 'Approved' (After Review)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApprovalForUpdates"
+          }
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "RollbackEnd",
+          "displayName": "Changes Rolled Back"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "ApprovalEnd",
+          "displayName": "Approved After Unified Review"
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToApprovedAfterApproval",
+          "displayName": "Set Status to 'Approved'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveGlossaryTerm"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToApproved",
+          "displayName": "Set Status to 'Approved'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetGlossaryTermStatusToRejected",
+          "displayName": "Set Status to 'Rejected'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Rejected"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveGlossaryTerm"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckIfGlossaryTermIsAutomationProposal",
+          "displayName": "Check if an Automation proposed the Glossary Term",
+          "config": {
+            "rules": "{\"and\":[{\"==\":[{\"var\":\"provider\"},\"automation\"]},{\"!=\":[{\"var\":\"entityStatus\"},\"Approved\"]}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckIfAutomationProposalUpdatedByIsReviewer",
+          "displayName": "Check if the Proposal is Updated By a Reviewer",
+          "config": {
+            "rules": "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalStatusToApprovedByReviewer",
+          "displayName": "Set Proposal Status to 'Approved' (By Reviewer)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          }
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutomationProposalApprovedByReviewerEnd",
+          "displayName": "Proposal Approved By Reviewer"
+        },
+        {
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "name": "CheckIfAutomationProposalIsNew",
+          "displayName": "Check if the Proposal is New",
+          "config": {
+            "rules": "{\"and\":[{\"==\":[{\"var\":\"version\"},0.1]}]}"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalStatusToInReview",
+          "displayName": "Set Proposal Status to 'In Review'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "In Review"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        },
+        {
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "name": "ApproveAutomationProposal",
+          "displayName": "Approve the Automation's Proposal",
+          "config": {
+            "assignees": {
+              "addReviewers": true,
+              "addOwners": false,
+              "candidates": [],
+              "emptyAssigneeStrategy": "assignAdmins"
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1,
+            "stageId": "review",
+            "stageDisplayName": "Review",
+            "taskStatus": "Open",
+            "assigneeStrategy": "reviewers-and-assignees",
+            "transitionMetadata": [
+              {
+                "id": "approve",
+                "label": "Approve",
+                "targetStageId": "approved",
+                "targetTaskStatus": "Approved",
+                "resolutionType": "Approved",
+                "formRef": "approve",
+                "requiresComment": false
+              },
+              {
+                "id": "reject",
+                "label": "Reject",
+                "targetStageId": "rejected",
+                "targetTaskStatus": "Rejected",
+                "resolutionType": "Rejected",
+                "formRef": "reject",
+                "requiresComment": true
+              }
+            ]
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["updatedBy"]
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalStatusToApproved",
+          "displayName": "Set Proposal Status to 'Approved'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveAutomationProposal"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalStatusToRejected",
+          "displayName": "Set Proposal Status to 'Rejected'",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Rejected"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveAutomationProposal"
+          }
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutomationProposalApprovedEnd",
+          "displayName": "Proposal Approved"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutomationProposalRejectedEnd",
+          "displayName": "Proposal Rejected"
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalUpdateStatusToInReview",
+          "displayName": "Set Proposal Status to 'In Review' (Update)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "In Review"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          }
+        },
+        {
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "name": "ApproveAutomationProposalUpdate",
+          "displayName": "Review Changes to the Automation's Proposal",
+          "config": {
+            "assignees": {
+              "addReviewers": true,
+              "addOwners": false,
+              "candidates": [],
+              "emptyAssigneeStrategy": "assignAdmins"
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1,
+            "stageId": "review",
+            "stageDisplayName": "Review",
+            "taskStatus": "Open",
+            "assigneeStrategy": "reviewers-and-assignees",
+            "transitionMetadata": [
+              {
+                "id": "approve",
+                "label": "Approve",
+                "targetStageId": "approved",
+                "targetTaskStatus": "Approved",
+                "resolutionType": "Approved",
+                "formRef": "approve",
+                "requiresComment": false
+              },
+              {
+                "id": "reject",
+                "label": "Reject",
+                "targetStageId": "rejected",
+                "targetTaskStatus": "Rejected",
+                "resolutionType": "Rejected",
+                "formRef": "reject",
+                "requiresComment": true
+              }
+            ]
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["updatedBy"]
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetAutomationProposalUpdateStatusToApproved",
+          "displayName": "Set Proposal Status to 'Approved' (After Review)",
+          "config": {
+            "fieldName": "status",
+            "fieldValue": "Approved"
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveAutomationProposalUpdate"
+          }
+        },
+        {
+          "type": "automatedTask",
+          "subType": "rollbackEntityTask",
+          "name": "RollbackAutomationProposalChanges",
+          "displayName": "Rollback Changes to the Proposal",
+          "config": {},
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "ApproveAutomationProposalUpdate"
+          }
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutomationProposalUpdateApprovedEnd",
+          "displayName": "Proposal Approved After Review"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "AutomationProposalUpdateRolledBackEnd",
+          "displayName": "Proposal Changes Rolled Back"
+        }
+      ],
+      "edges": [
+        {
+          "from": "GlossaryTermCreated",
+          "to": "CheckIfGlossaryTermIsAutomationProposal"
+        },
+        {
+          "from": "CheckIfGlossaryTermIsAutomationProposal",
+          "to": "CheckGlossaryTermHasReviewers",
+          "condition": "false"
+        },
+        {
+          "from": "CheckIfGlossaryTermIsAutomationProposal",
+          "to": "CheckIfAutomationProposalUpdatedByIsReviewer",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfAutomationProposalUpdatedByIsReviewer",
+          "to": "SetAutomationProposalStatusToApprovedByReviewer",
+          "condition": "true"
+        },
+        {
+          "from": "SetAutomationProposalStatusToApprovedByReviewer",
+          "to": "AutomationProposalApprovedByReviewerEnd"
+        },
+        {
+          "from": "CheckIfAutomationProposalUpdatedByIsReviewer",
+          "to": "CheckIfAutomationProposalIsNew",
+          "condition": "false"
+        },
+        {
+          "from": "CheckIfAutomationProposalIsNew",
+          "to": "SetAutomationProposalStatusToInReview",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfAutomationProposalIsNew",
+          "to": "SetAutomationProposalUpdateStatusToInReview",
+          "condition": "false"
+        },
+        {
+          "from": "SetAutomationProposalStatusToInReview",
+          "to": "ApproveAutomationProposal"
+        },
+        {
+          "from": "ApproveAutomationProposal",
+          "to": "SetAutomationProposalStatusToApproved",
+          "condition": "approve"
+        },
+        {
+          "from": "ApproveAutomationProposal",
+          "to": "SetAutomationProposalStatusToRejected",
+          "condition": "reject"
+        },
+        {
+          "from": "SetAutomationProposalStatusToApproved",
+          "to": "AutomationProposalApprovedEnd"
+        },
+        {
+          "from": "SetAutomationProposalStatusToRejected",
+          "to": "AutomationProposalRejectedEnd"
+        },
+        {
+          "from": "SetAutomationProposalUpdateStatusToInReview",
+          "to": "ApproveAutomationProposalUpdate"
+        },
+        {
+          "from": "ApproveAutomationProposalUpdate",
+          "to": "SetAutomationProposalUpdateStatusToApproved",
+          "condition": "approve"
+        },
+        {
+          "from": "ApproveAutomationProposalUpdate",
+          "to": "RollbackAutomationProposalChanges",
+          "condition": "reject"
+        },
+        {
+          "from": "SetAutomationProposalUpdateStatusToApproved",
+          "to": "AutomationProposalUpdateApprovedEnd"
+        },
+        {
+          "from": "RollbackAutomationProposalChanges",
+          "to": "AutomationProposalUpdateRolledBackEnd"
+        },
+        {
+          "from": "CheckGlossaryTermHasReviewers",
+          "to": "SetGlossaryTermStatusToApproved",
+          "condition": "false"
+        },
+        {
+          "from": "CheckGlossaryTermHasReviewers",
+          "to": "CheckIfGlossaryTermUpdatedByIsReviewer",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfGlossaryTermUpdatedByIsReviewer",
+          "to": "SetGlossaryTermStatusToApprovedByReviewer",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfGlossaryTermUpdatedByIsReviewer",
+          "to": "CheckGlossaryTermIsReadyToBeReviewed",
+          "condition": "false"
+        },
+        {
+          "from": "SetGlossaryTermStatusToApprovedByReviewer",
+          "to": "AutoApprovedByReviewerEnd"
+        },
+        {
+          "from": "CheckGlossaryTermIsReadyToBeReviewed",
+          "to": "SetGlossaryTermStatusToDraft",
+          "condition": "false"
+        },
+        {
+          "from": "SetGlossaryTermStatusToDraft",
+          "to": "DraftEnd"
+        },
+        {
+          "from": "CheckGlossaryTermIsReadyToBeReviewed",
+          "to": "CheckIfGlossaryTermIsNew",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfGlossaryTermIsNew",
+          "to": "SetGlossaryTermStatusToInReview",
+          "condition": "true"
+        },
+        {
+          "from": "CheckIfGlossaryTermIsNew",
+          "to": "SetGlossaryTermStatusToInReviewForUpdate",
+          "condition": "false"
+        },
+        {
+          "from": "SetGlossaryTermStatusToInReview",
+          "to": "ApproveGlossaryTerm"
+        },
+        {
+          "from": "SetGlossaryTermStatusToInReviewForUpdate",
+          "to": "ApprovalForUpdates"
+        },
+        {
+          "from": "ApprovalForUpdates",
+          "to": "SetGlossaryTermStatusToApprovedAfterReview",
+          "condition": "approve"
+        },
+        {
+          "from": "ApprovalForUpdates",
+          "to": "RollbackGlossaryTermChanges",
+          "condition": "reject"
+        },
+        {
+          "from": "RollbackGlossaryTermChanges",
+          "to": "RollbackEnd"
+        },
+        {
+          "from": "SetGlossaryTermStatusToApprovedAfterReview",
+          "to": "ApprovalEnd"
+        },
+        {
+          "from": "ApproveGlossaryTerm",
+          "to": "SetGlossaryTermStatusToApprovedAfterApproval",
+          "condition": "approve"
+        },
+        {
+          "from": "ApproveGlossaryTerm",
+          "to": "SetGlossaryTermStatusToRejected",
+          "condition": "reject"
+        },
+        {
+          "from": "SetGlossaryTermStatusToApprovedAfterApproval",
+          "to": "ApprovedEndAfterApproval"
+        },
+        {
+          "from": "SetGlossaryTermStatusToApproved",
+          "to": "ApprovedEnd"
+        },
+        {
+          "from": "SetGlossaryTermStatusToRejected",
+          "to": "RejectedEnd"
+        }
+      ],
+      "id": "00000000-0000-4000-8200-000000000001",
+      "version": 1.0,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false,
+      "provider": "system",
+      "enabled": true
+    }
+  ],
+  "intakeForms": [],
+  "teams": [
+    {
+      "id": "e7fa6626-8195-5a29-a2ef-753d9e7953d3",
+      "name": "Organization",
+      "fullyQualifiedName": "Organization",
+      "displayName": "Organization",
+      "type": "team",
+      "description": "Curated metadata for the analytics workspace.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "provider": "user",
+      "teamType": "Organization",
+      "isJoinable": false,
+      "children": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "parents": [],
+      "users": [],
+      "defaultRoles": [
+        {
+          "id": "71bee8e7-a5a1-593a-87ed-437ff4875db9",
+          "name": "VisualAnalyst",
+          "fullyQualifiedName": "VisualAnalyst",
+          "displayName": "Analyst",
+          "type": "role"
+        }
+      ],
+      "policies": [
+        {
+          "id": "9d8f0068-3ead-5b70-986e-1d4e38de311e",
+          "name": "VisualMetadataPolicy",
+          "fullyQualifiedName": "VisualMetadataPolicy",
+          "displayName": "Metadata policy",
+          "type": "policy"
+        }
+      ],
+      "owners": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user"
+        }
+      ],
+      "profile": {}
+    },
+    {
+      "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+      "name": "visual_analytics",
+      "fullyQualifiedName": "visual_analytics",
+      "displayName": "Analytics",
+      "type": "team",
+      "description": "Curated metadata for the analytics workspace.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "provider": "user",
+      "teamType": "Group",
+      "parents": [
+        {
+          "id": "e7fa6626-8195-5a29-a2ef-753d9e7953d3",
+          "name": "Organization",
+          "fullyQualifiedName": "Organization",
+          "displayName": "Organization",
+          "type": "team"
+        }
+      ],
+      "users": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user"
+        }
+      ],
+      "children": [],
+      "defaultRoles": [
+        {
+          "id": "71bee8e7-a5a1-593a-87ed-437ff4875db9",
+          "name": "VisualAnalyst",
+          "fullyQualifiedName": "VisualAnalyst",
+          "displayName": "Analyst",
+          "type": "role"
+        }
+      ],
+      "policies": [],
+      "owners": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user"
+        }
+      ],
+      "isJoinable": true,
+      "profile": {}
+    }
+  ],
+  "services/databaseServices": [
+    {
+      "id": "2b516c49-2ead-5419-b2d0-c676aef4d009",
+      "name": "visual_warehouse",
+      "fullyQualifiedName": "visual_warehouse",
+      "displayName": "Visual Warehouse",
+      "type": "databaseService",
+      "serviceType": "Mysql",
+      "description": "Analytics metadata connection.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "deleted": false,
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "domains": [
+        {
+          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
+          "name": "VisualFinance",
+          "fullyQualifiedName": "VisualFinance",
+          "displayName": "Finance",
+          "type": "domain"
+        }
+      ],
+      "connection": {
+        "config": {
+          "type": "Mysql",
+          "hostPort": "warehouse.example.com:3306",
+          "username": "metadata"
+        }
+      }
+    }
+  ],
+  "services/pipelineServices": [
+    {
+      "id": "6532b9c1-55bf-5732-8d77-98b5846e5d1e",
+      "name": "visual_airflow",
+      "fullyQualifiedName": "visual_airflow",
+      "displayName": "Visual Airflow",
+      "type": "pipelineService",
+      "serviceType": "Airflow",
+      "description": "Analytics metadata connection.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "deleted": false,
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "domains": [
+        {
+          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
+          "name": "VisualFinance",
+          "fullyQualifiedName": "VisualFinance",
+          "displayName": "Finance",
+          "type": "domain"
+        }
+      ],
+      "connection": {
+        "config": {
+          "type": "Airflow",
+          "hostPort": "https://airflow.example.com",
+          "connection": {
+            "type": "RestAPI",
+            "authConfig": {
+              "username": "metadata",
+              "password": "visual-fixture-only"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "services/messagingServices": [
+    {
+      "id": "76586be2-1151-5783-a2fb-02edb7aa8baa",
+      "name": "visual_kafka",
+      "fullyQualifiedName": "visual_kafka",
+      "displayName": "Visual Kafka",
+      "type": "messagingService",
+      "serviceType": "Kafka",
+      "description": "Analytics metadata connection.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "deleted": false,
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "domains": [
+        {
+          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
+          "name": "VisualFinance",
+          "fullyQualifiedName": "VisualFinance",
+          "displayName": "Finance",
+          "type": "domain"
+        }
+      ],
+      "connection": {
+        "config": {
+          "type": "Kafka",
+          "bootstrapServers": "kafka.example.com:9092"
+        }
+      }
+    }
+  ],
+  "services/dashboardServices": [
+    {
+      "id": "f34001ad-7dc4-5f85-8074-dd48530c0316",
+      "name": "visual_looker",
+      "fullyQualifiedName": "visual_looker",
+      "displayName": "Visual Looker",
+      "type": "dashboardService",
+      "serviceType": "Looker",
+      "description": "Analytics metadata connection.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "deleted": false,
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "domains": [
+        {
+          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
+          "name": "VisualFinance",
+          "fullyQualifiedName": "VisualFinance",
+          "displayName": "Finance",
+          "type": "domain"
+        }
+      ],
+      "connection": {
+        "config": {
+          "type": "Looker",
+          "hostPort": "https://looker.example.com",
+          "clientId": "visual-client",
+          "clientSecret": "visual-fixture-only"
+        }
+      }
+    }
+  ],
+  "services/mlmodelServices": [
+    {
+      "id": "50ab2e47-2777-51f0-ae58-32f47df41555",
+      "name": "visual_ml",
+      "fullyQualifiedName": "visual_ml",
+      "displayName": "Visual Ml",
+      "type": "mlmodelService",
+      "serviceType": "Mlflow",
+      "description": "Analytics metadata connection.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "deleted": false,
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "domains": [
+        {
+          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
+          "name": "VisualFinance",
+          "fullyQualifiedName": "VisualFinance",
+          "displayName": "Finance",
+          "type": "domain"
+        }
+      ],
+      "connection": {
+        "config": {
+          "type": "Mlflow",
+          "trackingUri": "https://mlflow.example.com",
+          "registryUri": "https://mlflow.example.com"
+        }
+      }
+    }
+  ],
+  "services/storageServices": [
+    {
+      "id": "e89b3e09-ed5e-5b34-97a1-1aedba5889e1",
+      "name": "visual_s3",
+      "fullyQualifiedName": "visual_s3",
+      "displayName": "Visual S3",
+      "type": "storageService",
+      "serviceType": "S3",
+      "description": "Analytics metadata connection.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "deleted": false,
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "domains": [
+        {
+          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
+          "name": "VisualFinance",
+          "fullyQualifiedName": "VisualFinance",
+          "displayName": "Finance",
+          "type": "domain"
+        }
+      ],
+      "connection": {
+        "config": {
+          "type": "S3",
+          "awsConfig": {
+            "awsRegion": "us-east-1"
+          }
+        }
+      }
+    }
+  ],
+  "services/searchServices": [
+    {
+      "id": "1df6a447-aad7-519f-b756-feb6c4ecd5ca",
+      "name": "visual_elastic",
+      "fullyQualifiedName": "visual_elastic",
+      "displayName": "Visual Elastic",
+      "type": "searchService",
+      "serviceType": "ElasticSearch",
+      "description": "Analytics metadata connection.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "deleted": false,
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "domains": [
+        {
+          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
+          "name": "VisualFinance",
+          "fullyQualifiedName": "VisualFinance",
+          "displayName": "Finance",
+          "type": "domain"
+        }
+      ],
+      "connection": {
+        "config": {
+          "type": "ElasticSearch",
+          "hostPort": "https://search.example.com:9200"
+        }
+      }
+    }
+  ],
+  "services/apiServices": [
+    {
+      "id": "b134bc4f-fafc-52d4-a7f9-f5419c5b49ea",
+      "name": "visual_api",
+      "fullyQualifiedName": "visual_api",
+      "displayName": "Visual Api",
+      "type": "apiService",
+      "serviceType": "Rest",
+      "description": "Analytics metadata connection.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "deleted": false,
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "domains": [
+        {
+          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
+          "name": "VisualFinance",
+          "fullyQualifiedName": "VisualFinance",
+          "displayName": "Finance",
+          "type": "domain"
+        }
+      ],
+      "connection": {
+        "config": {
+          "type": "Rest",
+          "openAPISchemaConnection": {
+            "openAPISchemaFilePath": "/catalog/openapi.yaml"
+          }
+        }
+      }
+    }
+  ],
+  "services/driveServices": [
+    {
+      "id": "17bfd9ed-4c57-548b-99e8-2e9556fd487b",
+      "name": "visual_drive",
+      "fullyQualifiedName": "visual_drive",
+      "displayName": "Visual Drive",
+      "type": "driveService",
+      "serviceType": "GoogleDrive",
+      "description": "Analytics metadata connection.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "deleted": false,
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "domains": [
+        {
+          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
+          "name": "VisualFinance",
+          "fullyQualifiedName": "VisualFinance",
+          "displayName": "Finance",
+          "type": "domain"
+        }
+      ],
+      "connection": {
+        "config": {
+          "type": "GoogleDrive",
+          "credentials": {
+            "gcpConfig": {
+              "type": "gcp_credential_path",
+              "path": "/catalog/visual-service-account.json",
+              "projectId": "visual-catalog"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "events/subscriptions": [
+    {
+      "id": "cc704a4a-2607-5c23-a388-e3c6b2844821",
+      "name": "visual_metadata_alert",
+      "fullyQualifiedName": "visual_metadata_alert",
+      "displayName": "Metadata alert",
+      "type": "eventSubscription",
+      "description": "Curated metadata for the analytics workspace.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "provider": "user",
+      "enabled": true,
+      "alertType": "Notification",
+      "input": {
+        "actions": []
+      },
+      "filteringRules": {
+        "resources": ["table"],
+        "rules": []
+      },
+      "destinations": [
+        {
+          "id": "1884b1d5-b2f0-55da-9838-c0c027ab8cb9",
+          "category": "Owners",
+          "type": "Email",
+          "enabled": true
+        }
+      ],
+      "trigger": {
+        "triggerType": "RealTime"
+      }
+    },
+    {
+      "name": "ActivityFeedAlert",
+      "fullyQualifiedName": "ActivityFeedAlert",
+      "displayName": "Activity Feed Alerts",
+      "description": "Alerts received on the Activity Feed are controlled with this.",
+      "alertType": "ActivityFeed",
+      "filteringRules": {
+        "resources": ["all"],
+        "rules": [
+          {
+            "name": "matchAnyEventType",
+            "effect": "include",
+            "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !isBot() && !matchAnySource({'user', 'team', 'owners', 'databaseService', 'messagingService', 'dashboardService', 'pipelineService', 'storageService', 'mlmodelService', 'metadataService', 'searchService', 'apiService', 'ingestionPipeline', 'workflow', 'testCase', 'testSuite'})",
+            "prefixCondition": "AND"
+          },
+          {
+            "name": "matchAnyFieldChange",
+            "effect": "include",
+            "condition": "matchAnyFieldChange({'description', 'domains', 'owners', 'tags', 'followers','parameterValues', 'assets', 'entityStatus'})",
+            "prefixCondition": "OR"
+          },
+          {
+            "name": "matchAnySource",
+            "effect": "include",
+            "prefixCondition": "AND",
+            "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic', 'domain', 'dataProduct', 'metric', 'dataContract'})"
+          },
+          {
+            "name": "noBotAllowed",
+            "effect": "exclude",
+            "condition": "isBot()",
+            "prefixCondition": "AND"
+          }
+        ]
+      },
+      "destinations": [
+        {
+          "id": "fc9e7a84-5dbd-4e63-8b78-6c3a7bf04a65",
+          "category": "External",
+          "type": "ActivityFeed"
+        }
+      ],
+      "input": {
+        "filters": [
+          {
+            "name": "filterByEventType",
+            "effect": "include",
+            "prefixCondition": "OR",
+            "arguments": [
+              {
+                "name": "eventTypeList",
+                "input": ["entityCreated", "entityDeleted", "entitySoftDeleted"]
+              }
+            ]
+          },
+          {
+            "name": "filterByFieldChange",
+            "effect": "include",
+            "prefixCondition": "AND",
+            "arguments": [
+              {
+                "name": "fieldChangeList",
+                "input": [
+                  "description",
+                  "domains",
+                  "owners",
+                  "tags",
+                  "followers",
+                  "parameterValues",
+                  "pipelineStatus",
+                  "entityStatus"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "filterBySource",
+            "effect": "include",
+            "prefixCondition": "AND",
+            "arguments": [
+              {
+                "name": "sourceList",
+                "input": [
+                  "chart",
+                  "container",
+                  "dashboard",
+                  "dashboardDataModel",
+                  "database",
+                  "databaseSchema",
+                  "glossary",
+                  "glossaryTerm",
+                  "mlmodel",
+                  "pipeline",
+                  "query",
+                  "report",
+                  "searchIndex",
+                  "storedProcedure",
+                  "table",
+                  "topic",
+                  "domain",
+                  "dataProduct",
+                  "dataContract"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "filterByUpdaterIsBot",
+            "effect": "exclude",
+            "prefixCondition": "AND"
+          }
+        ]
+      },
+      "provider": "system",
+      "pollInterval": 30,
+      "enabled": true,
+      "id": "94b5893e-09a4-5126-bb8a-e819f36dec21",
+      "type": "eventSubscription",
+      "version": 1.0,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin"
+    },
+    {
+      "id": "b9196f25-470a-52a5-a7b9-a0dedfa1fc6a",
+      "name": "visual_quality_alert",
+      "fullyQualifiedName": "visual_quality_alert",
+      "displayName": "Quality alert",
+      "type": "eventSubscription",
+      "description": "Notify owners when a quality check fails.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "provider": "user",
+      "enabled": true,
+      "alertType": "Observability",
+      "input": {
+        "actions": []
+      },
+      "filteringRules": {
+        "resources": ["table"],
+        "rules": []
+      },
+      "destinations": [
+        {
+          "id": "2a34fe10-d4c8-56aa-b1d0-3779a80052a8",
+          "category": "Owners",
+          "type": "Email",
+          "enabled": true
+        }
+      ],
+      "trigger": {
+        "triggerType": "RealTime"
+      }
+    }
+  ],
+  "contextCenter/pages": [
+    {
+      "id": "d1d39b0e-6a32-5a38-884b-c6c80bf1bc76",
+      "name": "visual_finance_handbook",
+      "fullyQualifiedName": "visual_finance_handbook",
+      "displayName": "Finance handbook",
+      "description": "# Finance handbook\n\nCurated finance data supports reporting and analysis.",
+      "pageType": "Article",
+      "page": {
+        "publicationDate": "2026-01-15T10:00:00Z",
+        "relatedArticles": []
+      },
+      "version": 1.2,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "owners": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user",
+          "description": "Curated metadata for the analytics workspace.",
+          "version": 1.1,
+          "updatedAt": 1768471200000,
+          "updatedBy": "visual_admin",
+          "deleted": false,
+          "provider": "user",
+          "email": "finance.steward@example.com",
+          "isAdmin": false,
+          "teams": [
+            {
+              "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+              "name": "visual_analytics",
+              "fullyQualifiedName": "visual_analytics",
+              "displayName": "Analytics",
+              "type": "team"
+            }
+          ],
+          "roles": [
+            {
+              "id": "71bee8e7-a5a1-593a-87ed-437ff4875db9",
+              "name": "VisualAnalyst",
+              "fullyQualifiedName": "VisualAnalyst",
+              "displayName": "Analyst",
+              "type": "role"
+            }
+          ],
+          "personas": [
+            {
+              "id": "a6fde953-d444-53db-a80c-e62a9b95e2b4",
+              "name": "VisualAnalystPersona",
+              "fullyQualifiedName": "VisualAnalystPersona",
+              "displayName": "Analyst persona",
+              "type": "persona"
+            }
+          ],
+          "owns": [],
+          "follows": [],
+          "isEmailVerified": true
+        }
+      ],
+      "tags": [],
+      "domains": [],
+      "children": [],
+      "childrenCount": 0,
+      "entityStatus": "Approved"
+    }
+  ],
+  "contextCenter/memories": [
+    {
+      "id": "73be6906-b0f5-58ab-9a68-0b96c2c260bc",
+      "name": "visual_revenue_policy",
+      "fullyQualifiedName": "visual_revenue_policy",
+      "displayName": "Revenue recognition policy",
+      "title": "Revenue recognition policy",
+      "summary": "Recognize revenue when an order is fulfilled.",
+      "description": "Recognize revenue when an order is fulfilled.",
+      "answer": "Use the fulfillment date for financial reporting.",
+      "question": "When should revenue be recognized?",
+      "entityStatus": "Approved",
+      "memoryType": "Faq",
+      "memoryScope": "EntityScoped",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "lastContentUpdatedAt": 1768471200000,
+      "updatedBy": "visual_steward",
+      "owners": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user",
+          "description": "Curated metadata for the analytics workspace.",
+          "version": 1.1,
+          "updatedAt": 1768471200000,
+          "updatedBy": "visual_admin",
+          "deleted": false,
+          "provider": "user",
+          "email": "finance.steward@example.com",
+          "isAdmin": false,
+          "teams": [
+            {
+              "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+              "name": "visual_analytics",
+              "fullyQualifiedName": "visual_analytics",
+              "displayName": "Analytics",
+              "type": "team"
+            }
+          ],
+          "roles": [
+            {
+              "id": "71bee8e7-a5a1-593a-87ed-437ff4875db9",
+              "name": "VisualAnalyst",
+              "fullyQualifiedName": "VisualAnalyst",
+              "displayName": "Analyst",
+              "type": "role"
+            }
+          ],
+          "personas": [
+            {
+              "id": "a6fde953-d444-53db-a80c-e62a9b95e2b4",
+              "name": "VisualAnalystPersona",
+              "fullyQualifiedName": "VisualAnalystPersona",
+              "displayName": "Analyst persona",
+              "type": "persona"
+            }
+          ],
+          "owns": [],
+          "follows": [],
+          "isEmailVerified": true
+        }
+      ],
+      "tags": [],
+      "domains": [],
+      "pinned": true,
+      "usageCount": 12,
+      "memoryStats": {
+        "status": "Completed",
+        "derivedMetricCount": 1,
+        "derivedTermCount": 1
+      },
+      "shareVisibility": "Public",
+      "createdAt": 1768467600000
+    }
+  ],
+  "dataQuality/testDefinitions": [
+    {
+      "id": "cd65e093-83fc-5ae7-9782-c2d4c4a867e2",
+      "name": "columnValuesToBeNotNull",
+      "displayName": "Column Values To Be Not Null",
+      "fullyQualifiedName": "columnValuesToBeNotNull",
+      "description": "This schema defines the test ColumnValuesToBeNotNull. Test the number of values in a column are null. Values must be explicitly null. Empty strings don't count as null. ",
+      "entityType": "COLUMN",
+      "testPlatforms": ["OpenMetadata"],
+      "supportedDataTypes": [
+        "NUMBER",
+        "TINYINT",
+        "SMALLINT",
+        "INT",
+        "BIGINT",
+        "BYTEINT",
+        "BYTES",
+        "FLOAT",
+        "DOUBLE",
+        "DECIMAL",
+        "NUMERIC",
+        "TIMESTAMP",
+        "TIMESTAMPZ",
+        "TIME",
+        "DATE",
+        "DATETIME",
+        "INTERVAL",
+        "STRING",
+        "MEDIUMTEXT",
+        "TEXT",
+        "CHAR",
+        "VARCHAR",
+        "BOOLEAN",
+        "BINARY",
+        "VARBINARY",
+        "ARRAY",
+        "BLOB",
+        "LONGBLOB",
+        "MEDIUMBLOB",
+        "MAP",
+        "STRUCT",
+        "UNION",
+        "SET",
+        "GEOGRAPHY",
+        "ENUM",
+        "JSON",
+        "UUID",
+        "VARIANT",
+        "GEOMETRY",
+        "POINT",
+        "POLYGON",
+        "LOWCARDINALITY"
+      ],
+      "parameterDefinition": [
+        {
+          "name": "threshold",
+          "displayName": "Failure Threshold",
+          "dataType": "NUMBER",
+          "description": "Number of failures tolerated before the test is marked as failed. Read as an absolute count or as a percentage depending on `thresholdUnit` (defaults to 0).",
+          "required": false,
+          "optionValues": []
+        },
+        {
+          "name": "thresholdUnit",
+          "displayName": "Threshold Unit",
+          "dataType": "STRING",
+          "description": "How to read `threshold`: `ABSOLUTE` for a raw count of failures, `PERCENTAGE` for a share of the evaluated rows (defaults to ABSOLUTE).",
+          "required": false,
+          "optionValues": ["ABSOLUTE", "PERCENTAGE"]
+        },
+        {
+          "name": "dimensionFailurePolicy",
+          "displayName": "Dimension Failure Policy",
+          "dataType": "STRING",
+          "description": "How dimensional results roll up into the overall test status: `OVERALL_ONLY` only looks at the overall result, `ANY_DIMENSION` fails the test as soon as one dimension fails (defaults to OVERALL_ONLY).",
+          "required": false,
+          "optionValues": ["OVERALL_ONLY", "ANY_DIMENSION"]
+        },
+        {
+          "name": "minRowsPerDimension",
+          "displayName": "Minimum Rows per Dimension",
+          "dataType": "INT",
+          "description": "Under the `ANY_DIMENSION` policy and a `PERCENTAGE` threshold, a dimension with fewer rows than this is still evaluated and reported, but does not fail the test (defaults to 0: every dimension counts).",
+          "required": false,
+          "optionValues": []
+        }
+      ],
+      "dataQualityDimension": "Completeness",
+      "provider": "system",
+      "version": 1.0,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "supportsRowLevelPassedFailed": true,
+      "supportsDynamicAssertion": false,
+      "enabled": true,
+      "supportedServices": [],
+      "validatorClass": "ColumnValuesToBeNotNullValidator"
+    },
+    {
+      "id": "ba6f52c1-3501-5873-8a3a-a0368ffa33e8",
+      "name": "columnValuesToBeUnique",
+      "displayName": "Column Values To Be Unique",
+      "fullyQualifiedName": "columnValuesToBeUnique",
+      "description": "This schema defines the test ColumnValuesToBeUnique. Test the values in a column to be unique. ",
+      "entityType": "COLUMN",
+      "testPlatforms": ["OpenMetadata"],
+      "supportedDataTypes": [
+        "NUMBER",
+        "TINYINT",
+        "SMALLINT",
+        "INT",
+        "BIGINT",
+        "BYTEINT",
+        "BYTES",
+        "FLOAT",
+        "DOUBLE",
+        "DECIMAL",
+        "NUMERIC",
+        "TIMESTAMP",
+        "TIMESTAMPZ",
+        "TIME",
+        "DATE",
+        "DATETIME",
+        "INTERVAL",
+        "STRING",
+        "MEDIUMTEXT",
+        "TEXT",
+        "CHAR",
+        "VARCHAR",
+        "BOOLEAN",
+        "BINARY",
+        "VARBINARY",
+        "BLOB",
+        "LONGBLOB",
+        "MEDIUMBLOB",
+        "MAP",
+        "STRUCT",
+        "UNION",
+        "SET",
+        "GEOGRAPHY",
+        "ENUM",
+        "UUID",
+        "VARIANT",
+        "GEOMETRY",
+        "POINT",
+        "POLYGON",
+        "LOWCARDINALITY"
+      ],
+      "parameterDefinition": [
+        {
+          "name": "threshold",
+          "displayName": "Failure Threshold",
+          "dataType": "NUMBER",
+          "description": "Number of failures tolerated before the test is marked as failed. Read as an absolute count or as a percentage depending on `thresholdUnit` (defaults to 0).",
+          "required": false,
+          "optionValues": []
+        },
+        {
+          "name": "thresholdUnit",
+          "displayName": "Threshold Unit",
+          "dataType": "STRING",
+          "description": "How to read `threshold`: `ABSOLUTE` for a raw count of failures, `PERCENTAGE` for a share of the evaluated rows (defaults to ABSOLUTE).",
+          "required": false,
+          "optionValues": ["ABSOLUTE", "PERCENTAGE"]
+        },
+        {
+          "name": "dimensionFailurePolicy",
+          "displayName": "Dimension Failure Policy",
+          "dataType": "STRING",
+          "description": "How dimensional results roll up into the overall test status: `OVERALL_ONLY` only looks at the overall result, `ANY_DIMENSION` fails the test as soon as one dimension fails (defaults to OVERALL_ONLY).",
+          "required": false,
+          "optionValues": ["OVERALL_ONLY", "ANY_DIMENSION"]
+        },
+        {
+          "name": "minRowsPerDimension",
+          "displayName": "Minimum Rows per Dimension",
+          "dataType": "INT",
+          "description": "Under the `ANY_DIMENSION` policy and a `PERCENTAGE` threshold, a dimension with fewer rows than this is still evaluated and reported, but does not fail the test (defaults to 0: every dimension counts).",
+          "required": false,
+          "optionValues": []
+        }
+      ],
+      "dataQualityDimension": "Uniqueness",
+      "provider": "system",
+      "version": 1.0,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "supportsRowLevelPassedFailed": true,
+      "supportsDynamicAssertion": false,
+      "enabled": true,
+      "supportedServices": [],
+      "validatorClass": "ColumnValuesToBeUniqueValidator"
+    },
+    {
+      "id": "ddf1b994-2b2e-517d-bc05-76ad8945dea2",
+      "name": "tableRowCountToEqual",
+      "displayName": "Table Row Count To Equal",
+      "fullyQualifiedName": "tableRowCountToEqual",
+      "description": "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
+      "entityType": "TABLE",
+      "testPlatforms": ["OpenMetadata"],
+      "supportedDataTypes": [],
+      "parameterDefinition": [
+        {
+          "name": "value",
+          "displayName": "Count",
+          "dataType": "INT",
+          "description": "Expected number of rows to be equal to {Count}",
+          "required": true,
+          "optionValues": []
+        },
+        {
+          "name": "threshold",
+          "displayName": "Failure Threshold",
+          "dataType": "NUMBER",
+          "description": "Number of failures tolerated before the test is marked as failed. Read as an absolute count or as a percentage depending on `thresholdUnit` (defaults to 0).",
+          "required": false,
+          "optionValues": []
+        },
+        {
+          "name": "thresholdUnit",
+          "displayName": "Threshold Unit",
+          "dataType": "STRING",
+          "description": "How to read `threshold`: `ABSOLUTE` for a raw count of failures, `PERCENTAGE` for a share of the evaluated rows (defaults to ABSOLUTE).",
+          "required": false,
+          "optionValues": ["ABSOLUTE", "PERCENTAGE"]
+        }
+      ],
+      "dataQualityDimension": "Integrity",
+      "provider": "system",
+      "version": 1.0,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "supportsRowLevelPassedFailed": false,
+      "supportsDynamicAssertion": false,
+      "enabled": true,
+      "supportedServices": [],
+      "validatorClass": "TableRowCountToEqualValidator"
+    }
+  ],
+  "dataQuality/testCases": [
+    {
+      "id": "1fa029d8-3cde-50e6-b7fc-c5ad0f759894",
+      "name": "orders_row_count",
+      "displayName": "Orders row count",
+      "fullyQualifiedName": "visual_warehouse.finance.public.orders.orders_row_count",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "description": "Curated finance metadata for reliable reporting.",
+      "testSuite": {
+        "id": "c824f58e-d2c7-569c-9e81-6546629059d4",
+        "name": "visual_warehouse.finance.public.orders.testSuite",
+        "fullyQualifiedName": "visual_warehouse.finance.public.orders.testSuite",
+        "displayName": "Orders quality checks",
+        "type": "testSuite"
+      },
+      "testSuites": [
+        {
+          "id": "c824f58e-d2c7-569c-9e81-6546629059d4",
+          "name": "visual_warehouse.finance.public.orders.testSuite",
+          "fullyQualifiedName": "visual_warehouse.finance.public.orders.testSuite",
+          "displayName": "Orders quality checks",
+          "type": "testSuite"
+        }
+      ],
+      "testDefinition": {
+        "id": "ddf1b994-2b2e-517d-bc05-76ad8945dea2",
+        "name": "tableRowCountToEqual",
+        "displayName": "Table Row Count To Equal",
+        "fullyQualifiedName": "tableRowCountToEqual",
+        "type": "testDefinition"
+      },
+      "entityLink": "<#E::table::visual_warehouse.finance.public.orders>",
+      "parameterValues": [
+        {
+          "name": "value",
+          "value": "1000"
+        }
+      ],
+      "owners": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user"
+        }
+      ],
+      "domains": [
+        {
+          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
+          "name": "VisualFinance",
+          "fullyQualifiedName": "VisualFinance",
+          "displayName": "Finance",
+          "type": "domain"
+        }
+      ],
+      "testCaseResult": {
+        "timestamp": 1768471200000,
+        "testCaseStatus": "Success",
+        "result": "Expected row count: 1000.",
+        "passedRows": 1000,
+        "failedRows": 0,
+        "passedRowsPercentage": 100,
+        "failedRowsPercentage": 0,
+        "testResultValues": [
+          {
+            "name": "rowCount",
+            "value": "1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fa7bd4cf-e1f6-55d0-82ef-d987676023a5",
+      "name": "orders_id_not_null",
+      "displayName": "Order ID not null",
+      "fullyQualifiedName": "visual_warehouse.finance.public.orders.orders_id_not_null",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "description": "Curated finance metadata for reliable reporting.",
+      "testSuite": {
+        "id": "c824f58e-d2c7-569c-9e81-6546629059d4",
+        "name": "visual_warehouse.finance.public.orders.testSuite",
+        "fullyQualifiedName": "visual_warehouse.finance.public.orders.testSuite",
+        "displayName": "Orders quality checks",
+        "type": "testSuite"
+      },
+      "testSuites": [
+        {
+          "id": "c824f58e-d2c7-569c-9e81-6546629059d4",
+          "name": "visual_warehouse.finance.public.orders.testSuite",
+          "fullyQualifiedName": "visual_warehouse.finance.public.orders.testSuite",
+          "displayName": "Orders quality checks",
+          "type": "testSuite"
+        }
+      ],
+      "testDefinition": {
+        "id": "cd65e093-83fc-5ae7-9782-c2d4c4a867e2",
+        "name": "columnValuesToBeNotNull",
+        "displayName": "Column Values To Be Not Null",
+        "fullyQualifiedName": "columnValuesToBeNotNull",
+        "type": "testDefinition"
+      },
+      "entityLink": "<#E::table::visual_warehouse.finance.public.orders>",
+      "parameterValues": [],
+      "owners": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user"
+        }
+      ],
+      "domains": [
+        {
+          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
+          "name": "VisualFinance",
+          "fullyQualifiedName": "VisualFinance",
+          "displayName": "Finance",
+          "type": "domain"
+        }
+      ],
+      "testCaseResult": {
+        "timestamp": 1768471200000,
+        "testCaseStatus": "Failed",
+        "result": "Two rows contain missing order identifiers.",
+        "passedRows": 998,
+        "failedRows": 2,
+        "passedRowsPercentage": 99.8,
+        "failedRowsPercentage": 0.2,
+        "testResultValues": [
+          {
+            "name": "rowCount",
+            "value": "1000"
+          }
+        ]
+      }
+    }
+  ],
+  "dataQuality/testSuites": [
+    {
+      "id": "c824f58e-d2c7-569c-9e81-6546629059d4",
+      "name": "visual_warehouse.finance.public.orders.testSuite",
+      "displayName": "Orders quality checks",
+      "fullyQualifiedName": "visual_warehouse.finance.public.orders.testSuite",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "description": "Curated finance metadata for reliable reporting.",
+      "basic": true,
+      "executable": true,
+      "entityLink": "<#E::table::visual_warehouse.finance.public.orders>",
+      "summary": {
+        "success": 1,
+        "failed": 1,
+        "aborted": 0,
+        "total": 2
+      },
+      "owners": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user"
+        }
+      ],
+      "testCaseCount": 2
+    }
+  ],
+  "dataContracts": [
+    {
+      "id": "bb14885b-605a-5f8d-8b7a-08f3b8d0ab00",
+      "name": "visual_orders_contract",
+      "displayName": "Orders contract",
+      "fullyQualifiedName": "visual_orders_contract",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "description": "Curated finance metadata for reliable reporting.",
+      "entity": {
+        "id": "3f4619c5-1428-5f44-aedb-51a71f08293d",
+        "name": "orders",
+        "fullyQualifiedName": "visual_warehouse.finance.public.orders",
+        "displayName": "Orders",
+        "type": "table"
+      },
+      "entityStatus": "Approved",
+      "schema": [
+        {
+          "name": "order_id",
+          "displayName": "Order ID",
+          "dataType": "INT",
+          "fullyQualifiedName": "visual_warehouse.finance.public.orders.order_id"
+        },
+        {
+          "name": "revenue",
+          "displayName": "Revenue",
+          "dataType": "DECIMAL",
+          "fullyQualifiedName": "visual_warehouse.finance.public.orders.revenue"
+        }
+      ],
+      "semantics": [],
+      "qualityExpectations": [],
+      "owners": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user"
+        }
+      ],
+      "effectiveFrom": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "audit/logs": [],
+  "contextCenter/drive/files": [
+    {
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "id": "78b06339-baf5-5fc9-aa1c-e3df0134ff88",
+      "name": "finance-handbook.txt",
+      "displayName": "Finance handbook.txt",
+      "fullyQualifiedName": "finance-handbook.txt",
+      "contentType": "text/plain",
+      "fileExtension": "txt",
+      "fileSize": 4096,
+      "fileType": "Text",
+      "pageCount": 1,
+      "processingStatus": "Completed",
+      "memoryCount": 1,
+      "extractedText": "Finance reporting uses the fulfillment date.",
+      "owners": [
+        {
+          "id": "686536f5-3041-5367-9901-bff561dec93d",
+          "name": "visual_steward",
+          "fullyQualifiedName": "visual_steward",
+          "displayName": "Finance Steward",
+          "type": "user",
+          "description": "Curated metadata for the analytics workspace.",
+          "version": 1.1,
+          "updatedAt": 1768471200000,
+          "updatedBy": "visual_admin",
+          "deleted": false,
+          "provider": "user",
+          "email": "finance.steward@example.com",
+          "isAdmin": false,
+          "teams": [
+            {
+              "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+              "name": "visual_analytics",
+              "fullyQualifiedName": "visual_analytics",
+              "displayName": "Analytics",
+              "type": "team"
+            }
+          ],
+          "roles": [
+            {
+              "id": "71bee8e7-a5a1-593a-87ed-437ff4875db9",
+              "name": "VisualAnalyst",
+              "fullyQualifiedName": "VisualAnalyst",
+              "displayName": "Analyst",
+              "type": "role"
+            }
+          ],
+          "personas": [
+            {
+              "id": "a6fde953-d444-53db-a80c-e62a9b95e2b4",
+              "name": "VisualAnalystPersona",
+              "fullyQualifiedName": "VisualAnalystPersona",
+              "displayName": "Analyst persona",
+              "type": "persona"
+            }
+          ],
+          "owns": [],
+          "follows": [],
+          "isEmailVerified": true
+        }
+      ],
+      "folder": {
+        "id": "293ef3d2-61a4-5a45-9d92-789c6f3bce21",
+        "type": "folder",
+        "name": "visual_finance_docs",
+        "displayName": "Finance documents",
+        "fullyQualifiedName": "visual_finance_docs"
+      }
+    }
+  ],
+  "contextCenter/drive/folders": [
+    {
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false,
+      "id": "293ef3d2-61a4-5a45-9d92-789c6f3bce21",
+      "name": "visual_finance_docs",
+      "displayName": "Finance documents",
+      "fullyQualifiedName": "visual_finance_docs",
+      "childrenCount": 1
+    }
+  ],
+  "apps/marketplace": [
+    {
+      "name": "AutoPilotApplication",
+      "displayName": "AutoPilot",
+      "description": "Easily setup any new service that you need by only defining the connection.\n This workflow will take care of configuring and deploying any relevant pipelines to ingest the metadata with good default values.\n Afterwards you are able to edit any configuration as you see fit.",
+      "features": "Easily Service Setup by automating the configuration, deployment and triggering the relevant pipelines to ingest your service metadata.",
+      "appType": "internal",
+      "appScreenshots": [],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "NoSchedule",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.autoPilot.AutoPilotApp",
+      "runtime": {
+        "enabled": true
+      },
+      "appConfiguration": {
+        "type": "AutoPilotApplication",
+        "active": true,
+        "entityLink": null
+      },
+      "id": "9fef8324-44a6-54a1-a87b-d286ab0b56ea",
+      "fullyQualifiedName": "AutoPilotApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin"
+    },
+    {
+      "name": "CacheWarmupApplication",
+      "displayName": "Cache Warmup",
+      "description": "OpenMetadata uses Redis cache to improve performance for frequently accessed entities. This application pre-loads entities into the cache to optimize read performance.",
+      "features": "Pre-warm Redis cache with entity data, references, and tags. Supports distributed locking to ensure only one instance runs across multiple servers.",
+      "appType": "internal",
+      "appScreenshots": [],
+      "developer": "OpenMetadata",
+      "developerUrl": "https://open-metadata.org",
+      "privacyPolicyUrl": "https://open-metadata.org",
+      "supportEmail": "support@open-metadata.org",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.cache.CacheWarmupApp",
+      "runtime": {
+        "enabled": true
+      },
+      "supportsInterrupt": true,
+      "appConfiguration": {
+        "entities": ["all"],
+        "batchSize": 100,
+        "warmBundles": true,
+        "warmRelationships": false,
+        "enableDistributedClaim": false
+      },
+      "id": "0dac975f-60df-55a5-bb3f-d098bcd8dc70",
+      "fullyQualifiedName": "CacheWarmupApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin"
+    },
+    {
+      "name": "DataContractValidationApplication",
+      "displayName": "Data Contract Validation",
+      "description": "The Data Contract Validation application is designed to validate data contracts and ensure compliance with your standards. It ensures schemas, semantics, and data quality are maintained across your data assets.",
+      "features": "Run the Data Contract validation at a schedule.",
+      "appType": "internal",
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.dataContracts.DataContractValidationApp",
+      "runtime": {
+        "enabled": "true"
+      },
+      "allowConfiguration": "false",
+      "id": "5ebb688a-0aff-5a02-b090-c320da760cba",
+      "fullyQualifiedName": "DataContractValidationApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin"
+    },
+    {
+      "name": "DataInsightsApplication",
+      "displayName": "Data Insights",
+      "description": "**Data Insights: A Revolutionary Tool for Metadata Analysis and Data Management**\n\n**Comprehensive Data Analytics:** Dive deep into the world of data with our advanced analytics, crafted to transform raw metadata into valuable insights. The application meticulously processes collected metadata, ensuring every bit of information is utilized to its full potential.\n**Growth Trend Identification:** Stay ahead of the curve by tracking the expansion of your data assets over time. Our application provides a visual and quantitative analysis of your data\u2019s growth rate, helping you make informed decisions for resource allocation and future planning.\n**Detailed Asset Descriptions and Ownership:** Gain clarity on your data landscape with extensive descriptions and clear ownership details for each data asset. Our tool not only lists the data assets but also enriches them with metadata, ensuring that you have a comprehensive understanding of what each dataset entails and who is responsible for it.\n**OpenMetadata Integration:** Experience seamless integration with OpenMetadata, one of the leading metadata platforms. Our application taps into the power of OpenMetadata to fetch, analyze, and visualize usage patterns, ensuring that you are leveraging OpenMetadata to its full potential.\n**User Interaction Tracking:** Discover which data assets are capturing the attention of your users. Our tool keeps track of user interactions, pinpointing the most viewed and utilized data assets. This feature is invaluable for identifying popular datasets, helping you to understand user preferences and trends.\n**Actionable Insights for Data Governance:** Beyond analytics, our application serves as a tool for robust data governance. By providing insights into data asset utilization, ownership, and growth, it empowers organizations to enforce better data management practices, ensuring data quality and integrity.\nUser-Friendly Interface: Navigate through a wealth of data with ease, thanks to our intuitive and user-friendly interface. Even if you are not a data expert, our application provides a straightforward experience, making data analytics accessible to everyone.\n**Real-Time Analytics:** Stay up-to-date with real-time analytics and insights. Our application ensures that you are always in the loop, providing timely and accurate data to support your decision-making processes.\n**Customizable Reports:** Tailor the analytics to suit your needs. With customizable reports, you can focus on the metrics that matter the most to your organization, ensuring that the insights you receive are relevant and actionable.\nSecure and Reliable: Trust in the reliability and security of our application. We prioritize the safety of your data, implementing robust security measures to protect your metadata and insights.\nData Insights stands out as a pivotal tool for organizations aiming to optimize their data management practices, ensuring that every piece of data is a stepping stone towards informed decisions and enhanced data governance.",
+      "features": "Run Ingestion Framework Data Insight Module.",
+      "appType": "internal",
+      "appScreenshots": ["DataInsightsPic1"],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.insights.DataInsightsApp",
+      "runtime": {
+        "enabled": "true"
+      },
+      "appConfiguration": {
+        "batchSize": 100,
+        "recreateDataAssetsIndex": false,
+        "backfillConfiguration": {
+          "enabled": false
+        },
+        "moduleConfiguration": {
+          "dataAssets": {
+            "enabled": true,
+            "entities": ["all"],
+            "retention": 90
+          },
+          "appAnalytics": {
+            "enabled": true
+          },
+          "costAnalysis": {
+            "enabled": true
+          }
+        }
+      },
+      "id": "a30268a0-09be-57e1-83d5-df1e4eb54dca",
+      "fullyQualifiedName": "DataInsightsApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin"
+    },
+    {
+      "name": "DataInsightsReportApplication",
+      "displayName": "Data Insights Report",
+      "description": "**Data Insights Reports: Enhancing Data Management through OpenMetadata**\n\n**Integration with OpenMetadata:** Data Insights Reports is designed to work seamlessly with OpenMetadata, providing organizations with the tools they need to set and track Key Performance Indicators (KPIs) such as Ownership and Description Coverage. These KPIs help establish clear goals for data management across the organization.\n\n**Focus on Ownership and Description Coverage:**\n     **Ownership:** Knowing who is responsible for each data asset is crucial. By making Ownership a KPI, we help ensure that there is clear accountability for every piece of data, which in turn helps in its proper management.\n    **Description Coverage:** It\u2019s important for data to be easily understandable. Setting Description Coverage as a KPI ensures that all data assets are accompanied by clear descriptions, making them more accessible and useful to everyone in the organization.\n\n**Weekly Email Reminders to Stay on Track:**\n    **Regular Updates:** Our weekly email reminders keep all teams in the loop, helping them stay aware of their progress in achieving the organization\u2019s KPIs.\nVisual Progress Tracking: The emails include visual representations of progress, making it easy for teams to quickly understand where they stand in relation to the set goals.\n    **Guidance for Action:** The updates are not just about tracking progress; they also provide insights and suggestions on what can be done to improve, ensuring that teams have the guidance they need to meet their goals.\n\n**Supporting Teams and Advancing Organizational Goals:**\n    **Building a Data-Driven Culture:** By integrating KPI tracking into regular workflows, Data Insights Reports helps cultivate a culture that values and leverages data for better decision-making.\n    **Tailored to Each Team:** While Ownership and Description Coverage are universal goals, our tool recognizes that each team is different. The weekly reports are customized to suit the specific needs and characteristics of each team, ensuring that the insights provided are always relevant.\nIn summary, Data Insights Reports provides a practical and effective solution for organizations looking to enhance their data management practices. Through integration with OpenMetadata, regular updates, and a focus on key data management goals, it supports teams in their efforts to maintain clear ownership and comprehensive descriptions of their data assets.",
+      "features": "Data Insights Application. Send Email Reports.",
+      "appType": "internal",
+      "appScreenshots": ["DataInsightsReportPic1"],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.insights.DataInsightsReportApp",
+      "runtime": {
+        "enabled": "true"
+      },
+      "appConfiguration": {
+        "sendToAdmins": true,
+        "sendToTeams": true
+      },
+      "id": "76273539-2a8a-5941-9321-20108f80015a",
+      "fullyQualifiedName": "DataInsightsReportApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin"
+    },
+    {
+      "name": "DataRetentionApplication",
+      "displayName": "Data Retention",
+      "description": "The Data Retention App automates the cleanup of OpenMetadata's internal database to maintain performance and efficiency. Based on customizable retention periods and admin-defined retention policies, this application helps manage rapidly growing tables and prevents data bloat by removing outdated records.\n\n**Efficient Record Management:** The Retention Policy App automates the cleanup and deletion of records for selected entities based on specified retention durations. It simplifies compliance with data retention policies and ensures efficient database management.",
+      "appType": "internal",
+      "appScreenshots": ["DataRetentionApplication"],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.dataRetention.DataRetention",
+      "runtime": {
+        "enabled": "true"
+      },
+      "appConfiguration": {},
+      "id": "a0f0a6e2-13ae-5078-afd9-684b3b99761f",
+      "fullyQualifiedName": "DataRetentionApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin"
+    },
+    {
+      "name": "HelloPipelines",
+      "displayName": "Hello Pipelines",
+      "description": "Example external application to demonstrate the use of pipelines.",
+      "features": "Test external application functionality",
+      "appType": "external",
+      "appScreenshots": ["DataInsightsPic1"],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.AbstractNativeApplication",
+      "sourcePythonClass": "metadata.applications.example.HelloPipelines",
+      "runtime": {
+        "enabled": "true"
+      },
+      "appConfiguration": {
+        "type": "HelloPipelines",
+        "sleep": 10,
+        "echo": "hello pipelines"
+      },
+      "enabled": true,
+      "id": "0f060b0b-603c-53b1-ad63-44aded529683",
+      "fullyQualifiedName": "HelloPipelines",
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin"
+    },
+    {
+      "name": "McpApplication",
+      "displayName": "MCP Server",
+      "description": "MCP Server for OpenMetadata.",
+      "features": "Sets up a embedded server for MCP (Metadata Collection Protocol) to interact with OpenMetadata via SSE/Streamable-Http transport.",
+      "appType": "internal",
+      "appScreenshots": ["McpApplication"],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "NoSchedule",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.mcp.McpApplication",
+      "allowConfiguration": false,
+      "runtime": {
+        "enabled": true
+      },
+      "supportsInterrupt": true,
+      "id": "96b1975d-5793-5f23-8e8e-8fe79027981e",
+      "fullyQualifiedName": "McpApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin"
+    },
+    {
+      "name": "RdfIndexApp",
+      "displayName": "RDF Knowledge Graph Indexing",
+      "description": "OpenMetadata connects with RDF triple stores (Apache Jena Fuseki, QLever) to provide Knowledge Graph capabilities. This application synchronizes data from OpenMetadata to RDF format.",
+      "features": "Sync OpenMetadata entities and relationships to RDF triple stores, enabling Knowledge Graph visualization and SPARQL queries.",
+      "appType": "internal",
+      "appScreenshots": [],
+      "developer": "OpenMetadata",
+      "developerUrl": "https://open-metadata.org",
+      "privacyPolicyUrl": "https://open-metadata.org",
+      "supportEmail": "support@open-metadata.org",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.rdf.RdfIndexApp",
+      "allowConfiguration": true,
+      "runtime": {
+        "enabled": true
+      },
+      "supportsInterrupt": true,
+      "appConfiguration": {
+        "entities": [],
+        "recreateIndex": true,
+        "batchSize": 100,
+        "producerThreads": 4,
+        "relationshipIsolationMaxFailures": 3,
+        "minSuccessRatio": 0.95,
+        "blueGreenRebuild": false
+      },
+      "id": "33dadd5b-e551-5603-937b-52f6b42493ee",
+      "fullyQualifiedName": "RdfIndexApp",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin"
+    },
+    {
+      "allowConfiguration": true,
+      "appConfiguration": {
+        "force": false
+      },
+      "appScreenshots": [],
+      "appType": "internal",
+      "className": "org.openmetadata.service.apps.bundles.rdf.RdfInferenceApp",
+      "description": "Materializes enabled inference rules into durable per-rule named graphs inside Apache Jena Fuseki.",
+      "developer": "OpenMetadata",
+      "developerUrl": "https://open-metadata.org",
+      "displayName": "RDF Inference Materialization",
+      "features": "Durable dirty-state tracking, zero-JVM-triple CONSTRUCT execution, and per-rule inferred named graphs.",
+      "name": "RdfInferenceApp",
+      "permission": "All",
+      "privacyPolicyUrl": "https://open-metadata.org",
+      "runtime": {
+        "enabled": true
+      },
+      "scheduleType": "ScheduledOrManual",
+      "supportEmail": "support@open-metadata.org",
+      "supportsInterrupt": false,
+      "id": "aea1957b-ff23-5e87-a417-d6fa6335d32a",
+      "fullyQualifiedName": "RdfInferenceApp",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin"
+    },
+    {
+      "name": "SearchIndexingApplication",
+      "displayName": "Search Indexing",
+      "description": "OpenMetadata connects with Elastic/Open Search to provide search feature for Data Assets. This application provides additional features related to ES/OS.",
+      "features": "Sync OpenMetadata and Elastic Search with staged index promotion.",
+      "appType": "internal",
+      "appScreenshots": ["SearchIndexPic1"],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp",
+      "runtime": {
+        "enabled": true
+      },
+      "supportsInterrupt": true,
+      "appConfiguration": {
+        "entities": ["all"],
+        "batchSize": "100",
+        "payLoadSize": 104857600,
+        "producerThreads": 1,
+        "queueSize": 100,
+        "consumerThreads": 1,
+        "maxConcurrentRequests": 100,
+        "maxRetries": 3,
+        "initialBackoff": 1000,
+        "maxBackoff": 10000,
+        "searchIndexMappingLanguage": "EN"
+      },
+      "id": "6595d39f-3842-5d3e-beef-e07a0030d601",
+      "fullyQualifiedName": "SearchIndexingApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin"
+    }
+  ],
+  "apps": [
+    {
+      "name": "AutoPilotApplication",
+      "displayName": "AutoPilot",
+      "description": "Easily setup any new service that you need by only defining the connection.\n This workflow will take care of configuring and deploying any relevant pipelines to ingest the metadata with good default values.\n Afterwards you are able to edit any configuration as you see fit.",
+      "features": "Easily Service Setup by automating the configuration, deployment and triggering the relevant pipelines to ingest your service metadata.",
+      "appType": "internal",
+      "appScreenshots": [],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "NoSchedule",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.autoPilot.AutoPilotApp",
+      "runtime": {
+        "enabled": true
+      },
+      "appConfiguration": {
+        "type": "AutoPilotApplication",
+        "active": true,
+        "entityLink": null
+      },
+      "id": "9fef8324-44a6-54a1-a87b-d286ab0b56ea",
+      "fullyQualifiedName": "AutoPilotApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1767861923000,
+      "updatedBy": "visual_admin"
+    },
+    {
+      "name": "CacheWarmupApplication",
+      "displayName": "Cache Warmup",
+      "description": "OpenMetadata uses Redis cache to improve performance for frequently accessed entities. This application pre-loads entities into the cache to optimize read performance.",
+      "features": "Pre-warm Redis cache with entity data, references, and tags. Supports distributed locking to ensure only one instance runs across multiple servers.",
+      "appType": "internal",
+      "appScreenshots": [],
+      "developer": "OpenMetadata",
+      "developerUrl": "https://open-metadata.org",
+      "privacyPolicyUrl": "https://open-metadata.org",
+      "supportEmail": "support@open-metadata.org",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.cache.CacheWarmupApp",
+      "runtime": {
+        "enabled": true
+      },
+      "supportsInterrupt": true,
+      "appConfiguration": {
+        "entities": ["all"],
+        "batchSize": 100,
+        "warmBundles": true,
+        "warmRelationships": false,
+        "enableDistributedClaim": false
+      },
+      "id": "0dac975f-60df-55a5-bb3f-d098bcd8dc70",
+      "fullyQualifiedName": "CacheWarmupApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1767861923000,
+      "updatedBy": "visual_admin",
+      "appSchedule": {
+        "scheduleTimeline": "Custom",
+        "cronExpression": "0 0 * * *"
+      }
+    },
+    {
+      "name": "DataContractValidationApplication",
+      "displayName": "Data Contract Validation",
+      "description": "The Data Contract Validation application is designed to validate data contracts and ensure compliance with your standards. It ensures schemas, semantics, and data quality are maintained across your data assets.",
+      "features": "Run the Data Contract validation at a schedule.",
+      "appType": "internal",
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.dataContracts.DataContractValidationApp",
+      "runtime": {
+        "enabled": "true"
+      },
+      "allowConfiguration": "false",
+      "id": "5ebb688a-0aff-5a02-b090-c320da760cba",
+      "fullyQualifiedName": "DataContractValidationApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1767861923000,
+      "updatedBy": "visual_admin",
+      "appSchedule": {
+        "scheduleTimeline": "Custom",
+        "cronExpression": "0 0 * * *"
+      }
+    },
+    {
+      "name": "DataInsightsApplication",
+      "displayName": "Data Insights",
+      "description": "**Data Insights: A Revolutionary Tool for Metadata Analysis and Data Management**\n\n**Comprehensive Data Analytics:** Dive deep into the world of data with our advanced analytics, crafted to transform raw metadata into valuable insights. The application meticulously processes collected metadata, ensuring every bit of information is utilized to its full potential.\n**Growth Trend Identification:** Stay ahead of the curve by tracking the expansion of your data assets over time. Our application provides a visual and quantitative analysis of your data\u2019s growth rate, helping you make informed decisions for resource allocation and future planning.\n**Detailed Asset Descriptions and Ownership:** Gain clarity on your data landscape with extensive descriptions and clear ownership details for each data asset. Our tool not only lists the data assets but also enriches them with metadata, ensuring that you have a comprehensive understanding of what each dataset entails and who is responsible for it.\n**OpenMetadata Integration:** Experience seamless integration with OpenMetadata, one of the leading metadata platforms. Our application taps into the power of OpenMetadata to fetch, analyze, and visualize usage patterns, ensuring that you are leveraging OpenMetadata to its full potential.\n**User Interaction Tracking:** Discover which data assets are capturing the attention of your users. Our tool keeps track of user interactions, pinpointing the most viewed and utilized data assets. This feature is invaluable for identifying popular datasets, helping you to understand user preferences and trends.\n**Actionable Insights for Data Governance:** Beyond analytics, our application serves as a tool for robust data governance. By providing insights into data asset utilization, ownership, and growth, it empowers organizations to enforce better data management practices, ensuring data quality and integrity.\nUser-Friendly Interface: Navigate through a wealth of data with ease, thanks to our intuitive and user-friendly interface. Even if you are not a data expert, our application provides a straightforward experience, making data analytics accessible to everyone.\n**Real-Time Analytics:** Stay up-to-date with real-time analytics and insights. Our application ensures that you are always in the loop, providing timely and accurate data to support your decision-making processes.\n**Customizable Reports:** Tailor the analytics to suit your needs. With customizable reports, you can focus on the metrics that matter the most to your organization, ensuring that the insights you receive are relevant and actionable.\nSecure and Reliable: Trust in the reliability and security of our application. We prioritize the safety of your data, implementing robust security measures to protect your metadata and insights.\nData Insights stands out as a pivotal tool for organizations aiming to optimize their data management practices, ensuring that every piece of data is a stepping stone towards informed decisions and enhanced data governance.",
+      "features": "Run Ingestion Framework Data Insight Module.",
+      "appType": "internal",
+      "appScreenshots": ["DataInsightsPic1"],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.insights.DataInsightsApp",
+      "runtime": {
+        "enabled": "true"
+      },
+      "appConfiguration": {
+        "batchSize": 100,
+        "recreateDataAssetsIndex": false,
+        "backfillConfiguration": {
+          "enabled": false
+        },
+        "moduleConfiguration": {
+          "dataAssets": {
+            "enabled": true,
+            "entities": ["all"],
+            "retention": 90
+          },
+          "appAnalytics": {
+            "enabled": true
+          },
+          "costAnalysis": {
+            "enabled": true
+          }
+        }
+      },
+      "id": "a30268a0-09be-57e1-83d5-df1e4eb54dca",
+      "fullyQualifiedName": "DataInsightsApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1767861923000,
+      "updatedBy": "visual_admin",
+      "appSchedule": {
+        "scheduleTimeline": "Custom",
+        "cronExpression": "0 3 * * *"
+      }
+    },
+    {
+      "name": "DataRetentionApplication",
+      "displayName": "Data Retention",
+      "description": "The Data Retention App automates the cleanup of OpenMetadata's internal database to maintain performance and efficiency. Based on customizable retention periods and admin-defined retention policies, this application helps manage rapidly growing tables and prevents data bloat by removing outdated records.\n\n**Efficient Record Management:** The Retention Policy App automates the cleanup and deletion of records for selected entities based on specified retention durations. It simplifies compliance with data retention policies and ensures efficient database management.",
+      "appType": "internal",
+      "appScreenshots": ["DataRetentionApplication"],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.dataRetention.DataRetention",
+      "runtime": {
+        "enabled": "true"
+      },
+      "appConfiguration": {
+        "changeEventRetentionPeriod": 7,
+        "activityThreadsRetentionPeriod": 60,
+        "activityCommentsRetentionPeriod": 0,
+        "profileDataRetentionPeriod": 1440,
+        "testCaseResultsRetentionPeriod": 1440,
+        "auditLogRetentionPeriod": 90,
+        "workflowRetentionPeriod": 30,
+        "workflowInstanceRetentionPeriod": 30
+      },
+      "id": "a0f0a6e2-13ae-5078-afd9-684b3b99761f",
+      "fullyQualifiedName": "DataRetentionApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1767861923000,
+      "updatedBy": "visual_admin",
+      "appSchedule": {
+        "scheduleTimeline": "Custom",
+        "cronExpression": "0 0 * * 0"
+      }
+    },
+    {
+      "name": "McpApplication",
+      "displayName": "MCP Server",
+      "description": "MCP Server for OpenMetadata.",
+      "features": "Sets up a embedded server for MCP (Metadata Collection Protocol) to interact with OpenMetadata via SSE/Streamable-Http transport.",
+      "appType": "internal",
+      "appScreenshots": ["McpApplication"],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "NoSchedule",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.mcp.McpApplication",
+      "allowConfiguration": false,
+      "runtime": {
+        "enabled": true
+      },
+      "supportsInterrupt": true,
+      "id": "96b1975d-5793-5f23-8e8e-8fe79027981e",
+      "fullyQualifiedName": "McpApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1767861923000,
+      "updatedBy": "visual_admin",
+      "allowBotImpersonation": true
+    },
+    {
+      "name": "RdfIndexApp",
+      "displayName": "RDF Knowledge Graph Indexing",
+      "description": "OpenMetadata connects with RDF triple stores (Apache Jena Fuseki, QLever) to provide Knowledge Graph capabilities. This application synchronizes data from OpenMetadata to RDF format.",
+      "features": "Sync OpenMetadata entities and relationships to RDF triple stores, enabling Knowledge Graph visualization and SPARQL queries.",
+      "appType": "internal",
+      "appScreenshots": [],
+      "developer": "OpenMetadata",
+      "developerUrl": "https://open-metadata.org",
+      "privacyPolicyUrl": "https://open-metadata.org",
+      "supportEmail": "support@open-metadata.org",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.rdf.RdfIndexApp",
+      "allowConfiguration": true,
+      "runtime": {
+        "enabled": true
+      },
+      "supportsInterrupt": true,
+      "appConfiguration": {
+        "entities": [],
+        "recreateIndex": true,
+        "batchSize": 100,
+        "producerThreads": 4,
+        "relationshipIsolationMaxFailures": 3,
+        "minSuccessRatio": 0.95,
+        "blueGreenRebuild": false
+      },
+      "id": "33dadd5b-e551-5603-937b-52f6b42493ee",
+      "fullyQualifiedName": "RdfIndexApp",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1767861923000,
+      "updatedBy": "visual_admin",
+      "appSchedule": {
+        "scheduleTimeline": "Custom",
+        "cronExpression": "0 0 * * 6"
+      }
+    },
+    {
+      "allowConfiguration": true,
+      "appConfiguration": {
+        "force": false
+      },
+      "appScreenshots": [],
+      "appType": "internal",
+      "className": "org.openmetadata.service.apps.bundles.rdf.RdfInferenceApp",
+      "description": "Materializes enabled inference rules into durable per-rule named graphs inside Apache Jena Fuseki.",
+      "developer": "OpenMetadata",
+      "developerUrl": "https://open-metadata.org",
+      "displayName": "RDF Inference Materialization",
+      "features": "Durable dirty-state tracking, zero-JVM-triple CONSTRUCT execution, and per-rule inferred named graphs.",
+      "name": "RdfInferenceApp",
+      "permission": "All",
+      "privacyPolicyUrl": "https://open-metadata.org",
+      "runtime": {
+        "enabled": true
+      },
+      "scheduleType": "ScheduledOrManual",
+      "supportEmail": "support@open-metadata.org",
+      "supportsInterrupt": false,
+      "id": "aea1957b-ff23-5e87-a417-d6fa6335d32a",
+      "fullyQualifiedName": "RdfInferenceApp",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1767861923000,
+      "updatedBy": "visual_admin",
+      "appSchedule": {
+        "cronExpression": "*/5 * * * *",
+        "scheduleTimeline": "Custom"
+      }
+    },
+    {
+      "name": "SearchIndexingApplication",
+      "displayName": "Search Indexing",
+      "description": "OpenMetadata connects with Elastic/Open Search to provide search feature for Data Assets. This application provides additional features related to ES/OS.",
+      "features": "Sync OpenMetadata and Elastic Search with staged index promotion.",
+      "appType": "internal",
+      "appScreenshots": ["SearchIndexPic1"],
+      "developer": "Collate Inc.",
+      "developerUrl": "https://www.getcollate.io",
+      "privacyPolicyUrl": "https://www.getcollate.io",
+      "supportEmail": "support@getcollate.io",
+      "scheduleType": "ScheduledOrManual",
+      "permission": "All",
+      "className": "org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp",
+      "runtime": {
+        "enabled": true
+      },
+      "supportsInterrupt": true,
+      "appConfiguration": {
+        "entities": ["all"],
+        "batchSize": "100",
+        "payLoadSize": 104857600,
+        "producerThreads": 1,
+        "consumerThreads": 1,
+        "queueSize": 100,
+        "maxConcurrentRequests": 100,
+        "maxRetries": 3,
+        "initialBackoff": 1000,
+        "maxBackoff": 10000,
+        "searchIndexMappingLanguage": "EN",
+        "autoTune": false,
+        "timeSeriesMaxDays": 0
+      },
+      "id": "6595d39f-3842-5d3e-beef-e07a0030d601",
+      "fullyQualifiedName": "SearchIndexingApplication",
+      "enabled": true,
+      "deleted": false,
+      "version": 1.1,
+      "updatedAt": 1767861923000,
+      "updatedBy": "visual_admin",
+      "appSchedule": {
+        "scheduleTimeline": "Custom",
+        "cronExpression": "30 0 * * 0"
+      }
+    }
+  ],
+  "services/ingestionPipelines": [
+    {
+      "id": "809c5055-22d1-50fd-915a-932f38917cb6",
+      "name": "catalog_metadata",
+      "displayName": "Catalog metadata",
+      "fullyQualifiedName": "visual_warehouse.catalog_metadata",
+      "service": {
+        "id": "2b516c49-2ead-5419-b2d0-c676aef4d009",
+        "name": "visual_warehouse",
+        "displayName": "Visual Warehouse",
+        "fullyQualifiedName": "visual_warehouse",
+        "type": "databaseService"
+      },
+      "pipelineType": "metadata",
+      "sourceConfig": {
+        "config": {
+          "type": "DatabaseMetadata"
+        }
+      },
+      "airflowConfig": {
+        "scheduleInterval": "0 0 * * *"
+      },
+      "enabled": true,
+      "deployed": true,
+      "loggerLevel": "INFO",
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false
+    },
+    {
+      "id": "606998b1-10be-5425-b690-ea589f07ea14",
+      "name": "catalog_metadata",
+      "displayName": "Catalog metadata",
+      "fullyQualifiedName": "visual_airflow.catalog_metadata",
+      "service": {
+        "id": "6532b9c1-55bf-5732-8d77-98b5846e5d1e",
+        "name": "visual_airflow",
+        "displayName": "Visual Airflow",
+        "fullyQualifiedName": "visual_airflow",
+        "type": "pipelineService"
+      },
+      "pipelineType": "metadata",
+      "sourceConfig": {
+        "config": {
+          "type": "PipelineMetadata"
+        }
+      },
+      "airflowConfig": {
+        "scheduleInterval": "0 0 * * *"
+      },
+      "enabled": true,
+      "deployed": true,
+      "loggerLevel": "INFO",
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false
+    },
+    {
+      "id": "0d5877df-5117-545d-b4e2-aba012824b53",
+      "name": "catalog_metadata",
+      "displayName": "Catalog metadata",
+      "fullyQualifiedName": "visual_kafka.catalog_metadata",
+      "service": {
+        "id": "76586be2-1151-5783-a2fb-02edb7aa8baa",
+        "name": "visual_kafka",
+        "displayName": "Visual Kafka",
+        "fullyQualifiedName": "visual_kafka",
+        "type": "messagingService"
+      },
+      "pipelineType": "metadata",
+      "sourceConfig": {
+        "config": {
+          "type": "MessagingMetadata"
+        }
+      },
+      "airflowConfig": {
+        "scheduleInterval": "0 0 * * *"
+      },
+      "enabled": true,
+      "deployed": true,
+      "loggerLevel": "INFO",
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false
+    },
+    {
+      "id": "775c744d-5de9-54b5-9bc0-6737b6a99b53",
+      "name": "catalog_metadata",
+      "displayName": "Catalog metadata",
+      "fullyQualifiedName": "visual_looker.catalog_metadata",
+      "service": {
+        "id": "f34001ad-7dc4-5f85-8074-dd48530c0316",
+        "name": "visual_looker",
+        "displayName": "Visual Looker",
+        "fullyQualifiedName": "visual_looker",
+        "type": "dashboardService"
+      },
+      "pipelineType": "metadata",
+      "sourceConfig": {
+        "config": {
+          "type": "DashboardMetadata"
+        }
+      },
+      "airflowConfig": {
+        "scheduleInterval": "0 0 * * *"
+      },
+      "enabled": true,
+      "deployed": true,
+      "loggerLevel": "INFO",
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false
+    },
+    {
+      "id": "b6aabe44-3f4a-53e8-bdb3-ed6964d8c27e",
+      "name": "catalog_metadata",
+      "displayName": "Catalog metadata",
+      "fullyQualifiedName": "visual_ml.catalog_metadata",
+      "service": {
+        "id": "50ab2e47-2777-51f0-ae58-32f47df41555",
+        "name": "visual_ml",
+        "displayName": "Visual Ml",
+        "fullyQualifiedName": "visual_ml",
+        "type": "mlmodelService"
+      },
+      "pipelineType": "metadata",
+      "sourceConfig": {
+        "config": {
+          "type": "MlModelMetadata"
+        }
+      },
+      "airflowConfig": {
+        "scheduleInterval": "0 0 * * *"
+      },
+      "enabled": true,
+      "deployed": true,
+      "loggerLevel": "INFO",
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false
+    },
+    {
+      "id": "9fb736c1-9f8e-5ad8-a5f9-77a87ae7ad02",
+      "name": "catalog_metadata",
+      "displayName": "Catalog metadata",
+      "fullyQualifiedName": "visual_s3.catalog_metadata",
+      "service": {
+        "id": "e89b3e09-ed5e-5b34-97a1-1aedba5889e1",
+        "name": "visual_s3",
+        "displayName": "Visual S3",
+        "fullyQualifiedName": "visual_s3",
+        "type": "storageService"
+      },
+      "pipelineType": "metadata",
+      "sourceConfig": {
+        "config": {
+          "type": "StorageMetadata"
+        }
+      },
+      "airflowConfig": {
+        "scheduleInterval": "0 0 * * *"
+      },
+      "enabled": true,
+      "deployed": true,
+      "loggerLevel": "INFO",
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false
+    },
+    {
+      "id": "45765052-fb28-5bb8-a103-09bb840de62c",
+      "name": "catalog_metadata",
+      "displayName": "Catalog metadata",
+      "fullyQualifiedName": "visual_elastic.catalog_metadata",
+      "service": {
+        "id": "1df6a447-aad7-519f-b756-feb6c4ecd5ca",
+        "name": "visual_elastic",
+        "displayName": "Visual Elastic",
+        "fullyQualifiedName": "visual_elastic",
+        "type": "searchService"
+      },
+      "pipelineType": "metadata",
+      "sourceConfig": {
+        "config": {
+          "type": "SearchMetadata"
+        }
+      },
+      "airflowConfig": {
+        "scheduleInterval": "0 0 * * *"
+      },
+      "enabled": true,
+      "deployed": true,
+      "loggerLevel": "INFO",
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false
+    },
+    {
+      "id": "3401343d-18b6-5c9a-9493-e58becbdd2ab",
+      "name": "catalog_metadata",
+      "displayName": "Catalog metadata",
+      "fullyQualifiedName": "visual_api.catalog_metadata",
+      "service": {
+        "id": "b134bc4f-fafc-52d4-a7f9-f5419c5b49ea",
+        "name": "visual_api",
+        "displayName": "Visual Api",
+        "fullyQualifiedName": "visual_api",
+        "type": "apiService"
+      },
+      "pipelineType": "metadata",
+      "sourceConfig": {
+        "config": {
+          "type": "ApiMetadata"
+        }
+      },
+      "airflowConfig": {
+        "scheduleInterval": "0 0 * * *"
+      },
+      "enabled": true,
+      "deployed": true,
+      "loggerLevel": "INFO",
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false
+    },
+    {
+      "id": "53157f05-7923-588e-b07b-451065d6ee64",
+      "name": "catalog_metadata",
+      "displayName": "Catalog metadata",
+      "fullyQualifiedName": "visual_drive.catalog_metadata",
+      "service": {
+        "id": "17bfd9ed-4c57-548b-99e8-2e9556fd487b",
+        "name": "visual_drive",
+        "displayName": "Visual Drive",
+        "fullyQualifiedName": "visual_drive",
+        "type": "driveService"
+      },
+      "pipelineType": "metadata",
+      "sourceConfig": {
+        "config": {
+          "type": "DriveMetadata"
+        }
+      },
+      "airflowConfig": {
+        "scheduleInterval": "0 0 * * *"
+      },
+      "enabled": true,
+      "deployed": true,
+      "loggerLevel": "INFO",
+      "owners": [
+        {
+          "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+          "name": "visual_analytics",
+          "fullyQualifiedName": "visual_analytics",
+          "displayName": "Analytics",
+          "type": "team"
+        }
+      ],
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "deleted": false
+    }
+  ],
+  "ontologies": [
+    {
+      "id": "1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
+      "name": "FinanceOntology",
+      "displayName": "Finance ontology",
+      "fullyQualifiedName": "FinanceOntology",
+      "description": "Curated finance metadata for discovery and governance.",
+      "version": 1.0,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false,
+      "provider": "user",
+      "iri": "https://example.com/finance#",
+      "namespace": "https://example.com/finance#",
+      "prefixes": [
+        {
+          "name": "finance",
+          "iri": "https://example.com/finance#"
+        }
+      ],
+      "layer": "L1"
+    }
+  ],
+  "ontologyConcepts": [
+    {
+      "id": "739d4f7d-d9db-52ca-9415-5e934b109f5d",
+      "name": "Customer",
+      "displayName": "Customer",
+      "fullyQualifiedName": "FinanceOntology.Customer",
+      "description": "Curated finance metadata for discovery and governance.",
+      "version": 1.0,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false,
+      "provider": "user",
+      "iri": "https://example.com/finance#Customer",
+      "ontology": {
+        "id": "1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
+        "name": "FinanceOntology",
+        "displayName": "Finance ontology",
+        "fullyQualifiedName": "FinanceOntology",
+        "type": "ontology"
+      },
+      "conceptType": "OWL_CLASS",
+      "subClasses": [],
+      "superClasses": [],
+      "conceptMappings": []
+    },
+    {
+      "id": "c359ee20-8f00-5c4f-86c5-1ea5f83b24fc",
+      "name": "Order",
+      "displayName": "Order",
+      "fullyQualifiedName": "FinanceOntology.Order",
+      "description": "Curated finance metadata for discovery and governance.",
+      "version": 1.0,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false,
+      "provider": "user",
+      "iri": "https://example.com/finance#Order",
+      "ontology": {
+        "id": "1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
+        "name": "FinanceOntology",
+        "displayName": "Finance ontology",
+        "fullyQualifiedName": "FinanceOntology",
+        "type": "ontology"
+      },
+      "conceptType": "OWL_CLASS",
+      "subClasses": [],
+      "superClasses": [],
+      "conceptMappings": []
+    }
+  ],
+  "ontologyProperties": [
+    {
+      "id": "780e1af3-6a1b-5cdc-b8ee-b46340067bda",
+      "name": "placesOrder",
+      "displayName": "Places order",
+      "fullyQualifiedName": "FinanceOntology.placesOrder",
+      "description": "Curated finance metadata for discovery and governance.",
+      "version": 1.0,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false,
+      "provider": "user",
+      "iri": "https://example.com/finance#placesOrder",
+      "kind": "OBJECT",
+      "ontology": {
+        "id": "1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
+        "name": "FinanceOntology",
+        "displayName": "Finance ontology",
+        "fullyQualifiedName": "FinanceOntology",
+        "type": "ontology"
+      },
+      "domain": ["https://example.com/finance#Customer"],
+      "range": ["https://example.com/finance#Order"]
+    }
+  ],
+  "ontologyAxioms": [],
+  "ontologyReleases": [],
+  "ontologyChangeSets": [],
+  "ontologyEditLocks": [],
+  "rdf/rules": [],
+  "queries": [],
+  "relationshipTypes": [
+    {
+      "id": "0f17685e-9744-3be2-a1f1-1a2843ee14d4",
+      "fullyQualifiedName": "relatedTo",
+      "displayName": "Related To",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "CORE",
+      "characteristics": ["SYMMETRIC"],
+      "crossGlossaryAllowed": true,
+      "description": "General association between concepts that are semantically connected.",
+      "inverse": {
+        "fullyQualifiedName": "relatedTo",
+        "id": "0f17685e-9744-3be2-a1f1-1a2843ee14d4",
+        "name": "relatedTo",
+        "type": "relationshipType"
+      },
+      "name": "relatedTo",
+      "paletteKey": "BLUE",
+      "provider": "system",
+      "rdfPredicate": "https://open-metadata.org/ontology/relatedTo",
+      "systemDefined": true
+    },
+    {
+      "id": "807f209f-beb2-3ac0-9e0c-2cd746e420d7",
+      "fullyQualifiedName": "synonym",
+      "displayName": "Synonym",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "OWL_SKOS",
+      "characteristics": ["SYMMETRIC"],
+      "crossGlossaryAllowed": true,
+      "description": "Concepts that have the same meaning and can be used interchangeably.",
+      "inverse": {
+        "fullyQualifiedName": "synonym",
+        "id": "807f209f-beb2-3ac0-9e0c-2cd746e420d7",
+        "name": "synonym",
+        "type": "relationshipType"
+      },
+      "name": "synonym",
+      "paletteKey": "ROSE",
+      "provider": "system",
+      "rdfPredicate": "http://www.w3.org/2004/02/skos/core#exactMatch",
+      "systemDefined": true
+    },
+    {
+      "id": "e363cf38-d331-3cf3-a533-80ca3f9beae7",
+      "fullyQualifiedName": "antonym",
+      "displayName": "Antonym",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "CORE",
+      "characteristics": ["SYMMETRIC"],
+      "crossGlossaryAllowed": true,
+      "description": "Concepts that have opposite meanings.",
+      "inverse": {
+        "fullyQualifiedName": "antonym",
+        "id": "e363cf38-d331-3cf3-a533-80ca3f9beae7",
+        "name": "antonym",
+        "type": "relationshipType"
+      },
+      "name": "antonym",
+      "paletteKey": "AMBER",
+      "provider": "system",
+      "rdfPredicate": "https://open-metadata.org/ontology/antonym",
+      "systemDefined": true
+    },
+    {
+      "id": "c43deddd-eb71-3731-80cd-b65a8bf2a0bf",
+      "fullyQualifiedName": "broader",
+      "displayName": "Broader",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "OWL_SKOS",
+      "characteristics": ["TRANSITIVE"],
+      "crossGlossaryAllowed": true,
+      "description": "A more general concept.",
+      "inverse": {
+        "fullyQualifiedName": "narrower",
+        "id": "f9ae791f-8e28-31e3-9f01-5185faaff2e8",
+        "name": "narrower",
+        "type": "relationshipType"
+      },
+      "name": "broader",
+      "paletteKey": "GREEN",
+      "provider": "system",
+      "rdfPredicate": "http://www.w3.org/2004/02/skos/core#broader",
+      "systemDefined": true
+    },
+    {
+      "id": "f9ae791f-8e28-31e3-9f01-5185faaff2e8",
+      "fullyQualifiedName": "narrower",
+      "displayName": "Narrower",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "OWL_SKOS",
+      "characteristics": ["TRANSITIVE"],
+      "crossGlossaryAllowed": true,
+      "description": "A more specific concept.",
+      "inverse": {
+        "fullyQualifiedName": "broader",
+        "id": "c43deddd-eb71-3731-80cd-b65a8bf2a0bf",
+        "name": "broader",
+        "type": "relationshipType"
+      },
+      "name": "narrower",
+      "paletteKey": "INDIGO",
+      "provider": "system",
+      "rdfPredicate": "http://www.w3.org/2004/02/skos/core#narrower",
+      "systemDefined": true
+    },
+    {
+      "id": "2da507cb-eee1-39bd-b594-867f5670e0e1",
+      "fullyQualifiedName": "partOf",
+      "displayName": "Part Of",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "CORE",
+      "characteristics": [],
+      "crossGlossaryAllowed": true,
+      "description": "This concept is a part or component of another concept.",
+      "inverse": {
+        "fullyQualifiedName": "hasPart",
+        "id": "95cd3beb-5a93-353f-abc7-ca1067a6869e",
+        "name": "hasPart",
+        "type": "relationshipType"
+      },
+      "name": "partOf",
+      "paletteKey": "TEAL",
+      "provider": "system",
+      "rdfPredicate": "https://open-metadata.org/ontology/partOf",
+      "systemDefined": true
+    },
+    {
+      "id": "95cd3beb-5a93-353f-abc7-ca1067a6869e",
+      "fullyQualifiedName": "hasPart",
+      "displayName": "Has Part",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "CORE",
+      "characteristics": [],
+      "crossGlossaryAllowed": true,
+      "description": "This concept contains another concept as a part or component.",
+      "inverse": {
+        "fullyQualifiedName": "partOf",
+        "id": "2da507cb-eee1-39bd-b594-867f5670e0e1",
+        "name": "partOf",
+        "type": "relationshipType"
+      },
+      "name": "hasPart",
+      "paletteKey": "BLUE",
+      "provider": "system",
+      "rdfPredicate": "https://open-metadata.org/ontology/hasPart",
+      "systemDefined": true
+    },
+    {
+      "id": "3224c331-65ac-3094-8801-4e15cfd07a03",
+      "fullyQualifiedName": "calculatedFrom",
+      "displayName": "Calculated From",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "CORE",
+      "characteristics": [],
+      "crossGlossaryAllowed": true,
+      "description": "This concept or metric is calculated or derived from another concept.",
+      "inverse": {
+        "fullyQualifiedName": "usedToCalculate",
+        "id": "42363b4a-8e7a-3347-bfef-a49df8b35902",
+        "name": "usedToCalculate",
+        "type": "relationshipType"
+      },
+      "name": "calculatedFrom",
+      "paletteKey": "PURPLE",
+      "provider": "system",
+      "rdfPredicate": "https://open-metadata.org/ontology/calculatedFrom",
+      "systemDefined": true
+    },
+    {
+      "id": "42363b4a-8e7a-3347-bfef-a49df8b35902",
+      "fullyQualifiedName": "usedToCalculate",
+      "displayName": "Used To Calculate",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "CORE",
+      "characteristics": [],
+      "crossGlossaryAllowed": true,
+      "description": "This concept is used in the calculation of another concept or metric.",
+      "inverse": {
+        "fullyQualifiedName": "calculatedFrom",
+        "id": "3224c331-65ac-3094-8801-4e15cfd07a03",
+        "name": "calculatedFrom",
+        "type": "relationshipType"
+      },
+      "name": "usedToCalculate",
+      "paletteKey": "PINK",
+      "provider": "system",
+      "rdfPredicate": "https://open-metadata.org/ontology/usedToCalculate",
+      "systemDefined": true
+    },
+    {
+      "id": "0a7eaeaa-3ed5-3d71-afd3-e4a43677a6a3",
+      "fullyQualifiedName": "seeAlso",
+      "displayName": "See Also",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "OWL_SKOS",
+      "characteristics": ["SYMMETRIC"],
+      "crossGlossaryAllowed": true,
+      "description": "A related concept that may provide additional context.",
+      "inverse": {
+        "fullyQualifiedName": "seeAlso",
+        "id": "0a7eaeaa-3ed5-3d71-afd3-e4a43677a6a3",
+        "name": "seeAlso",
+        "type": "relationshipType"
+      },
+      "name": "seeAlso",
+      "paletteKey": "GRAY",
+      "provider": "system",
+      "rdfPredicate": "http://www.w3.org/2000/01/rdf-schema#seeAlso",
+      "systemDefined": true
+    },
+    {
+      "id": "b4835e47-a093-310b-bfcd-7bd444ba2351",
+      "fullyQualifiedName": "subClassOf",
+      "displayName": "Subclass Of",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "OWL_SKOS",
+      "characteristics": ["TRANSITIVE"],
+      "crossGlossaryAllowed": true,
+      "description": "Every instance of this concept is also an instance of the target concept. Unlike broader, this asserts subsumption, so the target's attributes apply to this concept.",
+      "inverse": {
+        "fullyQualifiedName": "superClassOf",
+        "id": "c77b3b67-54f0-3a65-85ae-96ae88306c8d",
+        "name": "superClassOf",
+        "type": "relationshipType"
+      },
+      "name": "subClassOf",
+      "paletteKey": "TEAL",
+      "provider": "system",
+      "rdfPredicate": "http://www.w3.org/2000/01/rdf-schema#subClassOf",
+      "systemDefined": true
+    },
+    {
+      "id": "c77b3b67-54f0-3a65-85ae-96ae88306c8d",
+      "fullyQualifiedName": "superClassOf",
+      "displayName": "Superclass Of",
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "category": "OWL_SKOS",
+      "characteristics": ["TRANSITIVE"],
+      "crossGlossaryAllowed": true,
+      "description": "Every instance of the target concept is also an instance of this concept.",
+      "inverse": {
+        "fullyQualifiedName": "subClassOf",
+        "id": "b4835e47-a093-310b-bfcd-7bd444ba2351",
+        "name": "subClassOf",
+        "type": "relationshipType"
+      },
+      "name": "superClassOf",
+      "paletteKey": "PURPLE",
+      "provider": "system",
+      "rdfPredicate": "https://open-metadata.org/ontology/superClassOf",
+      "systemDefined": true
+    }
+  ],
+  "dataQuality/dimensions": [
+    {
+      "name": "Accuracy",
+      "fullyQualifiedName": "Accuracy",
+      "displayName": "Accuracy",
+      "description": "Values correctly represent the real-world facts they describe.",
+      "style": {
+        "color": "#067647"
+      },
+      "provider": "system",
+      "id": "00000000-0000-4000-8100-000000000001",
+      "version": 1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false
+    },
+    {
+      "name": "Completeness",
+      "fullyQualifiedName": "Completeness",
+      "displayName": "Completeness",
+      "description": "Expected values are present \u2014 no unexpected nulls or missing rows.",
+      "style": {
+        "color": "#175CD3"
+      },
+      "provider": "system",
+      "id": "00000000-0000-4000-8100-000000000002",
+      "version": 1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false
+    },
+    {
+      "name": "Consistency",
+      "fullyQualifiedName": "Consistency",
+      "displayName": "Consistency",
+      "description": "The same fact agrees across tables, systems and time.",
+      "style": {
+        "color": "#6938EF"
+      },
+      "provider": "system",
+      "id": "00000000-0000-4000-8100-000000000003",
+      "version": 1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false
+    },
+    {
+      "name": "Integrity",
+      "fullyQualifiedName": "Integrity",
+      "displayName": "Integrity",
+      "description": "Relationships between tables and keys hold as declared.",
+      "style": {
+        "color": "#C11574"
+      },
+      "provider": "system",
+      "id": "00000000-0000-4000-8100-000000000004",
+      "version": 1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false
+    },
+    {
+      "name": "SQL",
+      "fullyQualifiedName": "SQL",
+      "displayName": "SQL",
+      "description": "Custom SQL assertions that do not fit another dimension.",
+      "style": {
+        "color": "#475467"
+      },
+      "provider": "system",
+      "id": "00000000-0000-4000-8100-000000000005",
+      "version": 1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false
+    },
+    {
+      "name": "Uniqueness",
+      "fullyQualifiedName": "Uniqueness",
+      "displayName": "Uniqueness",
+      "description": "Records are free of unintended duplicates.",
+      "style": {
+        "color": "#099250"
+      },
+      "provider": "system",
+      "id": "00000000-0000-4000-8100-000000000006",
+      "version": 1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false
+    },
+    {
+      "name": "Validity",
+      "fullyQualifiedName": "Validity",
+      "displayName": "Validity",
+      "description": "Values conform to the expected type, format or allowed set.",
+      "style": {
+        "color": "#B54708"
+      },
+      "provider": "system",
+      "id": "00000000-0000-4000-8100-000000000007",
+      "version": 1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "deleted": false
+    }
+  ],
+  "tasks": [
+    {
+      "id": "00000000-0000-4000-8300-000000000041",
+      "taskId": "TASK-00041",
+      "name": "TASK-00041",
+      "fullyQualifiedName": "TASK-00041",
+      "displayName": "Review the orders description",
+      "description": "Review the orders description",
+      "category": "MetadataUpdate",
+      "type": "DescriptionUpdate",
+      "status": "Open",
+      "priority": "Medium",
+      "about": "<#E::table::visual_warehouse.finance.public.orders>",
+      "createdBy": {
+        "id": "00000000-0000-4000-8000-000000000999",
+        "name": "admin",
+        "fullyQualifiedName": "admin",
+        "type": "user",
+        "displayName": "Administrator"
+      },
+      "createdById": "00000000-0000-4000-8000-000000000999",
+      "assignees": [
+        {
+          "id": "00000000-0000-4000-8000-000000000999",
+          "name": "admin",
+          "fullyQualifiedName": "admin",
+          "type": "user",
+          "displayName": "Administrator"
+        }
+      ],
+      "reviewers": [
+        {
+          "id": "00000000-0000-4000-8000-000000000999",
+          "name": "admin",
+          "fullyQualifiedName": "admin",
+          "type": "user",
+          "displayName": "Administrator"
+        }
+      ],
+      "watchers": [],
+      "payload": {
+        "fieldPath": "description",
+        "currentDescription": "Orders from the finance warehouse.",
+        "newDescription": "Completed orders used for certified finance reporting."
+      },
+      "availableTransitions": [
+        {
+          "id": "approve",
+          "label": "Approve",
+          "targetStageId": "approve",
+          "targetTaskStatus": "Approved",
+          "resolutionType": "Approved"
+        },
+        {
+          "id": "reject",
+          "label": "Reject",
+          "targetStageId": "reject",
+          "targetTaskStatus": "Rejected",
+          "resolutionType": "Rejected",
+          "requiresComment": true
+        }
+      ],
+      "comments": [],
+      "commentCount": 0,
+      "createdAt": 1768467600000,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "deleted": false
+    },
+    {
+      "id": "00000000-0000-4000-8300-000000000042",
+      "taskId": "TASK-00042",
+      "name": "TASK-00042",
+      "fullyQualifiedName": "TASK-00042",
+      "displayName": "Classify customer information",
+      "description": "Classify customer information",
+      "category": "MetadataUpdate",
+      "type": "TagUpdate",
+      "status": "Open",
+      "priority": "Medium",
+      "about": "<#E::table::visual_warehouse.finance.public.orders>",
+      "createdBy": {
+        "id": "00000000-0000-4000-8000-000000000999",
+        "name": "admin",
+        "fullyQualifiedName": "admin",
+        "type": "user",
+        "displayName": "Administrator"
+      },
+      "createdById": "00000000-0000-4000-8000-000000000999",
+      "assignees": [
+        {
+          "id": "00000000-0000-4000-8000-000000000999",
+          "name": "admin",
+          "fullyQualifiedName": "admin",
+          "type": "user",
+          "displayName": "Administrator"
+        }
+      ],
+      "reviewers": [
+        {
+          "id": "00000000-0000-4000-8000-000000000999",
+          "name": "admin",
+          "fullyQualifiedName": "admin",
+          "type": "user",
+          "displayName": "Administrator"
+        }
+      ],
+      "watchers": [],
+      "payload": {
+        "fieldPath": "tags",
+        "currentTags": [],
+        "newTags": [
+          {
+            "tagFQN": "PII.Sensitive",
+            "source": "Classification",
+            "labelType": "Manual",
+            "state": "Confirmed"
+          }
+        ]
+      },
+      "availableTransitions": [
+        {
+          "id": "approve",
+          "label": "Approve",
+          "targetStageId": "approve",
+          "targetTaskStatus": "Approved",
+          "resolutionType": "Approved"
+        },
+        {
+          "id": "reject",
+          "label": "Reject",
+          "targetStageId": "reject",
+          "targetTaskStatus": "Rejected",
+          "resolutionType": "Rejected",
+          "requiresComment": true
+        }
+      ],
+      "comments": [],
+      "commentCount": 0,
+      "createdAt": 1768467600000,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "deleted": false
+    },
+    {
+      "id": "00000000-0000-4000-8300-000000000043",
+      "taskId": "TASK-00043",
+      "name": "TASK-00043",
+      "fullyQualifiedName": "TASK-00043",
+      "displayName": "Approve the finance glossary",
+      "description": "Approve the finance glossary",
+      "category": "Approval",
+      "type": "RequestApproval",
+      "status": "Open",
+      "priority": "Medium",
+      "about": "<#E::glossary::VisualBusinessGlossary>",
+      "createdBy": {
+        "id": "00000000-0000-4000-8000-000000000999",
+        "name": "admin",
+        "fullyQualifiedName": "admin",
+        "type": "user",
+        "displayName": "Administrator"
+      },
+      "createdById": "00000000-0000-4000-8000-000000000999",
+      "assignees": [
+        {
+          "id": "00000000-0000-4000-8000-000000000999",
+          "name": "admin",
+          "fullyQualifiedName": "admin",
+          "type": "user",
+          "displayName": "Administrator"
+        }
+      ],
+      "reviewers": [
+        {
+          "id": "00000000-0000-4000-8000-000000000999",
+          "name": "admin",
+          "fullyQualifiedName": "admin",
+          "type": "user",
+          "displayName": "Administrator"
+        }
+      ],
+      "watchers": [],
+      "payload": {},
+      "availableTransitions": [
+        {
+          "id": "approve",
+          "label": "Approve",
+          "targetStageId": "approve",
+          "targetTaskStatus": "Approved",
+          "resolutionType": "Approved"
+        },
+        {
+          "id": "reject",
+          "label": "Reject",
+          "targetStageId": "reject",
+          "targetTaskStatus": "Rejected",
+          "resolutionType": "Rejected",
+          "requiresComment": true
+        }
+      ],
+      "comments": [],
+      "commentCount": 0,
+      "createdAt": 1768467600000,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "deleted": false
+    },
+    {
+      "id": "00000000-0000-4000-8300-000000000044",
+      "taskId": "TASK-00044",
+      "name": "TASK-00044",
+      "fullyQualifiedName": "TASK-00044",
+      "displayName": "Investigate missing order identifiers",
+      "description": "Investigate missing order identifiers",
+      "category": "Incident",
+      "type": "TestCaseResolution",
+      "status": "Open",
+      "priority": "Medium",
+      "about": "<#E::testCase::visual_warehouse.finance.public.orders.orders_id_not_null>",
+      "createdBy": {
+        "id": "00000000-0000-4000-8000-000000000999",
+        "name": "admin",
+        "fullyQualifiedName": "admin",
+        "type": "user",
+        "displayName": "Administrator"
+      },
+      "createdById": "00000000-0000-4000-8000-000000000999",
+      "assignees": [
+        {
+          "id": "00000000-0000-4000-8000-000000000999",
+          "name": "admin",
+          "fullyQualifiedName": "admin",
+          "type": "user",
+          "displayName": "Administrator"
+        }
+      ],
+      "reviewers": [
+        {
+          "id": "00000000-0000-4000-8000-000000000999",
+          "name": "admin",
+          "fullyQualifiedName": "admin",
+          "type": "user",
+          "displayName": "Administrator"
+        }
+      ],
+      "watchers": [],
+      "payload": {
+        "testCaseResolutionStatusId": "00000000-0000-4000-8500-000000000002",
+        "testCaseResolutionStatus": {
+          "id": "00000000-0000-4000-8500-000000000002",
+          "stateId": "00000000-0000-4000-8500-000000000001",
+          "timestamp": 1768471200000,
+          "testCaseResolutionStatusType": "New",
+          "updatedBy": {
+            "id": "00000000-0000-4000-8000-000000000999",
+            "name": "admin",
+            "fullyQualifiedName": "admin",
+            "type": "user",
+            "displayName": "Administrator"
+          },
+          "updatedAt": 1768471200000,
+          "testCaseReference": {
+            "id": "fa7bd4cf-e1f6-55d0-82ef-d987676023a5",
+            "name": "orders_id_not_null",
+            "displayName": "Order ID not null",
+            "fullyQualifiedName": "visual_warehouse.finance.public.orders.orders_id_not_null",
+            "type": "testCase"
+          },
+          "severity": "Severity2",
+          "failureSummary": "Two orders have a missing identifier.",
+          "metrics": [
+            {
+              "name": "failedRows",
+              "value": 2
+            }
+          ]
+        },
+        "severity": "Severity2"
+      },
+      "availableTransitions": [
+        {
+          "id": "ack",
+          "label": "Acknowledge",
+          "targetStageId": "acknowledged",
+          "targetTaskStatus": "InProgress"
+        },
+        {
+          "id": "resolve",
+          "label": "Resolve",
+          "targetStageId": "resolved",
+          "targetTaskStatus": "Completed",
+          "resolutionType": "Completed",
+          "requiresComment": true
+        }
+      ],
+      "comments": [],
+      "commentCount": 0,
+      "createdAt": 1768467600000,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin",
+      "version": 1,
+      "deleted": false
+    }
+  ],
+  "documents": [
+    {
+      "name": "ActivityFeed",
+      "displayName": "Team Activity",
+      "description": "Recent activity across the assets and domains the user owns, showing who changed what and when.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.ActivityFeed",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "659d5433-c82b-5f7e-bb00-85a1f157e550"
+    },
+    {
+      "name": "CuratedAssets",
+      "displayName": "Curated Assets",
+      "description": "A filtered list of high-impact assets. Ships with a certified Tier-1 rule and can be pointed at any saved filter from the persona editor.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.CuratedAssets",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "feefb650-e227-546f-8d1c-494635342604"
+    },
+    {
+      "name": "DataEstate",
+      "displayName": "Your Data Estate",
+      "description": "How large the data estate is, which connectors it comes from, and how much of it carries a description.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.DataEstate",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "82009e46-3cd5-5d45-8cc5-2357861aef3b"
+    },
+    {
+      "name": "DataProducts",
+      "displayName": "Data Products",
+      "description": "Data products across the platform with their owning domain, for quicker access to high-value products.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.DataProducts",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "af7a845d-ed42-55d4-809c-c595704fd8e5"
+    },
+    {
+      "name": "DataQuality",
+      "displayName": "Data Quality",
+      "description": "Overview of data quality test results (passing, failing, and aborted) with a link through to the failing tests.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.DataQuality",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "5520a582-7a35-5493-935f-b2a268f54d65"
+    },
+    {
+      "name": "Domains",
+      "displayName": "Domains",
+      "description": "Domain-by-domain overview of owner, description coverage, and failing tests, so a gap is visible without opening each one.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.Domains",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "c79780d9-50cf-5a9c-9163-98483c5b083d"
+    },
+    {
+      "name": "KnowledgeCenter",
+      "displayName": "Context Center",
+      "description": "The most recently updated Context Center pages, articles and quick links, with how many changed this week.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.KnowledgeCenter",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "439fdb76-2f36-527b-b5c7-ff49f1240f89"
+    },
+    {
+      "name": "KPI",
+      "displayName": "KPIs",
+      "description": "Progress against each active KPI: target, current pace, and whether it is on track to land by its end date.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.KPI",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "50adaedc-20df-5129-84d9-4f950d7c6898"
+    },
+    {
+      "name": "MyTask",
+      "displayName": "My Tasks",
+      "description": "Open tasks assigned to the user or their teams, with incidents flagged first and access requests and approvals resolvable from the card.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.MyTask",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "a4b6c0e1-089d-51de-b427-789ff0a88c23"
+    },
+    {
+      "name": "PipelineStatus",
+      "displayName": "Pipeline Status",
+      "description": "Each pipeline's latest run, failures first, with its last ten runs and the error behind a failure.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.PipelineStatus",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "d4e0aafe-77c2-5f93-8411-596f400f0d8b"
+    },
+    {
+      "name": "PlatformHealth",
+      "displayName": "Platform Health",
+      "description": "Ingestion health across every connected service, showing how many are failing, healthy, or have not run yet, with the worst offenders listed first.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.PlatformHealth",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "dc97097d-c3d4-50f7-80db-4b0731cf1865"
+    },
+    {
+      "name": "RecentlyViewed",
+      "displayName": "Recently Viewed",
+      "description": "Recently Viewed KnowledgePanel shows list of Data Assets that User visited.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.RecentlyViewed",
+      "data": {
+        "gridSizes": ["small"]
+      },
+      "id": "529d9d2b-b624-5b1e-bf34-a0ff468ecff3"
+    },
+    {
+      "name": "TotalAssets",
+      "displayName": "Total Data Assets",
+      "description": "How many data assets the estate holds, split by asset type, and how each type changed over the selected window.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.TotalAssets",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "8c2ddf59-1bdd-54cd-9dd7-81a0d35ced1f"
+    },
+    {
+      "name": "YoursAndFollowed",
+      "displayName": "Yours and Followed",
+      "description": "The assets the user owns alongside the ones they follow, so the things they are accountable for stay in one place.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.YoursAndFollowed",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "ee5deece-33da-5c0b-9e1d-53ccf24188ad"
+    }
+  ],
+  "kpis": [
+    {
+      "id": "da922b51-528c-5eb4-a334-acc0412efa2c",
+      "name": "visual_description_coverage",
+      "fullyQualifiedName": "visual_description_coverage",
+      "displayName": "Description coverage",
+      "description": "Track metadata governance coverage across the finance data estate.",
+      "metricType": "PERCENTAGE",
+      "targetValue": 80,
+      "startDate": 1765879200000,
+      "endDate": 1769767200000,
+      "dataInsightChart": {
+        "id": "00000000-0000-4000-8000-000000000111",
+        "name": "PercentageOfEntitiesWithDescriptionByType",
+        "type": "dataInsightChart"
+      }
+    },
+    {
+      "id": "d69c4b1d-7978-5335-adc0-663185f832cf",
+      "name": "visual_owner_coverage",
+      "fullyQualifiedName": "visual_owner_coverage",
+      "displayName": "Ownership coverage",
+      "description": "Track metadata governance coverage across the finance data estate.",
+      "metricType": "PERCENTAGE",
+      "targetValue": 95,
+      "startDate": 1765879200000,
+      "endDate": 1769767200000,
+      "dataInsightChart": {
+        "id": "00000000-0000-4000-8000-000000000111",
+        "name": "PercentageOfEntitiesWithDescriptionByType",
+        "type": "dataInsightChart"
+      }
+    },
+    {
+      "id": "0eb8ad61-bf85-5c75-8ef2-7e522011ea6e",
+      "name": "visual_completed_target",
+      "fullyQualifiedName": "visual_completed_target",
+      "displayName": "Completed certification target",
+      "description": "Track metadata governance coverage across the finance data estate.",
+      "metricType": "PERCENTAGE",
+      "targetValue": 90,
+      "startDate": 1765879200000,
+      "endDate": 1768384800000,
+      "dataInsightChart": {
+        "id": "00000000-0000-4000-8000-000000000111",
+        "name": "PercentageOfEntitiesWithDescriptionByType",
+        "type": "dataInsightChart"
+      }
+    }
+  ]
+}

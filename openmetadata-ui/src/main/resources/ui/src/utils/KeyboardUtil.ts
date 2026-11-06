@@ -41,7 +41,9 @@ export const handleKeyboardActivation =
     }
   };
 
-export const isCommandKeyPress = (event: KeyboardEvent): boolean => {
+export const isCommandKeyPress = (
+  event: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey'>
+): boolean => {
   if (NavigatorHelper.isMacOs()) {
     return event.metaKey;
   } else if (!NavigatorHelper.isMacOs()) {

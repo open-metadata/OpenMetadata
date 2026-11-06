@@ -62,13 +62,19 @@ export enum MemberKind {
  * A typed OWL 2 DL profile guardrail finding.
  */
 export interface OntologyProfileViolation {
-    code:     Code;
-    message:  string;
-    path:     string;
-    severity: Severity;
+    code: Code;
+    /**
+     * Declared concepts a rule clash involves, the clashing class first, so a client can link
+     * to each.
+     */
+    conceptIds?: string[];
+    message:     string;
+    path:        string;
+    severity:    Severity;
 }
 
 export enum Code {
+    DisjointClash = "DISJOINT_CLASH",
     IllegalPunning = "ILLEGAL_PUNNING",
     InvalidAxiomShape = "INVALID_AXIOM_SHAPE",
     InvalidClassKind = "INVALID_CLASS_KIND",
