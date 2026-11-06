@@ -1,9 +1,9 @@
 # Metric and metric group writes run the same checks through REST and MCP
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (CSV row and hierarchy authorization) · v3 2026-11-05 (checks run in the write path)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (CSV row and hierarchy authorization) · v3 2026-11-05 (checks run in the write path) · v4 2026-11-05 (endpoint and MCP calls removed)
 - **Deciders:** Vishnu Jain
-- **Guard:** `McpMetricAuthorizationIT`, `MetricResourceIT#hierarchyWritesRequireEditPermissionOnParentAndGroupDestinations`, `MetricResourceTest#wholeDocumentReplaceCountsAsAHierarchyChange`, `MetricCsvAuthorizationIT`, `MetricRepositoryTest#admitRefusesMovingAMetricIntoAGroupTheAuthorCannotEdit`, `MetricRepositoryTest#asyncBulkPutRefusesACreateIntoAGroupTheImpersonatedAuthorCannotEdit`
+- **Guard:** `McpMetricAuthorizationIT`, `MetricResourceIT#hierarchyWritesRequireEditPermissionOnParentAndGroupDestinations`, `MetricResourceIT#bulkPutRefusesOnlyTheMetricMovedIntoAGroupTheCallerCannotEdit`, `MetricCsvAuthorizationIT`, `MetricRepositoryTest#admitRefusesMovingAMetricIntoAGroupTheAuthorCannotEdit`, `MetricRepositoryTest#aPatchMayNotSetAssetsChildrenOrChildrenCount`, `MetricRepositoryTest#asyncBulkPutRefusesACreateIntoAGroupTheImpersonatedAuthorCannotEdit`, `MetricGroupRepositoryTest#aDocumentRootPatchIsRefusedBeforeAnyMemberCheck`
 - **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials
 
 ## Context
@@ -84,3 +84,21 @@ endpoint or tool cannot leave them out.
   run checks rows against earlier rows of the file that are not stored.
 - The endpoint and MCP calls to `MetricAuthorization` still run, so a write is checked twice until
   they are removed (https://github.com/open-metadata/OpenMetadata/issues/37030).
+
+## Amendment v4: the endpoint and MCP calls are removed
+
+The write path is now the only place the checks run. `MetricAuthorization` is gone, so a new
+endpoint or tool needs nothing, and a new metric check goes into the repository's
+`authorizeWrite`, or `authorizePatch` when it must run before a patch is applied. This replaces the v1 rules on where the checks live and how a patch is checked.
+
+- `MetricRepository.authorizePatch` refuses a patch to `assets`, `children` or `childrenCount`
+  before the patch is applied, on every PATCH and patch preview whoever sends it, `admin` included,
+  so a `test` of them can't tell whether a guess matches. The checks #36909 added run there too
+  (ADR:2026-11-03-metric-hierarchy-and-membership-patches-are-authorized-before-they-apply v2).
+- A patch to the document root no longer counts as a hierarchy change: every type refuses it with
+  a 400 before any check (ADR:2026-11-03-input-parsing-is-bounded).
+- Bulk PUT refuses a metric on its own with a 403 and saves the rest; the endpoint refused the
+  whole request.
+- A PUT on the name of a soft-deleted metric is checked against the stored metric, not as a create.
+- The generic policy check runs first, so a caller without it gets that 403 before any metric
+  check, including a patch to a read-only field.
