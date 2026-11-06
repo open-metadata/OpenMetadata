@@ -18,7 +18,7 @@ profiler code.
 """
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import pandas as pd
 
@@ -143,24 +143,6 @@ class BurstIQSampler(DatalakeSampler):
             if len(rows) >= (self.sample_limit or 100):
                 break
         return available, rows
-
-    def _fetch_rows(self, data_frame):
-        """Drop only fully-empty rows, not any-null rows.
-
-        The base sampler uses ``dropna()`` which drops a row if *any* column is
-        null. BurstIQ omits absent fields per record, so nearly every row has a
-        gap — that would drop all rows and return an empty sample. ``how="all"``
-        keeps partially-filled rows.
-
-        Reindexed gaps arrive as NaN/NaT; normalize them to None so the upload
-        sanitizer emits JSON null instead of the strings "nan"/"NaT". The
-        ``is_scalar`` guard skips list/dict cells, where ``pd.isna`` returns an
-        array and would raise on truthiness."""
-
-        def to_null(value: Any):
-            return None if pd.api.types.is_scalar(value) and pd.isna(value) else self._truncate_cell(value)
-
-        return [[to_null(value) for value in row] for row in data_frame.dropna(how="all").values.tolist()]
 
     def _compute_total_limit(self, chain: str) -> int | None:
         """Compute the total record limit based on the sampling config.
