@@ -360,6 +360,9 @@ public class McpSdkUpgradeTest {
 
     assertThat(capabilities.tools()).isNotNull();
     assertThat(capabilities.prompts()).isNotNull();
+    // A stateless server cannot send list_changed notifications, so it must not promise them.
+    assertThat(capabilities.tools().listChanged()).isFalse();
+    assertThat(capabilities.prompts().listChanged()).isFalse();
     assertThat(capabilities.logging()).isNull();
     assertThat(capabilities.resources()).isNull();
     assertThat(capabilities.completions()).isNull();
