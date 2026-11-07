@@ -55,7 +55,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
+from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
     get_database_name_for_lineage,
@@ -110,7 +110,10 @@ class SigmaSource(DashboardServiceSource):
         """
         get dashboard details
         """
-        return self.client.get_dashboard_detail(dashboard.workbookId)
+        dashboard_details = self.client.get_dashboard_detail(dashboard.workbookId)
+        if dashboard_details:
+            dashboard_details.elements = self.client.get_chart_details(dashboard.workbookId) or []
+        return dashboard_details
 
     def yield_dashboard(self, dashboard_details: WorkbookDetails) -> Iterable[Either[CreateDashboardRequest]]:
         """
@@ -172,19 +175,18 @@ class SigmaSource(DashboardServiceSource):
             logger.warning(f"Skipping charts - dashboard details are None (API error)")  # noqa: F541
             return
 
-        charts = self.client.get_chart_details(dashboard_details.workbookId)
-        for chart in charts or []:
+        for chart in dashboard_details.elements:
             try:
-                if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
-                    self.status.filter(chart.name, "Chart Pattern not allowed")
+                display_name = chart.name or f"Element {chart.elementId}"
+                if filter_by_chart(self.source_config.chartFilterPattern, display_name):
+                    self.status.filter(display_name, "Chart Pattern not allowed")
                     continue
                 chart_request = CreateChartRequest(
                     name=EntityName(str(chart.elementId)),
-                    displayName=chart.name or f"Element {chart.elementId}",
-                    chartType=get_standard_chart_type(chart.vizualizationType),
+                    displayName=display_name,
+                    chartType=get_standard_chart_type(chart.vizualizationType or ""),
                     service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                    sourceUrl=SourceUrl(dashboard_details.url),
-                    description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
+                    sourceUrl=SourceUrl(f"{dashboard_details.url}?:nodeId={chart.elementId}"),
                 )
                 yield Either(right=chart_request)
                 self.register_record_chart(chart_request=chart_request)
@@ -468,16 +470,21 @@ class SigmaSource(DashboardServiceSource):
             return
 
         if self.source_config.includeDataModels:
-            self.data_models = self.client.get_chart_details(dashboard_details.workbookId)
-            for data_model in self.data_models or []:
+            self.data_models = []
+            for data_model in dashboard_details.elements:
                 # Skip non-visualization elements (text boxes, dividers, buttons, controls)
                 # to avoid creating DataModel entries for elements that have no data source.
                 if not data_model.vizualizationType:
                     continue
+                display_name = data_model.name or f"Element {data_model.elementId}"
+                if filter_by_datamodel(self.source_config.dataModelFilterPattern, display_name):
+                    self.status.filter(display_name, "Data model filtered out.")
+                    continue
+                self.data_models.append(data_model)
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(data_model.elementId),
-                        displayName=data_model.name or f"Element {data_model.elementId}",
+                        displayName=display_name,
                         service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                         dataModelType=DataModelType.SigmaDataModel.value,
                         serviceType=self.service_connection.type.value,

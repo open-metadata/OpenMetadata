@@ -13,9 +13,15 @@
 Test sigma Dashboard using the topology
 """
 
+import json
+from collections import Counter
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
+
+import pytest
+import requests
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -41,14 +47,18 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
 from metadata.ingestion.source.dashboard.sigma.models import (
     Elements,
+    ElementsResponse,
     NodeDetails,
+    Workbook,
     WorkbookDetails,
     WorkbookQueriesResponse,
     WorkbookQuery,
@@ -146,6 +156,7 @@ MOCK_DASHBOARD_DETAILS = WorkbookDetails(
     createdAt="today",
     url="http://url.com/to/dashboard",
     isArchived=False,
+    elements=MOCK_CHARTS,
 )
 
 
@@ -166,25 +177,22 @@ EXPECTED_CHARTS = [
         name="1a",
         displayName="chart1",
         chartType="Table",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=1a",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
     CreateChartRequest(
         name="2b",
         displayName="chart2",
         chartType="BoxPlot",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=2b",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
     CreateChartRequest(
         name="3c",
         displayName="chart3",
         chartType="Pie",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=3c",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
 ]
 
@@ -299,7 +307,6 @@ class SigmaUnitTest(TestCase):
         """
         Function for testing charts
         """
-        self.sigma.client.get_chart_details = lambda *_: MOCK_CHARTS
         chart_list = []
         results = self.sigma.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS)
         for result in results:
@@ -454,9 +461,9 @@ class SigmaUnitTest(TestCase):
         viz_element = Elements(elementId="viz1", name="chart1", vizualizationType="table")
         non_viz_element = Elements(elementId="nv1", name="text_box", columns=[])
 
-        self.sigma.client.get_chart_details = lambda *_: [viz_element, non_viz_element]
+        dashboard_details = MOCK_DASHBOARD_DETAILS.model_copy(update={"elements": [viz_element, non_viz_element]})
 
-        results = [r.right for r in self.sigma.yield_datamodel(MOCK_DASHBOARD_DETAILS) if r.right]
+        results = [r.right for r in self.sigma.yield_datamodel(dashboard_details) if r.right]
         # Only the visualization element should produce a DataModel request
         self.assertEqual(len(results), 1)
         self.assertEqual(str(results[0].name.root), "viz1")
@@ -516,7 +523,6 @@ class SigmaUnitTest(TestCase):
 
     def test_chart_source_state_populated(self):
         """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
-        self.sigma.client.get_chart_details = lambda *_: MOCK_CHARTS
         self.sigma.chart_source_state = set()
         list(self.sigma.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS))
         assert len(self.sigma.chart_source_state) == 3
@@ -669,3 +675,213 @@ class SigmaUnitTest(TestCase):
 
         # Should return empty list or handle gracefully
         assert result == []
+
+
+def sigma_workbook(workbook_id: str, owner_id: str) -> dict:
+    return {
+        "workbookId": workbook_id,
+        "workbookUrlId": f"url-{workbook_id}",
+        "name": f"Sales {workbook_id}",
+        "url": f"https://app.sigmacomputing.com/acme/workbook/{workbook_id}",
+        "path": "Shared/Finance",
+        "latestVersion": 3,
+        "ownerId": owner_id,
+        "createdBy": owner_id,
+        "updatedBy": owner_id,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-02T00:00:00Z",
+        "isArchived": False,
+        "description": "Quarterly sales by region",
+    }
+
+
+SIGMA_WORKBOOKS = [sigma_workbook("wb-1", "member-1")]
+
+
+def sigma_routes() -> dict:
+    """Sigma responses valid against its OpenAPI spec, keyed by (method, path)"""
+    routes = {
+        ("POST", "/v2/auth/token"): {"access_token": "token", "token_type": "bearer", "expires_in": 3600},
+        ("GET", "/v2/files/T1"): {
+            "id": "T1",
+            "urlId": "t1-url",
+            "name": "ORDERS",
+            "type": "table",
+            "parentId": "P1",
+            "parentUrlId": "p1-url",
+            "permission": "view",
+            "path": "Connection Root/ANALYTICS.PUBLIC",
+            "badge": None,
+            "isArchived": False,
+            "createdBy": "member-1",
+            "updatedBy": "member-1",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "updatedAt": "2026-01-02T00:00:00Z",
+        },
+    }
+    for workbook in SIGMA_WORKBOOKS:
+        workbook_path = f"/v2/workbooks/{workbook['workbookId']}"
+        element_id = f"el-{workbook['workbookId']}"
+        routes["GET", workbook_path] = workbook
+        routes["GET", f"{workbook_path}/pages"] = {"entries": [{"pageId": "page-1"}], "nextPage": None, "total": 1}
+        routes["GET", f"{workbook_path}/pages/page-1/elements"] = {
+            "entries": [{"elementId": element_id, "name": "Revenue", "vizualizationType": "bar"}],
+            "nextPage": None,
+            "total": 1,
+        }
+        routes["GET", f"{workbook_path}/lineage/elements/{element_id}"] = {
+            "dependencies": {},
+            "edges": [{"source": "inode-T1", "target": f"sheet-{element_id}", "type": "source"}],
+        }
+        routes["GET", f"{workbook_path}/queries"] = {"entries": [], "nextPage": None, "total": 0}
+    return routes
+
+
+@pytest.fixture
+def sigma_over_http():
+    """SigmaSource with its real client; HTTP is answered from sigma_routes() and counted per (method, path)"""
+    routes = sigma_routes()
+    calls = Counter()
+
+    def request(method, url, **_):
+        path = urlparse(str(url)).path
+        calls[method, path] += 1
+        response = requests.Response()
+        response.status_code = 200
+        response._content = json.dumps(routes[method, path]).encode()
+        return response
+
+    with (
+        patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+        patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection"),
+    ):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+        source = SigmaSource.create(mock_config["source"], OpenMetadata(config.workflowConfig.openMetadataServerConfig))
+    source.client = SigmaApiClient(source.service_connection)
+    source.client.client._session.request = request
+    source.client.token_client._session.request = request
+    source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+    return source, calls
+
+
+def test_each_workbook_reads_its_elements_once(sigma_over_http):
+    source, calls = sigma_over_http
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    charts = [either.right.name.root for either in source.yield_dashboard_chart(details)]
+    data_models = [either.right.name.root for either in source.yield_datamodel(details)]
+
+    assert charts == data_models == ["el-wb-1"]
+    assert calls["GET", "/v2/workbooks/wb-1/pages"] == 1
+    assert calls["GET", "/v2/workbooks/wb-1/pages/page-1/elements"] == 1
+
+
+def test_chart_links_to_its_element(sigma_over_http):
+    source, _ = sigma_over_http
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (chart,) = [either.right for either in source.yield_dashboard_chart(details)]
+
+    assert chart.sourceUrl.root == "https://app.sigmacomputing.com/acme/workbook/wb-1?:nodeId=el-wb-1"
+
+
+def test_chart_does_not_copy_the_workbook_description(sigma_over_http):
+    source, _ = sigma_over_http
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (chart,) = [either.right for either in source.yield_dashboard_chart(details)]
+
+    assert chart.description is None
+
+
+def test_dashboard_keeps_the_workbook_description_and_link(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeOwners = False
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (dashboard,) = [either.right for either in source.yield_dashboard(details)]
+
+    assert dashboard.description.root == "Quarterly sales by region"
+    assert dashboard.sourceUrl.root == "https://app.sigmacomputing.com/acme/workbook/wb-1"
+
+
+TITLED_AND_UNTITLED_ELEMENTS = {
+    "entries": [
+        {"elementId": "el-titled", "name": "Revenue", "vizualizationType": "bar"},
+        {"elementId": "el-untitled", "vizualizationType": "line"},
+    ],
+    "nextPage": None,
+    "total": 2,
+}
+
+
+def chart_names_under_filter(source, chart_filter: FilterPattern | None) -> list[str]:
+    source.source_config.chartFilterPattern = chart_filter
+    elements = ElementsResponse.model_validate(TITLED_AND_UNTITLED_ELEMENTS).entries
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1")).model_copy(update={"elements": elements})
+    return [either.right.displayName for either in source.yield_dashboard_chart(details)]
+
+
+@pytest.mark.parametrize(
+    "chart_filter, charts",
+    [
+        (None, ["Revenue", "Element el-untitled"]),
+        (FilterPattern(includes=["^Revenue$"]), ["Revenue"]),
+        (FilterPattern(excludes=["^Cost$"]), ["Revenue", "Element el-untitled"]),
+        (FilterPattern(excludes=["^Revenue$"]), ["Element el-untitled"]),
+        (FilterPattern(includes=["^Element "]), ["Element el-untitled"]),
+    ],
+    ids=["no-filter", "include-titled", "exclude-other", "exclude-titled", "include-untitled"],
+)
+def test_chart_filter_matches_untitled_elements_by_display_name(sigma_over_http, chart_filter, charts):
+    source, _ = sigma_over_http
+
+    assert chart_names_under_filter(source, chart_filter) == charts
+
+
+def test_filtered_untitled_element_is_reported_by_display_name(sigma_over_http):
+    source, _ = sigma_over_http
+
+    assert chart_names_under_filter(source, FilterPattern(excludes=["^Element "])) == ["Revenue"]
+    assert source.status.filtered == [{"Element el-untitled": "Chart Pattern not allowed"}]
+
+
+def data_models_and_lineage(source, data_model_filter: FilterPattern) -> tuple[list, list, list]:
+    """Charts, data models and lineage for wb-1, whose element lineage runs through /lineage and /files"""
+    source.metadata.get_by_name = lambda entity, fqn, **_: MOCK_DATA_MODEL
+    source.metadata.search_in_any_service = lambda **_: MOCK_TABLE_ENTITY
+    source.source_config.dataModelFilterPattern = data_model_filter
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    charts = [either.right.name.root for either in source.yield_dashboard_chart(details)]
+    data_models = [either.right.name.root for either in source.yield_datamodel(details)]
+    lineage = [either.right for either in source.yield_dashboard_lineage_details(details, None) if either]
+    return charts, data_models, lineage
+
+
+@pytest.mark.parametrize(
+    "data_model_filter",
+    [FilterPattern(excludes=["^Revenue$"]), FilterPattern(includes=["^Cost$"])],
+    ids=["excluded", "not-included"],
+)
+def test_filtered_data_model_gets_no_entity_lineage_or_lineage_calls(sigma_over_http, data_model_filter):
+    source, calls = sigma_over_http
+
+    charts, data_models, lineage = data_models_and_lineage(source, data_model_filter)
+
+    assert charts == ["el-wb-1"]
+    assert data_models == []
+    assert lineage == []
+    assert calls["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] == 0
+    assert calls["GET", "/v2/files/T1"] == 0
+
+
+def test_data_model_outside_the_filter_keeps_its_entity_and_lineage(sigma_over_http):
+    source, calls = sigma_over_http
+
+    charts, data_models, lineage = data_models_and_lineage(source, FilterPattern(excludes=["^Cost$"]))
+
+    assert charts == data_models == ["el-wb-1"]
+    assert len(lineage) == 1
+    assert calls["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] == 1
+    assert calls["GET", "/v2/files/T1"] == 1
