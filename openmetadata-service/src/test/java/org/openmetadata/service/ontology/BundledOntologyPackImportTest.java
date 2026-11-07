@@ -39,8 +39,10 @@ import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 /**
  * Every bundled pack is read by the real native importer. {@code members} is what the importer
- * keeps (concepts, properties and axioms) and {@code skipped} is what it reports leaving out, so a
- * change to either the pack bytes or the importer shows up here.
+ * keeps (concepts, properties and axioms). {@code skipped} is what reading the pack reports leaving
+ * out. {@code previewSkipped} adds what the preview then drops because a subproperty link names a
+ * property the pack never declares, so a change to either the pack bytes or the importer shows up
+ * here.
  */
 class BundledOntologyPackImportTest {
   private final OntologyPackCatalog catalog = OntologyPackCatalog.bundled();
@@ -49,22 +51,22 @@ class BundledOntologyPackImportTest {
 
   static Stream<Arguments> packs() {
     return Stream.of(
-        Arguments.of("brick", 11825, 11259),
-        Arguments.of("dcat", 62, 1325),
-        Arguments.of("dpv", 3692, 8494),
-        Arguments.of("epcis", 231, 1003),
-        Arguments.of("fhir", 16567, 19509),
-        Arguments.of("fibo", 9940, 103304),
-        Arguments.of("foaf", 105, 171),
-        Arguments.of("gs1", 1523, 14190),
-        Arguments.of("hr-open", 14, 0),
-        Arguments.of("iof", 2642, 8448),
-        Arguments.of("isa-95", 16, 0),
-        Arguments.of("odrl", 758, 566),
-        Arguments.of("org", 65, 417),
-        Arguments.of("owl-time", 211, 545),
-        Arguments.of("prov-o", 130, 589),
-        Arguments.of("sosa-ssn", 144, 200));
+        Arguments.of("brick", 11825, 11216, 11228),
+        Arguments.of("dcat", 62, 1307, 1322),
+        Arguments.of("dpv", 3692, 8425, 8425),
+        Arguments.of("epcis", 231, 1003, 1003),
+        Arguments.of("fhir", 16567, 19235, 19509),
+        Arguments.of("fibo", 9940, 102527, 102529),
+        Arguments.of("foaf", 105, 158, 159),
+        Arguments.of("gs1", 1523, 14098, 14128),
+        Arguments.of("hr-open", 14, 0, 0),
+        Arguments.of("iof", 2642, 8283, 8286),
+        Arguments.of("isa-95", 16, 0, 0),
+        Arguments.of("odrl", 758, 544, 544),
+        Arguments.of("org", 65, 408, 410),
+        Arguments.of("owl-time", 211, 532, 532),
+        Arguments.of("prov-o", 130, 548, 548),
+        Arguments.of("sosa-ssn", 144, 199, 199));
   }
 
   @Test
@@ -77,7 +79,7 @@ class BundledOntologyPackImportTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("packs")
   void aBundledPackReadsToTheRecordedMembersAndSkippedReport(
-      final String packId, final int members, final int skipped) {
+      final String packId, final int members, final int skipped, final int previewSkipped) {
     final var document = NativeOntologyRdfImporter.read(wholePack(packId));
 
     assertEquals(
@@ -101,7 +103,7 @@ class BundledOntologyPackImportTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("packs")
   void everyPackFitsOneOntologyAndPreviewsWithoutErrors(
-      final String packId, final int members, final int skipped) {
+      final String packId, final int members, final int skipped, final int previewSkipped) {
     assertTrue(members <= OntologyReleaseManifest.MAX_MEMBERS, packId + " members");
     final var selected =
         loader.select(
@@ -122,7 +124,8 @@ class BundledOntologyPackImportTest {
     final var preview = new NativeOntologyRdfImporter().previewUnbounded(source, emptyTarget());
 
     final var summary = preview.getSummary();
-    assertEquals(skipped, summary.getSkippedStatements().getTotal(), packId + " skipped");
+    assertEquals(
+        previewSkipped, summary.getSkippedStatements().getTotal(), packId + " preview skipped");
     assertFalse(summary.getItems().isEmpty(), packId + " items");
     assertFalse(preview.getChangeSet().getOperations().isEmpty(), packId + " operations");
   }
