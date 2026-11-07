@@ -70,6 +70,10 @@ The command:
 A bot changed by someone else while the command ran is reported as `FAILED` ("changed concurrently,
 re-run"). Run the command again.
 
+To replace tokens the current key already signs, for example after a bot token leaked or to give
+every bot a new expiry, add `--all`. It replaces the token of every JWT bot except a revoked one, and
+redeploys the pipelines as above.
+
 A new token that the configured public key does not verify is never stored. Each bot is then
 reported as `FAILED` ("Private key does not match the public key"). Check that
 `RSA_PRIVATE_KEY_FILE_PATH` and `RSA_PUBLIC_KEY_FILE_PATH` point at the two halves of one key pair.

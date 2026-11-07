@@ -228,8 +228,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
     LOG.info(
-        "Use 'regenerate-bot-tokens --expiry <value>' to regenerate all bot JWT tokens. "
-            + "Expiry values: OneHour, One (1 day), Seven (7 days), Thirty, Sixty, Ninety, Unlimited (default)");
+        "Use 'regenerate-bot-tokens' after a signing key change to replace the bot JWT tokens the "
+            + "new key does not sign; add --all to replace current tokens too, and --expiry <value> "
+            + "to set the new tokens' expiry. Expiry values: OneHour, One (1 day), Seven (7 days), "
+            + "Thirty, Sixty, Ninety, Unlimited (default)");
     return 0;
   }
 
@@ -3042,16 +3044,23 @@ public class OpenMetadataOperations implements Callable<Integer> {
       description =
           "Regenerates the JWT tokens of all bot users that the configured signing key does not "
               + "sign yet, then redeploys the deployed ingestion pipelines. Run it after "
-              + "restarting every server with a new signing key. Exit codes: 0 done, 1 a bot or "
+              + "restarting every server with a new signing key. With --all it also replaces "
+              + "current tokens. Revoked tokens stay revoked. Exit codes: 0 done, 1 a bot or "
               + "pipeline failed, 2 the configured key differs from the servers' JWKS.")
   public Integer regenerateBotTokens(
       @Option(
               names = {"--expiry"},
               description =
-                  "Token expiry for regenerated tokens (OneHour, One, Seven, Thirty, Sixty, Ninety, Unlimited). "
+                  "Token expiry for the tokens this run replaces (OneHour, One, Seven, Thirty, Sixty, Ninety, Unlimited). "
                       + "Defaults to Unlimited.",
               defaultValue = "Unlimited")
-          JWTTokenExpiry expiry) {
+          JWTTokenExpiry expiry,
+      @Option(
+              names = {"--all"},
+              description =
+                  "Also replace the tokens the configured key already signs, for example after a "
+                      + "token leaked or to give every bot a new --expiry.")
+          boolean all) {
     try {
       parseConfig();
       initializeCollectionRegistry();
@@ -3070,8 +3079,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       initOrganization();
 
+      BotTokenRegenerator.Scope scope =
+          all ? BotTokenRegenerator.Scope.ALL : BotTokenRegenerator.Scope.STALE;
       List<BotTokenRegenerator.BotResult> results =
-          new BotTokenRegenerator(secretsManager).regenerateAll(expiry);
+          new BotTokenRegenerator(secretsManager).regenerateAll(expiry, scope);
       List<List<String>> rows =
           results.stream()
               .map(r -> Arrays.asList(r.botName(), r.outcome().name(), r.detail()))

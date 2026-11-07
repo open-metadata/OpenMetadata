@@ -39,10 +39,11 @@ import org.openmetadata.service.util.UserUtil;
 
 /**
  * Gives every JWT bot a token signed by the configured signing key. The ops command runs it after
- * the key was replaced, and an in-server caller can run it the same way. A bot whose stored token
- * already verifies under the configured key, carries the configured {@code kid} and has not
- * expired is left alone, so a re-run changes nothing that is already current. A bot whose token
- * was revoked is skipped and stays without a token.
+ * the key was replaced, and an in-server caller can run it the same way. With {@link Scope#STALE},
+ * a bot whose stored token already verifies under the configured key, carries the configured
+ * {@code kid} and has not expired is left alone, so a re-run changes nothing that is already
+ * current. {@link Scope#ALL} replaces those tokens too. A bot whose token was revoked is skipped in
+ * both and stays without a token.
  *
  * <p>Results carry the bot name, an outcome and a detail, and never a token or an exception
  * message, because an in-server caller may return them over HTTP.
@@ -57,6 +58,14 @@ public class BotTokenRegenerator {
   }
 
   public record BotResult(String botName, Outcome outcome, String detail) {}
+
+  /** Which bot tokens a run replaces. */
+  public enum Scope {
+    /** Only tokens the configured key does not sign: what a signing key change leaves behind. */
+    STALE,
+    /** Current tokens too, for example after one leaked or to give every bot a new expiry. */
+    ALL
+  }
 
   // revokeToken stores an empty token; regenerating one would re-enable a bot an admin shut off
   static final String TOKEN_REVOKED = "Token revoked";
@@ -78,16 +87,20 @@ public class BotTokenRegenerator {
   }
 
   public List<BotResult> regenerateAll(JWTTokenExpiry expiry) {
+    return regenerateAll(expiry, Scope.STALE);
+  }
+
+  public List<BotResult> regenerateAll(JWTTokenExpiry expiry, Scope scope) {
     BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
     List<Bot> bots =
         botRepository.listAll(
             botRepository.getFields("botUser"), new ListFilter(Include.NON_DELETED));
-    return bots.stream().map(bot -> regenerate(bot.getName(), expiry)).toList();
+    return bots.stream().map(bot -> regenerate(bot.getName(), expiry, scope)).toList();
   }
 
-  private BotResult regenerate(String botName, JWTTokenExpiry expiry) {
+  private BotResult regenerate(String botName, JWTTokenExpiry expiry, Scope scope) {
     try {
-      return regenerateUserOf(botName, expiry);
+      return regenerateUserOf(botName, expiry, scope);
     } catch (PreconditionFailedException e) {
       return new BotResult(botName, Outcome.FAILED, CHANGED_CONCURRENTLY);
     } catch (RuntimeException e) {
@@ -96,7 +109,7 @@ public class BotTokenRegenerator {
     }
   }
 
-  private BotResult regenerateUserOf(String botName, JWTTokenExpiry expiry) {
+  private BotResult regenerateUserOf(String botName, JWTTokenExpiry expiry, Scope scope) {
     Optional<User> botUser = findBotUser(botName);
     if (botUser.isEmpty()) {
       return new BotResult(botName, Outcome.SKIPPED, "No bot user associated");
@@ -109,7 +122,7 @@ public class BotTokenRegenerator {
     if (storedToken == null || storedToken.isBlank()) {
       return new BotResult(botName, Outcome.SKIPPED, TOKEN_REVOKED);
     }
-    if (isCurrent(storedToken)) {
+    if (scope == Scope.STALE && isCurrent(storedToken)) {
       return new BotResult(botName, Outcome.ALREADY_CURRENT, "Token already current");
     }
     return replaceToken(botName, botUser.get(), expiry);

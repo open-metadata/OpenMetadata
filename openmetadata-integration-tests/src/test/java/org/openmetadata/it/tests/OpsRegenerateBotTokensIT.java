@@ -50,7 +50,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * {@code OpenMetadataOperations regenerate-bot-tokens} writes new bot tokens straight to the
  * database from its own JVM. It has no verifier and sends no hint to any server, so the suite's
  * server learns of the change from the database alone: the new token is accepted on its first use.
- * A token the configured key still signs is left alone.
+ * A token the configured key still signs is left alone, unless the run passes {@code --all}.
  *
  * <p>The command regenerates every bot's token, not only this test's bot, so the class runs in the
  * multi-node lane, which runs one class at a time.
@@ -132,6 +132,25 @@ class OpsRegenerateBotTokensIT {
   }
 
   @Test
+  void allAlsoReplacesCurrentTokensAndLeavesRevokedBotsRevoked(TestNamespace ns) {
+    User bot = registeredBot(ns, "allbot");
+    User revokedBot = registeredBot(ns, "allrevokedbot");
+    CredentialFixtures.revokeBotToken(revokedBot);
+    String currentToken = storedToken(bot);
+    assertEquals(
+        200, CredentialFixtures.status(LOGGED_IN_USER, currentToken), "current before the run");
+
+    int exitCode = ForkedOperations.run("regenerate-bot-tokens", "--all");
+
+    assertEquals(0, exitCode, "see forked-ops logs");
+    String newToken = storedToken(bot);
+    assertNotEquals(currentToken, newToken, "--all replaced a current token");
+    assertEquals(
+        200, CredentialFixtures.status(LOGGED_IN_USER, newToken), "first use of the new token");
+    assertEquals("", storedToken(revokedBot), "--all did not give a revoked bot a token back");
+  }
+
+  @Test
   void aKeyThatDiffersFromTheServersJwksExitsWithTwoAndChangesNothing(
       TestNamespace ns, @TempDir Path keyDir) throws Exception {
     User bot = botWithRetiredKeyToken(ns, "mismatchbot");
@@ -183,10 +202,7 @@ class OpsRegenerateBotTokensIT {
    * configuration no longer uses.
    */
   private static User botWithRetiredKeyToken(TestNamespace ns, String name) {
-    User bot = CredentialFixtures.createBot(ns, name);
-    SdkClients.adminClient()
-        .bots()
-        .create(new CreateBot().withName(ns.prefix(name)).withBotUser(bot.getName()));
+    User bot = registeredBot(ns, name);
     String retired = Fernet.getInstance().encryptIfApplies(tokenSignedByARetiredKey(bot));
     String json =
         Entity.getJdbi()
@@ -203,6 +219,15 @@ class OpsRegenerateBotTokensIT {
     Entity.getCollectionDAO()
         .userDAO()
         .update(bot.getId(), bot.getFullyQualifiedName(), user.toString());
+    return bot;
+  }
+
+  /** A bot user behind a bot entity, holding the current token the server minted for it. */
+  private static User registeredBot(TestNamespace ns, String name) {
+    User bot = CredentialFixtures.createBot(ns, name);
+    SdkClients.adminClient()
+        .bots()
+        .create(new CreateBot().withName(ns.prefix(name)).withBotUser(bot.getName()));
     return bot;
   }
 
