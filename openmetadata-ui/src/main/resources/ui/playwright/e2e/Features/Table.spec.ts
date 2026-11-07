@@ -564,7 +564,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
 
     // Check if add button exists and is visible
     const rowSelector =
-      '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
+      '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.average_order_size"] [data-testid*="classification-tags"]';
 
     const addButton = page.locator(`${rowSelector} [data-testid="add-tag"]`);
     const editButton = page.locator(
@@ -611,7 +611,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await page
       .getByTestId('search-bar-container')
       .getByTestId('searchbar')
-      .fill('shop_id');
+      .fill('average_order_size');
 
     await getRequest;
 
@@ -624,7 +624,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await openClassificationTagPicker(
       page,
       page.locator(
-        `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
+        `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.average_order_size"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
       )
     );
 
