@@ -335,7 +335,7 @@ public final class ContextMemoryVisibility {
    * A document's owners as policies count them, an owning team's members included. A source or
    * user that is gone owns nothing.
    */
-  private static boolean ownsSource(String userName, EntityReference source) {
+  static boolean ownsSource(String userName, EntityReference source) {
     boolean owns = false;
     try {
       EntityInterface entity = Entity.getEntity(source, Entity.FIELD_OWNERS, Include.NON_DELETED);

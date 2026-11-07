@@ -5620,8 +5620,10 @@
         "playwright/e2e/Features/BlockEditorMathEquations.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
         "playwright/e2e/Features/Container.spec.ts",
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
         "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
@@ -6282,6 +6284,15 @@
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts"
       ]
     },
     {
@@ -10819,10 +10830,26 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/context-center/ApprovePendingMemoriesButton/ApprovePendingMemoriesButton.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/context-center/MemoryConflictCompare/MemoryConflictCompare.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/context-center/MemoryStatusActions/MemoryStatusActions.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts"
       ]
     },
     {

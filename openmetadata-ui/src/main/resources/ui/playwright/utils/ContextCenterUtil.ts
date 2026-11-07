@@ -1246,6 +1246,18 @@ export const patchMemory = async (
   return res.json();
 };
 
+/** A memory's stage as stored, read by id rather than from the search index the lists read. */
+export const getMemoryStatus = async (
+  apiContext: APIRequestContext,
+  id: string
+): Promise<string> => {
+  const response = await apiContext.get(`${MEMORIES_API}/${id}`);
+  const body = await response.text();
+  expect(response.status(), body).toBe(200);
+
+  return parseResponseJson<{ entityStatus: string }>(body).entityStatus;
+};
+
 /**
  * Sets a memory's outcome counters through the admin-only outcome write, the only write that
  * changes them: a PATCH keeps the stored counts.
