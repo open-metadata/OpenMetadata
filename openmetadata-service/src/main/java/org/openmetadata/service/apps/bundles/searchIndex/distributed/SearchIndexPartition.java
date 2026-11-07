@@ -98,26 +98,4 @@ public class SearchIndexPartition {
 
   /** Timestamp when this partition becomes claimable (for staggered release) */
   private long claimableAt;
-
-  /** Calculate progress percentage */
-  public double getProgressPercent() {
-    long total = rangeEnd - rangeStart;
-    if (total <= 0) return 100.0;
-    return (cursor - rangeStart) * 100.0 / total;
-  }
-
-  /** Check if this partition is complete */
-  public boolean isComplete() {
-    return status == PartitionStatus.COMPLETED || status == PartitionStatus.FAILED;
-  }
-
-  /** Check if this partition can be claimed */
-  public boolean isClaimable() {
-    return status == PartitionStatus.PENDING;
-  }
-
-  /** Get remaining entities to process */
-  public long getRemainingCount() {
-    return Math.max(0, rangeEnd - cursor);
-  }
 }
