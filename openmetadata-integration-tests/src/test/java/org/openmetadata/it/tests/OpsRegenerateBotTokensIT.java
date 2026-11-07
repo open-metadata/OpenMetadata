@@ -122,24 +122,21 @@ class OpsRegenerateBotTokensIT {
         .bots()
         .create(new CreateBot().withName(ns.prefix(name)).withBotUser(bot.getName()));
     String retired = Fernet.getInstance().encryptIfApplies(tokenWithRetiredKid(bot));
-    Entity.getJdbi()
-        .useHandle(
-            handle -> {
-              String json =
-                  handle
-                      .createQuery("SELECT json FROM user_entity WHERE name = :name")
-                      .bind("name", bot.getName())
-                      .mapTo(String.class)
-                      .one();
-              ObjectNode user = (ObjectNode) JsonUtils.readTree(json);
-              ((ObjectNode) user.path("authenticationMechanism").path("config"))
-                  .put("JWTToken", retired);
-              handle
-                  .createUpdate("UPDATE user_entity SET json = :json WHERE name = :name")
-                  .bind("json", user.toString())
-                  .bind("name", bot.getName())
-                  .execute();
-            });
+    String json =
+        Entity.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery("SELECT json FROM user_entity WHERE name = :name")
+                        .bind("name", bot.getName())
+                        .mapTo(String.class)
+                        .one());
+    ObjectNode user = (ObjectNode) JsonUtils.readTree(json);
+    ((ObjectNode) user.path("authenticationMechanism").path("config")).put("JWTToken", retired);
+    // The DAO holds both the MySQL and the Postgres (jsonb) form of the write; the lanes run both
+    Entity.getCollectionDAO()
+        .userDAO()
+        .update(bot.getId(), bot.getFullyQualifiedName(), user.toString());
     return bot;
   }
 

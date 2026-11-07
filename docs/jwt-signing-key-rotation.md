@@ -77,9 +77,8 @@ re-run"). Run the command again.
 The report lists each bot as `REGENERATED`, `ALREADY_CURRENT`, `SKIPPED` (no bot user, or not
 JWT) or `FAILED`.
 
-A regenerated token is accepted on its first use, because servers read it from the database. The
-superseded token is refused within `credentialVerification.maxStaleness` (default 5s on each
-server). `OpsRegenerateBotTokensIT` asserts both.
+A bot works again as soon as its new token is stored. Servers accept a regenerated token on its
+first request, without a restart. `OpsRegenerateBotTokensIT` asserts this.
 
 ## 4. Check the result
 
