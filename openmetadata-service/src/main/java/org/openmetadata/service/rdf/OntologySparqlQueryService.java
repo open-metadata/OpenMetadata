@@ -15,13 +15,16 @@ package org.openmetadata.service.rdf;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.QueryType;
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.query.ResultSetFormatter;
@@ -49,11 +52,17 @@ public final class OntologySparqlQueryService {
 
   public QueryResult query(final UUID glossaryId, final SparqlQuery request) {
     final ValidatedQuery validated = validate(request);
-    final Model ontology = modelProvider.materialize(glossaryId, true);
-    try {
-      return executeWithInference(ontology, validated);
-    } finally {
-      ontology.close();
+    try (final OntologySparqlWorker worker =
+        OntologySparqlWorker.acquire(validated.timeoutMillis())) {
+      final Model ontology = modelProvider.materialize(glossaryId, true);
+      try {
+        return new QueryResult(
+            worker.execute(ontology, request),
+            validated.format().externalName(),
+            validated.format().mediaType());
+      } finally {
+        ontology.close();
+      }
     }
   }
 
@@ -96,10 +105,11 @@ public final class OntologySparqlQueryService {
     };
   }
 
-  private QueryResult executeWithInference(final Model ontology, final ValidatedQuery validated) {
+  private static void executeWithInference(
+      final Model ontology, final ValidatedQuery validated, final OutputStream output) {
     final Model queryModel = inferenceModel(ontology, validated.inference());
     try {
-      return execute(queryModel, validated);
+      execute(queryModel, validated, output);
     } finally {
       closeDerivedModel(ontology, queryModel);
     }
@@ -120,11 +130,10 @@ public final class OntologySparqlQueryService {
   }
 
   /**
-   * The query runs inside this server against a self-contained model, so it never needs SERVICE.
-   * Refusing it in the execution context means no syntax position the validator does not inspect
-   * can make the server send a request on the caller's behalf.
+   * The worker's model is self-contained, so SERVICE stays disabled even if validation allows it.
    */
-  private static QueryResult execute(final Model model, final ValidatedQuery validated) {
+  private static void execute(
+      final Model model, final ValidatedQuery validated, final OutputStream output) {
     final QueryExecution execution =
         QueryExecution.model(model)
             .query(validated.query())
@@ -132,19 +141,23 @@ public final class OntologySparqlQueryService {
             .timeout(validated.timeoutMillis(), TimeUnit.MILLISECONDS)
             .build();
     try (execution) {
-      return executeByType(execution, validated.query(), validated.format());
+      executeByType(execution, validated.query(), validated.format(), output);
     }
   }
 
-  private static QueryResult executeByType(
-      final QueryExecution execution, final Query query, final ResultFormat format) {
-    return switch (query.queryType()) {
-      case SELECT -> serializeSelect(execution.execSelect(), requireTupleFormat(format));
-      case ASK -> serializeAsk(execution.execAsk(), requireTupleFormat(format));
-      case CONSTRUCT -> serializeGraph(execution.execConstruct(), requireGraphFormat(format));
-      case DESCRIBE -> serializeGraph(execution.execDescribe(), requireGraphFormat(format));
+  private static void executeByType(
+      final QueryExecution execution,
+      final Query query,
+      final ResultFormat format,
+      final OutputStream output) {
+    switch (query.queryType()) {
+      case SELECT -> requireTupleFormat(format).write(output, execution.execSelect());
+      case ASK -> requireTupleFormat(format).write(output, execution.execAsk());
+      case CONSTRUCT -> serializeGraph(
+          output, execution.execConstruct(), requireGraphFormat(format));
+      case DESCRIBE -> serializeGraph(output, execution.execDescribe(), requireGraphFormat(format));
       default -> throw new IllegalArgumentException("Unsupported SPARQL query type");
-    };
+    }
   }
 
   private static TupleFormat requireTupleFormat(final ResultFormat format) {
@@ -161,33 +174,13 @@ public final class OntologySparqlQueryService {
     return graphFormat;
   }
 
-  private static QueryResult serializeSelect(final ResultSet resultSet, final TupleFormat format) {
-    final ByteArrayOutputStream output = new ByteArrayOutputStream();
-    format.write(output, resultSet);
-    return result(output, format);
-  }
-
-  private static QueryResult serializeAsk(final boolean value, final TupleFormat format) {
-    final ByteArrayOutputStream output = new ByteArrayOutputStream();
-    format.write(output, value);
-    return result(output, format);
-  }
-
-  private static QueryResult serializeGraph(final Model model, final GraphFormat format) {
-    final ByteArrayOutputStream output = new ByteArrayOutputStream();
+  private static void serializeGraph(
+      final OutputStream output, final Model model, final GraphFormat format) {
     try {
       RdfGraphSerializer.write(output, model, format.serialization());
     } finally {
       model.close();
     }
-    return result(output, format);
-  }
-
-  private static QueryResult result(final ByteArrayOutputStream output, final ResultFormat format) {
-    return new QueryResult(
-        SparqlQueryLimits.requireBoundedOutput(output.toString(StandardCharsets.UTF_8)),
-        format.externalName(),
-        format.mediaType());
   }
 
   private static ResultFormat resultFormat(final SparqlQuery.Format requested, final Query query) {
@@ -225,7 +218,47 @@ public final class OntologySparqlQueryService {
 
   public record QueryResult(String body, String format, String mediaType) {}
 
-  record ValidatedQuery(Query query, ResultFormat format, int timeoutMillis, Inference inference) {}
+  private record ValidatedQuery(
+      Query query, ResultFormat format, int timeoutMillis, Inference inference) {}
+
+  public static final class Worker {
+    private Worker() {}
+
+    public static void main(final String[] arguments) throws IOException {
+      final Path directory = Path.of(arguments[0]);
+      try {
+        executeRequest(directory);
+        OntologySparqlWorker.writeStatus(directory, OntologySparqlWorker.Status.SUCCESS, "");
+      } catch (final StackOverflowError error) {
+        OntologySparqlWorker.writeStatus(
+            directory,
+            OntologySparqlWorker.Status.LIMIT,
+            "SPARQL query exceeds the execution stack budget");
+      } catch (final RuntimeException exception) {
+        OntologySparqlWorker.writeFailure(directory, exception);
+      }
+    }
+
+    private static void executeRequest(final Path directory) throws IOException {
+      final Model model = ModelFactory.createDefaultModel();
+      try (final DataInputStream input = OntologySparqlWorker.openInput(directory);
+          final OutputStream output = OntologySparqlWorker.openOutput(directory)) {
+        final SparqlQuery request = OntologySparqlWorker.readRequest(input);
+        final Query query =
+            SparqlQueryLimits.applyResultLimit(QueryFactory.create(request.getQuery()));
+        final ValidatedQuery validated =
+            new ValidatedQuery(
+                query,
+                resultFormat(request.getFormat(), query),
+                timeoutMillis(request.getTimeout()),
+                inference(request.getInference()));
+        OntologySparqlWorker.readModel(directory, input, model);
+        executeWithInference(model, validated, output);
+      } finally {
+        model.close();
+      }
+    }
+  }
 
   @FunctionalInterface
   public interface OntologyModelProvider {
@@ -260,7 +293,7 @@ public final class OntologySparqlQueryService {
       this.mediaType = mediaType;
     }
 
-    private void write(final ByteArrayOutputStream output, final ResultSet resultSet) {
+    private void write(final OutputStream output, final ResultSet resultSet) {
       switch (this) {
         case JSON -> ResultSetFormatter.outputAsJSON(output, resultSet);
         case XML -> ResultSetFormatter.outputAsXML(output, resultSet);
@@ -269,7 +302,7 @@ public final class OntologySparqlQueryService {
       }
     }
 
-    private void write(final ByteArrayOutputStream output, final boolean value) {
+    private void write(final OutputStream output, final boolean value) {
       switch (this) {
         case JSON -> ResultSetFormatter.outputAsJSON(output, value);
         case XML -> ResultSetFormatter.outputAsXML(output, value);
