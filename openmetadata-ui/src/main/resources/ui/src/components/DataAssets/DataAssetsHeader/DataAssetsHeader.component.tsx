@@ -58,6 +58,7 @@ import {
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import {
@@ -71,6 +72,7 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { Style } from '../../../generated/type/schema';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
@@ -538,7 +540,13 @@ export const DataAssetsHeader = ({
     can,
   } = flags;
   const editCertificationPermission = can(Operation.EditCertification);
-  const hasTriggerPermission = can(Operation.Trigger);
+  const { can: canAutoPilot } = useEntityPermissions(
+    ResourceEntity.APPLICATION,
+    AUTO_PILOT_APP_NAME,
+    { enabled: SERVICE_TYPES.includes(entityType) }
+  );
+  const hasTriggerPermission =
+    can(Operation.Trigger) && canAutoPilot(Operation.Trigger);
   const editStylePermission = Boolean(onStyleUpdate) && flags.canEditAll;
 
   const hasEditableMetadata = computeHasEditableMetadata(

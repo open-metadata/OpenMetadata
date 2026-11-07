@@ -151,13 +151,13 @@ Object.entries(
           const { page, afterAction } = await performAdminLogin(browser, {
             navigate: true,
           });
-          await initializePermissions(page, 'allow', ['Trigger'], ['app']);
+          await initializePermissions(page, 'allow', ['Trigger']);
           await assignRoleToUser(page, testUser);
           await afterAction();
         }
       );
 
-      test('AutoPilot trigger button is visible with Trigger permission', async ({
+      test('AutoPilot trigger button is visible with app and service Trigger permissions', async ({
         testUserPage,
       }) => {
         await entity.visitEntityPage(testUserPage);
@@ -170,6 +170,53 @@ Object.entries(
         await expect(
           testUserPage.getByTestId('trigger-auto-pilot-application-button')
         ).toBeVisible();
+      });
+    });
+
+    test.describe('Application-only Trigger permissions', () => {
+      test.beforeAll(
+        'Initialize application-only Trigger permissions',
+        async ({ browser }) => {
+          const { page, afterAction } = await performAdminLogin(browser, {
+            navigate: true,
+          });
+          await initializePermissions(page, 'allow', ['Trigger'], ['app']);
+          await assignRoleToUser(page, testUser);
+          await afterAction();
+        }
+      );
+
+      test('AutoPilot trigger button is hidden without service Trigger permission', async ({
+        testUserPage,
+      }) => {
+        const appPermissionResponse = testUserPage.waitForResponse((response) =>
+          response
+            .url()
+            .includes('/api/v1/permissions/app/name/AutoPilotApplication')
+        );
+        const servicePermissionResponse = testUserPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/permissions/') &&
+            response
+              .url()
+              .endsWith(`/name/${encodeURIComponent(entity.entity.name)}`)
+        );
+
+        await entity.visitEntityPage(testUserPage);
+        const [appPermission, servicePermission] = await Promise.all([
+          appPermissionResponse,
+          servicePermissionResponse,
+        ]);
+        expect(appPermission.status()).toBe(200);
+        expect(servicePermission.status()).toBe(200);
+        await waitForAllLoadersToDisappear(testUserPage);
+        await expect(
+          testUserPage.getByTestId('entity-header-name')
+        ).toBeVisible();
+        await expect(testUserPage.getByTestId('insights')).toBeVisible();
+        await expect(
+          testUserPage.getByTestId('trigger-auto-pilot-application-button')
+        ).toBeHidden();
       });
     });
 

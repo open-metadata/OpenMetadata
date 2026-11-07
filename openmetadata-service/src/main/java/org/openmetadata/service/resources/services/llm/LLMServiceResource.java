@@ -79,7 +79,7 @@ public class LLMServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public LLMServiceResource(Authorizer authorizer, Limits limits) {

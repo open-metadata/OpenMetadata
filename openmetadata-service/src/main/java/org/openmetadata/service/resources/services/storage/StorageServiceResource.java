@@ -82,7 +82,7 @@ public class StorageServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public static class StorageServiceList extends ResultList<StorageService> {
