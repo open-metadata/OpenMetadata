@@ -24,6 +24,7 @@ import {
   getRuleFilterTree,
   getScopedRuleCount,
   isKnowledgeContextRule,
+  isRuleFilterFullyRendered,
   isSearchScopedRule,
   normalizePersonaContextDefinition,
   parseRuleFilterTree,
@@ -200,6 +201,28 @@ describe('PersonaAIContextUtils', () => {
 
   it('returns undefined when the queryFilter is not valid JSON', () => {
     expect(getRuleFilterTree(undefined, '{invalid')).toBeUndefined();
+  });
+
+  it('treats a filter as fully rendered only when no condition is dropped', () => {
+    const tier = { term: { 'tier.tagFQN': 'Tier.Tier1' } };
+    const pii = { term: { 'tags.tagFQN': 'PII.Sensitive' } };
+    const mixed = JSON.stringify({
+      query: { bool: { should: [tier], filter: [pii] } },
+    });
+
+    expect(isRuleFilterFullyRendered(undefined, undefined)).toBe(true);
+    expect(
+      isRuleFilterFullyRendered(
+        undefined,
+        JSON.stringify({ query: { bool: { filter: [tier, pii] } } })
+      )
+    ).toBe(true);
+    expect(isRuleFilterFullyRendered(undefined, mixed)).toBe(false);
+    expect(isRuleFilterFullyRendered(undefined, '{invalid')).toBe(false);
+    // A persisted tree is exact, whatever the DSL looks like.
+    expect(
+      isRuleFilterFullyRendered(JSON.stringify({ type: 'group' }), mixed)
+    ).toBe(true);
   });
 
   it('identifies knowledge rules', () => {

@@ -18,6 +18,7 @@ import {
   getJsonTreeFromQueryFilter,
   getJsonTreePropertyFromQueryFilter,
   getSelectEqualsNotEqualsProperties,
+  isQueryFilterFullyRepresentable,
 } from './QueryBuilderPureUtils';
 
 type RuleProperties = {
@@ -344,5 +345,76 @@ describe('getJsonTreeFromQueryFilter – DSL shape coverage', () => {
     );
 
     expect(Object.keys(tree)).toHaveLength(0);
+  });
+});
+
+// The persona editor warns before an edit replaces a filter it cannot show in full (#37304).
+describe('isQueryFilterFullyRepresentable', () => {
+  const tier1 = { term: { 'tier.tagFQN': 'Tier.Tier1' } };
+  const tier2 = { term: { 'tier.tagFQN': 'Tier.Tier2' } };
+  const pii = { term: { 'tags.tagFQN': 'PII.Sensitive' } };
+
+  it.each([
+    [
+      'UI root-AND shape',
+      { query: { bool: { must: [{ bool: { must: [tier1, pii] } }] } } },
+    ],
+    ['bool.should', { query: { bool: { should: [tier1, tier2] } } }],
+    [
+      'bool.should with minimum_should_match 1',
+      { query: { bool: { should: [tier1, tier2], minimum_should_match: 1 } } },
+    ],
+    ['bool.filter', { query: { bool: { filter: [tier1, pii] } } }],
+    ['bool.must_not', { query: { bool: { must_not: [tier1, pii] } } }],
+    ['bare query.term', { query: tier1 }],
+    ['match_all', { query: { match_all: {} } }],
+  ])('is true for %s', (_, filter) => {
+    expect(
+      isQueryFilterFullyRepresentable(filter as unknown as QueryFilterInterface)
+    ).toBe(true);
+  });
+
+  it.each([
+    [
+      'should + filter',
+      { query: { bool: { should: [tier1, tier2], filter: [pii] } } },
+    ],
+    [
+      'must + must_not',
+      { query: { bool: { must: [tier1], must_not: [pii] } } },
+    ],
+    [
+      'minimum_should_match above one',
+      {
+        query: {
+          bool: { should: [tier1, tier2, pii], minimum_should_match: 2 },
+        },
+      },
+    ],
+    [
+      'an unsupported range clause',
+      { query: { bool: { filter: [{ range: { updatedAt: { gte: 1 } } }] } } },
+    ],
+    [
+      'a supported and an unsupported clause',
+      {
+        query: {
+          bool: { filter: [tier1, { range: { updatedAt: { gte: 1 } } }] },
+        },
+      },
+    ],
+    [
+      'siblings of the unwrapped inner must',
+      { query: { bool: { must: [{ bool: { must: [tier1] } }, pii] } } },
+    ],
+    [
+      'an unsupported bare clause',
+      { query: { terms: { 'tier.tagFQN': ['Tier.Tier1'] } } },
+    ],
+    ['an empty query', { query: {} }],
+  ])('is false for %s', (_, filter) => {
+    expect(
+      isQueryFilterFullyRepresentable(filter as unknown as QueryFilterInterface)
+    ).toBe(false);
   });
 });

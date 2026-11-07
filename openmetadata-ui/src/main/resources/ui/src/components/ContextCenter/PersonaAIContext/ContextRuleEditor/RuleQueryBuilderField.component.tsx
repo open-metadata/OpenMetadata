@@ -23,7 +23,10 @@ import {
   getTreeConfig,
   processEntityTypeFields,
 } from '../../../../utils/AdvancedSearchUtils';
-import { getRuleFilterTree } from '../../../../utils/PersonaAIContextUtils';
+import {
+  getRuleFilterTree,
+  isRuleFilterFullyRendered,
+} from '../../../../utils/PersonaAIContextUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import Loader from '../../../common/Loader/Loader';
 import QueryBuilder from '../../../common/QueryBuilder/QueryBuilder';
@@ -100,26 +103,39 @@ export const RuleQueryBuilderField = ({
     () => getRuleFilterTree(filterJsonTree, queryFilter),
     [filterJsonTree, queryFilter]
   );
-  // A non-empty `queryFilter` that yields no tree could not be rendered in the
-  // visual builder. Surfacing this lets the editor warn the user before the
-  // first builder edit overwrites the saved DSL with a seed-row state.
-  const isUnrendered = Boolean(queryFilter && !tree);
+  // A saved filter the builder shows only in part (or not at all) loses the
+  // hidden conditions on the first builder edit, so the editor warns first.
+  const isUnrendered = !isRuleFilterFullyRendered(filterJsonTree, queryFilter);
   const onReconstructionStatusChangeRef = useRef(onReconstructionStatusChange);
   onReconstructionStatusChangeRef.current = onReconstructionStatusChange;
   useEffect(() => {
     onReconstructionStatusChangeRef.current?.(!isUnrendered);
   }, [isUnrendered]);
+  // RAQB can emit a change on mount. For a partly shown filter that swaps the saved
+  // DSL for the visible part before the user touches anything, and any save (even
+  // of another field) then persists the narrowed rule. Forward only user edits.
+  const userEditedRef = useRef(false);
+  const markUserEdited = useCallback(() => {
+    userEditedRef.current = true;
+  }, []);
   const handleChange = useCallback(
-    (value: string, updatedTree?: JsonTree) =>
+    (value: string, updatedTree?: JsonTree) => {
+      if (isUnrendered && !userEditedRef.current) {
+        return;
+      }
       onChange(
         value,
         updatedTree ? JSON.stringify(updatedTree) : filterJsonTree
-      ),
-    [filterJsonTree, onChange]
+      );
+    },
+    [filterJsonTree, isUnrendered, onChange]
   );
 
   return (
-    <div className="persona-context-rule-builder tw:rounded-lg tw:border tw:border-secondary tw:p-3">
+    <div
+      className="persona-context-rule-builder tw:rounded-lg tw:border tw:border-secondary tw:p-3"
+      onKeyDownCapture={markUserEdited}
+      onPointerDownCapture={markUserEdited}>
       {/* Mounting before the fields arrive lets RAQB's sanitizer field-null any saved extension.<cp> rule. */}
       {enrichedFields ? (
         <QueryBuilder

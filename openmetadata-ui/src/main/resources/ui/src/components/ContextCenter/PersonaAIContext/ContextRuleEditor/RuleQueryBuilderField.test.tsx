@@ -192,6 +192,59 @@ describe('RuleQueryBuilderField', () => {
     expect(onReconstructionStatusChange).toHaveBeenLastCalledWith(false);
   });
 
+  it('reports rendered=false when only part of the queryFilter is shown', async () => {
+    const onReconstructionStatusChange = jest.fn();
+    render(
+      <RuleQueryBuilderField
+        entityType={EntityType.TABLE}
+        queryFilter={JSON.stringify({
+          query: {
+            bool: {
+              should: [{ term: { name: 'x' } }],
+              filter: [{ range: { updatedAt: { gte: 1 } } }],
+            },
+          },
+        })}
+        onChange={jest.fn()}
+        onReconstructionStatusChange={onReconstructionStatusChange}
+      />
+    );
+
+    await screen.findByTestId('query-builder-form-field');
+
+    expect(onReconstructionStatusChange).toHaveBeenLastCalledWith(false);
+  });
+
+  // RAQB can emit a change on mount; for a partly shown filter that would replace
+  // the saved DSL before the user touched the builder.
+  it('forwards builder changes for a partly shown filter only after user input', async () => {
+    const onChange = jest.fn();
+    render(
+      <RuleQueryBuilderField
+        entityType={EntityType.TABLE}
+        queryFilter={JSON.stringify({
+          query: {
+            bool: {
+              should: [{ term: { name: 'x' } }],
+              filter: [{ term: { name: 'y' } }],
+            },
+          },
+        })}
+        onChange={onChange}
+      />
+    );
+
+    const addCondition = await screen.findByTestId('add-context-condition');
+    fireEvent.click(addCondition);
+
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(addCondition);
+    fireEvent.click(addCondition);
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+  });
+
   it('reports rendered=true when there is no queryFilter', async () => {
     const onReconstructionStatusChange = jest.fn();
     render(
