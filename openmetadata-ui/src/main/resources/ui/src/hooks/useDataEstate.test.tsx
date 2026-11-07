@@ -297,6 +297,75 @@ describe('useDataEstate', () => {
     expect(result.current.connectors).toEqual([]);
   });
 
+  // Every custom connector registers as e.g. `CustomDashboard`, so its slice
+  // read "Custom Dashboard" whatever the tool behind it was.
+  it('names custom connector slices after their services', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+    mockSearchData
+      .mockResolvedValueOnce(
+        serviceTypeBuckets(['Snowflake', 100], ['CustomDashboard', 80])
+      )
+      .mockResolvedValueOnce({
+        data: {
+          aggregations: {
+            'sterms#service.name.keyword': {
+              buckets: [
+                {
+                  doc_count: 60,
+                  key: 'semantic_layer',
+                  'top_hits#top': {
+                    hits: {
+                      hits: [
+                        {
+                          _source: {
+                            service: { displayName: 'Semantic Layer' },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                { doc_count: 20, key: 'in_house_bi' },
+              ],
+            },
+          },
+        },
+      } as never);
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.connectors).toEqual([
+      { count: 100, key: 'Snowflake', name: 'Snowflake' },
+      { count: 60, key: 'semantic_layer', name: 'Semantic Layer' },
+      { count: 20, key: 'in_house_bi', name: 'in_house_bi' },
+    ]);
+    expect(mockSearchData).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        fieldName: 'service.name.keyword',
+        query: JSON.stringify({
+          query: { terms: { serviceType: ['CustomDashboard'] } },
+        }),
+      })
+    );
+  });
+
+  it('keeps the unsplit custom slice when the split fails', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+    mockSearchData
+      .mockResolvedValueOnce(serviceTypeBuckets(['CustomDashboard', 80]))
+      .mockRejectedValueOnce(new Error('boom'));
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.connectors).toEqual([
+      { count: 80, key: 'CustomDashboard', name: 'Custom Dashboard' },
+    ]);
+  });
+
   // The search query's built-in aggregation stops at the engine's default of
   // ten buckets; an eleventh connector vanished from the bar and from "across
   // N connectors".
