@@ -59,6 +59,15 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 public class DataAssetsWorkflow implements DataInsightsWorkflow {
   public static final String DATA_STREAM_KEY = "DataStreamKey";
   public static final String ENTITY_TYPE_FIELDS_KEY = "EnityTypeFields";
+
+  /**
+   * Prefix for per-step enricher diagnostic keys in {@link WorkflowStats#getWorkflowStepStats()}.
+   * These keys re-count the same entities once per enrichment step and must be excluded from
+   * job-level totals (see {@link
+   * org.openmetadata.service.apps.bundles.insights.DataInsightsApp#updateStats}).
+   */
+  public static final String ENRICHER_STEP_PREFIX = "[Enricher] ";
+
   private static final String ALL_ENTITIES = "all";
 
   private final DataAssetsConfig dataAssetsConfig;
@@ -420,7 +429,8 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
     }
     Map<String, StepStats> perStep = entityEnricher.getEntityStats();
     for (Map.Entry<String, StepStats> entry : perStep.entrySet()) {
-      workflowStats.updateWorkflowStepStats("[Enricher] " + entry.getKey(), entry.getValue());
+      workflowStats.updateWorkflowStepStats(
+          ENRICHER_STEP_PREFIX + entry.getKey(), entry.getValue());
     }
   }
 
