@@ -733,6 +733,7 @@ def sigma_routes() -> dict:
             "dependencies": {},
             "edges": [{"source": "inode-T1", "target": f"sheet-{element_id}", "type": "source"}],
         }
+        routes["GET", f"{workbook_path}/queries"] = {"entries": [], "nextPage": None, "total": 0}
     return routes
 
 
@@ -843,3 +844,44 @@ def test_filtered_untitled_element_is_reported_by_display_name(sigma_over_http):
 
     assert chart_names_under_filter(source, FilterPattern(excludes=["^Element "])) == ["Revenue"]
     assert source.status.filtered == [{"Element el-untitled": "Chart Pattern not allowed"}]
+
+
+def data_models_and_lineage(source, data_model_filter: FilterPattern) -> tuple[list, list, list]:
+    """Charts, data models and lineage for wb-1, whose element lineage runs through /lineage and /files"""
+    source.metadata.get_by_name = lambda entity, fqn, **_: MOCK_DATA_MODEL
+    source.metadata.search_in_any_service = lambda **_: MOCK_TABLE_ENTITY
+    source.source_config.dataModelFilterPattern = data_model_filter
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    charts = [either.right.name.root for either in source.yield_dashboard_chart(details)]
+    data_models = [either.right.name.root for either in source.yield_datamodel(details)]
+    lineage = [either.right for either in source.yield_dashboard_lineage_details(details, None) if either]
+    return charts, data_models, lineage
+
+
+@pytest.mark.parametrize(
+    "data_model_filter",
+    [FilterPattern(excludes=["^Revenue$"]), FilterPattern(includes=["^Cost$"])],
+    ids=["excluded", "not-included"],
+)
+def test_filtered_data_model_gets_no_entity_lineage_or_lineage_calls(sigma_over_http, data_model_filter):
+    source, calls = sigma_over_http
+
+    charts, data_models, lineage = data_models_and_lineage(source, data_model_filter)
+
+    assert charts == ["el-wb-1"]
+    assert data_models == []
+    assert lineage == []
+    assert calls["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] == 0
+    assert calls["GET", "/v2/files/T1"] == 0
+
+
+def test_data_model_outside_the_filter_keeps_its_entity_and_lineage(sigma_over_http):
+    source, calls = sigma_over_http
+
+    charts, data_models, lineage = data_models_and_lineage(source, FilterPattern(excludes=["^Cost$"]))
+
+    assert charts == data_models == ["el-wb-1"]
+    assert len(lineage) == 1
+    assert calls["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] == 1
+    assert calls["GET", "/v2/files/T1"] == 1

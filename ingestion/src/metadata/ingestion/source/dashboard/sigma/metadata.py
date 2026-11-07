@@ -55,7 +55,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
+from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
     get_database_name_for_lineage,
@@ -470,16 +470,21 @@ class SigmaSource(DashboardServiceSource):
             return
 
         if self.source_config.includeDataModels:
-            self.data_models = dashboard_details.elements
-            for data_model in self.data_models or []:
+            self.data_models = []
+            for data_model in dashboard_details.elements:
                 # Skip non-visualization elements (text boxes, dividers, buttons, controls)
                 # to avoid creating DataModel entries for elements that have no data source.
                 if not data_model.vizualizationType:
                     continue
+                display_name = data_model.name or f"Element {data_model.elementId}"
+                if filter_by_datamodel(self.source_config.dataModelFilterPattern, display_name):
+                    self.status.filter(display_name, "Data model filtered out.")
+                    continue
+                self.data_models.append(data_model)
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(data_model.elementId),
-                        displayName=data_model.name or f"Element {data_model.elementId}",
+                        displayName=display_name,
                         service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                         dataModelType=DataModelType.SigmaDataModel.value,
                         serviceType=self.service_connection.type.value,
