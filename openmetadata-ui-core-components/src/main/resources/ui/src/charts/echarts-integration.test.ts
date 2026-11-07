@@ -301,6 +301,51 @@ describe('per-point hover events on a dot-less line series', () => {
     expect(events[0].seriesId).toBe('a');
   });
 
+  // The symbols must not show, and must not take the series colour away from
+  // the tooltip marker (a transparent itemStyle colour did both).
+  it('keeps hover symbols hidden and the series colour in the tooltip', () => {
+    const chart = mount(
+      buildLineOption(lineInput({ hasHover: true }), LIGHT_CHART_THEME)
+    );
+    const symbols = chart
+      .getZr()
+      .storage.getDisplayList(true)
+      .filter((el) => el.type === 'path');
+    const series = (
+      chart as unknown as {
+        getModel: () => {
+          getSeriesByIndex: (i: number) => {
+            getDataParams: (i: number) => { color: unknown };
+          };
+        };
+      }
+    )
+      .getModel()
+      .getSeriesByIndex(0);
+
+    symbols.forEach((symbol) =>
+      expect(
+        (symbol as unknown as { style: { opacity: number } }).style.opacity
+      ).toBe(0)
+    );
+    expect(series.getDataParams(0).color).toBe(
+      LIGHT_CHART_THEME.palette.series[0]
+    );
+  });
+
+  it('draws no hover symbols once the hover callbacks are removed', () => {
+    const chart = mount(
+      buildLineOption(lineInput({ hasHover: true }), LIGHT_CHART_THEME)
+    );
+    chart.setOption(buildLineOption(lineInput(), LIGHT_CHART_THEME), MERGE);
+    const symbols = chart
+      .getZr()
+      .storage.getDisplayList(true)
+      .filter((el) => el.type === 'path');
+
+    expect(symbols).toHaveLength(0);
+  });
+
   it('emits no mouseover with a dataIndex on a dot-less line without hasHover', () => {
     const chart = mount(buildLineOption(lineInput(), LIGHT_CHART_THEME));
     const events: Array<{ dataIndex?: number }> = [];

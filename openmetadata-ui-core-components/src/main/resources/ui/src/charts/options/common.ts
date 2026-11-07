@@ -208,7 +208,7 @@ export const valueAxis = (
 };
 
 export const legendConfig = (
-  names: string[],
+  names: NonNullable<LegendComponentOption['data']>,
   theme: ChartTheme,
   props: ChartLegendProps = {}
 ): LegendComponentOption => ({

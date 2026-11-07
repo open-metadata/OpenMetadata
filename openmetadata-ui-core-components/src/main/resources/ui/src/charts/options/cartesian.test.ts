@@ -303,12 +303,17 @@ describe('buildLineOption', () => {
     const itemStyle = first.itemStyle as Record<string, unknown>;
 
     expect(first.showSymbol).toBe(true);
+    // Hidden by opacity: the colour still feeds the tooltip and legend.
     expect(itemStyle).toEqual({
-      color: 'transparent',
-      borderColor: 'transparent',
-      borderWidth: 0,
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 0,
     });
     expect(first.symbolSize).toBe(10);
+    // The highlighted point shows ECharts' default 6px dot grown 1.1x.
+    expect(first.emphasis).toEqual({
+      scale: 0.66,
+      itemStyle: { opacity: 1 },
+    });
   });
 
   it('keeps the default dot-less look without hover callbacks', () => {
@@ -317,8 +322,12 @@ describe('buildLineOption', () => {
     const itemStyle = first.itemStyle as Record<string, unknown>;
 
     expect(first.showSymbol).toBe(false);
-    expect(first.symbolSize).toBeUndefined();
-    expect(itemStyle).toEqual({ color: LIGHT_CHART_PALETTE.series[0] });
+    expect(first.symbolSize).toBe(6);
+    expect(itemStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 1,
+    });
+    expect(first.emphasis).toEqual({ scale: true, itemStyle: { opacity: 1 } });
   });
 
   it('keeps visible dots with showDots even when hover is on', () => {
@@ -337,14 +346,16 @@ describe('buildLineOption', () => {
     const dottedStyle = dotted.itemStyle as Record<string, unknown>;
     const plainStyle = plain.itemStyle as Record<string, unknown>;
 
-    expect([dotted.showSymbol, dotted.symbolSize]).toEqual([true, undefined]);
-    expect(dottedStyle).toEqual({ color: LIGHT_CHART_PALETTE.series[0] });
+    expect([dotted.showSymbol, dotted.symbolSize]).toEqual([true, 6]);
+    expect(dottedStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 1,
+    });
     // The dot-less series still gets invisible hover symbols.
     expect(plain.showSymbol).toBe(true);
     expect(plainStyle).toEqual({
-      color: 'transparent',
-      borderColor: 'transparent',
-      borderWidth: 0,
+      color: LIGHT_CHART_PALETTE.series[1],
+      opacity: 0,
     });
   });
 
@@ -372,7 +383,7 @@ describe('buildLineOption', () => {
     }>;
 
     expect(first.showSymbol).toBe(true);
-    expect(first.symbolSize).toBeUndefined();
+    expect(first.symbolSize).toBe(6);
     expect(mon.symbol).toBe('circle');
     expect(mon.itemStyle).toEqual({
       color: LIGHT_CHART_PALETTE.status.failed,
@@ -381,6 +392,28 @@ describe('buildLineOption', () => {
     });
     // A point whose pointStyle returns undefined still gets no symbol.
     expect(tue).toEqual({ value: 5, symbol: 'none' });
+  });
+
+  // The legend icon inherits the series opacity, which hides hover symbols.
+  it('keeps legend icons opaque only for series with hidden hover symbols', () => {
+    const series = [
+      { key: 'passed', name: 'Passed', showDots: true },
+      { key: 'failed', name: 'Failed' },
+    ];
+    const hovered = buildLineOption(
+      { ...base, hasHover: true, series },
+      LIGHT_CHART_THEME
+    );
+    const plain = buildLineOption({ ...base, series }, LIGHT_CHART_THEME);
+
+    expect((hovered.legend as LegendComponentOption).data).toEqual([
+      'Passed',
+      { name: 'Failed', itemStyle: { opacity: 1 } },
+    ]);
+    expect((plain.legend as LegendComponentOption).data).toEqual([
+      'Passed',
+      'Failed',
+    ]);
   });
 
   it('keeps a lone point visible with hover on', () => {
@@ -392,8 +425,11 @@ describe('buildLineOption', () => {
     const itemStyle = first.itemStyle as Record<string, unknown>;
 
     expect(first.showSymbol).toBe(true);
-    expect(itemStyle).toEqual({ color: LIGHT_CHART_PALETTE.series[0] });
-    expect(first.symbolSize).toBeUndefined();
+    expect(itemStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 1,
+    });
+    expect(first.symbolSize).toBe(6);
   });
 
   it('styles each point from pointStyle', () => {
@@ -1016,12 +1052,17 @@ describe('buildAreaOption', () => {
     const itemStyle = first.itemStyle as Record<string, unknown>;
 
     expect(first.showSymbol).toBe(true);
+    // Hidden by opacity: the colour still feeds the tooltip and legend.
     expect(itemStyle).toEqual({
-      color: 'transparent',
-      borderColor: 'transparent',
-      borderWidth: 0,
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 0,
     });
     expect(first.symbolSize).toBe(10);
+    // The highlighted point shows ECharts' default 6px dot grown 1.1x.
+    expect(first.emphasis).toEqual({
+      scale: 0.66,
+      itemStyle: { opacity: 1 },
+    });
     // The area fill is still drawn.
     expect(first.areaStyle).toBeDefined();
   });
@@ -1195,7 +1236,10 @@ describe('buildComposedOption', () => {
       opacity: 0.12,
     });
     expect(line.id).toBe('value');
-    expect(line.itemStyle).toEqual({ color: LIGHT_CHART_PALETTE.series[0] });
+    expect(line.itemStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 1,
+    });
     expect((option.legend as LegendComponentOption).data).toEqual(['Value']);
   });
 
@@ -1221,9 +1265,13 @@ describe('buildComposedOption', () => {
     expect(line.showSymbol).toBe(true);
     expect(line.symbolSize).toBe(10);
     expect(lineStyle).toEqual({
-      color: 'transparent',
-      borderColor: 'transparent',
-      borderWidth: 0,
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 0,
     });
+    // Only the line's legend icon needs restoring.
+    expect((option.legend as LegendComponentOption).data).toEqual([
+      { name: 'Failed', itemStyle: { opacity: 1 } },
+      'Passed',
+    ]);
   });
 });

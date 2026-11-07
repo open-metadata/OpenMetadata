@@ -332,11 +332,9 @@ describe('point hover', () => {
       const itemStyle = s.itemStyle as Record<string, unknown>;
 
       expect(s.showSymbol).toBe(true);
-      expect(itemStyle).toEqual({
-        color: 'transparent',
-        borderColor: 'transparent',
-        borderWidth: 0,
-      });
+      // Hidden by opacity, so the colour still feeds the tooltip and legend.
+      expect(itemStyle.opacity).toBe(0);
+      expect(itemStyle.color).not.toBe('transparent');
       expect(s.symbolSize).toBe(10);
     });
   });
@@ -351,8 +349,8 @@ describe('point hover', () => {
       const itemStyle = s.itemStyle as Record<string, unknown>;
 
       expect(s.showSymbol).toBe(false);
-      expect(s.symbolSize).toBeUndefined();
-      expect(itemStyle.color).not.toBe('transparent');
+      expect(s.symbolSize).toBe(6);
+      expect(itemStyle.opacity).toBe(1);
     });
   });
 
