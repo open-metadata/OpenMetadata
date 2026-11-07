@@ -81,6 +81,7 @@ public class NativeOntologyEveryPackInstallIT extends BaseOntologyApprovalIT {
             "foaf",
             "gs1",
             "hr-open",
+            "iof",
             "isa-95",
             "odrl",
             "org",

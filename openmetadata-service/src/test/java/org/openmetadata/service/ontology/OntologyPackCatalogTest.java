@@ -43,6 +43,7 @@ class OntologyPackCatalogTest {
           "fibo",
           "foaf",
           "gs1",
+          "iof",
           "odrl",
           "org",
           "owl-time",
@@ -57,7 +58,7 @@ class OntologyPackCatalogTest {
     final Set<String> ids =
         catalog.list().stream().map(OntologyPackManifest::getId).collect(Collectors.toSet());
 
-    assertEquals(15, catalog.list().size());
+    assertEquals(16, catalog.list().size());
     assertTrue(ids.containsAll(UPSTREAM_PACKS) && ids.containsAll(STARTER_PACKS));
     assertTrue(
         catalog.list().stream().allMatch(OntologyPackManifest::getBundled),

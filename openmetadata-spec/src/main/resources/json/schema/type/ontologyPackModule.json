@@ -39,6 +39,11 @@
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
     },
+    "sourceSha256": {
+      "description": "Lowercase SHA-256 of the published file, recorded only when the generator converted it to the bundled Turtle payload.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
     "conceptCount": {
       "description": "Distinct IRIs typed owl:Class, rdfs:Class or skos:Concept in the payload.",
       "type": "integer",

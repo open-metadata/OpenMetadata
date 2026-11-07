@@ -45,7 +45,7 @@ public class OntologyPackResourceIT {
   void listsTheLicensedCatalogueAndDryRunsDependencyClosure(TestNamespace namespace) {
     final OntologyPackList catalogue = SdkClients.adminClient().ontologyPacks().list();
 
-    assertEquals(15, catalogue.getPacks().size());
+    assertEquals(16, catalogue.getPacks().size());
     assertTrue(catalogue.getPacks().stream().anyMatch(pack -> pack.getId().equals("sosa-ssn")));
 
     final InstallOntologyPack request =

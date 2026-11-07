@@ -1,17 +1,29 @@
 #!/usr/bin/env python3
 """Generate the bundled ontology library packs from scripts/ontology-packs/sources.json.
 
-Upstream payloads are written byte for byte as published, so every IRI stays the publisher's. The
-generator never converts a format: Turtle stays Turtle and RDF/XML stays RDF/XML, and the importer
-reads both. No third-party Python package is needed.
+Upstream payloads are written byte for byte as published, so every IRI stays the publisher's. Turtle
+stays Turtle and RDF/XML stays RDF/XML, and the importer reads both.
+
+The one exception is a module that declares "convert": "turtle". The importer's XXE guard refuses
+every XML DOCTYPE, so a source that opens with an entity-declaring DOCTYPE cannot be read as
+published. The generator verifies the download against its pinned sourceSha256, converts it to
+Turtle, proves the result triple-isomorphic to the source (rdflib graph isomorphism) and writes it as
+sorted N-Triples-style Turtle with canonical, module-unique blank-node labels, so a rerun is byte-identical. The
+checked-in payload is pinned by payloadSha256 and the converted triples are unchanged; only the
+serialization differs.
+
+The standard library is enough for everything except a conversion. A conversion needs rdflib
+(`pip install rdflib`), a dev-only dependency imported only when a module is actually converted.
+`--check` and a run that finds every payload already current never import it.
 
   generate.py              write payloads, manifests, index, README and the NOTICE block
   generate.py --check      verify the checked-in files match sources.json, offline
-  generate.py --pin        download modules whose downloadSha256 is null and record their hash
+  generate.py --pin        download modules whose sourceSha256 (or converted payloadSha256) is null
+                           and record the hash
   generate.py --cache DIR  keep and reuse downloads in DIR
 
-A payload that is already checked in and matches its pinned hash is never downloaded again, so a
-second run changes nothing.
+A payload that is already checked in and matches its pinned hash (sourceSha256, or payloadSha256 for a
+converted module) is never downloaded again, so a second run changes nothing.
 """
 
 from __future__ import annotations
@@ -60,8 +72,12 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def payload_format(module: dict) -> str:
+    return module.get("convert") or module["format"]
+
+
 def payload_name(pack: dict, module: dict) -> str:
-    return f"{pack['id']}/{module['id']}.{EXTENSIONS[module['format']]}"
+    return f"{pack['id']}/{module['id']}.{EXTENSIONS[payload_format(module)]}"
 
 
 def resource_path(pack: dict, module: dict) -> str:
@@ -281,7 +297,7 @@ def count_rdfxml(data: bytes) -> tuple[int, int]:
 
 
 def count(module: dict, data: bytes) -> tuple[int, int]:
-    if module["format"] == "turtle":
+    if payload_format(module) == "turtle":
         return count_turtle(data.decode("utf-8"))
     return count_rdfxml(data)
 
@@ -316,6 +332,10 @@ def validate(sources: dict) -> None:
         for module in pack["modules"]:
             if module["format"] not in EXTENSIONS:
                 raise GeneratorError(f"{pid}/{module['id']} has an unsupported format")
+            if module.get("convert") not in (None, "turtle"):
+                raise GeneratorError(f"{pid}/{module['id']} can only convert to turtle")
+            if module.get("convert") and (pack["origin"] != "upstream" or module["format"] == "turtle"):
+                raise GeneratorError(f"{pid}/{module['id']} converts an upstream non-Turtle source only")
             if pack["origin"] == "upstream" and not module.get("url"):
                 raise GeneratorError(f"{pid}/{module['id']} needs a pinned url")
             if not set(module.get("dependencies", [])) <= set(module_ids):
@@ -337,7 +357,7 @@ def build_manifest(pack: dict, payloads: dict[str, bytes]) -> dict:
             "id": module["id"],
             "name": module["name"],
             "description": module["description"],
-            "format": module["format"],
+            "format": payload_format(module),
             "resourcePath": resource_path(pack, module),
             "sha256": sha256(data),
             "conceptCount": concepts,
@@ -347,6 +367,8 @@ def build_manifest(pack: dict, payloads: dict[str, bytes]) -> dict:
         }
         if pack["origin"] == "upstream":
             entry["sourceUrl"] = module["url"]
+        if module.get("convert"):
+            entry["sourceSha256"] = module["sourceSha256"]
         modules.append(entry)
     manifest = {
         "id": pack["id"],
@@ -381,6 +403,9 @@ def build_readme(sources: dict) -> str:
         "",
         "Upstream packs are the publisher's files, byte for byte, at the pinned URL below. IRIs are",
         "the publisher's. The `sha256` column is the hash of the file as published and as stored here.",
+        "A `converted` row is a source the importer's XXE guard cannot read as published (an RDF/XML",
+        "DOCTYPE declaring entities): the generator converted it to Turtle and proved the triples",
+        "isomorphic to the source; the row shows the source hash and the stored payload hash.",
         "Authored packs are OpenMetadata-written outlines (Apache License 2.0) with OpenMetadata IRIs.",
         "",
         "| Pack | Version | License | Module file | Source | sha256 |",
@@ -389,10 +414,12 @@ def build_readme(sources: dict) -> str:
     for pack in sources["packs"]:
         for module in pack["modules"]:
             source = module.get("url", "OpenMetadata-authored")
-            digest = module.get("downloadSha256") or "authored"
+            digest = f"`{module.get('sourceSha256') or 'authored'}`"
+            if module.get("convert"):
+                digest = f"converted: source {digest}, payload `{module.get('payloadSha256')}`"
             lines.append(
                 f"| {pack['id']} | {pack['version']} | {pack['license']} | "
-                f"`{payload_name(pack, module)}` | {source} | `{digest}` |"
+                f"`{payload_name(pack, module)}` | {source} | {digest} |"
             )
     lines += ["", "## Not bundled", ""]
     lines += [f"- **{e['name']}**: {e['reason']}" for e in sources["excluded"]]
@@ -406,7 +433,8 @@ def build_notice_block(sources: dict) -> str:
         NOTICE_BEGIN,
         "------------------------------------------------------------------------------",
         "This distribution bundles the following third-party ontologies, redistributed",
-        "without changes in openmetadata-spec/src/main/resources/rdf/ontology-packs/.",
+        "without changes in openmetadata-spec/src/main/resources/rdf/ontology-packs/, except that a",
+        "source the importer cannot read as published is converted to Turtle, triples unchanged.",
         "",
     ]
     for pack in sources["packs"]:
@@ -450,6 +478,56 @@ def download(module: dict, cache: Path | None) -> bytes:
     return data
 
 
+def convert_to_turtle(name: str, source: bytes) -> bytes:
+    try:
+        from rdflib import BNode, Graph
+        from rdflib.compare import isomorphic, to_canonical_graph
+    except ImportError as error:
+        raise GeneratorError(f"{name} needs conversion, which needs rdflib: pip install rdflib") from error
+    graph = Graph()
+    graph.parse(data=source, format="xml")
+    # Canonical labels repeat across files, and the preview joins module bodies, so make them
+    # module-unique or two modules' blank nodes would merge.
+    scope = re.sub(r"[^A-Za-z0-9]", "", name.rsplit(".", 1)[0])
+    unique = Graph()
+    for s, p, o in to_canonical_graph(graph):
+        unique.add(tuple(BNode(f"{scope}{x}") if isinstance(x, BNode) else x for x in (s, p, o)))
+    lines = sorted(unique.serialize(format="nt").splitlines())
+    data = ("\n".join(line for line in lines if line) + "\n").encode("utf-8")
+    converted = Graph()
+    converted.parse(data=data, format="turtle")
+    if len(graph) != len(converted) or not isomorphic(graph, converted):
+        raise GeneratorError(f"{name}: the Turtle conversion is not isomorphic to the source")
+    return data
+
+
+def obtain_converted(
+    name: str, path: Path, module: dict, cache: Path | None, pin: bool, pinned: dict[str, str]
+) -> bytes:
+    expected = module.get("payloadSha256")
+    if expected and path.exists() and sha256(path.read_bytes()) == expected:
+        return path.read_bytes()
+    if not module.get("sourceSha256"):
+        raise GeneratorError(f"{name} has no sourceSha256; pin the source first")
+    if not expected and not pin:
+        raise GeneratorError(f"{name} has no payloadSha256; run with --pin to record it")
+    source = download(module, cache)
+    digest = sha256(source)
+    if digest != module["sourceSha256"]:
+        raise GeneratorError(
+            f"{name}: {module['url']} hashes to {digest}, pinned {module['sourceSha256']}. "
+            "The publisher changed the file; review it before re-pinning."
+        )
+    data = convert_to_turtle(name, source)
+    actual = sha256(data)
+    if expected and actual != expected:
+        raise GeneratorError(f"{name}: conversion hashes to {actual}, pinned {expected}")
+    if not expected:
+        pinned[module["url"] + "#payload"] = actual
+        module["payloadSha256"] = actual
+    return data
+
+
 def obtain_payloads(sources: dict, cache: Path | None, pin: bool) -> dict[str, bytes]:
     payloads: dict[str, bytes] = {}
     pinned: dict[str, str] = {}
@@ -462,12 +540,15 @@ def obtain_payloads(sources: dict, cache: Path | None, pin: bool) -> dict[str, b
                     raise GeneratorError(f"Authored payload is missing: {path}")
                 payloads[name] = path.read_bytes()
                 continue
-            expected = module.get("downloadSha256")
+            if module.get("convert"):
+                payloads[name] = obtain_converted(name, path, module, cache, pin, pinned)
+                continue
+            expected = module.get("sourceSha256")
             if expected and path.exists() and sha256(path.read_bytes()) == expected:
                 payloads[name] = path.read_bytes()
                 continue
             if not expected and not pin:
-                raise GeneratorError(f"{name} has no downloadSha256; run with --pin to record it")
+                raise GeneratorError(f"{name} has no sourceSha256; run with --pin to record it")
             data = download(module, cache)
             digest = sha256(data)
             if expected and digest != expected:
@@ -477,13 +558,15 @@ def obtain_payloads(sources: dict, cache: Path | None, pin: bool) -> dict[str, b
                 )
             if not expected:
                 pinned[module["url"]] = digest
-                module["downloadSha256"] = digest
+                module["sourceSha256"] = digest
             payloads[name] = data
     if pinned:
         text = SOURCES.read_text(encoding="utf-8")
         for url, digest in pinned.items():
+            field = "payloadSha256" if url.endswith("#payload") else "sourceSha256"
+            url = url.removesuffix("#payload")
             pattern = re.compile(
-                r'("url": "' + re.escape(url) + r'"(?:(?!"url")[\s\S])*?"downloadSha256": )null'
+                r'("url": "' + re.escape(url) + r'"(?:(?!"url")[\s\S])*?"' + field + r'": )null'
             )
             text, hits = pattern.subn(lambda m: m.group(1) + f'"{digest}"', text, count=1)
             if hits != 1:
@@ -533,8 +616,9 @@ def check(sources: dict) -> int:
                 problems.append(f"missing payload {path.relative_to(ROOT)}")
                 continue
             payloads[name] = path.read_bytes()
-            if pack["origin"] == "upstream" and sha256(payloads[name]) != module.get("downloadSha256"):
-                problems.append(f"{name} is not the pinned upstream file (sha256 differs)")
+            pin = module.get("payloadSha256") if module.get("convert") else module.get("sourceSha256")
+            if pack["origin"] == "upstream" and sha256(payloads[name]) != pin:
+                problems.append(f"{name} is not the pinned payload (sha256 differs)")
     if problems:
         print("\n".join(problems))
         return 1

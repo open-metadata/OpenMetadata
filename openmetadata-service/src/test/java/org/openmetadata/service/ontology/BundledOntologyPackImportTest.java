@@ -58,6 +58,7 @@ class BundledOntologyPackImportTest {
         Arguments.of("foaf", 105, 171),
         Arguments.of("gs1", 1523, 14190),
         Arguments.of("hr-open", 14, 0),
+        Arguments.of("iof", 894, 2892),
         Arguments.of("isa-95", 16, 0),
         Arguments.of("odrl", 758, 566),
         Arguments.of("org", 65, 417),
@@ -138,15 +139,14 @@ class BundledOntologyPackImportTest {
   }
 
   private Model wholePack(final String packId) {
-    final OntologyPackManifest pack = catalog.require(packId);
-    final String body =
-        pack.getModules().stream()
-            .map(module -> loader.load(module.getResourcePath()).body())
-            .collect(Collectors.joining(System.lineSeparator()));
-    final RdfSerializationFormat format =
-        RdfSerializationFormat.parse(pack.getModules().getFirst().getFormat().value());
     final Model model = ModelFactory.createDefaultModel();
-    RDFParser.fromString(body, format.rdfFormat().getLang()).parse(model);
+    for (final var module : catalog.require(packId).getModules()) {
+      final RdfSerializationFormat format =
+          RdfSerializationFormat.parse(module.getFormat().value());
+      RDFParser.fromString(
+              loader.load(module.getResourcePath()).body(), format.rdfFormat().getLang())
+          .parse(model);
+    }
     return model;
   }
 }

@@ -88,6 +88,7 @@ public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
           Map.entry("foaf", 100),
           Map.entry("gs1", 1071),
           Map.entry("hr-open", 14),
+          Map.entry("iof", 894),
           Map.entry("isa-95", 16),
           Map.entry("odrl", 756),
           Map.entry("org", 50),

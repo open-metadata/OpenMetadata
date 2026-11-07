@@ -36,57 +36,61 @@ export const PACK_PRESENTATION: Readonly<
     order: 2,
     iconClass: `tw:bg-utility-yellow-700 ${LIGHT_TEXT}`,
   },
-  'isa-95': {
+  iof: {
     order: 3,
+    iconClass: `tw:bg-utility-orange-700 ${LIGHT_TEXT}`,
+  },
+  'isa-95': {
+    order: 4,
     iconClass: `tw:bg-utility-orange-700 ${LIGHT_TEXT}`,
     mark: 'ISA95',
   },
   'hr-open': {
-    order: 4,
+    order: 5,
     iconClass: `tw:bg-utility-purple-700 ${LIGHT_TEXT}`,
     mark: 'HR',
   },
   gs1: {
-    order: 5,
+    order: 6,
     iconClass: `tw:bg-utility-pink-700 ${LIGHT_TEXT}`,
   },
   epcis: {
-    order: 6,
+    order: 7,
     iconClass: `tw:bg-utility-indigo-700 ${LIGHT_TEXT}`,
   },
   dcat: {
-    order: 7,
+    order: 8,
     iconClass: `tw:bg-utility-blue-700 ${LIGHT_TEXT}`,
   },
   'prov-o': {
-    order: 8,
+    order: 9,
     iconClass: `tw:bg-utility-brand-700 ${LIGHT_TEXT}`,
     mark: 'PROV',
   },
   org: {
-    order: 9,
+    order: 10,
     iconClass: `tw:bg-utility-fuchsia-700 ${LIGHT_TEXT}`,
   },
   odrl: {
-    order: 10,
+    order: 11,
     iconClass: `tw:bg-utility-gray-blue-700 ${LIGHT_TEXT}`,
   },
   dpv: {
-    order: 11,
+    order: 12,
     iconClass: `tw:bg-utility-green-700 ${LIGHT_TEXT}`,
   },
   'owl-time': {
-    order: 12,
+    order: 13,
     iconClass: `tw:bg-utility-orange-700 ${LIGHT_TEXT}`,
     mark: 'TIME',
   },
   'sosa-ssn': {
-    order: 13,
+    order: 14,
     iconClass: `tw:bg-utility-yellow-700 ${LIGHT_TEXT}`,
     mark: 'SSN',
   },
   foaf: {
-    order: 14,
+    order: 15,
     iconClass: `tw:bg-utility-pink-700 ${LIGHT_TEXT}`,
   },
 };

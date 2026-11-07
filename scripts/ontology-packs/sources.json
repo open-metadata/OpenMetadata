@@ -1,5 +1,5 @@
 {
-  "$comment": "Source list for the bundled ontology library packs. generate.py is the only writer of the manifests and payloads this file describes. Upstream payloads are published verbatim at a pinned URL and verified by downloadSha256; authored packs are OpenMetadata-written outlines whose payload is checked in by hand.",
+  "$comment": "Source list for the bundled ontology library packs. generate.py is the only writer of the manifests and payloads this file describes. Upstream payloads are published verbatim at a pinned URL and verified by sourceSha256; authored packs are OpenMetadata-written outlines whose payload is checked in by hand.",
   "allowedLicenses": [
     "CC BY 4.0",
     "CC BY 1.0",
@@ -11,7 +11,8 @@
     "W3C Software and Document License",
     "W3C Software and Document License or OGC Software License",
     "W3C Document License",
-    "No license statement published by GS1; included pending confirmation"
+    "No license statement published by GS1; included pending confirmation",
+    "MIT; BFO module CC BY 4.0"
   ],
   "packs": [
     {
@@ -36,7 +37,7 @@
           "description": "Catalogs, datasets, distributions, data services and their relationships.",
           "url": "https://www.w3.org/ns/dcat3.ttl",
           "format": "turtle",
-          "downloadSha256": "d1624d3bbf364f6fc1d43b9a188bbb9e67639b1a7d46a5cb7ea3f5d47d02b62f"
+          "sourceSha256": "d1624d3bbf364f6fc1d43b9a188bbb9e67639b1a7d46a5cb7ea3f5d47d02b62f"
         }
       ]
     },
@@ -62,7 +63,7 @@
           "description": "Entities, activities, agents and the derivation, attribution and usage relations between them.",
           "url": "https://www.w3.org/ns/prov-o.ttl",
           "format": "turtle",
-          "downloadSha256": "7d203989f67b38bca572253942acc5a1bf24ce3ccfece16f072dcb4be2b79a96"
+          "sourceSha256": "7d203989f67b38bca572253942acc5a1bf24ce3ccfece16f072dcb4be2b79a96"
         }
       ]
     },
@@ -88,7 +89,7 @@
           "description": "Organizations, organizational units, sites, posts, roles and memberships.",
           "url": "https://www.w3.org/ns/org.ttl",
           "format": "turtle",
-          "downloadSha256": "3e01f89a17475a88f8b1606ca0fae04800d34dbbf93adc6db12dc30929848729"
+          "sourceSha256": "3e01f89a17475a88f8b1606ca0fae04800d34dbbf93adc6db12dc30929848729"
         }
       ]
     },
@@ -114,7 +115,7 @@
           "description": "Temporal entities, positions, durations, calendar and clock descriptions, and Allen interval relations.",
           "url": "https://www.w3.org/2006/time.ttl",
           "format": "turtle",
-          "downloadSha256": "251bd6970b0d7a5efa97ff681afe81a297df85deab3d860fa4f8eeba72d8f16c"
+          "sourceSha256": "251bd6970b0d7a5efa97ff681afe81a297df85deab3d860fa4f8eeba72d8f16c"
         }
       ]
     },
@@ -141,7 +142,7 @@
           "url": "https://www.w3.org/ns/sosa/",
           "accept": "text/turtle",
           "format": "turtle",
-          "downloadSha256": "c70b0d1c843c0047e4c98e0a89392e46a05752ff6365bda7f7f55303905a0392"
+          "sourceSha256": "c70b0d1c843c0047e4c98e0a89392e46a05752ff6365bda7f7f55303905a0392"
         },
         {
           "id": "ssn",
@@ -153,7 +154,7 @@
           "dependencies": [
             "sosa"
           ],
-          "downloadSha256": "184d86189191146e314cc52b1bceb96fca11e70aacbc160d71588102a5153eb9"
+          "sourceSha256": "184d86189191146e314cc52b1bceb96fca11e70aacbc160d71588102a5153eb9"
         }
       ]
     },
@@ -179,7 +180,7 @@
           "description": "Policies, rules, actions, constraints, parties and assets.",
           "url": "https://www.w3.org/ns/odrl/2/ODRL22.ttl",
           "format": "turtle",
-          "downloadSha256": "7895765e80d86d1d0349d945a28b8a2479f03169572345080a5b3e561ef31457"
+          "sourceSha256": "7895765e80d86d1d0349d945a28b8a2479f03169572345080a5b3e561ef31457"
         }
       ]
     },
@@ -205,7 +206,7 @@
           "description": "Persons, agents, groups, organizations, accounts, documents and images.",
           "url": "https://xmlns.com/foaf/spec/index.rdf",
           "format": "rdfxml",
-          "downloadSha256": "3d859b5d92a2c3d041545d014fa826f682ca06d056af8c7b31e32d930abf2bc5"
+          "sourceSha256": "3d859b5d92a2c3d041545d014fa826f682ca06d056af8c7b31e32d930abf2bc5"
         }
       ]
     },
@@ -231,7 +232,7 @@
           "description": "Core concepts for personal data handling, purposes, processing, legal bases and measures.",
           "url": "https://w3c-cg.github.io/dpv/2.3/dpv/dpv-owl.ttl",
           "format": "turtle",
-          "downloadSha256": "af2aa4776ac7afe4c6c66b310fe4b7cbb4ef12bddfc2092cf30c9ebf524112a5"
+          "sourceSha256": "af2aa4776ac7afe4c6c66b310fe4b7cbb4ef12bddfc2092cf30c9ebf524112a5"
         },
         {
           "id": "personal-data",
@@ -242,7 +243,7 @@
           "dependencies": [
             "dpv"
           ],
-          "downloadSha256": "99308e733f9f4825ddc3783a973e94c8e005faa12bf644f103d03443126aa12a"
+          "sourceSha256": "99308e733f9f4825ddc3783a973e94c8e005faa12bf644f103d03443126aa12a"
         }
       ]
     },
@@ -268,7 +269,7 @@
           "description": "Products, organizations, places, offers, certifications and code lists.",
           "url": "https://ref.gs1.org/voc/data/gs1Voc.ttl",
           "format": "turtle",
-          "downloadSha256": "b6039ed1b3229853a0aed1eb8568527f2d393925fd163d6fce5fddefe7ea1aa7"
+          "sourceSha256": "b6039ed1b3229853a0aed1eb8568527f2d393925fd163d6fce5fddefe7ea1aa7"
         }
       ]
     },
@@ -294,7 +295,7 @@
           "description": "All production FIBO modules merged into one ontology.",
           "url": "https://spec.edmcouncil.org/fibo/ontology/master/2026Q2/prod.fibo-quickstart.ttl",
           "format": "turtle",
-          "downloadSha256": "5cd164c787cdfb2d7c1c386bc21bb3410f5963199bc547dc000a70b3c0e195b1"
+          "sourceSha256": "5cd164c787cdfb2d7c1c386bc21bb3410f5963199bc547dc000a70b3c0e195b1"
         }
       ]
     },
@@ -320,7 +321,7 @@
           "description": "FHIR resources, data types and their elements.",
           "url": "https://hl7.org/fhir/R5/fhir.ttl",
           "format": "turtle",
-          "downloadSha256": "0ced303dc994ef7a05613aca91d911ab463477ad779851a0e65195d39de5497d"
+          "sourceSha256": "0ced303dc994ef7a05613aca91d911ab463477ad779851a0e65195d39de5497d"
         }
       ]
     },
@@ -346,7 +347,72 @@
           "description": "Equipment, locations, points, collections and the Brick relationships.",
           "url": "https://brickschema.org/schema/1.4/Brick.ttl",
           "format": "turtle",
-          "downloadSha256": "c4a9a35355da6be158123f5dced3a7ad0714d3a2cab51c6a80c4720c3c8d28f0"
+          "sourceSha256": "c4a9a35355da6be158123f5dced3a7ad0714d3a2cab51c6a80c4720c3c8d28f0"
+        }
+      ]
+    },
+    {
+      "id": "iof",
+      "name": "Industrial Ontologies Foundry (IOF)",
+      "abbreviation": "IOF",
+      "standard": "Industrial Ontologies Foundry (IOF) Core and Supply Chain ontologies",
+      "publisher": "Industrial Ontologies Foundry",
+      "version": "Release_202603",
+      "industry": "manufacturing",
+      "layer": "L2",
+      "description": "The full IOF manufacturing ontology: the IOF Core, the IOF Supply Chain extension and the Basic Formal Ontology (BFO) 2020 they build on, converted to Turtle from the published RDF/XML with the triples unchanged. The ISA-95 starter is an OpenMetadata-authored outline aligned to ISA-95; IOF is the complete open ontology.",
+      "license": "MIT; BFO module CC BY 4.0",
+      "licenseUrl": "https://opensource.org/licenses/MIT",
+      "sourceUrl": "https://github.com/iofoundry/ontology/tree/Release_202603",
+      "attribution": "Industrial Ontologies Foundry (IOF) ontologies, release 202603. Copyright (c) 2022 Industrial Ontologies Foundry, licensed under the MIT License (https://github.com/iofoundry/ontology/blob/Release_202603/LICENSE). The Supply Chain module also carries: Copyright (c) 2022, 2023, 2024, 2025, 2026 Open Applications Group. The BFO module is Basic Formal Ontology 2020 by Barry Smith and the BFO team, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Redistributed as the publisher released them, converted to Turtle from the published RDF/XML with the triples unchanged.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "bfo",
+          "name": "Basic Formal Ontology (BFO) 2020",
+          "description": "The top-level ontology of continuants, occurrents, qualities and dispositions, as cached by IOF. License: CC BY 4.0.",
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/cache/bfo/2020/bfo.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "88ff27e1762d223a214744335a9b3f44242f354594ce92391d67227e9f9e3323",
+          "payloadSha256": "be7b3985f4c729d2b7e1ecd923532912f21f9a52cef534f3382b6bf4ba16fc94"
+        },
+        {
+          "id": "annotation-vocabulary",
+          "name": "IOF Annotation Vocabulary",
+          "description": "Annotation properties IOF uses for definitions, examples, maturity and provenance.",
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/core/meta/AnnotationVocabulary.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "26342082a23e629ea27777543b2e400fcd4feee8d6be22dedc72969917b01c00",
+          "payloadSha256": "920dded4a24654b8211881e6ff986c8f79e2547463715042f69dea62604924fd"
+        },
+        {
+          "id": "core",
+          "name": "IOF Core",
+          "description": "Manufacturing core: processes, products, materials, equipment, agents, plans and the relations between them.",
+          "dependencies": [
+            "bfo",
+            "annotation-vocabulary"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/core/Core.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "bdd9271a6ed190e6c0ac8a01d2728ccd517ad33913c436b3882679dfcf94cfde",
+          "payloadSha256": "97bf94cdcfbcb9ad24e416e6584eff99bc2bef90be98a0f263e9add8763155ae"
+        },
+        {
+          "id": "supply-chain",
+          "name": "IOF Supply Chain",
+          "description": "Supply-chain concepts such as orders, shipments, suppliers and inventory, built on the IOF Core.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/supplychain/SupplyChain.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "aa898340e1f3e72b151286fa58fec56c67a2977d2204f8882f43d6389c3fad10",
+          "payloadSha256": "4a10f730da6fe0626177fd829b242160f9ae48cb5543fcccd6d52648ac009688"
         }
       ]
     },
@@ -420,7 +486,7 @@
           "description": "Business steps, dispositions, business transaction types and other standard values used in EPCIS events.",
           "url": "https://ref.gs1.org/standards/epcis/2.0.1/cbv-ontology.ttl",
           "format": "turtle",
-          "downloadSha256": "9d41ff84c2b298ca0247ac72a26dc4ad92ca30efc5d34e3f67c65a13a72ca289"
+          "sourceSha256": "9d41ff84c2b298ca0247ac72a26dc4ad92ca30efc5d34e3f67c65a13a72ca289"
         },
         {
           "id": "epcis",
@@ -431,7 +497,7 @@
           ],
           "url": "https://ref.gs1.org/standards/epcis/2.0.1/epcis-ontology.ttl",
           "format": "turtle",
-          "downloadSha256": "64a6bdebfb6a52f01c0fef38f8d58185b5c93bf281b5af136e91947b6b3b10d5"
+          "sourceSha256": "64a6bdebfb6a52f01c0fef38f8d58185b5c93bf281b5af136e91947b6b3b10d5"
         }
       ]
     }

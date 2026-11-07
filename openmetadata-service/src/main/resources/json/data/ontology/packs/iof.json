@@ -1,0 +1,79 @@
+{
+  "abbreviation": "IOF",
+  "attribution": "Industrial Ontologies Foundry (IOF) ontologies, release 202603. Copyright (c) 2022 Industrial Ontologies Foundry, licensed under the MIT License (https://github.com/iofoundry/ontology/blob/Release_202603/LICENSE). The Supply Chain module also carries: Copyright (c) 2022, 2023, 2024, 2025, 2026 Open Applications Group. The BFO module is Basic Formal Ontology 2020 by Barry Smith and the BFO team, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Redistributed as the publisher released them, converted to Turtle from the published RDF/XML with the triples unchanged.",
+  "bundled": true,
+  "description": "The full IOF manufacturing ontology: the IOF Core, the IOF Supply Chain extension and the Basic Formal Ontology (BFO) 2020 they build on, converted to Turtle from the published RDF/XML with the triples unchanged. The ISA-95 starter is an OpenMetadata-authored outline aligned to ISA-95; IOF is the complete open ontology.",
+  "id": "iof",
+  "industry": "manufacturing",
+  "layer": "L2",
+  "license": "MIT; BFO module CC BY 4.0",
+  "licenseUrl": "https://opensource.org/licenses/MIT",
+  "modules": [
+    {
+      "conceptCount": 36,
+      "dependencies": [],
+      "description": "The top-level ontology of continuants, occurrents, qualities and dispositions, as cached by IOF. License: CC BY 4.0.",
+      "format": "turtle",
+      "id": "bfo",
+      "name": "Basic Formal Ontology (BFO) 2020",
+      "relationshipCount": 69,
+      "resourcePath": "rdf/ontology-packs/iof/bfo.ttl",
+      "selectedByDefault": true,
+      "sha256": "be7b3985f4c729d2b7e1ecd923532912f21f9a52cef534f3382b6bf4ba16fc94",
+      "sourceSha256": "88ff27e1762d223a214744335a9b3f44242f354594ce92391d67227e9f9e3323",
+      "sourceUrl": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/cache/bfo/2020/bfo.rdf"
+    },
+    {
+      "conceptCount": 1,
+      "dependencies": [],
+      "description": "Annotation properties IOF uses for definitions, examples, maturity and provenance.",
+      "format": "turtle",
+      "id": "annotation-vocabulary",
+      "name": "IOF Annotation Vocabulary",
+      "relationshipCount": 31,
+      "resourcePath": "rdf/ontology-packs/iof/annotation-vocabulary.ttl",
+      "selectedByDefault": true,
+      "sha256": "920dded4a24654b8211881e6ff986c8f79e2547463715042f69dea62604924fd",
+      "sourceSha256": "26342082a23e629ea27777543b2e400fcd4feee8d6be22dedc72969917b01c00",
+      "sourceUrl": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/core/meta/AnnotationVocabulary.rdf"
+    },
+    {
+      "conceptCount": 91,
+      "dependencies": [
+        "bfo",
+        "annotation-vocabulary"
+      ],
+      "description": "Manufacturing core: processes, products, materials, equipment, agents, plans and the relations between them.",
+      "format": "turtle",
+      "id": "core",
+      "name": "IOF Core",
+      "relationshipCount": 170,
+      "resourcePath": "rdf/ontology-packs/iof/core.ttl",
+      "selectedByDefault": true,
+      "sha256": "97bf94cdcfbcb9ad24e416e6584eff99bc2bef90be98a0f263e9add8763155ae",
+      "sourceSha256": "bdd9271a6ed190e6c0ac8a01d2728ccd517ad33913c436b3882679dfcf94cfde",
+      "sourceUrl": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/core/Core.rdf"
+    },
+    {
+      "conceptCount": 114,
+      "dependencies": [
+        "core"
+      ],
+      "description": "Supply-chain concepts such as orders, shipments, suppliers and inventory, built on the IOF Core.",
+      "format": "turtle",
+      "id": "supply-chain",
+      "name": "IOF Supply Chain",
+      "relationshipCount": 91,
+      "resourcePath": "rdf/ontology-packs/iof/supply-chain.ttl",
+      "selectedByDefault": true,
+      "sha256": "4a10f730da6fe0626177fd829b242160f9ae48cb5543fcccd6d52648ac009688",
+      "sourceSha256": "aa898340e1f3e72b151286fa58fec56c67a2977d2204f8882f43d6389c3fad10",
+      "sourceUrl": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/supplychain/SupplyChain.rdf"
+    }
+  ],
+  "name": "Industrial Ontologies Foundry (IOF)",
+  "publisher": "Industrial Ontologies Foundry",
+  "sourceUrl": "https://github.com/iofoundry/ontology/tree/Release_202603",
+  "standard": "Industrial Ontologies Foundry (IOF) Core and Supply Chain ontologies",
+  "version": "Release_202603"
+}

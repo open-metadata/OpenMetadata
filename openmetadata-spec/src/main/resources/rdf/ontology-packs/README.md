@@ -5,6 +5,9 @@ Do not edit by hand; run `make ontology-packs` instead.
 
 Upstream packs are the publisher's files, byte for byte, at the pinned URL below. IRIs are
 the publisher's. The `sha256` column is the hash of the file as published and as stored here.
+A `converted` row is a source the importer's XXE guard cannot read as published (an RDF/XML
+DOCTYPE declaring entities): the generator converted it to Turtle and proved the triples
+isomorphic to the source; the row shows the source hash and the stored payload hash.
 Authored packs are OpenMetadata-written outlines (Apache License 2.0) with OpenMetadata IRIs.
 
 | Pack | Version | License | Module file | Source | sha256 |
@@ -23,6 +26,10 @@ Authored packs are OpenMetadata-written outlines (Apache License 2.0) with OpenM
 | fibo | 2026Q2 | MIT | `fibo/fibo-quickstart.ttl` | https://spec.edmcouncil.org/fibo/ontology/master/2026Q2/prod.fibo-quickstart.ttl | `5cd164c787cdfb2d7c1c386bc21bb3410f5963199bc547dc000a70b3c0e195b1` |
 | fhir | 5.0.0 | CC0 1.0 | `fhir/fhir-r5.ttl` | https://hl7.org/fhir/R5/fhir.ttl | `0ced303dc994ef7a05613aca91d911ab463477ad779851a0e65195d39de5497d` |
 | brick | 1.4.2 | BSD-3-Clause | `brick/brick.ttl` | https://brickschema.org/schema/1.4/Brick.ttl | `c4a9a35355da6be158123f5dced3a7ad0714d3a2cab51c6a80c4720c3c8d28f0` |
+| iof | Release_202603 | MIT; BFO module CC BY 4.0 | `iof/bfo.ttl` | https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/cache/bfo/2020/bfo.rdf | converted: source `88ff27e1762d223a214744335a9b3f44242f354594ce92391d67227e9f9e3323`, payload `be7b3985f4c729d2b7e1ecd923532912f21f9a52cef534f3382b6bf4ba16fc94` |
+| iof | Release_202603 | MIT; BFO module CC BY 4.0 | `iof/annotation-vocabulary.ttl` | https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/core/meta/AnnotationVocabulary.rdf | converted: source `26342082a23e629ea27777543b2e400fcd4feee8d6be22dedc72969917b01c00`, payload `920dded4a24654b8211881e6ff986c8f79e2547463715042f69dea62604924fd` |
+| iof | Release_202603 | MIT; BFO module CC BY 4.0 | `iof/core.ttl` | https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/core/Core.rdf | converted: source `bdd9271a6ed190e6c0ac8a01d2728ccd517ad33913c436b3882679dfcf94cfde`, payload `97bf94cdcfbcb9ad24e416e6584eff99bc2bef90be98a0f263e9add8763155ae` |
+| iof | Release_202603 | MIT; BFO module CC BY 4.0 | `iof/supply-chain.ttl` | https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/supplychain/SupplyChain.rdf | converted: source `aa898340e1f3e72b151286fa58fec56c67a2977d2204f8882f43d6389c3fad10`, payload `4a10f730da6fe0626177fd829b242160f9ae48cb5543fcccd6d52648ac009688` |
 | isa-95 | 2025Q1-om1 | Apache License 2.0 | `isa-95/manufacturing-operations.ttl` | OpenMetadata-authored | `authored` |
 | hr-open | 2025Q1-om1 | Apache License 2.0 | `hr-open/workforce.ttl` | OpenMetadata-authored | `authored` |
 | epcis | 2.0.1 | No license statement published by GS1; included pending confirmation | `epcis/cbv.ttl` | https://ref.gs1.org/standards/epcis/2.0.1/cbv-ontology.ttl | `9d41ff84c2b298ca0247ac72a26dc4ad92ca30efc5d34e3f67c65a13a72ca289` |
@@ -51,6 +58,7 @@ Authored packs are OpenMetadata-written outlines (Apache License 2.0) with OpenM
 - **FIBO**: Financial Industry Business Ontology (FIBO) production quickstart 2026Q2. Copyright 2018-2026 EDM Council Inc. Copyright 2018-2025 Object Management Group, Inc. Licensed under the MIT License. Redistributed without changes.
 - **HL7 FHIR R5**: HL7 FHIR Release 5 (5.0.0) RDF ontology, published by HL7 International under CC0 1.0 (https://hl7.org/fhir/R5/license.html). HL7 and FHIR are registered trademarks of Health Level Seven International. Redistributed without changes.
 - **Brick Schema**: Brick Schema 1.4.2. Copyright 2016-2026, Brick Consortium, Inc. All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permitted under the BSD 3-Clause License. The name of the Brick Consortium may not be used to endorse products derived from this software without permission. Redistributed without changes.
+- **Industrial Ontologies Foundry (IOF)**: Industrial Ontologies Foundry (IOF) ontologies, release 202603. Copyright (c) 2022 Industrial Ontologies Foundry, licensed under the MIT License (https://github.com/iofoundry/ontology/blob/Release_202603/LICENSE). The Supply Chain module also carries: Copyright (c) 2022, 2023, 2024, 2025, 2026 Open Applications Group. The BFO module is Basic Formal Ontology 2020 by Barry Smith and the BFO team, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Redistributed as the publisher released them, converted to Turtle from the published RDF/XML with the triples unchanged.
 - **ISA-95 Starter (OpenMetadata-authored)**: Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to ANSI/ISA-95; ISA-95 is a standard of the International Society of Automation and is not licensed to this project.
 - **HR Open Starter (OpenMetadata-authored)**: Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to HR Open Standards, which are not licensed to this project.
 - **GS1 EPCIS 2.0 and CBV**: GS1 EPCIS 2.0.1 and CBV 2.0.1 ontologies. Copyright GS1 AISBL. GS1 and EPCIS are trademarks of GS1 AISBL. GS1 publishes these files openly at ref.gs1.org without a license statement, and no GS1 terms granting or refusing redistribution were found; they are included pending GS1 confirmation and removed in a release if GS1 asks. Redistributed without changes.
