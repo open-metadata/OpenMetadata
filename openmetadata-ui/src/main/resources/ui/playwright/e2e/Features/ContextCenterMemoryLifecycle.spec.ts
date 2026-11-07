@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
-import { createNewPage, uuid } from '../../utils/common';
+import { APIRequestContext, expect, Response } from '@playwright/test';
+import { clickIgnoringToasts, createNewPage, uuid } from '../../utils/common';
 import {
   createMemoryViaApi,
+  getMemoryDialog,
+  getMemoryStatus,
   MEMORIES_API,
   MEMORIES_URL,
   navigateToMemories,
@@ -22,9 +24,57 @@ import {
   searchAndGetMemoryRow,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+interface Memory {
+  id: string;
+  name: string;
+  title: string;
+}
+
+/** The stages the Memories page lists until its status filter changes. */
+const LISTED_STATUSES = 'Approved,Unprocessed,Draft';
+
+/** The Memories list reads the search index, so a new memory shows only once it is indexed. */
+const waitForMemoriesListed = async (
+  apiContext: APIRequestContext,
+  query: string,
+  ids: string[]
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(MEMORIES_API, {
+          params: { q: query, statuses: LISTED_STATUSES, limit: 25 },
+        });
+        if (!response.ok()) {
+          return `HTTP ${response.status()}`;
+        }
+        const { data } = (await response.json()) as { data: Memory[] };
+
+        return data.map(({ id }) => id);
+      },
+      { message: `memories matching "${query}" are listed`, timeout: 30_000 }
+    )
+    .toEqual(expect.arrayContaining(ids));
+};
+
+const isStatusPatchOf = (id: string) => (response: Response) =>
+  response.request().method() === 'PATCH' &&
+  new URL(response.url()).pathname === `${MEMORIES_API}/${id}`;
+
+const isListSearchFor = (query: string) => (response: Response) => {
+  const url = new URL(response.url());
+
+  return (
+    response.request().method() === 'GET' &&
+    url.pathname === MEMORIES_API &&
+    url.searchParams.get('q') === query
+  );
+};
 
 test.describe(
   'Context Center - Memory lifecycle',
@@ -36,6 +86,27 @@ test.describe(
     let invalidated: { id: string; name: string; title: string };
     const supersededReason = 'Replaced by the corrected guidance';
     const invalidatedReason = 'The source fact was disproven';
+    // Memories a test decides are its own, named before they are created so cleanup finds them.
+    const pendingMemoryNames = new Set<string>();
+
+    const createPendingMemory = async (
+      apiContext: APIRequestContext,
+      kind: string,
+      overrides: Record<string, unknown> = {}
+    ): Promise<Memory> => {
+      const name = `cc_lifecycle_${kind}_${uuid()}`;
+      pendingMemoryNames.add(name);
+
+      return createMemoryViaApi(apiContext, {
+        name,
+        title: name,
+        question: `What is ${name}?`,
+        answer: `Pending content for ${name}.`,
+        entityStatus: 'Unprocessed',
+        shareConfig: { visibility: 'Entity' },
+        ...overrides,
+      });
+    };
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -95,7 +166,14 @@ test.describe(
             expect([200, 404]).toContain(response.status());
           }
         }
+        for (const name of pendingMemoryNames) {
+          const response = await apiContext.delete(
+            `${MEMORIES_API}/name/${encodeURIComponent(name)}?hardDelete=true`
+          );
+          expect([200, 404]).toContain(response.status());
+        }
       } finally {
+        pendingMemoryNames.clear();
         await afterAction();
       }
     });
@@ -257,6 +335,116 @@ test.describe(
       await expect(
         page.getByRole('menuitemcheckbox', { name: 'Approved' })
       ).toBeVisible();
+    });
+
+    for (const { kind, verb, button, stage } of [
+      {
+        kind: 'approve',
+        verb: 'approves',
+        button: 'memory-approve-btn',
+        stage: 'Approved',
+      },
+      {
+        kind: 'reject',
+        verb: 'rejects',
+        button: 'memory-reject-btn',
+        stage: 'Rejected',
+      },
+    ]) {
+      test(`an admin ${verb} an unprocessed memory from its panel`, async ({
+        browser,
+        page,
+      }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        try {
+          const memory = await createPendingMemory(apiContext, kind);
+          await waitForMemoriesListed(apiContext, memory.title, [memory.id]);
+
+          await navigateToMemories(page);
+          const row = await searchAndGetMemoryRow(
+            page,
+            memory.title,
+            memory.id
+          );
+          await row.click();
+          const dialog = getMemoryDialog(page);
+          await expect(
+            dialog.getByTestId('memory-lifecycle-status')
+          ).toContainText('Unprocessed');
+          await expect(dialog.getByTestId('memory-approve-btn')).toBeVisible();
+          await expect(dialog.getByTestId('memory-reject-btn')).toBeVisible();
+
+          const decided = waitForResponseWithStatus(
+            page,
+            isStatusPatchOf(memory.id),
+            200
+          );
+          await clickIgnoringToasts(dialog.getByTestId(button));
+          await decided;
+
+          await expect(dialog).not.toBeVisible();
+          expect(await getMemoryStatus(apiContext, memory.id)).toBe(stage);
+        } finally {
+          await afterAction();
+        }
+      });
+    }
+
+    test('approving the pending memories listed approves the unprocessed ones and leaves a draft alone', async ({
+      browser,
+      page,
+    }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      try {
+        // A search term only these memories carry keeps other workers' memories out of the count.
+        const term = `cc_lifecycle_pending_${uuid()}`;
+        const first = await createPendingMemory(apiContext, 'pending_first', {
+          title: `${term} first`,
+        });
+        const second = await createPendingMemory(apiContext, 'pending_second', {
+          title: `${term} second`,
+        });
+        const draft = await createPendingMemory(apiContext, 'pending_draft', {
+          title: `${term} draft`,
+          entityStatus: 'Draft',
+        });
+        await waitForMemoriesListed(apiContext, term, [
+          first.id,
+          second.id,
+          draft.id,
+        ]);
+
+        await navigateToMemories(page);
+        const draftRow = await searchAndGetMemoryRow(page, term, draft.id);
+        await expect(
+          draftRow.getByTestId(`memory-status-${draft.id}`)
+        ).toContainText('Draft');
+        for (const memory of [first, second]) {
+          await expect(
+            page.getByTestId(`memory-status-${memory.id}`)
+          ).toContainText('Unprocessed');
+        }
+        const approvePending = page.getByTestId('approve-pending-memories-btn');
+        await expect(approvePending).toHaveText(/\b2 pending\b/);
+
+        const approvals = [first, second].map((memory) =>
+          waitForResponseWithStatus(page, isStatusPatchOf(memory.id), 200)
+        );
+        // The list refetches once every approval has settled, so a write to the draft has landed too.
+        const refreshed = waitForResponseWithStatus(
+          page,
+          isListSearchFor(term),
+          200
+        );
+        await clickIgnoringToasts(approvePending);
+        await Promise.all([...approvals, refreshed]);
+
+        expect(await getMemoryStatus(apiContext, first.id)).toBe('Approved');
+        expect(await getMemoryStatus(apiContext, second.id)).toBe('Approved');
+        expect(await getMemoryStatus(apiContext, draft.id)).toBe('Draft');
+      } finally {
+        await afterAction();
+      }
     });
   }
 );

@@ -157,6 +157,12 @@ export const DEFAULT_MEMORY_LIST_STATUSES = [
   ContextMemoryStatus.Draft,
 ];
 
+/** The stages a person approves or rejects a memory from. */
+export const MEMORY_STATUSES_AWAITING_DECISION = [
+  ContextMemoryStatus.Unprocessed,
+  ContextMemoryStatus.Draft,
+];
+
 export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
   [ContextMemoryStatus.Unprocessed]: 'label.unprocessed',
   [ContextMemoryStatus.Approved]: 'label.approved',

@@ -160,42 +160,11 @@ public class ContextMemoryReconciler {
       Map<String, ContextMemory> derivedByQuestion,
       ReconciliationPlan plan) {
     for (ContextMemory pill : existing) {
-      if (!isEngineManaged(pill)) {
-        holdAgreeingValues(pill, derivedByQuestion, plan);
-      }
-      if (isHumanOwned(pill)) {
-        holdValuesACorrectionMayHaveReplaced(pill, derivedByQuestion, plan);
-      }
+      derivedByQuestion.entrySet().stream()
+          .filter(entry -> MemoryReviewHolds.holds(pill, entry.getValue()))
+          .map(Map.Entry::getKey)
+          .forEach(plan.heldForReview::add);
     }
-  }
-
-  /** Values that clear the identity bar and agree with the pill's numbers. */
-  private static void holdAgreeingValues(
-      ContextMemory pill, Map<String, ContextMemory> derivedByQuestion, ReconciliationPlan plan) {
-    candidatesClearingTheBar(derivedByQuestion, pill).stream()
-        .filter(candidate -> !candidate.conflicting())
-        .map(Candidate::key)
-        .forEach(plan.heldForReview::add);
-  }
-
-  /**
-   * Any value whose number conflicts with a correction's and whose question alone clears the bar,
-   * however the rest scores: the edit modal stores the corrected text as question and answer alike.
-   */
-  private static void holdValuesACorrectionMayHaveReplaced(
-      ContextMemory correction,
-      Map<String, ContextMemory> derivedByQuestion,
-      ReconciliationPlan plan) {
-    derivedByQuestion.entrySet().stream()
-        .filter(entry -> mayHaveBeenReplaced(correction, entry.getValue()))
-        .map(Map.Entry::getKey)
-        .forEach(plan.heldForReview::add);
-  }
-
-  private static boolean mayHaveBeenReplaced(ContextMemory correction, ContextMemory derived) {
-    return MemoryTextSimilarity.hasConflictingNumbers(correction.getAnswer(), derived.getAnswer())
-        && MemoryTextSimilarity.questionSimilarity(correction.getQuestion(), derived.getQuestion())
-            >= MemoryTextSimilarity.IDENTITY_THRESHOLD;
   }
 
   private void planNewMemories(
@@ -409,14 +378,8 @@ public class ContextMemoryReconciler {
         || pill.getSourceType() == ContextMemorySourceType.PAGE_EXTRACTION;
   }
 
-  /**
-   * The engine maintains the pills extraction creates, Approved or awaiting review (Unprocessed).
-   * Draft awaits a review too, but is never rewritten; any other stage was a reviewer's decision.
-   */
   private static boolean isEngineManaged(ContextMemory pill) {
-    return isAutomated(pill)
-        && (pill.getEntityStatus() == ContextMemoryStatus.APPROVED
-            || pill.getEntityStatus() == ContextMemoryStatus.UNPROCESSED);
+    return MemoryReviewHolds.isEngineManaged(pill);
   }
 
   /** A pill the engine maintains leaves with its fact, and so does one held in Draft. */
