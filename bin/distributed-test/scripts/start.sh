@@ -49,7 +49,7 @@ if [ -z "$DIST_TAR" ] && [ "$SKIP_MVN" != "true" ]; then
     echo "This may take several minutes on first run."
     echo ""
     cd "$ROOT_DIR"
-    mvn clean install -DskipTests -Pquickstart -pl '!openmetadata-ui' -am
+    ./mvnw clean install -DskipTests -Pquickstart -pl '!openmetadata-ui' -am
     cd "$PROJECT_DIR"
     BUILD_FLAG="--build"
     echo ""

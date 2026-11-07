@@ -461,7 +461,7 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "playwright-golden-fixture-v2-" in workflow
     assert "playwright-ingestion-image-v2-" in workflow
     assert "playwright-distribution-v2-" in workflow
-    assert "mvn -DskipTests clean package -pl openmetadata-dist -am" in workflow
+    assert "-DskipTests clean package -pl openmetadata-dist -am" in workflow
     assert "npx playwright test --project=bundle-smoke --reporter=line" in workflow
     assert "COARSE_BUNDLE: ${{ inputs.coarse_bundle }}" in workflow
     assert "PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}" in workflow

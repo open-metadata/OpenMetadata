@@ -31,11 +31,11 @@ mkdir -p "$OUTPUT_PATH"
 # Compile the generator if needed
 echo -e "${YELLOW}Compiling RDF generator...${NC}"
 cd "$ROOT_DIR"
-mvn compile -pl openmetadata-service -DskipTests
+./mvnw compile -pl openmetadata-service -DskipTests
 
 # Run the generator
 echo -e "${YELLOW}Generating RDF models...${NC}"
-mvn exec:java \
+./mvnw exec:java \
     -pl openmetadata-service \
     -Dexec.mainClass="org.openmetadata.service.rdf.generator.RdfModelGenerator" \
     -Dexec.args="$SCHEMA_PATH $OUTPUT_PATH"

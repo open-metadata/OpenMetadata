@@ -99,7 +99,9 @@ jobs:
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -Pstatic-code-analysis clean verify -DskipTests -am
+        run: |
+          MVN=./mvnw; [ -x "$MVN" ] || MVN=mvn  # Open PR branches may not have the wrapper yet.
+          "$MVN" -Pstatic-code-analysis clean verify -DskipTests -am
 
       - name: Save Maven dependencies
         # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.

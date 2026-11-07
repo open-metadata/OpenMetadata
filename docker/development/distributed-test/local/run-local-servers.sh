@@ -30,7 +30,7 @@ JAR_PATH=$(find "$PROJECT_DIR/openmetadata-service/target" -name "openmetadata-s
 if [ -z "$JAR_PATH" ]; then
     echo "OpenMetadata JAR not found. Building..."
     cd "$PROJECT_DIR"
-    mvn clean package -DskipTests -pl openmetadata-service -am
+    ./mvnw clean package -DskipTests -pl openmetadata-service -am
     JAR_PATH=$(find "$PROJECT_DIR/openmetadata-service/target" -name "openmetadata-service-*.jar" -not -name "*sources*" -not -name "*javadoc*" 2>/dev/null | head -1)
 fi
 

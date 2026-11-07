@@ -52,7 +52,7 @@ case "$command" in
         fingerprint: $fingerprint,
         bundleMode: $bundleMode,
         toolchain: $toolchain,
-        buildCommand: "mvn -DskipTests clean package -pl openmetadata-dist -am",
+        buildCommand: "./mvnw -DskipTests clean package -pl openmetadata-dist -am",
         archive: $archive,
         archiveHash: $archiveHash
       }' > "$cache_dir/distribution-manifest.json"
@@ -83,7 +83,7 @@ case "$command" in
           "$(jq -r .fingerprint "$manifest")" != "$fingerprint" ||
           "$(jq -r .bundleMode "$manifest")" != "$bundle_mode" ||
           "$(jq -r .toolchain "$manifest")" != "$toolchain" ||
-          "$(jq -r .buildCommand "$manifest")" != "mvn -DskipTests clean package -pl openmetadata-dist -am" ||
+          "$(jq -r .buildCommand "$manifest")" != "./mvnw -DskipTests clean package -pl openmetadata-dist -am" ||
           "$(jq -r .archiveHash "$manifest")" != "$archive_hash" ]]; then
       jq . "$manifest" >&2
       echo "Cached OpenMetadata distribution failed compatibility or integrity validation" >&2

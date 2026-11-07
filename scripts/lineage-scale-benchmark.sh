@@ -64,14 +64,14 @@ fi
 mkdir -p "$lineage_output"
 
 if [[ "${BUILD:-true}" == true ]]; then
-  mvn -B -DskipTests install -pl :openmetadata-integration-tests -am
+  ./mvnw -B -DskipTests install -pl :openmetadata-integration-tests -am
 fi
 
 benchmark_dir="$repo_root/openmetadata-integration-tests/target/benchmark"
 rm -rf "$benchmark_dir"
 
 set +e
-mvn -B verify -P scale-it -pl :openmetadata-integration-tests \
+./mvnw -B verify -P scale-it -pl :openmetadata-integration-tests \
   -Dskip.embedded.bootstrap=true \
   -Dit.test=LineageScenePerformanceScaleIT \
   -Dfailsafe.failIfNoSpecifiedTests=false \

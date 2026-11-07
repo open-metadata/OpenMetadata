@@ -80,7 +80,9 @@ jobs:
           distribution: 'temurin'
 
       - name: Run checkstyle
-        run: mvn spotless:apply
+        run: |
+          MVN=./mvnw; [ -x "$MVN" ] || MVN=mvn  # Open PR branches may not have the wrapper yet.
+          "$MVN" spotless:apply
 
       - name: Save checkstyle outcome
         id: git

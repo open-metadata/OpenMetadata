@@ -1,3 +1,8 @@
+# Maven comes from the official image, so the build does not depend on a public download host.
+# Pinned by multi-arch index digest, like the JDK base. Bump with:
+#   docker buildx imagetools inspect maven:3.9.9-eclipse-temurin-21 --format '{{.Manifest.Digest}}'
+FROM maven:3.9.9-eclipse-temurin-21@sha256:3a4ab3276a087bf276f79cae96b1af04f53731bec53fb2e651aca79e4b10211e AS maven-dist
+
 # Pinned by DIGEST, not by the `21-jdk-jammy` tag alone: a tag can be re-pushed, which would change
 # the base under a build whose every other input (Maven, Node, ANTLR) is checksum-verified — the one
 # floating input defeats the reproducibility of all of them. The tag is kept beside it for readability;
@@ -31,8 +36,6 @@ RUN set -eu; \
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-ARG MAVEN_VERSION=3.9.9
-ARG MAVEN_SHA512=a555254d6b53d267965a3404ecb14e53c3827c09c3b94b5678835887ab404556bfaf78dcfe03ba76fa2508649dca8531c74bca4d5846513522404d48e8c4ac8b
 ARG NODE_VERSION=22.23.4
 ARG NODE_SHA256_X64=1805bcd35e6815559bd2eb97db438d3fdb0eb3a5e6a977b7c1badca76337e9ce
 ARG NODE_SHA256_ARM64=6287aa46b6c375d816e63ae66d024fbbfd70404825aabdfdf898a970871d2f4b
@@ -73,16 +76,10 @@ RUN apt-get update \
 # fails to execute — so this is what makes the Makefile target below work on this base.
 RUN ln -sf "${JAVA_HOME}/bin/java" /usr/bin/java
 
-# Maven 3.9.9 — the version `.devcontainer/dev/devcontainer.json` pins. Jammy's apt carries 3.6.3,
+# Maven 3.9.9, the version `.devcontainer/dev/devcontainer.json` pins. Jammy's apt carries 3.6.3,
 # which is too old for this build.
-RUN curl -fsSL --retry 3 --retry-all-errors \
-        "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
-        -o /tmp/maven.tar.gz \
-    && echo "${MAVEN_SHA512}  /tmp/maven.tar.gz" | sha512sum --check --strict - \
-    && mkdir -p "${MAVEN_HOME}" \
-    && tar -xzf /tmp/maven.tar.gz -C "${MAVEN_HOME}" --strip-components=1 \
-    && rm /tmp/maven.tar.gz \
-    && ln -sf "${MAVEN_HOME}/bin/mvn" /usr/local/bin/mvn \
+COPY --from=maven-dist /usr/share/maven ${MAVEN_HOME}
+RUN ln -sf "${MAVEN_HOME}/bin/mvn" /usr/local/bin/mvn \
     && mvn --version
 
 # Node 22.23.4 + yarn 1.22.22 — Node must match `openmetadata-ui/src/main/resources/ui/.nvmrc` (the

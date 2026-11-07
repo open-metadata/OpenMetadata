@@ -366,11 +366,12 @@ jobs:
           # inputs.coarse_bundle is always defined (workflow_call), defaults to true.
           COARSE_BUNDLE: ${{ inputs.coarse_bundle }}
         run: |
+          MVN=./mvnw; [ -x "$MVN" ] || MVN=mvn  # Open PR branches may not have the wrapper yet.
           bundle_mode=regular
           if [[ "$COARSE_BUNDLE" == "true" ]]; then
             bundle_mode=coarse
           fi
-          toolchain=$(mvn --version | sed -n '1p' | tr -d '\r')
+          toolchain=$("$MVN" --version | sed -n '1p' | tr -d '\r')
           distribution=$(python3 .github/scripts/playwright_cache_fingerprint.py \
             --kind distribution \
             --bundle-mode "$bundle_mode" \
@@ -508,7 +509,9 @@ jobs:
         env:
           PW_E2E_BUILD: "true"
           PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}
-        run: mvn -DskipTests clean package -pl openmetadata-dist -am
+        run: |
+          MVN=./mvnw; [ -x "$MVN" ] || MVN=mvn  # Open PR branches may not have the wrapper yet.
+          "$MVN" -DskipTests clean package -pl openmetadata-dist -am
 
       - name: Save Maven Dependencies
         # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
@@ -636,7 +639,9 @@ jobs:
         if: ${{ env.SKIP_UI_BUILD != 'true' }}
         env:
           PW_E2E_BUILD: "true"
-        run: mvn -DskipTests package -pl openmetadata-ui -am
+        run: |
+          MVN=./mvnw; [ -x "$MVN" ] || MVN=mvn  # Open PR branches may not have the wrapper yet.
+          "$MVN" -DskipTests package -pl openmetadata-ui -am
 
       - name: Upload the regular UI bundle
         uses: actions/upload-artifact@v6

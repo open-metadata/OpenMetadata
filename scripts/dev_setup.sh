@@ -913,7 +913,7 @@ install_precommit() {
 }
 
 maven_build() {
-  run mvn -f "$REPO_ROOT/pom.xml" clean install -DskipTests -T 1C
+  run "$REPO_ROOT/mvnw" -f "$REPO_ROOT/pom.xml" clean install -DskipTests -T 1C
   ok "Maven build complete"
 }
 

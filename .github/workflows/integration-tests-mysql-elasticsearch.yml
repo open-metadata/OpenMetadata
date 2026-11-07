@@ -127,7 +127,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SOURCE_SHA: ${{ github.sha }}
         run: |
-          project_version="$(mvn --quiet --non-recursive help:evaluate \
+          project_version="$(./mvnw --quiet --non-recursive help:evaluate \
             -Dexpression=project.version -DforceStdout -Dstyle.color=never)"
           if [[ ! "$project_version" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
             echo "Invalid Maven project version: $project_version"
@@ -140,7 +140,7 @@ jobs:
               -name "$project_version" -prune -exec rm -rf -- {} +
           fi
 
-          mvn -DskipTests -DskipITs -Dspring-boot.repackage.skip=true \
+          ./mvnw -DskipTests -DskipITs -Dspring-boot.repackage.skip=true \
             clean install -pl :openmetadata-integration-tests -am
 
           staging="$RUNNER_TEMP/java-it-reactor-repository"
@@ -345,7 +345,7 @@ jobs:
           maven_log="$diagnostics/maven.log"
           set +e
           timeout --signal=TERM --kill-after=60s 65m \
-            mvn --no-snapshot-updates verify -pl :openmetadata-integration-tests -Pmysql-elasticsearch \
+            ./mvnw --no-snapshot-updates verify -pl :openmetadata-integration-tests -Pmysql-elasticsearch \
               -DintegrationTests.lane="${IT_LANE}" \
               -DintegrationTests.parallelStrategy=fixed \
               -DintegrationTests.parallelism="${IT_PARALLELISM}" \

@@ -316,7 +316,7 @@ def fingerprint(
         parameters.update(
             {
                 "bundleMode": bundle_mode,
-                "buildCommand": "mvn -DskipTests clean package -pl openmetadata-dist -am",
+                "buildCommand": "./mvnw -DskipTests clean package -pl openmetadata-dist -am",
                 "java": "temurin-21",
                 "toolchain": toolchain,
             }
