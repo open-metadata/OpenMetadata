@@ -72,19 +72,22 @@ public final class ODCSShapeNormalizer {
       root.remove(QUALITY);
       return;
     }
-    ObjectNode table = preservationTable(root, applied, selected);
+    ObjectNode projected = root.deepCopy();
+    ObjectNode table = preservationTable(projected, applied, selected);
     if (table == null) return;
     for (JsonNode rule : rules) {
       ObjectNode target = qualityTarget(table, rule.path("column").asText(""));
-      if (target.has(QUALITY) && !target.path(QUALITY).isArray()) return;
+      if (target == null || target.has(QUALITY) && !target.path(QUALITY).isArray()) return;
       JsonNode copy = rule.deepCopy();
       if (copy.isObject()) ((ObjectNode) copy).remove("column");
       target.withArray(QUALITY).add(copy);
     }
+    root.set(SCHEMA, projected.path(SCHEMA));
     root.remove(QUALITY);
   }
 
   private static ObjectNode preservationTable(ObjectNode root, JsonNode applied, String selected) {
+    if (root.has(SCHEMA) && !root.path(SCHEMA).isArray()) return null;
     boolean objects = false;
     for (JsonNode value : root.path(SCHEMA)) {
       if (value.isObject()
@@ -109,10 +112,12 @@ public final class ODCSShapeNormalizer {
     ObjectNode target = table;
     for (String segment : FullyQualifiedName.split(column)) {
       if ("array".equals(target.path("logicalType").asText())) {
+        if (target.has(ITEMS) && !target.path(ITEMS).isObject()) return null;
         if (!target.path(ITEMS).isObject()) target.putObject(ITEMS).put("logicalType", "object");
         target = (ObjectNode) target.path(ITEMS);
       }
       String name = FullyQualifiedName.unquoteName(segment);
+      if (target.has(PROPERTIES) && !target.path(PROPERTIES).isArray()) return null;
       ObjectNode child = null;
       for (JsonNode property : target.path(PROPERTIES))
         if (property.isObject() && name.equals(property.path("name").asText()))

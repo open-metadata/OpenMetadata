@@ -227,6 +227,36 @@ class ODCSQualityRoundTripTest {
   }
 
   @ParameterizedTest
+  @ValueSource(strings = {"quality", "properties", "items", "schema"})
+  void malformedLegacyTargetsLeaveTheWholeSourceUnchanged(String invalidField) {
+    ObjectNode source = source("orders");
+    if ("quality".equals(invalidField)) {
+      ((ObjectNode) source.at("/schema/0")).put("quality", "unreadable");
+      source
+          .withArray("quality")
+          .add(sql("column", "SELECT value").put("mustBe", "OK").put("column", "id"));
+      source.withArray("quality").add(sql("table", "SELECT value").put("mustBe", "OK"));
+    } else {
+      if ("schema".equals(invalidField)) source.put("schema", "unreadable");
+      else if ("items".equals(invalidField))
+        ((ObjectNode) source.at("/schema/0/properties/0"))
+            .put("logicalType", "array")
+            .put("items", "unreadable");
+      else
+        ((ObjectNode) source.at("/schema/0/properties/0"))
+            .put("logicalType", "object")
+            .put("properties", "unreadable");
+      source.withArray("quality").add(sql("table", "SELECT value").put("mustBe", "OK"));
+      source
+          .withArray("quality")
+          .add(sql("column", "SELECT value").put("mustBe", "OK").put("column", "id.value"));
+    }
+    JsonNode original = source.deepCopy();
+    ODCSShapeNormalizer.projectRootQuality(source, JSON.createObjectNode(), "orders");
+    assertEquals(original, source);
+  }
+
+  @ParameterizedTest
   @ValueSource(strings = {"none", "flat", "array"})
   void legacyRootMetadataSupportsMissingFlatAndArraySchemas(String shape) throws Exception {
     ObjectNode source = source("orders");
