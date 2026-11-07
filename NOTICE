@@ -80,7 +80,7 @@ source the importer cannot read as published is converted to Turtle, triples unc
   License: BSD-3-Clause, https://opensource.org/licenses/BSD-3-Clause
 
   Industrial Ontologies Foundry (IOF) Release_202603
-  Industrial Ontologies Foundry (IOF) ontologies, release 202603. Copyright (c) 2022 Industrial Ontologies Foundry, licensed under the MIT License (https://github.com/iofoundry/ontology/blob/Release_202603/LICENSE). The Supply Chain module also carries: Copyright (c) 2022, 2023, 2024, 2025, 2026 Open Applications Group. The BFO module is Basic Formal Ontology 2020 by Barry Smith and the BFO team, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Redistributed as the publisher released them, converted to Turtle from the published RDF/XML with the triples unchanged.
+  Industrial Ontologies Foundry (IOF) ontologies, release 202603. Copyright (c) 2022 Industrial Ontologies Foundry, licensed under the MIT License (https://github.com/iofoundry/ontology/blob/Release_202603/LICENSE). The IOF modules also carry: Copyright (c) 2022, 2023, 2024, 2025, 2026 Open Applications Group. The Biopharma Molecular Entity module adapts terms from ChEBI (https://www.ebi.ac.uk/chebi/), licensed under CC BY 4.0. The BFO module is Basic Formal Ontology 2020 by Barry Smith and the BFO team, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Redistributed as the publisher released them, converted to Turtle from the published RDF/XML with the triples unchanged.
   https://github.com/iofoundry/ontology/tree/Release_202603
   License: MIT; BFO module CC BY 4.0, https://opensource.org/licenses/MIT
 

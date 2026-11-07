@@ -58,7 +58,7 @@ class BundledOntologyPackImportTest {
         Arguments.of("foaf", 105, 171),
         Arguments.of("gs1", 1523, 14190),
         Arguments.of("hr-open", 14, 0),
-        Arguments.of("iof", 894, 2892),
+        Arguments.of("iof", 2642, 8448),
         Arguments.of("isa-95", 16, 0),
         Arguments.of("odrl", 758, 566),
         Arguments.of("org", 65, 417),

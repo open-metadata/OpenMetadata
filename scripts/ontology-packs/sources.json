@@ -355,16 +355,16 @@
       "id": "iof",
       "name": "Industrial Ontologies Foundry (IOF)",
       "abbreviation": "IOF",
-      "standard": "Industrial Ontologies Foundry (IOF) Core and Supply Chain ontologies",
+      "standard": "Industrial Ontologies Foundry (IOF) production ontologies: Core, Supply Chain, Maintenance, Certification and Biopharma",
       "publisher": "Industrial Ontologies Foundry",
       "version": "Release_202603",
       "industry": "manufacturing",
       "layer": "L2",
-      "description": "The full IOF manufacturing ontology: the IOF Core, the IOF Supply Chain extension and the Basic Formal Ontology (BFO) 2020 they build on, converted to Turtle from the published RDF/XML with the triples unchanged. The ISA-95 starter is an OpenMetadata-authored outline aligned to ISA-95; IOF is the complete open ontology.",
+      "description": "The full IOF manufacturing ontology as IOF releases it in its production manifests (AboutIOFProd): the IOF Core, Supply Chain, Maintenance and Certification modules, the thirteen Released biopharma modules and the Basic Formal Ontology (BFO) 2020 they build on, converted to Turtle from the published RDF/XML with the triples unchanged. Provisional and development modules are not included. The ISA-95 starter is an OpenMetadata-authored outline aligned to ISA-95; IOF is the complete open ontology.",
       "license": "MIT; BFO module CC BY 4.0",
       "licenseUrl": "https://opensource.org/licenses/MIT",
       "sourceUrl": "https://github.com/iofoundry/ontology/tree/Release_202603",
-      "attribution": "Industrial Ontologies Foundry (IOF) ontologies, release 202603. Copyright (c) 2022 Industrial Ontologies Foundry, licensed under the MIT License (https://github.com/iofoundry/ontology/blob/Release_202603/LICENSE). The Supply Chain module also carries: Copyright (c) 2022, 2023, 2024, 2025, 2026 Open Applications Group. The BFO module is Basic Formal Ontology 2020 by Barry Smith and the BFO team, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Redistributed as the publisher released them, converted to Turtle from the published RDF/XML with the triples unchanged.",
+      "attribution": "Industrial Ontologies Foundry (IOF) ontologies, release 202603. Copyright (c) 2022 Industrial Ontologies Foundry, licensed under the MIT License (https://github.com/iofoundry/ontology/blob/Release_202603/LICENSE). The IOF modules also carry: Copyright (c) 2022, 2023, 2024, 2025, 2026 Open Applications Group. The Biopharma Molecular Entity module adapts terms from ChEBI (https://www.ebi.ac.uk/chebi/), licensed under CC BY 4.0. The BFO module is Basic Formal Ontology 2020 by Barry Smith and the BFO team, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Redistributed as the publisher released them, converted to Turtle from the published RDF/XML with the triples unchanged.",
       "origin": "upstream",
       "modules": [
         {
@@ -413,6 +413,221 @@
           "convert": "turtle",
           "sourceSha256": "aa898340e1f3e72b151286fa58fec56c67a2977d2204f8882f43d6389c3fad10",
           "payloadSha256": "4a10f730da6fe0626177fd829b242160f9ae48cb5543fcccd6d52648ac009688"
+        },
+        {
+          "id": "maintenance",
+          "name": "IOF Maintenance",
+          "description": "Maintenance management, maintenance procedures, asset failure and failure modes and effects analysis, aligned with the IOF Core.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/maintenance/Maintenance.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "0c7bdada677221469e67a004c0e3fcca6e65f467bdf35cf9afdd1f109bc3ca5f",
+          "payloadSha256": "baef9f3f0f0c5c4b27919fb872f82988f917ea3c49012d6a6e5476fce19ea1ef"
+        },
+        {
+          "id": "certification",
+          "name": "IOF Certification",
+          "description": "Certification concepts built on the IOF Core.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/certification/Certification.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "36c95eecc460e9ccebce13a458bb943287a3a88b8c9cb3408e6ff69929a2ddb4",
+          "payloadSha256": "421db1149e2884dbffff984029361c69b9028c8badb195529c10cd57c306befe"
+        },
+        {
+          "id": "biopharma-agent",
+          "name": "IOF Biopharma Agent",
+          "description": "Human actors, engineered systems and organizations in biopharmaceutical manufacturing.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaAgent.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "282a79e17fe4b8ef8b0595ee0f76accce0aac6ed89b21bc5148df8beb1f09d21",
+          "payloadSha256": "46b7fc3eb3fbda8773845f2b41fe0ed107eccbf0465f1c83eab889fb6c14243a"
+        },
+        {
+          "id": "manufacturing-system-organization",
+          "name": "IOF Biopharma Manufacturing System Organization",
+          "description": "The physical spaces where biopharmaceutical processing and storage occurs.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/ManufacturingSystemOrganization.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "c078d049a81d968311950c112e7068c7f0f85c52e321126a94e0514d6b7afca9",
+          "payloadSha256": "d0049cab3f81c9a1d8b40f1ae52fa6d4c515a77643288b73364f72d569db0358"
+        },
+        {
+          "id": "reference-ontology-candidates",
+          "name": "IOF Reference Ontology Candidates",
+          "description": "Cross-cutting constructs developed in the biopharma work and proposed for IOF reference ontologies.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/ReferenceOntologyCandidates.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "1688f276b2b5eea7306a991fbb80687712963a3759122f21dbe6d6229c675fc5",
+          "payloadSha256": "ebc7f2088f77ec181a6c836c139b0cc39770db7641d987ca960d51cb22ce4392"
+        },
+        {
+          "id": "molecular-entity",
+          "name": "IOF Biopharma Molecular Entity",
+          "description": "Molecular entities, roles, residues, sequences, proteins and glycans, many adapted from ChEBI.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/MolecularEntity.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "dc0b52472fa968ebb5e5f5f5a6bb21d64e6f3817066ae0ef26022230fea11077",
+          "payloadSha256": "b2d10b67f3130e256c7176831df7d5977b4d04d209ba41e93debfe81daf96dab"
+        },
+        {
+          "id": "targets-limits-ranges",
+          "name": "IOF Targets, Limits and Ranges",
+          "description": "Target values, setpoints, operating ranges, specification, control, alert and action limits.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/TargetsLimitsRanges.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "91f078a5cbcf9c3abe8d7fa0f93c49ab81b532fb07f1d10ab0c88b79cb7df32c",
+          "payloadSha256": "71e2c736348ffedf5f04784f6b6cba5ce48ef4334e0c14118e139f3e0c2e7f11"
+        },
+        {
+          "id": "biopharma-reference-ontology-attributes",
+          "name": "IOF Biopharma Reference Ontology Attributes",
+          "description": "Candidate common attribute constructs that apply across materials and equipment.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaReferenceOntologyAttributes.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "d30ffc845df44979317117b0e2540db3b707507ba6fbd04a31643725542bce34",
+          "payloadSha256": "0f27828b4f33e334a45692ab15acee406020cf0118d800ecf21a44cd0254b26d"
+        },
+        {
+          "id": "biopharma-material",
+          "name": "IOF Biopharma Material",
+          "description": "Material types, their properties and their usages (consumable, process intermediate, final product).",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates",
+            "molecular-entity",
+            "biopharma-reference-ontology-attributes"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaMaterial.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "309d9ef7774dda36e24f2e1be5262443abbb1a3394814beba4aa4968eae3110d",
+          "payloadSha256": "5c649b4420a8b02c9a788e70770c42b1064639b09b0469fc68ba5b118c4f6f22"
+        },
+        {
+          "id": "biopharma-parameter",
+          "name": "IOF Biopharma Parameter",
+          "description": "Process intermediate and product quality attributes, process indicators and process parameters.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates",
+            "targets-limits-ranges",
+            "biopharma-material"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaParameter.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "c762f7a82cb368d5e9a2cc95846da674b5c89c32ab651a0df506f555cc46fedf",
+          "payloadSha256": "3586d407695c6d6f3a20e5d041c025872e2822add3264cbf20042ff236568d02"
+        },
+        {
+          "id": "recipe",
+          "name": "IOF Biopharma Recipe",
+          "description": "The hierarchical, sequenced operations of a recipe, from general recipe to batch recipe.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates",
+            "manufacturing-system-organization"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/Recipe.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "9e31d6cf85892141cb470e1004dd29ea570f26cc11c16f9e47371a9effabd169",
+          "payloadSha256": "f6577f7aa3358cacdddd3b662cb4e9dc6de9655fe6fbe771e3d574e38cb95cc5"
+        },
+        {
+          "id": "biopharma-equipment",
+          "name": "IOF Biopharma Equipment",
+          "description": "Equipment types, properties, specifications and validation.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates",
+            "biopharma-reference-ontology-attributes"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaEquipment.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "26a93b6c6fe7482dc704c480dcb8dd0264c35a10e5f1fd6f27a106e674936b15",
+          "payloadSha256": "70dc11fe068fb16f4584fa8990b2a2a05425b76e5c8dfc3711e86f8cde323408"
+        },
+        {
+          "id": "biopharma-monitoring-and-control",
+          "name": "IOF Biopharma Monitoring and Control",
+          "description": "Planning and execution of monitoring and controlling at laboratory and manufacturing scale.",
+          "dependencies": [
+            "reference-ontology-candidates",
+            "manufacturing-system-organization",
+            "biopharma-parameter"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaMonitoringAndControl.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "1b5a4f943a41d2fc0d801c8f058b6c01744d3dc2fbbe426c7309dd09503fa2bd",
+          "payloadSha256": "18066110e58684fbecf03169c01c89bde07b54c6cc2022db3d76f41ad7ed0546"
+        },
+        {
+          "id": "biopharma-material-procurement-and-storage",
+          "name": "IOF Biopharma Material Procurement and Storage",
+          "description": "Tracking and tracing of materials from raw material procurement through storage.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates",
+            "certification",
+            "supply-chain"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaMaterialProcurementAndStorage.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "37c6a175e2205727a8c01e9b1e81326ead2fa45eb519d4815a4317c0e5fc4a92",
+          "payloadSha256": "5d773f5d618fd8f792be76f609b47a495b90c4aad70e211aa57407bde9e6b5b2"
+        },
+        {
+          "id": "biopharma-manufacturing-execution",
+          "name": "IOF Biopharma Manufacturing Execution",
+          "description": "Actual occurrences of manufacturing processes with respect to recipes.",
+          "dependencies": [
+            "biopharma-equipment",
+            "biopharma-material",
+            "biopharma-monitoring-and-control",
+            "recipe"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaManufacturingExecution.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "798265b33d05a6cbc1f7a9e04ec87600f7a145bbaaf7906296690a11d1f59493",
+          "payloadSha256": "64162ebf371cd2533d83201e74fbd75220f88afb31d0d2d4231cfd89d6573bfb"
         }
       ]
     },
