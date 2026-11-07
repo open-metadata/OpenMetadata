@@ -574,7 +574,10 @@ class SigmaSource(DashboardServiceSource):
                     )
 
     def mark_dashboards_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
-        """Skip when a workbook read failed: the live workbooks it hid are missing from this run"""
+        """
+        Skip when a workbook read failed: the live workbooks it hid are missing from this run
+        (ADR:2026-11-07-a-sigma-run-that-cannot-read-everything-skips-the-stale-passes-it-cannot-confirm)
+        """
         if self.client.workbooks_incomplete:
             logger.warning("Not marking dashboards as deleted: some Sigma workbooks could not be read")
             return
