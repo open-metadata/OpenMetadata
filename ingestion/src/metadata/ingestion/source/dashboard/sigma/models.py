@@ -35,13 +35,17 @@ class WorkbookDetails(BaseModel):
     url: str
     path: str | None = None
     ownerId: str | None = None  # noqa: N815
-    isArchived: bool  # noqa: N815
+    isArchived: bool | None = None  # noqa: N815
     description: str | None = None
+    # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages.
+    elements: list["Elements"] = []
+    # Read from the workbook's lineage on first use, then reused by every lineage step of the workbook.
+    lineage: list["WorkbookLineageEntry"] | None = None
 
 
 class WorkBookResponseDetails(BaseModel):
     entries: list[Workbook] | None = []
-    total: int
+    total: int | None = None
     nextPage: str | None = None  # noqa: N815
 
 
@@ -56,7 +60,7 @@ class WorkBookPage(BaseModel):
 
 class WorkBookPageResponse(BaseModel):
     entries: list[WorkBookPage] | None = []
-    total: int
+    total: int | None = None
     nextPage: str | None = None  # noqa: N815
 
 
@@ -69,7 +73,7 @@ class Elements(BaseModel):
 
 class ElementsResponse(BaseModel):
     entries: list[Elements] | None = []
-    total: int
+    total: int | None = None
     nextPage: str | None = None  # noqa: N815
 
 
@@ -92,13 +96,13 @@ class EdgeSource(BaseModel):
 class Dependency(BaseModel):
     nodeId: str  # noqa: N815
     type: str
-    name: str | None
-    elementId: str | None  # noqa: N815
+    name: str | None = None
+    elementId: str | None = None  # noqa: N815
 
 
 class EdgeSourceResponse(BaseModel):
     edges: list[EdgeSource] | None = []
-    dependencies: dict | None = {}
+    dependencies: dict[str, Dependency] = {}
 
 
 class NodeDetails(BaseModel):
@@ -120,14 +124,48 @@ class NodeDetails(BaseModel):
         return None
 
 
+class DataModel(BaseModel):
+    dataModelId: str  # noqa: N815
+    name: str | None = None
+    url: str | None = None
+    ownerId: str | None = None  # noqa: N815
+
+
+class DataModelsResponse(BaseModel):
+    entries: list[DataModel] = []
+    nextPage: str | None = None  # noqa: N815
+
+
+class Connection(BaseModel):
+    connectionId: str  # noqa: N815
+    type: str
+
+
+class ConnectionsResponse(BaseModel):
+    entries: list[Connection] = []
+    nextPage: str | None = None  # noqa: N815
+
+
+class WorkbookLineageEntry(BaseModel):
+    connectionId: str | None = None  # noqa: N815
+    elementId: str | None = None  # noqa: N815
+    dataSourceIds: list[str] | None = None  # noqa: N815
+    dataModelId: str | None = None  # noqa: N815
+
+
+class WorkbookLineageResponse(BaseModel):
+    entries: list[WorkbookLineageEntry] = []
+    nextPage: str | None = None  # noqa: N815
+
+
 class WorkbookQuery(BaseModel):
     elementId: str  # noqa: N815
-    name: str | None
+    name: str | None = None
     sql: str | None = None
     error: str | None = None
 
 
 class WorkbookQueriesResponse(BaseModel):
     entries: list[WorkbookQuery] | None = []
-    total: int
+    total: int | None = None
     nextPage: str | None = None  # noqa: N815
