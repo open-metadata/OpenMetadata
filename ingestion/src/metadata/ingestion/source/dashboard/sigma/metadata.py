@@ -107,7 +107,10 @@ class SigmaSource(DashboardServiceSource):
         return dashboard.name
 
     def get_project_name(self, dashboard_details: WorkbookDetails) -> str | None:
-        """The workspace: Sigma's path starts with it and continues with the folders"""
+        """
+        The workspace: Sigma's path starts with it and continues with the folders
+        (ADR:2026-11-07-a-sigma-dashboard-project-is-the-workbook-workspace)
+        """
         return dashboard_details.path.split("/")[0] if dashboard_details.path else None
 
     def get_dashboard_details(self, dashboard: Workbook) -> WorkbookDetails | None:
