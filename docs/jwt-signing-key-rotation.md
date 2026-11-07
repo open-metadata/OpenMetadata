@@ -57,7 +57,8 @@ The command:
 
 1. Fetches `GET <metadataApiEndpoint>/v1/system/config/jwks` and checks that it lists the
    configured `keyId` with the same public key. If not, it writes nothing, prints why and exits 2.
-   There is no flag to skip this check.
+   There is no flag to skip this check. It reads the one server behind `metadataApiEndpoint`, so it
+   cannot tell whether every server restarted. Restart them all first.
 2. Gives every JWT bot a new token signed by the new key, and records each change in the audit
    log as an update by `admin`. A bot whose token was revoked is skipped and keeps no token, so an
    administrator's revoke survives the rotation.
@@ -73,7 +74,9 @@ bot token leaked, to give every bot a new expiry, or after changing the cluster 
 command replaced stops working.
 
 A bot changed by someone else while the command ran is reported as `FAILED` ("changed concurrently,
-re-run"). Run the command again with `--skip-current`.
+re-run"). Run the command again. During a key rotation, add `--skip-current`, so only the bots that
+failed get new tokens. After a leaked token, leave it out: the leaked token still verifies under
+the configured key, so `--skip-current` would keep it.
 
 A new token that the configured public key does not verify is never stored. Each bot is then
 reported as `FAILED` ("Private key does not match the public key"). Check that
@@ -83,7 +86,7 @@ reported as `FAILED` ("Private key does not match the public key"). Check that
 |---|---|
 | 0 | No bot and no pipeline failed |
 | 1 | A bot or a pipeline failed, or the command could not run. See the table and log |
-| 2 | The configured key differs from the servers' JWKS, or the JWKS could not be read. Nothing was written |
+| 2 | The JWKS does not list the configured key, could not be read, or `metadataApiEndpoint` is not set. Nothing was written |
 
 The report lists each bot as `REGENERATED`, `ALREADY_CURRENT` (only with `--skip-current`),
 `SKIPPED` (no bot user, not JWT, or token revoked) or `FAILED`.

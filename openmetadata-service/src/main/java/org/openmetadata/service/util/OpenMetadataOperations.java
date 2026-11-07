@@ -228,8 +228,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
     LOG.info(
-        "Use 'regenerate-bot-tokens --expiry <value>' to regenerate all bot JWT tokens; add "
-            + "--skip-current to leave the tokens the configured key already signs unchanged. "
+        "Use 'regenerate-bot-tokens --expiry <value>' to regenerate the JWT tokens of all bots "
+            + "except revoked ones; add --skip-current to leave the tokens the configured key "
+            + "already signs unchanged. "
             + "Expiry values: OneHour, One (1 day), Seven (7 days), Thirty, Sixty, Ninety, Unlimited (default)");
     return 0;
   }
@@ -3045,8 +3046,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
               + "pipelines. Use this after rotating JWT signing keys, after changing the cluster "
               + "name, or to replace leaked tokens. Revoked tokens stay revoked. With "
               + "--skip-current, tokens the configured key already signs are left unchanged. Exit "
-              + "codes: 0 done, 1 a bot or pipeline failed, 2 the configured key differs from the "
-              + "servers' JWKS.")
+              + "codes: 0 done, 1 a bot or pipeline failed, 2 the JWKS of the server at "
+              + "metadataApiEndpoint does not list the configured key or could not be read.")
   public Integer regenerateBotTokens(
       @Option(
               names = {"--expiry"},

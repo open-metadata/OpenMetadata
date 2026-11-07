@@ -30,6 +30,7 @@ import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.security.credentials.CredentialSourceTestSupport;
 
 /**
  * {@code OpenMetadataOperations regenerate-bot-tokens} writes new bot tokens straight to the
@@ -109,12 +111,14 @@ class OpsRegenerateBotTokensIT {
   }
 
   @Test
-  void aRunWithSkipCurrentLeavesCurrentTokensUnchanged(TestNamespace ns) {
+  void aRunWithSkipCurrentReplacesOnlyStaleTokens(TestNamespace ns) {
     User bot = botWithRetiredKeyToken(ns, "idempotentbot");
     assertEquals(
         0, ForkedOperations.run("regenerate-bot-tokens"), "first run, see forked-ops logs");
     String afterFirstRun = storedToken(bot);
     double versionAfterFirstRun = storedVersion(bot);
+    User staleBot = botWithRetiredKeyToken(ns, "stalebot");
+    String staleToken = storedToken(staleBot);
 
     assertEquals(
         0,
@@ -123,6 +127,12 @@ class OpsRegenerateBotTokensIT {
 
     assertEquals(afterFirstRun, storedToken(bot), "the current token was not replaced");
     assertEquals(versionAfterFirstRun, storedVersion(bot), 1e-9, "the bot was not rewritten");
+    String replacedStaleToken = storedToken(staleBot);
+    assertNotEquals(staleToken, replacedStaleToken, "the stale token was replaced");
+    assertEquals(
+        200,
+        CredentialFixtures.status(LOGGED_IN_USER, replacedStaleToken),
+        "first use of the stale bot's new token");
   }
 
   @Test
@@ -154,9 +164,10 @@ class OpsRegenerateBotTokensIT {
     assertNotEquals(leakedToken, newToken, "the run replaced the current token");
     assertEquals(
         200, CredentialFixtures.status(LOGGED_IN_USER, newToken), "first use of the new token");
-    Awaitility.await("the replaced token is rejected within the server's credential staleness")
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofMillis(500))
+    Duration bound = CredentialSourceTestSupport.serverMaxStaleness();
+    Awaitility.await("the replaced token answers 401 within maxStaleness " + bound)
+        .atMost(bound.plusSeconds(1).toMillis(), TimeUnit.MILLISECONDS)
+        .pollInterval(25, TimeUnit.MILLISECONDS)
         .untilAsserted(
             () -> assertEquals(401, CredentialFixtures.status(LOGGED_IN_USER, leakedToken)));
   }
