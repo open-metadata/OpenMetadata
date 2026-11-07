@@ -25,10 +25,10 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { EntityType } from '../../enums/entity.enum';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
-  TagSource,
   LabelType,
   State,
   TagLabel,
+  TagSource,
 } from '../../generated/type/tagLabel';
 import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { patchDashboardDetails } from '../../rest/dashboardAPI';
