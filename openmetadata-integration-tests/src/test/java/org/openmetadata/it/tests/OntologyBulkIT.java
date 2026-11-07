@@ -184,6 +184,30 @@ public class OntologyBulkIT {
     assertTrue(owner.ontologyBulk().listJobs(1000).getJobs().size() <= MAXIMUM_JOB_LIST_SIZE);
   }
 
+  @Test
+  void listJobsIsGlossaryScoped(final TestNamespace namespace) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Glossary glossaryA = createGlossary(client, namespace);
+    final Glossary glossaryB = createGlossary(client, namespace);
+    final long jobA = createBackgroundJob(client, glossaryA, namespace).getId();
+    final long jobB = createBackgroundJob(client, glossaryB, namespace).getId();
+
+    final String glossaryAId = glossaryA.getId().toString();
+    final String glossaryBId = glossaryB.getId().toString();
+
+    // Filter by glossary A: only job A is visible
+    assertTrue(containsJob(client.ontologyBulk().listJobs(glossaryAId, 100), jobA));
+    assertFalse(containsJob(client.ontologyBulk().listJobs(glossaryAId, 100), jobB));
+
+    // Filter by glossary B: only job B is visible
+    assertTrue(containsJob(client.ontologyBulk().listJobs(glossaryBId, 100), jobB));
+    assertFalse(containsJob(client.ontologyBulk().listJobs(glossaryBId, 100), jobA));
+
+    // No glossary filter: both jobs visible (caller scoped)
+    assertTrue(containsJob(client.ontologyBulk().listJobs(100), jobA));
+    assertTrue(containsJob(client.ontologyBulk().listJobs(100), jobB));
+  }
+
   private static OntologyBulkJob createBackgroundJob(
       final OpenMetadataClient client, final Glossary glossary, final TestNamespace namespace) {
     final OntologyBulkRequest request = request(glossary, namespace, largeCsv(namespace), true);
