@@ -49,12 +49,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
 from metadata.ingestion.source.dashboard.sigma.models import (
     Elements,
+    ElementsResponse,
     NodeDetails,
     Workbook,
     WorkbookDetails,
@@ -800,3 +802,44 @@ def test_dashboard_keeps_the_workbook_description_and_link(sigma_over_http):
 
     assert dashboard.description.root == "Quarterly sales by region"
     assert dashboard.sourceUrl.root == "https://app.sigmacomputing.com/acme/workbook/wb-1"
+
+
+TITLED_AND_UNTITLED_ELEMENTS = {
+    "entries": [
+        {"elementId": "el-titled", "name": "Revenue", "vizualizationType": "bar"},
+        {"elementId": "el-untitled", "vizualizationType": "line"},
+    ],
+    "nextPage": None,
+    "total": 2,
+}
+
+
+def chart_names_under_filter(source, chart_filter: FilterPattern | None) -> list[str]:
+    source.source_config.chartFilterPattern = chart_filter
+    elements = ElementsResponse.model_validate(TITLED_AND_UNTITLED_ELEMENTS).entries
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1")).model_copy(update={"elements": elements})
+    return [either.right.displayName for either in source.yield_dashboard_chart(details)]
+
+
+@pytest.mark.parametrize(
+    "chart_filter, charts",
+    [
+        (None, ["Revenue", "Element el-untitled"]),
+        (FilterPattern(includes=["^Revenue$"]), ["Revenue"]),
+        (FilterPattern(excludes=["^Cost$"]), ["Revenue", "Element el-untitled"]),
+        (FilterPattern(excludes=["^Revenue$"]), ["Element el-untitled"]),
+        (FilterPattern(includes=["^Element "]), ["Element el-untitled"]),
+    ],
+    ids=["no-filter", "include-titled", "exclude-other", "exclude-titled", "include-untitled"],
+)
+def test_chart_filter_matches_untitled_elements_by_display_name(sigma_over_http, chart_filter, charts):
+    source, _ = sigma_over_http
+
+    assert chart_names_under_filter(source, chart_filter) == charts
+
+
+def test_filtered_untitled_element_is_reported_by_display_name(sigma_over_http):
+    source, _ = sigma_over_http
+
+    assert chart_names_under_filter(source, FilterPattern(excludes=["^Element "])) == ["Revenue"]
+    assert source.status.filtered == [{"Element el-untitled": "Chart Pattern not allowed"}]

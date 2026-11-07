@@ -177,12 +177,13 @@ class SigmaSource(DashboardServiceSource):
 
         for chart in dashboard_details.elements:
             try:
-                if filter_by_chart(self.source_config.chartFilterPattern, chart.name or ""):
-                    self.status.filter(chart.name, "Chart Pattern not allowed")
+                display_name = chart.name or f"Element {chart.elementId}"
+                if filter_by_chart(self.source_config.chartFilterPattern, display_name):
+                    self.status.filter(display_name, "Chart Pattern not allowed")
                     continue
                 chart_request = CreateChartRequest(
                     name=EntityName(str(chart.elementId)),
-                    displayName=chart.name or f"Element {chart.elementId}",
+                    displayName=display_name,
                     chartType=get_standard_chart_type(chart.vizualizationType or ""),
                     service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                     sourceUrl=SourceUrl(f"{dashboard_details.url}?:nodeId={chart.elementId}"),
