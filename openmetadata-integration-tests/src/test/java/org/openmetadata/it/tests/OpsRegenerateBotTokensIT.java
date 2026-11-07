@@ -89,10 +89,17 @@ class OpsRegenerateBotTokensIT {
         200,
         CredentialFixtures.status(LOGGED_IN_USER, storedToken(Entity.INGESTION_BOT_NAME)),
         "the run left the current system bot working");
-    String event = changeEventAtVersion(bot, storedVersion(bot));
+    String eventJson = changeEventAtVersion(bot, storedVersion(bot));
+    JsonNode event = JsonUtils.readTree(eventJson);
+    assertEquals("entityUpdated", event.path("eventType").asText(), "audited update");
     assertEquals(
-        "entityUpdated", JsonUtils.readTree(event).path("eventType").asText(), "audited update");
-    assertFalse(event.contains(newToken), "the change event carries no token");
+        Entity.ADMIN_USER_NAME, event.path("userName").asText(), "the operator is the actor");
+    assertTrue(
+        event.path("entity").path("authenticationMechanism").isMissingNode(),
+        "the event carries no authentication mechanism");
+    assertFalse(
+        eventJson.contains(newToken) || eventJson.contains(rawStoredToken(bot.getName())),
+        "neither the token nor its stored form is in the event");
   }
 
   @Test
@@ -261,6 +268,11 @@ class OpsRegenerateBotTokensIT {
   }
 
   private static String storedToken(String userName) {
+    return Fernet.getInstance().decryptIfApplies(rawStoredToken(userName));
+  }
+
+  /** The token as the table holds it: Fernet ciphertext when a Fernet key is configured. */
+  private static String rawStoredToken(String userName) {
     String json =
         Entity.getJdbi()
             .withHandle(
@@ -270,12 +282,10 @@ class OpsRegenerateBotTokensIT {
                         .bind("name", userName)
                         .mapTo(String.class)
                         .one());
-    String stored =
-        JsonUtils.readTree(json)
-            .path("authenticationMechanism")
-            .path("config")
-            .path("JWTToken")
-            .asText();
-    return Fernet.getInstance().decryptIfApplies(stored);
+    return JsonUtils.readTree(json)
+        .path("authenticationMechanism")
+        .path("config")
+        .path("JWTToken")
+        .asText();
   }
 }

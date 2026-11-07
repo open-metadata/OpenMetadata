@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-06 (initial)
 - **Deciders:** Sriharsha Chintalapani
-- **Guard:** `OpsRegenerateBotTokensIT` (a key that differs from the servers' JWKS exits 2 and changes no token; a private key from another pair stores no token; a second run leaves current tokens unchanged; a regenerated bot has a change event without its token; a bot revoked through `PUT /v1/users/revokeToken` keeps an empty token, in `aBotWhoseTokenWasRevokedStaysRevoked`), `OpenMetadataOperationsJwksTest`, `BotTokenRegeneratorTest` (a token an external secrets manager cleared on revoke reads as no token)
+- **Guard:** `OpsRegenerateBotTokensIT` (a key that differs from the servers' JWKS exits 2 and changes no token; a private key from another pair stores no token; a second run leaves current tokens unchanged; a regenerated bot has a change event naming `admin` that carries no form of its token; a bot revoked through `PUT /v1/users/revokeToken` keeps an empty token, in `aBotWhoseTokenWasRevokedStaysRevoked`), `OpenMetadataOperationsJwksTest`, `BotTokenRegeneratorTest` (a token an external secrets manager cleared on revoke reads as no token)
 - **Related:** #36478, docs/jwt-signing-key-rotation.md
 
 ## Context
@@ -23,8 +23,9 @@ rarely and plan for.
 - Each new token is verified under the configured public key before it is saved. A private key
   from another pair would sign tokens the servers reject, so the bot is reported as `FAILED`
   ("Private key does not match the public key") and nothing is written.
-- Each regenerated bot records a masked `ENTITY_UPDATED` change event, as a REST write does, so the
-  regeneration reaches the audit log and event subscriptions. The event never carries the token.
+- Each regenerated bot records a masked `ENTITY_UPDATED` change event that names the operator
+  (`admin`) as the actor, as a REST write names `updatedBy`, so the regeneration reaches the audit
+  log and event subscriptions. The event never carries the authentication mechanism.
 - A bot whose stored token verifies under the configured key, has the configured `kid` and has not
   expired is left unchanged. A bot saved through `updateIfCurrent` fails, rather than being
   overwritten, when it changed since it was read.

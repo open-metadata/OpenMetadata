@@ -59,7 +59,7 @@ The command:
    configured `keyId` with the same public key. If not, it writes nothing, prints why and exits 2.
    There is no flag to skip this check.
 2. Gives every JWT bot a new token signed by the new key, and records each change in the audit
-   log. A bot whose stored token already verifies under the configured key, carries the configured
+   log as an update by `admin`. A bot whose stored token already verifies under the configured key, carries the configured
    `keyId` and has not expired is left unchanged, so you can run the command again. A bot whose
    token was revoked is skipped and keeps no token, so an administrator's revoke survives the
    rotation.

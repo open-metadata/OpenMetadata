@@ -148,7 +148,8 @@ public class BotTokenRegenerator {
             .withConfig(token));
     PutResponse<User> saved =
         userRepository.updateIfCurrent(null, botUser, updated, Entity.ADMIN_USER_NAME);
-    UserUtil.createUserChangeEvent(saved.getEntity(), EventType.ENTITY_UPDATED);
+    UserUtil.createUserChangeEvent(
+        saved.getEntity(), EventType.ENTITY_UPDATED, saved.getEntity().getUpdatedBy());
     return new BotResult(botName, Outcome.REGENERATED, "Token regenerated");
   }
 
