@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "「全員」を選択した場合も、1つのチームは1人のレビュー担当者として扱われます。",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "このパックは1回の対話型インポートには大きすぎます。大きなパックはバックグラウンドでインストールされます。",
-    "ontology-pack-background-install-title": "バックグラウンドジョブでインストールされます",
     "ontology-pack-dry-run-success": "ドライランが完了しました",
     "ontology-pack-external-description": "個別にライセンスされたコンテンツが提供されるまで、この標準はカタログ表示のみです。",
     "ontology-pack-external-title": "外部コンテンツが必要です",

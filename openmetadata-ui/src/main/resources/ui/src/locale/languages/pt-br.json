@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "Uma equipe representa um revisor, mesmo quando Todos está selecionado.",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "Este pacote é maior que uma importação interativa. Pacotes grandes são instalados em segundo plano.",
-    "ontology-pack-background-install-title": "Instalado por um job em segundo plano",
     "ontology-pack-dry-run-success": "Simulação concluída",
     "ontology-pack-external-description": "Este padrão permanecerá apenas no catálogo até que um conteúdo com licença independente seja fornecido.",
     "ontology-pack-external-title": "Conteúdo externo necessário",

@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "يمثل الفريق مراجعًا واحدًا، حتى عند تحديد الكل.",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "هذه الحزمة أكبر من استيراد تفاعلي واحد. تُثبَّت الحزم الكبيرة في الخلفية.",
-    "ontology-pack-background-install-title": "يُثبَّت بواسطة مهمة في الخلفية",
     "ontology-pack-dry-run-success": "اكتمل التشغيل التجريبي",
     "ontology-pack-external-description": "يظل هذا المعيار مدرجًا في الفهرس فقط حتى يتم توفير محتوى مرخّص بشكل مستقل.",
     "ontology-pack-external-title": "مطلوب محتوى خارجي",

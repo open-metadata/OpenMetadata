@@ -364,7 +364,7 @@ public class NativeOntologyCapacityPerfIT extends BaseOntologyApprovalIT {
   private static long queuedJob(final Ontology ontology) {
     final OntologyPackCatalog catalog = OntologyPackCatalog.bundled();
     final var manifest = catalog.require("fhir");
-    final var modules = catalog.select(manifest, Set.of("core"));
+    final var modules = catalog.select(manifest, Set.of("fhir-r5"));
     final var source = OntologyPackInstallations.sourcePack(manifest, modules);
     final var arguments =
         new OntologyPackInstallJobArguments()

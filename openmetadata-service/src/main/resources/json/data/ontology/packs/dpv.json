@@ -5,7 +5,6 @@
   "description": "The W3C community vocabulary for personal data processing: purposes, processing, legal bases, data subjects and technical measures, plus the personal-data categories extension. Published verbatim.",
   "id": "dpv",
   "industry": "cross-industry",
-  "installMode": "background",
   "layer": "L1",
   "license": "W3C Software and Document License",
   "licenseUrl": "https://www.w3.org/copyright/software-license-2023/",

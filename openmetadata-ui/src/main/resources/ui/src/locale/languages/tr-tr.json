@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "Tümü seçildiğinde bile bir ekip bir inceleyen olarak sayılır.",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "Bu paket tek bir etkileşimli içe aktarmadan büyük. Büyük paketler arka planda yüklenir.",
-    "ontology-pack-background-install-title": "Arka plan işiyle yüklenir",
     "ontology-pack-dry-run-success": "Deneme çalıştırması tamamlandı",
     "ontology-pack-external-description": "Bu standart, bağımsız lisanslı içerik sağlanana kadar yalnızca katalogda yer alır.",
     "ontology-pack-external-title": "Harici içerik gerekli",

@@ -25,7 +25,6 @@ import {
 import {
   Format,
   Industry,
-  InstallMode,
   Layer,
   OntologyPackManifest,
 } from '../../generated/api/data/ontologyPackManifest';
@@ -352,14 +351,13 @@ describe('OntologyLibrary native installation', () => {
     );
   });
 
-  it('replaces Install with the background-install notice for a pack too large for one import', async () => {
+  it('offers Install for a pack of any size because every install runs as a job', async () => {
     const fibo: OntologyPackManifest = {
       ...pack,
       id: 'fibo',
       abbreviation: 'FIBO',
       name: 'FIBO',
       industry: Industry.Finance,
-      installMode: InstallMode.Background,
     };
     get.mockImplementation(async (url) => {
       if (url === '/ontologyPacks') {
@@ -374,11 +372,8 @@ describe('OntologyLibrary native installation', () => {
     fireEvent.click(screen.getByTestId('ontology-pack-details-fibo'));
 
     expect(
-      await screen.findByTestId('ontology-library-background-install')
-    ).toHaveTextContent('message.ontology-pack-background-install-title');
-    expect(
-      screen.queryByTestId('ontology-library-native-install')
-    ).not.toBeInTheDocument();
+      await screen.findByTestId('ontology-library-native-install')
+    ).toBeVisible();
   });
 
   it('filters native packs by industry and opens the aligned detail from the card action', async () => {

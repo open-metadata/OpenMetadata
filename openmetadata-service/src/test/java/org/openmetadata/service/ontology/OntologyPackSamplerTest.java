@@ -67,8 +67,10 @@ class OntologyPackSamplerTest {
   }
 
   @Test
-  void refusesAPackThatTheBackgroundJobInstalls() {
-    assertThrows(
-        IllegalArgumentException.class, () -> sampler.sample("fibo", List.of("fibo-quickstart")));
+  void samplesAPackTooBigForOneInteractiveImportWithinTheSampleLimit() {
+    final OntologyPackSample sample = sampler.sample("fibo", List.of("fibo-quickstart"));
+
+    assertEquals(2413, sample.getConceptCount());
+    assertEquals(OntologyPackSampler.MAX_CONCEPTS, sample.getConcepts().size());
   }
 }

@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "Одна команда считается одним рецензентом, даже если выбрано «Все».",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "Этот пакет больше, чем может вместить одна интерактивная загрузка. Большие пакеты устанавливаются в фоновом режиме.",
-    "ontology-pack-background-install-title": "Устанавливается фоновым заданием",
     "ontology-pack-dry-run-success": "Пробный запуск завершён",
     "ontology-pack-external-description": "Этот стандарт останется только в каталоге, пока не будет предоставлено содержимое с независимой лицензией.",
     "ontology-pack-external-title": "Требуется внешнее содержимое",

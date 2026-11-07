@@ -221,7 +221,6 @@
       "sourceUrl": "https://w3c.github.io/dpv/2.3/dpv/",
       "attribution": "Data Privacy Vocabulary (DPV) 2.3, W3C Data Privacy Vocabularies and Controls Community Group. Copyright W3C. Used under the W3C Software and Document License. Redistributed without changes.",
       "origin": "upstream",
-      "installMode": "background",
       "modules": [
         {
           "id": "dpv",
@@ -257,7 +256,6 @@
       "sourceUrl": "https://ref.gs1.org/voc/",
       "attribution": "GS1 Web Vocabulary 1.18. Copyright 2015-2019 GS1 AISBL. Licensed under the Apache License, Version 2.0. GS1 and the GS1 logo are registered trademarks of GS1 AISBL. Redistributed without changes.",
       "origin": "upstream",
-      "installMode": "background",
       "modules": [
         {
           "id": "gs1-voc",
@@ -284,7 +282,6 @@
       "sourceUrl": "https://spec.edmcouncil.org/fibo/",
       "attribution": "Financial Industry Business Ontology (FIBO) production quickstart 2026Q2. Copyright 2018-2026 EDM Council Inc. Copyright 2018-2025 Object Management Group, Inc. Licensed under the MIT License. Redistributed without changes.",
       "origin": "upstream",
-      "installMode": "background",
       "modules": [
         {
           "id": "fibo-quickstart",
@@ -311,7 +308,6 @@
       "sourceUrl": "https://hl7.org/fhir/R5/rdf.html",
       "attribution": "HL7 FHIR Release 5 (5.0.0) RDF ontology, published by HL7 International under CC0 1.0 (https://hl7.org/fhir/R5/license.html). HL7 and FHIR are registered trademarks of Health Level Seven International. Redistributed without changes.",
       "origin": "upstream",
-      "installMode": "background",
       "modules": [
         {
           "id": "fhir-r5",
@@ -338,7 +334,6 @@
       "sourceUrl": "https://brickschema.org/",
       "attribution": "Brick Schema 1.4.2. Copyright 2016-2026, Brick Consortium, Inc. All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permitted under the BSD 3-Clause License. The name of the Brick Consortium may not be used to endorse products derived from this software without permission. Redistributed without changes.",
       "origin": "upstream",
-      "installMode": "background",
       "modules": [
         {
           "id": "brick",

@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "一個團隊視為一名審核者，即使選擇「全部」也是如此。",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "此套件超出單次互動式匯入的範圍。大型套件會在背景安裝。",
-    "ontology-pack-background-install-title": "由背景作業安裝",
     "ontology-pack-dry-run-success": "試執行已完成",
     "ontology-pack-external-description": "在提供具獨立授權的內容之前，此標準僅會顯示於目錄中。",
     "ontology-pack-external-title": "需要外部內容",

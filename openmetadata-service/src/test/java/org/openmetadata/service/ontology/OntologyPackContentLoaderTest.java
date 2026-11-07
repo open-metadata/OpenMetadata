@@ -73,12 +73,10 @@ class OntologyPackContentLoaderTest {
   }
 
   @Test
-  void packsTooLargeForOneImportAreLeftToTheBackgroundJob() {
+  void loadsAPackTooBigForOneInteractiveImport() {
     final var catalog = new OntologyPackCatalog(getClass().getClassLoader());
-    final IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> loader.loadSelected(catalog, "fibo", List.of("fibo-quickstart")));
-    assertTrue(exception.getMessage().contains("background install job"));
+    final var selected = loader.loadSelected(catalog, "fibo", List.of("fibo-quickstart"));
+    assertEquals("turtle", selected.format());
+    assertTrue(selected.body().contains("https://spec.edmcouncil.org/fibo/ontology/"));
   }
 }

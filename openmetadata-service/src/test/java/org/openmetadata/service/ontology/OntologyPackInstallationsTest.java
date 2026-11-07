@@ -36,7 +36,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.OntologyPackInstallPlan;
-import org.openmetadata.schema.api.data.OntologyPackManifest;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
@@ -58,6 +57,9 @@ import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 class OntologyPackInstallationsTest {
+  private static final Set<String> PACKS_FOR_THE_INSTALL_JOB =
+      Set.of("brick", "dpv", "fhir", "fibo", "gs1");
+
   @BeforeAll
   static void registerOntologyType() {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(Entity.ONTOLOGY, Entity.ONTOLOGY);
@@ -228,9 +230,9 @@ class OntologyPackInstallationsTest {
   }
 
   @Test
-  void acceptsEveryBundledPackSelection() {
+  void acceptsEveryBundledPackSelectionThatFitsOneInteractiveImport() {
     for (final var manifest : catalog.list()) {
-      if (manifest.getInstallMode() != OntologyPackManifest.InstallMode.BACKGROUND) {
+      if (!PACKS_FOR_THE_INSTALL_JOB.contains(manifest.getId())) {
         for (final var module : manifest.getModules()) {
           final var draft = plan(manifest.getId(), List.of(module.getId()), emptySnapshot);
           final var prepared =
@@ -413,9 +415,9 @@ class OntologyPackInstallationsTest {
 
   @Test
   void aSliceIsVerifiedAgainstTheJobsRecordedPlanAndOnlyTheLastRecordsTheInstallation() {
-    final var draft = plan("fhir", List.of("clinical"), emptySnapshot);
-    final var slicePlan = OntologyPackSlicePlan.of(draft.getOperations(), 5, "ab".repeat(32));
-    assertEquals(3, slicePlan.slices().size());
+    final var draft = plan("sosa-ssn", List.of("ssn", "sosa"), emptySnapshot);
+    final var slicePlan = OntologyPackSlicePlan.of(draft.getOperations(), 40, "ab".repeat(32));
+    assertEquals(4, slicePlan.slices().size());
     final PlanLedger ledger = ledgerOf(slicePlan);
 
     final List<Boolean> recordsInstallation =
@@ -427,13 +429,13 @@ class OntologyPackInstallationsTest {
                         != null)
             .toList();
 
-    assertEquals(List.of(false, false, true), recordsInstallation);
+    assertEquals(List.of(false, false, false, true), recordsInstallation);
   }
 
   @Test
   void rejectsASliceWhoseOperationsDifferFromThePlanOrWhoseStampIsForeign() {
-    final var draft = plan("fhir", List.of("clinical"), emptySnapshot);
-    final var slicePlan = OntologyPackSlicePlan.of(draft.getOperations(), 5, "ab".repeat(32));
+    final var draft = plan("sosa-ssn", List.of("ssn", "sosa"), emptySnapshot);
+    final var slicePlan = OntologyPackSlicePlan.of(draft.getOperations(), 40, "ab".repeat(32));
     final PlanLedger ledger = ledgerOf(slicePlan);
     final var first = slicePlan.slices().getFirst();
 

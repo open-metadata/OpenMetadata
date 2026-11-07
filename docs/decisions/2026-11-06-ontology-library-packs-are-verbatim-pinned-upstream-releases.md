@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-06 (initial)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `python3 scripts/ontology-packs/generate.py --check` (`make ontology-packs-check`, also a `make harness-check` warning), OntologyPackCatalogTest, OntologyPackVerifierTest, BundledOntologyPackImportTest
+- **Guard:** `python3 scripts/ontology-packs/generate.py --check` (`make ontology-packs-check`, also a `make harness-check` warning), OntologyPackCatalogTest, OntologyPackVerifierTest, BundledOntologyPackImportTest, NativeOntologyEveryPackInstallIT
 - **Related:** ADR:2026-10-19-native-ontology-imports-use-working-drafts
 
 ## Context
@@ -22,12 +22,12 @@ ISA-95, HR Open and EPCIS keep an OpenMetadata-authored starter, renamed `<Stand
 
 A manifest counts a module's `conceptCount` as the distinct IRIs typed `owl:Class`, `rdfs:Class` or `skos:Concept` in its file, and `relationshipCount` as the distinct IRI-to-IRI `rdfs:subClassOf`, `rdfs:subPropertyOf` and `skos:broader`, `narrower` and `related` statements. They describe the file, so a module that re-declares terms of its dependency counts them again.
 
-A pack whose import would exceed the 1,000 changed definitions that one native import accepts is marked `installMode: background`. The catalogue lists it, and previewing or sampling it is refused with a message that the background install job installs it. FIBO, FHIR R5, Brick, GS1 and DPV are marked. FHIR R5 and Brick also exceed the 10,000-definition working snapshot, and FIBO sits 60 definitions under it. `BundledOntologyPackImportTest` fails when a pack's size and its mark disagree.
+Every pack installs through the library install job, whatever its size: there is no per-pack install mode. The preview, review and sample of a pack read its modules through the trusted parser, against their catalogue checksums, and are not held to the 1,000 changed definitions that one interactive native import accepts. The review lists at most 5,000 items. Every pack fits the 50,000-member ontology limit. `BundledOntologyPackImportTest` previews each pack, and `NativeOntologyEveryPackInstallIT` installs each one into a fresh ontology.
 
 The catalogue reads `json/data/ontology/packs/index.json`, which the generator writes, instead of a hard-coded list. A missing index, a missing or malformed manifest, or a manifest whose `id` differs from its file name stops the server at startup.
 
 ## Consequences
 
-Adding a pack is one entry in the source list and a run of `make ontology-packs`. An update to a pack is a reviewed re-pin, not an edit of a payload. The jar carries about 18 MB of uncompressed RDF, which the build compresses. A mapping or query written against FIBO, DCAT or PROV-O IRIs works against an installed pack. A user who installed an old starter FIBO keeps its concepts, but its recorded version no longer matches the catalogue, so a later install of the same pack id replaces the record. Large packs cannot be installed until the background install job lands. The import preview of a small pack now reports the statements it skipped, which is most of an upstream OWL file.
+Adding a pack is one entry in the source list and a run of `make ontology-packs`. An update to a pack is a reviewed re-pin, not an edit of a payload. The jar carries about 18 MB of uncompressed RDF, which the build compresses. A mapping or query written against FIBO, DCAT or PROV-O IRIs works against an installed pack. A user who installed an old starter FIBO keeps its concepts, but its recorded version no longer matches the catalogue, so a later install of the same pack id replaces the record. The import preview of a small pack now reports the statements it skipped, which is most of an upstream OWL file.
 
 Revisit when the licenses of an excluded vocabulary are confirmed, or when a third party needs a pack to be split into modules by the publisher.

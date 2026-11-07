@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "Ett team motsvarar en granskare, även när Alla är valt.",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "Det här paketet är större än en interaktiv import. Stora paket installeras i bakgrunden.",
-    "ontology-pack-background-install-title": "Installeras av ett bakgrundsjobb",
     "ontology-pack-dry-run-success": "Testkörningen är klar",
     "ontology-pack-external-description": "Den här standarden finns endast i katalogen tills separat licensierat innehåll tillhandahålls.",
     "ontology-pack-external-title": "Externt innehåll krävs",

@@ -133,11 +133,6 @@ export interface OntologyPackManifest {
      */
     industry: Industry;
     /**
-     * How the pack is installed. 'inline' packs fit one interactive import. 'background' packs
-     * exceed it and are installed by the background install job.
-     */
-    installMode?: InstallMode;
-    /**
      * Governance layer of a new ontology created to hold this pack.
      */
     layer:      Layer;
@@ -166,15 +161,6 @@ export enum Industry {
     Manufacturing = "manufacturing",
     Retail = "retail",
     SupplyChain = "supply-chain",
-}
-
-/**
- * How the pack is installed. 'inline' packs fit one interactive import. 'background' packs
- * exceed it and are installed by the background install job.
- */
-export enum InstallMode {
-    Background = "background",
-    Inline = "inline",
 }
 
 /**

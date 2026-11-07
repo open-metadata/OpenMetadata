@@ -5,7 +5,6 @@
   "description": "The Financial Industry Business Ontology production release as one merged file, including the OMG Commons and Languages, Countries and Codes terms. Published verbatim.",
   "id": "fibo",
   "industry": "finance",
-  "installMode": "background",
   "layer": "L2",
   "license": "MIT",
   "licenseUrl": "https://opensource.org/licenses/MIT",

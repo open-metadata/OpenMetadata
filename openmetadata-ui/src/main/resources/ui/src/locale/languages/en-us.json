@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "One team represents one reviewer, including when All is selected.",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "This pack is larger than one interactive import. Large packs are installed in the background.",
-    "ontology-pack-background-install-title": "Installed by a background job",
     "ontology-pack-dry-run-success": "Dry run completed",
     "ontology-pack-external-description": "This standard remains catalogue-only until independently licensed content is supplied.",
     "ontology-pack-external-title": "External payload required",

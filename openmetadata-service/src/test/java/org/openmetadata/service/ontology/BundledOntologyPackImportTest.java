@@ -15,8 +15,10 @@ package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Set;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.jena.rdf.model.Model;
@@ -29,21 +31,18 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.OntologyPackManifest;
-import org.openmetadata.schema.api.data.OntologyPackManifest.InstallMode;
-import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
+import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
+import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 /**
  * Every bundled pack is read by the real native importer. {@code members} is what the importer
  * keeps (concepts, properties and axioms) and {@code skipped} is what it reports leaving out, so a
- * change to either the pack bytes or the importer shows up here. Packs over the import's 1,000
- * changed definitions are the ones the manifest sends to the background install job.
+ * change to either the pack bytes or the importer shows up here.
  */
 class BundledOntologyPackImportTest {
-  private static final int MAX_CHANGED_DEFINITIONS = 1000;
-  private static final int WORKING_SNAPSHOT_CAP = 10_000;
-
   private final OntologyPackCatalog catalog = OntologyPackCatalog.bundled();
   private final OntologyPackContentLoader loader =
       new OntologyPackContentLoader(getClass().getClassLoader());
@@ -57,7 +56,7 @@ class BundledOntologyPackImportTest {
         Arguments.of("fhir", 16567, 19509),
         Arguments.of("fibo", 9940, 103304),
         Arguments.of("foaf", 105, 171),
-        Arguments.of("gs1", 1540, 14173),
+        Arguments.of("gs1", 1523, 14190),
         Arguments.of("hr-open", 14, 0),
         Arguments.of("isa-95", 16, 0),
         Arguments.of("odrl", 758, 566),
@@ -100,49 +99,42 @@ class BundledOntologyPackImportTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("packs")
-  void packsTooBigForOneImportAreExactlyTheBackgroundOnes(
+  void everyPackFitsOneOntologyAndPreviewsWithoutErrors(
       final String packId, final int members, final int skipped) {
-    assertEquals(
-        members > MAX_CHANGED_DEFINITIONS,
-        catalog.require(packId).getInstallMode() == InstallMode.BACKGROUND,
-        packId + " installMode");
-  }
-
-  @Test
-  void onlyBrickAndFhirExceedTheWorkingSnapshotCap() {
-    final Set<String> over =
-        packs()
-            .map(Arguments::get)
-            .filter(arguments -> (int) arguments[1] >= WORKING_SNAPSHOT_CAP)
-            .map(arguments -> (String) arguments[0])
-            .collect(Collectors.toSet());
-
-    assertEquals(Set.of("brick", "fhir"), over);
-  }
-
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("packs")
-  void aPackWithinOneImportPreviewsWithoutErrors(
-      final String packId, final int members, final int skipped) {
-    if (catalog.require(packId).getInstallMode() == InstallMode.BACKGROUND) {
-      return;
-    }
+    assertTrue(members <= OntologyReleaseManifest.MAX_MEMBERS, packId + " members");
     final var selected =
-        loader.loadSelected(
+        loader.select(
             catalog,
             packId,
             catalog.require(packId).getModules().stream().map(module -> module.getId()).toList());
-    final var importer = new NativeOntologyRdfImporter();
+    final var model = new OntologyPackModels(loader).load(selected.modules());
+    final NativeOntologyRdfImporter.Source source;
+    try {
+      source =
+          new NativeOntologyRdfImporter.Source(
+              NativeOntologyImportFormat.fromValue(selected.format()),
+              NativeOntologyRdfImporter.read(model));
+    } finally {
+      model.close();
+    }
 
-    final var source =
-        importer.read(
-            new PreviewNativeOntologyImport()
-                .withFormat(NativeOntologyImportFormat.fromValue(selected.format()))
-                .withData(selected.body()));
-    final var summary = importer.summarize(source);
+    final var preview = new NativeOntologyRdfImporter().previewUnbounded(source, emptyTarget());
 
+    final var summary = preview.getSummary();
     assertEquals(skipped, summary.getSkippedStatements().getTotal(), packId + " skipped");
     assertFalse(summary.getItems().isEmpty(), packId + " items");
+    assertFalse(preview.getChangeSet().getOperations().isEmpty(), packId + " operations");
+  }
+
+  private static OntologyWorkingSnapshot.Snapshot emptyTarget() {
+    final Ontology root =
+        new Ontology()
+            .withId(UUID.randomUUID())
+            .withName("library")
+            .withFullyQualifiedName("library");
+    return new OntologyWorkingSnapshot.Snapshot(
+        new OntologyState().withOntologyId(root.getId()).withWorkingRevision(0L),
+        List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
   }
 
   private Model wholePack(final String packId) {

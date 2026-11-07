@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "सर्व निवडले असतानाही एक संघ एका पुनरावलोकनकर्त्याचे प्रतिनिधित्व करतो.",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "हा पॅक एका इंटरॅक्टिव्ह इम्पोर्टपेक्षा मोठा आहे. मोठे पॅक बॅकग्राउंडमध्ये इन्स्टॉल केले जातात.",
-    "ontology-pack-background-install-title": "बॅकग्राउंड जॉबद्वारे इन्स्टॉल केले जाते",
     "ontology-pack-dry-run-success": "चाचणी रन पूर्ण झाला",
     "ontology-pack-external-description": "स्वतंत्र परवाना असलेली सामग्री उपलब्ध होईपर्यंत हे मानक फक्त कॅटलॉगमध्ये राहील.",
     "ontology-pack-external-title": "बाह्य सामग्री आवश्यक",

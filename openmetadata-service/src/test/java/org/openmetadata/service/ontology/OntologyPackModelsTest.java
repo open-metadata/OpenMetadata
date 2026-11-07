@@ -17,8 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
@@ -33,6 +35,7 @@ import org.openmetadata.service.ontology.OntologyWorkingSnapshot.Entry;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot.Snapshot;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
+import org.openmetadata.service.rdf.SafeRdfModelParser;
 
 class OntologyPackModelsTest {
   private final OntologyPackCatalog catalog = OntologyPackCatalog.bundled();
@@ -74,7 +77,7 @@ class OntologyPackModelsTest {
   void refusesAModuleWhoseChecksumDoesNotMatchTheCatalogue() {
     final OntologyPackModule tampered =
         JsonUtils.deepCopy(
-                catalog.require("fhir").getModules().getFirst(), OntologyPackModule.class)
+                catalog.require("sosa-ssn").getModules().getFirst(), OntologyPackModule.class)
             .withSha256("0".repeat(64));
 
     assertThrows(IllegalStateException.class, () -> models.load(List.of(tampered)));
@@ -94,11 +97,16 @@ class OntologyPackModelsTest {
   private List<OntologyChangeOperation> reconcileJoined(
       final String packId, final List<String> moduleIds) {
     final var selected = catalog.loadSelected(packId, moduleIds);
-    final var importer = new NativeOntologyRdfImporter();
     final var model =
-        importer.parse(selected.body(), RdfSerializationFormat.parse(selected.format()));
+        new SafeRdfModelParser()
+            .parseTrusted(
+                selected.body(),
+                RdfSerializationFormat.parse(selected.format()),
+                DigestUtils.sha256Hex(selected.body().getBytes(StandardCharsets.UTF_8)));
     try {
-      return importer.reconcile(model, emptySnapshot).getOperations();
+      return new NativeOntologyRdfImporter()
+          .reconcileUnbounded(model, emptySnapshot)
+          .getOperations();
     } finally {
       model.close();
     }

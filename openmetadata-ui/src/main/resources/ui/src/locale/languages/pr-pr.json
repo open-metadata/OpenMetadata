@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "هر تیم یک بازبین محسوب می‌شود، حتی وقتی همه انتخاب شده باشد.",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "این بسته از یک درون‌ریزی تعاملی بزرگ‌تر است. بسته‌های بزرگ در پس‌زمینه نصب می‌شوند.",
-    "ontology-pack-background-install-title": "با یک کار پس‌زمینه نصب می‌شود",
     "ontology-pack-dry-run-success": "اجرای آزمایشی کامل شد",
     "ontology-pack-external-description": "این استاندارد تا زمان ارائه محتوای دارای مجوز مستقل، فقط در فهرست باقی می‌ماند.",
     "ontology-pack-external-title": "محتوای خارجی لازم است",

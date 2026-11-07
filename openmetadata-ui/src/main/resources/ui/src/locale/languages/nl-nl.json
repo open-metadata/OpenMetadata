@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "Eén team vertegenwoordigt één beoordelaar, ook wanneer Alle is geselecteerd.",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "Dit pakket is groter dan één interactieve import. Grote pakketten worden op de achtergrond geïnstalleerd.",
-    "ontology-pack-background-install-title": "Wordt geïnstalleerd door een achtergrondtaak",
     "ontology-pack-dry-run-success": "Proefuitvoering voltooid",
     "ontology-pack-external-description": "Deze standaard blijft alleen in de catalogus staan totdat onafhankelijk gelicentieerde inhoud beschikbaar is.",
     "ontology-pack-external-title": "Externe inhoud vereist",

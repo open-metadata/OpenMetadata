@@ -23,7 +23,6 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyPackList;
-import org.openmetadata.schema.api.data.OntologyPackManifest.InstallMode;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
@@ -106,14 +105,6 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
 
     assertEquals("cross-industry", industryOf(catalogue, "dcat"));
     assertEquals("buildings-and-energy", industryOf(catalogue, "brick"));
-    assertEquals(
-        InstallMode.BACKGROUND,
-        catalogue.getPacks().stream()
-            .filter(pack -> pack.getId().equals("fibo"))
-            .findFirst()
-            .orElseThrow()
-            .getInstallMode());
-
     final Ontology first = createOntology(ns, "libraryFirst");
     final Ontology second = createOntology(ns, "librarySecond");
     install(ns, first, "sosa-ssn", Set.of("sosa"));

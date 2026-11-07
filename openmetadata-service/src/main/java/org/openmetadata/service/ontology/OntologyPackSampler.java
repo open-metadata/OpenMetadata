@@ -24,6 +24,8 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.jena.rdf.model.Model;
+import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyPackSample;
 import org.openmetadata.schema.api.data.OntologyPackSampleConcept;
 import org.openmetadata.schema.api.data.OntologyPackSampleRelation;
@@ -36,7 +38,6 @@ import org.openmetadata.schema.type.OntologyPackModule;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
-import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 public final class OntologyPackSampler {
   public static final int MAX_CONCEPTS = 60;
@@ -52,12 +53,8 @@ public final class OntologyPackSampler {
   }
 
   public OntologyPackSample sample(final String packId, final Collection<String> moduleIds) {
-    final var selected = loader.loadSelected(catalog, packId, moduleIds);
-    final var importer = new NativeOntologyRdfImporter();
-    final var plan =
-        importer.reconcile(
-            importer.parse(selected.body(), RdfSerializationFormat.parse(selected.format())),
-            emptySnapshot());
+    final var selected = loader.select(catalog, packId, moduleIds);
+    final var plan = reconcile(selected.modules());
     final List<OntologyPackSampleConcept> concepts =
         plan.getOperations().stream()
             .filter(
@@ -94,6 +91,15 @@ public final class OntologyPackSampler {
             .withConcepts(concepts)
             .withRelations(relations),
         MAX_CONCEPTS);
+  }
+
+  private CreateOntologyChangeSet reconcile(final List<OntologyPackModule> modules) {
+    final Model model = new OntologyPackModels(loader).load(modules);
+    try {
+      return new NativeOntologyRdfImporter().reconcileUnbounded(model, emptySnapshot());
+    } finally {
+      model.close();
+    }
   }
 
   private static Optional<OntologyPackSampleRelation> relation(final OntologyAxiom axiom) {

@@ -365,8 +365,6 @@ def build_manifest(pack: dict, payloads: dict[str, bytes]) -> dict:
         "bundled": True,
         "modules": modules,
     }
-    if pack.get("installMode", "inline") != "inline":
-        manifest["installMode"] = pack["installMode"]
     return manifest
 
 

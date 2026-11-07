@@ -28,7 +28,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.OntologyPackManifest;
-import org.openmetadata.schema.api.data.OntologyPackManifest.InstallMode;
 import org.openmetadata.schema.type.OntologyPackModule;
 
 class OntologyPackCatalogTest {
@@ -87,17 +86,6 @@ class OntologyPackCatalogTest {
         assertEquals("Apache License 2.0", pack.getLicense(), pack.getId());
       }
     }
-  }
-
-  @Test
-  void packsTooLargeForOneImportAreMarkedForTheBackgroundJob() {
-    final Set<String> background =
-        catalog.list().stream()
-            .filter(pack -> pack.getInstallMode() == InstallMode.BACKGROUND)
-            .map(OntologyPackManifest::getId)
-            .collect(Collectors.toSet());
-
-    assertEquals(Set.of("brick", "dpv", "fhir", "fibo", "gs1"), background);
   }
 
   @Test

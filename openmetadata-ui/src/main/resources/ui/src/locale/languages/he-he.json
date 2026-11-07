@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "צוות אחד מייצג סוקר אחד, גם כאשר נבחרת האפשרות כולם.",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "החבילה הזו גדולה מייבוא אינטראקטיבי אחד. חבילות גדולות מותקנות ברקע.",
-    "ontology-pack-background-install-title": "מותקן באמצעות משימת רקע",
     "ontology-pack-dry-run-success": "הרצת הניסיון הושלמה",
     "ontology-pack-external-description": "תקן זה יישאר בקטלוג בלבד עד שיסופק תוכן בעל רישיון עצמאי.",
     "ontology-pack-external-title": "נדרש תוכן חיצוני",

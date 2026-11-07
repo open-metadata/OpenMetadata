@@ -26,7 +26,6 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
 import org.openmetadata.schema.api.data.OntologyPackList;
-import org.openmetadata.schema.api.data.OntologyPackManifest.InstallMode;
 import org.openmetadata.schema.api.data.OntologyPackSample;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -78,7 +77,7 @@ public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
     }
   }
 
-  private static final Map<String, Integer> INLINE_PACK_OPERATIONS =
+  private static final Map<String, Integer> PACK_OPERATIONS =
       Map.of(
           "dcat", 48,
           "epcis", 18,
@@ -92,7 +91,7 @@ public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
           "sosa-ssn", 144);
 
   @Test
-  void everyPackWithinOneImportPreviewsWithoutChangingTheTarget(TestNamespace ns) {
+  void everyPackPreviewsWithoutChangingTheTarget(TestNamespace ns) {
     final var client = SdkClients.adminClient();
     final var packs =
         client
@@ -101,9 +100,6 @@ public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
     final Set<String> previewed = new HashSet<>();
     final Map<String, Integer> actual = new TreeMap<>();
     for (final var pack : packs.getPacks()) {
-      if (pack.getInstallMode() == InstallMode.BACKGROUND) {
-        continue;
-      }
       final var ontology = createOntology(ns, "library_" + pack.getId());
       final long before = client.ontologies().state(ontology.getId()).getWorkingRevision();
       final Set<String> modules =
@@ -114,20 +110,8 @@ public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
       assertEquals(before, client.ontologies().state(ontology.getId()).getWorkingRevision());
       previewed.add(pack.getId());
     }
-    assertEquals(new TreeMap<>(INLINE_PACK_OPERATIONS), actual);
-    assertEquals(INLINE_PACK_OPERATIONS.keySet(), previewed);
-  }
-
-  @Test
-  void packsTooLargeForOneImportAreRefusedUntilTheBackgroundJobInstallsThem(TestNamespace ns) {
-    final var ontology = createOntology(ns);
-    for (final String packId : List.of("fibo", "fhir", "brick", "gs1", "dpv")) {
-      final var exception =
-          assertThrows(
-              OpenMetadataException.class, () -> preview(ontology, packId, allModules(packId)));
-      assertEquals(400, exception.getStatusCode(), packId);
-      assertTrue(exception.getMessage().contains("background install job"), packId);
-    }
+    assertEquals(new TreeMap<>(PACK_OPERATIONS), actual);
+    assertEquals(PACK_OPERATIONS.keySet(), previewed);
   }
 
   @Test

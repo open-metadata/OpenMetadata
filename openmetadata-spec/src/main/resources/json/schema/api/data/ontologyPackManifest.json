@@ -76,12 +76,6 @@
       "type": "string",
       "maxLength": 2048
     },
-    "installMode": {
-      "description": "How the pack is installed. 'inline' packs fit one interactive import. 'background' packs exceed it and are installed by the background install job.",
-      "type": "string",
-      "enum": ["inline", "background"],
-      "default": "inline"
-    },
     "bundled": {
       "description": "Whether every selected module can be installed from verified classpath content.",
       "type": "boolean"

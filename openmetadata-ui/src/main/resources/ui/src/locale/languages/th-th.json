@@ -5895,8 +5895,6 @@
     "ontology-nothing-published-description": "This ontology has no active release. An editor publishes one from Review and publish.",
     "ontology-one-team-reviewer": "หนึ่งทีมเทียบเท่ากับผู้ตรวจสอบหนึ่งคน แม้จะเลือกทั้งหมด",
     "ontology-overview-read-only": "The overview shows the {{version}} version and cannot be edited.",
-    "ontology-pack-background-install-description": "แพ็กนี้ใหญ่เกินกว่าการนำเข้าแบบโต้ตอบครั้งเดียว แพ็กขนาดใหญ่จะติดตั้งในเบื้องหลัง",
-    "ontology-pack-background-install-title": "ติดตั้งโดยงานเบื้องหลัง",
     "ontology-pack-dry-run-success": "ทดลองทำงานเสร็จสมบูรณ์",
     "ontology-pack-external-description": "มาตรฐานนี้จะแสดงในแค็ตตาล็อกเท่านั้นจนกว่าจะมีเนื้อหาที่ได้รับใบอนุญาตแยกต่างหาก",
     "ontology-pack-external-title": "ต้องใช้เนื้อหาภายนอก",
