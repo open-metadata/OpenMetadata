@@ -40,7 +40,7 @@ export interface MicroStrategyConnection {
     /**
      * Password to connect to MicroStrategy.
      */
-    password: string;
+    password?: string;
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
@@ -49,6 +49,7 @@ export interface MicroStrategyConnection {
      * MicroStrategy Project Name
      */
     projectName?:                string;
+    sslConfig?:                  Config;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -58,7 +59,8 @@ export interface MicroStrategyConnection {
      * Username to connect to MicroStrategy. This user should have privileges to read all the
      * metadata in MicroStrategy.
      */
-    username: string;
+    username?:  string;
+    verifySSL?: VerifySSL;
 }
 
 /**
@@ -84,10 +86,39 @@ export interface FilterPattern {
 }
 
 /**
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
  * Service Type
  *
  * MicroStrategy service type
  */
 export enum MicroStrategyType {
     MicroStrategy = "MicroStrategy",
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }

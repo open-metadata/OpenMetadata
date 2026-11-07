@@ -7363,6 +7363,13 @@
                           "type": "string",
                           "default": "1"
                         },
+                        "verifySSL": {
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/verifySSL",
+                          "default": "no-ssl"
+                        },
+                        "sslConfig": {
+                          "$ref": "#/definitions/source/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
+                        },
                         "dashboardFilterPattern": {
                           "description": "Regex to exclude or include dashboards that matches the pattern.",
                           "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
@@ -7390,9 +7397,7 @@
                       },
                       "additionalProperties": false,
                       "required": [
-                        "hostPort",
-                        "username",
-                        "password"
+                        "hostPort"
                       ]
                     },
                     {

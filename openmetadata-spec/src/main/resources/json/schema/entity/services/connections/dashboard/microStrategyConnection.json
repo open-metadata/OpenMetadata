@@ -49,6 +49,13 @@
       "type": "string",
       "default": "1"
     },
+    "verifySSL": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "dashboardFilterPattern": {
       "description": "Regex to exclude or include dashboards that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
@@ -75,5 +82,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username", "password"]
+  "required": ["hostPort"]
 }

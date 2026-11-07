@@ -718,20 +718,6 @@
       "e14af2eec8885c3a9d310970856dd3ecc4e127b43d6e6a3515855b1fe68eb39e": 1,
       "ec83cefa68f4201f198d6424263ca036f96b476ba28114ebd82fe23bd6f8ca03": 1
     },
-    "ingestion/src/metadata/ingestion/source/dashboard/microstrategy/client.py": {
-      "06303ba5cd4041981583296ced36e8c5440c65dade3f9a0b769a928835a3f1c9": 1,
-      "192b5dd29214e52d2f12819c78c15ee1086d94890d0ba0c9cc5cecb90f4aef46": 1,
-      "413edae2dca08bf7df61753b213806fa1b15dd2850d389ef9eeb85e9be58b56f": 1,
-      "80c3132f167baf4f2f3addd0be608aea09a3737faa92d6b20f896c9d01545fd9": 1,
-      "a6547671b1a62721263892cdd659fff9ea752175d0baf87751fbb3976c8d3697": 1,
-      "e9cfefbd35040f4e1bbdace951710040d19b46d599789632485ed07c2c1f39d6": 1
-    },
-    "ingestion/src/metadata/ingestion/source/dashboard/microstrategy/metadata.py": {
-      "ad6df826e578d90034666130821b8d043c8767a62231b3d127db8b8d6617db6a": 1,
-      "af7aa55de77b5411cdf87df5b1d505b0e45e39d46c80ec70cac998debb722145": 1,
-      "c9134beb7507b13762683b550b9744cded8a888d86d2cc52713f9abe54577534": 1,
-      "e0f3e4b74ca244b264aec9f8ef05539f874b4372a7cb6af1480b4243ce9996b9": 1
-    },
     "ingestion/src/metadata/ingestion/source/dashboard/mode/client.py": {
       "041120a3957a70e8ebcf634a748a36809ed7421fcdf246ea05ac939dda6f45e3": 1,
       "452713dc0a14f0014cd8030e47d3de04becfefbc4038b03aaca4ee50130fc7e3": 1,

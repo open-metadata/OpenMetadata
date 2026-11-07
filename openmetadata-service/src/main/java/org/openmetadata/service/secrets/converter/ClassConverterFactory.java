@@ -38,6 +38,7 @@ import org.openmetadata.schema.services.connections.api.OpenAPISchemaS3;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
+import org.openmetadata.schema.services.connections.dashboard.MicroStrategyConnection;
 import org.openmetadata.schema.services.connections.dashboard.OmniConnection;
 import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
 import org.openmetadata.schema.services.connections.dashboard.SapS4HanaConnection;
@@ -199,6 +200,11 @@ public final class ClassConverterFactory {
               new NestedConfigClassConverter(
                   MicrosoftAccessConnection.class,
                   Map.of("connection", List.of(S3Connection.class)))),
+          Map.entry(
+              MicroStrategyConnection.class,
+              new NestedConfigClassConverter(
+                  MicroStrategyConnection.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               MongoDBConnection.class,
               new NestedConfigClassConverter(
