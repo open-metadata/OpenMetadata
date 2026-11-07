@@ -14,7 +14,9 @@ dumps. No I/O is performed inside the detector.
 
 Tripwires:
   * Hang: a thread on the same op for >stuck_warn_seconds (warn) or
-    >auto_dump_seconds (warn + dump_reason).
+    >auto_dump_seconds (warn + dump_reason). Whole-phase wrapper ops
+    (NON_LEAF_OPS — source.iter, workflow.execute, ...) are excluded because
+    their cumulative age grows monotonically on healthy long runs.
   * Memory pressure: PSI avg10 over threshold; cgroup `memory.events.high`
     or `.events.oom` incremented since the previous tick.
 """
@@ -24,6 +26,7 @@ import threading
 from dataclasses import dataclass
 
 from metadata.ingestion.diagnostics.collectors.operation_registry import (
+    NON_LEAF_OPS,
     OperationRegistry,
     format_op_frame,
 )
@@ -86,6 +89,14 @@ class Watchdog:
         name_by_ident: dict[int, str],
         now: float,
     ) -> Verdict | None:
+        # Wrapper ops (source.iter, workflow.execute, ...) span entire run phases
+        # whose age is cumulative and grows monotonically on healthy long runs.
+        # Judging them by duration produces false "stuck" verdicts on any tick that
+        # observes the wrapper as the deepest frame — skip them so hang detection
+        # keys on real units of work (http/db/sink ops), mirroring the slow-ops
+        # sampler's NON_LEAF_OPS exclusion.
+        if op_name in NON_LEAF_OPS:
+            return None
         if age < self._config.stuck_warn_seconds:
             return None
         key = (tid, op_name)
