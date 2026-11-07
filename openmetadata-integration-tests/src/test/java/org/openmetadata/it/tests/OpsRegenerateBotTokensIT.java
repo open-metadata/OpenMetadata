@@ -20,15 +20,12 @@ import static org.openmetadata.it.tests.CredentialFixtures.LOGGED_IN_USER;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
-import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
-import java.security.spec.PKCS8EncodedKeySpec;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,20 +55,36 @@ import org.openmetadata.service.fernet.Fernet;
 @ExtendWith(TestNamespaceExtension.class)
 class OpsRegenerateBotTokensIT {
   @Test
-  void aTokenOfARetiredKeyIsReplacedByOneThatWorksOnFirstUse(TestNamespace ns) {
+  void tokensOfARetiredKeyAreReplacedByOnesThatWorkOnFirstUse(TestNamespace ns) {
     User bot = botWithRetiredKeyToken(ns, "opsbot");
+    User otherBot = botWithRetiredKeyToken(ns, "opsbot2");
     String oldToken = storedToken(bot);
+    String otherOldToken = storedToken(otherBot);
     double oldVersion = storedVersion(bot);
     assertEquals(401, CredentialFixtures.status(LOGGED_IN_USER, oldToken), "retired key rejected");
+    assertEquals(
+        200,
+        CredentialFixtures.status(LOGGED_IN_USER, storedToken(Entity.INGESTION_BOT_NAME)),
+        "the system bot's token is current before the run");
 
     int exitCode = ForkedOperations.run("regenerate-bot-tokens", "--expiry", "Seven");
 
     assertEquals(0, exitCode, "the ops command succeeded, see target/forked-ops-*.log");
     String newToken = storedToken(bot);
+    String otherNewToken = storedToken(otherBot);
     assertTrue(storedVersion(bot) > oldVersion, "the regeneration moved the user version");
     assertNotEquals(oldToken, newToken, "the command stored a new token");
+    assertNotEquals(otherOldToken, otherNewToken, "one run replaced every stale bot token");
     assertEquals(
         200, CredentialFixtures.status(LOGGED_IN_USER, newToken), "first use of new token");
+    assertEquals(
+        200,
+        CredentialFixtures.status(LOGGED_IN_USER, otherNewToken),
+        "first use of the other bot's new token");
+    assertEquals(
+        200,
+        CredentialFixtures.status(LOGGED_IN_USER, storedToken(Entity.INGESTION_BOT_NAME)),
+        "the run left the current system bot working");
   }
 
   @Test
@@ -114,14 +127,15 @@ class OpsRegenerateBotTokensIT {
 
   /**
    * The server mints a current token for every new bot, so the token is replaced in the table with
-   * one signed by the suite's key under a {@code kid} the configuration no longer uses.
+   * what a key rotation leaves behind: a token signed by another key under a {@code kid} the
+   * configuration no longer uses.
    */
   private static User botWithRetiredKeyToken(TestNamespace ns, String name) {
     User bot = CredentialFixtures.createBot(ns, name);
     SdkClients.adminClient()
         .bots()
         .create(new CreateBot().withName(ns.prefix(name)).withBotUser(bot.getName()));
-    String retired = Fernet.getInstance().encryptIfApplies(tokenWithRetiredKid(bot));
+    String retired = Fernet.getInstance().encryptIfApplies(tokenSignedByARetiredKey(bot));
     String json =
         Entity.getJdbi()
             .withHandle(
@@ -140,22 +154,19 @@ class OpsRegenerateBotTokensIT {
     return bot;
   }
 
-  private static String tokenWithRetiredKid(User bot) {
+  private static String tokenSignedByARetiredKey(User bot) {
     JWTTokenConfiguration jwt =
         TestSuiteBootstrap.createApplicationConfigCopy().getJwtTokenConfiguration();
     try {
-      RSAPrivateKey key =
-          (RSAPrivateKey)
-              KeyFactory.getInstance("RSA")
-                  .generatePrivate(
-                      new PKCS8EncodedKeySpec(
-                          Files.readAllBytes(Path.of(jwt.getRsaprivateKeyFilePath()))));
+      KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+      generator.initialize(2048);
+      RSAPrivateKey retiredKey = (RSAPrivateKey) generator.generateKeyPair().getPrivate();
       return JWT.create()
           .withKeyId("retired-key")
           .withIssuer(jwt.getJwtissuer())
           .withClaim("sub", bot.getName())
-          .sign(Algorithm.RSA256(null, key));
-    } catch (GeneralSecurityException | IOException failure) {
+          .sign(Algorithm.RSA256(null, retiredKey));
+    } catch (GeneralSecurityException failure) {
       throw new IllegalStateException(failure);
     }
   }
@@ -177,13 +188,17 @@ class OpsRegenerateBotTokensIT {
    * the server's entity cache may still hold the bot's previous document.
    */
   private static String storedToken(User bot) {
+    return storedToken(bot.getName());
+  }
+
+  private static String storedToken(String userName) {
     String json =
         Entity.getJdbi()
             .withHandle(
                 handle ->
                     handle
                         .createQuery("SELECT json FROM user_entity WHERE name = :name")
-                        .bind("name", bot.getName())
+                        .bind("name", userName)
                         .mapTo(String.class)
                         .one());
     String stored =
