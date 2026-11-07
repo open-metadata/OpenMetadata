@@ -34,6 +34,7 @@ export interface OntologyPropertyFormValues {
   inverse: string;
   propertyChain: string;
   disjointWith: string;
+  superProperties: string;
   characteristics: { id: Characteristic; label: string }[];
   enumValues: { value: string; datatypeIri: string }[];
   unit: string;
@@ -54,6 +55,7 @@ export const propertyFormValues = (
     inverse = '',
     propertyChain = [],
     disjointWith = [],
+    superProperties = [],
     characteristics = [],
     enumValues = [],
     unit = '',
@@ -71,6 +73,7 @@ export const propertyFormValues = (
     inverse,
     propertyChain: propertyChain.join('\n'),
     disjointWith: disjointWith.join('\n'),
+    superProperties: superProperties.join('\n'),
     characteristics: characteristics.map((id) => ({ id, label: id })),
     enumValues: enumValues.map((value) => ({
       ...value,
@@ -99,6 +102,7 @@ export const propertyRequest = (
   ontology,
   domain: iriLines(values.domain),
   range: iriLines(values.range),
+  superProperties: iriLines(values.superProperties),
   ...(values.kind.id !== Kind.Annotation && {
     disjointWith: iriLines(values.disjointWith),
     characteristics: values.characteristics
@@ -135,6 +139,7 @@ export const propertyPatch = (
     'inverse',
     'propertyChain',
     'disjointWith',
+    'superProperties',
     'characteristics',
     'enumValues',
     'unit',

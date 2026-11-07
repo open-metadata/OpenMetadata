@@ -20,7 +20,7 @@ import { uuid } from './common';
 // The native import endpoint refuses more than 1,000 changed definitions at once, and each concept adds a relation.
 const IMPORT_BATCH_SIZE = 450;
 const CSV_HEADER =
-  'kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy';
+  'kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,superProperties,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy';
 
 export interface LargeOntologyFixture {
   readonly api: APIRequestContext;
@@ -41,7 +41,7 @@ const csvRow = (namespace: string, index: number) => {
 
   return `CONCEPT,${namespace}C${index},${conceptLabel(
     index
-  )},,OWL_CLASS,${parent},,,,,,,,,,,,,,,,,,,,,`;
+  )},,OWL_CLASS,${parent},,,,,,,,,,,,,,,,,,,,,,`;
 };
 
 const importBatch = async (

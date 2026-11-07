@@ -77,14 +77,24 @@ interface OntologyPropertyEditorProps {
   property?: OntologyProperty;
   canEdit: boolean;
   concepts?: ReadonlyArray<OntologyIriOption>;
+  properties?: ReadonlyArray<OntologyIriOption & { kind: Kind }>;
   onSaved: (property: OntologyProperty) => void;
 }
+
+type IriListField = 'domain' | 'range' | 'superProperties';
+
+const IRI_LIST_LABEL_KEYS: Record<IriListField, string> = {
+  domain: 'label.property-domain',
+  range: 'label.range',
+  superProperties: 'label.super-property-plural',
+};
 
 const OntologyPropertyEditor = ({
   ontology,
   property,
   canEdit,
   concepts,
+  properties,
   onSaved,
 }: OntologyPropertyEditorProps) => {
   const { t } = useTranslation();
@@ -130,17 +140,26 @@ const OntologyPropertyEditor = ({
     }
   };
 
-  const renderIriList = (name: 'domain' | 'range') => (
+  // A superproperty must share the property's kind, and a property cannot specialize itself.
+  const iriListOptions = (name: IriListField) => {
+    if (name === 'superProperties') {
+      return properties?.filter(
+        (option) => option.kind === kind && option.iri !== property?.iri
+      );
+    }
+
+    return name === 'range' && kind === Kind.Data
+      ? ONTOLOGY_DATATYPE_OPTIONS
+      : concepts;
+  };
+
+  const renderIriList = (name: IriListField) => (
     <FormField control={form.control} name={name}>
       {({ field }) => (
         <OntologyIriListInput
           isDisabled={disabled}
-          label={t(name === 'domain' ? 'label.property-domain' : 'label.range')}
-          options={
-            name === 'range' && kind === Kind.Data
-              ? ONTOLOGY_DATATYPE_OPTIONS
-              : concepts
-          }
+          label={t(IRI_LIST_LABEL_KEYS[name])}
+          options={iriListOptions(name)}
           testId={`ontology-property-${name}`}
           value={field.value.split('\n').filter(Boolean)}
           onChange={(iris) => field.onChange(iris.join('\n'))}
@@ -264,6 +283,7 @@ const OntologyPropertyEditor = ({
           {renderFields(['name', 'displayName', 'kind'])}
           {renderIriList('domain')}
           {renderIriList('range')}
+          {renderIriList('superProperties')}
           {renderEnumValues()}
           {renderFields(['unit', 'isIdentifier', 'description'])}
           <details
@@ -313,6 +333,7 @@ const OntologyPropertyEditor = ({
               {getField(field)}
               {field.name === 'kind' && renderIriList('domain')}
               {field.name === 'kind' && renderIriList('range')}
+              {field.name === 'kind' && renderIriList('superProperties')}
             </Fragment>
           )
         )}

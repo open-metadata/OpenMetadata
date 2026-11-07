@@ -28,14 +28,14 @@ const CUSTOMER_RDF_XML = (namespace: string) =>
 </rdf:RDF>`;
 
 const CSV_HEADER =
-  'kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy';
+  'kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,superProperties,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy';
 
 const csvOf = (namespace: string, label = 'Shop CSV') =>
   [
     CSV_HEADER,
-    `ONTOLOGY,${namespace}shop,${label},,,,,,,,,,,,,,,,,,,,,,,,`,
-    `CONCEPT,${namespace}Party,Party,,OWL_CLASS,,,,,,,,,,,,,,,,,,,,,,`,
-    `CONCEPT,${namespace}Customer,Customer,,OWL_CLASS,${namespace}Party,,,,,,,,,,,,,,,,,,true,${namespace}standard,true,${namespace}Party`,
+    `ONTOLOGY,${namespace}shop,${label},,,,,,,,,,,,,,,,,,,,,,,,,`,
+    `CONCEPT,${namespace}Party,Party,,OWL_CLASS,,,,,,,,,,,,,,,,,,,,,,,`,
+    `CONCEPT,${namespace}Customer,Customer,,OWL_CLASS,${namespace}Party,,,,,,,,,,,,,,,,,,,true,${namespace}standard,true,${namespace}Party`,
   ].join('\r\n') + '\r\n';
 
 const openImportTab = async (page: Page) => {
